@@ -130,8 +130,8 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 %% @end
 %%--------------------------------------------------------------------
 -spec flow(kz_json:object() | kz_proplist()) ->
-                    {'ok', iolist()} |
-                    {'error', string()}.
+                  {'ok', iolist()} |
+                  {'error', string()}.
 flow(Prop) when is_list(Prop) ->
     case flow_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?METAFLOW_FLOW_HEADERS, ?OPTIONAL_METAFLOW_FLOW_HEADERS);
