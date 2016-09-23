@@ -703,9 +703,8 @@ create(Ledger, Amount, Type) ->
 
 -spec modb_doc_id() -> ne_binary().
 modb_doc_id() ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
-    <<(kz_util:to_binary(Year))/binary
-      ,(kz_util:pad_month(Month))/binary
-      ,"-"
-      ,(kz_util:rand_hex_binary(16))/binary
-    >>.
+    {Year, M, _} = erlang:date(),
+    ?MATCH_MODB_PREFIX(kz_util:to_binary(Year)
+                      ,kz_util:pad_month(M)
+                      ,kz_util:rand_hex_binary(16)
+                      ).
