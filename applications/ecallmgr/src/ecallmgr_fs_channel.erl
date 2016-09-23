@@ -796,7 +796,8 @@ update_callee(UUID, Props) ->
 maybe_update_callee_field(Value, 'undefined') -> Value;
 maybe_update_callee_field(_Value, Existing) -> Existing.
 
--spec get_other_leg(ne_binary(), kz_proplist()) -> api_binary().
+-spec get_other_leg(api_binary(), kz_proplist()) -> api_binary().
+get_other_leg('undefined', _Props) -> 'undefined';
 get_other_leg(UUID, Props) ->
     get_other_leg_name(UUID, Props, props:get_value(<<"Other-Leg-Channel-Name">>, Props)).
 
