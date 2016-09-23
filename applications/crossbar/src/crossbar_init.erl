@@ -116,8 +116,9 @@ start_mod_version(Version, Mod) ->
 %% @public
 %% @doc Load a crossbar module's bindings into the bindings server
 %%--------------------------------------------------------------------
--spec stop_mod(atom() | string() | binary()) -> any().
-stop_mod(CBMod) when not is_atom(CBMod) -> stop_mod(kz_util:to_atom(CBMod, 'true'));
+-spec stop_mod(atom() | string() | binary()) -> 'ok'.
+stop_mod(CBMod) when not is_atom(CBMod) ->
+    stop_mod(kz_util:to_atom(CBMod, 'true'));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, 'stop', 0) of
@@ -127,7 +128,7 @@ stop_mod(CBMod) ->
             maybe_stop_mod_versions(?VERSION_SUPPORTED, CBMod)
     end.
 
--spec do_stop_mod(atom()) -> any().
+-spec do_stop_mod(atom()) -> 'ok'.
 do_stop_mod(CBMod) ->
     try CBMod:stop() of
         _ -> 'ok'
