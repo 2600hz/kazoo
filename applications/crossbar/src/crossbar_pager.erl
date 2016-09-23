@@ -18,7 +18,7 @@ descending(Context, View, Filter) ->
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
     {LastKey, JObjs} = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
-    format_response(Context, StartKey, LastKey, PageSize, erlang:length(JObjs), JObjs).
+    format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 ascending(Context, View, Filter) ->
     PageSize = page_size(Context),
@@ -28,7 +28,7 @@ ascending(Context, View, Filter) ->
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
     {LastKey, JObjs} = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
-    format_response(Context, StartKey, LastKey, PageSize, erlang:length(JObjs), JObjs).
+    format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
@@ -53,7 +53,6 @@ ascending_end_key(Context, StartKey) ->
     Default = StartKey + ?DEFAULT_RANGE,
     one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
 
-
 page_size() -> ?PAGINATION_PAGE_SIZE.
 page_size(Context) -> page_size(Context, cb_context:api_version(Context)).
 page_size(_Context, ?VERSION_1) -> undefined;
@@ -74,13 +73,10 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
-format_response(Context, _, undefined, _PageSize, _ResultSize, JObjs) ->
+format_response(Context, _, undefined, _PageSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
-format_response(Context, _, _, PageSize, ResultSize, JObjs) when ResultSize < PageSize ->
-    Envelope = remove_paging(cb_context:resp_envelope(Context)),
-    crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
-format_response(Context, StartKey, NextStartKey, PageSize, _ResultSize, JObjs) ->
+format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
     Envelope = add_paging(StartKey, PageSize, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
