@@ -1,0 +1,33 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.tts",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "engine": {
+            "default": "flite",
+            "description": "",
+            "type": "string"
+        },
+        "language": {
+            "description": ""
+        },
+        "leg": {
+            "default": "self",
+            "description": "",
+            "type": "string"
+        },
+        "terminators": {
+            "description": ""
+        },
+        "text": {
+            "description": ""
+        },
+        "voice": {
+            "default": "female",
+            "description": "",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

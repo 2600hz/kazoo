@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.record_call",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "description": "",
+            "type": "string"
+        },
+        "format": {
+            "description": ""
+        },
+        "media_name": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}

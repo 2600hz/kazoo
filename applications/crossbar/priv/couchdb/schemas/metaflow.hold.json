@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.hold",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "moh_aleg": {
+            "description": ""
+        },
+        "moh_bleg": {
+            "description": ""
+        },
+        "unhold_key": {
+            "default": "1",
+            "description": "",
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

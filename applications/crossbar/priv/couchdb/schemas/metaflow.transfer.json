@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "metaflow.transfer",
+    "description": "Skeleton JSON schema",
+    "properties": {
+        "Transfer-Type": {
+            "default": "attended",
+            "description": "",
+            "type": "string"
+        },
+        "captures": {
+            "description": ""
+        },
+        "target": {
+            "description": ""
+        }
+    },
+    "required": true,
+    "type": "object"
+}
