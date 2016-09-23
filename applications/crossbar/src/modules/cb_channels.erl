@@ -15,6 +15,7 @@
         ,content_types_provided/1
         ,validate/1, validate/2
         ,post/2
+        ,put/2
         ]).
 
 -include("crossbar.hrl").
@@ -41,6 +42,7 @@ init() ->
                          ,{<<"*.content_types_provided.channels">>, 'content_types_provided'}
                          ,{<<"*.validate.channels">>, 'validate'}
                          ,{<<"*.execute.post.channels">>, 'post'}
+                         ,{<<"*.execute.post.channels">>, 'put'}
                          ]).
 
 %%--------------------------------------------------------------------
@@ -55,7 +57,7 @@ init() ->
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_UUID) ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -112,6 +114,8 @@ validate_channel(Context, Id, ?HTTP_GET) ->
     read(cb_context:set_resp_data(Context, kz_json:new()), Id);
 validate_channel(Context, Id, ?HTTP_POST) ->
     update(Context, Id).
+validate_channel(Context, Id, ?HTTP_PUT) ->
+    validate_action(Context, Id).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -123,6 +127,23 @@ validate_channel(Context, Id, ?HTTP_POST) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, _UUID) ->
     cb_context:set_resp_status(Context, 'success').
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% If the HTTP verb is PUT, execute the actual action, usually a db save
+%% (after a merge perhaps).
+%% @end
+%%--------------------------------------------------------------------
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, UUID) ->
+    API = [{<<"Call-ID">>, UUID}
+          ,{<<"Flow">>, cb_context:doc(Context)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(API, fun kapi_metaflow:publish_flow/1),
+    crossbar_util:response_202(<<"metaflow sent">>, Context).
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -211,6 +232,17 @@ maybe_execute_command(Context, CallId, <<"intercept">>) ->
 maybe_execute_command(Context, _CallId, _Command) ->
     lager:debug("unknown command: ~s", [_Command]),
     crossbar_util:response_invalid_data(cb_context:doc(Context), Context).
+
+
+
+
+-spec validate_action(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec validate_action(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
+validate_action(Context, CallId) ->
+    validate_action(Context, CallId, cb_context:req_value(Context, <<"action">>)).
+
+validate_action(Context, UUID, <<"metaflow">>) ->
+    cb_context:validate_request_data(<<"metaflow">>, Context);
 
 %%--------------------------------------------------------------------
 %% @private
