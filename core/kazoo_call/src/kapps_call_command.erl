@@ -3140,7 +3140,7 @@ sound_touch_command(Options, Call) ->
         [{<<"Application-Name">>, <<"sound_touch">>}
         ,{<<"Insert-At">>, <<"now">>}
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-        | Options
+         | Options
         ])).
 
 -spec start_sound_touch(kz_proplist(), kapps_call:call()) -> 'ok'.
