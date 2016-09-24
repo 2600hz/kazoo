@@ -273,31 +273,57 @@ win_v(JObj) -> win_v(kz_json:to_proplist(JObj)).
 %%--------------------------------------------------------------------
 -spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
-    Realm = props:get_value('realm', Props, <<"*">>),
-    User = props:get_value('user', Props, <<"*">>),
-    Types = props:get_value('restrict_to', Props, [<<"*">>]),
-    bind_q(Queue, Realm, User, Types).
+    bind_q(Queue, props:get_value('restrict_to', Props), Props).
 
--spec bind_q(ne_binary(), ne_binary(), ne_binary(), list()) -> 'ok'.
-bind_q(_Queue, _Realm, _User, []) -> 'ok';
-bind_q(Queue, Realm, User, [Type|Types]) ->
-    Key = get_route_req_routing(kz_util:to_binary(Type), Realm, User),
-    amqp_util:bind_q_to_callmgr(Queue, Key),
-    bind_q(Queue, Realm, User, Types).
+-spec bind_q(ne_binary(), list() | 'undefined', kz_proplist()) -> 'ok'.
+bind_q(Queue, 'undefined', Props) ->
+    Keys = get_all_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys);
+bind_q(Queue, ['no_account' | T], Props) ->
+    Keys = get_realm_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    bind_q(Queue, T, Props);
+bind_q(Queue, ['account' | T], Props) ->
+    Keys = get_account_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:bind_q_to_callmgr(Queue, Key) end, Keys),
+    bind_q(Queue, T, Props);
+bind_q(Queue, [_ | T], Props) ->
+    bind_q(Queue, T, Props);
+bind_q(_, [], _) -> 'ok'.
 
 -spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
+    unbind_q(Queue, props:get_value('restrict_to', Props), Props).
+
+-spec unbind_q(ne_binary(), list() | 'undefined', kz_proplist()) -> 'ok'.
+unbind_q(Queue, 'undefined', Props) ->
+    Keys = get_all_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys);
+unbind_q(Queue, ['no_account' | T], Props) ->
+    Keys = get_realm_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    unbind_q(Queue, T, Props);
+unbind_q(Queue, ['account' | T], Props) ->
+    Keys = get_account_routing_keys(Props),
+    lists:foreach(fun(Key) -> amqp_util:unbind_q_from_callmgr(Queue, Key) end, Keys),
+    unbind_q(Queue, T, Props);
+unbind_q(Queue, [_ | T], Props) ->
+    unbind_q(Queue, T, Props);
+unbind_q(_, [], _) -> 'ok'.
+
+get_all_routing_keys(Props) ->
+    get_realm_routing_keys(Props) ++ get_account_routing_keys(Props).
+
+get_realm_routing_keys(Props) ->
     Realm = props:get_value('realm', Props, <<"*">>),
     User = props:get_value('user', Props, <<"*">>),
-    Types = props:get_value('restrict_to', Props, [<<"*">>]),
-    unbind_q(Queue, Realm, User, Types).
+    Types = props:get_value('types', Props, [<<"*">>]),
+    lists:foldl(fun(T, L) -> [get_route_req_realm_routing(T, Realm, User) | L] end, [], Types).
 
--spec unbind_q(ne_binary(), ne_binary(), ne_binary(), list()) -> 'ok'.
-unbind_q(_Queue, _Realm, _User, []) -> 'ok';
-unbind_q(Queue, Realm, User, [Type|Types]) ->
-    Key = get_route_req_routing(kz_util:to_binary(Type), Realm, User),
-    amqp_util:unbind_q_from_callmgr(Queue, Key),
-    unbind_q(Queue, Realm, User, Types).
+get_account_routing_keys(Props) ->
+    AccountId = props:get_value('account_id', Props, <<"*">>),
+    Types = props:get_value('types', Props, [<<"*">>]),
+    lists:foldl(fun(T, L) -> [get_route_req_account_routing(T, AccountId) | L] end, [], Types).
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -308,15 +334,22 @@ unbind_q(Queue, Realm, User, [Type|Types]) ->
 declare_exchanges() ->
     amqp_util:callmgr_exchange().
 
--spec get_route_req_routing(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
-get_route_req_routing(Type, Realm, User) ->
+-spec get_route_req_account_routing(ne_binary(), ne_binary()) -> ne_binary().
+get_route_req_account_routing(Type, AccountId) ->
+    list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(AccountId)]).
+
+-spec get_route_req_realm_routing(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+get_route_req_realm_routing(Type, Realm, User) ->
     list_to_binary([?KEY_ROUTE_REQ, ".", amqp_util:encode(Type), ".", amqp_util:encode(Realm), ".", amqp_util:encode(User)]).
 
 -spec get_route_req_routing(api_terms()) -> ne_binary().
 get_route_req_routing(Api) ->
     {User, Realm} = get_auth_user_realm(Api),
     Type = resource_type(Api),
-    get_route_req_routing(Type, Realm, User).
+    case account_id(Api) of
+        'undefined' -> get_route_req_realm_routing(Type, Realm, User);
+        AccountId -> get_route_req_account_routing(Type, AccountId)
+    end.
 
 -spec publish_req(api_terms()) -> 'ok'.
 -spec publish_req(api_terms(), binary()) -> 'ok'.
@@ -372,6 +405,14 @@ get_auth_user_realm(ApiProp) when is_list(ApiProp) ->
 get_auth_user_realm(ApiJObj) ->
     [ReqUser, ReqDomain] = binary:split(kz_json:get_value(<<"From">>, ApiJObj), <<"@">>),
     {ReqUser, ReqDomain}.
+
+-spec account_id(api_terms()) -> api_binary().
+account_id(API) when is_list(API) ->
+    account_id(kz_json:from_list(API));
+account_id(API) ->
+    kz_json:get_first_defined([<<"Account-ID">>
+                              ,[<<"Custom-Channel-Vars">>, <<"Account-ID">>]
+                              ], API).
 
 -spec resource_type(api_terms()) -> ne_binary().
 resource_type(ApiProp) when is_list(ApiProp) ->

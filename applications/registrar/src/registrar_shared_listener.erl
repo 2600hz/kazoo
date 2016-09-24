@@ -34,7 +34,10 @@
                      }
                     ]).
 -define(BINDINGS, [{'authn', []}
-                  ,{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
+                  ,{'route', [{'types', ?RESOURCE_TYPES_HANDLED}
+                             ,{'restrict_to', ['no_account']}
+                             ]
+                   }
                   ,{'self', []}
                   ]).
 -define(REG_QUEUE_NAME, <<"registrar_listener">>).

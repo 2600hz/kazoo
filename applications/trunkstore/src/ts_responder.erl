@@ -30,7 +30,10 @@
 -define(SERVER, ?MODULE).
 
 -define(RESPONDERS, [{'ts_route_req', [{<<"dialplan">>, <<"route_req">>}]}]).
--define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}]).
+-define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}
+                             ,{'restrict_to', ['account']}
+                             ]
+                   }]).
 
 -define(ROUTE_QUEUE_NAME, <<"trunkstore_listener">>).
 -define(ROUTE_QUEUE_OPTIONS, [{'exclusive', 'false'}]).
