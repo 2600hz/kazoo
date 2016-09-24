@@ -189,6 +189,9 @@ bind_q(Queue, Props, ['bindings' | T]) ->
     CallId = props:get_value('callid', Props, <<"*">>),
     amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
     bind_q(Queue, Props, T);
+bind_q(Queue, Props, [_U | T]) ->
+    lager:debug("unknown restriction ~p in metaflow bind", [_U]),
+    bind_q(Queue, Props, T);
 bind_q(_, _, []) -> 'ok'.
 
 -spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
@@ -215,6 +218,9 @@ unbind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     CallId = props:get_value('callid', Props, <<"*">>),
     amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
+    unbind_q(Queue, Props, T);
+unbind_q(Queue, Props, [_U | T]) ->
+    lager:debug("unknown restriction ~p in metaflow unbind", [_U]),
     unbind_q(Queue, Props, T);
 unbind_q(_, _, []) -> 'ok'.
 
