@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.kapps_maintenance",
     "description": "Schema for kapps_maintenance system_config",
     "properties": {
@@ -9,6 +9,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

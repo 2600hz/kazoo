@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.accounts",
     "description": "Schema for accounts system_config",
     "properties": {
@@ -22,6 +22,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "master_account_id"
+    ],
     "type": "object"
 }

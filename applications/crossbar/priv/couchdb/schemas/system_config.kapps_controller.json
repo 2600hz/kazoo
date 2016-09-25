@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.kapps_controller",
     "description": "Schema for kapps_controller system_config",
     "properties": {
@@ -33,6 +33,5 @@
             "type": "array"
         }
     },
-    "required": true,
     "type": "object"
 }

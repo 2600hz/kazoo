@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.media",
     "description": "Schema for media system_config",
     "properties": {
@@ -138,6 +138,11 @@
             "type": "boolean"
         }
     },
-    "required": true,
+    "required": [
+        "call_recording",
+        "default_language",
+        "ssl_cert",
+        "ssl_key"
+    ],
     "type": "object"
 }

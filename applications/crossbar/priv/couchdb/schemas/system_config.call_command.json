@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.call_command",
     "description": "Schema for call_command system_config",
     "properties": {
@@ -51,6 +51,8 @@
             }
         }
     },
-    "required": true,
+    "required": [
+        "store_file"
+    ],
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.kzt_twiml_util",
     "description": "Schema for kzt_twiml_util system_config",
     "properties": {
@@ -9,6 +9,5 @@
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

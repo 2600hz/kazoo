@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.resource_selectors",
     "description": "Schema for crossbar.resource_selectors system_config",
     "properties": {
@@ -17,6 +17,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

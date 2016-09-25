@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.cccp",
     "description": "Schema for cccp system_config",
     "properties": {
@@ -30,6 +30,9 @@
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "cccp_cb_number",
+        "cccp_cc_number"
+    ],
     "type": "object"
 }

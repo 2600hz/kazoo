@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.stepswitch",
     "description": "Schema for stepswitch system_config",
     "properties": {
@@ -114,6 +114,10 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "default_emergency_cid_number",
+        "default_formatters",
+        "default_route"
+    ],
     "type": "object"
 }

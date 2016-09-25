@@ -1,10 +1,9 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.trunkstore",
     "description": "Schema for trunkstore system_config",
     "properties": {
         "default_caller_id_number": {
-            "default": "default",
             "description": "trunkstore default caller id number",
             "type": "string"
         },
@@ -29,6 +28,8 @@
             "type": "boolean"
         }
     },
-    "required": true,
+    "required": [
+        "default_caller_id_number"
+    ],
     "type": "object"
 }

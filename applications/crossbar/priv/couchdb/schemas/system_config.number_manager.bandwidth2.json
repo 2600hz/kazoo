@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.number_manager.bandwidth2",
     "description": "Schema for number_manager.bandwidth2 system_config",
     "properties": {
@@ -49,6 +49,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

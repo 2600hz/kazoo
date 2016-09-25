@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.kazoo_endpoint.mobile",
     "description": "Schema for kazoo_endpoint.mobile system_config",
     "properties": {
@@ -70,6 +70,9 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "custom_sip_interface",
+        "sms"
+    ],
     "type": "object"
 }

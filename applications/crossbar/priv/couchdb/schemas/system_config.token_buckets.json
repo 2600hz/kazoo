@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.token_buckets",
     "description": "Schema for token_buckets system_config",
     "properties": {
@@ -34,6 +34,8 @@
             }
         }
     },
-    "required": true,
+    "required": [
+        "{App}"
+    ],
     "type": "object"
 }

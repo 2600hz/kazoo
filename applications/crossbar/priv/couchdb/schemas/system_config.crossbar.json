@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar",
     "description": "Schema for crossbar system_config",
     "properties": {
@@ -158,6 +158,11 @@
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "autoload_modules",
+        "ssl_ca_cert",
+        "ssl_cert",
+        "ssl_key"
+    ],
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.phone_numbers",
     "description": "Schema for crossbar.phone_numbers system_config",
     "properties": {
@@ -13,6 +13,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "phonebook_url"
+    ],
     "type": "object"
 }

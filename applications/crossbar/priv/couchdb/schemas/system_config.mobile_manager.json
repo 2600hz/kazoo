@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.mobile_manager",
     "description": "Schema for mobile_manager system_config",
     "properties": {
@@ -8,6 +8,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "url"
+    ],
     "type": "object"
 }

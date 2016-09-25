@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.callflow",
     "description": "Schema for callflow system_config",
     "properties": {
@@ -65,12 +65,10 @@
             "type": "integer"
         },
         "privacy_name": {
-            "default": "default",
             "description": "callflow privacy name",
             "type": "string"
         },
         "privacy_number": {
-            "default": "default",
             "description": "callflow privacy number",
             "type": "string"
         },
@@ -178,6 +176,11 @@
             }
         }
     },
-    "required": true,
+    "required": [
+        "call_recording",
+        "privacy_name",
+        "privacy_number",
+        "voicemail"
+    ],
     "type": "object"
 }
