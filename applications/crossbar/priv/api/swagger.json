@@ -6499,7 +6499,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "master_account_id"
+            ],
             "type": "object"
         },
         "system_config.acdc": {
@@ -6561,7 +6563,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.alerts": {
@@ -6573,7 +6574,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.ananke": {
@@ -6618,7 +6618,9 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "voicemail"
+            ],
             "type": "object"
         },
         "system_config.blackhole": {
@@ -6648,7 +6650,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.braintree": {
@@ -6695,7 +6696,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.call_command": {
@@ -6749,7 +6749,9 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "store_file"
+            ],
             "type": "object"
         },
         "system_config.callflow": {
@@ -6817,12 +6819,10 @@
                     "type": "integer"
                 },
                 "privacy_name": {
-                    "default": "default",
                     "description": "callflow privacy name",
                     "type": "string"
                 },
                 "privacy_number": {
-                    "default": "default",
                     "description": "callflow privacy number",
                     "type": "string"
                 },
@@ -6930,7 +6930,12 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "call_recording",
+                "privacy_name",
+                "privacy_number",
+                "voicemail"
+            ],
             "type": "object"
         },
         "system_config.callflow.call_forward": {
@@ -6952,7 +6957,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.callflow.hotdesk": {
@@ -6974,7 +6978,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.callflow.menu": {
@@ -6986,7 +6989,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.callflow.park": {
@@ -7013,7 +7015,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.callflow.resources": {
@@ -7025,7 +7026,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.camper": {
@@ -7052,7 +7052,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.cb_modb": {
@@ -7097,7 +7096,10 @@
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "cccp_cb_number",
+                "cccp_cc_number"
+            ],
             "type": "object"
         },
         "system_config.cdr": {
@@ -7126,7 +7128,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.conferences": {
@@ -7195,7 +7196,11 @@
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "advertise",
+                "chat-permissions",
+                "profiles"
+            ],
             "type": "object"
         },
         "system_config.crossbar": {
@@ -7356,7 +7361,12 @@
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "autoload_modules",
+                "ssl_ca_cert",
+                "ssl_cert",
+                "ssl_key"
+            ],
             "type": "object"
         },
         "system_config.crossbar.accounts": {
@@ -7408,7 +7418,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.auth": {
@@ -7420,7 +7429,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.braintree": {
@@ -7432,7 +7440,6 @@
                     "type": "number"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.callflows": {
@@ -7444,7 +7451,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.cdrs": {
@@ -7461,7 +7467,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.channels": {
@@ -7473,7 +7478,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.contact_list": {
@@ -7485,7 +7489,6 @@
                     "type": "array"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.devices": {
@@ -7520,7 +7523,14 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "provisioner_host",
+                "provisioner_referer",
+                "provisioning_host",
+                "provisioning_referer",
+                "provisioning_type",
+                "provisioning_url"
+            ],
             "type": "object"
         },
         "system_config.crossbar.freeswitch": {
@@ -7562,7 +7572,10 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "offline_configuration_key",
+                "{Module}"
+            ],
             "type": "object"
         },
         "system_config.crossbar.local_resources": {
@@ -7574,7 +7587,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.media": {
@@ -7591,7 +7603,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.notifications": {
@@ -7603,7 +7614,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.onboard": {
@@ -7635,7 +7645,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.phone_numbers": {
@@ -7651,7 +7660,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "phonebook_url"
+            ],
             "type": "object"
         },
         "system_config.crossbar.port_requests": {
@@ -7675,7 +7686,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.resource_selectors": {
@@ -7695,7 +7705,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.resources": {
@@ -7712,7 +7721,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.services": {
@@ -7724,7 +7732,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.crossbar.shared_auth": {
@@ -7735,7 +7742,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "authoritative_crossbar"
+            ],
             "type": "object"
         },
         "system_config.crossbar.token_restrictions": {
@@ -7751,7 +7760,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "_"
+            ],
             "type": "object"
         },
         "system_config.crossbar.ubiquiti": {
@@ -7810,7 +7821,13 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "api_secret",
+                "production",
+                "sso_provider_id",
+                "staging",
+                "{crossbar.ubiquiti.sso_environment}"
+            ],
             "type": "object"
         },
         "system_config.datamgr": {
@@ -7850,7 +7867,9 @@
                     "description": "datamgr performance"
                 }
             },
-            "required": true,
+            "required": [
+                "performance"
+            ],
             "type": "object"
         },
         "system_config.doodle": {
@@ -7891,7 +7910,6 @@
                     "type": "string"
                 },
                 "inbound_queue_name": {
-                    "default": "default",
                     "description": "doodle inbound queue name",
                     "type": "string"
                 },
@@ -7916,7 +7934,12 @@
                     "type": "object"
                 }
             },
-            "required": true,
+            "required": [
+                "connections",
+                "inbound_broker",
+                "inbound_queue_name",
+                "reschedule"
+            ],
             "type": "object"
         },
         "system_config.ecallmgr": {
@@ -8338,7 +8361,14 @@
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "configuration_handlers",
+                "default_ringback",
+                "fs_reconnect_cmds",
+                "node_commands",
+                "should_detect_inband_dtmf",
+                "sofia_conf"
+            ],
             "type": "object"
         },
         "system_config.fax": {
@@ -8537,7 +8567,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.frontier": {
@@ -8574,7 +8603,6 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.hangups": {
@@ -8608,7 +8636,6 @@
                     "type": "array"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.jonny5": {
@@ -8635,7 +8662,11 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "default_inbound_trunks",
+                "default_twoway_trunks",
+                "default_{Key}"
+            ],
             "type": "object"
         },
         "system_config.kapps_controller": {
@@ -8671,7 +8702,6 @@
                     "type": "array"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.kapps_maintenance": {
@@ -8683,7 +8713,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.kazoo.pdf": {
@@ -8695,7 +8724,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.kazoo_couch": {
@@ -8772,7 +8800,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.kazoo_endpoint": {
@@ -8782,12 +8809,10 @@
                     "description": "kazoo_endpoint custom sip interface"
                 },
                 "default_caller_id_name": {
-                    "default": "default",
                     "description": "kazoo_endpoint default caller id name",
                     "type": "string"
                 },
                 "default_caller_id_number": {
-                    "default": "default",
                     "description": "kazoo_endpoint default caller id number",
                     "type": "string"
                 },
@@ -8810,7 +8835,12 @@
                     "description": "kazoo_endpoint sip transport"
                 }
             },
-            "required": true,
+            "required": [
+                "custom_sip_interface",
+                "default_caller_id_name",
+                "default_caller_id_number",
+                "sip_transport"
+            ],
             "type": "object"
         },
         "system_config.kazoo_endpoint.mobile": {
@@ -8883,7 +8913,10 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "custom_sip_interface",
+                "sms"
+            ],
             "type": "object"
         },
         "system_config.konami": {
@@ -8923,7 +8956,9 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "transfer"
+            ],
             "type": "object"
         },
         "system_config.kzt_twiml_util": {
@@ -8935,7 +8970,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.media": {
@@ -9076,7 +9110,12 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "call_recording",
+                "default_language",
+                "ssl_cert",
+                "ssl_key"
+            ],
             "type": "object"
         },
         "system_config.metaflows": {
@@ -9127,7 +9166,6 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.milliwatt": {
@@ -9159,7 +9197,6 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.mobile_manager": {
@@ -9170,7 +9207,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "url"
+            ],
             "type": "object"
         },
         "system_config.modb": {
@@ -9187,7 +9226,6 @@
                     "type": "array"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify": {
@@ -9228,7 +9266,9 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "mime-encoding"
+            ],
             "type": "object"
         },
         "system_config.notify.account_crawler": {
@@ -9267,7 +9307,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.deregister": {
@@ -9289,7 +9328,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.fax": {
@@ -9306,7 +9344,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.fax_inbound_error_to_email": {
@@ -9321,7 +9358,9 @@
                     "description": "notify.fax_inbound_error_to_email default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.fax_inbound_to_email": {
@@ -9331,7 +9370,9 @@
                     "description": "notify.fax_inbound_to_email default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.fax_outbound_error_to_email": {
@@ -9346,7 +9387,9 @@
                     "description": "notify.fax_outbound_error_to_email default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.fax_outbound_to_email": {
@@ -9356,7 +9399,9 @@
                     "description": "notify.fax_outbound_to_email default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.first_occurrence": {
@@ -9378,7 +9423,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.low_balance": {
@@ -9390,7 +9434,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.new_account": {
@@ -9412,7 +9455,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.password_recovery": {
@@ -9434,7 +9476,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.port_cancel": {
@@ -9450,7 +9491,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "default_from"
+            ],
             "type": "object"
         },
         "system_config.notify.port_request": {
@@ -9466,7 +9509,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "default_from"
+            ],
             "type": "object"
         },
         "system_config.notify.port_request_admin": {
@@ -9476,7 +9521,9 @@
                     "description": "notify.port_request_admin default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.ported": {
@@ -9493,7 +9540,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.system_alert": {
@@ -9524,7 +9570,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "subscriber_url"
+            ],
             "type": "object"
         },
         "system_config.notify.topup": {
@@ -9546,7 +9594,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.transaction": {
@@ -9568,7 +9615,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.notify.voicemail_full": {
@@ -9583,7 +9629,9 @@
                     "description": "notify.voicemail_full default to"
                 }
             },
-            "required": true,
+            "required": [
+                "default_to"
+            ],
             "type": "object"
         },
         "system_config.notify.voicemail_to_email": {
@@ -9600,7 +9648,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.number_manager": {
@@ -9733,7 +9780,11 @@
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "e164_converters",
+                "released_state",
+                "should_permanently_delete"
+            ],
             "type": "object"
         },
         "system_config.number_manager.bandwidth": {
@@ -9773,7 +9824,9 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "endpoints"
+            ],
             "type": "object"
         },
         "system_config.number_manager.bandwidth2": {
@@ -9825,7 +9878,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.number_manager.dash_e911": {
@@ -9852,7 +9904,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.number_manager.locality": {
@@ -9862,7 +9913,9 @@
                     "description": "number_manager.locality url"
                 }
             },
-            "required": true,
+            "required": [
+                "url"
+            ],
             "type": "object"
         },
         "system_config.number_manager.other": {
@@ -9880,7 +9933,10 @@
                     "description": "number_manager.other phonebook url"
                 }
             },
-            "required": true,
+            "required": [
+                "endpoints",
+                "phonebook_url"
+            ],
             "type": "object"
         },
         "system_config.number_manager.port_request": {
@@ -9919,7 +9975,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.number_manager.vitelity": {
@@ -9934,7 +9989,9 @@
                     "description": "number_manager.vitelity routesip"
                 }
             },
-            "required": true,
+            "required": [
+                "routesip"
+            ],
             "type": "object"
         },
         "system_config.number_manager.voip_innovations": {
@@ -9971,7 +10028,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.omnipresence": {
@@ -10012,7 +10068,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.pivot": {
@@ -10029,7 +10084,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.provisioner": {
@@ -10077,7 +10131,11 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "cluster_id",
+                "provisioning_type",
+                "provisioning_url"
+            ],
             "type": "object"
         },
         "system_config.pusher": {
@@ -10102,7 +10160,10 @@
                     "type": "array"
                 }
             },
-            "required": true,
+            "required": [
+                "apple",
+                "google"
+            ],
             "type": "object"
         },
         "system_config.registrar": {
@@ -10129,7 +10190,6 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.reorder": {
@@ -10160,7 +10220,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "assume_inbound_e164"
+            ],
             "type": "object"
         },
         "system_config.servers": {
@@ -10172,7 +10234,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.services": {
@@ -10217,7 +10278,9 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "modules"
+            ],
             "type": "object"
         },
         "system_config.sms": {
@@ -10238,7 +10301,9 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "outbound"
+            ],
             "type": "object"
         },
         "system_config.sms_command": {
@@ -10260,7 +10325,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.smtp_client": {
@@ -10310,7 +10374,9 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "tls"
+            ],
             "type": "object"
         },
         "system_config.speech": {
@@ -10400,7 +10466,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.stepswitch": {
@@ -10517,7 +10582,11 @@
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "default_emergency_cid_number",
+                "default_formatters",
+                "default_route"
+            ],
             "type": "object"
         },
         "system_config.stepswitch.cnam": {
@@ -10579,7 +10648,6 @@
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.sysconf": {
@@ -10596,7 +10664,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.tasks": {
@@ -10683,7 +10750,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.teletype": {
@@ -10700,7 +10766,6 @@
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.token_buckets": {
@@ -10737,7 +10802,9 @@
                     }
                 }
             },
-            "required": true,
+            "required": [
+                "{App}"
+            ],
             "type": "object"
         },
         "system_config.topup": {
@@ -10749,14 +10816,12 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "system_config.trunkstore": {
             "description": "Schema for trunkstore system_config",
             "properties": {
                 "default_caller_id_number": {
-                    "default": "default",
                     "description": "trunkstore default caller id number",
                     "type": "string"
                 },
@@ -10781,7 +10846,9 @@
                     "type": "boolean"
                 }
             },
-            "required": true,
+            "required": [
+                "default_caller_id_number"
+            ],
             "type": "object"
         },
         "system_config.webhooks": {
@@ -10806,12 +10873,14 @@
                     "type": "boolean"
                 },
                 "object_types": {
-                    "default": "default",
                     "description": "webhooks object types",
                     "type": "array"
                 }
             },
-            "required": true,
+            "required": [
+                "attempt_failure_count",
+                "object_types"
+            ],
             "type": "object"
         },
         "system_config.whitelabel": {
@@ -10821,7 +10890,9 @@
                     "description": "whitelabel domains"
                 }
             },
-            "required": true,
+            "required": [
+                "domains"
+            ],
             "type": "object"
         },
         "tasks": {
