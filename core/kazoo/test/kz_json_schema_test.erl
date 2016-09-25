@@ -92,6 +92,16 @@ invalid_task_data2() ->
                       ,{<<"do_it_now">>, true}
                       ]).
 
+invalid_task_data3() ->
+    kz_json:from_list([{<<"file_name">>, <<>>}
+                      ,{<<"do_it_now">>, true}
+                      ]).
+
+invalid_task_data4() ->
+    kz_json:from_list([{<<"file_name">>, 42}
+                      ,{<<"do_it_now">>, true}
+                      ]).
+
 validate_v3_test_() ->
     V3SchemaJObj = from_file("schemav3_tasks.json"),
     [?_assertMatch({ok,_}, kz_json_schema:validate(V3SchemaJObj, valid_task_data()))
@@ -103,6 +113,14 @@ validate_v3_test_() ->
     ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
                            ]}
                   ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data2())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_length,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data3())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_type,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data4())
                   )
     ].
 
@@ -117,5 +135,13 @@ validate_v4_test_() ->
     ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
                            ]}
                   ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data2())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_length,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data3())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_type,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data4())
                   )
     ].

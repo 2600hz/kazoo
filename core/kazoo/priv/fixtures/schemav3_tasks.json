@@ -10,6 +10,7 @@
         },
         "file_name": {
             "description": "Human-readable name of a task's input file",
+            "minLength": 1,
             "type": "string"
         },
         "records": {
