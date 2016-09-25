@@ -26,20 +26,27 @@ update_schema({Name, AutoGenSchema}) ->
 static_fields(Name, JObj) ->
     Id = <<"system_config.", Name/binary>>,
     Description = <<"Schema for ", Name/binary, " system_config">>,
+    Required = fields_without_defaults(JObj),
     Values = [{<<"description">>, Description}
-             ,{<<"$schema">>, <<"http://json-schema.org/draft-03/schema#">>}
-             ,{<<"required">>, 'true'}
+             ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
              ,{<<"type">>, <<"object">>}
+              |[{<<"required">>, Required} || Required =/= []]
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
+
+-spec fields_without_defaults(kz_json:object()) -> ne_binaries().
+fields_without_defaults(JObj0) ->
+    JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
+    lists:sort([Field
+                || {Field, Content} <- kz_json:to_proplist(JObj),
+                   kz_util:is_empty(kz_json:get_value(?FIELD_DEFAULT, Content))
+               ]).
 
 -spec process_project() -> kz_json:objects().
 process_project() ->
     io:format("processing kapps_config usage: "),
-    Usage = lists:foldl(fun process_app/2
-                       ,kz_json:new()
-                       ,kz_ast_util:project_apps()
-                       ),
+    Apps = kz_ast_util:project_apps(),
+    Usage = lists:foldl(fun process_app/2, kz_json:new(), Apps),
     io:format(" done~n"),
     Usage.
 
@@ -213,12 +220,12 @@ config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
     %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
     Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
-    Existing = kz_json:get_json_value([Document, <<"properties">> | Key]
+    Existing = kz_json:get_json_value([Document, ?FIELD_PROPERTIES | Key]
                                      ,Schemas
                                      ,kz_json:new()
                                      ),
     Updated = kz_json:merge_jobjs(Existing, Properties),
-    kz_json:set_value([Document, <<"properties">> | Key], Updated, Schemas).
+    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Updated, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
@@ -235,12 +242,12 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)
                       ,$}
                       ]
                      )
-    ,<<"properties">>
+    ,?FIELD_PROPERTIES
          | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)]), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-    ,<<"properties">>
+    ,?FIELD_PROPERTIES
          | key_to_key_path(Tail)
     ];
 
@@ -252,12 +259,12 @@ key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
 
 key_to_key_path(?LIST(?VAR(Name), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-    ,<<"properties">>
+    ,?FIELD_PROPERTIES
          | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(Head, Tail)) ->
     [kz_ast_util:binary_match_to_binary(Head)
-    ,<<"properties">>
+    ,?FIELD_PROPERTIES
          | key_to_key_path(Tail)
     ];
 key_to_key_path(?BINARY_MATCH(K)) ->
@@ -320,9 +327,9 @@ guess_properties(Document, Key, Type, Default)
 guess_properties(Document, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Key, Type, Default);
-guess_properties(Document, [Key, <<"properties">>], Type, Default) ->
+guess_properties(Document, [Key, ?FIELD_PROPERTIES], Type, Default) ->
     guess_properties(Document, Key, Type, Default);
-guess_properties(Document, [_Key, <<"properties">> | Rest], Type, Default) ->
+guess_properties(Document, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
     guess_properties(Document, Rest, Type, Default).
 
 guess_description(Document, Key, _Type) ->
