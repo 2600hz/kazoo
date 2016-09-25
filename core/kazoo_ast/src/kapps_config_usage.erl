@@ -39,7 +39,7 @@ fields_without_defaults(JObj0) ->
     JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
     lists:sort([Field
                 || {Field, Content} <- kz_json:to_proplist(JObj),
-                   kz_util:is_empty(kz_json:get_value(?FIELD_DEFAULT, Content))
+                   undefined =:= kz_json:get_value(?FIELD_DEFAULT, Content)
                ]).
 
 -spec process_project() -> kz_json:objects().
