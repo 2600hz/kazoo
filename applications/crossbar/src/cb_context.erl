@@ -641,7 +641,7 @@ response(#cb_context{resp_error_code=Code
                                    context().
 validate_request_data('undefined', Context) ->
     passed(Context);
-validate_request_data(<<_/binary>> = Schema, Context) ->
+validate_request_data(Schema=?NE_BINARY, Context) ->
     DefaultStrict = kapps_config:get_is_true(?CONFIG_CAT, <<"ensure_valid_schema">>, 'true'),
     Strict = fetch(Context, 'ensure_valid_schema', DefaultStrict),
     case find_schema(Schema) of
