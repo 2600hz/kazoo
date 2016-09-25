@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <getDIDsResponse xmlns="http://tempuri.org/">
+      <getDIDsResult>
+        <responseCode>100</responseCode>
+        <responseMessage>Success</responseMessage>
+        <DIDs/>
+        <DIDLocators>
+          <DIDLocator>
+            <tn>8772207304</tn>
+            <rateCenter>US+CA</rateCenter>
+            <state>ALL</state>
+            <tier/>
+            <lataId>0</lataId>
+            <outboundCNAM>false</outboundCNAM>
+            <t38>true</t38>
+            <network>VI</network>
+            <sms>false</sms>
+          </DIDLocator>
+        </DIDLocators>
+        <DIDCounts/>
+        <DIDGroups/>
+        <ConferenceLine>
+          <Enabled>false</Enabled>
+        </ConferenceLine>
+      </getDIDsResult>
+    </getDIDsResponse>
+  </soap:Body>
+</soap:Envelope>

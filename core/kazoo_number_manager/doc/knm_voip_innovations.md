@@ -4,11 +4,12 @@ The kazoo number manager VoIP Innovations module can be used to integrate Kazoo 
 
 #### Configuring number manager
 
-To enable kazoo number manager to use the VoIP Innovations module you will need to first update the number_manager document in the system_config database.
+To enable kazoo number manager to use the VoIP Innovations module you will need to first update the `number_manager` document in the `system_config` database.
 
-In the configuration section that applies to your crossbar servers (or the default) add "knm_voip_innovations" to the carrier_modules parameter.
+In the configuration section that applies to your crossbar servers (or the default) add `"knm_voip_innovations"` to the carrier_modules parameter.
 
 For example:
+
 ```json
        "carrier_modules": [
            "knm_local",
@@ -18,7 +19,7 @@ For example:
 
 #### Configuring the VoIP Innovations module
 
-Once the module is enabled in number manager the first requests to it will generate a new configuration document called "number_manager.voip_innovations" in the system_config database.
+Once the module is enabled in number manager the first requests to it will generate a new configuration document called `"number_manager.voip_innovations"` in the system_config database.
 
 This document has the following parameters.
 
@@ -30,6 +31,7 @@ This document has the following parameters.
 * `enable_provisioning`: when set to `false`, API calls will not reach VoIP Innovations but will return an error instead.
 
 Example:
+
 ```json
 {
    "_id": "number_manager.voip_innovations",

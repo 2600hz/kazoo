@@ -21,25 +21,27 @@ api_test_() ->
 
 
 find_numbers(Options) ->
-    Limit = 2,
-    Prefix = <<"435">>,
-    MatchPrefix =
-        fun (Result) ->
-                Size = byte_size(Prefix),
-                Number = kz_json:get_value(<<"number">>, Result),
-                case Number of
-                    <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
-                    _Else -> 'false'
-                end
-        end,
-    Results = knm_carriers:find(Prefix, Limit, Options),
-    [{"Verify found numbers"
-     ,?_assertEqual(Limit, length(Results))
-     }
-    ,{"Verify results match queried prefix"
-     ,?_assertEqual('true', lists:all(MatchPrefix, Results))
-     }
+    [[{"Verify found numbers"
+      ,?_assertEqual(Limit, length(Results))
+      }
+     ,{"Verify results match queried prefix"
+      ,?_assertEqual('true', lists:all(matcher(Prefix), Results))
+      }
+     ]
+     || {Prefix, Limit} <- [{<<"435">>, 2}
+                           ,{<<"877">>, 1}
+                           ],
+        Results <- [knm_carriers:find(Prefix, Limit, Options)]
     ].
+
+matcher(Prefix) ->
+    fun (Result) ->
+            Size = byte_size(Prefix),
+            case kz_json:get_value(<<"number">>, Result) of
+                <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
+                _Else -> 'false'
+            end
+    end.
 
 acquire_number() ->
     N = <<"+14352154006">>,

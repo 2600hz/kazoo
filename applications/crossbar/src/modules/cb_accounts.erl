@@ -1222,12 +1222,10 @@ load_account_db(AccountId, Context) when is_binary(AccountId) ->
                                ,{fun cb_context:set_reseller_id/2, ResellerId}
                                ]);
         {'error', 'not_found'} ->
-            cb_context:add_system_error(
-              'bad_identifier'
-                                       ,kz_json:from_list([{<<"cause">>, AccountId}])
-                                       ,Context
-             );
-        {'error', _R} -> crossbar_util:response_db_fatal(Context)
+            Msg = kz_json:from_list([{<<"cause">>, AccountId}]),
+            cb_context:add_system_error('bad_identifier', Msg, Context);
+        {'error', _R} ->
+            crossbar_util:response_db_fatal(Context)
     end.
 
 %%--------------------------------------------------------------------

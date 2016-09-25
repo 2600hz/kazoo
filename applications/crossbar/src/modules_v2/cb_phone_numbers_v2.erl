@@ -575,18 +575,23 @@ find_numbers(Context) ->
 
 -spec get_find_numbers_req(cb_context:context()) -> knm_carriers:options().
 get_find_numbers_req(Context) ->
-    AccountId = case cb_context:account_id(Context) of
-                    'undefined' -> cb_context:auth_account_id(Context);
-                    Account -> Account
-                end,
+    {AccountId, ResellerId} =
+        case cb_context:account_id(Context) of
+            'undefined' ->
+                Account = cb_context:auth_account_id(Context),
+                {Account, kz_services:find_reseller_id(Account)};
+            Account ->
+                {Account, cb_context:reseller_id(Context)}
+        end,
     QS = cb_context:query_string(Context),
-    [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
-    ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
-    ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
-    ,{'account_id', AccountId}
-    ,{'reseller_id', cb_context:reseller_id(Context)}
-    ].
+    props:filter_undefined(
+      [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
+      ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
+      ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
+      ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
+      ,{'account_id', AccountId}
+      ,{'reseller_id', ResellerId}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @private
