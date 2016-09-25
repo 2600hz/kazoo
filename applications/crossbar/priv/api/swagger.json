@@ -17695,22 +17695,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}/attachment": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/recording_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/registrations": {
             "delete": {
                 "parameters": [

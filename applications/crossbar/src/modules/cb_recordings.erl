@@ -2,13 +2,7 @@
 %%% @copyright (C) 2012-2016, 2600Hz INC
 %%% @doc
 %%%
-%%% Provides access to stored call recordings:
-%%%
-%%% To play in browser:
-%%% https://my_crossbar.tld:8443/v2/accounts/33ca...1452/recordings/201412-6471-8c79ae@192.1.1.2/attachment?inline=true&auth_token=05c1...7a075
-%%%
-%%% To download:
-%%% https://my_crossbar.tld:8443/v2/accounts/33ca...1452/recordings/201412-6471-8c79ae@192.1.1.2/attachment?auth_token=05c1...7a075
+%%% Provides access to stored call recordings.
 %%%
 %%% @end
 %%% @contributors:
@@ -24,10 +18,10 @@
 -module(cb_recordings).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-        ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,content_types_provided/3
-        ,validate/1, validate/2, validate/3
+        ,allowed_methods/0, allowed_methods/1
+        ,resource_exists/0, resource_exists/1
+        ,content_types_provided/2
+        ,validate/1, validate/2
         ]).
 
 -include("crossbar.hrl").
@@ -35,9 +29,10 @@
 -define(CB_LIST, <<"recordings/crossbar_listing">>).
 -define(CB_LIST_BY_OWNERID, <<"recordings/listing_by_user">>).
 
--define(ATTACHMENT, <<"attachment">>).
 -define(INLINE, <<"inline">>).
--define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"mpeg">>}]).
+-define(MEDIA_MIME_TYPES, [{<<"audio">>, <<"mpeg">>}
+                          ,{<<"audio">>, <<"mp3">>}
+                          ]).
 
 %%%===================================================================
 %%% API
@@ -65,11 +60,9 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
--spec allowed_methods(path_token(), path_token()) -> http_methods().
 
 allowed_methods() -> [?HTTP_GET].
-allowed_methods(_RecordingId ) -> [?HTTP_GET].
-allowed_methods(_RecordingId, ?ATTACHMENT) -> [?HTTP_GET].
+allowed_methods(_RecordingId) -> [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -80,11 +73,9 @@ allowed_methods(_RecordingId, ?ATTACHMENT) -> [?HTTP_GET].
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
--spec resource_exists(path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
-resource_exists(_RecordingId, ?ATTACHMENT) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -93,8 +84,8 @@ resource_exists(_RecordingId, ?ATTACHMENT) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-content_types_provided(Context, _, _) ->
+-spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
+content_types_provided(Context, _) ->
     content_types_provided_for_download(Context, cb_context:req_verb(Context)).
 
 -spec content_types_provided_for_download(cb_context:context(), http_method()) -> cb_context:context().
@@ -118,15 +109,19 @@ validate(Context) ->
     recording_summary(Context).
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
-    Ctx = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
-    crossbar_doc:load({<<"call_recording">>, DocId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
+validate(Context, RecordingId) ->
+    case action_lookup(Context) of
+        'read' ->
+            load_recording_doc(Context, RecordingId);
+        'download' ->
+            load_recording_binary(Context, RecordingId)
+    end.
 
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(Context, DocId, ?ATTACHMENT) ->
-    load_recording_binary(DocId, Context).
-
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 
 -spec recording_summary(cb_context:context()) -> cb_context:context().
 recording_summary(Context) ->
@@ -141,29 +136,17 @@ recording_summary(Context) ->
         Ctx -> Ctx
     end.
 
--spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
-                                    kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
+-spec load_recording_doc(cb_context:context(), ne_binary()) -> cb_context:context().
+load_recording_doc(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = RecordingId) ->
+    Ctx = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
 
--spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_binaries()}.
-get_view_and_filter(Context) ->
-    case cb_context:user_id(Context) of
-        'undefined' -> {?CB_LIST, [], [kz_json:new()]};
-        UserId -> {?CB_LIST_BY_OWNERID, [UserId], 'undefined'}
-    end.
+-spec load_recording_binary(cb_context:context(), ne_binary()) -> cb_context:context().
+load_recording_binary(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
+    do_load_recording_binary(cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)), DocId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Get recording name from cdr by provided cdr record id in request and load file with record from third party BigCouch
-%% @end
-%%--------------------------------------------------------------------
-load_recording_binary(<<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId, Context) ->
-    do_load_recording_binary(DocId, cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month))).
-
--spec do_load_recording_binary(ne_binary(), cb_context:context()) -> cb_context:context().
-do_load_recording_binary(DocId, Context) ->
+-spec do_load_recording_binary(cb_context:context(), ne_binary()) -> cb_context:context().
+do_load_recording_binary(Context, DocId) ->
     Context1 = crossbar_doc:load({<<"call_recording">>, DocId}, Context, ?TYPE_CHECK_OPTION(<<"call_recording">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
@@ -180,6 +163,12 @@ do_load_recording_binary(DocId, Context) ->
         _Status -> Context1
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+
 -spec set_resp_headers(cb_context:context(), ne_binary()) -> cb_context:context().
 set_resp_headers(Context, AName) ->
     Headers = [{<<"Content-Disposition">>, get_disposition(AName, Context)}],
@@ -191,3 +180,72 @@ get_disposition(MediaName, Context) ->
         'false' -> <<"attachment; filename=", MediaName/binary>>;
         'true' -> <<"inline; filename=", MediaName/binary>>
     end.
+
+-spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
+                                    kz_json:objects().
+normalize_view_results(JObj, Acc) ->
+    [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
+
+-spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_binaries()}.
+get_view_and_filter(Context) ->
+    case cb_context:user_id(Context) of
+        'undefined' -> {?CB_LIST, [], [kz_json:new()]};
+        UserId -> {?CB_LIST_BY_OWNERID, [UserId], 'undefined'}
+    end.
+
+-spec action_lookup(cb_context:context()) -> atom().
+-spec action_lookup(kz_proplist(), media_values()) -> atom().
+action_lookup(Context) ->
+    Acceptable = acceptable_content_types(Context),
+    action_lookup(Acceptable, accept_values(Context)).
+
+action_lookup(_, [?MEDIA_VALUE(<<"application">>, <<"json">>, _, _, _)|_]) ->
+    'read';
+action_lookup(_, [?MEDIA_VALUE(<<"application">>, <<"x-json">>, _, _, _)|_]) ->
+    'read';
+action_lookup(_, [?MEDIA_VALUE(<<"*">>, <<"*">>, _, _, _)|_]) ->
+    lager:debug("catch-all accept header, using json"),
+    'read';
+action_lookup(Acceptable, [?MEDIA_VALUE(Type, SubType, _, _, _)|Accepts]) ->
+    case is_acceptable_accept(Acceptable, Type, SubType) of
+        'false' ->
+            lager:debug("unknown accept header: ~s/~s", [Type, SubType]),
+            action_lookup(Acceptable, Accepts);
+        'true' ->
+            lager:debug("accept header: ~s/~s", [Type, SubType]),
+            'download'
+    end;
+action_lookup(_, []) ->
+    lager:debug("no accept headers, using json"),
+    'read'.
+
+-spec accept_values(cb_context:context()) -> media_values().
+accept_values(Context) ->
+    AcceptValue = cb_context:req_header(Context, <<"accept">>),
+    Tunneled = cb_context:req_value(Context, <<"accept">>),
+    media_values(AcceptValue, Tunneled).
+
+-spec media_values(api_binary(), api_binary()) -> media_values().
+media_values('undefined', 'undefined') ->
+    lager:debug("no accept headers, assuming JSON"),
+    [?MEDIA_VALUE(<<"application">>, <<"json">>)];
+media_values(AcceptValue, 'undefined') ->
+    case cb_modules_util:parse_media_type(AcceptValue) of
+        {'error', 'badarg'} -> media_values('undefined', 'undefined');
+        AcceptValues -> lists:reverse(lists:keysort(2, AcceptValues))
+    end;
+media_values(AcceptValue, Tunneled) ->
+    case cb_modules_util:parse_media_type(Tunneled) of
+        {'error', 'badarg'} -> media_values(AcceptValue, 'undefined');
+        TunneledValues ->
+            lager:debug("using tunneled accept value ~s", [Tunneled]),
+            lists:reverse(lists:keysort(2, TunneledValues))
+    end.
+
+-spec acceptable_content_types(cb_context:context()) -> kz_proplist().
+acceptable_content_types(Context) ->
+    props:get_value('to_binary', cb_context:content_types_provided(Context), []).
+
+-spec is_acceptable_accept(kz_proplist(), ne_binary(), ne_binary()) -> boolean().
+is_acceptable_accept(Acceptable, Type, SubType) ->
+    lists:member({Type,SubType}, Acceptable).

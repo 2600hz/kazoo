@@ -75,6 +75,7 @@
         ,{<<"rate_name">>, fun col_rate_name/2}
         ,{<<"bridge_id">>, fun col_bridge_id/2}
         ,{<<"recording_url">>, fun col_recording_url/2}
+        ,{<<"media_recordings">>, fun col_media_recordings/2}
         ,{<<"call_priority">>, fun col_call_priority/2}
         ]).
 
@@ -667,6 +668,7 @@ col_rate(JObj, _Timestamp) -> kz_util:to_binary(wht_util:units_to_dollars(kz_jso
 col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
 col_recording_url(JObj, _Timestamp) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
+col_media_recordings(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, <<>>).
 col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
 
 col_reseller_cost(JObj, _Timestamp) -> kz_util:to_binary(reseller_cost(JObj)).
