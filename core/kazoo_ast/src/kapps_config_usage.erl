@@ -4,7 +4,12 @@
         ,to_schema_docs/0, to_schema_docs/1
         ]).
 
+-include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+
+-define(FIELD_DEFAULT, <<"default">>).
+-define(FIELD_PROPERTIES, <<"properties">>).
+
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
@@ -308,7 +313,7 @@ guess_properties(Document, Key, Type, Default)
       props:filter_undefined(
         [{<<"type">>, Type}
         ,{<<"description">>, guess_description(Document, Key, Type)}
-        ,{<<"default">>, try default_value(Default) catch _:_ -> 'default' end}
+        ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> undefined end}
         ]
        )
      );
