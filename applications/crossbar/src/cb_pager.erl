@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(cb_pager).
 -export([descending/7, ascending/7]).
+-include_lib("kazoo/include/kz_types.hrl").
 
 -spec descending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
 descending(AccountId, View, Start, End, Limit, Filter, Options) when
@@ -46,11 +47,11 @@ limited_query(Limit, Db, View, CouchOpts) ->
 
 -spec apply_filter(fun(), kz_json:objects()) -> kz_json:objects().
 apply_filter(Map, Objects) when is_function(Map, 1) ->
-    lists:foldl(fun(Obj, Acc) -> [ Map(Obj) | Acc ] end, [], Objects);
+    [ Map(Obj) || Obj <- Objects ];
 apply_filter(Filter, Objects) when is_function(Filter, 2) ->
     lists:foldl(Filter, [], Objects).
 
--spec last_key(kz_json:objects(), integer(), integer()) -> {integer()|'undefined', kz_json:objects()}.
+-spec last_key(kz_json:objects(), integer(), integer()) -> {api_integer(), kz_json:objects()}.
 last_key([], _, _) -> {'undefined', []};
 last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', JObjs};
 last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
