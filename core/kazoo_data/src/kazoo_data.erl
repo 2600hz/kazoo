@@ -21,22 +21,37 @@
         ]
        ).
 
--spec trace_file() -> any().
+-type level() :: 'debug' |
+                 'info' |
+                 'notice' |
+                 'warning' |
+                 'error' |
+                 'critical' |
+                 'alert' |
+                 'emergency' |
+                 'none'.
+
+-type filter() :: glc_ops:op().
+-type filters() :: [filter()].
+
+-type trace_result() :: {{'lager_file_backend', file:filename_all()}, filters(), level()}.
+
+-spec trace_file() -> {'ok', trace_result()}.
+-spec trace_file(filters()) -> {'ok', trace_result()}.
+-spec trace_file(filters(), file:filename_all()) -> {'ok', trace_result()}.
+-spec trace_file(filters(), file:filename_all(), list()) -> {'ok', trace_result()}.
 trace_file() ->
     trace_file([{'function', '*'}]).
 
--spec trace_file(any()) -> any().
 trace_file(Query) ->
     trace_file(Query, <<"/tmp/", (kz_util:rand_hex_binary(16))/binary, ".log">>).
 
--spec trace_file(any(), ne_binary()) -> any().
 trace_file(Query, Filename) ->
     trace_file(Query, Filename, ?DEFAULT_TRACE_PROPS).
 
--spec trace_file(any(), ne_binary(), any()) -> any().
 trace_file(Query, Filename, Format) ->
     lager:trace_file(kz_util:to_list(Filename), [{'sink', 'data_lager_event'} | Query], 'debug', Format).
 
--spec stop_trace(any()) -> any().
+-spec stop_trace(trace_result()) -> 'ok'.
 stop_trace(Trace) ->
     lager:stop_trace(Trace).
