@@ -1,0 +1,54 @@
+* Kazoo System Tracing
+
+It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [[https://github.com/basho/lager#tracing][tracing]] functionality and kazoo_data exposes the wrapper.
+
+** Start a trace
+Creating a system trace needs to be surgical; too many events could overwhelm the VM and impact performance. Especially if tracing a production system, use filters to limit the scope of events traced.
+
+Starting a trace is straight-forward:
+#+BEGIN_EXAMPLE erlang
+1> {'ok', Trace1} = kazoo_data:trace_file().
+{'ok', ...}
+2> {'ok', Trace2} = kazoo_data:trace_file(Filters).
+{'ok', ...}
+3> {'ok', Trace3} = kazoo_data:trace_file(Filters, Filename).
+{'ok', ...}
+4> {'ok', Trace4} = kazoo_data:trace_file(Fitlers, Filename, Format).
+{'ok', ...}
+#+END_EXAMPLE
+
+*** Filters
+Filters are 2-tuples that contain the patterns used on events to see if they meet the necessary criteria.
+
+- `{'module', Module}`: Filter for calls to `Module`
+- `{'function', Function}`: Filter for calls to `Function`
+  When combined with `{'module', Module}`, just trace that Module:Function combo
+- `{'pid', Pid}`: Fitler for calls by `Pid`
+- Custom metadata
+  - `lager:warning([{request, RequestID}], "the passwords didn't match for ~s", [UserId])`
+    would allow a filter of `{'request', RequestID}`
+
+You can also use `'*'` in the second element to match all of that class of filter.
+
+For example, `[{'module', 'kz_json'}, {'function', '*'}]` would filter all calls to the `kz_json` module.
+
+*** Filename
+Specify the filename for where to write the trace results.
+*** Format
+You can also supply a [[https://github.com/basho/lager#custom-formatting][custom formatter]] to be used when writing the log line (uses the Kazoo standard format otherwise).
+*** Defaults
+- Filters: `[{'function', '*'}]`
+- Filename: `/tmp/{32_char_hex}.log`
+- Format:
+  #+INCLUDE: "../../../core/kazoo_data/src/kazoo_data.erl" :lines "17-18"
+
+** Stopping a trace
+Assuming you bound the second element in the resulting tuple:
+#+BEGIN_EXAMPLE erlang
+1> {'ok', Trace} = kazoo_data:trace_file().
+{'ok', ...}
+2> ...Do some things...or not
+'maybe'
+3> kazoo_data:stop_trace(Trace).
+'ok'
+#+END_EXAMPLE
