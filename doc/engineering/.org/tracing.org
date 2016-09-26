@@ -2,6 +2,7 @@
 #+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
 #+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
 #+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+OPTIONS: ^:{}
 #+TITLE: bypass_media
 #+DATE: [2016-09-26 Mon]
 #+AUTHOR: James Aimonetti

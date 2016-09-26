@@ -9,7 +9,7 @@
 
 # Kazoo System Tracing<a id="orgheadline7"></a>
 
-It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [tracing](https://github.com/basho/lager#tracing) functionality and kazoo<sub>data</sub> exposes the wrapper.
+It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [tracing](https://github.com/basho/lager#tracing) functionality and kazoo\_data exposes the wrapper.
 
 ## Start a trace<a id="orgheadline5"></a>
 
@@ -39,7 +39,7 @@ Filters are 2-tuples that contain the patterns used on events to see if they mee
 
 You can also use \`'\*'\` in the second element to match all of that class of filter.
 
-For example, \`[{'module', 'kz<sub>json</sub>'}, {'function', '\*'}]\` would filter all calls to the \`kz<sub>json</sub>\` module.
+For example, \`[{'module', 'kz\_json'}, {'function', '\*'}]\` would filter all calls to the \`kz\_json\` module.
 
 ### Filename<a id="orgheadline2"></a>
 
@@ -52,8 +52,8 @@ You can also supply a [custom formatter](https://github.com/basho/lager#custom-f
 ### Defaults<a id="orgheadline4"></a>
 
 -   Filters: \`[{'function', '\*'}]\`
--   Filename: \`/tmp/{32<sub>char</sub><sub>hex</sub>}.log\`
--   Format: -define(DEFAULT<sub>TRACE</sub><sub>OUTPUT</sub><sub>FORMAT</sub>, ['time'," [",'severity',"] |", 'from<sub>app</sub>', "|", {'callid', <a id="orgtarget1"></a>}, "|", 'mod', ":" , 'func', ":", 'line', " (",'pid', ") ", 'message', "\n"]).
+-   Filename: \`/tmp/{32\_char\_hex}.log\`
+-   Format: -define(DEFAULT\_TRACE\_OUTPUT\_FORMAT, ['time'," [",'severity',"] |", 'from\_app', "|", {'callid', <a id="orgtarget1"></a>}, "|", 'mod', ":" , 'func', ":", 'line', " (",'pid', ") ", 'message', "\n"]).
 
 ## Stopping a trace<a id="orgheadline6"></a>
 
