@@ -115,6 +115,11 @@
             "description": "number_manager should bulk batch writes",
             "type": "boolean"
         },
+        "should_lookup_ports_db": {
+            "default": true,
+            "description": "number_manager should lookup ports db",
+            "type": "boolean"
+        },
         "should_permanently_delete": {
             "description": "number_manager should permanently delete",
             "type": "boolean"
