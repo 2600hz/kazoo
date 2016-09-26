@@ -612,7 +612,7 @@ lookup_account(Num) ->
 -spec fetch_account_from_number(ne_binary()) -> lookup_account_return().
 fetch_account_from_number(NormalizedNum) ->
     case knm_phone_number:fetch(NormalizedNum) of
-        {'error', _}=Error -> fetch_account_from_ports(NormalizedNum, Error);
+        {'error', _}=Error -> maybe_fetch_account_from_ports(NormalizedNum, Error);
         {'ok', PhoneNumber} -> check_number(PhoneNumber)
     end.
 
@@ -780,12 +780,20 @@ default_force_outbound() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_fetch_account_from_ports(ne_binary(), {'error', any()}) ->
+                                            lookup_account_return().
+maybe_fetch_account_from_ports(NormalizedNum, Error) ->
+    case kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"fetch_account_from_ports">>, 'true') of
+        'true' -> fetch_account_from_ports(NormalizedNum, Error);
+        'false' -> Error
+    end.
+
 -spec fetch_account_from_ports(ne_binary(), {'error', any()}) ->
                                       lookup_account_return().
 fetch_account_from_ports(NormalizedNum, Error) ->
     case knm_port_request:get(NormalizedNum) of
-        {error, _E} -> Error;
-        {ok, Port} ->
+        {'error', _E} -> Error;
+        {'ok', Port} ->
             AccountId = kz_doc:account_id(Port),
             Props = [{'force_outbound', 'true'}
                     ,{'pending_port', 'true'}
