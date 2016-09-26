@@ -780,20 +780,17 @@ props_to_update(Props) ->
 
 -spec update_callee(binary(), kz_proplist()) -> kz_proplist().
 update_callee(UUID, Props) ->
-    {'ok', Channel} = fetch(UUID, 'record'),
-    [{#channel.callee_number
-     ,maybe_update_callee_field(
-        kzd_freeswitch:callee_id_number(Props)
-                               ,Channel#channel.callee_number
-       )
-     }
-    ,{#channel.callee_name
-     ,maybe_update_callee_field(
-        kzd_freeswitch:callee_id_name(Props)
-                               ,Channel#channel.callee_name
-       )
-     }
-    ].
+    case fetch(UUID, 'record') of
+        {'ok', #channel{callee_number = Num2
+                       ,callee_name = Name2
+                       }} ->
+            Num1 = kzd_freeswitch:callee_id_number(Props),
+            Name1 = kzd_freeswitch:callee_id_name(Props),
+            [{#channel.callee_number, maybe_update_callee_field(Num1, Num2)}
+            ,{#channel.callee_name, maybe_update_callee_field(Name1, Name2)}
+            ];
+        _ -> []
+    end.
 
 -spec maybe_update_callee_field(api_binary(), api_binary()) -> api_binary().
 maybe_update_callee_field(Value, 'undefined') -> Value;
