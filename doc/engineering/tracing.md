@@ -6,6 +6,7 @@
     - [Defaults](#orgheadline4)
   - [Stopping a trace](#orgheadline6)
 
+
 # Kazoo System Tracing<a id="orgheadline7"></a>
 
 It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [tracing](https://github.com/basho/lager#tracing) functionality and kazoo<sub>data</sub> exposes the wrapper.

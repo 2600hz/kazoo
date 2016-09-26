@@ -1,3 +1,16 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+TITLE: bypass_media
+#+DATE: [2016-09-26 Mon]
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.2 (Org mode 8.3.5)
+
 * Kazoo System Tracing
 
 It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [[https://github.com/basho/lager#tracing][tracing]] functionality and kazoo_data exposes the wrapper.
