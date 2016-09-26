@@ -28,7 +28,10 @@
 
 -define(RESPONDERS, [{'cf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
                     ]).
--define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
+-define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}
+                             ,{'restrict_to', ['account']}
+                             ]
+                   }
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<>>).
