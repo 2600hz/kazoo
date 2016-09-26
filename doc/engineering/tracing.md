@@ -9,7 +9,7 @@
 
 # Kazoo System Tracing<a id="orgheadline7"></a>
 
-It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [tracing](https://github.com/basho/lager#tracing) functionality and kazoo\_data exposes the wrapper.
+It is possible to create Erlang traces and write them to file(s) so you can get an idea about what is happening in the VM. Lager provides this [tracing](https://github.com/basho/lager#tracing) functionality and kz\_data\_tracing exposes the wrapper.
 
 ## Start a trace<a id="orgheadline5"></a>
 
@@ -17,14 +17,21 @@ Creating a system trace needs to be surgical; too many events could overwhelm th
 
 Starting a trace is straight-forward:
 
-    1> {'ok', Trace1} = kazoo_data:trace_file().
-    {'ok', ...}
-    2> {'ok', Trace2} = kazoo_data:trace_file(Filters).
-    {'ok', ...}
-    3> {'ok', Trace3} = kazoo_data:trace_file(Filters, Filename).
-    {'ok', ...}
-    4> {'ok', Trace4} = kazoo_data:trace_file(Fitlers, Filename, Format).
-    {'ok', ...}
+    1> {'ok', Trace1} = kz_data_tracing:trace_file().
+    {'ok', Ref1}
+    2> {'ok', Trace2} = kz_data_tracing:trace_file(Filters).
+    {'ok', Ref2}
+    3> {'ok', Trace3} = kz_data_tracing:trace_file(Filters, Filename).
+    {'ok', Ref3}
+    4> {'ok', Trace4} = kz_data_tracing:trace_file(Fitlers, Filename, Format).
+    {'ok', Ref4}
+
+SUP-provided examples:
+
+    sup kazoo_data_maintenance trace_module Module
+    sup kazoo_data_maintenance trace_function Function
+    sup kazoo_data_maintenance trace_function Module Function
+    sup kazoo_data_maintenance trace_pid 'X.Y.Z'
 
 ### Filters<a id="orgheadline1"></a>
 
@@ -59,9 +66,9 @@ You can also supply a [custom formatter](https://github.com/basho/lager#custom-f
 
 Assuming you bound the second element in the resulting tuple:
 
-    1> {'ok', Trace} = kazoo_data:trace_file().
-    {'ok', ...}
+    1> {'ok', Ref} = kz_data_tracing:trace_file().
+    {'ok', Ref}
     2> ...Do some things...or not
     'maybe'
-    3> kazoo_data:stop_trace(Trace).
+    3> kz_data_tracing:stop_trace(Ref).
     'ok'
