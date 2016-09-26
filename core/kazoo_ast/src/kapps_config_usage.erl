@@ -243,12 +243,12 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)
                       ]
                      )
     ,?FIELD_PROPERTIES
-         | key_to_key_path(Tail)
+     | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)]), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
     ,?FIELD_PROPERTIES
-         | key_to_key_path(Tail)
+     | key_to_key_path(Tail)
     ];
 
 key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)])) ->
@@ -260,12 +260,12 @@ key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
 key_to_key_path(?LIST(?VAR(Name), Tail)) ->
     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
     ,?FIELD_PROPERTIES
-         | key_to_key_path(Tail)
+     | key_to_key_path(Tail)
     ];
 key_to_key_path(?LIST(Head, Tail)) ->
     [kz_ast_util:binary_match_to_binary(Head)
     ,?FIELD_PROPERTIES
-         | key_to_key_path(Tail)
+     | key_to_key_path(Tail)
     ];
 key_to_key_path(?BINARY_MATCH(K)) ->
     [kz_ast_util:binary_match_to_binary(K)].
