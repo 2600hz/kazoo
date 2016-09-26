@@ -27,6 +27,7 @@ Filters are 2-tuples that contain the patterns used on events to see if they mee
 - Custom metadata
   - `lager:warning([{request, RequestID}], "the passwords didn't match for ~s", [UserId])`
     would allow a filter of `{'request', RequestID}`
+  - You can also associate metadata with a `pid()`: `lager:md([{'zone', 'west'}])`
 
 You can also use `'*'` in the second element to match all of that class of filter.
 
