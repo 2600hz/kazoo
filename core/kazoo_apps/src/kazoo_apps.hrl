@@ -5,6 +5,10 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
 
+-define(APP_NAME, <<"kazoo_apps">>).
+-define(APP_VERSION, <<"4.0.0">>).
+-define(APP, kazoo_apps).
+
 -define(DEFAULT_KAPPS, ['blackhole'
                        ,'callflow'
                        ,'cdr'

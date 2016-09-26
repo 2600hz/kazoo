@@ -24,20 +24,20 @@ start_link() ->
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    case kz_config:get_atom('kazoo_apps', 'cookie') of
+    case kz_config:get_atom(?APP, 'cookie') of
         [] ->
-            lager:warning("failed to set kazoo_apps cookie trying node ~s", [node()]),
+            lager:warning("failed to set ~s cookie trying node ~s", [?APP, node()]),
             [Name, _Host] = binary:split(kz_util:to_binary(node()), <<"@">>),
             case kz_config:get_atom(kz_util:to_atom(Name, 'true'), 'cookie') of
                 [] ->
-                    lager:warning("failed to set kazoo_apps cookie for node ~s", [node()]);
+                    lager:warning("failed to set ~s cookie for node ~s", [?APP, node()]);
                 [Cookie|_] ->
                     erlang:set_cookie(node(), Cookie),
-                    lager:info("setting kazoo_apps cookie to ~p", [Cookie])
+                    lager:info("setting ~s cookie to ~p", [?APP, Cookie])
             end;
         [Cookie|_] ->
             erlang:set_cookie(node(), Cookie),
-            lager:info("setting kazoo_apps cookie to ~p", [Cookie])
+            lager:info("setting ~s cookie to ~p", [?APP, Cookie])
     end,
     set_loglevel().
 
