@@ -81,6 +81,11 @@
         "e164_converters": {
             "description": "number_manager e164 converters"
         },
+        "fetch_account_from_ports": {
+            "default": true,
+            "description": "number_manager fetch account from ports",
+            "type": "boolean"
+        },
         "force_local_outbound": {
             "default": true,
             "description": "number_manager force local outbound",
