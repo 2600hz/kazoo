@@ -195,5 +195,7 @@ list_apps() ->
 
 -spec is_kapp(atom()) -> boolean().
 is_kapp(App) ->
-    {ok, Deps} = application:get_key(App, applications),
-    lists:member(?APP, Deps).
+    case application:get_key(App, 'applications') of
+        {'ok', Deps} -> lists:member(?APP, Deps);
+        'undefined' -> 'false'
+    end.
