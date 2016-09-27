@@ -15,6 +15,7 @@
 -include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_inbound_error_to_email">>).
+-define(TEMPLATE_ID_FILTERED, <<"fax_inbound_error_to_email_filtered">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 
@@ -45,7 +46,7 @@
 -spec init() -> 'ok'.
 init() ->
     kz_util:put_callid(?MODULE),
-    teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
+    Fields = [{'macros', ?TEMPLATE_MACROS}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -53,8 +54,9 @@ init() ->
                                           ,{'from', ?TEMPLATE_FROM}
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}],
+    teletype_templates:init(?TEMPLATE_ID_FILTERED, Fields),
+    teletype_templates:init(?TEMPLATE_ID, Fields).
 
 -spec handle_fax_inbound_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_fax_inbound_error(JObj, _Props) ->
@@ -66,11 +68,21 @@ handle_fax_inbound_error(JObj, _Props) ->
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_fax_inbound(DataJObj)
+    end,
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) and is_true_fax_error(JObj) of
+        'false' -> lager:debug("filtered notification handling not configured for this account");
+        'true' -> handle_fax_inbound(DataJObj)
     end.
+
+-spec is_true_fax_error(kz_json:object()) -> boolean().
+is_true_fax_error(JObj) ->
+    Code = kz_json:get_value(<<"Fax-Result-Code">>, JObj),
+    %% see: https://wiki.freeswitch.org/wiki/Variable_fax_result_code
+    Codes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"49">>]),
+    lists:member(Code, Codes).
 
 -spec handle_fax_inbound(kz_json:object()) -> 'ok'.
 handle_fax_inbound(DataJObj) ->

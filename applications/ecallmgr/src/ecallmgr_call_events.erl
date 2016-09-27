@@ -883,6 +883,7 @@ fax_specific(Props) ->
       ,{<<"Fax-ECM-Used">>, get_fax_ecm_used(Props)}
       ,{<<"Fax-T38-Used">>, get_fax_t38_used(Props)}
       ,{<<"Fax-Result-Text">>, props:get_value(<<"variable_fax_result_text">>, Props)}
+      ,{<<"Fax-Result-Code">>, props:get_value(<<"variable_fax_result_code">>, Props)}
       ,{<<"Fax-Transferred-Pages">>, props:get_value(<<"variable_fax_document_transferred_pages">>, Props)}
       ,{<<"Fax-Total-Pages">>, props:get_value(<<"variable_fax_document_total_pages">>, Props)}
       ,{<<"Fax-Bad-Rows">>, props:get_value(<<"variable_fax_bad_rows">>, Props)}
