@@ -1,0 +1,24 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.play",
+    "description": "play metaflow schema",
+    "properties": {
+        "id": {
+            "type": "string"
+        },
+        "leg": {
+            "default": "both",
+            "type": {
+                "enum": [
+                    "both",
+                    "self",
+                    "peer"
+                ]
+            }
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "type": "object"
+}

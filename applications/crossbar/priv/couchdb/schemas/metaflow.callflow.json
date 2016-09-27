@@ -1,0 +1,12 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.callflow",
+    "description": "callflow metaflow schema",
+    "properties": {
+        "id": {
+            "type": "string"
+        }
+    },
+    "required": [],
+    "type": "object"
+}

@@ -205,6 +205,8 @@
         ,media_macro/2, media_macro_command/2
         ]).
 
+-export([sound_touch_command/2, start_sound_touch/2, stop_sound_touch/1]).
+
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
                               {'say', binary()} | {'say', binary(), binary()} |
@@ -3129,4 +3131,24 @@ media_macro_command(Media, Call) ->
 -spec media_macro(ne_binaries(), kapps_call:call()) -> 'ok'.
 media_macro(Media, Call) ->
     Command = media_macro_command(Media, Call),
+    send_command(Command, Call).
+
+-spec sound_touch_command(kz_proplist(), kapps_call:call()) ->api_terms().
+sound_touch_command(Options, Call) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"sound_touch">>}
+        ,{<<"Insert-At">>, <<"now">>}
+        ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+         | Options
+        ])).
+
+-spec start_sound_touch(kz_proplist(), kapps_call:call()) -> 'ok'.
+start_sound_touch(Options, Call) ->
+    Command = sound_touch_command([{<<"Action">>, <<"start">>} | Options], Call),
+    send_command(Command, Call).
+
+-spec stop_sound_touch(kapps_call:call()) -> 'ok'.
+stop_sound_touch(Call) ->
+    Command = sound_touch_command([{<<"Action">>, <<"stop">>}], Call),
     send_command(Command, Call).

@@ -1,0 +1,20 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.audio_level",
+    "description": "audio_level metaflow schema",
+    "properties": {
+        "action": {
+            "type": "string"
+        },
+        "level": {
+            "type": "string"
+        },
+        "mode": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "action"
+    ],
+    "type": "object"
+}

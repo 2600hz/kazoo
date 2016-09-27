@@ -1,0 +1,25 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.intercept",
+    "description": "intercept metaflow schema",
+    "properties": {
+        "auto_answer": {
+            "default": false,
+            "type": "boolean"
+        },
+        "target_id": {
+            "type": "string"
+        },
+        "target_type": {
+            "type": "string"
+        },
+        "unbridged_only": {
+            "default": true,
+            "type": "boolean"
+        }
+    },
+    "required": [
+        "target_id"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.say",
+    "description": "say metaflow schema",
+    "properties": {
+        "language": {
+            "type": "string"
+        },
+        "method": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "text"
+    ],
+    "type": "object"
+}

@@ -1,0 +1,42 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.sound_touch",
+    "description": "sound_touch metaflow schema",
+    "properties": {
+        "action": {
+            "type": {
+                "enum": [
+                    "start",
+                    "stop"
+                ]
+            }
+        },
+        "adjust_in_octaves": {
+            "type": "integer"
+        },
+        "adjust_in_semitones": {
+            "type": "integer"
+        },
+        "hook_dtmf": {
+            "default": false,
+            "type": "boolean"
+        },
+        "pitch": {
+            "type": "integer"
+        },
+        "rate": {
+            "type": "integer"
+        },
+        "sending_leg": {
+            "default": false,
+            "type": "boolean"
+        },
+        "tempo": {
+            "type": "integer"
+        }
+    },
+    "required": [
+        "action"
+    ],
+    "type": "object"
+}

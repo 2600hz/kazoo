@@ -811,5 +811,30 @@
 -define(PLAY_MACRO_TYPES, [{<<"Call-ID">>, fun is_binary/1}
                           ]).
 
+%% soundtouch
+-define(SOUNDTOUCH_HEADERS, [<<"Application-Name">>
+                            ,<<"Insert-At">>
+                            ,<<"Call-ID">>
+                            ,<<"Action">>
+                            ]).
+-define(OPTIONAL_SOUNDTOUCH_HEADERS, [<<"Sending-Leg">>
+                                     ,<<"Hook-DTMF">>
+                                     ,<<"Adjust-In-Semitones">>
+                                     ,<<"Adjust-In-Octaves">>
+                                     ,<<"Pitch">>
+                                     ,<<"Rate">>
+                                     ,<<"Tempo">>
+                                     ]).
+-define(SOUNDTOUCH_VALUES, [{<<"Event-Category">>, <<"call">>}
+                           ,{<<"Event-Name">>, <<"command">>}
+                           ,{<<"Application-Name">>, <<"sound_touch">>}
+                           ,{<<"Action">>, [<<"start">>, <<"stop">>]}
+                           ,?INSERT_AT_TUPLE
+                           ]).
+-define(SOUNDTOUCH_TYPES, [{<<"Hook-DTMF">>, fun is_boolean/1}
+                          ,{<<"Sending-Leg">>, fun is_boolean/1}
+                          ]).
+
+
 -define(KAPI_DIALPLAN_HRL, 'true').
 -endif.

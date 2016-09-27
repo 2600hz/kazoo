@@ -8,6 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kapi_metaflow).
 
+-export([flow/1, flow_v/1]).
 -export([action/1, action_v/1]).
 -export([bind_req/1, bind_req_v/1]).
 -export([binding/1, binding_v/1]).
@@ -15,6 +16,7 @@
 -export([bind_q/2, unbind_q/2]).
 -export([declare_exchanges/0]).
 
+-export([publish_flow/1, publish_flow/2]).
 -export([publish_action/1, publish_action/2]).
 -export([publish_bind_req/1, publish_bind_req/2]).
 -export([publish_bind_reply/2, publish_bind_reply/3]).
@@ -53,6 +55,18 @@
 
 -define(METAFLOW_ACTION_ROUTING_KEY(CallId, Action)
        ,<<"metaflow.action.", (amqp_util:encode(CallId))/binary, ".", (Action)/binary>>
+       ).
+
+%% Metaflow flow
+-define(METAFLOW_FLOW_HEADERS, [<<"Flow">>, <<"Call-ID">>]).
+-define(OPTIONAL_METAFLOW_FLOW_HEADERS, []).
+-define(METAFLOW_FLOW_VALUES, [{<<"Event-Category">>, <<"metaflow">>}
+                              ,{<<"Event-Name">>, <<"flow">>}
+                              ]).
+-define(METAFLOW_FLOW_TYPES, [{<<"Flow">>, fun kz_json:is_json_object/1}]).
+
+-define(METAFLOW_FLOW_ROUTING_KEY(CallId)
+       ,<<"metaflow.flow.", (amqp_util:encode(CallId))/binary>>
        ).
 
 %% Metaflow Bind
@@ -111,6 +125,26 @@ action_v(JObj) -> action_v(kz_json:to_proplist(JObj)).
 
 
 %%--------------------------------------------------------------------
+%% @doc flow
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec flow(kz_json:object() | kz_proplist()) ->
+                  {'ok', iolist()} |
+                  {'error', string()}.
+flow(Prop) when is_list(Prop) ->
+    case flow_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?METAFLOW_FLOW_HEADERS, ?OPTIONAL_METAFLOW_FLOW_HEADERS);
+        'false' -> {'error', "Proplist failed validation for metaflow flow"}
+    end;
+flow(JObj) -> flow(kz_json:to_proplist(JObj)).
+
+-spec flow_v(kz_json:object() | kz_proplist()) -> boolean().
+flow_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?METAFLOW_FLOW_HEADERS, ?METAFLOW_FLOW_VALUES, ?METAFLOW_FLOW_TYPES);
+flow_v(JObj) -> flow_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc bind metaflow - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -146,10 +180,17 @@ bind_q(Queue, Props, ['action' | T]) ->
     Action = props:get_value('action', Props, <<"*">>),
     amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
     bind_q(Queue, Props, T);
+bind_q(Queue, Props, ['flow' | T]) ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
+    bind_q(Queue, Props, T);
 bind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     CallId = props:get_value('callid', Props, <<"*">>),
     amqp_util:bind_q_to_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
+    bind_q(Queue, Props, T);
+bind_q(Queue, Props, [_U | T]) ->
+    lager:debug("unknown restriction ~p in metaflow bind", [_U]),
     bind_q(Queue, Props, T);
 bind_q(_, _, []) -> 'ok'.
 
@@ -169,10 +210,17 @@ unbind_q(Queue, Props, ['action' | T]) ->
     Action = props:get_value('action', Props, <<"*">>),
     amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_ACTION_ROUTING_KEY(CallId, Action), ?METAFLOW_EXCHANGE),
     unbind_q(Queue, Props, T);
+unbind_q(Queue, Props, ['flow' | T]) ->
+    CallId = props:get_value('callid', Props, <<"*">>),
+    amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_FLOW_ROUTING_KEY(CallId), ?METAFLOW_EXCHANGE),
+    unbind_q(Queue, Props, T);
 unbind_q(Queue, Props, ['bindings' | T]) ->
     AccountId = props:get_value('account_id', Props, <<"*">>),
     CallId = props:get_value('callid', Props, <<"*">>),
     amqp_util:unbind_q_from_exchange(Queue, ?METAFLOW_BIND_ROUTING_KEY(AccountId, CallId), ?METAFLOW_EXCHANGE),
+    unbind_q(Queue, Props, T);
+unbind_q(Queue, Props, [_U | T]) ->
+    lager:debug("unknown restriction ~p in metaflow unbind", [_U]),
     unbind_q(Queue, Props, T);
 unbind_q(_, _, []) -> 'ok'.
 
@@ -184,6 +232,15 @@ unbind_q(_, _, []) -> 'ok'.
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
     amqp_util:new_exchange(?METAFLOW_EXCHANGE, ?METAFLOW_EXCHANGE_TYPE).
+
+-spec publish_flow(api_terms()) -> 'ok'.
+-spec publish_flow(api_terms(), ne_binary()) -> 'ok'.
+publish_flow(JObj) ->
+    publish_flow(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_flow(Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?METAFLOW_FLOW_VALUES, fun flow/1),
+    RK = ?METAFLOW_FLOW_ROUTING_KEY(rk_call_id(Req)),
+    amqp_util:basic_publish(?METAFLOW_EXCHANGE, RK, Payload, ContentType).
 
 -spec publish_action(api_terms()) -> 'ok'.
 -spec publish_action(api_terms(), ne_binary()) -> 'ok'.
