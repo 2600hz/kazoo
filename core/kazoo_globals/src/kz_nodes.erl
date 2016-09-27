@@ -467,9 +467,11 @@ handle_info('expire_nodes', #state{tab=Tab}=State) ->
     _ = kz_util:spawn(fun notify_expire/2, [Nodes, State]),
     _ = erlang:send_after(?EXPIRE_PERIOD, self(), 'expire_nodes'),
     {'noreply', State};
-handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
-                                      ,tab=Tab
-                                      }=State) ->
+handle_info({'heartbeat', Ref}
+           ,#state{heartbeat_ref=Ref
+                  ,tab=Tab
+                  }=State
+           ) ->
     Heartbeat = ?HEARTBEAT,
     Reference = erlang:make_ref(),
     try create_node(Heartbeat, State) of
@@ -482,9 +484,11 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
-handle_info({'DOWN', Ref, 'process', Pid, _}, #state{notify_new=NewSet
-                                                    ,notify_expire=ExpireSet
-                                                    }=State) ->
+handle_info({'DOWN', Ref, 'process', Pid, _}
+           ,#state{notify_new=NewSet
+                  ,notify_expire=ExpireSet
+                  }=State
+           ) ->
     erlang:demonitor(Ref, ['flush']),
     {'noreply', State#state{notify_new=sets:del_element(Pid, NewSet)
                            ,notify_expire=sets:del_element(Pid, ExpireSet)
