@@ -74,6 +74,9 @@
 -type lookup_account_return() :: {'ok', ne_binary(), knm_number_options:extra_options()} |
                                  {'error', lookup_error()}.
 
+-define(SHOULD_LOOKUP_PORTS_DB,
+        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_lookup_ports_db">>, true)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -611,9 +614,12 @@ lookup_account(Num) ->
 %%--------------------------------------------------------------------
 -spec fetch_account_from_number(ne_binary()) -> lookup_account_return().
 fetch_account_from_number(NormalizedNum) ->
+    ShouldLookupPorts = ?SHOULD_LOOKUP_PORTS_DB,
     case knm_phone_number:fetch(NormalizedNum) of
-        {'error', _}=Error -> fetch_account_from_ports(NormalizedNum, Error);
-        {'ok', PhoneNumber} -> check_number(PhoneNumber)
+        {'ok', PhoneNumber} -> check_number(PhoneNumber);
+        {'error', _}=Error when ShouldLookupPorts ->
+            fetch_account_from_ports(NormalizedNum, Error);
+        {'error', _}=Error -> Error
     end.
 
 %%--------------------------------------------------------------------
