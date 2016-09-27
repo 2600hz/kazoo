@@ -119,6 +119,7 @@ check_msg_belonging(BoxId, JObj) ->
 
 check_msg_belonging(_BoxId, _JObj, 'undefined') -> 'true';
 check_msg_belonging('undefined', _JObj, _SourceId) -> 'true';
+check_msg_belonging(BoxId, JObj, BoxId) -> 'true';
 check_msg_belonging(_BoxId, _JObj, _SourceId) ->
     lager:debug("message ~s belongs to mailbox ~s but claims to belong to ~s"
                ,[kz_doc:id(_JObj), _SourceId, _BoxId]),
