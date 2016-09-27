@@ -9901,7 +9901,7 @@
                 },
                 "filter_error_codes": {
                     "default": [
-                        "49"
+                        "0", "49"
                     ],
                     "description": "notify.fax_inbound_error_to_email filter error codes",
                     "type": "array"
