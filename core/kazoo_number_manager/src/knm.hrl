@@ -27,6 +27,26 @@
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
+-define(IS_US_TOLLFREE(Prefix)
+       ,Prefix == <<"800">>
+            orelse Prefix == <<"822">>
+            orelse Prefix == <<"833">>
+            orelse Prefix == <<"844">>
+            orelse Prefix == <<"855">>
+            orelse Prefix == <<"866">>
+            orelse Prefix == <<"877">>
+            orelse Prefix == <<"880">>
+            orelse Prefix == <<"881">>
+            orelse Prefix == <<"882">>
+            orelse Prefix == <<"883">>
+            orelse Prefix == <<"884">>
+            orelse Prefix == <<"885">>
+            orelse Prefix == <<"886">>
+            orelse Prefix == <<"887">>
+            orelse Prefix == <<"888">>
+            orelse Prefix == <<"889">>
+       ).
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
