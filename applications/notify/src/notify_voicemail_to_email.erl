@@ -50,16 +50,11 @@ handle_req(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(AccountDb, VMBox),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
 
     %% If the box has emails, continue processing
-    %% andalso the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    case Emails =/= []
-        andalso (kzd_user:voicemail_notification_enabled(UserJObj)
-                 orelse kz_json:is_empty(UserJObj)
-                )
-    of
+    case Emails =/= [] of
         'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
         'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
     end.
@@ -94,9 +89,10 @@ continue_processing(JObj, AccountDb, VMBox, Emails) ->
                         ,{RespQ, MsgId}
                         ).
 
--spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
-maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
-maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
+-spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
+maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
+maybe_add_user_email(BoxEmails, _UserEmail, 'false') -> BoxEmails;
+maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
 -spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
                        {'ok', kzd_user:doc()}.
