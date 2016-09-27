@@ -90,15 +90,15 @@
 %% which result in {'error', 'conflict'} which in this case is safe to ignore.
 %%
 %% <<"Message-Timestamp">>: is used to preserved previous message's utc_seconds.
-%% <<"Document-Timestamp">>: is then used to set pvt_created, pvt_modified if
-%% we are moving the message to older modb(by default we are moving messages to current modb).
+%% <<"Document-Timestamp">>: is then used to set pvt_created, pvt_modified when
+%% we are moving the message to MODB.
 %% @end
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
 new(AccountId, Props) ->
     UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
     Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
-    {Year, Month, _} = erlang:date(),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
 
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_util:rand_hex_binary(16)),
 

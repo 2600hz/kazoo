@@ -24,5 +24,7 @@
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
 
+-type next_account() :: ne_binary() | {ne_binary(), gregorian_seconds()}.
+
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.
