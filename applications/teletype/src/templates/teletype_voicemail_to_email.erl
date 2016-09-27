@@ -75,16 +75,11 @@ handle_new_voicemail(JObj, _Props) ->
     {'ok', UserJObj} = get_owner(VMBox, DataJObj),
 
     BoxEmails = kzd_voicemail_box:notification_emails(VMBox),
-    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj)),
+    Emails = maybe_add_user_email(BoxEmails, kzd_user:email(UserJObj), kzd_user:voicemail_notification_enabled(UserJObj)),
 
     %% If the box has emails, continue processing
-    %% or If the voicemail notification is enabled on the user, continue processing
     %% otherwise stop processing
-    (Emails =/= []
-     andalso (kzd_user:voicemail_notification_enabled(UserJObj)
-              orelse kz_json:is_empty(UserJObj)
-             )
-    )
+    Emails =/= []
         orelse teletype_util:stop_processing("box ~s has no emails or owner doesn't want emails", [VMBoxId]),
 
     ReqData =
@@ -103,9 +98,10 @@ handle_new_voicemail(JObj, _Props) ->
             process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
--spec maybe_add_user_email(ne_binaries(), api_binary()) -> ne_binaries().
-maybe_add_user_email(BoxEmails, 'undefined') -> BoxEmails;
-maybe_add_user_email(BoxEmails, UserEmail) -> [UserEmail | BoxEmails].
+-spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
+maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
+maybe_add_user_email(BoxEmails, _UserEmail, 'false') -> BoxEmails;
+maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
 -spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) ->
                        {'ok', kz_json:object()}.
