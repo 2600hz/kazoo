@@ -21,72 +21,6 @@
 
 -include("kazoo_apps.hrl").
 
--define(HIDDEN_APPS
-       ,['amqp_client'
-        ,'apns'
-        ,'asn1'
-        ,'bear'
-        ,'braintree'
-        ,'certifi'
-        ,'compiler'
-        ,'couchbeam'
-        ,'cowboy'
-        ,'cowlib'
-        ,'crypto'
-        ,'eflame'
-        ,'escalus'
-        ,'exml'
-        ,'folsom'
-        ,'gcm'
-        ,'gen_smtp'
-        ,'goldrush'
-        ,'gproc'
-        ,'hackney'
-        ,'idna'
-        ,'inets'
-        ,'kazoo'
-        ,'kazoo_amqp'
-        ,'kazoo_apps'
-        ,'kazoo_bindings'
-        ,'kazoo_caches'
-        ,'kazoo_config'
-        ,'kazoo_couch'
-        ,'kazoo_data'
-        ,'kazoo_documents'
-        ,'kazoo_endpoint'
-        ,'kazoo_etsmgr'
-        ,'kazoo_globals'
-        ,'kazoo_media'
-        ,'kazoo_modb'
-        ,'kazoo_number_manager'
-        ,'kazoo_oauth'
-        ,'kazoo_services'
-        ,'kazoo_stats'
-        ,'kazoo_token_buckets'
-        ,'kazoo_transactions'
-        ,'kazoo_voicemail'
-        ,'kazoo_web'
-        ,'kazoo_xml'
-        ,'kernel'
-        ,'lager'
-        ,'lager_syslog'
-        ,'mimerl'
-        ,'nksip'
-        ,'poolboy'
-        ,'public_key'
-        ,'rabbit_common'
-        ,'ranch'
-        ,'sasl'
-        ,'ssl'
-        ,'stdlib'
-        ,'syntax_tools'
-        ,'syslog'
-        ,'tasks'
-        ,'webseq'
-        ,'xmerl'
-        ,'zucchini'
-        ]).
-
 
 %%%===================================================================
 %%% API
@@ -163,7 +97,7 @@ running_apps_verbose() ->
 get_running_apps() ->
     [AppData
      || {App, _Desc, _Vsn}=AppData <- application:which_applications(),
-        not lists:member(App, ?HIDDEN_APPS)
+        is_kapp(App)
     ].
 
 -spec running_apps_list() -> atoms() | string().
@@ -191,10 +125,8 @@ start_which_kapps() ->
                ,fun maybe_start_from_node_name/0
                ,fun start_from_default_config/0
                ],
-    lists:foldl(fun(F, 'false') ->
-                        F();
-                   (_, Apps) ->
-                        Apps
+    lists:foldl(fun(F, 'false') -> F();
+                   (_, Apps) -> Apps
                 end
                ,'false'
                ,Routines
@@ -213,7 +145,7 @@ maybe_start_from_env() ->
 -spec maybe_start_from_node_name() -> 'false' | atoms().
 maybe_start_from_node_name() ->
     KApp = kapp_from_node_name(),
-    case not lists:member(KApp, ?HIDDEN_APPS)
+    case is_kapp(KApp)
         andalso code:where_is_file(kz_util:to_list(KApp) ++ ".app")
     of
         'false' -> 'false';
@@ -260,3 +192,8 @@ list_apps() ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec is_kapp(atom()) -> boolean().
+is_kapp(App) ->
+    {ok, Deps} = application:get_key(App, applications),
+    lists:member(?APP, Deps).

@@ -9,7 +9,7 @@
 -module(kazoo_apps_app).
 -behaviour(application).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include("kazoo_apps.hrl").
 
 -export([start/2, stop/1]).
 -export([start/0]).
@@ -17,7 +17,7 @@
 
 -spec start() -> {'ok', atoms()}.
 start() ->
-    {'ok', _Apps} = application:ensure_all_started('kazoo_apps').
+    {'ok', _Apps} = application:ensure_all_started(?APP).
 
 %% Application callbacks
 

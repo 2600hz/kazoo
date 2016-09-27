@@ -8,7 +8,6 @@
                  , stdlib
                  , crypto
 
-                 , kazoo_apps
                  , kazoo_data
 
                  , lager
