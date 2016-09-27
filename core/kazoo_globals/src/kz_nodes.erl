@@ -24,6 +24,7 @@
         ]).
 -export([notify_expire/0
         ,notify_expire/1
+        ,request/1
         ]).
 -export([local_zone/0]).
 -export([whapp_zones/1, whapp_zone_count/1]).
@@ -476,7 +477,10 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
             _ = ets:insert(Tab, Node),
             kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
     catch
-        _E:_N -> lager:debug("error creating node ~p : ~p", [_E, _N])
+        _E:_N ->
+            ST = erlang:get_stacktrace(),
+            lager:error("error creating node ~p : ~p", [_E, _N]),
+            [lager:error("~p", [S]) || S <- ST]
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
@@ -564,32 +568,43 @@ create_node(Heartbeat, #state{zone=Zone
 normalize_amqp_uri(URI) ->
     kz_util:to_binary(amqp_uri:remove_credentials(kz_util:to_list(URI))).
 
--spec kapp_data(atom(), kz_node()) -> kz_node().
-kapp_data('ecallmgr', Node) ->
-    add_ecallmgr_data(Node);
-kapp_data(Whapp, #kz_node{kapps=Kapps}=Node) ->
-    Node#kz_node{kapps=[{kz_util:to_binary(Whapp), get_whapp_info(Whapp)} | Kapps]}.
-
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
     lists:foldl(fun kapp_data/2, Node, kapps_controller:list_apps()).
 
--spec add_ecallmgr_data(kz_node()) -> kz_node().
-add_ecallmgr_data(#kz_node{kapps=Whapps}=Node) ->
-    Servers = [{kz_util:to_binary(Server)
-               ,kz_json:set_values([{<<"Startup">>, Started}
-                                   ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
-                                   ]
-                                  ,kz_json:new()
-                                  )
-               }
-               || {Server, Started} <- ecallmgr_fs_nodes:connected('true')
-              ],
-    Node#kz_node{media_servers=Servers
-                ,kapps=[{<<"ecallmgr">>, get_whapp_info('ecallmgr')} | Whapps]
-                ,channels=ecallmgr_fs_channels:count()
-                ,registrations=ecallmgr_registrar:count()
+-type request_info() :: {'app', atom()} |
+                        {'media_servers', [{ne_binary(), kz_json:object()}]} |
+                        {'channels', non_neg_integer()} |
+                        {'registrations', non_neg_integer()} |
+                        {'info', whapp_info()}.
+-type request_acc() :: [request_info()].
+
+-spec request(request_acc()) -> request_acc().
+request(Acc) ->
+    App = props:get_value('app', Acc),
+    [{'info', get_whapp_info(App)} | Acc].
+
+-spec kapp_data(atom(), kz_node()) -> kz_node().
+kapp_data(App, Node) ->
+    kapp_data(App, Node, kz_nodes_bindings:request(App)).
+kapp_data(App
+         ,#kz_node{kapps=Kapps
+                  ,media_servers=Servers
+                  ,channels=Channels
+                  ,registrations=Registrations
+                  }=Node
+         ,RequestAcc
+         ) ->
+    Node#kz_node{kapps=maybe_add_info(App, props:get_value('info', RequestAcc), Kapps)
+                ,media_servers=props:get_value('media_servers', RequestAcc, []) ++ Servers
+                ,channels=props:get_integer_value('channels', RequestAcc, 0) + Channels
+                ,registrations=props:get_integer_value('registrations', RequestAcc, 0) + Registrations
                 }.
+
+-spec maybe_add_info(atom(), 'undefined' | whapp_info(), kapps_info()) -> kapps_info().
+maybe_add_info(_App, 'undefined', Kapps) -> Kapps;
+maybe_add_info(App, AppInfo, Kapps) ->
+    [{kz_util:to_binary(App), AppInfo} | Kapps].
 
 -spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
