@@ -1,20 +1,19 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.hold",
-    "description": "Skeleton JSON schema",
+    "description": "hold metaflow schema",
     "properties": {
         "moh_aleg": {
-            "description": ""
+            "type": "string"
         },
         "moh_bleg": {
-            "description": ""
+            "type": "string"
         },
         "unhold_key": {
             "default": "1",
-            "description": "",
             "type": "string"
         }
     },
-    "required": true,
+    "required": [],
     "type": "object"
 }

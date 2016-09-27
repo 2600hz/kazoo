@@ -1,18 +1,20 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.audio_level",
-    "description": "Skeleton JSON schema",
+    "description": "audio_level metaflow schema",
     "properties": {
         "action": {
-            "description": ""
+            "type": "string"
         },
         "level": {
-            "description": ""
+            "type": "string"
         },
         "mode": {
-            "description": ""
+            "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "action"
+    ],
     "type": "object"
 }

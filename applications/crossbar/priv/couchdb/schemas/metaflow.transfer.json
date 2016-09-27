@@ -1,20 +1,21 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.transfer",
-    "description": "Skeleton JSON schema",
+    "description": "transfer metaflow schema",
     "properties": {
         "Transfer-Type": {
             "default": "attended",
-            "description": "",
             "type": "string"
         },
         "captures": {
-            "description": ""
+            "type": "string"
         },
         "target": {
-            "description": ""
+            "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "target"
+    ],
     "type": "object"
 }

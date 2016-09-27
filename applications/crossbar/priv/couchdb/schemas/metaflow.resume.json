@@ -1,8 +1,8 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.resume",
-    "description": "Skeleton JSON schema",
+    "description": "resume metaflow schema",
     "properties": {},
-    "required": true,
+    "required": [],
     "type": "object"
 }

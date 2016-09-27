@@ -1,20 +1,27 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.record_call",
-    "description": "Skeleton JSON schema",
+    "description": "record_call metaflow schema",
     "properties": {
         "action": {
             "default": "toggle",
-            "description": "",
-            "type": "string"
+            "type": {
+                "enum": [
+                    "start",
+                    "stop",
+                    "toggle"
+                ]
+            }
         },
         "format": {
-            "description": ""
+            "type": "string"
         },
         "media_name": {
-            "description": ""
+            "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "action"
+    ],
     "type": "object"
 }

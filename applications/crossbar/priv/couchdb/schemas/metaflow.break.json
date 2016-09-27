@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.break",
     "additionalProperties": false,
-    "description": "Skeleton JSON schema",
+    "description": "break metaflow schema",
     "properties": {},
     "type": "object"
 }

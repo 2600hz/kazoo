@@ -1,43 +1,42 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.sound_touch",
-    "description": "Skeleton JSON schema",
+    "description": "sound_touch metaflow schema",
     "properties": {
         "action": {
-            "description": "",
-            "required": true
+            "type": {
+                "enum": [
+                    "start",
+                    "stop"
+                ]
+            }
         },
         "adjust_in_octaves": {
-            "description": "",
             "type": "integer"
         },
         "adjust_in_semitones": {
-            "description": "",
             "type": "integer"
         },
         "hook_dtmf": {
             "default": false,
-            "description": "",
             "type": "boolean"
         },
         "pitch": {
-            "description": "",
             "type": "integer"
         },
         "rate": {
-            "description": "",
             "type": "integer"
         },
         "sending_leg": {
             "default": false,
-            "description": "",
             "type": "boolean"
         },
         "tempo": {
-            "description": "",
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "action"
+    ],
     "type": "object"
 }

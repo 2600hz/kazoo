@@ -1,14 +1,24 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.play",
-    "description": "Skeleton JSON schema",
+    "description": "play metaflow schema",
     "properties": {
+        "id": {
+            "type": "string"
+        },
         "leg": {
             "default": "both",
-            "description": "",
-            "type": "string"
+            "type": {
+                "enum": [
+                    "both",
+                    "self",
+                    "peer"
+                ]
+            }
         }
     },
-    "required": true,
+    "required": [
+        "id"
+    ],
     "type": "object"
 }
