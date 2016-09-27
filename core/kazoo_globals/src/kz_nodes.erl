@@ -478,9 +478,7 @@ handle_info({'heartbeat', Ref}, #state{heartbeat_ref=Ref
             kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
     catch
         _E:_N ->
-            ST = erlang:get_stacktrace(),
-            lager:error("error creating node ~p : ~p", [_E, _N]),
-            [lager:error("~p", [S]) || S <- ST]
+            lager:error("error creating node ~p : ~p", [_E, _N])
     end,
     _ = erlang:send_after(Heartbeat, self(), {'heartbeat', Reference}),
     {'noreply', State#state{heartbeat_ref=Reference}};
