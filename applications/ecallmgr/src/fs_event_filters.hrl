@@ -185,7 +185,7 @@
         ,<<"variable_transfer_to">>
         ,<<"variable_user_name">>
         ,<<"variable_uuid">>
-        | ?FS_MANUAL_HEADERS
+             | ?FS_MANUAL_HEADERS
         ]).
 -define(FS_EVENT_FILTERS_HRL, 'true').
 -endif.

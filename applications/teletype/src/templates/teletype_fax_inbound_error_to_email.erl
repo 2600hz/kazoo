@@ -47,14 +47,14 @@
 init() ->
     kz_util:put_callid(?MODULE),
     Fields = [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'subject', ?TEMPLATE_SUBJECT}
-                                          ,{'category', ?TEMPLATE_CATEGORY}
-                                          ,{'friendly_name', ?TEMPLATE_NAME}
-                                          ,{'to', ?TEMPLATE_TO}
-                                          ,{'from', ?TEMPLATE_FROM}
-                                          ,{'cc', ?TEMPLATE_CC}
-                                          ,{'bcc', ?TEMPLATE_BCC}
-                                          ,{'reply_to', ?TEMPLATE_REPLY_TO}],
+             ,{'subject', ?TEMPLATE_SUBJECT}
+             ,{'category', ?TEMPLATE_CATEGORY}
+             ,{'friendly_name', ?TEMPLATE_NAME}
+             ,{'to', ?TEMPLATE_TO}
+             ,{'from', ?TEMPLATE_FROM}
+             ,{'cc', ?TEMPLATE_CC}
+             ,{'bcc', ?TEMPLATE_BCC}
+             ,{'reply_to', ?TEMPLATE_REPLY_TO}],
     teletype_templates:init(?TEMPLATE_ID_FILTERED, Fields),
     teletype_templates:init(?TEMPLATE_ID, Fields).
 
