@@ -29,7 +29,7 @@
         ,flush/0, flush/1, flush_mod/1
         ,filter/1
         ,modules_loaded/0
-        ,init/0
+        ,init/0, init_mod/1
         ,bindings/0, bindings/1
         ]).
 
@@ -45,7 +45,7 @@
 -include("blackhole.hrl").
 
 -define(BH_MODULES,
-        kapps_config:get(?BLACKHOLE_CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES)).
+        kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES)).
 
 -type payload() :: bh_context:context() | ne_binary().
 
@@ -180,7 +180,10 @@ flush() ->
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
--spec flush_mod(atom()) -> 'ok'.
+-spec flush_mod(ne_binary() | atom()) -> 'ok'.
+flush_mod(BHMod)
+  when is_binary(BHMod) ->
+    flush_mod(kz_util:to_atom(BHMod, 'true'));
 flush_mod(BHMod) -> kazoo_bindings:flush(BHMod).
 
 -spec modules_loaded() -> atoms().
