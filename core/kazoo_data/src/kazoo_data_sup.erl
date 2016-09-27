@@ -32,6 +32,7 @@
                   ,?SUPER('kz_dataconnection_sup')
                   ,?WORKER('kz_dataconnections')
                   ,?WORKER('kazoo_data_bootstrap')
+                  ,?WORKER('kz_data_tracing')
                   ]).
 
 %% ===================================================================
