@@ -17,6 +17,7 @@
         ]).
 -export([migrate/0
         ,migrate/1
+        ,migrate_to_4_0/0
         ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
@@ -89,6 +90,18 @@ rebuild_token_auth(Pause) ->
     timer:sleep(kz_util:to_integer(Pause)),
     refresh(?KZ_TOKEN_DB),
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec migrate_to_4_0() -> no_return.
+migrate_to_4_0() ->
+    %%TODO: add KVM migration here
+    knm_maintenance:migrate(),
+    no_return.
 
 %%--------------------------------------------------------------------
 %% @public

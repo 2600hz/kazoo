@@ -6,7 +6,7 @@
             "map": "function(doc) { emit([doc.pvt_assigned_to, doc._id], null); }"
         },
         "status": {
-            "map": "function(doc) { emit([doc.pvt_state||doc.pvt_number_state, doc._id], null); }"
+            "map": "function(doc) { emit([doc.pvt_state, doc._id], null); }"
         }
     }
 }

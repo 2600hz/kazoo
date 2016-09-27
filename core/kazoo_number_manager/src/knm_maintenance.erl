@@ -14,6 +14,8 @@
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
 
+        ,migrate/0, migrate/1
+
         ,generate_numbers/4
 
         ,delete/1
@@ -67,6 +69,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
                    ),
+    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ToRm0 = gb_sets:to_list(Leftovers),
     lists:foreach(fun (DID) ->
                           ?LOG("########## found alien [~s] doc: ~s ##########", [AccountDb, DID])
@@ -82,6 +85,17 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
+
+-spec migrate() -> 'ok'.
+migrate() ->
+    AccountDbs = kapps_util:get_all_accounts(),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs).
+
+-spec migrate(ne_binary()) -> 'ok'.
+migrate(AccountDb) ->
+    fix_account_numbers(AccountDb),
+    _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
+    'ok'.
 
 %%%===================================================================
 %%% Internal functions
@@ -130,7 +144,8 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
             knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-                                             ,{batch_run, true} %% skips cache
+                                              %% No caching + bulk doc writes
+                                             ,{batch_run, true}
                                              ]),
             ok
     end.
