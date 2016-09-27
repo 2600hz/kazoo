@@ -1085,8 +1085,9 @@ error_carrier_fault(Reason, N) ->
 -spec error_number_is_porting(wnm_number()) -> no_return().
 error_number_is_porting(#number{number=_Number}=N) ->
     lager:debug("number is porting: ~s", [_Number]),
+    Msg = <<"cannot complete request">>,
     throw({'number_porting'
-           ,N#number{error_jobj=wh_json:from_list([{<<"number_is_porting">>, 'true'}])}
+           ,N#number{error_jobj=wh_json:from_list([{<<"number_is_porting">>, Msg}])}
           }).
 
 %%--------------------------------------------------------------------
