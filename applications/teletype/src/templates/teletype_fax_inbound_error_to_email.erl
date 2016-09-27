@@ -81,8 +81,8 @@ handle_fax_inbound_error(JObj, _Props) ->
 is_true_fax_error(JObj) ->
     Code = kz_json:get_value(<<"Fax-Result-Code">>, JObj),
     %% see: https://wiki.freeswitch.org/wiki/Variable_fax_result_code
-    Codes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"49">>]),
-    lists:member(Code, Codes).
+    Codes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"0">>, <<"49">>]),
+    not lists:member(Code, Codes).
 
 -spec handle_fax_inbound(kz_json:object(), ne_binary()) -> 'ok'.
 handle_fax_inbound(DataJObj, TemplateId) ->
