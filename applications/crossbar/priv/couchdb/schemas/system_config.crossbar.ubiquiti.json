@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.ubiquiti",
     "description": "Schema for crossbar.ubiquiti system_config",
     "properties": {
@@ -56,6 +56,12 @@
             }
         }
     },
-    "required": true,
+    "required": [
+        "api_secret",
+        "production",
+        "sso_provider_id",
+        "staging",
+        "{crossbar.ubiquiti.sso_environment}"
+    ],
     "type": "object"
 }

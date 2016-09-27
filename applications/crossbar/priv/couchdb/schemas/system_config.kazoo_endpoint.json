@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.kazoo_endpoint",
     "description": "Schema for kazoo_endpoint system_config",
     "properties": {
@@ -7,12 +7,10 @@
             "description": "kazoo_endpoint custom sip interface"
         },
         "default_caller_id_name": {
-            "default": "default",
             "description": "kazoo_endpoint default caller id name",
             "type": "string"
         },
         "default_caller_id_number": {
-            "default": "default",
             "description": "kazoo_endpoint default caller id number",
             "type": "string"
         },
@@ -35,6 +33,11 @@
             "description": "kazoo_endpoint sip transport"
         }
     },
-    "required": true,
+    "required": [
+        "custom_sip_interface",
+        "default_caller_id_name",
+        "default_caller_id_number",
+        "sip_transport"
+    ],
     "type": "object"
 }

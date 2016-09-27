@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.number_manager.other",
     "description": "Schema for number_manager.other system_config",
     "properties": {
@@ -15,6 +15,9 @@
             "description": "number_manager.other phonebook url"
         }
     },
-    "required": true,
+    "required": [
+        "endpoints",
+        "phonebook_url"
+    ],
     "type": "object"
 }

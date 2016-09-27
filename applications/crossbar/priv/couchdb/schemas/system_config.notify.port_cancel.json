@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify.port_cancel",
     "description": "Schema for notify.port_cancel system_config",
     "properties": {
@@ -13,6 +13,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "default_from"
+    ],
     "type": "object"
 }

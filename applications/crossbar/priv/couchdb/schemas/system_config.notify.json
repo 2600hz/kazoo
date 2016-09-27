@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify",
     "description": "Schema for notify system_config",
     "properties": {
@@ -38,6 +38,8 @@
             "type": "boolean"
         }
     },
-    "required": true,
+    "required": [
+        "mime-encoding"
+    ],
     "type": "object"
 }

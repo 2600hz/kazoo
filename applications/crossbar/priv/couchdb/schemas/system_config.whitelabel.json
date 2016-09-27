@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.whitelabel",
     "description": "Schema for whitelabel system_config",
     "properties": {
@@ -7,6 +7,8 @@
             "description": "whitelabel domains"
         }
     },
-    "required": true,
+    "required": [
+        "domains"
+    ],
     "type": "object"
 }

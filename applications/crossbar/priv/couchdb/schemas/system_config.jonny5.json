@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.jonny5",
     "description": "Schema for jonny5 system_config",
     "properties": {
@@ -24,6 +24,10 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "default_inbound_trunks",
+        "default_twoway_trunks",
+        "default_{Key}"
+    ],
     "type": "object"
 }

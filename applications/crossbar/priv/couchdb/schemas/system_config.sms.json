@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.sms",
     "description": "Schema for sms system_config",
     "properties": {
@@ -18,6 +18,8 @@
             }
         }
     },
-    "required": true,
+    "required": [
+        "outbound"
+    ],
     "type": "object"
 }

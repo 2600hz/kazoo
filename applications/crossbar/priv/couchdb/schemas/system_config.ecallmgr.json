@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.ecallmgr",
     "description": "Schema for ecallmgr system_config",
     "properties": {
@@ -419,6 +419,13 @@
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "configuration_handlers",
+        "default_ringback",
+        "fs_reconnect_cmds",
+        "node_commands",
+        "should_detect_inband_dtmf",
+        "sofia_conf"
+    ],
     "type": "object"
 }

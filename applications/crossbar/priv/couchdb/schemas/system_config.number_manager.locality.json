@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.number_manager.locality",
     "description": "Schema for number_manager.locality system_config",
     "properties": {
@@ -7,6 +7,8 @@
             "description": "number_manager.locality url"
         }
     },
-    "required": true,
+    "required": [
+        "url"
+    ],
     "type": "object"
 }

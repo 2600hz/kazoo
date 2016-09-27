@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify.system_alert",
     "description": "Schema for notify.system_alert system_config",
     "properties": {
@@ -28,6 +28,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "subscriber_url"
+    ],
     "type": "object"
 }

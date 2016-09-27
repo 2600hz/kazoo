@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.media",
     "description": "Schema for crossbar.media system_config",
     "properties": {
@@ -14,6 +14,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

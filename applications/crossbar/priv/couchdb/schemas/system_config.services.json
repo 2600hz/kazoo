@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.services",
     "description": "Schema for services system_config",
     "properties": {
@@ -42,6 +42,8 @@
             "type": "boolean"
         }
     },
-    "required": true,
+    "required": [
+        "modules"
+    ],
     "type": "object"
 }

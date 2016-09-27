@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.metaflows",
     "description": "Schema for metaflows system_config",
     "properties": {
@@ -48,6 +48,5 @@
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

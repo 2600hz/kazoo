@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify.new_account",
     "description": "Schema for notify.new_account system_config",
     "properties": {
@@ -19,6 +19,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

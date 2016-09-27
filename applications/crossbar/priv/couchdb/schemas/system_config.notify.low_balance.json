@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify.low_balance",
     "description": "Schema for notify.low_balance system_config",
     "properties": {
@@ -9,6 +9,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

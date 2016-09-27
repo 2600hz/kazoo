@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "tasks",
+    "additionalProperties": true,
+    "description": "Input data to go through as part of a background task",
+    "properties": {
+        "do_it_now": {
+            "type": "boolean"
+        },
+        "file_name": {
+            "description": "Human-readable name of a task's input file",
+            "minLength": 1,
+            "type": "string"
+        },
+        "records": {
+            "description": "List the rows of input data",
+            "items": {
+                "type": "object"
+            },
+            "minItems": 1,
+            "type": "array"
+        }
+    },
+    "required": [
+        "do_it_now"
+    ],
+    "type": "object"
+}

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.number_manager",
     "description": "Schema for number_manager system_config",
     "properties": {
@@ -135,6 +135,10 @@
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "e164_converters",
+        "released_state",
+        "should_permanently_delete"
+    ],
     "type": "object"
 }

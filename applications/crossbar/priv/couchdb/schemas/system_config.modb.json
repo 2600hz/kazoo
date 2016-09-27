@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.modb",
     "description": "Schema for modb system_config",
     "properties": {
@@ -14,6 +14,5 @@
             "type": "array"
         }
     },
-    "required": true,
     "type": "object"
 }

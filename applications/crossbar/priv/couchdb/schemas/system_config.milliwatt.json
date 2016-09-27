@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.milliwatt",
     "description": "Schema for milliwatt system_config",
     "properties": {
@@ -29,6 +29,5 @@
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

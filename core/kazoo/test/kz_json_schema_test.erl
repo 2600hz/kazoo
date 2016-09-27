@@ -76,3 +76,72 @@ add_sub_defaults_array_test_() ->
     ,?_assertEqual(<<"auto">>, kz_json:get_value(<<"bypass_media">>, Gateway))
     ,?_assertEqual(<<"sip">>, kz_json:get_value(<<"endpoint_type">>, Gateway))
     ].
+
+-spec from_file(nonempty_string()) -> kz_json:object().
+from_file(File) ->
+    kz_json:load_fixture_from_file('kazoo', "fixtures", File).
+
+valid_task_data() ->
+    kz_json:from_list([{<<"do_it_now">>, true}]).
+
+invalid_task_data1() ->
+    kz_json:from_list([{<<"records">>, []}]).
+
+invalid_task_data2() ->
+    kz_json:from_list([{<<"records">>, []}
+                      ,{<<"do_it_now">>, true}
+                      ]).
+
+invalid_task_data3() ->
+    kz_json:from_list([{<<"file_name">>, <<>>}
+                      ,{<<"do_it_now">>, true}
+                      ]).
+
+invalid_task_data4() ->
+    kz_json:from_list([{<<"file_name">>, 42}
+                      ,{<<"do_it_now">>, true}
+                      ]).
+
+validate_v3_test_() ->
+    V3SchemaJObj = from_file("schemav3_tasks.json"),
+    [?_assertMatch({ok,_}, kz_json_schema:validate(V3SchemaJObj, valid_task_data()))
+    ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
+                           ,{data_invalid,_,{missing_required_property,<<"do_it_now">>},_,_}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data1())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data2())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_length,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data3())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_type,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data4())
+                  )
+    ].
+
+validate_v4_test_() ->
+    V4SchemaJObj = from_file("schemav4_tasks.json"),
+    [?_assertMatch({ok,_}, kz_json_schema:validate(V4SchemaJObj, valid_task_data()))
+    ,?_assertMatch({error, [{data_invalid,_,missing_required_property,_,_}
+                           ,{data_invalid,_,wrong_size,_,[<<"records">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data1())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data2())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_length,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data3())
+                  )
+    ,?_assertMatch({error, [{data_invalid,_,wrong_type,_,[<<"file_name">>]}
+                           ]}
+                  ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data4())
+                  )
+    ].

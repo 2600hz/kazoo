@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.token_restrictions",
     "description": "Schema for crossbar.token_restrictions system_config",
     "properties": {
@@ -13,6 +13,8 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "_"
+    ],
     "type": "object"
 }

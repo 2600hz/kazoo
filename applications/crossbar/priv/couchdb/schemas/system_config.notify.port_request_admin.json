@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.notify.port_request_admin",
     "description": "Schema for notify.port_request_admin system_config",
     "properties": {
@@ -7,6 +7,8 @@
             "description": "notify.port_request_admin default to"
         }
     },
-    "required": true,
+    "required": [
+        "default_to"
+    ],
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.number_manager.voip_innovations",
     "description": "Schema for number_manager.voip_innovations system_config",
     "properties": {
@@ -34,6 +34,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

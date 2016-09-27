@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.devices",
     "description": "Schema for crossbar.devices system_config",
     "properties": {
@@ -32,6 +32,13 @@
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "provisioner_host",
+        "provisioner_referer",
+        "provisioning_host",
+        "provisioning_referer",
+        "provisioning_type",
+        "provisioning_url"
+    ],
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.crossbar.contact_list",
     "description": "Schema for crossbar.contact_list system_config",
     "properties": {
@@ -9,6 +9,5 @@
             "type": "array"
         }
     },
-    "required": true,
     "type": "object"
 }
