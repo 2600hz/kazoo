@@ -70,11 +70,11 @@ handle_fax_inbound_error(JObj, _Props) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_fax_inbound(DataJObj)
+        'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID)
     end,
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) and is_true_fax_error(JObj) of
         'false' -> lager:debug("filtered notification handling not configured for this account");
-        'true' -> handle_fax_inbound(DataJObj)
+        'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID_FILTERED)
     end.
 
 -spec is_true_fax_error(kz_json:object()) -> boolean().
@@ -84,16 +84,16 @@ is_true_fax_error(JObj) ->
     Codes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"49">>]),
     lists:member(Code, Codes).
 
--spec handle_fax_inbound(kz_json:object()) -> 'ok'.
-handle_fax_inbound(DataJObj) ->
+-spec handle_fax_inbound(kz_json:object(), ne_binary()) -> 'ok'.
+handle_fax_inbound(DataJObj, TemplateId) ->
     Macros = build_template_data(
                kz_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)),
 
     %% Populate templates
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
+    RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
     lager:debug("rendered templates"),
 
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(TemplateId, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
