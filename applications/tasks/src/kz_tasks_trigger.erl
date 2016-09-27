@@ -194,7 +194,7 @@ day_timer() ->
 browse_dbs_timer() ->
     Expiry = ?CLEANUP_TIMER,
     lager:debug("starting cleanup timer for ~b s", [Expiry]),
-    erlang:start_timer(?CLEANUP_TIMER, self(), ok).
+    erlang:start_timer(Expiry * ?MILLISECONDS_IN_SECOND, self(), ok).
 
 
 -spec spawn_jobs(reference(), ne_binary()) -> ok.
