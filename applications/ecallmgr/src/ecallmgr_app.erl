@@ -70,5 +70,5 @@ declare_exchanges() ->
 
 -spec node_bindings() -> 'ok'.
 node_bindings() ->
-    _ = kz_nodes_bindings:bind('ecallmgr', 'ecallmgr_app'),
+    _ = kz_nodes_bindings:bind('ecallmgr', ?MODULE),
     'ok'.
