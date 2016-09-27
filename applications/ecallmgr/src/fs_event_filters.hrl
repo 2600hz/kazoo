@@ -135,6 +135,7 @@
         ,<<"variable_fax_remote_station_id">>
         ,<<"variable_fax_remote_vendor">>
         ,<<"variable_fax_result_text">>
+        ,<<"variable_fax_result_code">>
         ,<<"variable_fax_success">>
         ,<<"variable_fax_timezone">>
         ,<<"variable_fax_transfer_rate">>
