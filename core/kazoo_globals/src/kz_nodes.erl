@@ -38,6 +38,16 @@
         ,code_change/3
         ]).
 
+
+-type request_info() :: {'app', atom()} |
+                        {'media_servers', [{ne_binary(), kz_json:object()}]} |
+                        {'channels', non_neg_integer()} |
+                        {'registrations', non_neg_integer()} |
+                        {'info', whapp_info()}.
+-type request_acc() :: [request_info()].
+
+-export_type([request_acc/0]).
+
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 
@@ -573,13 +583,6 @@ normalize_amqp_uri(URI) ->
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
     lists:foldl(fun kapp_data/2, Node, kapps_controller:list_apps()).
-
--type request_info() :: {'app', atom()} |
-                        {'media_servers', [{ne_binary(), kz_json:object()}]} |
-                        {'channels', non_neg_integer()} |
-                        {'registrations', non_neg_integer()} |
-                        {'info', whapp_info()}.
--type request_acc() :: [request_info()].
 
 -spec request(request_acc()) -> request_acc().
 request(Acc) ->
