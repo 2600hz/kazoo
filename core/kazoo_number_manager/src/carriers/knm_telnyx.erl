@@ -147,7 +147,7 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec search_id(npa | tollfree, pos_integer(), ne_binary(), api_ne_binary()) -> ne_binary().
+-spec search_id(npa | tollfree, pos_integer(), ne_binary(), api_ne_binary()) -> nonempty_string().
 search_id(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),
     SearchIdReq = kz_json:from_list(
