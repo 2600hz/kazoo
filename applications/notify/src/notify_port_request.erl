@@ -248,7 +248,7 @@ get_number_attachments(JObj) ->
         _ -> []
     end.
 
--spec get_port_attachments(kz_json:object()) -> attachments().
+-spec get_port_attachments(ne_binary()) -> attachments().
 get_port_attachments(PortRequestId) ->
     case kz_datamgr:open_cache_doc(?KZ_PORT_REQUESTS_DB, PortRequestId) of
         {'ok', PortJObj} ->

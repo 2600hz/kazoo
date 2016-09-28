@@ -371,7 +371,6 @@ maybe_send_update(User, Props) ->
     end.
 
 -spec send_update(binaries(), kz_proplist()) -> 'ok'.
-send_update([], _Props) -> 'ok';
 send_update(Stalkers, Props) ->
     lager:debug("sending amqp dialog update state ~p for ~s/~s to ~p",
                 [props:get_value(<<"State">>, Props)
