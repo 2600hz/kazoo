@@ -191,7 +191,7 @@ req(post, ["number_searches"], JObj) ->
     case kz_json:get_value([<<"search_descriptor">>, <<"prefix">>], JObj) of
         <<"800">> -> rep_fixture("telnyx_tollfree_search_12.json");
         _ -> rep_fixture("telnyx_npa_search_12.json")
-        end;
+    end;
 req(get, ["number_searches", "411384989406463698"], _) ->
     rep_fixture("telnyx_tollfree_search_22.json");
 req(get, ["number_searches", "411381763818915536"], _) ->
