@@ -266,7 +266,7 @@ maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
 maybe_cid_name(<<Name/binary>>, _) -> Name;
 maybe_cid_name(_, Number) -> Number.
 
--spec build_presence(api_binary(), ne_binary()) -> api_binary().
+-spec build_presence(api_ne_binary(), ne_binary()) -> api_ne_binary().
 build_presence(<<Number/binary>>, Realm) -> <<Number/binary, "@", Realm/binary>>;
 build_presence(_, _) -> 'undefined'.
 
