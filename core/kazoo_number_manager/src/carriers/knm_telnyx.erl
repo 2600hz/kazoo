@@ -271,8 +271,8 @@ maybe_remove_best_effort(false, JObj) ->
 
 -spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
 maybe_apply_limit(JObj) ->
-    Limit = kz_json:get_integer_value(<<"limit">>, JObj),
-    Result = take(Limit, kz_json:get_value(<<"result">>, JObj)),
+    Limit = kz_json:get_integer_value(<<"limit">>, JObj, 0),
+    Result = take(Limit, kz_json:get_value(<<"result">>, JObj, [])),
     kz_json:set_value(<<"result">>, Result, JObj).
 
 -spec take(non_neg_integer(), list()) -> list().

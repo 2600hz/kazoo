@@ -27,8 +27,8 @@ find_numbers(Options) ->
       ,?_assertEqual('true', lists:all(matcher(Prefix), Results))
       }
      ]
-     || {Prefix, Limit} <- [{<<"301359">>, 36}
-                           ,{<<"800">>, 260}
+     || {Prefix, Limit} <- [{<<"301359">>, 5}
+                           ,{<<"800">>, 2}
                            ],
         Results <- [knm_carriers:find(Prefix, Limit, Options)]
     ].
