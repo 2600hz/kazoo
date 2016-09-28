@@ -211,21 +211,21 @@ determine_whapp_zones_fold({Zone, Whapps}, {Whapp, Zones, C}=Acc) ->
 -spec status() -> 'no_return'.
 status() ->
     try
-        Nodes = lists:sort(fun(#kz_node{node=N1}, #kz_node{node=N2}) ->
-                                   N1 > N2
-                           end
-                          ,ets:tab2list(?MODULE)
-                          ),
+        Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
         print_status(Nodes, gen_listener:call(?SERVER, 'zone'))
     catch
-        {'EXIT', {'badarg', _}} ->
-            io:format("status unknown until node is fully initialized, try again in a moment~n", []),
+        error:badarg ->
+            io:format("status unknown until node is fully initialized, try again in a moment\n"),
             'no_return'
     end.
 
+-spec compare_nodes(kz_node(), kz_node()) -> boolean().
+compare_nodes(#kz_node{node = N1}, #kz_node{node = N2}) -> N1 > N2.
+
 -spec print_status(kz_nodes(), atom()) -> 'no_return'.
 print_status(Nodes, Zone) ->
-    _ = [print_node_status(Node, Zone) || Node <- Nodes],
+    F = fun (Node) -> print_node_status(Node, Zone) end,
+    lists:foreach(F, Nodes),
     'no_return'.
 
 -spec print_node_status(kz_node(), atom()) -> 'ok'.
@@ -269,7 +269,7 @@ maybe_print_kapps(Whapps) ->
     case lists:sort(fun compare_apps/2, Whapps) of
         []-> 'ok';
         SortedWhapps ->
-            io:format("WhApps        : ", []),
+            io:format("WhApps        : "),
             status_list(SortedWhapps, 0)
     end.
 
