@@ -14,6 +14,12 @@
         ,start/1
         ]).
 
+%%% API used by Workers
+-export([account_is_done/3
+        ,account_maybe_failed/4
+        ,worker_finished/2
+        ]).
+
 %%% gen_server callbacks
 -export([init/1
         ,handle_cast/2
@@ -41,9 +47,30 @@
                ,timer_ref = cleanup_account_timer() :: reference()
                ,account_ids = [] :: ne_binaries()
                ,retention_passed = 'false' :: boolean()
-               ,retention_startkey = retention_range_startkey() :: gregorian_seconds()
+               ,total_messages = 0 :: non_neg_integer()
+               ,total_succeeded = 0 :: non_neg_integer()
+               ,total_failed = 0 :: non_neg_integer()
+               ,total_account_failed = 0 :: non_neg_integer()
+               ,failed_accounts = [] :: ne_binaries()
+               ,retention_seconds :: gregorian_seconds()
+               ,account_queue :: queue:queue()
                }).
 -type state() :: #state{}.
+
+-define(DEBUG(Format, Args),
+        lager:debug(Format, Args),
+        io:format(Format ++ "\n", Args)
+       ).
+
+-define(WARNING(Format, Args),
+        lager:warning(Format, Args),
+        io:format(Format ++ "\n", Args)
+       ).
+
+-define(ERROR(Format, Args),
+        lager:error(Format, Args),
+        io:format(Format ++ "\n", Args)
+       ).
 
 %%%===================================================================
 %%% API
@@ -62,6 +89,20 @@ start(MigrateSuper) ->
 start_link(MigrateSuper) ->
     gen_server:start_link({'local', ?SERVER}, ?SERVER, MigrateSuper, []).
 
+-spec account_is_done(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+account_is_done(AccountId, FirstOfMonth, LastOfMonth) ->
+    gen_server:call(?SERVER, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, 'normal'}}).
+
+-spec account_maybe_failed(ne_binary(), gregorian_seconds(), gregorian_seconds(), any()) -> 'ok'.
+account_maybe_failed(_AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
+    ?WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
+account_maybe_failed(AccountId, FirstOfMonth, LastOfMonth, Reason) ->
+    gen_server:call(?SERVER, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
+
+-spec worker_finished(ne_binary(), kz_proplist()) -> 'ok'.
+worker_finished(AccountId, Stats) ->
+    gen_server:call(?SERVER, {'update_stats', {AccountId, Stats}}).
+
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -78,13 +119,18 @@ init(MigrateSuper) ->
     lager:debug("started ~s", [?SERVER]),
     case kapps_util:get_all_accounts('raw') of
         [] ->
-            lager:error("no account found, going down", []),
+            ?ERROR("no account found, going down", []),
             _ = kz_util:spawn(fun kvm_migrate_sup:stop/0, []),
             'ignore';
         Ids ->
             self() ! {'start_worker_sup', MigrateSuper},
             AccountIds = kz_util:shuffle_list(Ids),
+            %% start migrating messages in retention durations
+            RetentionSeconds = kvm_util:retention_seconds(),
+            Queue = populate_queue(AccountIds, kz_util:current_tstamp(), RetentionSeconds),
             {'ok', #state{account_ids = AccountIds
+                         ,account_queue = Queue
+                         ,retention_seconds = RetentionSeconds
                          }}
     end.
 
@@ -95,6 +141,36 @@ init(MigrateSuper) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call({'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, 'normal'}}, _From, #state{account_queue = Queue
+                                                                                                }=State) ->
+    ?WARNING("voicemail migration for account ~s is finished, removing it from queue", [AccountId]),
+    NewQueue = remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue),
+    {'reply', 'ok', State#state{account_queue = NewQueue}};
+handle_call({'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}, _From, #state{account_queue = Queue
+                                                                                              ,total_account_failed = TotalAccFailed
+                                                                                              ,failed_accounts = FailedAccounts
+                                                                                              }=State) ->
+    ?WARNING("failed to  migrate voicemail for account ~s with error ~p, removing it from queue", [AccountId, Reason]),
+    NewQueue = remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue),
+    {'reply', 'ok', State#state{account_queue = NewQueue
+                               ,total_account_failed = TotalAccFailed + 1
+                               ,failed_accounts = [AccountId | FailedAccounts]
+                               }};
+handle_call({'update_stats', {AccountId, Props}}, _From, #state{total_messages = TotalMsgs
+                                                               ,total_succeeded = TotalSucceeded
+                                                               ,total_failed = TotalFailed
+                                                               }=State) ->
+    CycleTotalMsgs = props:get_value(<<"total_messages">>, Props),
+    CycleTotalSucceeded = props:get_value(<<"total_succeeded">>, Props),
+    CycleTotalFailed = props:get_value(<<"total_failed">>, Props),
+
+    ?WARNING("a migration cycle for account ~s is done, total messages processed ~n succeeded ~b failed ~b"
+            ,[AccountId, CycleTotalMsgs, CycleTotalSucceeded, CycleTotalFailed]),
+
+    {'reply', 'ok', State#state{total_messages = TotalMsgs + CycleTotalMsgs
+                               ,total_succeeded = TotalSucceeded + CycleTotalSucceeded
+                               ,total_failed = TotalFailed + CycleTotalFailed
+                               }};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -119,7 +195,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
-handle_info({'start_worker_sup', MigrateSuper}, #state{} = State) ->
+handle_info({'start_worker_sup', MigrateSuper}, State) ->
     {'ok', Pid} = supervisor:start_child(MigrateSuper, ?MIGRATE_WORKER_SUP),
     link(Pid),
     {'noreply', State#state{timer_ref = cleanup_account_timer()
@@ -129,7 +205,7 @@ handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
                                                ,worker_refs = []
                                                ,retention_passed = 'true'
                                                }=State) ->
-    lager:warning("voicemail migration is finished, going down"),
+    ?WARNING("voicemail migration is finished, going down", []),
     _ = kz_util:spawn(fun kvm_migrate_sup:stop/0, []),
     {'noreply', State};
 handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
@@ -137,46 +213,53 @@ handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
                                                ,worker_refs = WRefs
                                                ,retention_passed = 'true'
                                                }=State) ->
-    lager:warning("voicemail migration is finished, waiting for ~b workers to done"
-                 ,[length(WRefs)]),
+    ?WARNING("voicemail migration is finished, waiting for ~b workers to done", [length(WRefs)]),
     {'noreply', State};
-handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
-                                               ,timer_ref = TimerRef
-                                               ,retention_passed = 'false'
-                                               }=State) ->
-    lager:warning("all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails"),
-    {'noreply', State#state{account_ids = kapps_util:get_all_accounts('raw')
-                           ,retention_passed = 'true'
-                           ,timer_ref = cleanup_account_timer()
-                           }};
 handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
                                                ,worker_refs = WRefs
                                                ,timer_ref = TimerRef
-                                               ,account_ids = [AccountId | AccountIds]
+                                               ,account_ids = AccountIds
+                                               ,account_queue = Queue
                                                ,retention_passed = IsRetPassed
-                                               ,retention_startkey = RetStartKey
+                                               ,retention_seconds = RetentionSeconds
                                                }=State) when Limit > 0 ->
-    Args = get_next_account_to_process(AccountId, IsRetPassed, RetStartKey),
-    {'ok', Pid} = kvm_migrate_worker_sup:process_account(Args),
-    Ref = erlang:monitor('process', Pid),
-    lager:warning("started a new worker ~p (~b/~b) to process account ~s", [Pid, Limit - 1, Limit, AccountId]),
-    {'noreply', State#state{max_worker = Limit - 1
-                           ,worker_refs = [Ref | WRefs]
-                           ,account_ids = AccountIds
-                           }};
+    case get_next_account_to_process(Queue, IsRetPassed) of
+        'retention_passed' ->
+            ?WARNING("all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails", []),
+            {'noreply', State#state{retention_passed = 'true'
+                                   ,account_queue = populate_queue(AccountIds, RetentionSeconds)
+                                   ,timer_ref = cleanup_account_timer()
+                                   }};
+        'empty' ->
+            %% migration is done waiting for workers to finish their jobs
+            {'noreply', State#state{account_ids = []
+                                   ,retention_passed = 'true'
+                                   ,timer_ref = cleanup_account_timer()
+                                   }};
+        {{_AccountId, _, _} = NextAccount, NewQ} ->
+            {'ok', Pid} = kvm_migrate_worker_sup:process_account(NextAccount),
+            Ref = erlang:monitor('process', Pid),
+            TotalWorkersCount = length(WRefs) + Limit,
+            WorkersCount = length(WRefs) + 1,
+            ?WARNING("started a new worker ~p (~b/~b) to process account ~s"
+                    ,[Pid, WorkersCount, TotalWorkersCount, _AccountId]),
+            {'noreply', State#state{max_worker = Limit - 1
+                                   ,worker_refs = [Ref | WRefs]
+                                   ,account_queue = NewQ
+                                   }}
+    end;
 handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
                                                ,timer_ref = TimerRef
                                                }=State) when Limit =< 0 ->
-    lager:warning("maximum number of migration process reached"),
+    ?WARNING("maximum number of migration process reached", []),
     {'noreply', State};
-handle_info({'DOWN', Ref, 'process', _Pid, _Info}, #state{max_worker = Limit
-                                                         ,worker_refs = WRefs
-                                                         }=State) ->
-    lager:warning("received down msg from worker ~p with reason ~p"
-                 ,[_Pid, _Info]),
-    case worker_by_ref(Ref, State) of
+handle_info({'DOWN', Ref, 'process', _Pid, _Reason}, #state{max_worker = Limit
+                                                           ,worker_refs = WRefs
+                                                           }=State) ->
+    ?WARNING("received down msg from worker ~p with reason ~p", [_Pid, _Reason]),
+    case worker_by_ref(Ref, WRefs) of
         [] ->
-            %% Not ours
+            %% not ours
             {'noreply', State};
         [Ref] ->
             {'noreply', State#state{worker_refs = lists:delete(Ref, WRefs)
@@ -187,18 +270,6 @@ handle_info({'DOWN', Ref, 'process', _Pid, _Info}, #state{max_worker = Limit
 handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
-
--spec get_next_account_to_process(ne_binary(), boolean(), gregorian_seconds()) -> next_account().
-get_next_account_to_process(AccountId, 'false', RetStartKey) ->
-    {AccountId, RetStartKey};
-get_next_account_to_process(AccountId, 'true', _RetStartKey) ->
-    AccountId.
-
--spec worker_by_ref(reference(), state()) -> [reference()].
-worker_by_ref(Ref, State) ->
-    [R || R <- State#state.worker_refs,
-          R =:= Ref
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,8 +307,75 @@ code_change(_OldVsn, State, _Extra) ->
 cleanup_account_timer() ->
     erlang:start_timer(?TIME_BETWEEN_ACCOUNT_CRAWLS, self(), 'ok').
 
-retention_range_startkey() ->
-    Now = kz_util:current_tstamp(),
-    Retention = Now - kvm_util:retention_seconds(),
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Retention),
-    calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}).
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec get_next_account_to_process(queue:queue(), boolean()) ->
+                                          {next_account(), queue:queue()} |
+                                          'empty' |
+                                          'retention_passed'.
+get_next_account_to_process(Queue, IsRetPassed) ->
+    case queue:out(Queue) of
+        {{'value', {AccountId, FirstOfMonth, _LastOfMonth}}, Q} ->
+            PrevMonth = previous_month_timestamp(FirstOfMonth),
+            NextAccount = {AccountId, PrevMonth, FirstOfMonth},
+            {NextAccount, queue:in(NextAccount, Q)};
+        {'empty', _} when IsRetPassed ->
+            'retention_passed';
+        {'empty', _} ->
+            'empty'
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec worker_by_ref(reference(), [reference()]) -> [reference()].
+worker_by_ref(Ref, WRefs) ->
+    [R || R <- WRefs,
+          R =:= Ref
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
+-spec populate_queue(ne_binaries(), gregorian_seconds(), gregorian_seconds()) -> queue:queue().
+populate_queue(AccountIds, RetentionSeconds) ->
+    Diff = kz_util:current_tstamp() - RetentionSeconds,
+    FirstOfMonth = previous_month_timestamp(Diff),
+    Props = [{AccountId, FirstOfMonth, Diff}
+             || AccountId <- AccountIds
+            ],
+    queue:from_list(Props).
+
+populate_queue(AccountIds, LastOfMonth, _RetentionSeconds) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(LastOfMonth),
+    FirstOfMonth = calendar:datetime_to_gregorian_seconds({{Year, Month, 1}, {0, 0, 0}}),
+    Props = [{AccountId, FirstOfMonth, LastOfMonth}
+             || AccountId <- AccountIds
+            ],
+    queue:from_list(Props).
+
+-spec remove_account_from_queue(next_account(), queue:queue()) -> queue:queue().
+remove_account_from_queue(Key, Queue) ->
+    Fun = fun(Item) when Item =:= Key -> 'false';
+             (_) -> 'true'
+          end,
+    queue:filter(Fun, Queue).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec previous_month_timestamp(gregorian_seconds()) -> gregorian_seconds().
+previous_month_timestamp(TimeStamp) ->
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(TimeStamp),
+    {PrevYear, PrevMonth} = kazoo_modb_util:prev_year_month(Year, Month),
+    calendar:datetime_to_gregorian_seconds({{PrevYear, PrevMonth, 1}, {0, 0, 0}}).
