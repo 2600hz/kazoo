@@ -542,6 +542,19 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
               ,{<<"fax_error_correction">>, 'false'}
              ],
     release_job(Result, JObj);
+release_failed_job('fetch_error', Error, JObj) ->
+    Msg = kz_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Error])),
+    Result = [{<<"success">>, 'false'}
+             ,{<<"result_code">>, 0}
+             ,{<<"result_text">>, Msg}
+             ,{<<"pages_sent">>, 0}
+             ,{<<"time_elapsed">>, elapsed_time(JObj)}
+             ,{<<"fax_bad_rows">>, 0}
+             ,{<<"fax_speed">>, 0}
+             ,{<<"fax_receiver_id">>, <<>>}
+             ,{<<"fax_error_correction">>, 'false'}
+             ],
+    release_job(Result, JObj);
 release_failed_job('tx_resp', Resp, JObj) ->
     Msg = wh_json:get_first_defined([<<"Error-Message">>, <<"Response-Message">>], Resp),
     <<"sip:", Code/binary>> = wh_json:get_value(<<"Response-Code">>, Resp, <<"sip:500">>),
