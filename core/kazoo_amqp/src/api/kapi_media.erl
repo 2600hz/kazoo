@@ -33,7 +33,7 @@
                                     ]).
 -define(MEDIA_REQ_VALUES, [{<<"Event-Category">>, <<"media">>}
                           ,{<<"Event-Name">>, <<"media_req">>}
-                          ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>, 'new', 'extant']}
+                          ,{<<"Stream-Type">>, [<<"new">>, <<"extant">>]}
                           ,{<<"Voice">>, [<<"male">>, <<"female">>]}
                           ,{<<"Format">>, [<<"mp3">>, <<"wav">>]}
                           ,{<<"Protocol">>, [<<"http">>, <<"https">>, <<"shout">>, <<"vlc">>]}
@@ -67,7 +67,7 @@
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
--spec req(kz_json:object() | kz_proplist()) ->
+-spec req(api_terms()) ->
                  {'ok', iolist()} |
                  {'error', string()}.
 req(Prop) when is_list(Prop) ->
@@ -77,7 +77,7 @@ req(Prop) when is_list(Prop) ->
     end;
 req(JObj) -> req(kz_json:to_proplist(JObj)).
 
--spec req_v(kz_json:object() | kz_proplist()) -> boolean().
+-spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEDIA_REQ_HEADERS, ?MEDIA_REQ_VALUES, ?MEDIA_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).

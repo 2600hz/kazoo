@@ -41,7 +41,9 @@ start_default_apps() ->
 -spec start_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 start_app(App) when is_atom(App) ->
     case application:ensure_all_started(App) of
-        {'ok', _}=OK -> OK;
+        {'ok', _}=OK ->
+            kz_nodes_bindings:bind(App),
+            OK;
         {'error', _E}=E ->
             lager:error("~s could not start: ~p", [App, _E]),
             E
@@ -52,7 +54,9 @@ start_app(App) ->
 -spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when is_atom(App) ->
     case application:stop(App) of
-        'ok' -> lager:info("stopped kazoo application ~s", [App]);
+        'ok' ->
+            kz_nodes_bindings:bind(App),
+            lager:info("stopped kazoo application ~s", [App]);
         {'error', {'not_started', App}} ->
             lager:error("~s is not currently running", [App]);
         {'error', _E}=Err ->
@@ -195,5 +199,7 @@ list_apps() ->
 
 -spec is_kapp(atom()) -> boolean().
 is_kapp(App) ->
-    {ok, Deps} = application:get_key(App, applications),
-    lists:member(?APP, Deps).
+    case application:get_key(App, 'applications') of
+        {'ok', Deps} -> lists:member(?APP, Deps);
+        'undefined' -> 'false'
+    end.
