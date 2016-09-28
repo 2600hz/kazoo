@@ -10524,6 +10524,44 @@
             },
             "type": "object"
         },
+        "system_config.number_manager.telnyx": {
+            "description": "Schema for number_manager.telnyx system_config",
+            "properties": {
+                "debug": {
+                    "default": false,
+                    "description": "number_manager.telnyx debug",
+                    "type": "boolean"
+                },
+                "enable_provisioning": {
+                    "default": true,
+                    "description": "number_manager.telnyx enable provisioning",
+                    "type": "boolean"
+                },
+                "sandbox_provisioning": {
+                    "default": false,
+                    "description": "number_manager.telnyx sandbox provisioning",
+                    "type": "boolean"
+                },
+                "should_keep_best_effort": {
+                    "default": false,
+                    "description": "number_manager.telnyx should keep best effort",
+                    "type": "boolean"
+                },
+                "token": {
+                    "description": "number_manager.telnyx token",
+                    "type": "string"
+                },
+                "user": {
+                    "description": "number_manager.telnyx user",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "token",
+                "user"
+            ],
+            "type": "object"
+        },
         "system_config.number_manager.vitelity": {
             "description": "Schema for number_manager.vitelity system_config",
             "properties": {
