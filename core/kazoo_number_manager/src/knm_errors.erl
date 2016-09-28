@@ -121,7 +121,7 @@ number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
 -spec by_carrier(module(), ne_binary() | atom(), ne_binary() | kn()) -> no_return().
-by_carrier(Carrier, E, Num=?NE_BINARY) ->
+by_carrier(Carrier, E, Num) when is_binary(Num) ->
     throw({'error', 'by_carrier', Num, {Carrier,E}});
 by_carrier(Carrier, E, Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
