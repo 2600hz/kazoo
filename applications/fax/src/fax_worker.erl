@@ -543,7 +543,7 @@ release_failed_job('fetch_error', {Cause, _}, JObj) ->
              ],
     release_job(Result, JObj);
 release_failed_job('fetch_error', Error, JObj) ->
-    Msg = kz_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Error])),
+    Msg = wh_util:to_binary(io_lib:format("could not connect to document URL: ~s", [Error])),
     Result = [{<<"success">>, 'false'}
              ,{<<"result_code">>, 0}
              ,{<<"result_text">>, Msg}
