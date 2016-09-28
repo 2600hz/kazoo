@@ -144,7 +144,7 @@
                  ,use_person_not_available = 'false' :: boolean()
                  ,not_configurable = 'false' :: boolean()
                  ,account_db :: api_binary()
-         }).
+                 }).
 -type mailbox() :: #mailbox{}.
 
 %%--------------------------------------------------------------------
