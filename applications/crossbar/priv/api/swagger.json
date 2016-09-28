@@ -12764,7 +12764,7 @@
             "required": true,
             "type": "object"
         },
-        "whitelabels": {
+        "whitelabel": {
             "description": "Whitelabel settings",
             "properties": {
                 "company_name": {
@@ -20822,6 +20822,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -20832,6 +20840,14 @@
             },
             "put": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
@@ -20857,6 +20873,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -20880,6 +20904,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
@@ -20905,6 +20937,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -20928,6 +20968,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "whitelabel",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/whitelabel"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true

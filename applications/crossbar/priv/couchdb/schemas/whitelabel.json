@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
-    "_id": "whitelabels",
+    "_id": "whitelabel",
     "description": "Whitelabel settings",
     "properties": {
         "company_name": {
