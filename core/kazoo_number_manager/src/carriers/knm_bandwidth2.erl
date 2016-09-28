@@ -64,26 +64,6 @@
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
--define(IS_US_TOLLFREE(Prefix)
-       ,Prefix == <<"800">>
-            orelse Prefix == <<"822">>
-            orelse Prefix == <<"833">>
-            orelse Prefix == <<"844">>
-            orelse Prefix == <<"855">>
-            orelse Prefix == <<"866">>
-            orelse Prefix == <<"877">>
-            orelse Prefix == <<"880">>
-            orelse Prefix == <<"881">>
-            orelse Prefix == <<"882">>
-            orelse Prefix == <<"883">>
-            orelse Prefix == <<"884">>
-            orelse Prefix == <<"885">>
-            orelse Prefix == <<"886">>
-            orelse Prefix == <<"887">>
-            orelse Prefix == <<"888">>
-            orelse Prefix == <<"889">>
-       ).
-
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
