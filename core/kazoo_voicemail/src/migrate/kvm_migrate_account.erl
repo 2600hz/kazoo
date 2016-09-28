@@ -33,7 +33,7 @@
         kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
 
 -define(MAX_BULK_INSERT,
-        kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], kz_datamgr:max_bulk_insert())).
+        kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_bulk_insert">>], 2000)).
 
 -define(LEGACY_MSG_LISTING, <<"vmboxes/legacy_msg_by_timestamp">>).
 
@@ -360,10 +360,10 @@ update_message_array(BoxJObj, Succeeded, MODbFailed, Failed) ->
                   {'true', _, _} -> Acc;
                   {_, 'true', _} ->
                       Error = dict:fetch(MsgId, MODbFailed),
-                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error)) | Acc];
+                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
                   {_, _, 'true'} ->
                       Error = dict:fetch(MsgId, Failed),
-                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error)) | Acc]
+                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc]
               end
           end,
     NewMessages = lists:foldl(Fun, [], Messages),

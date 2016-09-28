@@ -8,7 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(kvm_maintenance).
 
--export([migrate/0, migrate/1, migrate/2
+-export([migrate/0
+        % ,migrate/1
+        % ,migrate/2
         ]).
 
 -include("kz_voicemail.hrl").
@@ -27,14 +29,14 @@
 migrate() ->
     kvm_migrate_sup:start_link().
 
--spec migrate(ne_binary()) -> 'ok'.
--spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
-migrate(AccountId) ->
-    kvm_migrate_account:migrate(AccountId).
+% -spec migrate(ne_binary()) -> 'ok'.
+% -spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
+% migrate(AccountId) ->
+%     kvm_migrate_account:migrate(AccountId).
 
-migrate(AccountId, <<_/binary>> = BoxId) ->
-    migrate(AccountId, [BoxId]);
-migrate(AccountId, BoxIds) when is_list(BoxIds) ->
-    kvm_migrate_account:migrate(AccountId, BoxIds);
-migrate(AccountId, Box) ->
-    migrate(AccountId, kz_doc:id(Box)).
+% migrate(AccountId, <<_/binary>> = BoxId) ->
+%     migrate(AccountId, [BoxId]);
+% migrate(AccountId, BoxIds) when is_list(BoxIds) ->
+%     kvm_migrate_account:migrate(AccountId, BoxIds);
+% migrate(AccountId, Box) ->
+%     migrate(AccountId, kz_doc:id(Box)).

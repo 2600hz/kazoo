@@ -99,8 +99,10 @@ rebuild_token_auth(Pause) ->
 %%--------------------------------------------------------------------
 -spec migrate_to_4_0() -> no_return.
 migrate_to_4_0() ->
-    %%TODO: add KVM migration here
+    %% Number migration
     knm_maintenance:migrate(),
+    %% Voicemail migration
+    kvm_maintenance:migrate(),
     no_return.
 
 %%--------------------------------------------------------------------
