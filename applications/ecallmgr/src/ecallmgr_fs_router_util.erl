@@ -126,9 +126,6 @@ route_resp_xml(_, Section, JObj, Props) ->
 
 -spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
 route_req(CallId, FetchId, Props, Node) ->
-    SwitchURL = ecallmgr_fs_node:sip_url(Node),
-    [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
-    SwitchURI = <<"sip:", SwitchURIHost/binary>>,
     props:filter_empty(
       [{<<"Msg-ID">>, FetchId}
       ,{<<"Call-ID">>, CallId}
@@ -146,8 +143,8 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
       ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
       ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
-      ,{<<"Switch-URL">>, SwitchURL}
-      ,{<<"Switch-URI">>, SwitchURI}
+      ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
+      ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(route_req_ccvs(FetchId, Props))}
       ,{<<"Custom-SIP-Headers">>, kz_json:from_list(ecallmgr_util:custom_sip_headers(Props))}
       ,{<<"Resource-Type">>, kzd_freeswitch:resource_type(Props, <<"audio">>)}
