@@ -205,8 +205,8 @@ status() ->
         Nodes = lists:sort(fun compare_nodes/2, ets:tab2list(?MODULE)),
         print_status(Nodes, gen_listener:call(?SERVER, 'zone'))
     catch
-        {'EXIT', {'badarg', _}} ->
-            io:format("status unknown until node is fully initialized, try again in a moment~n", []),
+        error:badarg ->
+            io:format("status unknown until node is fully initialized, try again in a moment\n"),
             'no_return'
     end.
 
