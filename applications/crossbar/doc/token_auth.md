@@ -1,6 +1,8 @@
-
+### Token_auth
 
 Authentication tokens are generated using one of the authentication endpoints exposed by Crossbar. See [User Authentication](./user_authentication.md) and [API Authentication](./api_authentication.md) as examples of generating authentication tokens.
+
+#### About Token_auth
 
 Once you have an authentication token, you can access various Crossbar resource endpoints to manipulate the system or your account (provided you have the access).
 
@@ -14,10 +16,12 @@ For example, when creating an authentication token via [API key](./api_authentic
 
 ```json
 {
-    "data":{
-        "api_key":"{API_KEY}",
-        "restrictions":{
-            "get":["#"]
+    "data": {
+        "api_key": "{API_KEY}",
+        "restrictions": {
+            "get": [
+                "#"
+            ]
         }
     }
 }
@@ -25,24 +29,24 @@ For example, when creating an authentication token via [API key](./api_authentic
 
 AMQP binding tokens are used (`#` and `*`) to denote wildcards. An example with more fine-grained restrictions:
 
-``json
+```json
 {
-    "data":{
-        "api_key":"{API_KEY}",
-        "restrictions":{
-            "get":[
+    "data": {
+        "api_key": "{API_KEY}",
+        "restrictions": {
+            "delete": [
+                "accounts/{ACCOUNT_ID}/users/*"
+            ],
+            "get": [
                 "accounts/{ACCOUNT_ID}/users",
                 "accounts/{ACCOUNT_ID}/users/*",
                 "accounts/{ACCOUNT_ID}/users/*/*"
             ],
-            "put":[
+            "post": [
+                "accounts/{ACCOUNT_ID}/users/*"
+            ],
+            "put": [
                 "accounts/{ACCOUNT_ID}/users"
-            ],
-            "post":[
-                "accounts/{ACCOUNT_ID}/users/*"
-            ],
-            "delete":[
-                "accounts/{ACCOUNT_ID}/users/*"
             ]
         }
     }
@@ -53,10 +57,10 @@ This would restrict the authentication token to only be able to access {ACCOUNT_
 
 ```json
 {
-    "data":{
-        "api_key":"{API_KEY}",
-        "restrictions":{
-            "*":[
+    "data": {
+        "api_key": "{API_KEY}",
+        "restrictions": {
+            "*": [
                 "accounts/{ACCOUNT_ID}/users/#"
             ]
         }
@@ -66,22 +70,71 @@ This would restrict the authentication token to only be able to access {ACCOUNT_
 
 Here the `#` matches 0 or more segments after `/users`.
 
-#### API Endpoint
 
-URL segment: `/token_auth`
+#### Delete an authentication token
 
-#### Sample cURL Requests
-
-##### Delete an authentication token
+> DELETE /v2/token_auth
 
 If you'd like to invalidate an authentication token programmatically (versus letting the system expire the token), you can issue a `DELETE`:
 
 ```shell
-curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v1/token_auth -d '{"data": {}}'
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth
 ```
 
 ```json
 {
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+#### Check auth token validity
+
+> GET /v2/token_auth
+
+This will tell you whether the auth token constitutes valid credentials.
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/token_auth
+```
+
+##### Response when invalid
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "invalid credentials"
+    },
+    "error": "401",
+    "message": "invalid_credentials",
+    "request_id": "{REQUEST_ID}",
+    "status": "error"
+}
+```
+
+##### Response when OK
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "account_id": "{ACCOUNT_ID}",
+        "account_name": "{ACCOUNT_NAME}",
+        "apps": [
+        ],
+        "id": "{AUTH_TOKEN}",
+        "is_reseller": false,
+        "language": "en-us",
+        "method": "cb_user_auth",
+        "owner_id": "8e248327b85591955749e53ea45b6baa",
+        "reseller_id": "6b71cb72c876b5b1396a335f8f8a2594"
+    },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
