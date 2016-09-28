@@ -156,7 +156,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     try ecallmgr_fs_node:sip_url(Node) of
         'undefined' ->
             lager:debug("no sip url available yet for ~s", [Node]),
-            handle_no_switch({'tcp', Socket, Data}, State);
+            {'noreply', State, 'hibernate'};
         SwitchURL ->
             [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
             SwitchURI = <<"sip:", SwitchURIHost/binary>>,
@@ -167,7 +167,7 @@ handle_info({'tcp', Socket, Data}, #state{socket=Socket
     catch
         _E:_R ->
             lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
-            handle_no_switch({'tcp', Socket, Data}, State)
+            {'noreply', State, 'hibernate'}
     end;
 handle_info({'tcp', Socket, Data}, #state{socket=Socket
                                          ,node=Node
@@ -221,15 +221,6 @@ handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
                                        )
         ++ Props ,
     kz_util:spawn(fun process_stream/4, [EventName, UUID, EventProps, Node]).
-
--spec handle_no_switch({'tcp', any(), binary()}, state()) ->
-                              {'noreply', state(), kz_timeout()} |
-                              {'stop', any(), state()}.
-handle_no_switch({'tcp', Socket, Data}, State) ->
-    case handle_info({'tcp', Socket, Data}, State#state{switch_info='true'}) of
-        {'noreply', _State, Timeout} -> {'noreply', State, Timeout};
-        {'stop', _Reason, _State}=STOP -> STOP
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

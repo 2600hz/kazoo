@@ -24,6 +24,9 @@
 
 -record(state, {node = 'undefined' :: atom()
                ,options = [] :: kz_proplist()
+               ,switch_url :: api_binary()
+               ,switch_uri :: api_binary()
+               ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -120,6 +123,26 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+
+handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
+           ,#state{node=Node, switch_info='false'}=State) ->
+    try ecallmgr_fs_node:sip_url(Node) of
+        'undefined' ->
+            lager:debug("no sip url available yet for ~s, rejecting route request", [Node]),
+            {'noreply', State, 'hibernate'};
+        SwitchURL ->
+            [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
+            SwitchURI = <<"sip:", SwitchURIHost/binary>>,
+            handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData},
+                        State#state{switch_uri=SwitchURI
+                                   ,switch_url=SwitchURL
+                                   ,switch_info='true'
+                                   })
+    catch
+        _E:_R ->
+            lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
+            {'noreply', State, 'hibernate'}
+    end;
 handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
     handle_fetch(Section, FSId, CallId, FSData, Node),
     {'noreply', State, 'hibernate'};
