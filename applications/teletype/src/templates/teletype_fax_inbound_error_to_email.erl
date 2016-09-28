@@ -72,16 +72,17 @@ handle_fax_inbound_error(JObj, _Props) ->
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID)
     end,
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) and is_true_fax_error(JObj) of
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) and is_true_fax_error(AccountId, JObj) of
         'false' -> lager:debug("filtered notification handling not configured for this account");
         'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID_FILTERED)
     end.
 
--spec is_true_fax_error(kz_json:object()) -> boolean().
-is_true_fax_error(JObj) ->
+-spec is_true_fax_error(ne_binary(), kz_json:object()) -> boolean().
+is_true_fax_error(AccountId, JObj) ->
     Code = kz_json:get_value(<<"Fax-Result-Code">>, JObj),
     %% see: https://wiki.freeswitch.org/wiki/Variable_fax_result_code
-    Codes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"0">>, <<"49">>]),
+    DefaultCodes = kapps_config:get(?MOD_CONFIG_CAT, <<"filter_error_codes">>, [<<"0">>, <<"49">>]),
+    Codes = kapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, <<"filter_error_codes">>, DefaultCodes),
     not lists:member(Code, Codes).
 
 -spec handle_fax_inbound(kz_json:object(), ne_binary()) -> 'ok'.
