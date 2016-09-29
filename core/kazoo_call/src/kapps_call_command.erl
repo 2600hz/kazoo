@@ -206,6 +206,9 @@
         ]).
 
 -export([sound_touch_command/2, start_sound_touch/2, stop_sound_touch/1]).
+-export([hold_control/1, hold_control/2
+        ,hold_control_command/1, hold_control_command/2
+        ]).
 
 -type audio_macro_prompt() :: {'play', binary()} | {'play', binary(), binaries()} |
                               {'prompt', binary()} | {'prompt', binary(), ne_binaries()} |
@@ -1181,6 +1184,32 @@ b_hold(MOH, Call) -> b_hold('infinity', MOH, Call).
 b_hold(Timeout, MOH, Call) ->
     hold(MOH, Call),
     wait_for_message(Call, <<"hold">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"call_event">>, Timeout).
+
+-spec hold_control(kapps_call:call()) -> 'ok'.
+-spec hold_control(api_binary(), kapps_call:call()) -> 'ok'.
+
+-spec hold_control_command(kapps_call:call() | ne_binary()) ->
+                                  kz_json:object().
+-spec hold_control_command(api_binary(), kapps_call:call() | ne_binary()) ->
+                                  kz_json:object().
+
+hold_control(Call) -> hold_control(<<"toggle">>, Call).
+hold_control(Action, Call) ->
+    Command = hold_control_command(Action, Call),
+    send_command(Command, Call).
+
+hold_control_command(Call) ->
+    hold_control_command(<<"toggle">>, Call).
+hold_control_command(Action, CallId=?NE_BINARY) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"Application-Name">>, <<"hold_control">>}
+        ,{<<"Insert-At">>, <<"now">>}
+        ,{<<"Action">>, Action}
+        ,{<<"Call-ID">>, CallId}
+        ]));
+hold_control_command(Action, Call) ->
+    hold_control_command(Action, kapps_call:call_id_direct(Call)).
 
 -spec park(kapps_call:call()) -> 'ok'.
 park(Call) ->

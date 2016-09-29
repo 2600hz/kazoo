@@ -134,6 +134,26 @@
                     "$ref": "metaflow_children"
                 },
                 "data": {
+                    "$ref": "metaflow.hold_control"
+                },
+                "module": {
+                    "enum": [
+                        "hold_control"
+                    ]
+                }
+            },
+            "required": [
+                "module"
+            ],
+            "type": "object"
+        },
+        {
+            "additionalProperties": false,
+            "properties": {
+                "children": {
+                    "$ref": "metaflow_children"
+                },
+                "data": {
                     "$ref": "metaflow.intercept"
                 },
                 "module": {
