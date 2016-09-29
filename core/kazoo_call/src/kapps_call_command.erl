@@ -1189,9 +1189,9 @@ b_hold(Timeout, MOH, Call) ->
 -spec hold_control(api_binary(), kapps_call:call()) -> 'ok'.
 
 -spec hold_control_command(kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
+                                  kz_json:object().
 -spec hold_control_command(api_binary(), kapps_call:call() | ne_binary()) ->
-                          kz_json:object().
+                                  kz_json:object().
 
 hold_control(Call) -> hold_control(<<"toggle">>, Call).
 hold_control(Action, Call) ->
