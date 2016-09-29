@@ -231,7 +231,7 @@ curl -v -X GET \
 
 #### Get consumed allotments at certain time
 
-`{{TIMESTAMP}}` - Gregorian epoch seconds.
+`{TIMESTAMP}` - Gregorian epoch seconds.
 
 ```shell
 curl -v -X GET \

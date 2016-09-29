@@ -241,8 +241,9 @@ The last field, **play_entry_tone**, is at the root of the document: meaning thi
 
 #### Actions
 
-Actions are JSON objects in format: 
-```
+Actions are JSON objects in format:
+
+```json
 {
     "action": {action}
 }
@@ -268,7 +269,7 @@ Actions are JSON objects in format:
 ### Web-socket events
 
 A client may subscribe to conference event using websocket connection. Participant events are published as
-amqp conference.event.{conference_id}.{call_id}, where call_id is participant"s call. 
+amqp conference.event.{conference_id}.{call_id}, where call_id is participant"s call.
 
 The list of published events is determined by *publish_participant_event* parameter of ecallmgr configuration,
 if parameter is unset, then all events are published.

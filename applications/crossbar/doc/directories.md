@@ -69,7 +69,7 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 ```
 
-If your client doesn't support setting the `Accept` header, you can append `?accept=pdf` to the URI and Kazoo will pretend you sent the proper `Accept` header
+If your client doesn't support setting the `Accept` header, you can append `?accept=pdf` to the URI and Kazoo will pretend you sent the proper `Accept` header.
 
 #### Patch
 

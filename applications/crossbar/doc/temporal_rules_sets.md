@@ -10,7 +10,8 @@ The structure is really simple:
 * `temporal_rules`: A list of temporal rule IDs
 
 Ex:
-```
+
+```json
     "name": "July",
     "temporal_rules": [
         "452d5706f66377970996b2ec1c0fc04a",

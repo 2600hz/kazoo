@@ -8,8 +8,10 @@ The structure is really simple:
 
 * `name`: A freindly name for your blacklist.
 * `numbers`: A map of caller id to block
+
 Ex:
-```
+
+```json
 {
     "name": "Main Blacklist",
     "numbers": {
@@ -25,7 +27,7 @@ When you upload numbers they will be converted to e164 format.
 
 Once you created your blacklists using the api you can apply them to the account by adding the blacklist ids to the account, like the following:
 
-```
+```json
 "blacklists": [
     "dbfc14854a06bab3014898b6b4e1ffa0", // Main blacklist
     "davb14854a06bab3542132b6b4e1ffa0"  // Secondary blacklist

@@ -8,7 +8,7 @@ The Channels API allows queries to find active channels for an account, a user, 
 #### Fetch active channels system wide.
 
 For superduper admin only.
-Be sure to set system_config->crossbar.channels->system_wide_channels_list flag to 'true'.
+Be sure to set `system_config`->`crossbar.channels`->`system_wide_channels_list` flag to `true`.
 
 > GET /v2/channels
 
@@ -28,6 +28,9 @@ curl -v -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
