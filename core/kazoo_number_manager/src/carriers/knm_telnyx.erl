@@ -236,9 +236,7 @@ http_options() ->
 rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
     lager:debug("received response"),
-    maybe_apply_limit(
-      maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, kz_json:decode(Response))
-     );
+    maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, kz_json:decode(Response));
 rep({'ok', Code, _Headers, _Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, _Response]),
     Reason = http_code(Code),
@@ -268,18 +266,5 @@ maybe_remove_best_effort(false, JObj) ->
                       ],
             kz_json:set_value(<<"result">>, Results, JObj)
     end.
-
--spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
-maybe_apply_limit(JObj) ->
-    Limit = kz_json:get_integer_value(<<"limit">>, JObj, 0),
-    Result = take(Limit, kz_json:get_value(<<"result">>, JObj, [])),
-    kz_json:set_value(<<"result">>, Result, JObj).
-
--spec take(non_neg_integer(), list()) -> list().
-take(0, _) -> [];
-take(N, L)
-  when is_integer(N), N > 0 ->
-    lager:debug("asked for ~p results, got ~p", [N, length(L)]),
-    lists:sublist(L, N).
 
 %%% End of Module
