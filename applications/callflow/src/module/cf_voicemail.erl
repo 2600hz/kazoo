@@ -116,7 +116,7 @@
 
 -define(KEY_LENGTH, 1).
 
--record(mailbox, {mailbox_id = 'undefined' :: api_binary()
+-record(mailbox, {mailbox_id :: api_binary()
                  ,mailbox_number = <<>> :: binary()
                  ,exists = 'false' :: boolean()
                  ,skip_instructions = 'false' :: boolean()
