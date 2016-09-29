@@ -193,6 +193,7 @@ get_databases() ->
 refresh(?KZ_CONFIG_DB) ->
     kz_datamgr:db_create(?KZ_CONFIG_DB),
     kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
+    kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
     cleanup_invalid_notify_docs(),
     delete_system_media_references();
 refresh(?KZ_DATA_DB) ->
