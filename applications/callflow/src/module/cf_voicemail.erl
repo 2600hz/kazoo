@@ -116,8 +116,7 @@
 
 -define(KEY_LENGTH, 1).
 
--record(mailbox, {
-          mailbox_id :: api_binary()
+-record(mailbox, {mailbox_id :: api_binary()
                  ,mailbox_number = <<>> :: binary()
                  ,exists = 'false' :: boolean()
                  ,skip_instructions = 'false' :: boolean()
@@ -145,7 +144,7 @@
                  ,use_person_not_available = 'false' :: boolean()
                  ,not_configurable = 'false' :: boolean()
                  ,account_db :: api_binary()
-         }).
+                 }).
 -type mailbox() :: #mailbox{}.
 
 %%--------------------------------------------------------------------
@@ -212,7 +211,9 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when
     'ok';
 check_mailbox(#mailbox{exists='false'}=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
-    find_mailbox(Box, Call, Loop);
+    Resp = find_mailbox(Box, Call, Loop),
+    _ = send_mwi_update(Box, Call),
+    Resp;
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
@@ -1778,6 +1779,10 @@ is_owner(Call, OwnerId) ->
     end.
 
 -spec send_mwi_update(mailbox(), kapps_call:call()) -> 'ok'.
+send_mwi_update(#mailbox{mailbox_id='undefined'
+                        }
+               ,_Call) ->
+    'ok';
 send_mwi_update(#mailbox{owner_id=OwnerId
                         ,mailbox_number=BoxNumber
                         ,account_db=AccountDb
