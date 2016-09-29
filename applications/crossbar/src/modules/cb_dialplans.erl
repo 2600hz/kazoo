@@ -18,7 +18,7 @@
         ]).
 
 -include("crossbar.hrl").
--define(ACCOUNT_CONFIG, <<"config">>).
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".dialplans">>).
 
 %%%===================================================================
 %%% API
@@ -78,7 +78,7 @@ get_joined_dialplans(AccountId) ->
 get_dialplans('undefined') ->
     kapps_config:get_all_kvs(<<"dialplans">>);
 get_dialplans(AccountId) ->
-    JObj = kapps_account_config:get_global(AccountId, ?ACCOUNT_CONFIG, <<"dialplans">>, {[]}),
+    JObj = kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, <<"dialplans">>, {[]}),
     kz_json:to_proplist(JObj).
 
 -spec maybe_add_name(kz_proplist()) -> kz_json:object().
