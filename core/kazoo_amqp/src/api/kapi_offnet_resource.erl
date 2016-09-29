@@ -187,7 +187,8 @@ req(JObj) -> req(kz_json:to_proplist(JObj)).
 
 -spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
+    kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES)
+        andalso not kz_util:is_empty(props:get_value(?KEY_TO_DID, Prop));
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
