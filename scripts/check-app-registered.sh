@@ -16,10 +16,6 @@ function registered() {
     local errors=0
 
     local regs=''; for f in $(\grep -IE -l -r ":start_link\\(\\{'local', \?SERVER" $app/src/); do regs="$regs, $(basename $f .erl)"; done; echo ${regs##, } | sort
-    # if [[ ! -n "${regs##}" ]]; then
-    #     echo EDIT $app_src !!
-    #     ((errors += 1))
-    # fi
 
     git grep -InE $re'\?MODULE' -- $app/src
     local count=0; [[ $? -eq 0 ]] && count=$(git grep -InE  $re'\?MODULE' -- $app/src | wc -l)

@@ -48,7 +48,7 @@ start_link(JObj) ->
                                      ,{'consume_options', ?CONSUME_OPTIONS}
                                      ], [JObj]).
 
--spec init(kz_json:object()) -> {'ok', state()}.
+-spec init([kz_json:object()]) -> {'ok', state()}.
 init([JObj]) ->
     ALegName = kz_json:get_value(<<"a_leg_name">>, JObj),
     ALegNumber = kz_json:get_value(<<"a_leg_number">>, JObj),
@@ -242,7 +242,7 @@ handle_resource_response(JObj, Props) ->
         _ -> 'ok'
     end.
 
--spec handle_originate_response(kz_json:object(), server_ref()) -> 'ok'.
+-spec handle_originate_response(kz_json:object(), gen_listener:callback_data()) -> 'ok'.
 handle_originate_response(JObj, Props) ->
     Srv = props:get_value('server', Props),
     case {kz_json:get_value(<<"Application-Name">>, JObj)
@@ -285,14 +285,15 @@ b_leg_number(Props) ->
             BLegNumber
     end.
 
--spec maybe_make_announcement_to_a_leg(kz_proplist()) -> ne_binary().
+-spec maybe_make_announcement_to_a_leg(kz_proplist()) -> 'ok'.
 maybe_make_announcement_to_a_leg(Props) ->
     case props:get_value('media_id', Props) of
         <<MediaId:32/binary>> ->
             Call = call(Props),
             MediaPath = kz_media_util:media_path(MediaId, Call),
             _ = timer:sleep(?PROMPT_DELAY),
-            kapps_call_command:b_play(MediaPath, Call);
+            _ = kapps_call_command:b_play(MediaPath, Call),
+            'ok';
         _ -> 'ok'
     end.
 

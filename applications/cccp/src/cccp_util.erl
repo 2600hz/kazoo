@@ -189,7 +189,7 @@ cccp_allowed_callee(Number) ->
             'true'
     end.
 
--spec build_request(_,ne_binary(),_,_,_,ne_binary(),_,ne_binary(),ne_binary(),ne_binary()) -> any().
+-spec build_request(api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), api_binary(), ne_binary(),binary(),binary()) -> kz_proplist().
 build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainCID, RetainName, RetainNumber) ->
     Realm = kz_util:get_account_realm(AccountId),
     CCVs = props:filter_undefined([{<<"Account-ID">>, AccountId}
@@ -232,12 +232,13 @@ build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainC
        | kz_api:default_headers(Q, <<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
--spec bridge(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec bridge(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), binary(), binary()) -> 'ok'.
 bridge(CallId, ToDID, AuthorizingId, CtrlQ, AccountId, RetainCID, RetainName, RetainNumber) ->
     Req = build_request(CallId, ToDID, AuthorizingId, 'undefined', CtrlQ, AccountId, <<"bridge">>, RetainCID, RetainName, RetainNumber),
     kapi_resource:publish_originate_req(Req).
 
--spec compose_cid(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec compose_cid(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
+                         {api_binary(), api_binary()}.
 compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
     case RetainCID of
         <<"true">> ->
@@ -246,9 +247,11 @@ compose_cid(ToDID, RetainCID, RetainNumber, RetainName, AccountId) ->
             {'undefined','undefined'}
     end.
 
--spec maybe_outbound_call(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {ne_binary(), ne_binary()}.
+-spec maybe_outbound_call(ne_binary(), binary(), binary(), ne_binary()) ->
+                                 {binary(), binary()}.
 maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
     case knm_converters:is_reconcilable(ToDID) of
+        'false' -> {RetainNumber, RetainName};
         'true' ->
             case knm_converters:is_reconcilable(RetainNumber) of
                 'true' ->
@@ -256,23 +259,23 @@ maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
                 'false' ->
                     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
                     kz_attributes:maybe_get_assigned_number('undefined', RetainName, AccountDb)
-            end;
-        _ ->
-            {RetainNumber, RetainName}
+            end
     end.
 
 -spec maybe_cid_name(ne_binary(), ne_binary()) -> ne_binary().
 maybe_cid_name(<<Name/binary>>, _) -> Name;
 maybe_cid_name(_, Number) -> Number.
 
--spec build_presence(ne_binary()|'undefined', ne_binary()) -> ne_binary()|'undefined'.
+-spec build_presence(api_ne_binary(), ne_binary()) -> api_ne_binary().
 build_presence(<<Number/binary>>, Realm) -> <<Number/binary, "@", Realm/binary>>;
 build_presence(_, _) -> 'undefined'.
 
 -spec current_account_outbound_directions(ne_binary()) -> ne_binaries().
 current_account_outbound_directions(AccountId) ->
-    [kz_json:get_value(<<"destination">>, Channel) || Channel <- current_account_channels(AccountId)
-                                                          ,kz_json:get_value(<<"direction">>, Channel) == <<"outbound">>].
+    [kz_json:get_value(<<"destination">>, Channel)
+     || Channel <- current_account_channels(AccountId),
+        <<"outbound">> =:= kz_json:get_value(<<"direction">>, Channel)
+    ].
 
 -spec count_user_legs(ne_binary(), ne_binary()) -> integer().
 count_user_legs(UserId, AccountId) ->

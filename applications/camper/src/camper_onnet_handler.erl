@@ -262,7 +262,6 @@ get_endpoints(Call, EndpointId, <<"device">>) ->
                                    ]),
     case kz_endpoint:build(EndpointId, Properties, Call) of
         {'error', _} -> [];
-        {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
     end;
 get_endpoints(Call, UserId, <<"user">>) ->
@@ -274,7 +273,10 @@ get_endpoints(Call, UserId, <<"user">>) ->
                             {'ok', Endpoint} -> Endpoint ++ Acc;
                             {'error', _E} -> Acc
                         end
-                end, [], kz_attributes:owned_by(UserId, <<"device">>, Call));
+                end
+               ,[]
+               ,kz_attributes:owned_by(UserId, <<"device">>, Call)
+               );
 get_endpoints(_, _, _) ->
     [].
 
@@ -288,13 +290,21 @@ clear_request(Requestor, Exten, Local) ->
                         Qs1 = dict:store(SIPName, Queue, Qs),
                         Reqs = dict:erase({SIPName, Requestor}, get_requests(Acc)),
                         set_requests(set_requestor_queues(Acc, Qs1), Reqs)
-                end, Local, SIPNames).
+                end
+               ,Local
+               ,SIPNames
+               ).
 
 -spec make_requests(ne_binaries(), {ne_binary(), ne_binary()}, ne_binary(), non_neg_integer()) -> dict:dict().
 make_requests(SIPNames, Requestor, Exten, Timeout) ->
     R = [{SIPName, Requestor} || SIPName <- SIPNames],
     {_, Seconds, _} = os:timestamp(),
-    lists:foldl(fun(Req, Acc) -> dict:store(Req, {Exten, Seconds + Timeout}, Acc) end, dict:new(), R).
+    lists:foldl(fun(Req, Acc) ->
+                        dict:store(Req, {Exten, Seconds + Timeout}, Acc)
+                end
+               ,dict:new()
+               ,R
+               ).
 
 -spec maybe_update_queues(ne_binaries(), {ne_binary(), ne_binary()}, dict:dict()) -> dict:dict().
 maybe_update_queues(SIPNames, Requestor, Queues) ->

@@ -83,12 +83,12 @@ default_profile() ->
                     ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
                     ).
 
--spec page_profile() -> wh_json:object().
+-spec page_profile() -> kz_json:object().
 page_profile() ->
-    kapps_config:get(?CONFIG_CAT
-                    ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
-                    ,kz_json:from_list(?PAGE_PROFILE_CONFIG)
-                    ).
+    kapps_config:get_json(?CONFIG_CAT
+                         ,[<<"profiles">>, ?PAGE_PROFILE_NAME]
+                         ,kz_json:from_list(?PAGE_PROFILE_CONFIG)
+                         ).
 
 -spec profiles(ne_binary(), kz_json:object()) -> kz_json:object().
 profiles(ConfigName, Profile) ->

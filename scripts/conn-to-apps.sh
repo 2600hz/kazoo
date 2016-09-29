@@ -18,11 +18,10 @@ if [[ ! "$SHELL_NAME" == *@*  ]]; then
     SHELL_NAME="${SHELL_NAME}@$(hostname -f)"
 fi
 
-if [[ ! "$REMOTE_SHELL" == *@*  ]]; then
+if [[ ! "$REMOTE_SHELL" == *@* ]]; then
     REMOTE_SHELL="${REMOTE_SHELL}@$(hostname -f)"
 fi
 
 ERL_COOKIE=$(../core/sup/priv/sup erlang get_cookie | sed "s/'//g")
 
 exec erl -setcookie $ERL_COOKIE -name ${SHELL_NAME} -remsh ${REMOTE_SHELL}
-

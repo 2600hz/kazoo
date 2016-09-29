@@ -307,7 +307,8 @@ setters(#cb_context{}=Context, []) -> Context;
 setters(#cb_context{}=Context, [_|_]=Setters) ->
     lists:foldl(fun setters_fold/2, Context, Setters).
 
--spec setters_fold(setter_kv(), context() | kz_json:object()) -> context().
+-spec setters_fold(setter_kv(), context() | kz_json:object()) ->
+                          context() | kz_json:object().
 setters_fold({F, V}, C) -> F(C, V);
 setters_fold({F, K, V}, C) -> F(C, K, V);
 setters_fold(F, C) when is_function(F, 1) -> F(C).

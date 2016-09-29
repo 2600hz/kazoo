@@ -68,7 +68,7 @@ build_macro_data(DataJObj) ->
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
-    ,{<<"event">>, kz_json:get_value(<<"occurrence">>, DataJObj)}
+    ,{<<"event">>, kz_json:get_binary_value(<<"occurrence">>, DataJObj)}
     ].
 
 -spec handle_req(kz_json:object()) -> 'ok'.

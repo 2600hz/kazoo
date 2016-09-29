@@ -43,7 +43,7 @@ init() ->
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:first_occurrence_v(JObj),
     {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
-    send(kz_json:get_integer_value(<<"Occurrence">>, JObj)
+    send(kz_json:get_binary_value(<<"Occurrence">>, JObj)
         ,Account
         ).
 

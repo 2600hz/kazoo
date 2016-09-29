@@ -157,7 +157,7 @@ auth_account_id(#bh_context{auth_account_id=AuthBy}) ->
 set_auth_account_id(#bh_context{}=Context, AuthBy) ->
     Context#bh_context{auth_account_id=AuthBy}.
 
--spec is_superduper_admin(context()) -> api_binary().
+-spec is_superduper_admin(context()) -> boolean().
 is_superduper_admin(#bh_context{auth_account_id=AccountId}) ->
     kz_util:is_system_admin(AccountId).
 

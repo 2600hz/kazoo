@@ -164,13 +164,10 @@ persist_module(Module, Mods) ->
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok'.
 stop_module(Module) ->
-    case crossbar_init:stop_mod(Module) of
-        'ok' ->
-            Mods = crossbar_config:autoload_modules(),
-            crossbar_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
-            io:format("stopped and removed ~s from autoloaded modules~n", [Module]);
-        {'error', Error} -> io:format("failed to stop ~s: ~p~n", [Module, Error])
-    end.
+    'ok' = crossbar_init:stop_mod(Module),
+    Mods = crossbar_config:autoload_modules(),
+    crossbar_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
+    io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -779,11 +776,11 @@ find_apps(AppsPath) ->
         end,
     filelib:fold_files(AppsPath, "app\\.json", 'true', AccFun, []).
 
--spec init_app(file:filename()) -> 'ok'.
+-spec init_app(file:filename_all()) -> 'ok'.
 init_app(AppPath) ->
     init_app(AppPath, 'undefined').
 
--spec init_app(file:filename(), api_binary()) -> 'ok'.
+-spec init_app(file:filename_all(), api_binary()) -> 'ok'.
 init_app(AppPath, AppUrl) ->
     io:format("trying to init app from ~s~n", [AppPath]),
     try find_metadata(AppPath) of
@@ -805,8 +802,8 @@ maybe_set_api_url('undefined', MetaData) ->
 maybe_set_api_url(AppUrl, MetaData) ->
     kz_json:set_value(<<"api_url">>, AppUrl, MetaData).
 
--spec maybe_create_app(file:filename(), kz_json:object()) -> 'ok'.
--spec maybe_create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_create_app(file:filename_all(), kz_json:object()) -> 'ok'.
+-spec maybe_create_app(file:filename_all(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_create_app(AppPath, MetaData) ->
     {'ok', MasterAccountDb} = kapps_util:get_master_account_db(),
     maybe_create_app(AppPath, MetaData, MasterAccountDb).
@@ -821,7 +818,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
--spec maybe_update_app(file:filename(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
     CurrentDocId = kzd_app:id(AppJObj),
@@ -845,7 +842,7 @@ find_app(Db, Name) ->
     ViewOptions = [{'key', Name}],
     kz_datamgr:get_single_result(Db, ?CB_APPS_STORE_LIST, ViewOptions).
 
--spec create_app(file:filename(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec create_app(file:filename_all(), kz_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc0 = kz_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}]),
     Doc = kz_json:delete_keys([<<"source_url">>], Doc0),
@@ -874,7 +871,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
             kz_datamgr:delete_attachment(AccountDb, AppId, Image)
     end.
 
--spec maybe_add_images(file:filename(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     Icon = kzd_app:icon(MetaData),
     Screenshots = [kzd_app:screenshots(MetaData)],
@@ -887,7 +884,7 @@ maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     _ = update_images(AppId, MasterAccountDb, [IconPath], <<"icon">>),
     _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
 
--type image_path() :: {kz_json:object(), file:filename()}.
+-type image_path() :: {kz_json:object(), file:filename_all()}.
 -type image_paths() :: [image_path()].
 
 -spec update_images(ne_binary(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
@@ -908,26 +905,28 @@ add_images(AppId, MasterAccountDb, Images) ->
         ],
     'ok'.
 
--spec add_image(ne_binary(), ne_binary(), file:filename(), binary()) -> 'ok'.
+-spec add_image(ne_binary(), ne_binary(), file:filename_all(), binary()) -> 'ok'.
 add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
     case kz_datamgr:put_attachment(MasterAccountDb, AppId, ImageId, ImageData) of
         {'ok', _} ->     io:format("   saved ~s to ~s~n", [ImageId, AppId]);
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.
 
--spec read_images([{ne_binary(), file:filename()}]) -> {'ok', [{file:filename(), binary()}]}.
+-spec read_images([{ne_binary(), file:filename_all()}]) ->
+                         {'ok', [{file:filename_all(), binary()}]}.
 read_images(Images) ->
     {'ok', [{Image, read_image(ImagePath)}
             || {Image, ImagePath} <- Images
            ]}.
 
--spec read_image(file:filename()) -> binary().
+-spec read_image(file:filename_all()) -> binary().
 read_image(File) ->
     {'ok', ImageData} = file:read_file(File),
     ImageData.
 
--spec find_metadata(file:filename()) -> {'ok', kz_json:object()} |
-                                        {'invalid_data', kz_proplist()}.
+-spec find_metadata(file:filename_all()) ->
+                           {'ok', kz_json:object()} |
+                           {'invalid_data', kz_proplist()}.
 find_metadata(AppPath) ->
     {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
     {'ok', Schema} = kz_json_schema:load(<<"app">>),

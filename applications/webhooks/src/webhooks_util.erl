@@ -157,7 +157,7 @@ fire_hook(JObj, #webhook{custom_data = CustomData
     do_fire(Hook, EventId, kz_json:merge_jobjs(CustomData, JObj)).
 
 -spec do_fire(webhook(), ne_binary(), kz_json:object()) -> 'ok'.
-do_fire(#webhook{uri = URI
+do_fire(#webhook{uri = ?NE_BINARY = URI
                 ,http_verb = 'get'
                 ,retries = Retries
                 } = Hook, EventId, JObj) ->
@@ -170,7 +170,7 @@ do_fire(#webhook{uri = URI
     Debug = debug_req(Hook, EventId, URI, Headers, <<>>),
     Fired = kz_http:get(Url, Headers, ?HTTP_OPTS),
     handle_resp(Hook, EventId, JObj, Debug, Fired);
-do_fire(#webhook{uri = URI
+do_fire(#webhook{uri = ?NE_BINARY = URI
                 ,http_verb = 'post'
                 ,retries = Retries
                 } = Hook, EventId, JObj) ->
@@ -246,7 +246,7 @@ save_attempt(AccountId, Attempt) ->
     _ = kz_datamgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
 
--spec debug_req(webhook(), ne_binary(), string() | ne_binary(), kz_proplist(), binary()) ->
+-spec debug_req(webhook(), ne_binary(), ne_binary(), kz_proplist(), iodata()) ->
                        kz_proplist().
 debug_req(#webhook{hook_id=HookId
                   ,http_verb = Method
