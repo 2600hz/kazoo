@@ -314,6 +314,14 @@ get_fs_app(_Node, UUID, JObj, <<"hold">>) ->
             {<<"endless_playback">>, Stream}
     end;
 
+get_fs_app(_Node, UUID, JObj, <<"hold_control">>) ->
+    Arg = case kz_json:get_value(<<"Action">>, JObj) of
+              <<"hold">> -> <<>>;
+              <<"unhold">> -> <<"off">>;
+              <<"toggle">> -> <<"toggle">>
+          end,
+    {<<"uuid_hold">>, list_to_binary([Arg, " ", UUID])};
+
 get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
     UnholdKey = kz_json:get_value(<<"Unhold-Key">>, JObj),
 

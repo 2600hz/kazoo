@@ -129,6 +129,9 @@ send_cmd(Node, UUID, "conference", Args) ->
 send_cmd(Node, _UUID, "transfer", Args) ->
     lager:debug("transfering on ~s: ~s", [Node, Args]),
     freeswitch:api(Node, 'uuid_transfer', kz_util:to_list(Args));
+send_cmd(Node, _UUID, "uuid_" ++ _ = API, Args) ->
+    lager:debug("transfering on ~s: ~s", [Node, Args]),
+    freeswitch:api(Node, kz_util:to_atom(API, 'true'), kz_util:to_list(Args));
 send_cmd(Node, UUID, App, Args) ->
     AppName = dialplan_application(App),
     Result = freeswitch:sendmsg(Node, UUID, [{"call-command", "execute"}

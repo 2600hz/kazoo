@@ -65,6 +65,7 @@
         ,media_macro/1, media_macro_v/1
         ,play_macro/1, play_macro_v/1
         ,sound_touch/1, sound_touch_v/1
+        ,hold_control/1, hold_control_v/1
         ]).
 
 -export([queue/1, queue_v/1
@@ -683,6 +684,21 @@ hold_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?HOLD_REQ_HEADERS, ?HOLD_REQ_VALUES, ?HOLD_REQ_TYPES);
 hold_v(JObj) ->
     hold_v(kz_json:to_proplist(JObj)).
+
+-spec hold_control(api_terms()) -> api_formatter_return().
+hold_control(Prop) when is_list(Prop) ->
+    case hold_control_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?HOLD_CTL_REQ_HEADERS, ?OPTIONAL_HOLD_CTL_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for hold_req"}
+    end;
+hold_control(JObj) ->
+    hold_control(kz_json:to_proplist(JObj)).
+
+-spec hold_control_v(api_terms()) -> boolean().
+hold_control_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?HOLD_CTL_REQ_HEADERS, ?HOLD_CTL_REQ_VALUES, ?HOLD_CTL_REQ_TYPES);
+hold_control_v(JObj) ->
+    hold_control_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Park a call - see wiki

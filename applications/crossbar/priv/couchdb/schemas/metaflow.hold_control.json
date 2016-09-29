@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "metaflow.hold_control",
+    "description": "hold_control metaflow schema",
+    "properties": {
+        "action": {
+            "default": "toggle",
+            "type": {
+                "enum": [
+                    "hold",
+                    "unhold",
+                    "toggle"
+                ]
+            }
+        }
+    },
+    "required": [
+        "action"
+    ],
+    "type": "object"
+}

@@ -374,6 +374,17 @@
                          ]).
 -define(HOLD_REQ_TYPES, []).
 
+%% Hold Control
+-define(HOLD_CTL_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Action">>]).
+-define(OPTIONAL_HOLD_CTL_REQ_HEADERS, [<<"Insert-At">>]).
+-define(HOLD_CTL_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
+                             ,{<<"Event-Name">>, <<"command">>}
+                             ,{<<"Application-Name">>, <<"hold_control">>}
+                             ,{<<"Action">>, [<<"hold">>, <<"unhold">>, <<"toggle">>]}
+                             ,?INSERT_AT_TUPLE
+                             ]).
+-define(HOLD_CTL_REQ_TYPES, []).
+
 %% Soft hold
 -define(SOFT_HOLD_REQ_HEADERS, [<<"Application-Name">>, <<"Call-ID">>, <<"Unhold-Key">>]).
 -define(OPTIONAL_SOFT_HOLD_REQ_HEADERS, [<<"Insert-At">>, <<"A-MOH">>, <<"B-MOH">>]).
