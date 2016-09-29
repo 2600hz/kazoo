@@ -155,7 +155,7 @@
         ,{?KEY_FLAGS, fun is_list/1}
         ,{?KEY_FORCE_FAX, fun kz_util:is_boolean/1}
         ,{?KEY_FORCE_OUTBOUND, fun kz_util:is_boolean/1}
-        ,{?KEY_TO_DID, fun is_binary/1}
+        ,{?KEY_TO_DID, fun is_ne_binary/1}
         ,{?KEY_BYPASS_E164, fun kz_util:is_boolean/1}
         ]).
 
@@ -169,6 +169,9 @@
                                      ,{<<"Event-Name">>, <<"offnet_resp">>}
                                      ]).
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
+
+-spec is_ne_binary(binary()) -> boolean().
+is_ne_binary(V) -> is_binary(V) andalso kz_util:is_not_empty(V).
 
 %%--------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
@@ -187,8 +190,7 @@ req(JObj) -> req(kz_json:to_proplist(JObj)).
 
 -spec req_v(api_terms()) -> boolean().
 req_v(Prop) when is_list(Prop) ->
-    kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES)
-        andalso not kz_util:is_empty(props:get_value(?KEY_TO_DID, Prop));
+    kz_api:validate(Prop, ?OFFNET_RESOURCE_REQ_HEADERS, ?OFFNET_RESOURCE_REQ_VALUES, ?OFFNET_RESOURCE_REQ_TYPES);
 req_v(JObj) -> req_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
