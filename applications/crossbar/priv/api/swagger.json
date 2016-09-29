@@ -9898,6 +9898,14 @@
                 },
                 "default_to": {
                     "description": "notify.fax_inbound_error_to_email default to"
+                },
+                "filter_error_codes": {
+                    "default": [
+                        "0",
+                        "49"
+                    ],
+                    "description": "notify.fax_inbound_error_to_email filter error codes",
+                    "type": "array"
                 }
             },
             "required": [
