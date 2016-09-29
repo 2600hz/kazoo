@@ -171,7 +171,9 @@
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
 
 -spec is_ne_binary(binary()) -> boolean().
-is_ne_binary(V) -> is_binary(V) andalso kz_util:is_not_empty(V).
+is_ne_binary(V) ->
+    is_binary(V)
+        andalso kz_util:is_not_empty(V).
 
 %%--------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
