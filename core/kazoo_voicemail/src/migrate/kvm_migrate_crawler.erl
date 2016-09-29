@@ -17,7 +17,8 @@
 %%% API used by Workers
 -export([account_is_done/3
         ,account_maybe_failed/4
-        ,worker_finished/2
+        ,status/0, status/2
+        ,update_stats/2
         ]).
 
 %%% gen_server callbacks
@@ -48,6 +49,7 @@
                ,account_ids = [] :: ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_messages = 0 :: non_neg_integer()
+               ,total_processed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                ,total_failed = 0 :: non_neg_integer()
                ,total_account_failed = 0 :: non_neg_integer()
@@ -100,8 +102,8 @@ account_maybe_failed(_AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
 account_maybe_failed(AccountId, FirstOfMonth, LastOfMonth, Reason) ->
     gen_server:call(?SERVER, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
 
--spec worker_finished(ne_binary(), kz_proplist()) -> 'ok'.
-worker_finished(AccountId, Stats) ->
+-spec update_stats(ne_binary(), kz_proplist()) -> 'ok'.
+update_stats(AccountId, Stats) ->
     gen_server:call(?SERVER, {'update_stats', {AccountId, Stats}}).
 
 %%%===================================================================
@@ -157,18 +159,18 @@ handle_call({'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}},
                                ,total_account_failed = TotalAccFailed + 1
                                ,failed_accounts = [AccountId | FailedAccounts]
                                }};
-handle_call({'update_stats', {AccountId, Props}}, _From, #state{total_messages = TotalMsgs
+handle_call({'update_stats', {AccountId, Props}}, _From, #state{total_processed = TotalProcessed
                                                                ,total_succeeded = TotalSucceeded
                                                                ,total_failed = TotalFailed
                                                                }=State) ->
-    CycleTotalMsgs = props:get_value(<<"total_messages">>, Props),
-    CycleTotalSucceeded = props:get_value(<<"total_succeeded">>, Props),
-    CycleTotalFailed = props:get_value(<<"total_failed">>, Props),
+    CycleTotalProcessed = props:get_value(<<"total_processed">>, Props, 0),
+    CycleTotalSucceeded = props:get_value(<<"total_succeeded">>, Props, 0),
+    CycleTotalFailed = props:get_value(<<"total_failed">>, Props, 0),
 
     lager:warning("a migration cycle for account ~s is done, total messages processed ~n succeeded ~b failed ~b"
-                 ,[AccountId, CycleTotalMsgs, CycleTotalSucceeded, CycleTotalFailed]),
+                 ,[AccountId, CycleTotalProcessed, CycleTotalSucceeded, CycleTotalFailed]),
 
-    {'reply', 'ok', State#state{total_messages = TotalMsgs + CycleTotalMsgs
+    {'reply', 'ok', State#state{total_processed = TotalProcessed + CycleTotalProcessed
                                ,total_succeeded = TotalSucceeded + CycleTotalSucceeded
                                ,total_failed = TotalFailed + CycleTotalFailed
                                }};

@@ -238,17 +238,17 @@ migration_result(AccountId, FirstOfMonth, LastOfMonth) ->
     TotalFailed = get_stats(?TOTAL_FAILED),
     MODbFailed = length(get_stats(?FAILED_MODB)),
 
-    Props = [{<<"total_messages">>, TotalMsgs}
+    Props = [{<<"total_processed">>, TotalMsgs}
             ,{<<"total_succeeded">>, TotalSucceeded}
             ,{<<"total_failed">>, TotalFailed}
             ],
     case TotalMsgs == MODbFailed of
         'true' ->
-            kvm_migrate_crawler:worker_finished(AccountId, Props),
+            kvm_migrate_crawler:update_stats(AccountId, Props),
             kvm_migrate_crawler:account_is_done(AccountId, FirstOfMonth, LastOfMonth),
             lager:warning("reached to the latest avialable modb for account ~s", [AccountId]);
         'false' ->
-            kvm_migrate_crawler:worker_finished(AccountId, Props),
+            kvm_migrate_crawler:update_stats(AccountId, Props),
             lager:warning("finished a migrate cycle for account ~s: succeeded ~b failed ~b no_modb ~b"
                          ,[AccountId, TotalSucceeded, TotalFailed, MODbFailed])
     end.
