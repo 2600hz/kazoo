@@ -45,7 +45,9 @@ prop_get_value() ->
            ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
                      ,begin
                           JObj = kz_json:from_list(Prop),
-                          case length(Prop) > 0 andalso hd(Prop) of
+                          case length(Prop) > 0
+                              andalso hd(Prop)
+                          of
                               {K,V} ->
                                   V =:= kz_json:get_value([K], JObj);
                               'false' -> kz_json:new() =:= JObj
