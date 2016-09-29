@@ -84,47 +84,6 @@ curl -v -X GET \
 ```
 
 
-#### Create a new config
-
-> PUT /v2/system_configs
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"id": "candle_jack", "name": ""}}' \
-    http://{SERVER}:8000/v2/system_configs
-```
-
-##### Successful creation
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "name": ""
-    },
-    "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
-}
-```
-
-##### Error: old soft-deleted document still exists
-
-```json
-{
-    "auth_token": "{AUTH_TOKEN}",
-    "data": {
-        "message": "conflicting documents"
-    },
-    "error": "409",
-    "message": "datastore_conflict",
-    "request_id": "{REQUEST_ID}",
-    "status": "error"
-}
-```
-
-
 #### Delete the whole config
 
 > DELETE /v2/system_configs/{SYSTEM_CONFIG_ID}
@@ -182,8 +141,6 @@ curl -v -X GET \
 
 > POST /v2/system_configs/{SYSTEM_CONFIG_ID}
 
-Note: returns previous default fields.
-
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -203,6 +160,50 @@ curl -v -X POST \
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
+}
+```
+
+
+#### Create a new config
+
+> PUT /v2/system_configs/{SYSTEM_CONFIG_ID}
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"name": ""}}' \
+    http://{SERVER}:8000/v2/system_configs/candle_jack
+```
+
+##### Successful creation
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "name": ""
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+##### Error: old soft-deleted document still exists
+
+Note: to avoid conflicts use hard deletes.
+However, soft deletes leave you the possibility to rollback to a previous version.
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "message": "conflicting documents"
+    },
+    "error": "409",
+    "message": "datastore_conflict",
+    "request_id": "{REQUEST_ID}",
+    "status": "error"
 }
 ```
 

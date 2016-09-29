@@ -16,7 +16,7 @@
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,validate/1, validate/2, validate/3
-        ,put/1
+        ,put/2
         ,post/2, post/3
         ,delete/2, delete/3
         ]).
@@ -74,9 +74,9 @@ authorize(Context, _Id, _Node) -> cb_context:is_superduper_admin(Context).
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET].
 allowed_methods(_SystemConfigId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT].
 allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
@@ -125,12 +125,12 @@ validate(Context, Id, Node) ->
 -spec validate_system_configs(cb_context:context(), http_method()) -> cb_context:context().
 -spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) -> cb_context:context().
 validate_system_configs(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_system_configs(Context, ?HTTP_PUT) ->
-    create(Context).
+    summary(Context).
 
 validate_system_config(Context, Id, ?HTTP_GET, Node) ->
     read(Id, Context, Node);
+validate_system_config(Context, Id, ?HTTP_PUT, _Node) ->
+    create(Id, Context);
 validate_system_config(Context, Id, ?HTTP_POST, Node) ->
     update(Id, Context, Node);
 validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
@@ -142,8 +142,8 @@ validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, _Id) ->
     save(Context, ?DEFAULT).
 
 %%--------------------------------------------------------------------
@@ -207,23 +207,19 @@ save(Context, Node) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(cb_context:context()) -> cb_context:context().
-create(Context) ->
+-spec create(cb_context:context(), ne_binary()) -> cb_context:context().
+create(Id, Context) ->
     Doc = cb_context:req_data(Context),
-    case kz_doc:id(Doc) of
-        'undefined' ->
-            lager:debug("no id on doc ~p", [Doc]),
-            Msg = kz_json:from_list(
-                    [{<<"message">>, <<"id is required to create a system_config resource">>}
-                    ]),
-            cb_context:add_validation_error(<<"id">>, <<"required">>, Msg, Context);
-        Id ->
+    case binary:split(Id, <<$@>>) of
+        [Id] ->
             SysDoc = kz_json:from_list([{<<"_id">>, Id}
-                                       ,{?DEFAULT, kz_json:delete_key(<<"id">>, Doc)}
+                                       ,{?DEFAULT, Doc}
                                        ]),
             lager:debug("trying to create ~s/~s: ~p", [?KZ_CONFIG_DB, Id, SysDoc]),
             Context1 = cb_context:set_doc(Context, SysDoc),
-            cb_context:set_resp_status(Context1, 'success')
+            cb_context:set_resp_status(Context1, 'success');
+        _ ->
+            crossbar_util:response_bad_identifier(Id, Context)
     end.
 
 %%--------------------------------------------------------------------
