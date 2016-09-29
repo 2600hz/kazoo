@@ -27,7 +27,8 @@
 
 -spec stop() -> any().
 stop() ->
-    exit(whereis(?SERVER), 'shutdown').
+    _ = exit(whereis(?SERVER), 'shutdown'),
+    exit(whereis(?SERVER), 'kill').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -56,6 +57,7 @@ start_child(ChildSpec) ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
+	kz_util:put_callid(?SERVER),
     RestartStrategy = 'one_for_all',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,

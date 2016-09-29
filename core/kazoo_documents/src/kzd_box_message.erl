@@ -65,7 +65,7 @@
         <<(kz_util:to_binary(Year))/binary
           ,(kz_util:pad_month(Month))/binary
           ,"-"
-          ,Id/binary
+          ,(Id)/binary
         >>).
 
 %%--------------------------------------------------------------------

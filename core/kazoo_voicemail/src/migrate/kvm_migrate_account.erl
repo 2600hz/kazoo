@@ -113,7 +113,7 @@ stop(Pid) ->
 % migrate(AccountId, BoxIds) ->
 %     case get_account_vmboxes(AccountId, BoxIds) of
 %         {'ok', []} ->
-%             ?ERROR("=== no voicemail box with messages found in account ~s ===", [AccountId]),
+%             lager:error("=== no voicemail box with messages found in account ~s ===", [AccountId]),
 %         {'ok', BoxIds} ->
 %             do_migrate(AccountId, BoxIds, 'undefined');
 %         _ ->
@@ -177,7 +177,7 @@ handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref
                                           ,first_of_month = FirstOfMonth
                                           ,last_of_month = LastOfMonth
                                           }=State) ->
-    ?WARNING("=== start migrating vm messages in account ~s ===", [AccountId]),
+    lager:warning("=== start migrating vm messages in account ~s ===", [AccountId]),
 
     ViewOpts = props:filter_empty(
                  [{'limit', ?MAX_BULK_INSERT}
@@ -188,7 +188,7 @@ handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref
     Db = kvm_util:get_db(AccountId),
     case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
         {'ok', []} ->
-            ?WARNING("no legacy voicemail messages left in account ~s (last timestamp proccessed: ~p), going down", [AccountId, FirstOfMonth]),
+            lager:warning("no legacy voicemail messages left in account ~s (last timestamp proccessed: ~p), going down", [AccountId, FirstOfMonth]),
             kvm_migrate_crawler:account_is_done(AccountId, FirstOfMonth, LastOfMonth),
             {'stop', 'normal', State};
         {'ok', ViewResults} ->
@@ -246,11 +246,11 @@ migration_result(AccountId, FirstOfMonth, LastOfMonth) ->
         'true' ->
             kvm_migrate_crawler:worker_finished(AccountId, Props),
             kvm_migrate_crawler:account_is_done(AccountId, FirstOfMonth, LastOfMonth),
-            ?WARNING("reached to the latest avialable modb for account ~s", [AccountId]);
+            lager:warning("reached to the latest avialable modb for account ~s", [AccountId]);
         'false' ->
             kvm_migrate_crawler:worker_finished(AccountId, Props),
-            ?WARNING("finished a migrate cycle for account ~s: succeeded ~b failed ~b no_modb ~b"
-                    ,[AccountId, TotalSucceeded, TotalFailed, MODbFailed])
+            lager:warning("finished a migrate cycle for account ~s: succeeded ~b failed ~b no_modb ~b"
+                         ,[AccountId, TotalSucceeded, TotalFailed, MODbFailed])
     end.
 
 %%--------------------------------------------------------------------
@@ -263,7 +263,7 @@ migrate_messages(AccountId, ViewResults) ->
     MsgCount = length(ViewResults),
     _ = update_process_key(?TOTAL_MESSAGES, MsgCount),
 
-    ?WARNING("processing ~b voicemail messages in account ~s", [MsgCount, AccountId]),
+    lager:warning("processing ~b voicemail messages in account ~s", [MsgCount, AccountId]),
     MsgsDict = process_messages(AccountId, ViewResults),
     maybe_migrate(AccountId, ViewResults, MsgsDict, dict:fetch_keys(MsgsDict)).
 
@@ -277,7 +277,7 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
 maybe_migrate(_AccountId, _ViewResults, _MsgsDict, 0) ->
-    ?WARNING("none of modbs for proccessed messages in account ~s is exists", [_AccountId]);
+    lager:warning("none of modbs for proccessed messages in account ~s is exists", [_AccountId]);
 maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
     do_migrate(AccountId, MsgsDict),
     update_mailboxes(AccountId, ViewResults).
@@ -289,8 +289,8 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
 %%--------------------------------------------------------------------
 -spec do_migrate(ne_binary(), dict:dict()) -> 'ok'.
 do_migrate(AccountId, MsgsDict) ->
-    ?WARNING("migrating voicemail messages to ~b modbs for account_id ~s"
-            ,[dict:size(MsgsDict), AccountId]),
+    lager:warning("migrating voicemail messages to ~b modbs for account_id ~s"
+                 ,[dict:size(MsgsDict), AccountId]),
     dict:fold(fun bulk_save_modb/3, [], MsgsDict).
 
 -spec bulk_save_modb(ne_binary(), kz_json:objects(), list()) -> 'ok'.
@@ -298,12 +298,12 @@ bulk_save_modb(Db, Js, _Acc) ->
     case kz_datamgr:save_docs(Db, Js) of
         {'ok', Saved} ->
             {Success, Failed} = normalize_bulk_result(Db, Saved),
-            ?WARNING("bulk save vm messages resulted in ~b success and ~b failed in db ~s"
-                    ,[Success, Failed, Db]);
+            lager:warning("bulk save vm messages resulted in ~b success and ~b failed in db ~s"
+                         ,[Success, Failed, Db]);
         {'error', R} ->
             update_stats(?FAILED, Js, R),
-            ?ERROR("failed to migrate voicemail messages to db ~s: ~p"
-                  ,[Db, R])
+            lager:error("failed to migrate voicemail messages to db ~s: ~p"
+                       ,[Db, R])
     end.
 
 %%--------------------------------------------------------------------
@@ -313,7 +313,6 @@ bulk_save_modb(Db, Js, _Acc) ->
 %%--------------------------------------------------------------------
 -spec update_mailboxes(kz_json:object(), kz_json:objects()) -> 'ok'.
 update_mailboxes(AccountId, ViewResults) ->
-    Succeeded = dict:from_list(get_stats(?SUCCEEDED)),
     MODbFailed = dict:from_list(get_stats(?FAILED_MODB)),
     Failed = dict:from_list(get_stats(?FAILED)),
     BoxIds = lists:usort([kz_doc:id(B) || B <- ViewResults]),
@@ -324,9 +323,7 @@ update_mailboxes(AccountId, ViewResults) ->
     Db = kvm_util:get_db(AccountId),
     case kz_datamgr:all_docs(Db, ViewOpts) of
         {'ok', BoxJObjs} ->
-            NewBoxJObjs = [update_message_array(Box, Succeeded, MODbFailed, Failed)
-                           || Box <- BoxJObjs
-                          ],
+            NewBoxJObjs = update_mailbox_jobjs(BoxJObjs, MODbFailed, Failed),
             case kz_datamgr:save_docs(Db, NewBoxJObjs) of
                 {'ok', _} -> 'ok';
                 {'error', R} ->
@@ -337,7 +334,7 @@ update_mailboxes(AccountId, ViewResults) ->
     end.
 
 failed_to_update_mailbox(ViewResults, Reason) ->
-    %% nuke process stats
+    %% nuke process stats to start process this account later
     _ = erlang:erase(?SUCCEEDED),
     _ = update_process_key(?TOTAL_SUCCEEDED, 0),
     Failed = [{kz_json:get_value([<<"value">>, <<"metadata">>, <<"media_id">>], M), Reason}
@@ -347,23 +344,30 @@ failed_to_update_mailbox(ViewResults, Reason) ->
     _ = erlang:put(?TOTAL_FAILED, length(Failed)),
     'ok'.
 
--spec update_message_array(kz_json:object(), dict:dict(), dict:dict(), dict:dict()) -> kz_json:object().
-update_message_array(BoxJObj, Succeeded, MODbFailed, Failed) ->
+update_mailbox_jobjs(BoxJObjs, MODbFailed, Failed) ->
+    [update_message_array(kz_json:get_value(<<"doc">>, J), MODbFailed, Failed)
+     || J <- BoxJObjs
+    ].
+
+-spec update_message_array(kz_json:object(), dict:dict(), dict:dict()) -> kz_json:object().
+update_message_array(BoxJObj, MODbFailed, Failed) ->
     Messages = kz_json:get_value(<<"messages">>, BoxJObj),
+    %% check if messages are failed or not, if not remove them from message array
     Fun = fun(Msg, Acc) ->
-              MsgId = kzd_box_message:media_id(Msg),
-              S = dict:is_key(MsgId, Succeeded),
+              Timestamp = kz_json:get_value(<<"timestamp">>, Msg),
+              {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+              MsgId = ?MODB_MSG_ID(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
               M = dict:is_key(MsgId, MODbFailed),
               F = dict:is_key(MsgId, Failed),
 
-              case {S, M, F} of
-                  {'true', _, _} -> Acc;
-                  {_, 'true', _} ->
+              case {M, F} of
+                  {'true', _} ->
                       Error = dict:fetch(MsgId, MODbFailed),
                       [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
-                  {_, _, 'true'} ->
+                  {_, 'true'} ->
                       Error = dict:fetch(MsgId, Failed),
-                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc]
+                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
+                  _ -> Acc
               end
           end,
     NewMessages = lists:foldl(Fun, [], Messages),
@@ -382,7 +386,7 @@ update_message_array(BoxJObj, Succeeded, MODbFailed, Failed) ->
 %     case kz_datamgr:get_results(Db, ?VMBOX_CB_LIST) of
 %         {'ok', JObjs} -> normalize_mailbox_results(JObjs, ExpectedBoxIds);
 %         {'error', _E} = Error ->
-%             ?ERROR("failed to get voicemail boxes in ~s: ~p", [AccountId, _E]),
+%             lager:error("failed to get voicemail boxes in ~s: ~p", [AccountId, _E]),
 %             Error
 %     end.
 
@@ -412,7 +416,7 @@ check_dbs_existence([Db | Dbs], MsgsDict) ->
         'true' ->
             check_dbs_existence(Dbs, MsgsDict);
         'false' ->
-            ?WARNING("modb ~s is not exists", [Db]),
+            lager:warning("modb ~s is not exists", [Db]),
             update_stats(?FAILED_MODB, dict:fetch(Db, MsgsDict), <<"modb_not_exists">>),
             dict:erase(Db, MsgsDict)
     end.
@@ -444,11 +448,11 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
         'undefined' ->
             %% successful
             normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
-        'conflict' ->
+        <<"conflict">> ->
             %% successful
             normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
         Reason ->
-            ?ERROR("failed to save voicemail message ~s in db ~s: ~p", [Id, Db, Reason]),
+            lager:error("failed to save voicemail message ~s in db ~s: ~p", [Id, Db, Reason]),
             normalize_bulk_result(Db, Saved, dict:append(<<"failed">>, {Id, Reason}, Dict))
     end.
 
@@ -475,7 +479,8 @@ process_messages(AccountId, JObjs) ->
 
 -spec create_message(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
 create_message(AccountId, FakeBoxJObj, DefaultExt) ->
-    BoxJObj = kz_json:get_value(<<"value">>, FakeBoxJObj),
+    AccountDb = kvm_util:get_db(AccountId),
+    BoxJObj = kz_doc:set_account_db(kz_json:get_value(<<"value">>, FakeBoxJObj), AccountDb),
 
     BoxNum = kzd_voicemail_box:mailbox_number(BoxJObj),
     TimeZone = kzd_voicemail_box:timezone(BoxJObj),

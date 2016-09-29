@@ -36,6 +36,7 @@
 -define(MAX_PROCESS,
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 10)).
 
+-define(TIME_BETWEEN_SPAWN_ON_STARTUP, 2 * ?MILLISECONDS_IN_SECOND).
 -define(TIME_BETWEEN_ACCOUNT_CRAWLS,
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 10 * ?MILLISECONDS_IN_SECOND)).
 
@@ -44,7 +45,6 @@
 
 -record(state, {max_worker = ?MAX_PROCESS :: integer()
                ,worker_refs = [] :: [reference()]
-               ,timer_ref = cleanup_account_timer() :: reference()
                ,account_ids = [] :: ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_messages = 0 :: non_neg_integer()
@@ -52,6 +52,7 @@
                ,total_failed = 0 :: non_neg_integer()
                ,total_account_failed = 0 :: non_neg_integer()
                ,failed_accounts = [] :: ne_binaries()
+               ,timer_ref :: reference()
                ,retention_seconds :: gregorian_seconds()
                ,account_queue :: queue:queue()
                }).
@@ -95,7 +96,7 @@ account_is_done(AccountId, FirstOfMonth, LastOfMonth) ->
 
 -spec account_maybe_failed(ne_binary(), gregorian_seconds(), gregorian_seconds(), any()) -> 'ok'.
 account_maybe_failed(_AccountId, _FirstOfMonth, _LastOfMonth, 'timeout') ->
-    ?WARNING("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
+    lager:warning("ignoring 'timeout' error for worker of account ~s", [_AccountId]);
 account_maybe_failed(AccountId, FirstOfMonth, LastOfMonth, Reason) ->
     gen_server:call(?SERVER, {'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}).
 
@@ -119,7 +120,7 @@ init(MigrateSuper) ->
     lager:debug("started ~s", [?SERVER]),
     case kapps_util:get_all_accounts('raw') of
         [] ->
-            ?ERROR("no account found, going down", []),
+            lager:error("no account found, going down"),
             _ = kz_util:spawn(fun kvm_migrate_sup:stop/0, []),
             'ignore';
         Ids ->
@@ -143,14 +144,14 @@ init(MigrateSuper) ->
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, 'normal'}}, _From, #state{account_queue = Queue
                                                                                                 }=State) ->
-    ?WARNING("voicemail migration for account ~s is finished, removing it from queue", [AccountId]),
+    lager:warning("voicemail migration for account ~s is finished, removing it from queue", [AccountId]),
     NewQueue = remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue),
     {'reply', 'ok', State#state{account_queue = NewQueue}};
 handle_call({'account_is_done', {AccountId, FirstOfMonth, LastOfMonth, Reason}}, _From, #state{account_queue = Queue
                                                                                               ,total_account_failed = TotalAccFailed
                                                                                               ,failed_accounts = FailedAccounts
                                                                                               }=State) ->
-    ?WARNING("failed to  migrate voicemail for account ~s with error ~p, removing it from queue", [AccountId, Reason]),
+    lager:warning("failed to  migrate voicemail for account ~s with error ~p, removing it from queue", [AccountId, Reason]),
     NewQueue = remove_account_from_queue({AccountId, FirstOfMonth, LastOfMonth}, Queue),
     {'reply', 'ok', State#state{account_queue = NewQueue
                                ,total_account_failed = TotalAccFailed + 1
@@ -164,8 +165,8 @@ handle_call({'update_stats', {AccountId, Props}}, _From, #state{total_messages =
     CycleTotalSucceeded = props:get_value(<<"total_succeeded">>, Props),
     CycleTotalFailed = props:get_value(<<"total_failed">>, Props),
 
-    ?WARNING("a migration cycle for account ~s is done, total messages processed ~n succeeded ~b failed ~b"
-            ,[AccountId, CycleTotalMsgs, CycleTotalSucceeded, CycleTotalFailed]),
+    lager:warning("a migration cycle for account ~s is done, total messages processed ~n succeeded ~b failed ~b"
+                 ,[AccountId, CycleTotalMsgs, CycleTotalSucceeded, CycleTotalFailed]),
 
     {'reply', 'ok', State#state{total_messages = TotalMsgs + CycleTotalMsgs
                                ,total_succeeded = TotalSucceeded + CycleTotalSucceeded
@@ -198,14 +199,43 @@ handle_cast(_Msg, State) ->
 handle_info({'start_worker_sup', MigrateSuper}, State) ->
     {'ok', Pid} = supervisor:start_child(MigrateSuper, ?MIGRATE_WORKER_SUP),
     link(Pid),
-    {'noreply', State#state{timer_ref = cleanup_account_timer()
+    {'noreply', State#state{timer_ref = cleanup_startup_timer()
                            }};
+handle_info({'timeout', TimerRef, 'startup'}, #state{max_worker = Limit
+                                                    ,worker_refs = WRefs
+                                                    ,timer_ref = TimerRef
+                                                    ,account_queue = Queue
+                                                    }=State) when Limit > 0 ->
+    case get_next_account_to_process(Queue, 'false') of
+        'empty' ->
+            %% migration is done waiting for workers to finish their jobs
+            {'noreply', State#state{account_ids = []
+                                   ,retention_passed = 'true'
+                                   ,timer_ref = cleanup_startup_timer()
+                                   }};
+        {{_AccountId, _, _} = NextAccount, NewQ} ->
+            {'ok', Pid} = kvm_migrate_worker_sup:process_account(NextAccount),
+            Ref = erlang:monitor('process', Pid),
+            TotalWorkersCount = length(WRefs) + Limit,
+            WorkersCount = length(WRefs) + 1,
+            lager:warning("started a new worker ~p (~b/~b) to process account ~s"
+                         ,[Pid, WorkersCount, TotalWorkersCount, _AccountId]),
+            {'noreply', State#state{max_worker = Limit - 1
+                                   ,worker_refs = [Ref | WRefs]
+                                   ,account_queue = NewQ
+                                   ,timer_ref = cleanup_startup_timer()
+                                   }}
+    end;
+handle_info({'timeout', TimerRef, 'startup'}, #state{max_worker = Limit
+                                                    ,timer_ref = TimerRef
+                                                    }=State) when Limit =< 0 ->
+    {'noreply', State#state{timer_ref = cleanup_account_timer()}};
 handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
                                                ,timer_ref = TimerRef
                                                ,worker_refs = []
                                                ,retention_passed = 'true'
                                                }=State) ->
-    ?WARNING("voicemail migration is finished, going down", []),
+    lager:warning("voicemail migration is finished, going down", []),
     _ = kz_util:spawn(fun kvm_migrate_sup:stop/0, []),
     {'noreply', State};
 handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
@@ -213,7 +243,7 @@ handle_info({'timeout', TimerRef, _Msg}, #state{account_ids = []
                                                ,worker_refs = WRefs
                                                ,retention_passed = 'true'
                                                }=State) ->
-    ?WARNING("voicemail migration is finished, waiting for ~b workers to done", [length(WRefs)]),
+    lager:warning("voicemail migration is finished, waiting for ~b workers to done", [length(WRefs)]),
     {'noreply', State};
 handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
                                                ,worker_refs = WRefs
@@ -225,7 +255,7 @@ handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
                                                }=State) when Limit > 0 ->
     case get_next_account_to_process(Queue, IsRetPassed) of
         'retention_passed' ->
-            ?WARNING("all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails", []),
+            lager:warning("all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails", []),
             {'noreply', State#state{retention_passed = 'true'
                                    ,account_queue = populate_queue(AccountIds, RetentionSeconds)
                                    ,timer_ref = cleanup_account_timer()
@@ -241,22 +271,23 @@ handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
             Ref = erlang:monitor('process', Pid),
             TotalWorkersCount = length(WRefs) + Limit,
             WorkersCount = length(WRefs) + 1,
-            ?WARNING("started a new worker ~p (~b/~b) to process account ~s"
-                    ,[Pid, WorkersCount, TotalWorkersCount, _AccountId]),
+            lager:warning("started a new worker ~p (~b/~b) to process account ~s"
+                         ,[Pid, WorkersCount, TotalWorkersCount, _AccountId]),
             {'noreply', State#state{max_worker = Limit - 1
                                    ,worker_refs = [Ref | WRefs]
                                    ,account_queue = NewQ
+                                   ,timer_ref = cleanup_account_timer()
                                    }}
     end;
 handle_info({'timeout', TimerRef, _Msg}, #state{max_worker = Limit
                                                ,timer_ref = TimerRef
                                                }=State) when Limit =< 0 ->
-    ?WARNING("maximum number of migration process reached", []),
+    lager:warning("maximum number of migration process reached", []),
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', _Pid, _Reason}, #state{max_worker = Limit
                                                            ,worker_refs = WRefs
                                                            }=State) ->
-    ?WARNING("received down msg from worker ~p with reason ~p", [_Pid, _Reason]),
+    lager:warning("received down msg from worker ~p with reason ~p", [_Pid, _Reason]),
     case worker_by_ref(Ref, WRefs) of
         [] ->
             %% not ours
@@ -307,6 +338,10 @@ code_change(_OldVsn, State, _Extra) ->
 cleanup_account_timer() ->
     erlang:start_timer(?TIME_BETWEEN_ACCOUNT_CRAWLS, self(), 'ok').
 
+-spec cleanup_startup_timer() -> reference().
+cleanup_startup_timer() ->
+    erlang:start_timer(?TIME_BETWEEN_SPAWN_ON_STARTUP, self(), 'startup').
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -318,11 +353,13 @@ cleanup_account_timer() ->
                                           'retention_passed'.
 get_next_account_to_process(Queue, IsRetPassed) ->
     case queue:out(Queue) of
+        {{'value', NextAccount}, Q} when not IsRetPassed ->
+            {NextAccount, queue:in(NextAccount, Q)};
         {{'value', {AccountId, FirstOfMonth, _LastOfMonth}}, Q} ->
             PrevMonth = previous_month_timestamp(FirstOfMonth),
             NextAccount = {AccountId, PrevMonth, FirstOfMonth},
             {NextAccount, queue:in(NextAccount, Q)};
-        {'empty', _} when IsRetPassed ->
+        {'empty', _} when not IsRetPassed ->
             'retention_passed';
         {'empty', _} ->
             'empty'
