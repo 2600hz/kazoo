@@ -2014,6 +2014,7 @@ conference(ConfId, Mute, Deaf, Moderator, ProfileName, Reinvite, Call) ->
               ,{<<"Moderator">>, Moderator}
               ,{<<"Profile">>, ProfileName}
               ,{<<"Reinvite">>, Reinvite}
+              ,{<<"Custom-Channel-Vars">>, kz_json:from_list(kapps_call:custom_channel_vars(Call))}
               ],
     send_command(Command, Call).
 
