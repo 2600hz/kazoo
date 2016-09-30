@@ -1,10 +1,12 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
-%%%
+%%% This callflow module can be used to prepend a value (or values) to the caller-id-name and caller-id-number of a call.
 %%% @end
+%%%
 %%% @contributors
 %%%   Jon Blanton
+%%%   Mark Magnusson
 %%%-------------------------------------------------------------------
 -module(cf_prepend_cid).
 
@@ -16,40 +18,56 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
-    {CIDNamePrefix, CIDNumberPrefix} =
-        case kz_json:get_ne_value(<<"action">>, Data) of
-            <<"reset">> -> {'undefined', 'undefined'};
-            _ ->
-                {kz_json:get_ne_value(<<"caller_id_name_prefix">>, Data)
-                ,kz_json:get_ne_value(<<"caller_id_number_prefix">>, Data)
-                }
-        end,
+    Call1 = kapps_call:exec([
+        fun maybe_set_orig_name/1
+       ,fun maybe_set_orig_number/1
+    ], Call),
+    handle(kz_json:get_value(<<"action">>, Data, <<"prepend">>), Data, Call1).
 
-    lager:info("update prefix with name: ~s num: ~s", [CIDNamePrefix, CIDNumberPrefix]),
+-spec handle(binary(), kz_json:object(), kapps_call:call()) -> any().
+handle(<<"reset">>, _Data, Call) ->
+    Name   = kapps_call:kvs_fetch('original_cid_name', Call),
+    Number = kapps_call:kvs_fetch('original_cid_number', Call),
 
-    Updates = [fun(C) -> set_cid_name_prefix(C, CIDNamePrefix) end
-              ,fun(C) -> set_cid_number_prefix(C, CIDNumberPrefix) end
-              ],
-    {'ok', Call1} = cf_exe:get_call(Call),
-    cf_exe:set_call(kapps_call:exec(Updates, Call1)),
-    cf_exe:continue(Call1).
+    set_values(Name, Number, Call);
 
--spec set_cid_name_prefix(kapps_call:call(), api_binary()) -> kapps_call:call().
-set_cid_name_prefix(Call, 'undefined') ->
-    kapps_call:kvs_store('prepend_cid_name', 'undefined', Call);
-set_cid_name_prefix(Call, Prefix) ->
-    Prefix1 = case kapps_call:kvs_fetch('prepend_cid_name', Call) of
-                  'undefined' -> Prefix;
-                  Prepend -> <<Prefix/binary, Prepend/binary>>
-              end,
-    kapps_call:kvs_store('prepend_cid_name', Prefix1, Call).
+handle(<<"prepend">>, Data, Call) ->
+    NamePre = kz_json:get_value(<<"caller_id_name_prefix">>, Data, <<"">>),
+    NumberPre = kz_json:get_value(<<"caller_id_number_prefix">>, Data, <<"">>),
 
--spec set_cid_number_prefix(kapps_call:call(), api_binary()) -> kapps_call:call().
-set_cid_number_prefix(Call, 'undefined') ->
-    kapps_call:kvs_store('prepend_cid_number', 'undefined', Call);
-set_cid_number_prefix(Call, Prefix) ->
-    Prefix1 = case kapps_call:kvs_fetch('prepend_cid_number', Call) of
-                  'undefined' -> Prefix;
-                  Prepend -> <<Prefix/binary, Prepend/binary>>
-              end,
-    kapps_call:kvs_store('prepend_cid_number', Prefix1, Call).
+    {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
+        <<"original">> -> {
+            <<NamePre/binary, (kapps_call:kvs_fetch('original_cid_name', Call))/binary>>
+           ,<<NumberPre/binary, (kapps_call:kvs_fetch('original_cid_number', Call))/binary>>
+        };
+
+        <<"current">> -> {
+            <<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
+           ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
+        }
+    end,
+
+    set_values(Name, Number, Call).
+
+-spec maybe_set_orig_name(kapps_call:call()) -> kapps_call:call().
+maybe_set_orig_name(Call) ->
+    case kapps_call:kvs_fetch('original_cid_name', Call) of
+        'undefined' -> kapps_call:kvs_store('original_cid_name', kapps_call:caller_id_name(Call), Call);
+        _Exists     -> Call
+    end.
+
+-spec maybe_set_orig_number(kapps_call:call()) -> kapps_call:call().
+maybe_set_orig_number(Call) ->
+    case kapps_call:kvs_fetch('original_cid_number', Call) of
+        'undefined' -> kapps_call:kvs_store('original_cid_number', kapps_call:caller_id_number(Call), Call);
+        _Exists     -> Call
+    end.
+
+-spec set_values(binary(), binary(), kapps_call:call()) -> any().
+set_values(Name, Number, Call) ->
+    Call1 = kapps_call:exec([
+        fun(C) -> kapps_call:set_caller_id_name(Name, C) end
+       ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+    ], Call),
+
+    cf_exe:continue(cf_exe:set_call(Call1)).
