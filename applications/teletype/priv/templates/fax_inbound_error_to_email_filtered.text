@@ -4,4 +4,4 @@ Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number "unk
 
          Called To: {{to.user}} (Originally dialed number)
          Called On: {% firstof fax.timestamp|date:"l, F j, Y \a\t H:i" date_called|date:"l, F j, Y \a\t H:i" %}
-                  
+
