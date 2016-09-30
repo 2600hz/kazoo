@@ -40,7 +40,6 @@
                ,account_ids = [] :: ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_account = 0 :: non_neg_integer()
-               ,total_messages = 0 :: non_neg_integer()
                ,total_processed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                ,total_failed = 0 :: non_neg_integer()
@@ -54,9 +53,9 @@
 -type state() :: #state{}.
 
 -type next_account_ret() :: {next_account(), queue:queue()} |
-                                'empty' |
-                                'retention_passed' |
-                                'continue'.
+                            'empty' |
+                            'retention_passed' |
+                            'continue'.
 
 -define(DEBUG(Format, Args),
         begin
@@ -125,7 +124,7 @@ update_stats(Server, AccountId, Stats) ->
 %% Initializes the server
 %%--------------------------------------------------------------------
 -spec init(any()) -> {'ok', state()} |
-                  {'stop', state()}.
+                     {'stop', state()}.
 init([]) -> init('undefined');
 init(Pid) ->
     _ = process_flag('trap_exit', 'true'),
@@ -213,10 +212,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
-                                          ,workers = []
-                                          ,retention_passed = 'true'
-                                          ,calling_process = Pid
-                                          }=State) ->
+                                           ,workers = []
+                                           ,retention_passed = 'true'
+                                           ,calling_process = Pid
+                                           }=State) ->
     ?WARNING("~n~n########## voicemail migration is finished", []),
     print_summary(State),
     case is_pid(Pid) of
@@ -226,14 +225,14 @@ handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
     end,
     {'stop', 'normal', State};
 handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
-                                          ,workers = Workers
-                                          ,retention_passed = 'true'
-                                          }=State) ->
+                                           ,workers = Workers
+                                           ,retention_passed = 'true'
+                                           }=State) ->
     lager:warning("########## migration is almost done, waiting for ~b workers to done", [length(Workers)]),
     {'noreply', State};
 handle_info({'timeout', _Ref, _Msg}, #state{max_worker = Limit
-                                          ,workers = Workers
-                                          }=State) when length(Workers) < Limit ->
+                                           ,workers = Workers
+                                           }=State) when length(Workers) < Limit ->
     NewState = spawn_worker(State),
     {'noreply', NewState#state{timer_ref = cleanup_account_timer()}};
 handle_info({'timeout', _Ref, _Msg}, State) ->
@@ -300,8 +299,8 @@ maybe_spawn_worker(#state{account_ids = AccountIds
                          }=State, retention_passed) ->
     ?WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
     State#state{retention_passed = 'true'
-                ,account_queue = populate_queue(AccountIds, RetentionSeconds)
-                };
+               ,account_queue = populate_queue(AccountIds, RetentionSeconds)
+               };
 maybe_spawn_worker(State, 'empty') ->
     %% migration is done waiting for workers to finish their jobs
     State#state{account_ids = []
@@ -321,7 +320,7 @@ maybe_spawn_worker(#state{workers = Workers
                                     kvm_migrate_account:start_worker(NextAccount, Self)
                             end),
     lager:debug("########## started ~p (~b/~b) to process account ~s"
-            ,[Pid, length(Workers) + 1, _Limit, AccountId]),
+               ,[Pid, length(Workers) + 1, _Limit, AccountId]),
     State#state{workers = [{Pid, NextAccount} | Workers]
                ,account_queue = NewQ
                }.
@@ -443,7 +442,6 @@ print_summary(#state{total_account = TotalAccount
                     ,total_processed = TotalMsgsProcessed
                     ,total_succeeded = TotalSucceeded
                     ,total_failed = TotalFailed
-                    %% ,total_messages = TotalMsgs
                     }) ->
 
     io:format("~n~n~n~n################### VOICEMAIL MIGRATION SUMMARY ################### ~n~n"),

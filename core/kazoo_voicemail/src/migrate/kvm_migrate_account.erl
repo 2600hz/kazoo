@@ -250,21 +250,21 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
     Messages = kz_json:get_value(<<"messages">>, BoxJObj),
     %% check if messages are failed or not, if not remove them from message array
     Fun = fun(Msg, Acc) ->
-              Timestamp = kz_json:get_value(<<"timestamp">>, Msg),
-              {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
-              MsgId = ?MODB_MSG_ID(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
-              M = dict:is_key(MsgId, MODbFailed),
-              F = dict:is_key(MsgId, Failed),
+                  Timestamp = kz_json:get_value(<<"timestamp">>, Msg),
+                  {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+                  MsgId = ?MODB_MSG_ID(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
+                  M = dict:is_key(MsgId, MODbFailed),
+                  F = dict:is_key(MsgId, Failed),
 
-              case {M, F} of
-                  {'true', _} ->
-                      Error = dict:fetch(MsgId, MODbFailed),
-                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
-                  {_, 'true'} ->
-                      Error = dict:fetch(MsgId, Failed),
-                      [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
-                  _ -> Acc
-              end
+                  case {M, F} of
+                      {'true', _} ->
+                          Error = dict:fetch(MsgId, MODbFailed),
+                          [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
+                      {_, 'true'} ->
+                          Error = dict:fetch(MsgId, Failed),
+                          [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
+                      _ -> Acc
+                  end
           end,
     NewMessages = lists:foldl(Fun, [], Messages),
     kz_json:set_value(?VM_KEY_MESSAGES, NewMessages, BoxJObj).
@@ -304,28 +304,27 @@ generate_lagecy_view_result(BoxJObj) ->
     Mailbox = kz_json:get_value(<<"mailbox">>, BoxJObj),
     Timezone = kz_json:get_value(<<"timezone">>, BoxJObj),
     Messages = kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []),
-    lists:foldl(fun(M, Acc) ->
-                    Value = kz_json:from_list(
-                              props:filter_empty(
-                                   [{<<"source_id">>, BoxId}
-                                   ,{<<"owner_id">>, OwnerId}
-                                   ,{<<"timezone">>, Timezone}
-                                   ,{<<"mailbox">>, Mailbox}
-                                   ,{<<"metadata">>, M}
-                                   ])),
-                    [kz_json:from_list(
-                       props:filter_empty(
-                         [{<<"id">>, BoxId}
-                         ,{<<"key">>, kz_json:get_value(<<"timestamp">>, M)}
-                         ,{<<"value">>, Value}
-                         ,{<<"_id">>, BoxId}
-                         ]))
-                     | Acc
-                    ]
-                end
-               ,[]
-               ,Messages
-               ).
+
+    Fun = fun(M, Acc) ->
+                  Value = kz_json:from_list(
+                            props:filter_empty(
+                              [{<<"source_id">>, BoxId}
+                              ,{<<"owner_id">>, OwnerId}
+                              ,{<<"timezone">>, Timezone}
+                              ,{<<"mailbox">>, Mailbox}
+                              ,{<<"metadata">>, M}
+                              ])),
+                  [kz_json:from_list(
+                     props:filter_empty(
+                       [{<<"id">>, BoxId}
+                       ,{<<"key">>, kz_json:get_value(<<"timestamp">>, M)}
+                       ,{<<"value">>, Value}
+                       ,{<<"_id">>, BoxId}
+                       ]))
+                   | Acc
+                  ]
+          end,
+    lists:foldl(Fun, [], Messages).
 
 -spec has_messages(kz_json:object()) -> boolean().
 has_messages(JObj) ->
@@ -348,15 +347,15 @@ check_dbs_existence([Db | Dbs], MsgsDict) ->
             dict:erase(Db, MsgsDict)
     end.
 
-%--------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %% @private
 %% @doc Normalize bulk save results and update stats accordingly
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_bulk_result(ne_binary(), kz_json:objects()) ->
-                                    {non_neg_integer(), non_neg_integer()}.
+                                   {non_neg_integer(), non_neg_integer()}.
 -spec normalize_bulk_result(ne_binary(), kz_json:objects(), dict:dict()) ->
-                                    {non_neg_integer(), non_neg_integer()}.
+                                   {non_neg_integer(), non_neg_integer()}.
 normalize_bulk_result(Db, Saved) ->
     DefaultDict = dict:from_list([{<<"succeeded">>, []}
                                  ,{<<"failed">>, []}
@@ -400,8 +399,8 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
 process_messages(AccountId, JObjs) ->
     DefaultExt = ?DEFAULT_VM_EXTENSION,
     Fun = fun(J, Acc) ->
-              Doc = create_message(AccountId, J, DefaultExt),
-              dict:append(kz_doc:account_db(Doc), Doc, Acc)
+                  Doc = create_message(AccountId, J, DefaultExt),
+                  dict:append(kz_doc:account_db(Doc), Doc, Acc)
           end,
     lists:foldl(Fun, dict:new(), JObjs).
 
@@ -440,11 +439,11 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
               ]),
     Msg = kzd_box_message:new(AccountId, Props),
     UpdateProps =
-      [{<<"metadata">>, kzd_box_message:set_media_id(kz_doc:id(Msg), Metadata)}
-      ,{<<"pvt_moved_to_modb">>, <<"true">>}
-      ,{<<"pvt_previous_id">>, kzd_box_message:media_id(Metadata)}
-      ,{<<"pvt_attachments">>, Att}
-      ],
+        [{<<"metadata">>, kzd_box_message:set_media_id(kz_doc:id(Msg), Metadata)}
+        ,{<<"pvt_moved_to_modb">>, <<"true">>}
+        ,{<<"pvt_previous_id">>, kzd_box_message:media_id(Metadata)}
+        ,{<<"pvt_attachments">>, Att}
+        ],
     kz_json:set_values(UpdateProps, Msg).
 
 %%--------------------------------------------------------------------
