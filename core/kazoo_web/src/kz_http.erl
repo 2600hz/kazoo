@@ -199,16 +199,26 @@ execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
     Options = props:insert_value('body_format', 'binary', Opts1),
-
-    handle_response(catch httpc:request(Method, Request, HTTPOptions, Options)).
+    F = fun () ->
+                {Method
+                ,element(1, Request)
+                ,catch httpc:request(Method, Request, HTTPOptions, Options)
+                }
+        end,
+    handle_response(timer:tc(F)).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
--spec handle_response(httpc_ret()) -> ret().
-handle_response({'ok', 'saved_to_file'}=Ok) ->
-    Ok;
+-spec handle_response(httpc_ret() | {pos_integer(), {method(), text(), httpc_ret()}}) -> ret().
+handle_response({Micros, {_Method, _Url, Rep}}) when is_integer(Micros) ->
+    lager:debug("~sms: ~s ~s", [float_to_list(Micros/1000, [{decimals,2}, compact])
+                               ,_Method
+                               ,_Url
+                               ]),
+    handle_response(Rep);
+handle_response({'ok', 'saved_to_file'}=Ok) -> Ok;
 handle_response({'ok', ReqId})
   when is_reference(ReqId) ->
     {'http_req_id', ReqId};

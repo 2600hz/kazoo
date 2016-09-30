@@ -1,12 +1,12 @@
 -ifndef(KAZOO_TYPES_INCLUDED).
 -include_lib("xmerl/include/xmerl.hrl").
 
--define(MICROSECONDS_IN_SECOND, 1000000).
-
 -define(MILLISECONDS_IN_SECOND, 1000).
--define(MILLISECONDS_IN_MINUTE, 60000).
--define(MILLISECONDS_IN_HOUR, 3600000).
--define(MILLISECONDS_IN_DAY, 86400000).
+-define(MILLISECONDS_IN_MINUTE, ?MILLISECONDS_IN_SECOND * ?SECONDS_IN_MINUTE).
+-define(MILLISECONDS_IN_HOUR, ?MILLISECONDS_IN_SECOND * ?SECONDS_IN_HOUR).
+-define(MILLISECONDS_IN_DAY, ?MILLISECONDS_IN_SECOND * ?SECONDS_IN_DAY).
+
+-define(MICROSECONDS_IN_SECOND, 1000 * ?MILLISECONDS_IN_SECOND).
 
 -define(SECONDS_IN_MINUTE, 60).
 -define(SECONDS_IN_HOUR, 3600).
@@ -26,9 +26,6 @@
                    ]).
 
 -define(DEFAULT_CONTENT_TYPE, <<"application/json">>).
-
-%% Hangup Causes that are fine
--define(SUCCESSFUL_HANGUPS, [<<"NORMAL_CLEARING">>, <<"ORIGINATOR_CANCEL">>, <<"SUCCESS">>]).
 
 -type text() :: string() | atom() | binary() | iolist().
 
