@@ -76,6 +76,9 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
     case relay_email(To, From, Email) of
         {'ok', Receipt} ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
+        {'error', {'error', Reason} = E} ->
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
+            E;
         {'error', Reason} = E ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
             E
