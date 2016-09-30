@@ -18,7 +18,7 @@
        ).
 
 -define(TIME_BETWEEN_ACCOUNT_CRAWLS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 2 * ?MILLISECONDS_IN_SECOND)).
 
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 -type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
