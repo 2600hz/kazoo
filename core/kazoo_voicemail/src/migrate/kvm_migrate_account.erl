@@ -7,27 +7,17 @@
 %%%     Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(kvm_migrate_account).
--behaviour(gen_server).
 
--export([start/1, start_link/1
-        ,stop/0, stop/1
+-export([start_worker/2
         ]).
 
--export([init/1
-        ,handle_call/3
-        ,handle_cast/2
-        ,handle_info/2
-        ,terminate/2
-        ,code_change/3
-
-        % ,migrate/1, migrate/2
-        ]).
+% -export([migrate/1, migrate/2
+%         ]).
 
 -include("kz_voicemail.hrl").
 
--define(SERVER, ?MODULE).
-
--define(TIMEOUT, 2 * ?MILLISECONDS_IN_SECOND).
+-define(TIME_BETWEEN_ACCOUNT_CRAWLS,
+        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 10 * ?MILLISECONDS_IN_SECOND)).
 
 -define(DEFAULT_VM_EXTENSION,
         kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
@@ -37,13 +27,6 @@
 
 -define(LEGACY_MSG_LISTING, <<"vmboxes/legacy_msg_by_timestamp">>).
 
--record(state, {timer_ref = cleanup_timer() :: reference()
-               ,account_id :: ne_binary()
-               ,first_of_month :: gregorian_seconds()
-               ,last_of_month :: gregorian_seconds()
-               }).
--type state() :: #state{}.
-
 -define(TOTAL_MESSAGES, 'total_messages').
 -define(TOTAL_SUCCEEDED, 'total_succeeded').
 -define(TOTAL_FAILED, 'total_failed').
@@ -52,18 +35,24 @@
 -define(SUCCEEDED, 'succeeded').
 
 -define(DEBUG(Format, Args),
-        lager:debug(Format, Args),
-        io:format(Format ++ "\n", Args)
+        begin
+            lager:debug(Format, Args),
+            io:format("\n" ++ Format ++ "\n", Args)
+        end
        ).
 
 -define(WARNING(Format, Args),
-        lager:warning(Format, Args),
-        io:format(Format ++ "\n", Args)
+        begin
+            lager:warning(Format, Args),
+            io:format("\n" ++ Format ++ "\n", Args)
+        end
        ).
 
 -define(ERROR(Format, Args),
-        lager:error(Format, Args),
-        io:format(Format ++ "\n", Args)
+        begin
+            lager:error(Format, Args),
+            io:format("\n" ++ Format ++ "\n", Args)
+        end
        ).
 
 -type migrate_stats() :: non_neg_integer() |
@@ -73,30 +62,33 @@
                          [{ne_binary(), atom()}] |
                          'undefined'.
 
-%%%===================================================================
-%%% API
-%%%===================================================================
+-spec start_worker(next_account(), pid()) -> 'ok'.
+start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
+    %%lager:warning("* start migrating vm messages in account ~s *", [AccountId]),
+    lager:debug("self ~p Server ~p~n~n", [self(), Server]),
 
-%%--------------------------------------------------------------------
-%% @doc
-%% Starts the server
-%% @end
-%%--------------------------------------------------------------------
--spec start(next_account()) -> startlink_ret().
-start(Account) ->
-    gen_server:start(?SERVER, Account, []).
-
--spec start_link(next_account()) -> startlink_ret().
-start_link(Account) ->
-    gen_server:start_link(?SERVER, Account, []).
-
--spec stop() -> 'ok'.
-stop() ->
-    gen_server:cast(?SERVER, 'stop').
-
--spec stop(server_ref()) -> 'ok'.
-stop(Pid) ->
-    gen_server:cast(Pid, 'stop').
+    ViewOpts = props:filter_empty(
+                 [{'limit', ?MAX_BULK_INSERT}
+                 ,{'startkey', LastOfMonth}
+                 ,{'endkey', FirstOfMonth}
+                 ,'descending'
+                 ]),
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
+        {'ok', []} ->
+            ?WARNING(" [~s] no legacy voicemail messages left", [AccountId]),
+            kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth);
+        {'ok', ViewResults} ->
+            migrate_messages(AccountId, ViewResults),
+            migration_result(Server, AccountId, FirstOfMonth, LastOfMonth);
+        {'error', 'not_found'} ->
+            Views = kapps_maintenance:get_all_account_views(),
+            _ = kapps_util:update_views(Db, Views, 'true'),
+            start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server);
+        {'error', R} ->
+            ?ERROR(" [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R]),
+            kvm_migrate_crawler:account_maybe_failed(Server, AccountId, FirstOfMonth, LastOfMonth, R)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -121,118 +113,10 @@ stop(Pid) ->
 %     end.
 
 %%%===================================================================
-%%% gen_server callbacks
-%%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Initializes the server
-%%--------------------------------------------------------------------
--spec init(next_account()) -> {'ok', state()} |
-                              {'stop', state()}.
-init({AccountId, FirstOfMonth, LastOfMonth}) ->
-    kz_util:put_callid(?SERVER),
-    lager:debug("started ~s", [?SERVER]),
-
-    {'ok', #state{timer_ref = cleanup_timer()
-                 ,account_id = AccountId
-                 ,first_of_month = FirstOfMonth
-                 ,last_of_month = LastOfMonth
-                 }}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling call messages
-%% @end
-%%--------------------------------------------------------------------
--spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
-handle_call(_Request, _From, State) ->
-    {'reply', {'error', 'not_implemented'}, State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling cast messages
-%% @end
-%%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('stop', State) ->
-    lager:debug("~p has been stopped", [?MODULE]),
-    {'stop', 'normal', State};
-handle_cast(_Msg, State) ->
-    lager:debug("unhandled cast: ~p", [_Msg]),
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Handling all non call/cast messages
-%% @end
-%%--------------------------------------------------------------------
--spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'timeout', Ref, _Msg}, #state{timer_ref = Ref
-                                          ,account_id = AccountId
-                                          ,first_of_month = FirstOfMonth
-                                          ,last_of_month = LastOfMonth
-                                          }=State) ->
-    lager:warning("=== start migrating vm messages in account ~s ===", [AccountId]),
-
-    ViewOpts = props:filter_empty(
-                 [{'limit', ?MAX_BULK_INSERT}
-                 ,{'startkey', LastOfMonth}
-                 ,{'endkey', FirstOfMonth}
-                 ,'descending'
-                 ]),
-    Db = kvm_util:get_db(AccountId),
-    case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
-        {'ok', []} ->
-            lager:warning("no legacy voicemail messages left in account ~s (last timestamp proccessed: ~p), going down", [AccountId, FirstOfMonth]),
-            kvm_migrate_crawler:account_is_done(AccountId, FirstOfMonth, LastOfMonth),
-            {'stop', 'normal', State};
-        {'ok', ViewResults} ->
-            migrate_messages(AccountId, ViewResults),
-            migration_result(AccountId, FirstOfMonth, LastOfMonth),
-            {'stop', 'normal', State};
-        {'error', R} ->
-            lager:warning("failed to fetch legacy voicemail message view result for ~s: ~p"
-                         ,[AccountId, R]),
-            kvm_migrate_crawler:account_maybe_failed(AccountId, FirstOfMonth, LastOfMonth, R),
-            {'stop', 'normal', State}
-    end;
-handle_info(_Info, State) ->
-    lager:debug("unhandled msg: ~p", [_Info]),
-    {'noreply', State}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function is called by a gen_server when it is about to
-%% terminate. It should be the opposite of Module:init/1 and do any
-%% necessary cleaning up. When it returns, the gen_server terminates
-%% with Reason. The return value is ignored.
-%% @end
-%%--------------------------------------------------------------------
--spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, _State) ->
-    lager:debug("~s terminating: ~p", [?SERVER, _Reason]).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert process state when code is changed
-%% @end
-%%--------------------------------------------------------------------
--spec code_change(any(), state(), any()) -> {'ok', state()}.
-code_change(_OldVsn, State, _Extra) ->
-    {'ok', State}.
-
-%%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec migration_result(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
-migration_result(AccountId, FirstOfMonth, LastOfMonth) ->
+-spec migration_result(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
     TotalMsgs = get_stats(?TOTAL_MESSAGES),
     TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
     TotalFailed = get_stats(?TOTAL_FAILED),
@@ -244,13 +128,13 @@ migration_result(AccountId, FirstOfMonth, LastOfMonth) ->
             ],
     case TotalMsgs == MODbFailed of
         'true' ->
-            kvm_migrate_crawler:update_stats(AccountId, Props),
-            kvm_migrate_crawler:account_is_done(AccountId, FirstOfMonth, LastOfMonth),
-            lager:warning("reached to the latest avialable modb for account ~s", [AccountId]);
+            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
+            kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth),
+            ?WARNING(" [~s] reached to the latest avialable modb", [AccountId]);
         'false' ->
-            kvm_migrate_crawler:update_stats(AccountId, Props),
-            lager:warning("finished a migrate cycle for account ~s: succeeded ~b failed ~b no_modb ~b"
-                         ,[AccountId, TotalSucceeded, TotalFailed, MODbFailed])
+            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
+            ?WARNING(" [~s] finished a migrate cycle: [proccessed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
+                    ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed])
     end.
 
 %%--------------------------------------------------------------------
@@ -263,7 +147,7 @@ migrate_messages(AccountId, ViewResults) ->
     MsgCount = length(ViewResults),
     _ = update_process_key(?TOTAL_MESSAGES, MsgCount),
 
-    lager:warning("processing ~b voicemail messages in account ~s", [MsgCount, AccountId]),
+    ?WARNING(" [~s] processing ~b voicemail messages", [AccountId, MsgCount]),
     MsgsDict = process_messages(AccountId, ViewResults),
     maybe_migrate(AccountId, ViewResults, MsgsDict, dict:fetch_keys(MsgsDict)).
 
@@ -277,9 +161,9 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
 maybe_migrate(_AccountId, _ViewResults, _MsgsDict, 0) ->
-    lager:warning("none of modbs for proccessed messages in account ~s is exists", [_AccountId]);
+    lager:debug(" [~s] none of modbs for proccessed messages is exists", [_AccountId]);
 maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
-    do_migrate(AccountId, MsgsDict),
+    do_migrate(MsgsDict),
     update_mailboxes(AccountId, ViewResults).
 
 %%--------------------------------------------------------------------
@@ -287,23 +171,20 @@ maybe_migrate(AccountId, ViewResults, MsgsDict, _DbCount) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec do_migrate(ne_binary(), dict:dict()) -> 'ok'.
-do_migrate(AccountId, MsgsDict) ->
-    lager:warning("migrating voicemail messages to ~b modbs for account_id ~s"
-                 ,[dict:size(MsgsDict), AccountId]),
+-spec do_migrate(dict:dict()) -> 'ok'.
+do_migrate(MsgsDict) ->
     dict:fold(fun bulk_save_modb/3, [], MsgsDict).
 
 -spec bulk_save_modb(ne_binary(), kz_json:objects(), list()) -> 'ok'.
 bulk_save_modb(Db, Js, _Acc) ->
     case kz_datamgr:save_docs(Db, Js) of
         {'ok', Saved} ->
-            {Success, Failed} = normalize_bulk_result(Db, Saved),
-            lager:warning("bulk save vm messages resulted in ~b success and ~b failed in db ~s"
-                         ,[Success, Failed, Db]);
+            _ = normalize_bulk_result(Db, Saved),
+            'ok';
         {'error', R} ->
             update_stats(?FAILED, Js, R),
-            lager:error("failed to migrate voicemail messages to db ~s: ~p"
-                       ,[Db, R])
+            ?ERROR(" [~s] failed to migrate voicemail messages to db ~s: ~p"
+                  ,[kz_util:format_account_id(Db), Db, R])
     end.
 
 %%--------------------------------------------------------------------
@@ -327,9 +208,11 @@ update_mailboxes(AccountId, ViewResults) ->
             case kz_datamgr:save_docs(Db, NewBoxJObjs) of
                 {'ok', _} -> 'ok';
                 {'error', R} ->
+                    ?ERROR(" [~s] failed to save new message array into mailboxes", [AccountId]),
                     failed_to_update_mailbox(ViewResults, R)
             end;
         {'error', R} ->
+            ?ERROR(" [~s] failed to open mailboxes for update", [AccountId]),
             failed_to_update_mailbox(ViewResults, R)
     end.
 
@@ -452,7 +335,8 @@ normalize_bulk_result(Db, [S | Saved], Dict) ->
             %% successful
             normalize_bulk_result(Db, Saved, dict:append(<<"succeeded">>, Id, Dict));
         Reason ->
-            lager:error("failed to save voicemail message ~s in db ~s: ~p", [Id, Db, Reason]),
+            lager:debug(" [~s] failed to save voicemail message ~s in db ~s: ~p"
+                       ,[kz_util:format_account_id(Db), Id, Db, Reason]),
             normalize_bulk_result(Db, Saved, dict:append(<<"failed">>, {Id, Reason}, Dict))
     end.
 
@@ -524,9 +408,9 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec cleanup_timer() -> reference().
-cleanup_timer() ->
-    erlang:start_timer(?TIMEOUT, self(), 'ok').
+% -spec cleanup_timer() -> reference().
+% cleanup_timer() ->
+%     erlang:start_timer(?TIME_BETWEEN_ACCOUNT_CRAWLS, self(), 'ok').
 
 %%--------------------------------------------------------------------
 %% @private

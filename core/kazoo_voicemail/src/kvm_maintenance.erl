@@ -27,7 +27,15 @@
 %%--------------------------------------------------------------------
 -spec migrate() -> startlink_ret().
 migrate() ->
-    kvm_migrate_sup:start_link().
+    _ = process_flag('trap_exit', 'true'),
+    {'ok', Pid} = kvm_migrate_crawler:start(self()),
+    link(Pid),
+    receive
+        'done' -> 'ok';
+        {'EXIT', Pid, 'normal'} -> 'ok';
+        {'EXIT', Pid, _Reason} ->
+            io:format("********** migration process died with reason ~p **********", [_Reason])
+    end.
 
 % -spec migrate(ne_binary()) -> 'ok'.
 % -spec migrate(ne_binary(), ne_binary() | ne_binaries() | kz_json:object()) -> 'ok'.
