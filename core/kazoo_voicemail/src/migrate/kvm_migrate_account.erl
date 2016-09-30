@@ -429,7 +429,7 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
     Att = kz_json:from_list([{AttName, kz_json:from_list(AttProps)}]),
 
     Props = props:filter_undefined(
-              [{<<"Box-Id">>, kz_doc:id(BoxJObj)}
+              [{<<"Box-Id">>, kz_doc:id(FakeBoxJObj)}
               ,{<<"Media-ID">>, kzd_box_message:media_id(Metadata)}
               ,{<<"Box-Num">>, BoxNum}
               ,{<<"Timezone">>, TimeZone}
