@@ -213,7 +213,7 @@ execute_request(Method, Request, Opts) ->
 %%--------------------------------------------------------------------
 -spec handle_response(httpc_ret() | {pos_integer(), {method(), text(), httpc_ret()}}) -> ret().
 handle_response({Micros, {_Method, _Url, Rep}}) when is_integer(Micros) ->
-    lager:debug("~sms: ~s ~s", [float_to_list(Micros/1000, [{decimals,2}, compact])
+    lager:debug("~sms: ~s ~s", [float_to_list(Micros/1000, [{'decimals',2}, 'compact'])
                                ,_Method
                                ,_Url
                                ]),
