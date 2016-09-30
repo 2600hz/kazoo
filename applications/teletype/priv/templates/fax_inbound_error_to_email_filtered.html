@@ -1,0 +1,7 @@
+<html><body><h3>Error : {% firstof error.fax_info error.call_info "unknown error" %} </h3>
+<table>
+<tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number "unknown number" %} ({% firstof fax.remote_station_id caller_id.number "unknown number" %})</td></tr>
+<tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>
+<tr><td>Call received</td><td>{% firstof fax.timestamp|date:"l, F j, Y \\a\\t H:i" date_called|date:"l, F j, Y \\a\\t H:i"%}</td></tr>
+</table>
+<p style="font-size: 9px;color:#C0C0C0">{{call_id}}</p></body></html>

@@ -1,0 +1,7 @@
+Error : {% firstof error.fax_info error.call_info "unknown error" %}
+
+Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number "unknown number" %} ({% firstof fax.remote_station_id caller_id.number "unknown number" %})
+
+         Called To: {{to.user}} (Originally dialed number)
+         Called On: {% firstof fax.timestamp|date:"l, F j, Y \a\t H:i" date_called|date:"l, F j, Y \a\t H:i" %}
+
