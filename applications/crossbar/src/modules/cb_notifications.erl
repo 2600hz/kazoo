@@ -221,7 +221,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, fun(JObj) -> kz_json:get_value(<<"value">>, JObj) end);
+    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, fun normalize_view_result/1);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
@@ -1237,3 +1237,7 @@ maybe_update_db(Context) ->
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
         _AccountId -> Context
     end.
+
+-spec normalize_view_result(kz_json:object()) -> kz_json:object().
+normalize_view_result(JObj) ->
+    kz_json:get_value(<<"value">>, JObj).
