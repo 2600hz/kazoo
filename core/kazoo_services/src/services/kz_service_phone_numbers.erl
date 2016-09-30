@@ -18,6 +18,9 @@
 -define(NUMBER_SERVICES, <<"number_services">>).
 -define(LISTING_BY_NUMBER, <<"numbers/list_by_number">>).
 
+-type pn() :: knm_phone_number:knm_phone_number().
+-type pns() :: [pn()].
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -25,7 +28,7 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec reconcile(kz_services:services()) -> kz_services:services().
--spec reconcile(kz_services:services(), kz_json:objects()) -> kz_services:services().
+-spec reconcile(kz_services:services(), pns()) -> kz_services:services().
 reconcile(Services) ->
     AccountId = kz_services:account_id(Services),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
@@ -34,14 +37,16 @@ reconcile(Services) ->
             lager:debug("unable to get current phone numbers in service: ~p", [_R]),
             Services;
         {'ok', JObjs} ->
-            Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
-            reconcile(Services, Docs)
+            PNs = [knm_phone_number:from_json(kz_json:get_value(<<"doc">>, JObj))
+                   || JObj <- JObjs
+                  ],
+            reconcile(Services, PNs)
     end.
 
-reconcile(Services, JObjs) ->
+reconcile(Services, PNs) ->
     S1 = kz_services:reset_category(?PHONE_NUMBERS, Services),
     S2 = kz_services:reset_category(?NUMBER_SERVICES, S1),
-    update_numbers(S2, JObjs).
+    update_numbers(S2, PNs).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,22 +84,22 @@ phone_number_activation_charge(Services, Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_numbers(kz_services:services(), kz_json:objects()) -> kz_services:services().
+-spec update_numbers(kz_services:services(), pns()) -> kz_services:services().
 update_numbers(Services, []) ->
     Services;
-update_numbers(Services, [JObj|JObjs]) ->
-    Number = kz_doc:id(JObj),
-    case knm_converters:is_reconcilable(Number) of
+update_numbers(Services, [PN|PNs]) ->
+    DID = knm_phone_number:number(PN),
+    case knm_converters:is_reconcilable(DID) of
         'false' -> Services;
         'true' ->
-            Routines = [fun(S) -> update_number_quantities(S, JObj) end
+            Routines = [fun(S) -> update_number_quantities(S, PN, DID) end
                        ,fun(S) ->
-                                Features = kz_json:get_value(?PVT_FEATURES, JObj, kz_json:new()),
+                                Features = knm_phone_number:features_list(PN),
                                 update_feature_quantities(Features, S)
                         end
                        ],
             UpdatedServices = lists:foldl(fun(F, S) -> F(S) end, Services, Routines),
-            update_numbers(UpdatedServices, JObjs)
+            update_numbers(UpdatedServices, PNs)
     end.
 
 %%--------------------------------------------------------------------
@@ -103,13 +108,11 @@ update_numbers(Services, [JObj|JObjs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_number_quantities(kz_services:services(), kz_json:object()) ->
-                                      kz_services:services().
-update_number_quantities(Services, JObj) ->
-    Number = kz_doc:id(JObj),
-    ModuleName = kz_json:get_atom_value(?PVT_MODULE_NAME, JObj),
-    case is_number_billable(Number, ModuleName)
-        andalso knm_converters:classify(Number)
+-spec update_number_quantities(kz_services:services(), pn(), ne_binary()) -> kz_services:services().
+update_number_quantities(Services, PN, DID) ->
+    ModuleName = knm_phone_number:module_name(PN),
+    case is_number_billable(DID, ModuleName)
+        andalso knm_converters:classify(DID)
     of
         'false' -> Services;
         'undefined' -> Services;
