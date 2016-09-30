@@ -11,13 +11,10 @@
 -export([start_worker/2
         ]).
 
-% -export([migrate/1, migrate/2
-%         ]).
+-export([manual_migrate/1, manual_migrate/2
+        ]).
 
 -include("kz_voicemail.hrl").
-
--define(TIME_BETWEEN_ACCOUNT_CRAWLS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 10 * ?MILLISECONDS_IN_SECOND)).
 
 -define(DEFAULT_VM_EXTENSION,
         kapps_config:get(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"extension">>], <<"mp3">>)).
@@ -62,10 +59,13 @@
                          [{ne_binary(), atom()}] |
                          'undefined'.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Start a migration cycle
+%% @end
+%%--------------------------------------------------------------------
 -spec start_worker(next_account(), pid()) -> 'ok'.
 start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
-    lager:debug("self ~p Server ~p~n~n", [self(), Server]),
-
     ViewOpts = props:filter_empty(
                  [{'limit', ?MAX_BULK_INSERT}
                  ,{'startkey', LastOfMonth}
@@ -91,50 +91,64 @@ start_worker({AccountId, FirstOfMonth, LastOfMonth}, Server) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Triggers migration for an Account or a list of mailboxes
+%% @doc Manual migration for an Account or a list of account's mailboxes
 %% @end
 %%--------------------------------------------------------------------
-% -spec migrate(ne_binary()) -> 'ok'.
-% -spec migrate(ne_binary(), ne_binary() | ne_binaries()) -> 'ok'.
-% migrate(AccountId) when is_binary(AccountId) ->
-%     migrate(AccountId, []).
+-spec manual_migrate(ne_binary()) -> 'ok'.
+-spec manual_migrate(ne_binary(), ne_binary() | ne_binaries()) -> 'ok'.
+manual_migrate(AccountId) ->
+    ?WARNING("######## Beginnig migration for account ~s~n~n", [AccountId]),
+    manual_migrate_loop(AccountId, 1).
 
-% migrate(AccountId, ?NE_BINARY = BoxId) ->
-%     migrate(AccountId, [BoxId]);
-% migrate(AccountId, BoxIds) ->
-%     case get_account_vmboxes(AccountId, BoxIds) of
-%         {'ok', []} ->
-%             lager:error("=== no voicemail box with messages found in account ~s ===", [AccountId]),
-%         {'ok', BoxIds} ->
-%             do_migrate(AccountId, BoxIds, 'undefined');
-%         _ ->
-%             'ok'
-%     end.
+manual_migrate_loop(AccountId, LoopCount) ->
+    ?WARNING("    [~s] migration cycle #~b", [AccountId, LoopCount]),
+    ViewOpts = [{'limit', ?MAX_BULK_INSERT}
+               ,'descending'
+               ],
+    Db = kvm_util:get_db(AccountId),
+    case kz_datamgr:get_results(Db, ?LEGACY_MSG_LISTING, ViewOpts) of
+        {'ok', []} ->
+            ?WARNING("    [~s] no legacy voicemail messages left", [AccountId]),
+            print_summary(AccountId),
+            ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId]);
+        {'ok', ViewResults} ->
+            migrate_messages(AccountId, ViewResults),
+            timer:sleep(?TIME_BETWEEN_ACCOUNT_CRAWLS),
+            case is_latest_modb(AccountId) of
+                'true' ->
+                    ?WARNING("    [~s] reached to the latest avialable modb", [AccountId]),
+                    ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId]);
+                'false' ->
+                    manual_migrate_loop(AccountId, LoopCount + 1)
+            end;
+        {'error', 'not_found'} ->
+            Views = kapps_maintenance:get_all_account_views(),
+            _ = kapps_util:update_views(Db, Views, 'true'),
+            manual_migrate_loop(AccountId, LoopCount);
+        {'error', R} ->
+            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R]),
+            print_summary(AccountId),
+            ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId])
+    end.
+
+manual_migrate(AccountId, ?NE_BINARY = BoxId) ->
+    manual_migrate(AccountId, [BoxId]);
+manual_migrate(AccountId, BoxIds) ->
+    ?WARNING("######## Beginnig migration for ~b mailbox(es) in account ~s~n~n", [length(BoxIds), AccountId]),
+    case get_messages_from_vmboxes(AccountId, BoxIds) of
+        {'ok', []} ->
+            ?WARNING("    [~s] no legacy voicemail messages left", [AccountId]);
+        {'ok', ViewResults} ->
+            migrate_messages(AccountId, ViewResults);
+        {'error', R} ->
+            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R])
+    end,
+    print_summary(AccountId),
+    ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId]).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec migration_result(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
-migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
-    TotalMsgs = get_stats(?TOTAL_MESSAGES),
-    TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
-    TotalFailed = get_stats(?TOTAL_FAILED),
-    MODbFailed = length(get_stats(?FAILED_MODB)),
-
-    Props = [{<<"total_processed">>, TotalMsgs}
-            ,{<<"total_succeeded">>, TotalSucceeded}
-            ,{<<"total_failed">>, TotalFailed}
-            ],
-    case TotalMsgs == MODbFailed of
-        'true' ->
-            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
-            kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth),
-            ?WARNING("    [~s] reached to the latest avialable modb", [AccountId]);
-        'false' ->
-            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
-            ?WARNING("    [~s] finished a migrate cycle: [proccessed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
-                    ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed])
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -257,34 +271,65 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc
+%% @doc Get messages from mailbox arrays and generate lagecy_msg lisiting view
+%% fake message_doc result for manual migration
 %% @end
 %%--------------------------------------------------------------------
-% -spec get_account_vmboxes(ne_binary(), api_ne_binaries()) -> db_ret().
-% get_account_vmboxes(AccountId, 'undefined') ->
-%     get_account_vmboxes(AccountId, []);
-% get_account_vmboxes(AccountId, ExpectedBoxIds) ->
-%     Db = kz_util:format_account_db(AccountId),
-%     case kz_datamgr:get_results(Db, ?VMBOX_CB_LIST) of
-%         {'ok', JObjs} -> normalize_mailbox_results(JObjs, ExpectedBoxIds);
-%         {'error', _E} = Error ->
-%             lager:error("failed to get voicemail boxes in ~s: ~p", [AccountId, _E]),
-%             Error
-%     end.
+-spec get_messages_from_vmboxes(ne_binary(), ne_binaries()) -> db_ret().
+get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
+    Db = kz_util:format_account_db(AccountId),
+    ViewOpts = props:filter_empty(
+                 [{'keys', ExpectedBoxIds}
+                 ,'include_docs'
+                 ]),
+    case kz_datamgr:all_docs(Db, ViewOpts) of
+        {'ok', JObjs} ->
+            {'ok', lists:flatten(normalize_mailbox_results(JObjs))};
+        {'error', _E} = Error ->
+            ?ERROR("    [~s] failed to open mailbox(es)", [AccountId]),
+            Error
+    end.
 
-% -spec normalize_mailbox_results(kz_json:objects(), ne_binaries()) -> ne_binaries().
-% normalize_mailbox_results(JObjs, ExpectedBoxIds) ->
-%     [kz_doc:id(J)
-%      || J <- JObjs,
-%         lists:member(kz_doc:id(J), ExpectedBoxIds),
-%         has_messages(J)
-%     ].
+-spec normalize_mailbox_results(kz_json:objects()) -> kz_json:objects().
+normalize_mailbox_results(JObjs) ->
+    [generate_lagecy_view_result(kz_json:get_value(<<"doc">>, J))
+     || J <- JObjs,
+        has_messages(J)
+    ].
 
-% -spec has_messages(kz_json:object()) -> boolean().
-% has_messages(JObj) ->
-%     Count = kz_json:get_integer_value([<<"value">>, ?VM_KEY_MESSAGES], JObj),
-%     _ = update_process_key('total_messages', Count),
-%     Count > 0.
+-spec generate_lagecy_view_result(kz_json:object()) -> kz_json:objects().
+generate_lagecy_view_result(BoxJObj) ->
+    BoxId = kz_doc:id(BoxJObj),
+    OwnerId = kz_json:get_value(<<"owner_id">>, BoxJObj),
+    Mailbox = kz_json:get_value(<<"mailbox">>, BoxJObj),
+    Timezone = kz_json:get_value(<<"timezone">>, BoxJObj),
+    Messages = kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []),
+    lists:foldl(fun(M, Acc) ->
+                    Value = kz_json:from_list(
+                              props:filter_empty(
+                                   [{<<"source_id">>, BoxId}
+                                   ,{<<"owner_id">>, OwnerId}
+                                   ,{<<"timezone">>, Timezone}
+                                   ,{<<"mailbox">>, Mailbox}
+                                   ,{<<"metadata">>, M}
+                                   ])),
+                    [kz_json:from_list(
+                       props:filter_empty(
+                         [{<<"id">>, BoxId}
+                         ,{<<"key">>, kz_json:get_value(<<"timestamp">>, M)}
+                         ,{<<"value">>, Value}
+                         ,{<<"_id">>, BoxId}
+                         ]))
+                     | Acc
+                    ]
+                end
+               ,[]
+               ,Messages
+               ).
+
+-spec has_messages(kz_json:object()) -> boolean().
+has_messages(JObj) ->
+    length(kz_json:get_value([<<"doc">>, ?VM_KEY_MESSAGES], JObj, [])) > 0.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,15 +452,6 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-% -spec cleanup_timer() -> reference().
-% cleanup_timer() ->
-%     erlang:start_timer(?TIME_BETWEEN_ACCOUNT_CRAWLS, self(), 'ok').
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec get_stats(atom()) -> migrate_stats().
 get_stats(Key) ->
     case erlang:get(Key) of
@@ -470,3 +506,59 @@ update_process_total_key(?FAILED, Count) ->
     update_process_key(?TOTAL_FAILED, Count);
 update_process_total_key(?FAILED_MODB, Count) ->
     update_process_key(?TOTAL_FAILED, Count).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec migration_result(pid(), ne_binary(), gregorian_seconds(), gregorian_seconds()) -> 'ok'.
+migration_result(Server, AccountId, FirstOfMonth, LastOfMonth) ->
+    TotalMsgs = get_stats(?TOTAL_MESSAGES),
+    TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
+    TotalFailed = get_stats(?TOTAL_FAILED),
+    MODbFailed = length(get_stats(?FAILED_MODB)),
+
+    Props = [{<<"total_processed">>, TotalMsgs}
+            ,{<<"total_succeeded">>, TotalSucceeded}
+            ,{<<"total_failed">>, TotalFailed}
+            ],
+    case TotalMsgs == MODbFailed of
+        'true' ->
+            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
+            kvm_migrate_crawler:account_is_done(Server, AccountId, FirstOfMonth, LastOfMonth),
+            ?WARNING("    [~s] reached to the latest avialable modb", [AccountId]);
+        'false' ->
+            kvm_migrate_crawler:update_stats(Server, AccountId, Props),
+            ?WARNING("    [~s] finished a migrate cycle: [proccessed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
+                    ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_latest_modb(ne_binary()) -> boolean().
+is_latest_modb(AccountId) ->
+    print_summary(AccountId, 'true').
+
+-spec print_summary(ne_binary()) -> 'ok'.
+-spec print_summary(ne_binary(), boolean()) -> 'ok' | boolean().
+print_summary(AccountId) ->
+    print_summary(AccountId, 'false').
+
+print_summary(AccountId, ShouldCheckMODB) ->
+    TotalMsgs = get_stats(?TOTAL_MESSAGES),
+    TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
+    TotalFailed = get_stats(?TOTAL_FAILED),
+    MODbFailed = length(get_stats(?FAILED_MODB)),
+
+    ?WARNING("    [~s] finished a migrate cycle: [proccessed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
+            ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed]),
+
+    case ShouldCheckMODB of
+        'false' -> 'ok';
+        'true' ->
+            TotalMsgs == MODbFailed
+    end.

@@ -33,10 +33,7 @@
 -define(SERVER, ?MODULE).
 
 -define(MAX_PROCESS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 3)).
-
--define(TIME_BETWEEN_ACCOUNT_CRAWLS,
-        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], ?MILLISECONDS_IN_SECOND)).
+        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 10)).
 
 -record(state, {max_worker = ?MAX_PROCESS :: integer()
                ,workers = [] :: kz_proplist()
