@@ -1537,13 +1537,24 @@
             "description": "Validator for the prepend_cid callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "default": "prepend",
+                    "description": "",
+                    "type": "string"
+                },
+                "apply_to": {
+                    "default": "original",
+                    "description": "",
+                    "type": "string"
                 },
                 "caller_id_name_prefix": {
-                    "description": ""
+                    "default": "",
+                    "description": "",
+                    "type": "string"
                 },
                 "caller_id_number_prefix": {
-                    "description": ""
+                    "default": "",
+                    "description": "",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -5999,6 +6010,152 @@
                             },
                             "type": "object"
                         }
+                    },
+                    "required": true,
+                    "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "qubicle_callflows": {
+            "description": "Defines the fields required to be configured on the callflow document for a callflow to be used to route to a Qubicle queue.",
+            "name": "Qubicle Callflow",
+            "properties": {
+                "data": {
+                    "description": "The configuration values for the Qubicle callflow module",
+                    "name": "Qubicle",
+                    "properties": {
+                        "queue_id": {
+                            "description": "The id of the Qubicle queue to route calls to",
+                            "name": "Queue ID",
+                            "required": true,
+                            "type": "string"
+                        }
+                    },
+                    "required": true,
+                    "type": "object"
+                },
+                "module": {
+                    "description": "The callflow module to use",
+                    "name": "Module",
+                    "required": true,
+                    "type": "string",
+                    "value": "qubicle"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "qubicle_queues": {
+            "description": "Defines a queue in Qubicle",
+            "name": "Qubicle Call Queue",
+            "properties": {
+                "agent_wrapup_time": {
+                    "default": 2,
+                    "description": "Pre-defined wait period applied after an agent handles a customer call",
+                    "minimum": 0,
+                    "name": "Agent Wrapup Time",
+                    "required": false,
+                    "type": "integer"
+                },
+                "force_away_on_reject": {
+                    "default": "false",
+                    "description": "If set to true and a recipient rejects a call, they will be forced to away state",
+                    "required": false,
+                    "type": "boolean"
+                },
+                "hold_treatment": {
+                    "description": "Media ID (or appropriate media URI) of media to play while caller is on hold.",
+                    "name": "Hold Treatment",
+                    "required": false,
+                    "type": "string"
+                },
+                "primary_node": {
+                    "description": "The node that the queue runs on under normal operation",
+                    "name": "Primary Node",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_name": {
+                    "description": "A friendly name for the queue",
+                    "maxLength": 128,
+                    "minLength": 1,
+                    "name": "Name",
+                    "required": true,
+                    "type": "string"
+                },
+                "queue_router": {
+                    "default": "route_round_robin",
+                    "description": "The queue router used for routing and delivering calls to recipients",
+                    "enum": [
+                        "route_round_robin",
+                        "route_least_calls",
+                        "route_most_idle"
+                    ],
+                    "name": "Router",
+                    "required": false,
+                    "type": "string"
+                },
+                "queue_type": {
+                    "default": "queue_basic",
+                    "description": "The type of queue",
+                    "enum": [
+                        "queue_basic"
+                    ],
+                    "name": "Type",
+                    "required": false,
+                    "type": "string"
+                },
+                "ring_timeout": {
+                    "default": 20,
+                    "description": "Amount of time in seconds that qubicle will wait while ringing for the agent to successfully answer a call.",
+                    "minimum": 1,
+                    "name": "Agent Connect Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "tick_time": {
+                    "default": 1000,
+                    "description": "The time between delivery ticks in milliseconds",
+                    "minimum": 250,
+                    "name": "Tick Time",
+                    "required": false,
+                    "type": "integer"
+                },
+                "timeout": {
+                    "default": 3600,
+                    "description": "The maximum amount of time in seconds that a call will wait in queue.",
+                    "minimum": 10,
+                    "name": "Queue Timeout",
+                    "required": false,
+                    "type": "integer"
+                },
+                "timeout_if_size_exceeds": {
+                    "default": 0,
+                    "description": "If set to a non-zero value the queue will immediately time out any call entering the queue over the size",
+                    "required": false,
+                    "type": "integer"
+                },
+                "timeout_immediately_if_empty": {
+                    "default": "false",
+                    "description": "If set to true and a call enters the queue while it has no logged in agents, the call will time out",
+                    "required": false,
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "qubicle_recipients": {
+            "description": "Defines the fields required to be configured on the users document for a user to be used as a Qubicle recipient.",
+            "name": "Qubicle Recipient",
+            "properties": {
+                "qubicle": {
+                    "description": "The configuration values for the Qubicle recipient",
+                    "name": "Qubicle",
+                    "properties": {
+                        "enabled": "true"
                     },
                     "required": true,
                     "type": "object"
