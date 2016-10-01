@@ -339,15 +339,20 @@ disconnect(Number) ->
 %% Create a number in a discovery (or given) state.
 %% @end
 %%--------------------------------------------------------------------
--spec create_found(ne_binary(), module(), ne_binary(), kz_json:object()) ->
+-spec create_found(ne_binary(), module(), api_ne_binary(), kz_json:object()) ->
                           knm_number_return().
--spec create_found(ne_binary(), module(), ne_binary(), kz_json:object(), ne_binary()) ->
+-spec create_found(ne_binary(), module(), api_ne_binary(), kz_json:object(), ne_binary()) ->
                           knm_number_return().
-create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data)
-  when is_atom(Carrier) ->
+create_found(DID, Carrier, AuthBy, Data) ->
     create_found(DID, Carrier, AuthBy, Data, ?NUMBER_STATE_DISCOVERY).
-create_found(DID=?NE_BINARY, Carrier, ?MATCH_ACCOUNT_RAW(AuthBy), Data, State=?NE_BINARY)
+
+create_found(DID=?NE_BINARY, Carrier, Auth, Data, State=?NE_BINARY)
   when is_atom(Carrier) ->
+    AuthBy =
+        case Auth of
+            'undefined' -> ?KNM_DEFAULT_AUTH_BY;
+            ?MATCH_ACCOUNT_RAW(AccountId) -> AccountId
+        end,
     case knm_number:get(DID) of
         {'ok', _Number}=Ok -> Ok;
         {'error', 'not_found'} ->
