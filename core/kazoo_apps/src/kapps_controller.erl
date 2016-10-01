@@ -149,11 +149,8 @@ maybe_start_from_env() ->
 -spec maybe_start_from_node_name() -> 'false' | atoms().
 maybe_start_from_node_name() ->
     KApp = kapp_from_node_name(),
-    case is_kapp(KApp)
-        andalso code:where_is_file(kz_util:to_list(KApp) ++ ".app")
-    of
+    case is_kapp(KApp) of
         'false' -> 'false';
-        'non_existing' -> 'false';
         _Else ->
             lager:info("starting application based on node name: ~s", [KApp]),
             [KApp]
@@ -201,5 +198,7 @@ list_apps() ->
 is_kapp(App) ->
     case application:get_key(App, 'applications') of
         {'ok', Deps} -> lists:member(?APP, Deps);
-        'undefined' -> 'false'
+        'undefined' ->
+            %% Race condition sometimes prevents from reading application key
+            'non_existing' =/= code:where_is_file(atom_to_list(App) ++ ".app")
     end.
