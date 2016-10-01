@@ -226,7 +226,6 @@ rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
 rest_terminate(Req, Context, Verb) ->
     {ABin, AMem} = metrics(),
     {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
-
     lager:info("~s request fulfilled in ~p ms ~s mem ~s bin"
               ,[Verb, kz_util:elapsed_ms(cb_context:start(Context))
                ,pretty_metric(AMem - BMem)
