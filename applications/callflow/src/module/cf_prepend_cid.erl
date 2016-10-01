@@ -19,9 +19,9 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Call1 = kapps_call:exec([
-        fun maybe_set_orig_name/1
-       ,fun maybe_set_orig_number/1
-    ], Call),
+                             fun maybe_set_orig_name/1
+                            ,fun maybe_set_orig_number/1
+                            ], Call),
     handle(kz_json:get_value(<<"action">>, Data, <<"prepend">>), Data, Call1).
 
 -spec handle(binary(), kz_json:object(), kapps_call:call()) -> any().
@@ -36,16 +36,16 @@ handle(<<"prepend">>, Data, Call) ->
     NumberPre = kz_json:get_value(<<"caller_id_number_prefix">>, Data, <<"">>),
 
     {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
-        <<"original">> -> {
-            <<NamePre/binary, (kapps_call:kvs_fetch('original_cid_name', Call))/binary>>
-           ,<<NumberPre/binary, (kapps_call:kvs_fetch('original_cid_number', Call))/binary>>
-        };
+                         <<"original">> -> {
+                             <<NamePre/binary, (kapps_call:kvs_fetch('original_cid_name', Call))/binary>>
+                                           ,<<NumberPre/binary, (kapps_call:kvs_fetch('original_cid_number', Call))/binary>>
+                            };
 
-        <<"current">> -> {
-            <<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
-           ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
-        }
-    end,
+                         <<"current">> -> {
+                             <<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
+                                          ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
+                            }
+                     end,
 
     set_values(Name, Number, Call).
 
@@ -66,8 +66,8 @@ maybe_set_orig_number(Call) ->
 -spec set_values(binary(), binary(), kapps_call:call()) -> any().
 set_values(Name, Number, Call) ->
     Call1 = kapps_call:exec([
-        fun(C) -> kapps_call:set_caller_id_name(Name, C) end
-       ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
-    ], Call),
+                             fun(C) -> kapps_call:set_caller_id_name(Name, C) end
+                            ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+                            ], Call),
 
     cf_exe:continue(cf_exe:set_call(Call1)).
