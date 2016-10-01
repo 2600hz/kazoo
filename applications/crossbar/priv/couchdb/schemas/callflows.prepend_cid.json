@@ -4,13 +4,24 @@
     "description": "Validator for the prepend_cid callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "default": "prepend",
+            "description": "",
+            "type": "string"
+        },
+        "apply_to": {
+            "default": "original",
+            "description": "",
+            "type": "string"
         },
         "caller_id_name_prefix": {
-            "description": ""
+            "default": "",
+            "description": "",
+            "type": "string"
         },
         "caller_id_number_prefix": {
-            "description": ""
+            "default": "",
+            "description": "",
+            "type": "string"
         }
     },
     "required": true,
