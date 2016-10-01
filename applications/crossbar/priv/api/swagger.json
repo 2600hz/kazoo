@@ -21331,17 +21331,7 @@
             }
         },
         "/system_configs": {
-            "get": {},
-            "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "system_configs",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/system_configs"
-                    }
-                }
-            }
+            "get": {}
         },
         "/system_configs/{SYSTEM_CONFIG_ID}": {
             "delete": {
@@ -21359,6 +21349,13 @@
                 ]
             },
             "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    }
+                ]
+            },
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/system_config_id"

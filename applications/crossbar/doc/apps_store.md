@@ -8,7 +8,8 @@ Apps Store list apps allowed  by your service plan.
 Cannot be modified, only accesible by GET requests.
 
 Ex:
-```
+
+```json
 {
     "name": "numbers",
     "i18n": {
@@ -53,7 +54,7 @@ If you want to install a single Monster application:
 
 This is located on the account document.
 
-```
+```json
 {
     "apps": {
         "{{application_id}}": {
@@ -83,28 +84,11 @@ This is located on the account document.
 | All  | Everyone in the account  | all
 | Admins | Only Admins  | admins
 
-#### Crossbar
-
-Using Crossbar to modify Apps is very simple:
-
-* GET - Gets the app(s).
-* PUT - Install an app.
-* POST - Updates an app.
-* DELETE - Uninstall an app.
-
-`/v2/accounts/{{ACCOUNT_ID}}/apps_store`
-
-##### Fetch App(s):
+#### Fetch App(s):
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/apps_store
-```
 
 ```shell
 curl -v -X GET \
@@ -121,7 +105,7 @@ curl -v -X GET \
 }
 ```
 
-##### Install App:
+#### Install App:
 
 > PUT /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
@@ -145,7 +129,7 @@ curl -v -X PUT \
 ```
 
 
-##### Update an App permission:
+#### Update an App permission:
 
 > POST /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
@@ -167,7 +151,7 @@ curl -v -X POST \
 }
 ```
 
-##### Uninstall an App:
+#### Uninstall an App:
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}
 
@@ -186,7 +170,7 @@ curl -v -X DELETE \
 }
 ```
 
-##### Fetch App icon
+#### Fetch App icon
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/icon
 
@@ -199,7 +183,7 @@ curl -v -X GET \
 Streams application icon back.
 
 
-##### Fetch App screen shots
+#### Fetch App screen shots
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/{APP_ID}/screenshot/{APP_SCREENSHOT_INDEX}
 
@@ -211,7 +195,7 @@ curl -v -X GET \
 
 Streams application screenshot number `{APP_SCREENSHOT_INDEX}` back.
 
-##### Get Blacklist
+#### Get Blacklist
 
 > GET /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 
@@ -235,7 +219,7 @@ curl -v -X GET \
 }
 ```
 
-##### Update Blacklist
+#### Update Blacklist
 
 > POST /v2/accounts/{ACCOUNT_ID}/apps_store/blacklist
 

@@ -45,7 +45,9 @@ prop_get_value() ->
            ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
                      ,begin
                           JObj = kz_json:from_list(Prop),
-                          case length(Prop) > 0 andalso hd(Prop) of
+                          case length(Prop) > 0
+                              andalso hd(Prop)
+                          of
                               {K,V} ->
                                   V =:= kz_json:get_value([K], JObj);
                               'false' -> kz_json:new() =:= JObj
@@ -361,14 +363,17 @@ set_value_multiple_object_test_() ->
 -define(T4R2V, ?JSON_WRAPPER([{<<"account_id">>, <<"45AHGJDF8DFDS2130S">>}, {<<"trunk">>, 'false'}, {<<"node1">>, ?T4R1V}, {<<"node2">>, ?T4R1V}])).
 -define(T4R3,  ?JSON_WRAPPER([{<<"Node-1">>, ?JSON_WRAPPER([{<<"Node-2">>, ?T4R2  }])}, {<<"Another-Node">>, ?T4R1 }] )).
 -define(T4R3V, ?JSON_WRAPPER([{<<"node_1">>, ?JSON_WRAPPER([{<<"node_2">>, ?T4R2V }])}, {<<"another_node">>, ?T4R1V}] )).
+-define(T5R3,  ?JSON_WRAPPER([{<<"Node-1">>, ?JSON_WRAPPER([{<<"Node-2">>, null}])}, {<<"Another-Node">>, ?T4R1 }] )).
+-define(T5R3V, ?JSON_WRAPPER([{<<"node_1">>, ?JSON_WRAPPER([                    ])}, {<<"another_node">>, ?T4R1V}] )).
 
 set_value_normalizer_test_() ->
     %% Normalize a flat JSON object
     [?_assertEqual(kz_json:normalize_jobj(?T4R1), ?T4R1V)
-     %% Normalize a single nested JSON object
+     %% Normalize a single nested JSON objects
     ,?_assertEqual(kz_json:normalize_jobj(?T4R2), ?T4R2V)
-     %% Normalize multiple nested JSON object
+     %% Normalize multiple nested JSON objects
     ,?_assertEqual(kz_json:normalize_jobj(?T4R3), ?T4R3V)
+    ,?_assertEqual(kz_json:normalize_jobj(?T5R3), ?T5R3V)
 
     ,?_assertEqual(kz_json:normalize_jobj(?T5R1), ?T5R1V)
     ].

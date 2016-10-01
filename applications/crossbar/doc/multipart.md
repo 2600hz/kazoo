@@ -9,7 +9,9 @@ With multipart you can create an outgoing fax request and upload the document to
 
 ##### Create a JSON file for the outgoing fax options
 
-    {"data": {
+```json
+{
+    "data": {
         "retries": 3,
         "from_name": "Fax Sender",
         "from_number": "{FROM_NUMBER}",
@@ -17,14 +19,17 @@ With multipart you can create an outgoing fax request and upload the document to
         "to_number": "{TO_NUMBER}",
         "fax_identity_number": "{ID_NUMBER}",
         "fax_identity_name": "Fax Header"
-        }
     }
+}
+```
 
 ##### Execute the cURL request
 
+```shell
     curl -v -X PUT -i \
         -H 'X-Auth-Token: {AUTH_TOKEN}' \
         -H "Content-Type: multipart/mixed" \
         -F "content=@{FILE.json}; type=application/json" \
         -F "content=@{FILE.pdf}; type=application/pdf" \
         http://{SERVER}/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+```

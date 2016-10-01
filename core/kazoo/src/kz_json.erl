@@ -945,6 +945,7 @@ normalize(JObj) -> foldl(fun normalize_foldl/3, new(), JObj).
 
 -spec normalize_foldl(key(), json_term(), object()) -> object().
 normalize_foldl(_K, 'undefined', JObj) -> JObj;
+normalize_foldl(_K, 'null', JObj) -> JObj;
 normalize_foldl(K, V, JObj) -> set_value(normalize_key(K), normalize_value(V), JObj).
 
 -spec normalize_value(json_term()) -> json_term().

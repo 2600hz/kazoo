@@ -3,11 +3,14 @@
 As an alternative for generated Tokens.
 
 #### Username
+
 Should be set to `account_id` of the authorizing account.
 
 #### Password
+
 Should be set to md5sum of username:password
- ```
+
+```shell
 PASSWORD=`echo -n username:password | md5sum | awk '{print $1}'`
 ```
 

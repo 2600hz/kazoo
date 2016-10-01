@@ -2,7 +2,8 @@
 
 #### About Devices
 
-Devices are the endpoints assigned to an account that serve that account's needs. Devices like fax machines, SIP phones, soft phone clients, and cell phones (via call fowarding), among others, can be represented by Kazoo devices.
+Devices are the endpoints assigned to an account that serve that account's needs.
+Devices like fax machines, SIP phones, soft phone clients, and cell phones (via call fowarding), among others, can be represented by Kazoo devices.
 
 #### Schema
 
@@ -86,6 +87,9 @@ Key | Description | Type | Default | Required
 curl -v -X GET \
     -X "X-Auth-Token: {AUTH_TOKEN} \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -116,6 +120,9 @@ curl -v -X PUT \
     -H "Content-Type: application/json" \
     -d '{"data":{"name":"New Device"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -166,6 +173,9 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -206,7 +216,6 @@ curl -v -X DELETE \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 #### Fetch a device
@@ -217,6 +226,9 @@ curl -v -X DELETE \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -269,8 +281,35 @@ Including `"sync":true` in the "data" will attempt to reboot the phone. See the 
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"name":"new device","call_restriction":{},"caller_id":{},"contact_list":{},"dial_plan":{},"enabled":true,"exclude_from_queues":false,"media":{"audio":{"codecs":["PCMU"]},"encryption":{"enforce_security":false,"methods":[]},"video":{"codecs":[]}},"music_on_hold":{},"mwi_unsolicitated_updates":true,"register_overwrite_notify":false,"ringtones":{},"sip":{"invite_format":"username","method":"password","registration_expiration":300},"suppress_unregister_notifications":false,"id":"4f3330e78e664bb57f8fb23fbaac2429"}}' \
+    -d '{"data":{
+        "name": "new device",
+        "call_restriction": {},
+        "caller_id": {},
+        "contact_list": {},
+        "dial_plan": {},
+        "enabled": true,
+        "exclude_from_queues": false,
+        "media": {
+            "audio": {"codecs": ["PCMU"]},
+            "encryption": {"enforce_security": false, "methods": []},
+            "video": {"codecs": []}
+        },
+        "music_on_hold": {},
+        "mwi_unsolicitated_updates": true,
+        "register_overwrite_notify": false,
+        "ringtones": {},
+        "sip": {
+            "invite_format": "username",
+            "method": "password",
+            "registration_expiration": 300
+        },
+        "suppress_unregister_notifications": false,
+        "id": "4f3330e78e664bb57f8fb23fbaac2429"
+        }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -322,6 +361,9 @@ curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"presence_id":"dis_my_device"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -363,7 +405,6 @@ curl -v -X PATCH \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 
@@ -377,6 +418,9 @@ This will fetch the current registrations of any devices. If no devices are regi
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/status
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -401,6 +445,9 @@ Some devices support receiving SIP NOTIFY packets with `event` = `check-sync`. T
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/sync
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": "sync request sent",
@@ -434,6 +481,9 @@ Key | Type | Description
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/quickcall/{PHONE_NUMBER}
+```
+
+```json
 {
   "auth_token": "{AUTH_TOKEN}",
   "data": {
@@ -525,7 +575,11 @@ Notice that the first device, `{DEVICE_ID_1}` is owned by `{USER_ID}` but the se
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/devices
-    {"auth_token": "{AUTH_TOKEN}",
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
     "data": [
         {
             "device_type": "sip_device",
@@ -549,7 +603,7 @@ curl -v -X GET \
      "request_id": "{REQUEST_ID}",
      "revision": "{REVISION}",
      "status": "success"
-    }
+}
 ```
 
 #### Create an Authn-By-IP Device
@@ -564,6 +618,9 @@ Here is a minimal API request that creates a device that will authenticate by IP
     -H "Content-Type: application/json" \
     -d '{"data":{"enabled":true,"name":"authn_by_ip","sip":{"invite_format":"e164", "ip":"{IP_ADDRESS}","method":"ip"}}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {

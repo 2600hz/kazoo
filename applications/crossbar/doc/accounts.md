@@ -50,6 +50,9 @@ curl -v -X PUT \
     -H "Content-Type: application/json" \
     -d '{"data":{"name":"child account"}}' \
     http://{SERVER}:8000/v2/accounts
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -86,6 +89,9 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -112,7 +118,6 @@ curl -v -X DELETE \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 #### Fetch the account doc
@@ -123,6 +128,9 @@ curl -v -X DELETE \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -149,7 +157,6 @@ curl -v -X GET \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 #### Patch the account doc
@@ -161,6 +168,9 @@ curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data":{"some_key":"some_value"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -200,6 +210,9 @@ curl -v -X POST \
     -H "Content-Type: application/json" \
     -d '{"data": {"billing_mode": "manual","call_restriction": {},"caller_id": {},"created": 63621662701,"dial_plan": {},"enabled": true,"is_reseller": false,"language": "en-us","music_on_hold": {},"name": "child account","preflow": {},"realm": "aeac33.sip.2600hz.com","reseller_id": "undefined","ringtones": {},"some_key":"some_value","superduper_admin": false,"timezone": "America/Los_Angeles","wnm_allow_additions": false}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -227,7 +240,6 @@ curl -v -X POST \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```
 
 #### Create a new child account
@@ -242,6 +254,9 @@ curl -v -X PUT \
     -H "Content-Type: application/json" \
     -d '{"data":{"name":"child account"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -278,6 +293,9 @@ curl -v -X PUT \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/parents
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -301,6 +319,9 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tree
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -326,6 +347,9 @@ The API key is used by the `api_auth` API to obtain an `auth_token`. This is int
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
      http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/api_key
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -347,6 +371,9 @@ By default a user account under an admin/reseller account can view all the other
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/siblings
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -375,6 +402,9 @@ This will include children, grandchildren, etc
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/descendants
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -403,6 +433,9 @@ curl -v -X GET \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -465,6 +498,9 @@ curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -d '{"data": {"to": "{ACCOUNT_ID_DESTINATION}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/move
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -491,5 +527,4 @@ curl -v -X POST \
     "revision": "{REVISION}",
     "status": "success"
 }
-
 ```

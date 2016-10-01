@@ -16,16 +16,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/system_configs
 ```
 
-#### Create
-
-> PUT /v2/system_configs
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/system_configs
-```
-
 #### Remove
 
 > DELETE /v2/system_configs/{SYSTEM_CONFIG_ID}
@@ -52,6 +42,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}
+```
+
+#### Create
+
+> PUT /v2/system_configs/{SYSTEM_CONFIG_ID}
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}
 ```

@@ -312,6 +312,8 @@ curl -v -X POST \
 
 Omit the `/accounts/{ACCOUNT_ID}` to remove the system default.
 
+> DELETE /v2/notifications/{NOTIFICATION_ID}
+
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \

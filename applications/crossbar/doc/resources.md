@@ -80,6 +80,9 @@ Key | Description | Type | Default | Required
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -111,6 +114,9 @@ curl -v -X PUT \
     -H "Content-Type: application/json" \
     -d '{"data":{"name":"Carrier 3", "gateways":[]}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -146,6 +152,9 @@ curl -v -X PUT \
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -207,6 +216,9 @@ curl -v -X DELETE \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -270,6 +282,9 @@ curl -v -X POST \
     -H "Content-Type: application/json" \
     -d '{"data":{...ResourceData...}}'
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -335,6 +350,9 @@ The keys `failures` and `successes` represent the count of how many numbers fail
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": [
@@ -373,6 +391,9 @@ curl -v -X PUT \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
@@ -400,6 +421,9 @@ curl -v -X POST \
     -H "Content-Type: application/json" \
     -d '{"data":{"numbers":["+12223334444", "+23334445555"], "resource_id":"{RESOURCE_ID}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data":{
@@ -433,6 +457,9 @@ curl -v -X PUT \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs/{JOB_ID}
+```
+
+```json
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {

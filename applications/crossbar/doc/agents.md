@@ -5,7 +5,7 @@ This API provides convenient way for agent status management without need to dia
 
 /agents/AID/queue_status (GET, POST):
 
-```
+```json
 {
   "data":{
     "action":{{action}},
@@ -22,7 +22,8 @@ and {{queue_id}} is an ID of the queue
 ##### Set agent status:
 
 /agents/AID/status  (GET, POST):
-```
+
+```json
 {
   "data":{
     "status":{{status}},
@@ -32,6 +33,7 @@ and {{queue_id}} is an ID of the queue
   }
 }
 ```
+
 where
 {{status}} - "login" | "logout" | "pause" | "resume"
 {{timeout}} - timeout for "pause" status

@@ -38,7 +38,7 @@ The following table outlines the configs that can be found in the `system_config
 | `workers` | `integer()` | 100 | Number of TCP listeners to start |
 
 
-#### Addiitonal Configs
+#### Additional Configs
 
 Some modules use the `crossbar` namespace to create a specific `system_config` document for settings as well.
 
