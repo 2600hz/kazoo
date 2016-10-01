@@ -125,8 +125,8 @@ manual_migrate_loop(AccountId, LoopCount) ->
             Views = kapps_maintenance:get_all_account_views(),
             _ = kapps_util:update_views(Db, Views, 'true'),
             manual_migrate_loop(AccountId, LoopCount);
-        {'error', R} ->
-            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R]),
+        {'error', _R} ->
+            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, _R]),
             print_summary(AccountId),
             ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId])
     end.
@@ -140,8 +140,8 @@ manual_migrate(AccountId, BoxIds) ->
             ?WARNING("    [~s] no legacy voicemail messages left", [AccountId]);
         {'ok', ViewResults} ->
             migrate_messages(AccountId, ViewResults);
-        {'error', R} ->
-            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, R])
+        {'error', _R} ->
+            ?ERROR("    [~s] failed to fetch legacy voicemail message: ~p", [AccountId, _R])
     end,
     print_summary(AccountId),
     ?WARNING("~n~n######## Account ~s migration is done ########", [AccountId]).
@@ -547,14 +547,14 @@ is_latest_modb(AccountId) ->
 print_summary(AccountId) ->
     print_summary(AccountId, 'false').
 
-print_summary(AccountId, ShouldCheckMODB) ->
+print_summary(_AccountId, ShouldCheckMODB) ->
     TotalMsgs = get_stats(?TOTAL_MESSAGES),
-    TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
-    TotalFailed = get_stats(?TOTAL_FAILED),
     MODbFailed = length(get_stats(?FAILED_MODB)),
+    _TotalSucceeded = get_stats(?TOTAL_SUCCEEDED),
+    _TotalFailed = get_stats(?TOTAL_FAILED),
 
     ?WARNING("    [~s] finished a migrate cycle: [proccessed: ~b] [succeeded: ~b] [save_failed: ~b] [no_modb: ~b]"
-            ,[AccountId, TotalMsgs, TotalSucceeded, TotalFailed, MODbFailed]),
+            ,[_AccountId, TotalMsgs, _TotalSucceeded, _TotalFailed, MODbFailed]),
 
     case ShouldCheckMODB of
         'false' -> 'ok';

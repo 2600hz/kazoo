@@ -52,7 +52,7 @@
                }).
 -type state() :: #state{}.
 
--type next_account_ret() :: {next_account(), queue:queue()} |
+-type next_account_ret() :: {next_account() | 'account_hit_retention', queue:queue()} |
                             'empty' |
                             'retention_passed' |
                             'continue'.
@@ -288,10 +288,11 @@ code_change(_OldVsn, State, _Extra) ->
 -spec spawn_worker(state()) -> state().
 -spec maybe_spawn_worker(state(), next_account_ret()) -> state().
 spawn_worker(#state{account_queue = Queue
+                   ,retention_seconds = RetentionSeconds
                    ,retention_passed = IsRetPassed
                    ,workers = Workers
                    }=State) ->
-    NextAccount = get_next_account(Queue, Workers, IsRetPassed),
+    NextAccount = get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed),
     maybe_spawn_worker(State, NextAccount).
 
 maybe_spawn_worker(#state{account_ids = AccountIds
@@ -309,6 +310,8 @@ maybe_spawn_worker(State, 'empty') ->
 maybe_spawn_worker(State, 'continue') ->
     %% next account is in front of the queue, wait for another cycle
     State;
+maybe_spawn_worker(State, {'account_hit_retention', NewQ}) ->
+    State#state{account_queue = NewQ};
 maybe_spawn_worker(#state{workers = Workers
                          ,max_worker = _Limit
                          ,timer_ref = Ref
@@ -358,26 +361,32 @@ cleanup_account_timer() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_next_account(queue:queue(), kz_proplist(), boolean()) -> next_account_ret().
-get_next_account(Queue, Workers, IsRetPassed) ->
+-spec get_next_account(queue:queue(), kz_proplist(), gregorian_seconds(), boolean()) -> next_account_ret().
+get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
     case queue:out(Queue) of
         {{'value', NextAccount}, Q} ->
-            get_next(Queue, props:get_value(NextAccount, Workers), NextAccount, Q, IsRetPassed);
+            WorkerNextAccount = props:get_value(NextAccount, Workers),
+            get_next(Queue, WorkerNextAccount, NextAccount, Q, RetentionSeconds, IsRetPassed);
         {'empty', _} when not IsRetPassed ->
             'retention_passed';
         {'empty', _} ->
             'empty'
     end.
 
--spec get_next(queue:queue(), next_account_ret(), next_account_ret(), queue:queue(), boolean()) ->
+-spec get_next(queue:queue(), next_account_ret(), next_account_ret(), queue:queue(), gregorian_seconds(), boolean()) ->
                       next_account_ret().
-get_next(_Queue, NextAccount, NextAccount, _Q, _IsRetPassed) ->
+get_next(_Queue, NextAccount, NextAccount, _Q, _, _IsRetPassed) ->
     'continue';
-get_next(_, _, {AccountId, FirstOfMonth, _LastOfMonth}, Q, 'true') ->
+get_next(_, _, {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'false') ->
     PrevMonth = previous_month_timestamp(FirstOfMonth),
-    NextAccount = {AccountId, PrevMonth, FirstOfMonth},
-    {NextAccount, queue:in(NextAccount, Q)};
-get_next(_, _, NextAccount, Q, 'false') ->
+    case PrevMonth < RetentionSeconds of
+        'true' ->
+            {'account_hit_retention', Q};
+        'false' ->
+            NextAccount = {AccountId, PrevMonth, FirstOfMonth},
+            {NextAccount, queue:in(NextAccount, Q)}
+    end;
+get_next(_, _, NextAccount, Q, _, 'true') ->
     {NextAccount, queue:in(NextAccount, Q)}.
 
 
@@ -388,10 +397,8 @@ get_next(_, _, NextAccount, Q, 'false') ->
 %%--------------------------------------------------------------------
 -spec populate_queue(ne_binaries(), gregorian_seconds()) -> queue:queue().
 -spec populate_queue(ne_binaries(), gregorian_seconds(), gregorian_seconds()) -> queue:queue().
-populate_queue(AccountIds, RetentionSeconds) ->
-    Diff = kz_util:current_tstamp() - RetentionSeconds,
-    FirstOfMonth = previous_month_timestamp(Diff),
-    Props = [{AccountId, FirstOfMonth, Diff}
+populate_queue(AccountIds, _RetentionSeconds) ->
+    Props = [{AccountId, 'undefined', 'undefined'}
              || AccountId <- AccountIds
             ],
     queue:from_list(Props).
