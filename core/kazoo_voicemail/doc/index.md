@@ -53,8 +53,4 @@ Callflow voicemail module uses `kvm_message:new_message/2` to record and store t
 
 ## Retention duration
 
-There is a new configuration parameter `message_retention_duration` under `system_config/callflow/voicemail` for how many days voicemail messages should be considered when accessing a voicemail box. This duration also applies to deleting heard and or old messages as well.
-
-## Clean old and heard messages
-
-For deleting old messages and heard messages you can use `kvm_maintenance:cleanup_heard_voicemail/1`.
+There is a new configuration parameter `message_retention_duration` under `system_config/callflow/voicemail` for how many days voicemail messages should be considered when accessing a voicemail box.

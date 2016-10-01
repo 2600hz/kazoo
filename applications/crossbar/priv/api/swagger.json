@@ -7486,22 +7486,15 @@
                         },
                         "migrate_interaccount_delay_ms": {
                             "properties": {
-                                "default": 10000,
+                                "default": 2000,
                                 "description": "callflow migrate interaccount delay in milliseconds",
                                 "type": "integer"
                             }
                         },
-                        "migrate_interbox_delay_ms": {
+                        "migrate_max_bulk_insert": {
                             "properties": {
                                 "default": 2000,
-                                "description": "callflow migrate interbox delay in milliseconds",
-                                "type": "integer"
-                            }
-                        },
-                        "migrate_max_mailbox_process": {
-                            "properties": {
-                                "default": 10,
-                                "description": "callflow migrate maximum mailbox process",
+                                "description": "callflow migrate maximum bulk insert",
                                 "type": "integer"
                             }
                         },

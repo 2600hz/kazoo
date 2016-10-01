@@ -17,12 +17,24 @@
         kapps_config:get_integer(?CF_CONFIG_CAT, ?RETENTION_PATH, 93)  %% 93 days(3 months)
        ).
 
+-define(TIME_BETWEEN_ACCOUNT_CRAWLS,
+        kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_interaccount_delay_ms">>], 2 * ?MILLISECONDS_IN_SECOND)).
+
 -type db_ret() :: 'ok' | {'ok', kz_json:object() | kz_json:objects()} | {'error', any()}.
 -type vm_folder() :: ne_binary() | {ne_binary(), boolean()}.
 -type message() :: ne_binary() | kz_json:object().
 -type messages() :: ne_binaries() | kz_json:objects().
 -type count_result() :: {non_neg_integer(), non_neg_integer()}.
 -type update_funs() :: [fun((kz_json:object()) -> kz_json:object())].
+
+-type next_account() :: {ne_binary(), gregorian_seconds(), gregorian_seconds()}.
+
+-define(MODB_MSG_ID(Year, Month, Id),
+        <<(kz_util:to_binary(Year))/binary
+          ,(kz_util:pad_month(Month))/binary
+          ,"-"
+          ,(Id)/binary
+        >>).
 
 -define(KZ_VOICEMAIL_HRL, 'true').
 -endif.

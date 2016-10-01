@@ -596,6 +596,7 @@ load_vmbox(DocId, Context) ->
 load_message_summary(BoxId, Context) ->
     case message_summary_view_options(Context, BoxId) of
         {'ok', ViewOptions} ->
+            io:format("ViewOptions ~p~n~n~n", [ViewOptions]),
             NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc) end,
             C1 = cb_context:set_resp_status(Context, 'success'),
             ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
