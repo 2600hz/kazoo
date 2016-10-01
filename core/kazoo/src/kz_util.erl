@@ -47,6 +47,7 @@
         ]).
 -export([to_boolean/1, is_boolean/1
         ,is_true/1, is_false/1
+        ,is_ne_binary/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1
         ,identity/1
@@ -1140,6 +1141,11 @@ is_false(_) -> 'false'.
 
 -spec always_false(any()) -> 'false'.
 always_false(_) -> 'false'.
+
+-spec is_ne_binary(binary()) -> boolean().
+is_ne_binary(V) ->
+    is_binary(V)
+        andalso is_not_empty(V).
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';

@@ -155,7 +155,7 @@
         ,{?KEY_FLAGS, fun is_list/1}
         ,{?KEY_FORCE_FAX, fun kz_util:is_boolean/1}
         ,{?KEY_FORCE_OUTBOUND, fun kz_util:is_boolean/1}
-        ,{?KEY_TO_DID, fun is_ne_binary/1}
+        ,{?KEY_TO_DID, fun kz_util:is_ne_binary/1}
         ,{?KEY_BYPASS_E164, fun kz_util:is_boolean/1}
         ]).
 
@@ -170,10 +170,6 @@
                                      ]).
 -define(OFFNET_RESOURCE_RESP_TYPES, []).
 
--spec is_ne_binary(binary()) -> boolean().
-is_ne_binary(V) ->
-    is_binary(V)
-        andalso kz_util:is_not_empty(V).
 
 %%--------------------------------------------------------------------
 %% @doc Offnet resource request - see wiki
