@@ -95,7 +95,8 @@ validate(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
 %%%===================================================================
 -spec validate_conferences(http_method(), cb_context:context()) -> cb_context:context().
 validate_conferences(?HTTP_GET, Context) ->
-    crossbar_doc:load_view(?CB_LIST, [], Context, fun normalize_view_results/2);
+    Ctx1 = search_conferences(Context),
+    crossbar_doc:load_view(?CB_LIST, [], Ctx1, fun(J, A) -> normalize_view_results(Ctx1, J, A) end);
 validate_conferences(?HTTP_PUT, Context) ->
     create_conference(Context).
 
@@ -194,10 +195,19 @@ on_successful_validation('undefined', Context) ->
 on_successful_validation(ConferenceId, Context) ->
     crossbar_doc:load_merge(ConferenceId, Context, ?TYPE_CHECK_OPTION(<<"conference">>)).
 
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [enrich_conference(kz_json:get_value(<<"value">>, JObj)) | Acc].
+-spec normalize_view_results(cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_view_results(Context, JObj, Acc) ->
+    Conferences = cb_context:fetch(Context, 'conferences', kz_json:new()),
+    Realtime = kz_json:get_value(kz_doc:id(JObj), Conferences, empty_realtime_data()),
+    [kz_json:merge_jobjs(kz_json:normalize(Realtime), kz_json:get_value(<<"value">>, JObj)) | Acc].
 
+empty_realtime_data() ->
+    kz_json:from_list(
+      [{<<"members">>, 0}
+      ,{<<"moderators">>, 0}
+      ,{<<"duration">>, 0}
+      ,{<<"is_locked">>, 'false'}
+      ]).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -327,12 +337,6 @@ enrich_conference(ConferenceId, Context) ->
     Response = kz_json:set_value(<<"_read_only">>, RealtimeData, cb_context:resp_data(Context)),
     cb_context:set_resp_data(Context, Response).
 
--spec enrich_conference(kz_json:object()) -> kz_json:object().
-enrich_conference(JObj) ->
-    ConferenceId = kz_doc:id(JObj),
-    RealtimeData = conference_realtime_data(ConferenceId),
-    kz_json:merge_jobjs(kz_json:delete_key(<<"participants">>, RealtimeData), JObj).
-
 -spec conference_realtime_data(ne_binary()) -> kz_json:object().
 conference_realtime_data(ConferenceId) ->
     ConferenceDetails = request_conference_details(ConferenceId),
@@ -406,10 +410,26 @@ partition_participants_count(Participants, Fun) ->
     {A, B} = partition_participants(Participants, Fun),
     {erlang:length(A), erlang:length(B)}.
 
-%% -spec partition_participants(kz_json:objects()) -> {kz_json:objects(), kz_json:objects()}.
-%% partition_participants(Participants) ->
-%%     partition_participants(Participants, fun(P) -> kz_json:is_true(<<"Is-Moderator">>, P) end).
-
 -spec partition_participants(kz_json:objects(), fun()) -> {kz_json:objects(), kz_json:objects()}.
 partition_participants(Participants, Fun) ->
     lists:partition(Fun, Participants).
+
+-spec search_conferences(cb_context:context()) -> cb_context:context().
+search_conferences(Context) ->
+    AccountId = cb_context:account_id(Context),
+    Req = [{<<"Account-ID">>, AccountId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call_collect(Req, fun kapi_conference:publish_search_req/1, {'ecallmgr', 'true'}) of
+        {'error', _E} ->
+            lager:debug("error searching conferences for account ~s: ~p", [AccountId, _E]),
+            cb_context:store(Context, 'conferences', kz_json:new());
+        {'ok', [JObj | JObjs]} ->
+            Acc = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
+            Res = lists:foldl(fun search_conferences_fold/2, Acc, JObjs),
+            cb_context:store(Context, 'conferences', Res)
+    end.
+
+search_conferences_fold(JObj, Acc) ->
+    V = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
+    kz_json:merge_jobjs(V, Acc).

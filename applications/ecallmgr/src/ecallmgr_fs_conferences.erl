@@ -26,7 +26,6 @@
 -export([participant_create/2]).
 -export([participant_update/2]).
 -export([participant_destroy/1]).
-%%-export([participant_callid/2]).
 -export([participant_get/1]).
 -export([sync_node/1]).
 -export([flush_node/1]).
@@ -188,7 +187,14 @@ sync_node(Node) -> gen_server:cast(?SERVER, {'sync_node', Node}).
 flush_node(Node) -> gen_server:cast(?SERVER, {'flush_node', Node}).
 
 -spec handle_search_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_search_req(JObj, _Props) ->
+handle_search_req(JObj, Props) ->
+    case kz_json:get_value(<<"Conference-ID">>, JObj) of
+        'undefined' -> handle_search_account(JObj, Props);
+        _Conference -> handle_search_conference(JObj, Props)
+    end.
+
+-spec handle_search_conference(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_search_conference(JObj, _Props) ->
     Name = kz_json:get_value(<<"Conference-ID">>, JObj),
     lager:info("received search request for conference name ~s", [Name]),
     case ets:match_object(?CONFERENCES_TBL, #conference{name=Name, _ = '_'}) of
@@ -203,7 +209,7 @@ handle_search_req(JObj, _Props) ->
         ] ->
             lager:debug("sending affirmative search response for conference ~s", [Name]),
             Participants = participants(Name),
-            Resp = [{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj, <<>>)}
+            Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                    ,{<<"Conference-ID">>, Name}
                    ,{<<"UUID">>, UUID}
                    ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
@@ -225,8 +231,59 @@ handle_search_req(JObj, _Props) ->
                     ,{<<"Conference-ID">>, Name}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            kapi_conference:publish_error(kz_json:get_value(<<"Server-ID">>, JObj), Error)
+            kapi_conference:publish_error(kz_api:server_id(JObj), Error)
     end.
+
+-spec handle_search_account(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_search_account(JObj, _Props) ->
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    lager:info("received search request for account ~s", [AccountId]),
+    case ets:match_object(?CONFERENCES_TBL, #conference{account_id=AccountId, _ = '_'}) of
+        [] ->
+            lager:debug("sending error search response, conference not found"),
+            Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+                   ,{<<"Account-ID">>, AccountId}
+                   ,{<<"Conferences">>, kz_json:new()}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp);
+        Conferences ->
+            Payload = [conference_resp(Conference) || Conference <- Conferences],
+            lager:debug("sending affirmative search response for account ~s", [AccountId]),
+            Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
+                   ,{<<"Account-ID">>, AccountId}
+                   ,{<<"Conferences">>, kz_json:from_list(Payload)}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            kapi_conference:publish_search_resp(kz_api:server_id(JObj), Resp)
+    end.
+
+conference_resp(#conference{uuid=UUID
+                           ,name=Name
+                           ,start_time=StartTime
+                           ,locked=Locked
+                           ,switch_hostname=Hostname
+                           ,switch_url=SwitchURL
+                           ,switch_external_ip=ExternalIP
+                           }) ->
+    Participants = participants(Name),
+    {Moderators, Members} = lists:partition(fun is_moderator/1, Participants),
+    Resp = [{<<"UUID">>, UUID}
+           ,{<<"Run-Time">>, kz_util:current_tstamp() - StartTime}
+           ,{<<"Start-Time">>, StartTime}
+           ,{<<"Is-Locked">>, Locked}
+           ,{<<"Switch-Hostname">>, Hostname}
+           ,{<<"Switch-URL">>, SwitchURL}
+           ,{<<"Switch-External-IP">>, ExternalIP}
+           ,{<<"Participant-Count">>, length(Participants)}
+           ,{<<"Moderators">>, length(Moderators)}
+           ,{<<"Members">>, length(Members)}
+           ],
+    {Name, kz_json:from_list(Resp)}.
+
+is_moderator(#participant{conference_channel_vars=Vars}) ->
+    props:is_true(<<"Is-Moderator">>, Vars, 'false').
+
 
 %%%===================================================================
 %%% gen_server callbacks
