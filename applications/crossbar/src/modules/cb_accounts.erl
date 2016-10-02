@@ -1543,6 +1543,8 @@ delete_remove_sip_aggregates(Context) ->
 delete_remove_db(Context) ->
     Removed = case kz_datamgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', _} ->
+                      _ = provisioner_util:maybe_delete_account(Context),
+                      _ = cb_mobile_manager:delete_account(Context),
                       kz_datamgr:db_delete(cb_context:account_db(Context)),
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
@@ -1582,8 +1584,6 @@ delete_mod_dbs(AccountId, Year, Month) ->
 delete_remove_from_accounts(Context) ->
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, cb_context:account_id(Context)) of
         {'ok', JObj} ->
-            _ = provisioner_util:maybe_delete_account(Context),
-            _ = cb_mobile_manager:delete_account(Context),
             crossbar_doc:delete(
               cb_context:setters(Context
                                 ,[{fun cb_context:set_account_db/2, ?KZ_ACCOUNTS_DB}
