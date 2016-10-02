@@ -1541,9 +1541,9 @@ delete_remove_sip_aggregates(Context) ->
 
 -spec delete_remove_db(cb_context:context()) -> cb_context:context() | boolean().
 delete_remove_db(Context) ->
-    _ = provisioner_util:maybe_delete_account(Context),
     Removed = case kz_datamgr:open_doc(cb_context:account_db(Context), cb_context:account_id(Context)) of
                   {'ok', _} ->
+                      _ = provisioner_util:maybe_delete_account(Context),
                       kz_datamgr:db_delete(cb_context:account_db(Context)),
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
@@ -1554,7 +1554,7 @@ delete_remove_db(Context) ->
     case Removed of
         'true' ->
             lager:debug("deleted db ~s", [cb_context:account_db(Context)]),
-            _ = delete_remove_from_accounts(Context);
+            delete_remove_from_accounts(Context);
         'false' ->
             lager:debug("failed to remove database ~s", [cb_context:account_db(Context)]),
             crossbar_util:response('error', <<"unable to remove database">>, 500, Context)
