@@ -80,7 +80,7 @@
 -include("kapi_dialplan.hrl").
 
 %% Conference Search Request
--define(SEARCH_REQ_HEADERS, [<<"Conference-ID">>]).
+-define(SEARCH_REQ_HEADERS, [ [<<"Conference-ID">>, <<"Account-ID">>] ]).
 -define(OPTIONAL_SEARCH_REQ_HEADERS, []).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                            ,{<<"Event-Name">>, <<"search_req">>}
@@ -88,10 +88,11 @@
 -define(SEARCH_REQ_TYPES, [{<<"Conference-ID">>, fun is_binary/1}]).
 
 %% Conference Search Response
--define(SEARCH_RESP_HEADERS, [<<"Conference-ID">>, <<"Participant-Count">>]).
+-define(SEARCH_RESP_HEADERS, [ [<<"Conferences">>, <<"Conference-ID">>] ]).
 -define(OPTIONAL_SEARCH_RESP_HEADERS, [<<"UUID">>, <<"Running">>, <<"Answered">>, <<"Dynamic">>
                                       ,<<"Run-Time">>, <<"Start-Time">>, <<"Participants">>, <<"Locked">>
                                       ,<<"Switch-Hostname">>, <<"Switch-URL">>, <<"Switch-External-IP">>
+                                      ,<<"Participant-Count">>
                                       ]).
 -define(SEARCH_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
                             ,{<<"Event-Name">>, <<"search_resp">>}
