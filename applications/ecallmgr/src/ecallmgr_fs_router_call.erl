@@ -125,7 +125,14 @@ handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined',
     _ = freeswitch:fetch_reply(Node, Id, Section, Resp),
     {'noreply', State};
 handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, CallId, FSData}, #state{node=Node}=State) ->
-    _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData]),
+    Props = case props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), FSData) of
+                'undefined' ->
+                    InterActionId = ?CALL_INTERACTION_DEFAULT,
+                    ecallmgr_fs_command:set(Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]),
+                    [{?GET_CCV(<<?CALL_INTERACTION_ID>>), InterActionId}];
+                _InteractioId -> []
+            end,
+    _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData ++ Props]),
     {'noreply', State, 'hibernate'};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
