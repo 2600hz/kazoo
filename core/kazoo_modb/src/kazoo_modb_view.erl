@@ -14,13 +14,13 @@
 id(X) -> X.
 
 get_results(AccountId, View, Start, End, Limit, Options) ->
-    CouchOptions = props:get_value(couch_options, Options, []),
-    Ascending = props:get_value(ascending, Options, false),
-    Filter = props:get_value(filter, Options, fun id/1),
+    CouchOptions = props:get_value('couch_options', Options, []),
+    Ascending = props:get_value('ascending', Options, 'false'),
+    Filter = props:get_value('filter', Options, fun id/1),
     case Ascending of
-        true ->
+        'true' ->
             ascending(AccountId, View, Start, End, Limit, Filter, CouchOptions);
-        false ->
+        'false' ->
             descending(AccountId, View, Start, End, Limit, Filter, CouchOptions)
     end.
 
