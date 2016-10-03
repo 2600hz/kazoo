@@ -24,7 +24,11 @@ load(Context, View) ->
 load(Context, View, Filter) ->
     load(Context, View, Filter, fun id/1).
 
-load(Context, View, Filter, KeyMap) ->
+load(Context, View, Filter, Key) when is_binary(Key) ->
+    load(Context, View, Filter, fun(Ts) -> [Key, Ts] end);
+load(Context, View, Filter, Keys) when is_list(Keys) ->
+    load(Context, View, Filter, fun(Ts) -> Keys ++ [Ts] end);
+load(Context, View, Filter, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
             ascending(Context, View, Filter, KeyMap);
