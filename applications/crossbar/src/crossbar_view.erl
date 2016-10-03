@@ -44,7 +44,7 @@ descending(Context, View, Filter) ->
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
-    {LastKey, JObjs} = cb_pager:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 ascending(Context, View, Filter) ->
@@ -54,7 +54,7 @@ ascending(Context, View, Filter) ->
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
-    {LastKey, JObjs} = cb_pager:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    {LastKey, JObjs} = kazoo_modb_view:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 -spec is_ascending(cb_context:context()) -> boolean().

@@ -6,24 +6,38 @@
 %%% @contributors
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
--module(cb_pager).
--export([descending/7, ascending/7]).
+-module(kazoo_modb_view).
+-export([get_results/6, descending/7, ascending/7]).
 -include_lib("kazoo/include/kz_types.hrl").
 
+-spec id(any()) -> any().
+id(X) -> X.
+
+get_results(AccountId, View, Start, End, Limit, Options) ->
+    CouchOptions = props:get_value(couch_options, Options, []),
+    Ascending = props:get_value(ascending, Options, false),
+    Filter = props:get_value(filter, Options, fun id/1),
+    case Ascending of
+        true ->
+            ascending(AccountId, View, Start, End, Limit, Filter, CouchOptions);
+        false ->
+            descending(AccountId, View, Start, End, Limit, Filter, CouchOptions)
+    end.
+
 -spec descending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
-descending(AccountId, View, Start, End, Limit, Filter, Options) when
+descending(AccountId, View, Start, End, Limit, Filter, CouchOptions) when
       is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start > End ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, End, Start)),
-    CouchOpts = [{'startkey', Start}, {'endkey', End}, 'descending' | Options],
+    CouchOpts = [{'startkey', Start}, {'endkey', End}, 'descending' | CouchOptions],
     {_, LastKey, JObjs} =
         lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [ {Db, View, CouchOpts, Filter} || Db <- MODbs ]),
     {LastKey, JObjs}.
 
 -spec ascending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
-ascending(AccountId, View, Start, End, Limit, Filter, Options) when
+ascending(AccountId, View, Start, End, Limit, Filter, CouchOptions) when
       is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start < End ->
     MODbs = kazoo_modb:get_range(AccountId, Start, End),
-    CouchOpts = [{'startkey', Start}, {'endkey', End} | Options],
+    CouchOpts = [{'startkey', Start}, {'endkey', End} | CouchOptions],
     {_, LastKey, JObjs} =
         lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [ {Db, View, CouchOpts, Filter} || Db <- MODbs ]),
     {LastKey, JObjs}.
