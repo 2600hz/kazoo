@@ -16,7 +16,7 @@
 
 -spec load(cb_context:context(), ViewName :: ne_binary()) -> cb_context:context().
 -spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun()) -> cb_context:context().
--spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun(), KeyMap :: fun()) -> cb_context:context().
+-spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun(), KeyMap :: fun() | binary() | [binary()]) -> cb_context:context().
 
 load(Context, View) ->
     load(Context, View, fun id/1, fun id/1).
