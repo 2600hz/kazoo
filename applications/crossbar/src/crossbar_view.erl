@@ -9,48 +9,49 @@
 
 -module(crossbar_view).
 -include("crossbar.hrl").
--export([load/2, load/3, descending/2, descending/3, ascending/2, ascending/3]).
+-export([load/2, load/3, load/4]).
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 -define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
 
+-spec load(cb_context:context(), ViewName :: ne_binary()) -> cb_context:context().
+-spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun(), KeyMap :: fun()) -> cb_context:context().
+
+load(Context, View) ->
+    load(Context, View, fun id/1, fun id/1).
+
+load(Context, View, Filter) ->
+    load(Context, View, Filter, fun id/1).
+
+load(Context, View, Filter, KeyMap) ->
+    case is_ascending(Context) of
+        'true' ->
+            ascending(Context, View, Filter, KeyMap);
+        'false' ->
+            descending(Context, View, Filter, KeyMap)
+    end.
+
+%% impl
+
 -spec id(any()) -> any().
 id(X) -> X.
 
--spec descending(cb_context:context(), ne_binary()) -> cb_context:context().
--spec ascending(cb_context:context(), ne_binary()) -> cb_context:context().
--spec load(cb_context:context(), ne_binary()) -> cb_context:context().
-
-descending(Context, View) -> descending(Context, View, fun id/1).
-ascending(Context, View) -> ascending(Context, View, fun id/1).
-load(Context, View) -> load(Context, View, fun id/1).
-
--spec descending(cb_context:context(), ne_binary(), fun()) -> cb_context:context().
--spec ascending(cb_context:context(), ne_binary(), fun()) -> cb_context:context().
--spec load(cb_context:context(), ne_binary(), fun()) -> cb_context:context().
-
-load(Context, View, Filter) ->
-    case is_ascending(Context) of
-        'true' ->
-            ascending(Context, View, Filter);
-        'false' ->
-            descending(Context, View, Filter)
-    end.
-
-descending(Context, View, Filter) ->
+-spec descending(cb_context:context(), ne_binary(), fun(), fun()) -> cb_context:context().
+descending(Context, View, Filter, KeyMap) ->
     PageSize = page_size(Context),
-    StartKey = start_key(Context),
-    EndKey = end_key(Context, StartKey),
+    StartKey = KeyMap(start_key(Context)),
+    EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
     {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
-ascending(Context, View, Filter) ->
+-spec ascending(cb_context:context(), ne_binary(), fun(), fun()) -> cb_context:context().
+ascending(Context, View, Filter, KeyMap) ->
     PageSize = page_size(Context),
-    StartKey = ascending_start_key(Context),
-    EndKey = ascending_end_key(Context, StartKey),
+    StartKey = KeyMap(ascending_start_key(Context)),
+    EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
     Options = build_qs_filter_options(Context),
