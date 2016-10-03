@@ -15,6 +15,7 @@
 -define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
 
 -spec load(cb_context:context(), ViewName :: ne_binary()) -> cb_context:context().
+-spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun()) -> cb_context:context().
 -spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun(), KeyMap :: fun()) -> cb_context:context().
 
 load(Context, View) ->
