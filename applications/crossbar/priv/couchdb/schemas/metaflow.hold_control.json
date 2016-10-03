@@ -5,13 +5,11 @@
     "properties": {
         "action": {
             "default": "toggle",
-            "type": {
-                "enum": [
-                    "hold",
-                    "unhold",
-                    "toggle"
-                ]
-            }
+            "enum": [
+                "hold",
+                "unhold",
+                "toggle"
+            ]
         }
     },
     "required": [
