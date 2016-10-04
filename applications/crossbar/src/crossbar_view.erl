@@ -21,12 +21,12 @@ load(Context, View, Options) ->
     KeyMap = props:get_value(keymap, Options, fun id/1),
     load(Context, View, CouchOptions, Filter, map_keymap(KeyMap)).
 
+-spec map_keymap(ne_binary() | [ne_binary()] | fun()) -> fun().
 map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
 map_keymap(K) when is_function(K) -> K.
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(),
-        Filter :: fun(), KeyMap :: fun() | binary() | [binary()]) -> cb_context:context().
+-spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(), Filter :: fun(), KeyMap :: fun()) -> cb_context:context().
 load(Context, View, CouchOptions, Filter, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
