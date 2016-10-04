@@ -221,10 +221,10 @@ maybe_create_current_modb(<<"account%2F", AccountId/binary>>) ->
     maybe_create_current_modb(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
-create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
+create(AccountMODb) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
     IsDbExists = couch_mgr:db_exists(EncodedMODb),
-    IsAccountDeleted = is_account_deleted(AccountId),
+    IsAccountDeleted = is_account_deleted(AccountMODb),
     do_create(AccountMODb, IsDbExists, IsAccountDeleted).
 
 -spec do_create(ne_binary(), boolean(), boolean()) -> 'ok'.
@@ -244,7 +244,8 @@ do_create(AccountMODb, 'false', 'false') ->
     end.
 
 -spec is_account_deleted(ne_binary()) -> boolean().
-is_account_deleted(AccountId) ->
+is_account_deleted(AccountMODb) ->
+    AccountId = wh_util:format_account_id(AccountMODb),
     case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} -> wh_doc:is_soft_deleted(JObj);
         {'error', _} -> 'true'
