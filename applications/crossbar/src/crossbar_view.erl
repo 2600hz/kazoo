@@ -9,31 +9,30 @@
 
 -module(crossbar_view).
 -include("crossbar.hrl").
--export([load/2, load/3, load/4]).
+-export([load/3, load/5]).
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 -define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
 
--spec load(cb_context:context(), ViewName :: ne_binary()) -> cb_context:context().
--spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun()) -> cb_context:context().
--spec load(cb_context:context(), ViewName :: ne_binary(), Filter :: fun(), KeyMap :: fun() | binary() | [binary()]) -> cb_context:context().
+-spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
+load(Context, View, Options) ->
+    Filter = props:get_value(mapper, Options, fun id/1),
+    CouchOptions = props:get_value(couch_options, Options, []),
+    KeyMap = props:get_value(keymap, Options, fun id/1),
+    load(Context, View, CouchOptions, Filter, map_keymap(KeyMap)).
 
-load(Context, View) ->
-    load(Context, View, fun id/1, fun id/1).
+map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
+map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
+map_keymap(K) when is_function(K) -> K.
 
-load(Context, View, Filter) ->
-    load(Context, View, Filter, fun id/1).
-
-load(Context, View, Filter, Key) when is_binary(Key) ->
-    load(Context, View, Filter, fun(Ts) -> [Key, Ts] end);
-load(Context, View, Filter, Keys) when is_list(Keys) ->
-    load(Context, View, Filter, fun(Ts) -> Keys ++ [Ts] end);
-load(Context, View, Filter, KeyMap) when is_function(KeyMap) ->
+-spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(),
+        Filter :: fun(), KeyMap :: fun() | binary() | [binary()]) -> cb_context:context().
+load(Context, View, CouchOptions, Filter, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
-            ascending(Context, View, Filter, KeyMap);
+            ascending(Context, View, CouchOptions, Filter, KeyMap);
         'false' ->
-            descending(Context, View, Filter, KeyMap)
+            descending(Context, View, CouchOptions, Filter, KeyMap)
     end.
 
 %% impl
@@ -41,25 +40,25 @@ load(Context, View, Filter, KeyMap) when is_function(KeyMap) ->
 -spec id(any()) -> any().
 id(X) -> X.
 
--spec descending(cb_context:context(), ne_binary(), fun(), fun()) -> cb_context:context().
-descending(Context, View, Filter, KeyMap) ->
+-spec descending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+descending(Context, View, CouchOptions, Filter, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(start_key(Context)),
     EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
-    Options = build_qs_filter_options(Context),
+    Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
     {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
--spec ascending(cb_context:context(), ne_binary(), fun(), fun()) -> cb_context:context().
-ascending(Context, View, Filter, KeyMap) ->
+-spec ascending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+ascending(Context, View, CouchOptions, Filter, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(ascending_start_key(Context)),
     EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxFilter = build_filter_with_qs(Context, Filter),
-    Options = build_qs_filter_options(Context),
+    Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
     {LastKey, JObjs} = kazoo_modb_view:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
@@ -165,3 +164,7 @@ build_filter_with_qs(Mapper, CtxFilter, UserFilter) when is_function(UserFilter,
                 'true' -> UserFilter(JObjDoc, Acc)
             end
     end.
+
+-spec make_unique(kz_proplist()) -> kz_proplist().
+make_unique(Props) ->
+    sets:to_list(sets:from_list(Props)).

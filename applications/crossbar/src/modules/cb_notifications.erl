@@ -221,7 +221,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, fun normalize_view_result/1);
+    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, [{mapper, fun normalize_view_result/1}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
