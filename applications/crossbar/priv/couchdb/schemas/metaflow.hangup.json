@@ -2,7 +2,21 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow.hangup",
     "description": "hangup metaflow schema",
-    "properties": {},
-    "required": [],
+    "properties": {
+        "children": {
+            "$ref": "metaflow_children"
+        },
+        "data": {
+            "type": "object"
+        },
+        "module": {
+            "enum": [
+                "hangup"
+            ]
+        }
+    },
+    "required": [
+        "module"
+    ],
     "type": "object"
 }
