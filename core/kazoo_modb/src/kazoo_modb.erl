@@ -26,8 +26,11 @@
 
 -type view_option() :: {'year', kz_year()} |
                        {'month', kz_month()} |
+                       {'create_db', boolean()} |
                        kz_datamgr:view_option().
 -type view_options() :: [view_option()].
+
+-define(MAX_RETRIES, 3).
 
 -export_type([view_options/0]).
 
@@ -45,7 +48,7 @@
                          {'ok', kz_json:objects()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
-    get_results(Account, View, ViewOptions, 3).
+    get_results(Account, View, ViewOptions, ?MAX_RETRIES).
 
 get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
     {'error', 'retries_exceeded'};
@@ -67,6 +70,7 @@ strip_modb_options(ViewOptions) ->
 -spec is_modb_option(view_option()) -> boolean().
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
+is_modb_option({'create_db', _}) -> 'true';
 is_modb_option(_) -> 'false'.
 
 -spec get_results_not_found(ne_binary(), ne_binary(), view_options(), integer()) ->
@@ -86,10 +90,12 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
                                     {'ok', kz_json:objects()}.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
+    ShouldCreate = props:get_is_true('create_db', ViewOptions, 'true'),
     case maybe_create_current_modb(AccountMODb) of
-        'true' -> get_results(Account, View, ViewOptions, Retry-1);
-        'false' -> {'ok', []}
+        'true' when ShouldCreate ->
+            lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
+            get_results(Account, View, ViewOptions, Retry-1);
+        _ -> {'ok', []}
     end.
 
 %%--------------------------------------------------------------------
@@ -157,38 +163,49 @@ couch_open(AccountMODb, DocId, Options) ->
 -spec save_doc(ne_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), kz_json:object(), kz_now()) ->
+-spec save_doc(ne_binary(), kz_json:object(), kz_now() | kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), kz_json:object(), kz_year() | ne_binary(), kz_month() | ne_binary()) ->
+-spec save_doc(ne_binary(), kz_json:object(), kz_year() | ne_binary() | kz_now(), kz_month() | ne_binary() | kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 save_doc(Account, Doc) ->
+    save_doc(Account, Doc, []).
+
+save_doc(Account, Doc, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account),
-    couch_save(AccountMODb, Doc, 3).
-
+    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES);
 save_doc(Account, Doc, Timestamp) ->
+    save_doc(Account, Doc, Timestamp, []).
+
+save_doc(Account, Doc, Timestamp, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account, Timestamp),
-    couch_save(AccountMODb, Doc, 3).
-
+    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES);
 save_doc(Account, Doc, Year, Month) ->
-    AccountMODb = get_modb(Account, Year, Month),
-    couch_save(AccountMODb, Doc, 3).
+    save_doc(Account, Doc, Year, Month, []).
 
--spec couch_save(ne_binary(), kz_json:object(), integer()) ->
+save_doc(Account, Doc, Year, Month, Options) ->
+    AccountMODb = get_modb(Account, Year, Month),
+    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES).
+
+-spec couch_save(ne_binary(), kz_json:object(), kz_proplist(), integer()) ->
                         {'ok', kz_json:object()} |
                         {'error', atom()}.
-couch_save(AccountMODb, _Doc, 0) ->
+couch_save(AccountMODb, _Doc, _Options, 0) ->
     lager:error("failed to save doc in ~p", AccountMODb),
-    {'error', 'doc_save_failed'};
-couch_save(AccountMODb, Doc, Retry) ->
+    {'error', 'max_save_retries'};
+couch_save(AccountMODb, Doc, Options, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:save_doc(EncodedMODb, Doc) of
+    ShouldCreate = props:get_is_true('create_db', Options, 'true'),
+    case kz_datamgr:save_doc(EncodedMODb, Doc, strip_modb_options(Options)) of
         {'ok', _}=Ok -> Ok;
-        {'error', 'not_found'} ->
-            lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
-            _ = maybe_create_current_modb(AccountMODb),
-            couch_save(AccountMODb, Doc, Retry-1);
+        {'error', 'not_found'} = NotFound ->
+            case maybe_create_current_modb(AccountMODb) of
+                'true' when ShouldCreate ->
+                    lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
+                    couch_save(AccountMODb, Doc, Options, Retry - 1);
+                _ -> NotFound
+            end;
         {'error', _E}=Error ->
             lager:error("account mod save error: ~p", [_E]),
             Error
