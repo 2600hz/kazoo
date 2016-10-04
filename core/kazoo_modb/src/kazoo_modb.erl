@@ -272,20 +272,18 @@ maybe_create_current_modb(<<"account%2F", AccountId/binary>>) ->
     maybe_create_current_modb(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
-create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
+create(AccountMODb) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     IsDbExists = kz_datamgr:db_exists_all(EncodedMODb),
-    IsAccountDeleted = is_account_deleted(AccountId),
+    IsAccountDeleted = is_account_deleted(AccountMODb),
     do_create(AccountMODb, IsDbExists, IsAccountDeleted).
 
 -spec do_create(ne_binary(), boolean(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true', _) ->
-    lager:warning("modb ~p is exists, not creating", [_AccountMODb]),
-    'ok';
+    lager:warning("modb ~p is exists, not creating", [_AccountMODb]);
 do_create(AccountMODb, _, 'true') ->
     AccountId = kz_util:format_account_id(AccountMODb),
-    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]),
-    'ok';
+    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]);
 do_create(AccountMODb, 'false', 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
@@ -297,7 +295,8 @@ do_create(AccountMODb, 'false', 'false') ->
     end.
 
 -spec is_account_deleted(ne_binary()) -> boolean().
-is_account_deleted(AccountId) ->
+is_account_deleted(AccountMODb) ->
+    AccountId = kz_util:format_account_id(AccountMODb),
     case kz_datamgr:open_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'ok', JObj} -> kz_doc:is_soft_deleted(JObj);
         {'error', _} -> 'true'
