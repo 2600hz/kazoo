@@ -16,7 +16,8 @@
 encode(Bin) when is_binary(Bin) -> encode(Bin, []);
 encode(List) when is_list(List) -> encode(list_to_binary(List), []).
 
-encode(Bin, Opts) when is_binary(Bin) andalso is_list(Opts) ->
+encode(Bin, Opts) when is_binary(Bin)
+        andalso is_list(Opts) ->
     Hex = proplists:get_bool(hex, Opts),
     Lower = proplists:get_bool(lower, Opts),
     Fun = case Hex of
@@ -30,7 +31,8 @@ encode(Bin, Opts) when is_binary(Bin) andalso is_list(Opts) ->
                   false -> list_to_binary(lists:duplicate(PadBy, $=))
               end,
     <<Encoded0/binary, Encoded1/binary, Padding/binary>>;
-encode(List, Opts) when is_list(List) andalso is_list(Opts) ->
+encode(List, Opts) when is_list(List)
+        andalso is_list(Opts) ->
     encode(list_to_binary(List), Opts).
 
 encode_body(Fun, Bin) ->
@@ -52,15 +54,25 @@ encode_rest(Fun, Bin) ->
                    end,
     {<<Body0/binary, Body1/binary>>, Pad}.
 
-std_enc(_, I) when is_integer(I) andalso I >= 26 andalso I =< 31 -> I + 24;
-std_enc(Lower, I) when is_integer(I) andalso I >= 0 andalso I =< 25 ->
+std_enc(_, I) when is_integer(I)
+        andalso I >= 26
+        andalso I =< 31 ->
+    I + 24;
+std_enc(Lower, I) when is_integer(I)
+        andalso I >= 0
+        andalso I =< 25 ->
     case Lower of
         true -> I + $a;
         false -> I + $A
     end.
 
-hex_enc(_, I) when is_integer(I) andalso I >= 0 andalso I =< 9 -> I + 48;
-hex_enc(Lower, I) when is_integer(I) andalso I >= 10 andalso I =< 31 ->
+hex_enc(_, I) when is_integer(I)
+        andalso I >= 0
+        andalso I =< 9 ->
+    I + 48;
+hex_enc(Lower, I) when is_integer(I)
+        andalso I >= 10
+        andalso I =< 31 ->
     case Lower of
         true -> I + 87;
         false -> I + 55
@@ -69,13 +81,15 @@ hex_enc(Lower, I) when is_integer(I) andalso I >= 10 andalso I =< 31 ->
 decode(Bin) when is_binary(Bin) -> decode(Bin, []);
 decode(List) when is_list(List) -> decode(list_to_binary(List), []).
 
-decode(Bin, Opts) when is_binary(Bin) andalso is_list(Opts) ->
+decode(Bin, Opts) when is_binary(Bin)
+        andalso is_list(Opts) ->
     Fun = case proplists:get_bool(hex, Opts) of
               true -> fun hex_dec/1;
               false -> fun std_dec/1
           end,
     decode(Fun, Bin, <<>>);
-decode(List, Opts) when is_list(List) andalso is_list(Opts) ->
+decode(List, Opts) when is_list(List)
+        andalso is_list(Opts) ->
     decode(list_to_binary(List), Opts).
 
 decode(Fun, <<X, "======">>, Bits) ->
@@ -90,10 +104,22 @@ decode(Fun, <<X, Rest/binary>>, Bits) ->
     decode(Fun, Rest, <<Bits/bits, (Fun(X)):5>>);
 decode(_Fun, <<>>, Bin) -> Bin.
 
-std_dec(I) when I >= $2 andalso I =< $7 -> I - 24;
-std_dec(I) when I >= $a andalso I =< $z -> I - $a;
-std_dec(I) when I >= $A andalso I =< $Z -> I - $A.
+std_dec(I) when I >= $2
+        andalso I =< $7 ->
+    I - 24;
+std_dec(I) when I >= $a
+        andalso I =< $z ->
+    I - $a;
+std_dec(I) when I >= $A
+        andalso I =< $Z ->
+    I - $A.
 
-hex_dec(I) when I >= $0 andalso I =< $9 -> I - 48;
-hex_dec(I) when I >= $a andalso I =< $z -> I - 87;
-hex_dec(I) when I >= $A andalso I =< $Z -> I - 55.
+hex_dec(I) when I >= $0
+        andalso I =< $9 ->
+    I - 48;
+hex_dec(I) when I >= $a
+        andalso I =< $z ->
+    I - 87;
+hex_dec(I) when I >= $A
+        andalso I =< $Z ->
+    I - 55.

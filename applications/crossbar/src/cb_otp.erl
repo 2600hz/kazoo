@@ -37,7 +37,7 @@ validate_totp(Secret, OTP) ->
 filter_secret(JObj) ->
     kz_json:filter(fun({K, _}) -> (not is_secret(K)) end, JObj).
 
--spec is_secret(key()) -> boolean().
+-spec is_secret(kz_json:key()) -> boolean().
 is_secret(<<"otp_secret">>) -> 'true';
 is_secret(_) -> false.
 
