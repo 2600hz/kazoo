@@ -776,6 +776,10 @@ add_system_error('forbidden', Context) ->
     build_system_error(403, 'forbidden', <<"forbidden">>, Context);
 add_system_error('invalid_credentials', Context) ->
     build_system_error(401, 'invalid_credentials', <<"invalid credentials">>, Context);
+add_system_error('otp_required', Context) ->
+    build_system_error(401, 'otp_required', <<"otp required">>, Context);
+add_system_error('invalid_otp', Context) ->
+    build_system_error(401, 'invalid_otp', <<"invalid otp">>, Context);
 
 add_system_error('datastore_missing', Context) ->
     build_system_error(503, 'datastore_missing', <<"data collection missing: database not found">>, Context);
