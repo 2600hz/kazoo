@@ -67,7 +67,7 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
                                     {'ok', wh_json:objects()}.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    case maybe_create(AccountMODb) of
+    case maybe_create_current_modb(AccountMODb) of
         'true' -> get_results(Account, View, ViewOptions, Retry-1);
         'false' -> {'ok', []}
     end.
@@ -153,7 +153,7 @@ couch_save(AccountMODb, Doc, Retry) ->
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
             lager:warning("modb ~p not found, creating...", [AccountMODb]),
-            _ = maybe_create(AccountMODb),
+            _ = maybe_create_current_modb(AccountMODb),
             couch_save(AccountMODb, Doc, Retry-1);
         {'error', _E}=Error ->
             lager:error("account mod save error: ~p", [_E]),
@@ -204,33 +204,51 @@ get_modb(Account, Year, Month) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_create(ne_binary()) -> boolean().
-maybe_create(?MATCH_MODB_SUFFIX_RAW(_,Year,Month) = AccountMODb) ->
+-spec maybe_create_current_modb(ne_binary()) -> boolean().
+maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_,Year,Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
     case {wh_util:to_binary(Y), wh_util:pad_month(M)} of
         {Year, Month} ->
             create(AccountMODb),
             'true';
-        {_Year, _Month} -> 'false'
+        {_Year, _Month} ->
+            lager:warning("modb ~p is not for the current month, skip creating", [AccountMODb]),
+            'false'
     end;
-maybe_create(<<"account/", AccountId/binary>>) ->
-    maybe_create(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
-maybe_create(<<"account%2F", AccountId/binary>>) ->
-    maybe_create(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
+maybe_create_current_modb(<<"account/", AccountId/binary>>) ->
+    maybe_create_current_modb(binary:replace(AccountId, <<"/">>, <<>>, ['global']));
+maybe_create_current_modb(<<"account%2F", AccountId/binary>>) ->
+    maybe_create_current_modb(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
-create(AccountMODb) ->
+create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    do_create(AccountMODb, couch_mgr:db_exists(EncodedMODb)).
+    IsDbExists = couch_mgr:db_exists(EncodedMODb),
+    IsAccountDeleted = is_account_deleted(AccountId),
+    do_create(AccountMODb, IsDbExists, IsAccountDeleted).
 
--spec do_create(ne_binary(), boolean()) -> 'ok'.
-do_create(_AccountMODb, 'true') -> 'ok';
-do_create(AccountMODb, 'false') ->
+-spec do_create(ne_binary(), boolean(), boolean()) -> 'ok'.
+do_create(_AccountMODb, 'true', _) ->
+    lager:warning("modb ~p is exists, not creating", [_AccountMODb]);
+do_create(AccountMODb, _, 'true') ->
+    AccountId = wh_util:format_account_id(AccountMODb),
+    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]);
+do_create(AccountMODb, 'false', 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
-    _ = couch_mgr:db_create(EncodedMODb),
-    _ = refresh_views(EncodedMODb),
-    create_routines(AccountMODb).
+    case couch_mgr:db_create(EncodedMODb) of
+        'true' ->
+            refresh_views(EncodedMODb),
+            create_routines(AccountMODb);
+        _ -> 'false'
+    end.
+
+-spec is_account_deleted(ne_binary()) -> boolean().
+is_account_deleted(AccountId) ->
+    case couch_mgr:open_doc(?WH_ACCOUNTS_DB, AccountId) of
+        {'ok', JObj} -> wh_doc:is_soft_deleted(JObj);
+        {'error', _} -> 'true'
+    end.
 
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
