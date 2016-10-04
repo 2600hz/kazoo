@@ -267,11 +267,10 @@ update(Id, Context, Node) ->
     Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            Doc = cb_context:doc(Context1),
-            NodeDoc = node_value(Node, Doc),
+            NodeDoc = node_value(Node, Context1),
             ReqData = cb_context:req_data(Context1),
             NewNodeDoc = kz_json:normalize_jobj(kz_json:merge_recursive(NodeDoc, ReqData)),
-            NewDoc = kz_json:set_value(Node, NewNodeDoc, Doc),
+            NewDoc = kz_json:set_value(Node, NewNodeDoc, cb_context:doc(Context1)),
             cb_context:set_doc(Context1, NewDoc);
         _Status ->
             Context1
