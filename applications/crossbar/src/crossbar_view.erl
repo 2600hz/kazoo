@@ -16,9 +16,9 @@
 
 -spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
-    Filter = props:get_value(mapper, Options, fun id/1),
-    CouchOptions = props:get_value(couch_options, Options, []),
-    KeyMap = props:get_value(keymap, Options, fun id/1),
+    Filter = props:get_value('mapper', Options, fun id/1),
+    CouchOptions = props:get_value('couch_options', Options, []),
+    KeyMap = props:get_value('keymap', Options, fun id/1),
     load(Context, View, CouchOptions, Filter, map_keymap(KeyMap)).
 
 -spec map_keymap(ne_binary() | [ne_binary()] | fun()) -> fun().
