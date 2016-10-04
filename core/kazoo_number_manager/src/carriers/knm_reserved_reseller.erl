@@ -97,7 +97,7 @@ format_numbers(AuthBy, JObjs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_number:knm_number()) -> 'false'.
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -106,8 +106,7 @@ is_number_billable(_Number) -> 'false'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+-spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -117,8 +116,7 @@ acquire_number(Number) -> Number.
 %% @end
 %%--------------------------------------------------------------------
 
--spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+-spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
@@ -126,5 +124,5 @@ disconnect_number(Number) -> Number.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec should_lookup_cnam() -> 'true'.
+-spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'true'.

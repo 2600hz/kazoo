@@ -88,11 +88,10 @@ phone_number_activation_charge(Services, Number) ->
 update_numbers(Services, []) ->
     Services;
 update_numbers(Services, [PN|PNs]) ->
-    DID = knm_phone_number:number(PN),
-    case knm_converters:is_reconcilable(DID) of
+    case knm_converters:is_reconcilable(knm_phone_number:number(PN)) of
         'false' -> Services;
         'true' ->
-            Routines = [fun(S) -> update_number_quantities(S, PN, DID) end
+            Routines = [fun(S) -> update_number_quantities(S, PN) end
                        ,fun(S) ->
                                 Features = knm_phone_number:features_list(PN),
                                 update_feature_quantities(Features, S)
@@ -108,10 +107,10 @@ update_numbers(Services, [PN|PNs]) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_number_quantities(kz_services:services(), pn(), ne_binary()) -> kz_services:services().
-update_number_quantities(Services, PN, DID) ->
-    ModuleName = knm_phone_number:module_name(PN),
-    case is_number_billable(DID, ModuleName)
+-spec update_number_quantities(kz_services:services(), pn()) -> kz_services:services().
+update_number_quantities(Services, PN) ->
+    DID = knm_phone_number:number(PN),
+    case is_number_billable(PN)
         andalso knm_converters:classify(DID)
     of
         'false' -> Services;
@@ -127,34 +126,14 @@ update_number_quantities(Services, PN, DID) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(ne_binary(), api_binary() | atom()) -> boolean().
-is_number_billable(DID, 'undefined') ->
-    case knm_number:get(DID) of
-        {'error', _R} ->
-            lager:debug("failed to get ~s: ~p", [DID, _R]),
-            'false';
-        {'ok', Number} ->
-            case knm_phone_number:module_name(knm_number:phone_number(Number)) of
-                'undefined' ->
-                    lager:debug("number ~s had no number manager module, not billable", [DID]),
-                    'false';
-                Module ->
-                    is_number_billable(DID, Module)
-            end
-    end;
-is_number_billable(DID, M) ->
-    Module = kz_util:to_atom(M, 'true'),
-    case catch Module:is_number_billable(DID) of
-        'true' ->
-            lager:debug("number ~s is billable: ~s", [DID, Module]),
-            'true';
-        'false' ->
-            lager:debug("number ~s is not billable: ~s", [DID, Module]),
-            'false';
-        _Else ->
-            lager:debug("number ~s is not billable due to provider ~s error: ~p", [DID, Module, _Else]),
-            'false'
-    end.
+-spec is_number_billable(pn()) -> boolean().
+is_number_billable(PN) ->
+    IsBillable = (catch knm_phone_number:is_billable(PN)),
+    lager:debug("is ~s's ~s billable: ~p", [knm_phone_number:module_name(PN)
+                                           ,knm_phone_number:number(PN)
+                                           ,IsBillable
+                                           ]),
+    IsBillable.
 
 %%--------------------------------------------------------------------
 %% @private

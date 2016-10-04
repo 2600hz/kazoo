@@ -44,6 +44,7 @@
         ,doc/1, update_doc/2
         ,modified/1, set_modified/2
         ,created/1, set_created/2
+        ,is_billable/1
         ]).
 
 -export([list_attachments/2]).
@@ -74,6 +75,7 @@
                           ,doc = kz_json:new() :: kz_json:object()
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
+                          ,is_billable = 'false' :: boolean()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -320,6 +322,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         ,{?PVT_REGION, region(N)}
         ,{?PVT_MODIFIED, modified(N)}
         ,{?PVT_CREATED, created(N)}
+        ,{?PVT_IS_BILLABLE, is_billable(N)}
         ,{?PVT_TYPE, <<"number">>}
          | kz_json:to_proplist(
              kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
@@ -637,11 +640,15 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    N#knm_phone_number{module_name=Name};
+    N#knm_phone_number{module_name = Name
+                      ,is_billable = 'false'
+                      };
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
-    N#knm_phone_number{module_name=Name}.
+    N#knm_phone_number{module_name = Name
+                      ,is_billable = knm_carriers:is_number_billable(N)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -777,6 +784,14 @@ created(#knm_phone_number{created=Created}) -> Created.
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created=Created}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_billable(knm_phone_number()) -> boolean().
+is_billable(#knm_phone_number{is_billable = IsBillable}) -> IsBillable.
 
 %%--------------------------------------------------------------------
 %% @public
