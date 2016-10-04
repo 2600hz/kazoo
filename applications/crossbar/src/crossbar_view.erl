@@ -16,23 +16,23 @@
 
 -spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
-    Filter = props:get_value('mapper', Options, fun id/1),
+    Mapper = props:get_value('mapper', Options, fun id/1),
     CouchOptions = props:get_value('couch_options', Options, []),
     KeyMap = props:get_value('keymap', Options, fun id/1),
-    load(Context, View, CouchOptions, Filter, map_keymap(KeyMap)).
+    load(Context, View, CouchOptions, Mapper, map_keymap(KeyMap)).
 
 -spec map_keymap(ne_binary() | [ne_binary()] | fun()) -> fun().
 map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
 map_keymap(K) when is_function(K) -> K.
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(), Filter :: fun(), KeyMap :: fun()) -> cb_context:context().
-load(Context, View, CouchOptions, Filter, KeyMap) when is_function(KeyMap) ->
+-spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(), Mapper :: fun(), KeyMap :: fun()) -> cb_context:context().
+load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
-            ascending(Context, View, CouchOptions, Filter, KeyMap);
+            ascending(Context, View, CouchOptions, Mapper, KeyMap);
         'false' ->
-            descending(Context, View, CouchOptions, Filter, KeyMap)
+            descending(Context, View, CouchOptions, Mapper, KeyMap)
     end.
 
 %% impl
@@ -41,25 +41,25 @@ load(Context, View, CouchOptions, Filter, KeyMap) when is_function(KeyMap) ->
 id(X) -> X.
 
 -spec descending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
-descending(Context, View, CouchOptions, Filter, KeyMap) ->
+descending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(start_key(Context)),
     EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
-    CtxFilter = build_filter_with_qs(Context, Filter),
+    CtxMapper = build_filter_with_qs(Context, Mapper),
     Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
-    {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxMapper, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 -spec ascending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
-ascending(Context, View, CouchOptions, Filter, KeyMap) ->
+ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(ascending_start_key(Context)),
     EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
-    CtxFilter = build_filter_with_qs(Context, Filter),
+    CtxMapper = build_filter_with_qs(Context, Mapper),
     Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
-    {LastKey, JObjs} = kazoo_modb_view:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxFilter, Options),
+    {LastKey, JObjs} = kazoo_modb_view:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxMapper, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 -spec is_ascending(cb_context:context()) -> boolean().
@@ -142,26 +142,26 @@ build_qs_filter_options(Context) ->
     end.
 
 -spec build_filter_with_qs(cb_context:context(), fun()) -> fun().
-build_filter_with_qs(Context, UserFilter) ->
-    CtxFilter = crossbar_filter:build(Context),
+build_filter_with_qs(Context, UserMapper) ->
+    CtxMapper = crossbar_filter:build(Context),
     Mapper = build_qs_filter_mapper(Context),
-    build_filter_with_qs(Mapper, CtxFilter, UserFilter).
+    build_filter_with_qs(Mapper, CtxMapper, UserMapper).
 
 -spec build_filter_with_qs(fun(), fun(), fun()) -> fun().
-build_filter_with_qs(Mapper, CtxFilter, UserFilter) when is_function(UserFilter, 1) ->
+build_filter_with_qs(Mapper, CtxMapper, UserMapper) when is_function(UserMapper, 1) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
-            case CtxFilter(JObj) of
+            case CtxMapper(JObj) of
                 'false' -> Acc;
-                'true' -> [ UserFilter(JObjDoc) | Acc ]
+                'true' -> [ UserMapper(JObjDoc) | Acc ]
             end
     end;
-build_filter_with_qs(Mapper, CtxFilter, UserFilter) when is_function(UserFilter, 2) ->
+build_filter_with_qs(Mapper, CtxMapper, UserMapper) when is_function(UserMapper, 2) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),
-            case CtxFilter(JObj) of
+            case CtxMapper(JObj) of
                 'false' -> Acc;
-                'true' -> UserFilter(JObjDoc, Acc)
+                'true' -> UserMapper(JObjDoc, Acc)
             end
     end.
 
