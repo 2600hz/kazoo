@@ -1251,7 +1251,7 @@ create_new_account_db(Context) ->
             lager:debug("created account definition"),
 
             _ = load_initial_views(C),
-            lager:debug("laoded initial views"),
+            lager:debug("loaded initial views"),
 
             _ = crossbar_bindings:map(<<"account.created">>, C),
             lager:debug("alerted listeners of new account"),

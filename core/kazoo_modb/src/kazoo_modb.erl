@@ -272,11 +272,12 @@ maybe_create_current_modb(<<"account%2F", AccountId/binary>>) ->
     maybe_create_current_modb(binary:replace(AccountId, <<"%2F">>, <<>>, ['global'])).
 
 -spec create(ne_binary()) -> 'ok'.
-create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+create(AccountDb) ->
+    AccountId =  kz_util:format_account_id(AccountDb, 'raw'),
+    EncodedMODb = kz_util:format_account_modb(AccountDb, 'encoded'),
     IsDbExists = kz_datamgr:db_exists_all(EncodedMODb),
     IsAccountDeleted = is_account_deleted(AccountId),
-    do_create(AccountMODb, IsDbExists, IsAccountDeleted).
+    do_create(AccountDb, IsDbExists, IsAccountDeleted).
 
 -spec do_create(ne_binary(), boolean(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true', _) ->
