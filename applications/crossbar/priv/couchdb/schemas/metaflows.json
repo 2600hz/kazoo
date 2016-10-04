@@ -1,7 +1,6 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflows",
-    "additionalProperties": false,
     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)",
     "properties": {
         "binding_digit": {
@@ -23,13 +22,11 @@
             ],
             "maxLength": 1,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "digit_timeout": {
             "description": "How long to wait between DTMF presses before processing the collected sequence (milliseconds)",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "listen_on": {
@@ -39,7 +36,6 @@
                 "self",
                 "peer"
             ],
-            "required": false,
             "type": "string"
         },
         "numbers": {
@@ -50,7 +46,6 @@
                     "$ref": "metaflow"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "patterns": {
@@ -61,7 +56,6 @@
                     "$ref": "metaflow"
                 }
             },
-            "required": false,
             "type": "object"
         }
     },
