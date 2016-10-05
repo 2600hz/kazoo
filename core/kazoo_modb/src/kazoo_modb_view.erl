@@ -44,7 +44,7 @@ get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) 
     {LastKey, JObjs}.
 
 -spec fold_query({binary(), binary(), list(), fun()}, {integer(), integer(), kz_json:objects()}) -> {integer(), integer(), kz_json:objects()}.
-fold_query(_, {Limit, _LastKey, Res} = Re) when is_integer(Limit), Limit > 0, length(Res) == Limit -> Re;
+fold_query(_, {Limit, LastKey, Res} = Re) when is_integer(Limit), Limit > 0, length(Res) == Limit, LastKey =/= 'undefined' -> Re;
 fold_query({Db, View, CouchOpts, Mapper}, {Limit, LastKey, Res}) when is_integer(Limit), Limit > 0 ->
     Queried = erlang:length(Res),
     LimitWithLast = 1 + Limit - Queried,

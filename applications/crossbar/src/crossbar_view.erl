@@ -12,7 +12,8 @@
 -export([load/3, load/5]).
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
--define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
+% -define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
+-define(DEFAULT_RANGE, (?SECONDS_IN_DAY * 61 + ?SECONDS_IN_HOUR)).
 
 -spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
