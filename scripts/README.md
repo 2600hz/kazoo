@@ -1,4 +1,4 @@
-- [Scripts](#orgheadline36)
+- [Scripts](#orgheadline37)
   - [apps-process-count.sh](#orgheadline1)
   - [bump-copyright-year.sh](#orgheadline2)
   - [check-app-registered.sh](#orgheadline3)
@@ -16,26 +16,28 @@
   - [dev/kazoo.sh](#orgheadline15)
   - [dev/sup.sh](#orgheadline16)
   - [dialyze-usage.bash](#orgheadline17)
-  - [ecallmgr-process-count.sh](#orgheadline18)
-  - [format-json.sh](#orgheadline19)
-  - [generate-api-endpoints.escript](#orgheadline20)
-  - [generate-fs-headers-hrl.escript](#orgheadline21)
-  - [generate-schemas.escript](#orgheadline22)
-  - [no\_raw\_json.escript](#orgheadline23)
-  - [rabbitmq-generic.sh](#orgheadline24)
-  - [rabbitmq-server.init](#orgheadline25)
-  - [setup-dev.sh](#orgheadline26)
-  - [setup-git.sh](#orgheadline27)
-  - [src2any.escript](#orgheadline28)
-  - [start-apps.sh](#orgheadline29)
-  - [start-ecallmgr.sh](#orgheadline30)
-  - [state-of-docs.sh](#orgheadline31)
-  - [update-the-types.sh](#orgheadline32)
-  - [validate-js.sh](#orgheadline33)
-  - [validate-swagger.sh](#orgheadline34)
-  - [wh\_to\_kz.sh](#orgheadline35)
+  - [dialyze-changed.bash](#orgheadline18)
+  - [ecallmgr-process-count.sh](#orgheadline19)
+  - [format-json.sh](#orgheadline20)
+  - [generate-api-endpoints.escript](#orgheadline21)
+  - [generate-fs-headers-hrl.escript](#orgheadline22)
+  - [generate-schemas.escript](#orgheadline23)
+  - [no\_raw\_json.escript](#orgheadline24)
+  - [rabbitmq-generic.sh](#orgheadline25)
+  - [rabbitmq-server.init](#orgheadline26)
+  - [setup-dev.sh](#orgheadline27)
+  - [setup-git.sh](#orgheadline28)
+  - [src2any.escript](#orgheadline29)
+  - [start-apps.sh](#orgheadline30)
+  - [start-ecallmgr.sh](#orgheadline31)
+  - [state-of-docs.sh](#orgheadline32)
+  - [update-the-types.sh](#orgheadline33)
+  - [validate-js.sh](#orgheadline34)
+  - [validate-swagger.sh](#orgheadline35)
+  - [wh\_to\_kz.sh](#orgheadline36)
 
-# Scripts<a id="orgheadline36"></a>
+
+# Scripts<a id="orgheadline37"></a>
 
 This is the scripts directory, where we place scripts of various types to help with various activities. :)
 
@@ -188,45 +190,62 @@ The more heavily utilized the module is, the longer this will take to run!
      done in 0m4.08s
     done (warnings were emitted)
 
-## ecallmgr-process-count.sh<a id="orgheadline18"></a>
+## dialyze-changed.bash<a id="orgheadline18"></a>
+
+This script gets a diff set (against master) of .erl files from the current branch and dialyzes all changed files. You can include extra beam files on the end of the script (for things like gen\_listener, kz\_json, etc).
+
+    ./scripts/dialyze-changed.bash core/kazoo/ebin/kz_json.beam
+    dialyzing changed files:
+      Checking whether the PLT .kazoo.plt is up-to-date... yes
+      Compiling some key modules to native code... done in 0m0.28s
+      Proceeding with analysis...
+      ...Issues Found...
+      Unknown functions:
+      ...Unknown functions...
+      Unknown types:
+      ...Unknown types...
+     done in 0m6.69s
+    done (warnings were emitted)
+
+## ecallmgr-process-count.sh<a id="orgheadline19"></a>
 
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
-## format-json.sh<a id="orgheadline19"></a>
+## format-json.sh<a id="orgheadline20"></a>
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
 
     ./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
 
-## generate-api-endpoints.escript<a id="orgheadline20"></a>
+## generate-api-endpoints.escript<a id="orgheadline21"></a>
 
 Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps detect when Crossbar endpoints have changes to their functionality that is client-facing.
 
 Also builds the [Swagger](http://swagger.io/) JSON file in applications/crossbar/priv/api/swagger.json
 
-## generate-fs-headers-hrl.escript<a id="orgheadline21"></a>
+## generate-fs-headers-hrl.escript<a id="orgheadline22"></a>
 
 Parses the ecallmgr code looking for keys used to access values in the FreeSWITCH proplist and builds a header file at applications/ecallmgr/src/fs\_event\_filters.hrl for use when initializing mod\_kazoo.
 
-## generate-schemas.escript<a id="orgheadline22"></a>
+## generate-schemas.escript<a id="orgheadline23"></a>
 
 Parses the core/applications code looking for calls to kapps\_config (module used to access documents in the system\_config database) and building a base JSON schema file for each document found.
 
 Also parses callflow's action modules looking for keys used to access values in the Data JSON object to build a base JSON schema file for each callflow action.
 
-## no\_raw\_json.escript<a id="orgheadline23"></a>
+## no\_raw\_json.escript<a id="orgheadline24"></a>
 
 Erlang has a handful of internal representations of JSON used by the various parses. The kz\_json module handles these details and Kazoo programmers should treat the data structure used as opaque. This script parses the codebase looking for instances where the opaqueness of the data structure is violated.
 
-## rabbitmq-generic.sh<a id="orgheadline24"></a>
+## rabbitmq-generic.sh<a id="orgheadline25"></a>
 
 Wrapper for running rabbitmq script commands?
 
-## rabbitmq-server.init<a id="orgheadline25"></a>
+## rabbitmq-server.init<a id="orgheadline26"></a>
 
 Init.d script for rabbitmq
 
-## setup-dev.sh<a id="orgheadline26"></a>
+## setup-dev.sh<a id="orgheadline27"></a>
 
 Script to setup a dev environment including:
 
@@ -236,23 +255,23 @@ Script to setup a dev environment including:
 -   Reset RabbitMQ mnesia databases, logs
 -   Setup users for rabbitmq and kazoo
 
-## setup-git.sh<a id="orgheadline27"></a>
+## setup-git.sh<a id="orgheadline28"></a>
 
 Setup the username/email to use in Git commits and other Git settings
 
-## src2any.escript<a id="orgheadline28"></a>
+## src2any.escript<a id="orgheadline29"></a>
 
 Reads the .app.src file and writes a .src file?
 
-## start-apps.sh<a id="orgheadline29"></a>
+## start-apps.sh<a id="orgheadline30"></a>
 
 Starts a VM in the background with name kazoo\_apps
 
-## start-ecallmgr.sh<a id="orgheadline30"></a>
+## start-ecallmgr.sh<a id="orgheadline31"></a>
 
 Starts a VM in the background with name ecallmgr
 
-## state-of-docs.sh<a id="orgheadline31"></a>
+## state-of-docs.sh<a id="orgheadline32"></a>
 
 Searches for undocumented APIs and reports percentage of doc coverage.
 
@@ -482,18 +501,18 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > GET /v2/accounts/{ACCOUNT_ID}/about
     > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
 
-## update-the-types.sh<a id="orgheadline32"></a>
+## update-the-types.sh<a id="orgheadline33"></a>
 
 Used to search the code looking for deprecated Erlang functions and types and replace them with the newer versions as appropriate
 
-## validate-js.sh<a id="orgheadline33"></a>
+## validate-js.sh<a id="orgheadline34"></a>
 
 Processes JSON files:
 
 -   Checks that \_id matches the file name in schema files
 -   Checks map functions in CouchDB views for 'Object.keys' usage
 
-## validate-swagger.sh<a id="orgheadline34"></a>
+## validate-swagger.sh<a id="orgheadline35"></a>
 
 Validate Swagger file using online validator
 
@@ -628,6 +647,6 @@ Validate Swagger file using online validator
     }
     FIX THESE ISSUES
 
-## wh\_to\_kz.sh<a id="orgheadline35"></a>
+## wh\_to\_kz.sh<a id="orgheadline36"></a>
 
 Part of the great rename, converts Whistle-related names to Kazoo-specific names

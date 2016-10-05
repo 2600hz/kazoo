@@ -51,7 +51,7 @@ default_priv_level() ->
                            ,<<"admin">>
                            ).
 
--spec default_method_restrictions() -> kz_json:object().
+-spec default_method_restrictions() -> api_object().
 default_method_restrictions() ->
     kapps_config:get_json(?MOD_CONFIG_CAT, ?CATCH_ALL).
 

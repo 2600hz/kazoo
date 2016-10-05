@@ -1,3 +1,16 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline ^:{}
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+TITLE: README
+#+DATE: <2016-10-04 Tue>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.6)
+
 * Scripts
 
 This is the scripts directory, where we place scripts of various types to help with various activities. :)
@@ -125,6 +138,23 @@ kz_dataconfig.erl:27: The call kz_config:get('data','config',['bigcouch',...]) b
 kz_dataconfig.erl:32: Function connection_options/1 will never be called
 ...
  done in 0m4.08s
+done (warnings were emitted)
+#+END_EXAMPLE
+** dialyze-changed.bash
+This script gets a diff set (against master) of .erl files from the current branch and dialyzes all changed files. You can include extra beam files on the end of the script (for things like gen_listener, kz_json, etc).
+
+#+BEGIN_EXAMPLE shell
+./scripts/dialyze-changed.bash core/kazoo/ebin/kz_json.beam
+dialyzing changed files:
+  Checking whether the PLT .kazoo.plt is up-to-date... yes
+  Compiling some key modules to native code... done in 0m0.28s
+  Proceeding with analysis...
+  ...Issues Found...
+  Unknown functions:
+  ...Unknown functions...
+  Unknown types:
+  ...Unknown types...
+ done in 0m6.69s
 done (warnings were emitted)
 #+END_EXAMPLE
 ** ecallmgr-process-count.sh
