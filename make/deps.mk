@@ -41,7 +41,7 @@ dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv ecsv-1
 
 ### for scripts/dev-start-*.sh
-### dep_reloader = git https://github.com/oinksoft/reloader
+## dep_reloader = git https://github.com/oinksoft/reloader
 
 ### build
 dep_parse_trans = git https://github.com/lazedo/parse_trans
