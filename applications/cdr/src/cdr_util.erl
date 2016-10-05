@@ -49,7 +49,7 @@ save_cdr(AccountMODb, Doc, Retries) ->
     case kz_datamgr:save_doc(AccountMODb, Doc) of
         {'ok', _}-> 'ok';
         {'error', 'not_found'} ->
-            _ = kazoo_modb:create(AccountMODb),
+            _ = kazoo_modb:maybe_create(AccountMODb),
             save_cdr(AccountMODb, Doc, Retries + 1);
         {'error', 'conflict'} -> 'ok';
         {'error', _E} ->

@@ -185,7 +185,7 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
               ,{<<"_rev">>, Rev}
               ]),
     JObjDoc = kz_json:set_values(Props, Doc),
-    kazoo_modb:create(AccountDb),
+    kazoo_modb:maybe_create(AccountDb),
     case kz_datamgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
             kapps_call:kvs_store(<<"_rev">>, kz_doc:revision(Saved), Call);

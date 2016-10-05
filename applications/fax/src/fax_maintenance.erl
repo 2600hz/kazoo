@@ -189,7 +189,7 @@ migrate_fax_to_modb(AccountDb, DocId, JObj, Options) ->
               ,DocId/binary
             >>,
     io:format("moving doc ~s/~s to ~s/~s~n",[AccountDb, DocId, AccountMODb, FaxId]),
-    kazoo_modb:create(AccountMODb),
+    kazoo_modb:maybe_create(AccountMODb),
     case kz_datamgr:move_doc(AccountDb, DocId, FaxMODb, FaxId, Options) of
         {'ok', _JObj} -> io:format("document ~s moved to ~s~n",[DocId, FaxId]);
         {'error', Error} -> io:format("error ~p moving document ~s to ~s~n",[Error, DocId, FaxId])
@@ -397,7 +397,7 @@ migrate_outbound_fax(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    kazoo_modb:create(AccountMODb),
+    kazoo_modb:maybe_create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month),FromId),
     case kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
