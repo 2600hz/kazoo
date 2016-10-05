@@ -54,6 +54,7 @@ identity_secret(#{auth_provider := #{name := <<"kazoo">>}
     AccountDb = kz_util:format_account_db(AccountId),
     get_identity_secret(Token#{auth_db => AccountDb
                               ,auth_id => OwnerId
+                              ,auth_db_id => OwnerId
                               });
 
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
@@ -62,6 +63,7 @@ identity_secret(#{auth_provider := #{name := <<"kazoo">>}
     AccountDb = kz_util:format_account_db(AccountId),
     get_identity_secret(Token#{auth_db => AccountDb
                               ,auth_id => AccountId
+                              ,auth_db_id => AccountId
                               });
 
 identity_secret(#{auth_app := #{pvt_user_prefix := Prefix}
