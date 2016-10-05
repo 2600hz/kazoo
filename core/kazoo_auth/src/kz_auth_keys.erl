@@ -20,10 +20,13 @@
 
 -include("kazoo_auth.hrl").
 
+-type rsa_key() :: public_key:rsa_private_key() | public_key:rsa_public_key().
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
 
+-spec get_public_key_from_cert(file:filename_all()) -> public_key:rsa_public_key().
 get_public_key_from_cert(PathToCert) ->
     {ok, PemBin} = file:read_file(PathToCert),
     PemEntries = public_key:pem_decode(PemBin),
@@ -33,12 +36,15 @@ get_public_key_from_cert(PathToCert) ->
     PublicKey = Decoded#'OTPCertificate'.tbsCertificate#'OTPTBSCertificate'.subjectPublicKeyInfo#'OTPSubjectPublicKeyInfo'.subjectPublicKey,
     PublicKey.
 
+-spec get_public_key_from_private_key(public_key:rsa_private_key()) -> public_key:rsa_public_key().
 get_public_key_from_private_key(#'RSAPrivateKey'{modulus=Mod, publicExponent=Exp}) ->
     #'RSAPublicKey'{modulus=Mod, publicExponent = Exp}.
 
+-spec get_public_key(any(), any()) -> public_key:rsa_public_key().
 get_public_key(Mod, Exp) ->
     #'RSAPublicKey'{modulus=Mod, publicExponent = Exp}.
 
+-spec get_private_key_from_file(file:filename_all()) -> public_key:rsa_private_key().
 get_private_key_from_file(Path) ->
     {ok, PemBin} = file:read_file(Path),
     [PemEntry | _] = public_key:pem_decode(PemBin),
@@ -53,13 +59,16 @@ from_pem(PemContents) ->
 to_pem(RSA) ->
     public_key:pem_encode([public_key:pem_entry_encode(element(1, RSA), RSA)]).
 
+-spec lookup(any()) -> {'ok', any()} | {'error', 'not_found'}.
 lookup(KeyId) ->
     kz_cache:fetch_local(?PK_CACHE, KeyId).
 
+-spec store(any(), any()) -> 'ok'.
 store(KeyId, Key) ->
     lager:debug("storing public key ~p in cache", [KeyId]),
     kz_cache:store_local(?PK_CACHE, KeyId, Key).
 
+-spec from_token(map()) -> {'ok', rsa_key()} | {'error', 'not_found'}.
 from_token(#{}=Token) ->
     Routines = [fun maybe_get_key/1
                ,fun maybe_cached/1
@@ -82,6 +91,7 @@ from_token(#{}=Token) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
+-spec from_token_fold(map(), list()) -> map().
 from_token_fold(Token, []) -> Token;
 from_token_fold(#{key := _Key}=Token, _) -> Token;
 from_token_fold(Token, [Fun | Routines]) ->
@@ -94,6 +104,7 @@ from_token_fold(Token, [Fun | Routines]) ->
             from_token_fold(Token, Routines)
     end.
 
+-spec maybe_get_key(map()) -> map().
 maybe_get_key(#{key_id := _KeyId}=Token) -> Token;
 maybe_get_key(#{auth_provider := #{public_key_jwt_field := Field
                                   ,public_key_jwt_location := Loc
@@ -109,6 +120,7 @@ maybe_get_key(#{auth_provider := #{name := <<"kazoo">>}
     Token#{key_id => KeyId};
 maybe_get_key(#{}=Token) -> Token.
 
+-spec key_id(ne_binary(), ne_binary(), map()) -> api_binary().
 key_id(<<"payload">>, Field, #{payload := Payload}) ->
     maps:get(Field, Payload, 'undefined');
 key_id(<<"header">>, Field, Token) ->
@@ -116,6 +128,7 @@ key_id(<<"header">>, Field, Token) ->
     KeyId;
 key_id(_, _, _) -> 'undefined'.
 
+-spec maybe_cached(map()) -> map().
 maybe_cached(#{key_id := KeyId}=Token) ->
     case lookup(KeyId) of
         {'ok', Key} ->
@@ -125,6 +138,7 @@ maybe_cached(#{key_id := KeyId}=Token) ->
     end;
 maybe_cached(#{}=Token) -> Token#{cached => false}.
 
+-spec maybe_discovery(map()) -> map().
 maybe_discovery(#{key_id := _KeyId
                  ,auth_provider := #{discovery := DiscoveryUrl}
                  }=Token) ->
@@ -138,6 +152,7 @@ maybe_discovery(#{key_id := KeyId
     Token#{key => kazoo_public_key(KeyId)};
 maybe_discovery(#{}=Token) -> Token.
 
+-spec maybe_discovery_url(map()) -> map().
 maybe_discovery_url(#{discovery := JObj
                      ,auth_provider := #{public_key_discovery_field := Field}
                      }=Token) ->
@@ -147,6 +162,7 @@ maybe_discovery_url(#{discovery := JObj
     end;
 maybe_discovery_url(#{}=Token) -> Token.
 
+-spec fetch_from_url(map()) -> map().
 fetch_from_url(#{discovery_url := Url}=Token) ->
     case kz_auth_util:get_json_from_url(Url) of
         {'ok', JObj} -> Token#{key_doc => JObj};
@@ -165,6 +181,7 @@ fetch_from_url(#{key_id := KeyId
     end;
 fetch_from_url(#{}=Token) -> Token.
 
+-spec fetch_key(map()) -> map().
 fetch_key(#{key_doc := KeyDoc
            ,auth_provider := #{public_key_field := Field
                               ,public_key_method := <<"field">>
@@ -189,6 +206,7 @@ fetch_key(#{key_id := KeyId
     end;
 fetch_key(#{}=Token) -> Token.
 
+-spec extract_key(map()) -> map().
 extract_key(#{key_value := #{<<"n">> := N0, <<"e">> := E0}} = Token) ->
     N1 = kz_base64url:decode(N0),
     E1 = kz_base64url:decode(E0),
@@ -202,22 +220,26 @@ extract_key(#{}=Token) ->
     lager:debug("public key not obtained : ~p", [Token]),
     Token.
 
+-spec kazoo_public_key(ne_binary()) -> public_key:rsa_public_key().
 kazoo_public_key(KeyId) ->
     {'ok', Key} = kazoo_private_key(KeyId),
     get_public_key_from_private_key(Key).
 
+-spec kazoo_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
 kazoo_private_key(KeyId) ->
     case lookup({'private', KeyId}) of
         {'error', 'not_found'} -> kazoo_load_private_key(KeyId);
         Found -> Found
     end.
 
+-spec kazoo_load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
 kazoo_load_private_key(KeyId) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
         {'ok', JObj} -> kazoo_load_private_key_attachment(JObj);
         {'error', 'not_found'} -> kazoo_new_private_key(KeyId)
     end.
 
+-spec kazoo_load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
 kazoo_load_private_key_attachment(JObj) ->
     KeyId = kz_doc:id(JObj),
     case kz_datamgr:fetch_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
@@ -228,6 +250,7 @@ kazoo_load_private_key_attachment(JObj) ->
         {'error', 'not_found'} -> kazoo_gen_private_key(JObj)
     end.
 
+-spec kazoo_new_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
 kazoo_new_private_key(KeyId) ->
     Doc = [{<<"pvt_type">>, <<"system_key">>}
           ,{<<"_id">>, KeyId}
@@ -241,6 +264,7 @@ kazoo_new_private_key(KeyId) ->
             Err
     end.
 
+-spec kazoo_gen_private_key(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
 kazoo_gen_private_key(JObj) ->
     {'ok', Key} = gen_private_key(),
     KeyId = kz_doc:id(JObj),
@@ -257,10 +281,7 @@ kazoo_gen_private_key(JObj) ->
             Err
     end.
 
-%% kazoo_private_key_from_file(KeyId) ->
-%%     Path = list_to_binary([code:priv_dir('kazoo_oauth'), "/keys/", kz_util:to_list(KeyId), ".pem"]),
-%%     get_private_key_from_file(Path).
-
+-spec gen_private_key() -> {'ok', public_key:rsa_private_key()}.
 gen_private_key() ->
     {'ok', MPInts} = kz_auth_rsa:gen_rsa(?RSA_KEY_SIZE, ?RSA_KEY_SIZE + 1),
     [E, N, D, P, Q, DMP1, DMQ1, IQMP] = erlint(MPInts),
@@ -275,13 +296,7 @@ gen_private_key() ->
                            coefficient = IQMP},
     {'ok', Key}.
 
-%% erlint(MPInts) -> [ crypto:erlint(X) || X <- MPInts ].
+-spec erlint(list() | integer()) -> integer() | list().
 erlint(MPInts) when is_list(MPInts) -> [erlint(X) || X <- MPInts ];
 erlint(<<Size:32, Int:Size/unit:8>>) -> Int.
-
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
-
-%% public_key:pem_encode([public_key:pem_entry_encode('RSAPublicKey', K2)]).
 

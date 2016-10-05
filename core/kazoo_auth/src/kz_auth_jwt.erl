@@ -28,9 +28,11 @@
 
 -define(DEFAULT_ALGORITHM, ?ALG_RS256).
 
+-spec decode(ne_binary()) -> {'ok', kz_proplist(), kz_proplist()} | {'error', any()}.
 decode(JWTToken) ->
     decode(JWTToken, 'true').
 
+-spec decode(ne_binary() | map(), boolean()) -> {'ok', kz_proplist(), kz_proplist()} | {'error', any()}.
 decode(JWTToken, Verify) when is_binary(JWTToken) ->
     case parse(JWTToken) of
         {'ok', Token} -> decode(Token, Verify);
@@ -54,6 +56,7 @@ verify(#{} = JWTToken) ->
     #{verify_result := Verified} = do_verify(JWTToken),
     Verified.
 
+-spec do_verify(map()) -> map().
 do_verify(#{} = JWTToken) ->
     Routines = [fun verify_header/1
                ,fun verify_signature/1
@@ -62,12 +65,14 @@ do_verify(#{} = JWTToken) ->
                ],
     do_verify_fold(JWTToken#{verify_result => 'true'}, Routines).
 
+-spec do_verify_fold(map(), list()) -> map().
 do_verify_fold(#{verify_result := 'false'} = Token, _) -> Token;
 do_verify_fold(#{} = Token, []) -> Token;
 do_verify_fold(Token, [Fun | Funs]) ->
     do_verify_fold(Fun(Token), Funs).
 
 
+-spec verify_header(map()) -> map().
 verify_header(#{header := #{<<"typ">> := <<"JWT">>, <<"alg">> := Alg}}=Token) ->
     case lists:member(Alg, ?ALGORITHMS) of
         'true' -> Token;
@@ -81,6 +86,7 @@ verify_header(#{header := #{<<"alg">> := Alg}}=Token) ->
 verify_header(Token) ->
     Token#{verify_result => 'false', verify_error => <<"jwt header type not supported">>}.
 
+-spec verify_signature(map()) -> map().
 verify_signature(#{header := #{<<"alg">> := Alg}
                   ,header64 := Header
                   ,payload64 := Payload
@@ -102,6 +108,7 @@ verify_signature(Token) ->
     Token#{verify_result => 'false', verify_error => <<"invalid jwt">>}.
 
 
+-spec verify_expiration(map()) -> map().
 verify_expiration(#{payload := #{<<"exp">> := Expiration}}=Token) ->
     case Expiration - epoch() > 0 of
         'true' -> Token;
@@ -109,6 +116,7 @@ verify_expiration(#{payload := #{<<"exp">> := Expiration}}=Token) ->
     end;
 verify_expiration(Token) -> Token.
 
+-spec verify_identity(map()) -> map().
 verify_identity(Token) ->
     lager:debug("verifying identity"),
     #{identify_verified := Verified} = Token1 = kz_auth_identity:token(Token),
@@ -118,19 +126,25 @@ verify_identity(Token) ->
     end.
 
 
+-spec alg_2_digest_type(binary()) -> atom().
 alg_2_digest_type(<<"RS256">>) -> 'sha256';
 alg_2_digest_type(<<"RS384">>) -> 'sha384';
 alg_2_digest_type(<<"RS512">>) -> 'sha512';
 alg_2_digest_type(_)           -> 'undefined'.
 
-epoch() -> erlang:system_time(seconds).
+-spec epoch() -> integer().
+epoch() -> erlang:system_time('seconds').
 
+-spec encode(kz_proplist()) -> {'ok', ne_binary()} | {'error', any()}.
 encode(Claims) ->
     encode(Claims, ?SYSTEM_KEY_ID).
 
+-spec encode(kz_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 encode(Claims, Key) ->
     encode(?DEFAULT_ALGORITHM, Claims, Key).
 
+-spec encode(ne_binary(), kz_proplist(), ne_binary() | {ne_binary(), public_key:rsa_private_key()}) ->
+                    {'ok', ne_binary()} | {'error', any()}.
 encode(Alg, InClaimsSet, KeyId = ?NE_BINARY) ->
     {'ok', Key} = kz_auth_keys:kazoo_private_key(KeyId),
     encode(Alg, InClaimsSet, {KeyId, Key});
@@ -150,12 +164,14 @@ encode(Alg, InClaimsSet, {KeyId, Key}) ->
         Signature -> {ok, <<Payload/binary, ".", Signature/binary>>}
     end.
 
+-spec sign(ne_binary(), ne_binary(),  public_key:rsa_private_key()) -> api_binary().
 sign(Alg, Payload, Key) ->
     case alg_2_digest_type(Alg) of
         undefined -> undefined;
         Crypto -> kz_base64url:encode(public_key:sign(Payload, Crypto, Key))
     end.
 
+-spec set_provider(map()) -> map().
 set_provider(#{payload := #{<<"iss">> := Issuer}}=Token) ->
     Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)}.
 
@@ -176,6 +192,7 @@ parse(JWTToken) when is_binary(JWTToken) ->
         _ -> {'error', 'no_jwt_signed_token'}
     end.
 
+-spec token(ne_binary() | map()) -> map().
 token(JWTToken) when is_binary(JWTToken) ->
     case parse(JWTToken) of
         {'ok', Token} -> token(Token);

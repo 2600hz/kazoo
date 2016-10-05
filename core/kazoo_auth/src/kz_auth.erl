@@ -19,12 +19,15 @@
 
 -include("kazoo_auth.hrl").
 
+-spec create_token(kz_proplist()) -> ne_binary().
 create_token(Claims) ->
     kz_auth_jwt:encode(include_claims(Claims)).
 
+-spec validate_token(ne_binary() | map()) -> {'ok', kz_json:object()} | {'error', any()}.
 validate_token(Token) ->
     validate_token(Token, []).
 
+-spec validate_token(ne_binary() | map(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 validate_token(JWToken, Options) ->
     case kz_auth_jwt:token(JWToken) of
         #{verify_result := 'true'} = Token -> validate_claims(Token, Options);
@@ -32,12 +35,14 @@ validate_token(JWToken, Options) ->
         Error -> Error
     end.
 
+-spec access_code(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
 access_code(JObj) ->
     Code = kz_json:get_value(<<"code">>, JObj),
     AppId = kz_json:get_first_defined(?APPID_KEYS, JObj),
     RedirectURI = kz_json:get_first_defined(?REDIRECT_URI_KEYS, JObj, <<"postmessage">>),
     kz_auth_util:fetch_access_code(AppId, Code, RedirectURI).
 
+-spec authenticate(map() | ne_binary() | kz_json:object()) -> {'ok', kz_proplist()} | {'error', any()}.
 authenticate(JWTToken)
   when is_binary(JWTToken) ->
     case kz_auth_jwt:token(JWTToken) of
@@ -63,6 +68,7 @@ authenticate(JObj) ->
     Token = kz_auth_util:map_keys_to_atoms(kz_json:to_map(JObj)),
     authenticate(Token#{original => JObj}).
 
+-spec authorize_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 authorize_token(JWToken) ->
     case kz_auth_jwt:token(JWToken) of
         #{verify_result := 'true'} = Token -> ensure_claims(Token);
@@ -74,9 +80,11 @@ authorize_token(JWToken) ->
 %% Internal functions
 %% ====================================================================
 
+-spec verify_claims(map()) -> {'ok', kz_proplist()} | {'error', any()}.
 verify_claims(#{claims := Claims}) ->
     {'ok', Claims}.
 
+-spec validate_claims(map(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 validate_claims(#{payload := #{<<"account_id">> := AccountId} = Payload}, Options) ->
     case props:get_value(<<"account_id">>, Options, AccountId) of
         AccountId ->
@@ -125,10 +133,12 @@ validate_claims(#{user_map := #{<<"pvt_accounts">> := Accounts}, payload := Payl
 
 validate_claims(#{}, _Options) -> {'error', 'no associated account_id'}.
 
+-spec ensure_claims(map()) -> {'ok', kz_json:object()} | {'error', any()}.
 ensure_claims(#{payload := Payload}) ->
     Claims = kz_json:from_map(Payload),
     {'ok', Claims}.
 
+-spec include_claims(kz_proplist()) -> kz_proplist().
 include_claims(Claims) ->
     case kz_auth_identity:sign(Claims) of
         {'ok', Signature} -> [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
@@ -137,6 +147,7 @@ include_claims(Claims) ->
             Claims
     end.
 
+-spec authenticate_fold(map(), list()) -> map().
 authenticate_fold(Token, []) -> Token;
 authenticate_fold(#{key := _Key}=Token, _) -> Token;
 authenticate_fold(Token, [Fun | Routines]) ->

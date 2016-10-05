@@ -14,6 +14,7 @@
 -define(DRV_CMD_INFO, 0).
 -define(DRV_CMD_RSA,  1).
 
+-spec load() -> 'ok' | {'error', any()}.
 load() ->
     {ok, Drivers} = erl_ddll:loaded_drivers(),
     case lists:member(?DRIVER_NAME, Drivers) of
@@ -30,6 +31,7 @@ load() ->
             end
     end.
 
+-spec priv_dir() -> file:filename_all().
 priv_dir() ->
     case code:priv_dir(kazoo_auth) of
         List when is_list(List) -> List;
@@ -37,6 +39,7 @@ priv_dir() ->
             filename:join(filename:dirname(code:which(?MODULE)), "../priv")
     end.
 
+-spec open() -> port() | {'error', any()}.
 open() ->
     try erlang:open_port({spawn_driver, ?DRIVER_NAME}, [binary])
     catch error:badarg ->
@@ -46,10 +49,12 @@ open() ->
             end
     end.
 
+-spec close(port()) -> 'ok'.
 close(Port) when is_port(Port) ->
     try erlang:port_close(Port), ok
     catch error:badarg -> ok end.
 
+-spec gen_rsa(port(), integer(), integer(), integer()) -> any().
 gen_rsa(Port, Ref, Bits, E)
   when is_port(Port)
        andalso is_integer(Ref)

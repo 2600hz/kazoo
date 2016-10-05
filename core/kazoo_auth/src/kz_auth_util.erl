@@ -22,6 +22,7 @@
 map_keys_to_atoms(Map) ->
     maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
 
+-spec map_keys_to_atoms_fold(ne_binary(), any(), map()) -> map().
 map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
     Acc#{kz_util:to_atom(K, 'true') => map_keys_to_atoms(V)};
 map_keys_to_atoms_fold(K, V, Acc) ->
@@ -29,9 +30,11 @@ map_keys_to_atoms_fold(K, V, Acc) ->
 
 
 
+-spec get_json_from_url(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url) ->
     get_json_from_url(Url, []).
 
+-spec get_json_from_url(ne_binary(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
     case kz_http:get(kz_util:to_list(Url), ReqHeaders) of
         {'ok', 200, _RespHeaders, Body} ->
@@ -89,6 +92,7 @@ fetch_access_code(#{auth_app := #{name := ClientId
 %% Internal functions
 %% ====================================================================
 
+-spec get_app_and_provider(ne_binary()) -> map() | {'error', any()}.
 get_app_and_provider(AppId) ->
     case kz_auth_apps:get_auth_app(AppId) of
         #{pvt_auth_provider := Provider} = App ->

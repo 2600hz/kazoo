@@ -20,12 +20,14 @@
 
 -define(PROVIDER_ISSUER, <<"auth/issuer_domain">>).
 
+-spec kazoo_auth_provider() -> map().
 kazoo_auth_provider() ->
     #{name => <<"kazoo">>
      ,jwt_identity_signature_secret => ?KAZOO_SIGNATURE_SECRET
      ,jwt_user_id_signature_hash => <<"sha256">>
      }.
 
+-spec provider_by_issuer(ne_binary()) -> map() | {'error', any()}.
 provider_by_issuer(<<"kazoo">>) ->
     kazoo_auth_provider();
 provider_by_issuer(Issuer) ->
@@ -41,6 +43,7 @@ provider_by_issuer(Issuer) ->
 %% Internal functions
 %% ====================================================================
 
+-spec get_auth_provider(ne_binary()) -> map() | {'error', any()}.
 get_auth_provider(<<"kazoo">>) ->
     kazoo_auth_provider();
 get_auth_provider(ProviderId) ->
@@ -49,11 +52,13 @@ get_auth_provider(ProviderId) ->
         {'error', _} -> {'error', <<"OAUTH - Provider ", ProviderId/binary, " not found">>}
     end.
 
+-spec provider_from_json(kz_json:object()) -> map().
 provider_from_json(JObj) ->
     Provider = kz_auth_util:map_keys_to_atoms(kz_json:to_map(JObj)),
     Routines = [fun maybe_set_provider_name/1
                ],
     lists:foldl(fun(F, A) -> F(A) end, Provider, Routines).
 
+-spec maybe_set_provider_name(map()) -> map().
 maybe_set_provider_name(#{'_id' := Id}=Provider) -> Provider#{name => Id};
 maybe_set_provider_name(#{}=Provider) -> Provider.

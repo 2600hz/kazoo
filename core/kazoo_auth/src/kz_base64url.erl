@@ -23,7 +23,6 @@ encode(L) when is_list(L) ->
 -spec decode(binary() | iolist()) -> binary().
 decode(Bin) when is_binary(Bin) ->
     Bin2 = case byte_size(Bin) rem 4 of
-                                                % 1 -> << Bin/binary, "===" >>;
                2 -> << Bin/binary, "==" >>;
                3 -> << Bin/binary, "=" >>;
                _ -> Bin
@@ -32,10 +31,12 @@ decode(Bin) when is_binary(Bin) ->
 decode(L) when is_list(L) ->
     decode(iolist_to_binary(L)).
 
+-spec urlencode_digit(char()) -> char().
 urlencode_digit($/) -> $_;
 urlencode_digit($+) -> $-;
 urlencode_digit(D)  -> D.
 
+-spec urldecode_digit(char()) -> char().
 urldecode_digit($_) -> $/;
 urldecode_digit($-) -> $+;
 urldecode_digit(D)  -> D.

@@ -21,20 +21,31 @@
 
 -record(state, {port, requests=[], queue = queue:new(), limit}).
 
+-type state() :: #state{}.
+-type gen_rsa() :: {gen_rsa, integer(), integer()}.
+-type job() :: {integer(), pid_ref(), gen_rsa()}.
+
+
+-include("kazoo_auth.hrl").
+
 %%%===================================================================
 %%% API
 %%%===================================================================
 
+-spec stop() -> 'ok'.
 stop() ->
     gen_server:call(?SERVER, stop).
 
+-spec gen_rsa(integer(), integer()) -> {'ok', any()}.
 gen_rsa(Bits, E) when is_integer(Bits), Bits > 0, E band 1 =:= 1 ->
     gen_server:call(?SERVER, {gen_rsa, Bits, E}, infinity).
 
+-spec max_jobs(integer()) -> 'ok'.
 max_jobs(Limit) when is_integer(Limit)
                      andalso Limit > 0 ->
     gen_server:call(?SERVER, {set_limit, Limit}, infinity).
 
+-spec start_link() -> startlink_ret().
 start_link() ->
     Limit = case application:get_env(kazoo_auth, max_jobs) of
                 undefined -> ?DEFAULT_MAXJOBS;
@@ -47,11 +58,13 @@ start_link() ->
 %%% gen_server callbacks
 %%%===================================================================
 
+-spec init(integer()) -> {'ok', state()}.
 init(Limit) when is_integer(Limit)
                  andalso Limit > 0 ->
     Port = kz_auth_rsa_drv:open(),
     {ok, #state{port = Port}}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(stop, _From, #state{} = State) ->
     {stop, normal, ok, State};
 handle_call({gen_rsa, _Bits, _E} = Req, From, #state{} = State) ->
@@ -64,13 +77,15 @@ handle_call({set_limit, Limit}, _From, #state{} = State)
   when is_integer(Limit)
        andalso Limit > 0 ->
     NewState = State#state{limit = Limit},
-    {noreply, NewState};
+    {reply, 'ok', NewState};
 handle_call(_Request, _From, State) ->
     {noreply, State}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({Port, Ref, Data}, #state{port = Port, requests = Reqs} = State) ->
     case lists:keytake(Ref, 1, Reqs) of
         {value, {Ref, From}, NewRequests} ->
@@ -82,16 +97,20 @@ handle_info({Port, Ref, Data}, #state{port = Port, requests = Reqs} = State) ->
 handle_info(_Info, State) ->
     {noreply, State}.
 
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{port = Port} = _State) ->
     ok = kz_auth_rsa_drv:close(Port).
 
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+-spec add_to_queue(job(), state()) -> state().
 add_to_queue(Job, #state{queue = Queue} = State) ->
     NewQueue = queue:in(Job, Queue),
     State#state{queue = NewQueue}.
 
+-spec process_queue(state()) -> state().
 process_queue(#state{requests = Reqs, queue = Q, limit = Limit} = State) ->
     case Reqs =:= []
         orelse length(Reqs) > Limit
@@ -106,6 +125,7 @@ process_queue(#state{requests = Reqs, queue = Q, limit = Limit} = State) ->
         false -> State
     end.
 
+-spec start_job(job(), state()) -> state().
 start_job({Ref, From, {gen_rsa, Bits, E}},
           #state{port = Port, requests = Requests} = State) ->
     case kz_auth_rsa_drv:gen_rsa(Port, Ref, Bits, E) of

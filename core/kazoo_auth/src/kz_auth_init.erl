@@ -32,6 +32,7 @@ init() ->
     end,
     kz_auth_keys:kazoo_public_key(?SYSTEM_KEY_ID).
 
+-spec init(boolean()) -> any().
 init('false') ->
     lager:error("error trying to create auth database");
 init('true') ->

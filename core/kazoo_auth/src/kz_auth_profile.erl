@@ -34,7 +34,7 @@
 %% API functions
 %% ====================================================================
 
--spec token(map()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+-spec token(map()) -> map().
 token(Token) ->
     Routines = [fun maybe_load_profile/1
                ,fun maybe_add_user_identity/1
@@ -48,6 +48,7 @@ token(Token) ->
 %% Internal functions
 %% ====================================================================
 
+-spec token_fold(map(), list()) -> map().
 token_fold(Token, []) -> Token;
 token_fold(Token, [Fun | Routines]) ->
     try Fun(Token) of
@@ -59,6 +60,7 @@ token_fold(Token, [Fun | Routines]) ->
             token_fold(Token, Routines)
     end.
 
+-spec maybe_load_profile(map()) -> map().
 maybe_load_profile(#{profile := _Profile} = Token) -> Token;
 maybe_load_profile(#{user_map := #{<<"profile">> := Profile}} = Token) -> Token#{profile => kz_json:from_map(Profile)};
 maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
@@ -82,6 +84,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
     maybe_load_profile(Token#{access_token => Original});
 maybe_load_profile(#{} = Token) -> Token#{profile => kz_json:new()}.
 
+-spec profile_authorization(map(), ne_binary()) -> binary().
 profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
     case maps:get(profile_access_auth_type, Provider, <<"token">>) of
         <<"token">> ->
@@ -93,12 +96,14 @@ profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
         <<"url">> -> <<>>
     end.
 
+-spec profile_authorization_headers(map(), ne_binary()) -> kz_proplist().
 profile_authorization_headers(Provider, AccessToken) ->
     case profile_authorization(Provider, AccessToken) of
         <<>> -> [];
         Authorization -> [{"Authorization",kz_util:to_list(Authorization)}]
     end.
 
+-spec profile_url(map()) -> binary().
 profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
              ,access_token := AccessToken
              }) ->
@@ -108,6 +113,7 @@ profile_url(#{auth_provider := #{profile_url := ProfileURL} = Provider
         <<"url">> -> <<ProfileURL/binary, AccessToken/binary>>
     end.
 
+-spec maybe_add_user_identity(map()) -> map().
 maybe_add_user_identity(#{user_identity := _Identity} = Token) -> Token;
 maybe_add_user_identity(#{auth_provider := #{profile_identity_field := Field}
                          ,profile := Profile
@@ -125,6 +131,7 @@ maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
     Token.
 
 
+-spec maybe_add_user_email(map()) -> map().
 maybe_add_user_email(#{user_email := _UserEmail} = Token) -> Token;
 maybe_add_user_email(#{auth_provider := #{profile_email_field := Field}
                       ,profile := Profile
@@ -152,6 +159,7 @@ maybe_add_user_email(#{auth_provider := #{name := Prov}}=Token) ->
     lager:debug("provider '~s' doesn't support email profile info", [Prov]),
     Token.
 
+-spec maybe_add_user(map()) -> map().
 maybe_add_user(#{user_doc := _DocObj, user_map := _Map} = Token) -> Token;
 maybe_add_user(#{user_doc := DocObj} = Token) -> Token#{user_map => kz_json:to_map(DocObj)};
 maybe_add_user(#{auth_app := #{pvt_user_prefix := Prefix}
@@ -174,6 +182,7 @@ maybe_add_user(#{} = Token) ->
     lager:debug("identity not set, skip adding user"),
     Token.
 
+-spec update_user(ne_binary(), kz_proplist(), map()) -> map().
 update_user(DocId, Props, Token) ->
     case kz_datamgr:update_doc(?KZ_AUTH_DB, DocId, Props) of
         {'ok', DocObj} -> Token#{user_doc => DocObj, user_map => kz_json:to_map(DocObj)};
@@ -182,6 +191,7 @@ update_user(DocId, Props, Token) ->
             Token
     end.
 
+-spec maybe_update_user(ne_binary(), kz_proplist(), map()) -> map().
 maybe_update_user(DocId, JObj, Token) ->
     Props = format_user_doc(Token),
     case lists:foldl(fun(K, KVs) ->
@@ -199,6 +209,7 @@ maybe_update_user(DocId, JObj, Token) ->
         Updates -> update_user(DocId, Updates, Token)
     end.
 
+-spec format_user_doc(map()) -> kz_proplist().
 format_user_doc(#{auth_provider := #{name := ProviderId}
                  ,profile := Profile
                  ,user_identity := Identity

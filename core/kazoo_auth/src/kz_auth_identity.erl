@@ -20,6 +20,7 @@
 
 -define(PVT_SIGNING_SECRET, <<"pvt_signature_secret">>).
 
+-spec sign(map() | kz_proplist() | kz_json:object()) -> {'ok', ne_binary()} | {'error', any()}.
 sign(Claims)
   when is_map(Claims) ->
     #{jwt_identity_signature_secret := ServerSecret
@@ -46,6 +47,7 @@ sign(Claims) ->
     sign(kz_json:to_map(Claims)).
 
 
+-spec identity_secret(map()) -> map() | {'error', any()}.
 identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                  ,payload := #{<<"account_id">> := AccountId
                               ,<<"owner_id">> := OwnerId
@@ -98,6 +100,7 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
 identity_secret(#{}) -> {'error', 'no_configuration'}.
 
 
+-spec get_identity_secret(map()) -> map() | {'error', any()}.
 get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                      ,auth_db := Db
                      ,auth_id := Key
@@ -115,6 +118,7 @@ get_identity_secret(#{auth_db := Db
         {'error', 'not_found'} -> from_profile(Token)
     end.
 
+-spec check_secret(map()) -> map() | {'error', any()}.
 check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
               ,user_doc := JObj
               } = Token) ->
@@ -128,6 +132,8 @@ check_secret(#{auth_provider := #{name := Name}}) ->
     lager:debug("provider ~s does not support profile signature secret field", [Name]),
     {'error', 'provider_not_supported'}.
 
+
+-spec from_profile(map()) -> map() | {'error', any()}.
 from_profile(#{user_doc := _}) -> {'error', 'profile_checked'};
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
@@ -136,15 +142,18 @@ from_profile(Token) ->
     end.
 
 
+-spec check_kazoo_secret(map()) -> map() | {'error', any()}.
 check_kazoo_secret(#{user_doc := JObj}=Token) ->
     case kz_json:get_value(?PVT_SIGNING_SECRET, JObj) of
         'undefined' -> update_kazoo_secret(Token);
         Secret -> Token#{identity_secret => Secret}
     end.
 
+-spec update_kazoo_secret(map()) -> map() | {'error', any()}.
 update_kazoo_secret(Token) ->
     update_kazoo_secret(Token, kz_util:rand_hex_binary(16)).
 
+-spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
 update_kazoo_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token, Secret) ->
@@ -154,6 +163,7 @@ update_kazoo_secret(#{auth_db := Db
     end.
 
 
+-spec token(map()) -> map().
 token(#{identify_verified := _}=Token) -> Token;
 token(#{auth_provider := #{name := <<"kazoo">>
                           ,jwt_identity_signature_secret := Secret
@@ -195,6 +205,7 @@ token(#{payload := Payload
 
 token(#{}=Token) -> Token#{identify_verified => 'true'}.
 
+-spec verify(map()) -> boolean().
 verify(Token) ->
     #{identify_verified := Verified} = token(Token),
     Verified.

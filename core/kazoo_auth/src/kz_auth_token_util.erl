@@ -21,6 +21,7 @@
 
 -include("kazoo_auth.hrl").
 
+-spec add_application(map()) -> map().
 add_application(#{auth_app := _App}=Token) -> Token;
 add_application(#{clientId := ClientId}=Token) ->
     Token#{auth_app => kz_auth_apps:get_auth_app(ClientId)};
@@ -28,6 +29,7 @@ add_application(#{client_id := ClientId}=Token) ->
     Token#{auth_app => kz_auth_apps:get_auth_app(ClientId)};
 add_application(#{}=Token) -> Token.
 
+-spec add_provider(map()) -> map().
 add_provider(#{auth_app := #{pvt_auth_provider := Provider}}=Token) ->
     Token#{auth_provider => kz_auth_providers:get_auth_provider(Provider)};
 add_provider(#{claims := #{iss :=Issuer}}=Token) ->
@@ -35,6 +37,7 @@ add_provider(#{claims := #{iss :=Issuer}}=Token) ->
 add_provider(#{}=Token) -> Token.
 
 
+-spec access_code(map()) -> map().
 access_code(#{code := Code
              ,original := JObj
              } = Token) ->
@@ -48,6 +51,7 @@ access_code(#{code := Code
     end;
 access_code(#{} = Token) -> Token.
 
+-spec verify(map()) -> map().
 verify(#{verified_token := _}=Token) -> Token;
 verify(#{auth_provider := #{token_info_url := TokenInfoUrl}
         ,access_token := AccessToken
@@ -62,6 +66,7 @@ verify(#{auth_provider := #{token_info_url := TokenInfoUrl}
     end;
 verify(#{}=Token) -> Token#{verified_token => kz_json:new()}.
 
+-spec create_claims(map()) -> map().
 create_claims(#{user_doc := Doc, profile := Profile}=Token) ->
     case lists:foldl(fun({K1, K2}, Acc) ->
                              case kz_json:find(K1, [Doc, Profile]) of
@@ -75,6 +80,7 @@ create_claims(#{user_doc := Doc, profile := Profile}=Token) ->
     end;
 create_claims(#{}=Token) -> Token.
 
+-spec id_token(map()) -> map().
 id_token(#{claims := _Claims}=Token) -> Token;
 id_token(#{id_token := IdToken}=Token) ->
     case kz_auth_jwt:decode(IdToken) of

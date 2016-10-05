@@ -45,3 +45,4 @@ make/erlang-formatter-master/
 /TAGS
 
 core/kazoo_auth/c_src/env.mk
+compile_commands.json

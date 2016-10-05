@@ -16,6 +16,7 @@
         ]).
 
 
+-spec get_auth_app(ne_binary()) -> map() | {'error', ne_binary()}.
 get_auth_app(AppId) ->
     case kz_datamgr:open_doc(?KZ_AUTH_DB, AppId) of
         {'ok', JObj} ->
