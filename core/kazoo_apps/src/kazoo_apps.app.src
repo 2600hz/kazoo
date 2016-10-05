@@ -29,5 +29,4 @@
                  , eflame
                  ]}
  ,{mod, {kazoo_apps_app, []}}
- ,{env, [{reloader, false}]} % set to true to enable reloader
  ]}.

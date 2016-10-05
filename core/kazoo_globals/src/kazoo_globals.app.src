@@ -19,5 +19,4 @@
                  , lager_syslog
                  ]}
  ,{mod, {kazoo_globals_app, []}}
- ,{env, [{reloader, false}]} % set to true to enable reloader
  ]}.

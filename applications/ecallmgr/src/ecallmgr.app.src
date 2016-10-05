@@ -18,5 +18,4 @@
                   , gproc
                   ]}
  , {mod, {ecallmgr_app, []}}
- , {env, [{reloader, false}]}
  ]}.
