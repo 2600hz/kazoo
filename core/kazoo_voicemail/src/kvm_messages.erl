@@ -304,7 +304,13 @@ normalize_bulk_results(BoxId, JObjs, Dict) ->
     MergeFun = fun(_K, _V1, V2) -> V2 end,
     normalize_bulk_results1(BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
 
-normalize_bulk_results1(_BoxId, [], Dict) -> Dict;
+normalize_bulk_results1(_BoxId, [], Dict) ->
+    lager:warning("voicemail bulk operation for mailbox ~s resulted in ~b succeeded and ~b failed docs"
+              ,[_BoxId
+               ,length(dict:fetch(<<"succeeded">>, Dict))
+               ,length(dict:fetch(<<"failed">>, Dict))
+               ]),
+    Dict;
 normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
@@ -319,10 +325,6 @@ normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
                       Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
                       dict:append(<<"failed">>, Failed, Dict)
               end,
-    lager:info("voicemail bulk operation resulted in ~b succeeded and ~b failed docs"
-              ,[length(dict:fetch(<<"succeeded">>, NewDict))
-               ,length(dict:fetch(<<"failed">>, NewDict))
-               ]),
     normalize_bulk_results1(BoxId, JObjs, NewDict).
 
 %%--------------------------------------------------------------------
@@ -336,21 +338,21 @@ normalize_count(ViewRes) ->
     lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
 
 normalize_count_fold(M, Acc) ->
-    VMBox = kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
-
+    VMBoxId = kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
     Folder = kz_json:get_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
     Value = kz_json:get_integer_value(<<"value">>, M),
 
-    Total = kz_json:get_integer_value([VMBox, <<"total">>], Acc, 0),
-    PreviousNonDeleted = kz_json:get_integer_value([VMBox, <<"non_deleted">>], Acc, 0),
+    Total = kz_json:get_integer_value([VMBoxId, <<"total">>], Acc, 0),
+    PreviousNonDeleted = kz_json:get_integer_value([VMBoxId, <<"non_deleted">>], Acc, 0),
     NonDeleted = case Folder of
                      ?VM_FOLDER_NEW -> PreviousNonDeleted + Value;
                      ?VM_FOLDER_SAVED -> PreviousNonDeleted + Value;
                      _ -> PreviousNonDeleted
                  end,
-    kz_json:set_values([{[VMBox, Folder], Value}
-                       ,{[VMBox, <<"non_deleted">>], NonDeleted}
-                       ,{[VMBox, <<"total">>], Total + Value}
+    PreviousValue = kz_json:get_integer_value([VMBoxId, Folder], Acc, 0),
+    kz_json:set_values([{[VMBoxId, Folder], PreviousValue + Value}
+                       ,{[VMBoxId, <<"non_deleted">>], NonDeleted}
+                       ,{[VMBoxId, <<"total">>], Total + Value}
                        ]
                       ,Acc
                       ).
