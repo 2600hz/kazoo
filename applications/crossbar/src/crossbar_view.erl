@@ -30,9 +30,9 @@ map_keymap(K) when is_function(K) -> K.
 load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
-            ascending(Context, View, CouchOptions, Mapper, KeyMap);
+            get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap);
         'false' ->
-            descending(Context, View, CouchOptions, Mapper, KeyMap)
+            get_results_descending(Context, View, CouchOptions, Mapper, KeyMap)
     end.
 
 %% impl
@@ -40,26 +40,26 @@ load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
 -spec id(any()) -> any().
 id(X) -> X.
 
--spec descending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
-descending(Context, View, CouchOptions, Mapper, KeyMap) ->
+-spec get_results_descending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+get_results_descending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(start_key(Context)),
     EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
-    {LastKey, JObjs} = kazoo_modb_view:descending(AccountId, View, StartKey, EndKey, PageSize, CtxMapper, Options),
+    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
--spec ascending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
-ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
+-spec get_results_ascending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(ascending_start_key(Context)),
     EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = make_unique(build_qs_filter_options(Context) ++ CouchOptions),
-    {LastKey, JObjs} = kazoo_modb_view:ascending(AccountId, View, StartKey, EndKey, PageSize, CtxMapper, Options),
+    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
 -spec is_ascending(cb_context:context()) -> boolean().

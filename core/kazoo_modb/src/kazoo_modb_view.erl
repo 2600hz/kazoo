@@ -7,7 +7,7 @@
 %%%   Roman Galeev
 %%%-------------------------------------------------------------------
 -module(kazoo_modb_view).
--export([get_results/6, descending/7, ascending/7]).
+-export([get_results/6]).
 -include_lib("kazoo/include/kz_types.hrl").
 
 -spec id(any()) -> any().
@@ -19,13 +19,13 @@ get_results(AccountId, View, Start, End, Limit, Options) ->
     Mapper = props:get_value('mapper', Options, fun id/1),
     case Ascending of
         'true' ->
-            ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions);
+            get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions);
         'false' ->
-            descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
+            get_results_descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
     end.
 
--spec descending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
-descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) when
+-spec get_results_descending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
+get_results_descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) when
       is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start > End ->
     MODbs = lists:reverse(kazoo_modb:get_range(AccountId, End, Start)),
     CouchOpts = [{'startkey', Start}, {'endkey', End}, 'descending' | CouchOptions],
@@ -33,8 +33,8 @@ descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) when
         lists:foldl(fun fold_query/2, {Limit, 'undefined', []}, [ {Db, View, CouchOpts, Mapper} || Db <- MODbs ]),
     {LastKey, JObjs}.
 
--spec ascending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
-ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) when
+-spec get_results_ascending(binary(), binary(), integer(), integer(), integer(), fun(), []) -> {integer(), kz_json:objects()}.
+get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) when
       is_binary(AccountId), is_binary(View), is_integer(Start), is_integer(End), is_integer(Limit), Start < End ->
     MODbs = kazoo_modb:get_range(AccountId, Start, End),
     CouchOpts = [{'startkey', Start}, {'endkey', End} | CouchOptions],
