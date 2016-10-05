@@ -31,7 +31,7 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
 dep_jesse = git https://github.com/lazedo/jesse 1.4.1
 
 dep_lager = git https://github.com/basho/lager 3.2.1
-dep_fs_sync = git https://github.com/jamhed/fs_sync
+dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
 dep_inet_cidr = git https://github.com/benoitc/inet_cidr.git
 ### PR opened upstream ###
 dep_erlang_localtime = git https://github.com/lazedo/erlang_localtime 0bb26016380cd7df5d30aa0ef284ae252b5bae31
@@ -41,7 +41,7 @@ dep_hep = git https://github.com/lazedo/hep 1.5.4
 dep_ecsv = git https://github.com/lazedo/ecsv ecsv-1
 
 ### for scripts/dev-start-*.sh
-dep_reloader = git https://github.com/oinksoft/reloader
+dep_reloader = git https://github.com/oinksoft/reloader 1c981b933db81fcbbd68f62f380ebc9725b6cb0f
 
 ### build
 dep_parse_trans = git https://github.com/lazedo/parse_trans
