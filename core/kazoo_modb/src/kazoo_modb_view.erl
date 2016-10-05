@@ -68,4 +68,4 @@ apply_filter(Mapper, Objects) when is_function(Mapper, 2) ->
 -spec last_key(kz_json:objects(), integer(), integer()) -> {api_integer(), kz_json:objects()}.
 last_key([], _, _) -> {'undefined', []};
 last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', JObjs};
-last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
+last_key([Last|JObjs], Limit, Returned) when Returned >= Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
