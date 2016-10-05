@@ -596,7 +596,6 @@ load_vmbox(DocId, Context) ->
 load_message_summary(BoxId, Context) ->
     case message_summary_view_options(Context, BoxId) of
         {'ok', ViewOptions} ->
-            io:format("ViewOptions ~p~n~n~n", [ViewOptions]),
             NormlizeFun = fun(J, Acc) -> message_summary_normalizer(BoxId, J, Acc) end,
             C1 = cb_context:set_resp_status(Context, 'success'),
             ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
@@ -625,11 +624,8 @@ message_summary_normalizer(_BoxId, JObj, Acc) ->
                                           cb_context:context().
 message_summary_view_options(Context, BoxId) ->
     AccountId = cb_context:account_id(Context),
-    MaxRange = kvm_util:retention_seconds(),
-    C1 = check_start_key_created_from(Context, MaxRange),
-    case cb_context:resp_status(C1) == 'success'
-        andalso cb_modules_util:range_view_options(C1, MaxRange) of
-        'false' -> C1;
+    MaxRange = get_max_range(Context),
+    case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
             MODBs = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
             {'ok', maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs)};
@@ -649,40 +645,18 @@ maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs) ->
     ,'descending'
     ].
 
--spec check_start_key_created_from(cb_context:context(), gregorian_seconds()) -> cb_context:context().
-check_start_key_created_from(Context, RetentionSeconds) ->
-    MaxRange = kz_util:current_tstamp() - RetentionSeconds,
-    CreatedFrom = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxRange)),
-    StartKey = kz_util:to_integer(cb_context:req_value(Context, <<"created_from">>, MaxRange)),
-    case {CreatedFrom, StartKey} of
-        {CreatedFrom, _} when CreatedFrom < MaxRange ->
-            Message = <<"created_from is more than "
-                        ,(kz_util:to_binary(RetentionSeconds))/binary
-                        ," seconds of voicemail messages retention duration"
-                      >>,
-            cb_context:add_validation_error(<<"created_from">>
-                                           ,<<"date_range">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, Message}
-                                              ,{<<"cause">>, MaxRange}
-                                              ])
-                                           ,Context
-                                           );
-        {_, StartKey} when StartKey < MaxRange ->
-            Message = <<"start_key is more than "
-                        ,(kz_util:to_binary(RetentionSeconds))/binary
-                        ," seconds of voicemail messages retention duration"
-                      >>,
-            cb_context:add_validation_error(<<"start_key">>
-                                           ,<<"date_range">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, Message}
-                                              ,{<<"cause">>, MaxRange}
-                                              ])
-                                           ,Context
-                                           );
-        _N ->
-            cb_context:set_resp_status(Context, 'success')
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% check if create_from is exists or not, if not set max_range to max_retention
+%% to return all messages in retention duration
+%% @end
+%%--------------------------------------------------------------------
+-spec get_max_range(cb_context:context()) -> gregorian_seconds().
+get_max_range(Context) ->
+    case cb_context:req_value(Context, <<"created_from">>) of
+        'undefined' -> kvm_util:retention_seconds();
+        _ -> ?MAX_RANGE
     end.
 
 -spec maybe_fix_envelope(cb_context:context()) -> cb_context:context().
