@@ -170,17 +170,14 @@ get_query_string_data(QS0, Req) ->
     lager:debug("query string: ~p", [kz_json:encode(QS)]),
     {QS, Req}.
 
--spec get_content_type(cowboy_req:req()) ->
-                              {api_binary(), cowboy_req:req()}.
+-spec get_content_type(cowboy_req:req()) -> {api_binary(), cowboy_req:req()}.
 get_content_type(Req) ->
-    get_parsed_content_type(cowboy_req:parse_header(<<"content-type">>, Req)).
-
--spec get_parsed_content_type({'ok', content_type() | 'undefined', cowboy_req:req()}) ->
-                                     {api_binary(), cowboy_req:req()}.
-get_parsed_content_type({'ok', 'undefined', Req}) ->
-    {'undefined', Req};
-get_parsed_content_type({'ok', {Main, Sub, _Opts}, Req}) ->
-    {<<Main/binary, "/", Sub/binary>>, Req}.
+    case cowboy_req:parse_header(<<"content-type">>, Req) of
+        {'error', 'badarg'} -> {'undefined', Req};
+        {'ok', 'undefined', Req1} -> {'undefined', Req1};
+        {'ok', {Main, Sub, _Opts}, Req1} ->
+            {<<Main/binary, "/", Sub/binary>>, Req1}
+    end.
 
 get_req_data(Context, {'undefined', Req0}, QS) ->
     lager:debug("undefined content type when getting req data, assuming application/json"),
