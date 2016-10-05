@@ -9,6 +9,7 @@
 *.beam
 *.so
 *.o
+*.d
 *.pid
 *.dump
 
@@ -43,3 +44,5 @@ core/kazoo_number_manager/src/knm_iso3166a2_itu.erl
 make/erlang-formatter-master/
 /TAGS
 
+core/kazoo_auth/c_src/env.mk
+compile_commands.json

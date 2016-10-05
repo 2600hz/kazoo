@@ -529,6 +529,7 @@ path_name(Module) ->
         {'match', [<<"token_auth">>=Name]} -> Name;
         {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
+        {'match', [<<"auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;

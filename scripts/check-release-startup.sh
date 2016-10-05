@@ -18,8 +18,8 @@ function sup_() {
     erl -noshell -setcookie change_me -name sup_$RANDOM@${rel##*@} -eval "ok = rpc:call('$rel', $M, $F, [$A])." -s init stop
 }
 
-sleep 180 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
-sleep 220 && sup_ init stop &
+sleep 360 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
+sleep 440 && sup_ init stop &
 
 export KAZOO_CONFIG=rel/ci-config.ini
 REL=$rel make release

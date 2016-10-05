@@ -36,7 +36,6 @@
 %%% API
 %%%===================================================================
 init() ->
-    kz_datamgr:db_create(?KZ_TOKEN_DB),
     Url = kapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),

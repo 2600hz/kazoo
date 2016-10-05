@@ -13,7 +13,7 @@
 -compile({'no_auto_import', [get_keys/1]}).
 
 -export([to_proplist/1, to_proplist/2]).
--export([to_map/1, to_map/2]).
+-export([to_map/1, to_map/2, from_map/1]).
 -export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 
@@ -321,6 +321,22 @@ to_map_fold(JObj, #{}=Map) ->
 recursive_to_map(?JSON_WRAPPER(Props)) ->
     maps:from_list([{K, recursive_to_map(V)} || {K, V} <- Props]);
 recursive_to_map(Else) -> Else.
+
+-spec from_map(map()) -> object().
+%% Convert a map to a json object
+from_map(Map) when is_map(Map) ->
+    recursive_from_map(Map).
+
+-spec recursive_from_map(map()) -> object().
+recursive_from_map(Map) when is_map(Map) ->
+    from_list([{K, recursive_from_map(V)} || {K, V} <- maps:to_list(Map)]);
+recursive_from_map(Else) -> Else.
+
+
+
+
+
+
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1

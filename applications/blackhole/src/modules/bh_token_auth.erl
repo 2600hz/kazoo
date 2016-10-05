@@ -35,7 +35,7 @@ init() ->
 authenticate(Context, _Payload) ->
     Token = bh_context:auth_token(Context),
     lager:debug("trying to authenticate with token: ~s", [Token]),
-    case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, Token) of
+    case kz_auth:validate_token(Token) of
         {'ok', JObj} ->
             lager:debug("token auth is valid, authenticating : ~p", [JObj]),
             AccountId = kz_json:get_ne_value(<<"account_id">>, JObj),

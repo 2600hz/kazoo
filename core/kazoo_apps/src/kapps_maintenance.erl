@@ -203,6 +203,9 @@ refresh(?KZ_DATA_DB) ->
 refresh(?KZ_OAUTH_DB) ->
     kz_datamgr:db_create(?KZ_OAUTH_DB),
     kazoo_oauth_maintenance:register_common_providers();
+refresh(?KZ_AUTH_DB) ->
+    kz_datamgr:db_create(?KZ_AUTH_DB),
+    kazoo_auth_maintenance:refresh();
 refresh(?KZ_WEBHOOKS_DB=Part) ->
     kazoo_bindings:map(binding({'refresh', Part}), []);
 refresh(?KZ_OFFNET_DB=Part) ->

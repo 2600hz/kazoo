@@ -62,5 +62,11 @@ routing_key(App) ->
     <<"kz_nodes.request.", (kz_util:to_binary(App))/binary>>.
 
 request(App) when is_atom(App) ->
-    Routing = routing_key(App),
-    kazoo_bindings:fold(Routing, [[{'app', App}]]).
+    case ets:info(kazoo_bindings:table_id()) of
+        'undefined' ->
+            lager:debug("kazoo bindings ets table not ready"),
+            [];
+        _ ->
+            Routing = routing_key(App),
+            kazoo_bindings:fold(Routing, [[{'app', App}]])
+    end.
