@@ -1,7 +1,7 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy reloader syslog lager_syslog eflame hep ecsv \
-       proper recon getopt fs_sync eunit inet_cidr
+       proper recon getopt fs_event fs_sync eunit inet_cidr
 
 BUILD_DEPS = parse_trans
 
@@ -31,6 +31,7 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
 dep_jesse = git https://github.com/lazedo/jesse 1.4.1
 
 dep_lager = git https://github.com/basho/lager 3.2.1
+dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
 dep_fs_sync = git https://github.com/jamhed/fs_sync 2cf85cf5861221128f020c453604d509fd37cd53
 dep_inet_cidr = git https://github.com/benoitc/inet_cidr.git
 ### PR opened upstream ###
