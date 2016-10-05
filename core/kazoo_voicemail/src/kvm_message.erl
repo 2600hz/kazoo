@@ -176,7 +176,6 @@ update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
 update(AccountId, _BoxId, JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
     Db = kvm_util:get_db(AccountId, NewJObj),
-    io:format("Db ~p", [Db]),
     case kazoo_modb:save_doc(Db, NewJObj) of
         {'ok', _} = OK -> OK;
         {'error', _R} = Error ->

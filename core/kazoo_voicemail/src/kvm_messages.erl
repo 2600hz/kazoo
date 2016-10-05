@@ -306,10 +306,10 @@ normalize_bulk_results(BoxId, JObjs, Dict) ->
 
 normalize_bulk_results1(_BoxId, [], Dict) ->
     lager:warning("voicemail bulk operation for mailbox ~s resulted in ~b succeeded and ~b failed docs"
-              ,[_BoxId
-               ,length(dict:fetch(<<"succeeded">>, Dict))
-               ,length(dict:fetch(<<"failed">>, Dict))
-               ]),
+                 ,[_BoxId
+                  ,length(dict:fetch(<<"succeeded">>, Dict))
+                  ,length(dict:fetch(<<"failed">>, Dict))
+                  ]),
     Dict;
 normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
