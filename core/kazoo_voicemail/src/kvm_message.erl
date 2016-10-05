@@ -117,7 +117,7 @@ message(AccountId, MessageId, BoxId) ->
 set_folder(Folder, Message, AccountId) ->
     MessageId = kzd_box_message:media_id(Message),
     FromFolder = kzd_box_message:folder(Message, ?VM_FOLDER_NEW),
-    lager:info("setting folder for message ~s to ~s", [MessageId, Folder]),
+    lager:info("setting folder for message ~s to ~p", [MessageId, Folder]),
     case maybe_set_folder(FromFolder, Folder, MessageId, AccountId, Message) of
         {'ok', _} = OK -> OK;
         {'error', _} -> {'error', Message}
@@ -251,15 +251,11 @@ do_copy(AccountId, JObj, Funs) ->
                      | Funs
                     ],
     Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
-    try_copy(FromDb, FromId, ToDb, ToId, Options, 3).
-
--spec try_copy(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist(), non_neg_integer()) -> db_ret().
-try_copy(FromDb, FromId, ToDb, ToId, Options, Tries) ->
     case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
         {'ok', _} = OK -> OK;
-        {'error', 'not_found'} when Tries > 0 ->
-            _ = maybe_create_modb(ToDb),
-            try_copy(FromDb, FromId, ToDb, ToId, Options, Tries - 1);
+        {'error', 'not_found'} = NotFound ->
+            lager:warning("modb ~s is not existed, not copying vm message ~s", [ToDb, FromId]),
+            NotFound;
         {'error', _}=Error ->
             lager:debug("failed to copy vm message ~s to ~s db with id ~s", [FromId, ToDb, ToId]),
             Error
@@ -286,20 +282,6 @@ media_url(AccountId, Message) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_create_modb(ne_binary()) -> boolean().
-maybe_create_modb(MODb) ->
-    case kz_datamgr:db_exists(MODb) of
-        'true' -> 'false';
-        'false' ->
-            kazoo_modb:create(MODb),
-            'true'
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
