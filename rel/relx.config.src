@@ -1,20 +1,24 @@
 ToName = fun (App) -> list_to_atom(hd(string:tokens(App,"-"))) end,
 
-IgnoreDeps = ["deps/fs_sync", "deps/fs_event", "deps/reloader"],
-
-Apps = [ list_to_atom(App)  || "applications/"++App = Dir <- filelib:wildcard("applications/*"), filelib:is_dir(Dir)],
-Core = [ list_to_atom(App)  ||         "core/"++App = Dir <- filelib:wildcard(        "core/*"), filelib:is_dir(Dir)],
-Deps = [ list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir), not lists:member(Dir, IgnoreDeps)],
+Apps = [list_to_atom(App)  || "applications/"++App = Dir <- filelib:wildcard("applications/*"), filelib:is_dir(Dir)],
+Core = [list_to_atom(App)  ||         "core/"++App = Dir <- filelib:wildcard(        "core/*"), filelib:is_dir(Dir)],
+Deps = [list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir)],
 
 Filter = ['rabbitmq_codegen'
-          ,'.erlang.mk'
-          ,'.settings'
-          ,'skel'
-          ,'parse_trans'
+         ,'.erlang.mk'
+         ,'.settings'
+         ,'skel'
+         ,'parse_trans'
+         ,'fs_sync'
+         ,'fs_event'
+         ,'reloader'
          ],
 Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
-Based = [{A, 'load'} || A <- lists:sort(Base) ],
-Included = [runtime_tools,wx,observer],
+Based = [{A, 'load'} || A <- lists:sort(Base)],
+Included = [runtime_tools
+           ,wx
+           ,observer
+           ],
 
 Config = "/etc/kazoo/app.config", %% SHOULD rename app.config to sys.config as OTP prefers it.
 case filelib:is_regular(Config) of
@@ -22,19 +26,19 @@ case filelib:is_regular(Config) of
     false -> [{sys_config, "rel/sys.config"}]
 end ++
 
-[ {lib_dirs, [ "applications"
-             , "core"
-             , "deps"
-             ]}
+[{lib_dirs, ["applications"
+            ,"core"
+            ,"deps"
+            ]}
 
-, {include_src, false}
+,{include_src, false}
 
-, {extended_start_script, true}
+,{extended_start_script, true}
 
-, {vm_args, "rel/vm.args"}
+,{vm_args, "rel/vm.args"}
 
-, {release, {kazoo,"4.0.0"}
-  , Included ++ Based
-  }
+,{release, {kazoo,"4.0.0"}
+ ,Included ++ Based
+ }
 
 ].
