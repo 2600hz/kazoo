@@ -161,7 +161,7 @@ maybe_authorize(Context) ->
     case kz_auth:validate_token(cb_context:doc(Context)) of
         {'ok', Claims} ->
             lager:debug("verified auth: ~p",[Claims]),
-            Doc = kz_json:set_value(<<"Claims">>, kz_json:from_list(Claims), kz_json:new()),
+            Doc = kz_json:set_value(<<"Claims">>, Claims, kz_json:new()),
             Setters = [{fun cb_context:set_resp_status/2, 'success'}
                       ,{fun cb_context:set_doc/2, Doc}
                       ],
