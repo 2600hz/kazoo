@@ -1,8 +1,10 @@
 ToName = fun (App) -> list_to_atom(hd(string:tokens(App,"-"))) end,
 
+IgnoreDeps = ["deps/fs_sync", "deps/fs_event", "deps/reloader"],
+
 Apps = [ list_to_atom(App)  || "applications/"++App = Dir <- filelib:wildcard("applications/*"), filelib:is_dir(Dir)],
 Core = [ list_to_atom(App)  ||         "core/"++App = Dir <- filelib:wildcard(        "core/*"), filelib:is_dir(Dir)],
-Deps = [ list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir)],
+Deps = [ list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir), not lists:member(Dir, IgnoreDeps)],
 
 Filter = ['rabbitmq_codegen'
           ,'.erlang.mk'
