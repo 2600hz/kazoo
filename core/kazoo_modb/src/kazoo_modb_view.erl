@@ -13,6 +13,7 @@
 -spec id(any()) -> any().
 id(X) -> X.
 
+-spec get_results(binary(), binary(), integer(), integer(), integer(), kz_proplists()) -> {integer(), kz_json:objects()}.
 get_results(AccountId, View, Start, End, Limit, Options) ->
     CouchOptions = props:get_value('couch_options', Options, []),
     Ascending = props:get_value('ascending', Options, 'false'),
@@ -43,12 +44,13 @@ get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions) 
     {LastKey, JObjs}.
 
 -spec fold_query({binary(), binary(), list(), fun()}, {integer(), integer(), kz_json:objects()}) -> {integer(), integer(), kz_json:objects()}.
-fold_query({Db, View, CouchOpts, Mapper}, {Limit, _LastKey, Res}) when is_integer(Limit), Limit > 0 ->
+fold_query(_, {Limit, _LastKey, Res} = Re) when is_integer(Limit), Limit > 0, length(Res) == Limit -> Re;
+fold_query({Db, View, CouchOpts, Mapper}, {Limit, LastKey, Res}) when is_integer(Limit), Limit > 0 ->
     Queried = erlang:length(Res),
     LimitWithLast = 1 + Limit - Queried,
     DbResults = limited_query(LimitWithLast, Db, View, CouchOpts),
-    {LastKey, JObjs} = last_key(lists:reverse(DbResults), LimitWithLast, erlang:length(DbResults)),
-    {Limit, LastKey, Res ++ apply_filter(Mapper, JObjs)}.
+    {NewLastKey, JObjs} = last_key(LastKey, lists:reverse(DbResults), LimitWithLast, erlang:length(DbResults)),
+    {Limit, NewLastKey, Res ++ apply_filter(Mapper, JObjs)}.
 
 -spec limited_query(integer(), binary(), binary(), list()) -> list().
 limited_query(Limit, _, _, _) when Limit < 0; Limit == 0 -> [];
@@ -65,7 +67,7 @@ apply_filter(Map, Objects) when is_function(Map, 1) ->
 apply_filter(Mapper, Objects) when is_function(Mapper, 2) ->
     lists:foldl(Mapper, [], Objects).
 
--spec last_key(kz_json:objects(), integer(), integer()) -> {api_integer(), kz_json:objects()}.
-last_key([], _, _) -> {'undefined', []};
-last_key(JObjs, Limit, Returned) when Returned < Limit -> {'undefined', JObjs};
-last_key([Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
+-spec last_key(integer(), kz_json:objects(), integer(), integer()) -> {api_integer(), kz_json:objects()}.
+last_key(LastKey, [], _, _) -> {LastKey, []};
+last_key(LastKey, JObjs, Limit, Returned) when Returned < Limit -> {LastKey, JObjs};
+last_key(_LastKey, [Last|JObjs], Limit, Returned) when Returned == Limit -> {kz_json:get_value(<<"key">>, Last), JObjs}.
