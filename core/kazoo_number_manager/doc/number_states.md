@@ -38,7 +38,7 @@ When an account initiates a port request via the APIs, the number is created in 
 A number that is routing to the cluster but not yet assigned to an account.
 
 * Any account can transition `available` numbers to `reserved` or `in_service` if the account is in good standing
-* `available` numbers participate in number hunts if `number_manager.search_prefers_available_numbers` is set to `true`.
+* `available` numbers participate in number hunts
 
 ### Reserved
 
