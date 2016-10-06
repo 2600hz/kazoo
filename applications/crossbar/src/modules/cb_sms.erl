@@ -157,7 +157,7 @@ on_successful_validation(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
-    kazoo_modb:create(AccountDb),
+    kazoo_modb:maybe_create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
     Realm = kz_util:get_account_realm(AccountId),
 

@@ -444,7 +444,7 @@ init_webhooks(Accts, Year, Month) ->
 -spec init_webhook(kz_json:object(), kz_year(), kz_month()) -> 'ok'.
 init_webhook(Acct, Year, Month) ->
     Db = kz_util:format_account_id(kz_json:get_value(<<"key">>, Acct), Year, Month),
-    kazoo_modb:create(Db),
+    kazoo_modb:maybe_create(Db),
     lager:debug("updated account_mod ~s", [Db]).
 
 -spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.

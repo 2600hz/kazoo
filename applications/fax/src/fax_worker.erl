@@ -794,7 +794,7 @@ move_doc(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    kazoo_modb:create(AccountMODb),
+    kazoo_modb:maybe_create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), FromId),
     Options = ['override_existing_document'],
