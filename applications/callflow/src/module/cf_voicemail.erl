@@ -1320,7 +1320,7 @@ get_mailbox_profile(Data, Call) ->
             {NameMediaId, OwnerId} = owner_info(AccountDb, MailboxJObj),
 
             MaxMessageCount = max_message_count(Call),
-            MsgCount = kvm_messages:count_none_deleted(kapps_call:account_id(Call), MailboxId),
+            MsgCount = kvm_messages:count(kapps_call:account_id(Call), MailboxId),
 
             lager:info("mailbox limited to ~p voicemail messages (has ~b currently)"
                       ,[MaxMessageCount, MsgCount]
