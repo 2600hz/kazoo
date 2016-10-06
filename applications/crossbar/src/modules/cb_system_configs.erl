@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2014, 2600Hz INC
+%%% @copyright (C) 2011-2016, 2600Hz INC
 %%% @doc
 %%%
 %%% Listing of all expected v1 callbacks
@@ -12,16 +12,21 @@
 -module(cb_system_configs).
 
 -export([init/0
-         ,authorize/1, authorize/2, authorize/3
-         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
-         ,resource_exists/0, resource_exists/1, resource_exists/2
-         ,validate/1, validate/2, validate/3
-         ,put/1
-         ,post/2, post/3
-         ,delete/2, delete/3
+        ,authorize/1, authorize/2, authorize/3
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
+        ,put/2
+        ,post/2, post/3
+        ,delete/2, delete/3
         ]).
 
 -include("../crossbar.hrl").
+
+-type api_ne_binary() :: ne_binary() | 'undefined'.
+
+-define(DEFAULT, <<"default">>).
+
 
 %%%===================================================================
 %%% API
@@ -36,7 +41,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = couch_mgr:db_create(?WH_CONFIG_DB),
-    _ = couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_config.json">>),
+    _ = couch_mgr:revise_doc_from_file(?WH_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
 
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),
@@ -71,10 +76,10 @@ authorize(Context, _Id, _Node) -> cb_modules_util:is_superduper_admin(Context).
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_Id) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
-allowed_methods(_Id, _Node) ->
+    [?HTTP_GET].
+allowed_methods(_SystemConfigId) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT].
+allowed_methods(_SystemConfigId, _Node) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -111,24 +116,23 @@ resource_exists(_Id, _Node) -> 'true'.
                       cb_context:context().
 validate(Context) ->
     validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
+
 validate(Context, Id) ->
-    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context)
-                           ,cb_context:req_value(Context, <<"node">>, <<"default">>)
-                          ).
+    Node = cb_context:req_value(Context, <<"node">>),
+    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
+
 validate(Context, Id, Node) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
 
--spec validate_system_configs(cb_context:context(), http_method()) ->
-                                     cb_context:context().
+-spec validate_system_configs(cb_context:context(), http_method()) -> cb_context:context().
+-spec validate_system_config(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
 validate_system_configs(Context, ?HTTP_GET) ->
-    summary(Context);
-validate_system_configs(Context, ?HTTP_PUT) ->
-    create(Context).
+    summary(Context).
 
--spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) ->
-                                    cb_context:context().
 validate_system_config(Context, Id, ?HTTP_GET, Node) ->
     read(Id, Context, Node);
+validate_system_config(Context, Id, ?HTTP_PUT, _Node) ->
+    create(Id, Context);
 validate_system_config(Context, Id, ?HTTP_POST, Node) ->
     update(Id, Context, Node);
 validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
@@ -140,9 +144,9 @@ validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
 %% If the HTTP verib is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
-    save(Context, <<"default">>).
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, _Id) ->
+    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -154,7 +158,7 @@ put(Context) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    save(Context, <<"default">>).
+    crossbar_doc:save(Context).
 post(Context, _Id, Node) ->
     save(Context, Node).
 
@@ -164,34 +168,39 @@ post(Context, _Id, Node) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token()) ->
-                    cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) ->
-                    cb_context:context().
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _Id) ->
-    Context1 = crossbar_doc:delete(Context),
+    Context1 =
+        case wh_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
+            'false' -> crossbar_doc:delete(Context);
+            'true' -> crossbar_doc:delete(Context, 'permanent')
+        end,
     case cb_context:resp_status(Context1) of
-        'success' ->
-            cb_context:set_resp_data(Context1, wh_json:new());
+        'success' -> cb_context:set_resp_data(Context1, 'undefined');
         _Status -> Context1
     end.
 
-delete(Context, Id, <<"default">>) ->
-    delete(Context, Id);
-delete(Context, _Id, Node) ->
-    save(
-      cb_context:set_doc(Context, wh_json:delete_key(Node, cb_context:doc(Context)))
-      ,<<"default">>
-     ).
+delete(Context, Id, Node) ->
+    Doc = cb_context:doc(Context),
+    case {Doc
+         ,wh_json:get_ne_value(Node, Doc)
+         }
+    of
+        {'undefined', _} -> crossbar_util:response_bad_identifier(Id, Context);
+        {_, 'undefined'} -> crossbar_util:response_bad_identifier(Node, Context);
+        _ ->
+            Context1 = cb_context:set_doc(Context, wh_json:delete_key(Node, Doc)),
+            save(Context1, Node)
+    end.
 
 -spec save(cb_context:context(), ne_binary()) -> cb_context:context().
 save(Context, Node) ->
     Context1 = crossbar_doc:save(Context),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(Context1, wh_json:get_value(Node, cb_context:doc(Context1)));
-        _Status ->
-            Context1
+            cb_context:set_resp_data(Context1, node_value(Node, Context1));
+        _Status -> Context1
     end.
 
 %%--------------------------------------------------------------------
@@ -200,26 +209,19 @@ save(Context, Node) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(cb_context:context()) -> cb_context:context().
-create(Context) ->
-    Doc = cb_context:req_data(Context),
-    case wh_doc:id(Doc) of
-        'undefined' ->
-            lager:debug("no id on doc ~p", [Doc]),
-            cb_context:add_validation_error(
-                <<"id">>
-                ,<<"required">>
-                ,wh_json:from_list([
-                    {<<"message">>, <<"id is required to create a system_config resource">>}
-                 ])
-                ,Context
-            );
-        Id ->
+-spec create(cb_context:context(), ne_binary()) -> cb_context:context().
+create(Id, Context) ->
+    case binary:split(Id, <<$@>>) of
+        [Id] ->
+            %% Then Id is not mistaken for a Node
             SysDoc = wh_json:from_list([{<<"_id">>, Id}
-                                        ,{<<"default">>, wh_json:delete_key(<<"id">>, Doc)}
+                                        | nodes_values(cb_context:req_data(Context))
                                        ]),
             lager:debug("trying to create ~s/~s: ~p", [?WH_CONFIG_DB, Id, SysDoc]),
-            cb_context:set_resp_status(cb_context:set_doc(Context, SysDoc), 'success')
+            Context1 = cb_context:set_doc(Context, SysDoc),
+            cb_context:set_resp_status(Context1, 'success');
+        _ ->
+            crossbar_util:response_bad_identifier(Id, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -228,18 +230,29 @@ create(Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context(), ne_binary()) ->
-                  cb_context:context().
-read(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context),
-    cb_context:set_resp_data(Context1
-                             ,wh_json:get_value(Node, cb_context:doc(Context1), wh_json:new())
-                            ).
+-spec filter_read(cb_context:context(), api_ne_binary()) -> wh_json:object().
+filter_read(Context, 'undefined') ->
+    wh_doc:public_fields(cb_context:doc(Context));
+filter_read(Context, Node) ->
+    node_value(Node, Context).
 
--spec read_for_delete(ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context).
+
+read(Id, Context, Node) ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            Data = filter_read(Context1, Node),
+            cb_context:set_resp_data(Context1, Data);
+        _Status -> Context1
+    end.
+
+-spec read_for_delete(ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context),
+    Context1 = read(Id, Context),
     case cb_context:resp_status(Context) of
         'success' -> Context1;
         _Status ->
@@ -250,22 +263,35 @@ read_for_delete(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Update an existing menu document with the data provided, if it is
-%% valid
+%% Update an existing system_config document with the data provided
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context(), ne_binary()) ->
-                    cb_context:context().
-update(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context),
-    update(Id, Node, Context1, cb_context:resp_status(Context1)).
+-spec update(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
+update(Id, Context, 'undefined') ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            NodesDoc = wh_json:from_list(nodes_values(cb_context:doc(Context1))),
+            ReqData = wh_json:from_list(nodes_values(cb_context:req_data(Context1))),
+            NewNodesDoc = wh_json:normalize_jobj(wh_json:merge_recursive(NodesDoc, ReqData)),
+            NewDoc = wh_json:set_values(wh_json:to_proplist(NewNodesDoc), cb_context:doc(Context1)),
+            cb_context:set_doc(Context1, NewDoc);
+        _Status ->
+            Context1
+    end;
 
-update(_Id, Node, Context, 'success') ->
-    cb_context:set_doc(Context
-                       ,wh_json:set_value(Node, cb_context:req_data(Context), cb_context:doc(Context))
-                      );
-update(_Id, _Node, Context, _Status) ->
-    Context.
+update(Id, Context, Node) ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            NodeDoc = node_value(Node, Context1),
+            ReqData = cb_context:req_data(Context1),
+            NewNodeDoc = wh_json:normalize_jobj(wh_json:merge_recursive(NodeDoc, ReqData)),
+            NewDoc = wh_json:set_value(Node, NewNodeDoc, cb_context:doc(Context1)),
+            cb_context:set_doc(Context1, NewDoc);
+        _Status ->
+            Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,11 +302,8 @@ update(_Id, _Node, Context, _Status) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
-    crossbar_doc:load_view(<<"system_configs/crossbar_listing">>
-                           ,[]
-                           ,Context
-                           ,fun normalize_view_results/2
-                          ).
+    View = <<"system_configs/crossbar_listing">>,
+    crossbar_doc:load_view(View, [], Context, fun normalize_view_results/2).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -295,6 +318,18 @@ normalize_view_results(JObj, Acc) ->
 -spec update_db(cb_context:context()) -> cb_context:context().
 update_db(Context) ->
     cb_context:setters(Context
-                       ,[{fun cb_context:set_account_db/2, ?WH_CONFIG_DB}
-                         ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
-                        ]).
+                      ,[{fun cb_context:set_account_db/2, ?WH_CONFIG_DB}
+                       ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
+                       ]).
+
+-spec node_value(ne_binary(), cb_context:context()) -> wh_json:object().
+node_value(Node, Context) ->
+    wh_json:get_ne_value(Node, cb_context:doc(Context), wh_json:new()).
+
+-spec nodes_values(wh_json:object()) -> wh_proplist().
+nodes_values(JObj) ->
+    [{Key, wh_json:get_value(Key, JObj)}
+     || Key <- wh_json:get_keys(JObj),
+        Key =:= ?DEFAULT
+            orelse 2 =:= length(binary:split(Key, <<$@>>))
+    ].
