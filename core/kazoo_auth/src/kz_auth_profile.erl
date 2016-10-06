@@ -210,7 +210,7 @@ maybe_update_user(DocId, JObj, Token) ->
     end.
 
 -spec format_user_doc(map()) -> kz_proplist().
-format_user_doc(#{auth_provider := #{name := ProviderId}
+format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
                  ,profile := Profile
                  ,user_identity := Identity
                  }=Token) ->
@@ -221,6 +221,15 @@ format_user_doc(#{auth_provider := #{name := ProviderId}
     AppId = maps:get(name, App, 'undefined'),
     AppAccountId = maps:get(pvt_account_id, App, 'undefined'),
     EMail = maps:get(user_email, Token, 'undefined'),
+
+    Mapping = maps:get(profile_account_mapping, Provider, #{}),
+    MapFields = maps:fold(fun(K, V, Acc) ->
+                                  case kz_json:get_value(V, Profile) of
+                                      'undefined' -> Acc;
+                                      Value -> [{kz_util:to_binary(K), Value} | Acc]
+                                  end
+                          end, [], Mapping),
+
     Props = [{<<"email">>, EMail}
             ,{<<"verified_email">>, kz_json:get_value(<<"verified_email">>, Verified)}
             ,{<<"access_type">>, maps:get(access_type, Token, 'undefined')}
@@ -235,5 +244,5 @@ format_user_doc(#{auth_provider := #{name := ProviderId}
             ,{<<"pvt_owner_id">>, maps:get(linked_owner_id, Token, 'undefined')}
             ,{<<"pvt_type">>, <<"user">>}
             ,{<<"pvt_user_identity">>, Identity}
-            ],
+            ] ++ MapFields,
     props:filter_empty(Props).

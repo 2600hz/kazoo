@@ -93,11 +93,17 @@ validate_claims(#{payload := #{<<"account_id">> := AccountId} = Payload}, Option
         _OtherAccountId ->
             {'error', 'account_header_mismatch'}
     end;
-validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId}, payload := Payload}, Options) ->
+validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
+                               ,<<"pvt_owner_id">> := OwnerId
+                               }
+                 ,payload := Payload
+                 }, Options) ->
     case props:get_value(<<"account_id">>, Options, AccountId) of
         AccountId ->
-            Claims = kz_json:from_map(Payload),
-            {'ok', Claims};
+            Props = [{<<"account_id">>, AccountId}
+                    ,{<<"owner_id">>, OwnerId}
+                    ],
+            {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
         _OtherAccountId ->
             {'error', 'account_header_mismatch'}
     end;
