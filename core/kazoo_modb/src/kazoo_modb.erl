@@ -192,7 +192,7 @@ save_doc(Account, Doc, Year, Month, Options) ->
                         {'ok', kz_json:object()} |
                         {'error', atom()}.
 couch_save(AccountMODb, _Doc, _Options, 0) ->
-    lager:error("failed to save doc in ~p", AccountMODb),
+    lager:error("failed to save doc in ~p", [AccountMODb]),
     {'error', 'max_save_retries'};
 couch_save(AccountMODb, Doc, Options, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
