@@ -9,7 +9,7 @@
 -export([register_auth_app/5]).
 -export([register_common_providers/0]).
 
--export([refresh/0]).
+-export([refresh/0, flush/0]).
 
 
 %% ====================================================================
@@ -39,3 +39,8 @@ refresh() ->
 -spec register_common_providers() -> 'ok'.
 register_common_providers() ->
     kz_datamgr:revise_docs_from_folder(?KZ_AUTH_DB, 'kazoo_auth', "providers").
+
+-spec flush() -> 'ok'.
+flush() ->
+    kz_cache:flush_local(?PK_CACHE),
+    kz_cache:flush_local(?TOKENS_CACHE).
