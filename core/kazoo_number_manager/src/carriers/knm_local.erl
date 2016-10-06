@@ -55,8 +55,9 @@ find_numbers(Prefix, Quantity, Options) ->
                              {'error', any()}.
 do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId)
   when is_integer(Quantity), Quantity > 0 ->
-    ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Prefix]}
-                  ,{'endkey', [?NUMBER_STATE_AVAILABLE, <<"\ufff0">>]}
+    Local = erlang:atom_to_binary(?MODULE, 'utf8'),
+    ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Local, Prefix]}
+                  ,{'endkey', [?NUMBER_STATE_AVAILABLE, Local, <<"\ufff0">>]}
                   ,{'limit', Quantity}
                   ,{skip, Offset}
                   ],
