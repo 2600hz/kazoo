@@ -101,7 +101,9 @@ find_webhooks(HookEvent, AccountId) ->
 
 find_webhooks(HookEvent, AccountId, Accounts) ->
     match_account_webhooks(HookEvent, AccountId) ++
-        [match_subaccount_webhooks(HookEvent, ParentId) || ParentId <- Accounts].
+        lists:foldl(fun(ParentId, Acc) ->
+                            Acc ++ match_subaccount_webhooks(HookEvent, ParentId)
+                    end, [], Accounts).
 
 match_account_webhooks(HookEvent, AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
