@@ -12,7 +12,6 @@
 -export([load/3, load/5]).
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
--define(DEFAULT_RANGE, kapps_config:get_integer(?CONFIG_CAT, <<"maximum_range">>, (?SECONDS_IN_DAY * 31 + ?SECONDS_IN_HOUR))).
 
 -spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
@@ -81,7 +80,7 @@ start_key(Context) ->
 
 -spec end_key(cb_context:context(), integer()) -> integer().
 end_key(Context, StartKey) ->
-    Default = StartKey - ?DEFAULT_RANGE,
+    Default = StartKey - ?MAX_RANGE,
     one_of(Context, [<<"end_key">>, <<"created_from">>], Default).
 
 -spec ascending_start_key(cb_context:context()) -> integer().
@@ -91,7 +90,7 @@ ascending_start_key(Context) ->
 
 -spec ascending_end_key(cb_context:context(), integer()) -> integer().
 ascending_end_key(Context, StartKey) ->
-    Default = StartKey + ?DEFAULT_RANGE,
+    Default = StartKey + ?MAX_RANGE,
     one_of(Context, [<<"end_key">>, <<"created_to">>], Default).
 
 -spec page_size() -> integer().
