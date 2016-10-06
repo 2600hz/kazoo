@@ -16,13 +16,16 @@ def endpoints(wildcard_path):
             APIs = set.union(APIs, re.findall(r'> [A-Z]+ [^?\s\n]+', ref))
     return APIs
 
+def sort_endpoints(APIs):
+    return sorted(APIs, key=lambda x: x.split('}', 1)[-1])
+
 APIs = endpoints('applications/crossbar/doc/ref/*.md')
 MDs = endpoints('applications/crossbar/doc/*.md')
 
 Wrong = set.difference(MDs, APIs)
 Undocumented = set.difference(APIs, MDs)
 Documented = set.intersection(APIs, MDs)
-for API in Undocumented:
+for API in sort_endpoints(Undocumented):
     print API
 
 wrong = len(Wrong)
@@ -36,8 +39,8 @@ print documented, '/', total, '(', str(percent_documented) + '% documented', ')'
 
 if 0 != wrong:
     print
-    print 'Documented but not matching any actual API endpoint:'
-    for API in Wrong:
+    print 'Documented but not matching any allowed_method:'
+    for API in sort_endpoints(Wrong):
         print API
     #sys.exit(wrong)
 
