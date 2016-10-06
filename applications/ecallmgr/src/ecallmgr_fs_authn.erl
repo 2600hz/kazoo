@@ -201,6 +201,7 @@ lookup_user(Node, Id, Method,  Props) ->
                 handle_lookup_resp(Method, Domain, Username, ReqResp);
             _R ->
                 lager:error("bad auth realm: ~p", [_R]),
+                props:to_log(Props, <<"lookup_user">>),
                 ecallmgr_fs_xml:not_found()
         end,
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
