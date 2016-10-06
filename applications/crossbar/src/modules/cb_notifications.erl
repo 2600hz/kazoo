@@ -221,7 +221,7 @@ validate(Context) ->
     validate_notifications(maybe_update_db(Context), ReqVerb).
 
 validate(Context, ?SMTP_LOG) ->
-    load_smtp_log(Context);
+    crossbar_view:load(Context, ?CB_LIST_SMTP_LOG, [{mapper, fun normalize_view_result/1}]);
 validate(Context, Id) ->
     ReqVerb = cb_context:req_verb(Context),
     DbId = kz_notification:db_id(Id),
@@ -1231,25 +1231,13 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
                      ,cb_context:set_account_modb(Context, Year, Month)
                      ,?TYPE_CHECK_OPTION(?PVT_TYPE_SMTPLOG)).
 
--spec load_smtp_log(cb_context:context()) -> cb_context:context().
-load_smtp_log(Context) ->
-    case cb_modules_util:range_modb_view_options(Context) of
-        {'ok', ViewOptions} ->
-            crossbar_doc:load_view(?CB_LIST_SMTP_LOG
-                                  ,ViewOptions
-                                  ,Context
-                                  ,fun normalize_view_results/2
-                                  );
-        Ctx -> Ctx
-    end.
-
--spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_results(JObj, Acc) ->
-    [kz_json:get_value(<<"value">>, JObj)|Acc].
-
 -spec maybe_update_db(cb_context:context()) -> cb_context:context().
 maybe_update_db(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
         _AccountId -> Context
     end.
+
+-spec normalize_view_result(kz_json:object()) -> kz_json:object().
+normalize_view_result(JObj) ->
+    kz_json:get_value(<<"value">>, JObj).
