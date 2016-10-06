@@ -32,7 +32,6 @@ init() ->
                                      }.
 bindings_and_responders() ->
     {[{'call', [{'restrict_to', ['CHANNEL_BRIDGE']}
-               ,'federate'
                ]
       }
      ]

@@ -12796,6 +12796,11 @@
                     ],
                     "type": "string"
                 },
+                "include_subaccounts": {
+                    "description": "Should the webhook be fired for subaccount events.",
+                    "required": false,
+                    "type": "boolean"
+                },
                 "name": {
                     "description": "A friendly name for the webhook",
                     "required": true,

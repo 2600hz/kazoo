@@ -10,6 +10,7 @@ Key | Description | Type | Default | Required
 `enabled` | Is the webhook enabled and running | `boolean` | `true` | `false`
 `hook` | The trigger event for a request being made to 'callback_uri'. | `string` |   | `true`
 `http_verb` | What HTTP method to use when contacting the server | `string('get', 'post')` | `post` | `false`
+`include_subaccounts` | Should the webhook be fired for subaccount events. | `boolean` |   | `false`
 `name` | A friendly name for the webhook | `string` |   | `true`
 `retries` | Retry the request this many times (if it fails) | `integer` | `2` | `false`
 `uri` | The 3rd party URI to call out to an event | `string` |   | `true`

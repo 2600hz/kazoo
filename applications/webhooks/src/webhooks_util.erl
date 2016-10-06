@@ -84,6 +84,7 @@ to_json(Hook) ->
       ,{<<"http_verb">>, Hook#webhook.http_verb}
       ,{<<"retries">>, Hook#webhook.retries}
       ,{<<"account_id">>, Hook#webhook.account_id}
+      ,{<<"include_subaccounts">>, Hook#webhook.include_subaccounts}
       ,{<<"custom_data">>, Hook#webhook.custom_data}
       ,{<<"modifiers">>, Hook#webhook.modifiers}
       ]).
@@ -91,8 +92,37 @@ to_json(Hook) ->
 -spec find_webhooks(ne_binary(), api_binary()) -> webhooks().
 find_webhooks(_HookEvent, 'undefined') -> [];
 find_webhooks(HookEvent, AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} ->
+            Accounts = kz_account:tree(JObj) -- [AccountId],
+            find_webhooks(HookEvent, AccountId, Accounts);
+        {'error', 'not_found'} -> []
+    end.
+
+find_webhooks(HookEvent, AccountId, Accounts) ->
+    match_account_webhooks(HookEvent, AccountId) ++
+        [match_subaccount_webhooks(HookEvent, ParentId) || ParentId <- Accounts].
+
+match_account_webhooks(HookEvent, AccountId) ->
     MatchSpec = [{#webhook{account_id = '$1'
                           ,hook_event = '$2'
+                          ,_='_'
+                          }
+                 ,[{'andalso'
+                   ,{'=:=', '$1', {'const', AccountId}}
+                   ,{'orelse'
+                    ,{'=:=', '$2', {'const', HookEvent}}
+                    ,{'=:=', '$2', {'const', <<"all">>}}
+                    }
+                   }]
+                 ,['$_']
+                 }],
+    ets:select(table_id(), MatchSpec).
+
+match_subaccount_webhooks(HookEvent, AccountId) ->
+    MatchSpec = [{#webhook{account_id = '$1'
+                          ,hook_event = '$2'
+                          ,include_subaccounts = 'true'
                           ,_='_'
                           }
                  ,[{'andalso'
@@ -415,6 +445,7 @@ jobj_to_rec(Hook) ->
             ,hook_id = kz_doc:id(Hook)
             ,retries = kzd_webhook:retries(Hook)
             ,account_id = kz_doc:account_id(Hook)
+            ,include_subaccounts = kzd_webhook:include_subaccounts(Hook)
             ,custom_data = kzd_webhook:custom_data(Hook)
             ,modifiers = kzd_webhook:modifiers(Hook)
             }.

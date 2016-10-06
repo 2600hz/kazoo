@@ -18,6 +18,7 @@
                  ,hook_id :: ne_binary() | '_'
                  ,retries = 3 :: hook_retries() | '_'
                  ,account_id :: ne_binary() | '_' | '$1'
+                 ,include_subaccounts = 'false' :: boolean() | '_' | '$3'
                  ,custom_data :: kz_json:object() | '_'
                  ,modifiers :: kz_json:object() | '_'
          }).
