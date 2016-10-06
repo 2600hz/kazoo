@@ -23,6 +23,7 @@
         ,retries/1, retries/2, set_retries/2
         ,custom_data/1, custom_data/2, set_custom_data/2
         ,modifiers/1, modifiers/2, set_modifiers/2
+        ,include_subaccounts/1, enable_subaccounts/1, disable_subaccounts/1
         ]).
 
 -include("kz_documents.hrl").
@@ -40,6 +41,7 @@
 -define(RETRIES, <<"retries">>).
 -define(CUSTOM_DATA, <<"custom_data">>).
 -define(MODIFIERS, <<"modifiers">>).
+-define(INCLUDE_SUBACCOUNTS, <<"include_subaccounts">>).
 
 -spec is_enabled(doc()) -> boolean().
 -spec is_enabled(doc(), Default) -> boolean() | Default.
@@ -187,3 +189,21 @@ modifiers(Hook, Default) ->
 -spec set_modifiers(doc(), api_object()) -> doc().
 set_modifiers(Hook, Modifiers) ->
     kz_json:set_value(?MODIFIERS, Modifiers, Hook).
+
+-spec include_subaccounts(doc()) -> boolean().
+include_subaccounts(Hook) ->
+    kz_json:is_true(?INCLUDE_SUBACCOUNTS, Hook, 'false').
+
+-spec enable_subaccounts(doc()) -> doc().
+enable_subaccounts(Hook) ->
+    kz_json:set_value(?INCLUDE_SUBACCOUNTS
+                     ,'true'
+                     ,Hook
+                     ).
+
+-spec disable_subaccounts(doc()) -> doc().
+disable_subaccounts(Hook) ->
+    kz_json:set_value(?INCLUDE_SUBACCOUNTS
+                     ,'false'
+                     ,Hook
+                     ).
