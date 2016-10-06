@@ -198,7 +198,7 @@ get_caller_id_number(Call) ->
                                   {'error', any()}.
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props),
-    Transcription = maybe_transcribe(Call, MediaId, MaybeTranscribe),
+    Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}
                  ,{<<"From-Realm">>, kapps_call:from_realm(Call)}
