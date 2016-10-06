@@ -275,7 +275,7 @@ save_attempt(AccountId, Attempt) ->
               ,{<<"pvt_created">>, Now}
               ,{<<"pvt_modified">>, Now}
               ]), Attempt),
-    _ = kz_datamgr:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
+    _ = kazoo_modb:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
     'ok'.
 
 -spec debug_req(webhook(), ne_binary(), ne_binary(), kz_proplist(), iodata()) ->
