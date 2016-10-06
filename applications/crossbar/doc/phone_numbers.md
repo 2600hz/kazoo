@@ -60,9 +60,6 @@ curl -v -X GET \
 
 #### Search for available numbers you own
 
-Set `number_manager.search_prefers_available_numbers` to `true` to only look for
-available numbers you already bought & imported.
-
 - `PREFIX`: a 3-digit number prefix or an URL-encoded e164 prefix (e.g. `499` or `%2B1499`)
 - `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
 - `OFFSET`: page number (e.g. `0`)
