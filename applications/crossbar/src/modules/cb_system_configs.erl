@@ -116,14 +116,14 @@ validate(Context) ->
     validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
 
 validate(Context, Id) ->
-    Node = cb_context:req_value(Context, <<"node">>, ?DEFAULT),
+    Node = cb_context:req_value(Context, <<"node">>),
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
 
 validate(Context, Id, Node) ->
     validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
 
 -spec validate_system_configs(cb_context:context(), http_method()) -> cb_context:context().
--spec validate_system_config(cb_context:context(), path_token(), http_method(), ne_binary()) -> cb_context:context().
+-spec validate_system_config(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
 validate_system_configs(Context, ?HTTP_GET) ->
     summary(Context).
 
@@ -144,7 +144,7 @@ validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, _Id) ->
-    save(Context, ?DEFAULT).
+    crossbar_doc:save(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -156,7 +156,7 @@ put(Context, _Id) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
-    save(Context, ?DEFAULT).
+    crossbar_doc:save(Context).
 post(Context, _Id, Node) ->
     save(Context, Node).
 
@@ -171,11 +171,11 @@ post(Context, _Id, Node) ->
 delete(Context, _Id) ->
     Context1 =
         case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
-            false -> crossbar_doc:delete(Context);
-            true -> crossbar_doc:delete(Context, permanent)
+            'false' -> crossbar_doc:delete(Context);
+            'true' -> crossbar_doc:delete(Context, 'permanent')
         end,
     case cb_context:resp_status(Context1) of
-        'success' -> cb_context:set_resp_data(Context1, undefined);
+        'success' -> cb_context:set_resp_data(Context1, 'undefined');
         _Status -> Context1
     end.
 
@@ -185,11 +185,11 @@ delete(Context, Id, Node) ->
          ,kz_json:get_ne_value(Node, Doc)
          }
     of
-        {undefined, _} -> crossbar_util:response_bad_identifier(Id, Context);
-        {_, undefined} -> crossbar_util:response_bad_identifier(Node, Context);
+        {'undefined', _} -> crossbar_util:response_bad_identifier(Id, Context);
+        {_, 'undefined'} -> crossbar_util:response_bad_identifier(Node, Context);
         _ ->
             Context1 = cb_context:set_doc(Context, kz_json:delete_key(Node, Doc)),
-            save(Context1, ?DEFAULT)
+            save(Context1, Node)
     end.
 
 -spec save(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -207,13 +207,13 @@ save(Context, Node) ->
 %% Create a new instance with the data provided, if it is valid
 %% @end
 %%--------------------------------------------------------------------
--spec create(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec create(ne_binary(), cb_context:context()) -> cb_context:context().
 create(Id, Context) ->
-    Doc = cb_context:req_data(Context),
     case binary:split(Id, <<$@>>) of
         [Id] ->
+            %% Then Id is not mistaken for a Node
             SysDoc = kz_json:from_list([{<<"_id">>, Id}
-                                       ,{?DEFAULT, Doc}
+                                        | nodes_values(cb_context:req_data(Context))
                                        ]),
             lager:debug("trying to create ~s/~s: ~p", [?KZ_CONFIG_DB, Id, SysDoc]),
             Context1 = cb_context:set_doc(Context, SysDoc),
@@ -228,27 +228,29 @@ create(Id, Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec filter_read(cb_context:context(), ne_binary()) -> kz_json:object().
-filter_read(Context, ?DEFAULT) ->
+-spec filter_read(cb_context:context(), api_ne_binary()) -> kz_json:object().
+filter_read(Context, 'undefined') ->
     kz_doc:public_fields(cb_context:doc(Context));
 filter_read(Context, Node) ->
     node_value(Node, Context).
 
--spec read(ne_binary(), cb_context:context(), ne_binary()) ->
-                  cb_context:context().
+-spec read(ne_binary(), cb_context:context()) -> cb_context:context().
+-spec read(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
+read(Id, Context) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)).
+
 read(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
+    Context1 = read(Id, Context),
     case cb_context:resp_status(Context1) of
-        success ->
+        'success' ->
             Data = filter_read(Context1, Node),
             cb_context:set_resp_data(Context1, Data);
         _Status -> Context1
     end.
 
--spec read_for_delete(ne_binary(), cb_context:context()) ->
-                             cb_context:context().
+-spec read_for_delete(ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
-    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
+    Context1 = read(Id, Context),
     case cb_context:resp_status(Context) of
         'success' -> Context1;
         _Status ->
@@ -262,9 +264,22 @@ read_for_delete(Id, Context) ->
 %% Update an existing system_config document with the data provided
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context(), ne_binary()) -> cb_context:context().
+-spec update(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
+update(Id, Context, 'undefined') ->
+    Context1 = read(Id, Context),
+    case cb_context:resp_status(Context1) of
+        'success' ->
+            NodesDoc = kz_json:from_list(nodes_values(cb_context:doc(Context1))),
+            ReqData = kz_json:from_list(nodes_values(cb_context:req_data(Context1))),
+            NewNodesDoc = kz_json:normalize_jobj(kz_json:merge_recursive(NodesDoc, ReqData)),
+            NewDoc = kz_json:set_values(kz_json:to_proplist(NewNodesDoc), cb_context:doc(Context1)),
+            cb_context:set_doc(Context1, NewDoc);
+        _Status ->
+            Context1
+    end;
+
 update(Id, Context, Node) ->
-    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
+    Context1 = read(Id, Context),
     case cb_context:resp_status(Context1) of
         'success' ->
             NodeDoc = node_value(Node, Context1),
@@ -308,3 +323,11 @@ update_db(Context) ->
 -spec node_value(ne_binary(), cb_context:context()) -> kz_json:object().
 node_value(Node, Context) ->
     kz_json:get_ne_value(Node, cb_context:doc(Context), kz_json:new()).
+
+-spec nodes_values(kz_json:object()) -> kz_proplist().
+nodes_values(JObj) ->
+    [{Key, kz_json:get_value(Key, JObj)}
+     || Key <- kz_json:get_keys(JObj),
+        Key =:= ?DEFAULT
+            orelse 2 =:= length(binary:split(Key, <<$@>>))
+    ].

@@ -106,7 +106,7 @@ curl -v -X DELETE \
 ```
 
 
-#### Get default config
+#### Get config for all nodes
 
 > GET /v2/system_configs/{SYSTEM_CONFIG_ID}
 
@@ -137,14 +137,14 @@ curl -v -X GET \
 ```
 
 
-#### Update default config
+#### Update config for many nodes
 
 > POST /v2/system_configs/{SYSTEM_CONFIG_ID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"key": "my string", "blop": null}}' \
+    -d '{"data": {"default": {"key": "my string", "blop": null}}}' \
     http://{SERVER}:8000/v2/system_configs/blip
 ```
 
@@ -152,10 +152,15 @@ curl -v -X POST \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "k": [
-            "value1"
-        ],
-        "key": "my string"
+        "default": {
+            "k": [
+                "value1"
+            ],
+            "key": "my string"
+        },
+        "kazoo_apps@termina.tor": {
+            "T": 42
+        },
     },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
@@ -171,8 +176,26 @@ curl -v -X POST \
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"name": ""}}' \
+    -d '{"data": {"default": {"bla": "1"}, "hi@oh.com": {"digit": 23}}}' \
     http://{SERVER}:8000/v2/system_configs/candle_jack
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "default": {
+            "bla": "1"
+        },
+        "hi@oh.com": {
+            "digit": 23
+        },
+        "id": "candle_jack"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
 ##### Successful creation

@@ -590,11 +590,10 @@ maybe_save_category(Category, JObj, PvtFields, Looped, _) ->
 -spec update_pvt_fields(config_category(), kz_json:object(), api_object()) ->
                                kz_json:object().
 update_pvt_fields(Category, JObj, 'undefined') ->
-    kz_doc:update_pvt_parameters(
-      kz_doc:set_id(JObj, Category)
+    kz_doc:update_pvt_parameters(kz_doc:set_id(JObj, Category)
                                 ,?KZ_CONFIG_DB
                                 ,[{'type', <<"config">>}]
-     );
+                                );
 update_pvt_fields(Category, JObj, PvtFields) ->
     Base = update_pvt_fields(Category, JObj, 'undefined'),
     kz_json:merge_jobjs(Base, PvtFields).
