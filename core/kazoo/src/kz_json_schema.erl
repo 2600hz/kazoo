@@ -9,7 +9,7 @@
 -module(kz_json_schema).
 
 -export([add_defaults/2
-        ,load/1
+        ,load/1, fload/1
         ,flush/0, flush/1
         ,validate/2, validate/3
         ,errors_to_jobj/1, errors_to_jobj/2
@@ -31,6 +31,18 @@ load(<<_/binary>> = Schema) ->
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
 load(Schema) -> load(kz_util:to_binary(Schema)).
+
+-spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
+                                       {'error', any()}.
+fload(<<"./", Schema/binary>>) -> fload(Schema);
+fload(<<_/binary>> = Schema) ->
+    io:format("loading schema ~s~n", [Schema]),
+    Path = <<"/opt/kazoo/applications/crossbar/priv/couchdb/schemas/", Schema/binary, ".json">>,
+    case file:read_file(Path) of
+        {'error', _E}=E -> E;
+        {'ok', Bin} -> {'ok', kz_json:insert_value(<<"id">>, Schema, kz_json:decode(Bin))}
+    end;
+fload(Schema) -> fload(kz_util:to_binary(Schema)).
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
@@ -575,10 +587,19 @@ error_to_jobj({'schema_invalid'
               ,Schema
               ,Error
               }
-             ,_Options
+             ,Options
              ) ->
     lager:error("schema has errors: ~p: ~p", [Error, Schema]),
-    throw({'schema_error', Error, Schema}).
+    validation_error([<<"schema">>]
+                    ,<<"schema">>
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"schema is invalid">>}
+                       ,{<<"schema">>, Error}
+                       ])
+                    ,Options
+                    );
+error_to_jobj(Other, _Options) ->
+    throw({'schema_error', Other}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -640,6 +661,8 @@ validation_error(Property, <<"expired">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 %% Generic
 validation_error(Property, <<"invalid">> = C, Message, Options) ->
+    depreciated_validation_error(Property, C, Message, Options);
+validation_error(Property, <<"schema">> = C, Message, Options) ->
     depreciated_validation_error(Property, C, Message, Options);
 validation_error(Property, Code, Message, Options) ->
     lager:warning("UNKNOWN ERROR CODE: ~p", [Code]),
