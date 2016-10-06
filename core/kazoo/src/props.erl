@@ -307,13 +307,12 @@ encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec to_log(kz_proplist()) -> 'ok'.
 to_log(Props) ->
-    to_log(Props,<<"Props">>).
+    to_log(Props, <<"Props">>).
 
 -spec to_log(kz_proplist(), ne_binary()) -> 'ok'.
 to_log(Props, Header) ->
-    Keys = ?MODULE:get_keys(Props),
-    K = kz_util:rand_hex_binary(4),
-    lager:debug(<<"===== Start ", Header/binary , " - ", K/binary, " ====">>),
-    lists:foreach(fun(A) -> lager:info("~s - ~p = ~p",[K,A,get_value(A,Props)]) end,Keys),
-    lager:debug(<<"===== End ", Header/binary, " - ", K/binary, " ====">>),
-    'ok'.
+    Id = kz_util:rand_hex_binary(4),
+    lager:debug("===== Start ~s - ~s ====", [Header, Id]),
+    F = fun(K) -> lager:info("~s - ~p = ~p", [Id, K, get_value(K, Props)]) end,
+    lists:foreach(F, ?MODULE:get_keys(Props)),
+    lager:debug("===== End ~s - ~s ====", [Header, Id]).

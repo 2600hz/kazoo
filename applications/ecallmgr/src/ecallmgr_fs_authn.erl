@@ -192,10 +192,18 @@ handle_directory_lookup(Id, Props, Node) ->
 -spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
     Domain = props:get_value(<<"domain">>, Props),
-    [Realm|_] = binary:split(get_auth_realm(Props), [<<":">>, <<";">>]),
-    Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
-    ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
-    {'ok', Xml} = handle_lookup_resp(Method, Domain, Username, ReqResp),
+    {'ok', Xml} =
+        case get_auth_realm(Props) of
+            AuthRealm=?NE_BINARY ->
+                [Realm|_] = binary:split(AuthRealm, [<<":">>, <<";">>]),
+                Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
+                ReqResp = maybe_query_registrar(Realm, Username, Node, Id, Method, Props),
+                handle_lookup_resp(Method, Domain, Username, ReqResp);
+            _R ->
+                lager:error("bad auth realm: ~p", [_R]),
+                props:to_log(Props, <<"lookup_user">>),
+                ecallmgr_fs_xml:not_found()
+        end,
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
     freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
