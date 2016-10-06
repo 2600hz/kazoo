@@ -387,7 +387,7 @@ maybe_load_user_doc_by_username(Account, Context) ->
 %% @private
 -spec save_reset_id_then_send_email(cb_context:context()) -> cb_context:context().
 save_reset_id_then_send_email(Context) ->
-    MoDb = cb_context:account_modb(Context),
+    MoDb = kazoo_modb:get_modb(cb_context:account_db(Context)),
     ResetId = reset_id(MoDb),
     UserDoc = cb_context:doc(Context),
     %% Not much chance for doc to already exist
