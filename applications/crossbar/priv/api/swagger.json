@@ -4953,13 +4953,11 @@
                         },
                         "leg": {
                             "default": "both",
-                            "type": {
-                                "enum": [
-                                    "both",
-                                    "self",
-                                    "peer"
-                                ]
-                            }
+                            "enum": [
+                                "both",
+                                "self",
+                                "peer"
+                            ]
                         }
                     },
                     "required": [
@@ -4989,13 +4987,11 @@
                     "properties": {
                         "action": {
                             "default": "toggle",
-                            "type": {
-                                "enum": [
-                                    "start",
-                                    "stop",
-                                    "toggle"
-                                ]
-                            }
+                            "enum": [
+                                "start",
+                                "stop",
+                                "toggle"
+                            ]
                         },
                         "format": {
                             "type": "string"
@@ -5087,12 +5083,10 @@
                 "data": {
                     "properties": {
                         "action": {
-                            "type": {
-                                "enum": [
-                                    "start",
-                                    "stop"
-                                ]
-                            }
+                            "enum": [
+                                "start",
+                                "stop"
+                            ]
                         },
                         "adjust_in_octaves": {
                             "type": "integer"

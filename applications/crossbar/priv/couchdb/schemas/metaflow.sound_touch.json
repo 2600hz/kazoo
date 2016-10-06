@@ -9,12 +9,10 @@
         "data": {
             "properties": {
                 "action": {
-                    "type": {
-                        "enum": [
-                            "start",
-                            "stop"
-                        ]
-                    }
+                    "enum": [
+                        "start",
+                        "stop"
+                    ]
                 },
                 "adjust_in_octaves": {
                     "type": "integer"

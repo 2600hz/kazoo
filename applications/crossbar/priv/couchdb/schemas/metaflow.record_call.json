@@ -10,13 +10,11 @@
             "properties": {
                 "action": {
                     "default": "toggle",
-                    "type": {
-                        "enum": [
-                            "start",
-                            "stop",
-                            "toggle"
-                        ]
-                    }
+                    "enum": [
+                        "start",
+                        "stop",
+                        "toggle"
+                    ]
                 },
                 "format": {
                     "type": "string"
