@@ -28,7 +28,7 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
 ## there are some commits after 1.4.0 that will go into 1.5.0
 ## that break a loot of stuff. please be careful if updating to 1.5.0
 ## from for-GET/jesse
-dep_jesse = git https://github.com/lazedo/jesse 1.4.2
+dep_jesse = git https://github.com/lazedo/jesse 1.4.3
 
 dep_lager = git https://github.com/basho/lager 3.2.1
 dep_fs_event = git https://github.com/jamhed/fs_event 783400da08c2b55c295dbec81df0d926960c0346
