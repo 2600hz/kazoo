@@ -714,7 +714,7 @@ handling_locally(Props, OtherLeg) ->
     Node = kz_util:to_binary(node()),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
         Node -> 'true';
-        'undefined' -> other_leg_handling_locally(OtherLeg)
+        _ -> other_leg_handling_locally(OtherLeg)
     end.
 
 -spec get_username(kz_proplist()) -> api_binary().
