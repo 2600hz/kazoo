@@ -170,7 +170,9 @@ acceptable_content_types() -> ?ATTACHMENT_MIME_TYPES.
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, _Id, ?PATH_TOKEN_LOA) ->
-    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]).
+    cb_context:add_content_types_provided(Context, [{'to_binary', ?PDF_CONTENT_TYPES}]);
+content_types_provided(Context, _Id, _Path) ->
+    Context.
 
 content_types_provided(Context, _Id, ?PORT_ATTACHMENT, _AttachmentId) ->
     case cb_context:req_verb(Context) of
@@ -340,7 +342,7 @@ maybe_patch_to_scheduled(Context, Id) ->
             cb_context:add_validation_error(<<"error">>
                                            ,<<"type">>
                                            ,kz_json:from_list([{<<"message">>, <<"Schedule update missing parameters">>}
-                                                              ,{<<"missing">>, <<"schedule_date">>}
+                                                              ,{<<"missing">>, <<"scheduled_date">>}
                                                               ])
                                            ,Context);
 
