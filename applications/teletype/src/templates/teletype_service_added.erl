@@ -97,12 +97,14 @@ reseller_info_data(DataJObj) ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             ResellerId = kz_services:find_reseller_id(AccountId),
             {'ok', AccountJObj} = kz_account:fetch(ResellerId),
-            [{<<"name">>, kz_account:name(AccountJObj)}
-            ,{<<"id">>, ResellerId}
-            ,{<<"realm">>, kz_account:realm(AccountJObj)}
-            ,{<<"language">>, kz_account:language(AccountJObj)}
-            ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-            ]
+            props:filter_undefined(
+              [{<<"name">>, kz_account:name(AccountJObj)}
+              ,{<<"id">>, ResellerId}
+              ,{<<"realm">>, kz_account:realm(AccountJObj)}
+              ,{<<"language">>, kz_account:language(AccountJObj)}
+              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+              ]
+             )
     end.
 
 -spec user_info_data(kz_json:object()) -> kz_proplist().
@@ -113,13 +115,14 @@ user_info_data(DataJObj) ->
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             {'ok', AccountJObj} = kz_account:fetch(AccountId),
-
-            [{<<"name">>, kz_account:name(AccountJObj)}
-            ,{<<"id">>, AccountId}
-            ,{<<"realm">>, kz_account:realm(AccountJObj)}
-            ,{<<"language">>, kz_account:language(AccountJObj)}
-            ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-            ]
+            props:filter_undefined(
+              [{<<"name">>, kz_account:name(AccountJObj)}
+              ,{<<"id">>, AccountId}
+              ,{<<"realm">>, kz_account:realm(AccountJObj)}
+              ,{<<"language">>, kz_account:language(AccountJObj)}
+              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+              ]
+             )
     end.
 
 -spec service_added_data(kz_json:object()) -> kz_proplist().
