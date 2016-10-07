@@ -159,7 +159,7 @@ post(Context, ?RECOVERY) ->
           ,{<<"owner_id">>, kz_doc:id(cb_context:doc(Context1))}
           ]),
     Context2 = cb_context:set_doc(Context1, DocForCreation),
-    crossbar_util:create_auth_token(Context2, ?MODULE).
+    crossbar_auth:create_auth_token(Context2, ?MODULE).
 
 %%%===================================================================
 %%% Internal functions
