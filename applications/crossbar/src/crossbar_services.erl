@@ -305,22 +305,18 @@ base_audit_account(Context, Services) ->
 
 -spec base_auth_user(cb_context:context()) -> kz_json:object().
 base_auth_user(Context) ->
-    AuthJObj = cb_context:auth_doc(Context),
     AccountJObj = cb_context:auth_account_doc(Context),
-
-    AccountName = kz_account:name(AccountJObj),
-    kz_json:set_value(<<"account_name">>
-                      ,AccountName
-                      ,leak_auth_pvt_fields(AuthJObj)
-                     ).
-
--spec leak_auth_pvt_fields(kz_json:object()) -> kz_json:object().
-leak_auth_pvt_fields(JObj) ->
-    kz_json:set_values([{<<"account_id">>, kz_doc:account_id(JObj)}
-                        ,{<<"created">>, kz_doc:created(JObj)}
-                       ]
-                       ,kz_json:public_fields(JObj)
-                      ).
+    kz_json:from_list(
+      props:filter_empty(
+        [{<<"account_id">>, kz_doc:account_id(AccountJObj)}
+        ,{<<"account_name">>, kz_account:name(AccountJObj)}
+        ,{<<"created">>, kz_doc:created(AccountJObj)}
+        ,{<<"realm">>, kz_account:realm(AccountJObj)}
+        ,{<<"language">>, kz_account:language(AccountJObj)}
+        ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+        ]
+      )
+     ).
 
 -spec save_an_audit_log(cb_context:context(), kz_services:services() | 'undefined') -> 'ok'.
 save_an_audit_log(_Context, 'undefined') -> 'ok';
