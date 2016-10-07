@@ -249,7 +249,11 @@ hunt_for_callflow(Digits, Menu, Call) ->
             lager:info("callflow hunt succeeded, branching"),
             _ = kapps_call_command:flush_dtmf(Call),
             _ = play_transferring_prompt(Menu, Call),
-            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), Call),
+            Props = [{'cf_capture_group', kz_json:get_ne_value(<<"capture_group">>, Flow)}
+                    ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
+                    ],
+            UpdatedCall = kapps_call:kvs_store_proplist(Props, Call),
+            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), UpdatedCall),
             'true';
         _ ->
             lager:info("callflow hunt failed"),
