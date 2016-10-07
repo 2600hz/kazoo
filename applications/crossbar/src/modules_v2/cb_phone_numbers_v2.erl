@@ -62,6 +62,7 @@
 -define(LOCALITY, <<"locality">>).
 -define(CHECK, <<"check">>).
 -define(COUNTRY, <<"country">>).
+-define(KNM_CONFIG_CAT, <<"number_manager">>).
 
 -define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
@@ -229,11 +230,11 @@ validate(Context) ->
 -spec validate_phone_numbers(cb_context:context(), http_method(), api_binary()) ->
                                     cb_context:context().
 validate_phone_numbers(Context, ?HTTP_GET, 'undefined') ->
-    find_numbers(Context);
+    maybe_find_numbers(Context);
 validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
     case kz_json:get_ne_value(?PREFIX, cb_context:query_string(Context)) of
         'undefined' -> summary(Context);
-        _Prefix -> find_numbers(Context)
+        _Prefix -> maybe_find_numbers(Context)
     end.
 
 validate(Context, ?FIX) ->
@@ -556,9 +557,32 @@ normalize_port_view_result(JObj) ->
 %% @private
 %% @doc Search for numbers, requesting carrier module
 %%--------------------------------------------------------------------
--spec find_numbers(cb_context:context()) -> cb_context:context().
-find_numbers(Context) ->
-    Options = get_find_numbers_req(Context),
+-spec maybe_find_numbers(cb_context:context()) -> cb_context:context().
+maybe_find_numbers(Context) ->
+    case kz_json:get_value(<<"reseller_id">>, cb_context:query_string(Context)) of
+        'undefined' ->
+            case cb_context:account_id(Context) of
+                'undefined' ->
+                    AuthAccountId = cb_context:auth_account_id(Context),
+                    find_numbers(Context, AuthAccountId, kz_services:find_reseller_id(AuthAccountId));
+                AccountId ->
+                    find_numbers(Context, AccountId, cb_context:reseller_id(Context))
+            end;
+        ReqResellerId ->
+            maybe_reseller_id_lookup(Context, ReqResellerId)
+    end.
+
+-spec find_numbers(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
+find_numbers(Context, AccountId, ResellerId) ->
+    QS = cb_context:query_string(Context),
+    Options = props:filter_undefined(
+                [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
+                ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
+                ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
+                ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
+                ,{'account_id', AccountId}
+                ,{'reseller_id', ResellerId}
+                ]),
     OnSuccess =
         fun(C) ->
                 lager:debug("carriers find: ~p", [Options]),
@@ -573,25 +597,25 @@ find_numbers(Context) ->
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
 
--spec get_find_numbers_req(cb_context:context()) -> knm_carriers:options().
-get_find_numbers_req(Context) ->
-    {AccountId, ResellerId} =
-        case cb_context:account_id(Context) of
-            'undefined' ->
-                Account = cb_context:auth_account_id(Context),
-                {Account, kz_services:find_reseller_id(Account)};
-            Account ->
-                {Account, cb_context:reseller_id(Context)}
-        end,
-    QS = cb_context:query_string(Context),
-    props:filter_undefined(
-      [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
-      ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-      ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
-      ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
-      ,{'account_id', AccountId}
-      ,{'reseller_id', ResellerId}
-      ]).
+-spec maybe_reseller_id_lookup(cb_context:context(), ne_binary()) -> cb_context:context().
+maybe_reseller_id_lookup(Context, ReqResellerId) ->
+    try
+        case (kz_services:is_reseller(ReqResellerId)
+              orelse cb_context:is_superduper_admin(ReqResellerId)
+             )
+            andalso kapps_account_config:get_global(ReqResellerId
+                                                   ,?KNM_CONFIG_CAT
+                                                   ,<<"unauthorized_numbers_lookup">>
+                                                   ,'false'
+                                                   )
+        of
+            'true' -> find_numbers(Context, ReqResellerId, ReqResellerId);
+            'false' -> crossbar_util:response('error', <<"number search restricted">>, 404, Context)
+        end
+    catch
+        _:_ ->
+            crossbar_util:response('error', <<"non-existent reseller_id">>, 404, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
