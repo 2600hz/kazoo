@@ -874,8 +874,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
 -spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     Icon = kzd_app:icon(MetaData),
-    Screenshots = [kzd_app:screenshots(MetaData)],
-
+    Screenshots = kzd_app:screenshots(MetaData),
     IconPath = {Icon, filename:join([AppPath, <<"metadata">>, <<"icon">>, Icon])},
     SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
                   || SShot <- Screenshots
