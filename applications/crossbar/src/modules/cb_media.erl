@@ -432,7 +432,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
                         maybe_save_tts(C, Text, Voice, cb_context:resp_status(C));
                    (C) ->
                         case cb_context:resp_status(C) of
-                            'success' -> crossbar_doc:save(C);
+                            'success' -> crossbar_doc:save(remove_tts_keys(C));
                             _Status -> Context
                         end
                 end
@@ -441,6 +441,11 @@ post_media_doc(Context, MediaId, _AccountId) ->
 
 post(Context, MediaId, ?BIN_DATA) ->
     post_media_binary(Context, kz_http_util:urlencode(MediaId), cb_context:account_id(Context)).
+
+-spec remove_tts_keys(cb_context:context()) -> cb_context:context().
+remove_tts_keys(C) ->
+    JObj = cb_context:doc(C),
+    cb_context:set_doc(C, kz_json:delete_keys([<<"pvt_previous_tts">>, <<"pvt_previous_voice">>], JObj)).
 
 -spec post_media_binary(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 post_media_binary(Context, MediaId, 'undefined') ->
