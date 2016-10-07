@@ -28,7 +28,7 @@ open(Pid, Id, Ipaddr) ->
     Ctx = blackhole_bindings:fold(Routing, Context),
     {'ok', Ctx}.
 
--spec recv({binary(), kz_json:object()}, bc_context:context()) -> cb_return().
+-spec recv({binary(), kz_json:object()}, bh_context:context()) -> cb_return() | 'error'.
 recv({Action, Payload}, Context) ->
     Routines = [fun rate/3
                ,fun authenticate/3

@@ -98,7 +98,7 @@ subscribe(Context, Payload) ->
         Bindings -> add_event_bindings(Context, Bindings)
     end.
 
--spec unsubscribe(bh_context:context(), kz_json:object()) -> bh_subscribe_result().
+-spec unsubscribe(bh_context:context(), kz_json:object()) -> bh_context:context().
 unsubscribe(Context, Payload) ->
     AccountId = kz_json:get_value([<<"data">>, <<"account_id">>], Payload),
     Binding = kz_json:get_value([<<"data">>, <<"binding">>], Payload),
@@ -156,7 +156,7 @@ bind(Context, ReqKey, Key) ->
     BHKey = <<"blackhole.event.", Key/binary, ".", KSession/binary>>,
     blackhole_bindings:bind(BHKey, ?MODULE, 'event', Binding).
 
-
+-spec remove_event_bindings(bh_context:context(), [map()]) -> bh_context:context().
 remove_event_bindings(Context, BindingResults) ->
     case lists:foldl(fun remove_event_bindings_fold/2, {Context, []}, BindingResults) of
         {Ctx, []} -> Ctx;
@@ -165,6 +165,8 @@ remove_event_bindings(Context, BindingResults) ->
             bh_context:set_resp_data(Ctx, Data)
     end.
 
+-spec remove_event_bindings_fold(map(), {bh_context:context(), list()}) ->
+                                        {bh_context:context(), list()}.
 remove_event_bindings_fold(#{subscribed := Subscribed
                             ,listeners := Listeners
                             }, {Context, Subs}) ->

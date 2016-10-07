@@ -463,22 +463,25 @@ add_optional_headers(Prop, Fields, Headers) ->
                 end, {Headers, Prop}, Fields).
 
 %% Checks Prop against a list of required headers, returns true | false
--spec has_all(kz_proplist(), api_headers()) -> boolean().
+-spec has_all(kz_proplist() | kz_proplists(), api_headers()) -> boolean().
 has_all(Prop, Headers) ->
-    lists:all(fun(Header) when is_list(Header) ->
-                      case has_any(Prop, Header) of
-                          'true' -> 'true';
-                          'false' -> lager:debug("failed to find one of keys '~p' on API message", [Header]),
-                                     'false'
-                      end;
-                 (Header) ->
-                      case props:is_defined(Header, Prop) of
-                          'true' -> 'true';
-                          'false' ->
-                              lager:debug("failed to find key '~s' on API message", [Header]),
-                              'false'
-                      end
-              end, Headers).
+    lists:all(fun(Header) -> has_all_header(Header, Prop) end, Headers).
+
+-spec has_all_header(kz_proplist() | kz_proplists(), api_headers()) -> boolean().
+has_all_header(Header, Prop) when is_list(Header) ->
+    case has_any(Prop, Header) of
+        'true' -> 'true';
+        'false' ->
+            lager:debug("failed to find one of keys '~p' on API message", [Header]),
+            'false'
+    end;
+has_all_header(Header, Prop) ->
+    case props:is_defined(Header, Prop) of
+        'true' -> 'true';
+        'false' ->
+            lager:debug("failed to find key '~s' on API message", [Header]),
+            'false'
+    end.
 
 %% Checks Prop against a list of optional headers, returns true | false if at least one if found
 -spec has_any(kz_proplist(), api_headers()) -> boolean().

@@ -24,18 +24,17 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {self = self()           :: pid()
+-record(state, {self = self()          :: pid()
                ,name                   :: atom()
                ,pending = []           :: [{pid(), any()}]
-               ,has_queue = 'false' :: boolean()
+               ,has_queue = 'false'    :: boolean()
                ,is_consuming = 'false' :: boolean()
                }).
 
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS(Name), [{'leader', [{'name', Name}]}
-                        ]).
+-define(BINDINGS(Name), [{'leader', [{'name', Name}]}]).
 -define(RESPONDERS, []).
 -define(QUEUE_NAME(Name), kapi_leader:queue(Name)).
 -define(QUEUE_OPTIONS, []).
@@ -47,7 +46,7 @@
 -spec is_ready() -> 'true'.
 is_ready() ->
     {'registered_name', Name} = erlang:process_info(self(), 'registered_name'),
-    Sup = element(2, hd([X || X <- supervisor:which_children(amqp_leader_sup), element(1, X) =:= Name])),
+    Sup = element(2, hd([X || X <- supervisor:which_children('amqp_leader_sup'), element(1, X) =:= Name])),
     Pid = element(2, hd([X || X <- supervisor:which_children(Sup), element(1, X) =:= ?MODULE])),
     Ref = make_ref(),
     gen_listener:cast(Pid, {'is_ready', self(), Ref}),
@@ -56,7 +55,7 @@ is_ready() ->
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
--spec start_link(atom()) -> startlink_ret().
+-spec start_link(atom() | pid()) -> startlink_ret().
 start_link(Name) ->
     gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(Name)}
                                      ,{'responders', ?RESPONDERS}
@@ -231,9 +230,9 @@ maybe_ready(#state{pending = Pids
                   } = State) ->
     _ = [gen_server:reply(Pid, 'ready') || Pid <- Pids],
     State#state{pending = []};
-maybe_ready(State) ->
-    case State#state.has_queue of
-        'true' -> lager:debug("not consuming");
-        'false' -> lager:debug("no queue")
-    end,
+maybe_ready(#state{has_queue='true'}=State) ->
+    lager:debug("not consuming"),
+    State;
+maybe_ready(#state{has_queue='false'}=State) ->
+    lager:debug("no queue"),
     State.

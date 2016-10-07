@@ -52,7 +52,7 @@
 -endif.
 
 -include("knm.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()

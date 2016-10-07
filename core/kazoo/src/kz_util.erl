@@ -716,7 +716,7 @@ pad_binary_left(Bin, _Size, _Value) -> Bin.
 %% @end
 %%--------------------------------------------------------------------
 -spec join_binary([text() | atom(),...]) -> binary().
--spec join_binary([text() | atom(),...], binary()) -> binary().
+-spec join_binary([text() | atom(),...], iodata()) -> binary().
 
 join_binary(Bins) -> join_binary(Bins, <<", ">>).
 join_binary([], _) -> <<>>;

@@ -1,0 +1,11 @@
+{application, kazoo_json
+,[
+  {description, "Kazoo JSON processing"}
+ ,{vsn, "4.0.0"}
+ ,{modules, []}
+ ,{registered, [ ]}
+ ,{applications, [ kernel
+                 , stdlib
+                 , lager
+                 ]}
+ ]}.

@@ -91,7 +91,7 @@
 -export([flatten/3]).
 
 -include_lib("kazoo/include/kz_log.hrl").
--include("kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -export_type([json_term/0, api_json_term/0, json_terms/0
              ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2

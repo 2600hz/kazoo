@@ -44,7 +44,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()

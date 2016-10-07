@@ -5,7 +5,7 @@
 -include_lib("kazoo/include/kz_log.hrl").
 
 -type binding_module() :: atom() | ne_binary().
--type binding() :: {binding_module(), kz_proplist()}. %% {kapi_module, options}
+-type binding() :: {binding_module(), kz_proplist()} | 'federate'. %% {kapi_module, options}
 -type bindings() :: [binding()].
 
 %% ExchangeName, ExchangeType[, ExchangeOptions]

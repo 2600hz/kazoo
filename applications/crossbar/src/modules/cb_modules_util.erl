@@ -33,7 +33,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 
@@ -297,7 +297,6 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
                                    ]),
     case kz_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
-        {'ok', []} -> [];
         {'ok', Endpoints} -> Endpoints
     end;
 get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
@@ -521,7 +520,7 @@ find_token_cost(JObj, Default, Suffix, [{Endpoint, _}|_], ReqVerb, AccountId) ->
            ],
     get_token_cost(JObj, Default, Keys).
 
--spec get_token_cost(kz_json:object(), Default, kz_json:path()) ->
+-spec get_token_cost(kz_json:object(), Default, kz_json:paths()) ->
                             integer() | Default.
 get_token_cost(JObj, Default, Keys) ->
     case kz_json:get_first_defined(Keys, JObj) of

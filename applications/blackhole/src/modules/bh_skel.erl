@@ -22,14 +22,12 @@ init() ->
     _ = blackhole_bindings:bind(<<"blackhole.events.validate.skel">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.events.bindings.skel">>, ?MODULE, 'bindings').
 
-
 -spec validate(bh_context:context(), map()) -> bh_context:context().
 validate(Context, #{keys := [<<"whatever_comes_after_skel.">>, _]
                    }) ->
     Context;
 validate(Context, #{keys := Keys}) ->
     bh_context:add_error(Context, <<"invalid format for skel subscription : ", (kz_util:join_binary(Keys))/binary>>).
-
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId
@@ -43,7 +41,7 @@ bindings(_Context, #{account_id := AccountId
         ,listeners => Listeners
         }.
 
--spec skel_bind_options(ne_binary(), ne_binary()) -> kz_json:object().
+-spec skel_bind_options(ne_binary(), ne_binary()) -> gen_listener:bindings().
 skel_bind_options(AccountId, MyId) ->
     [{'restrict_to', ['skel.updates']}
     ,{'account_id', AccountId}
