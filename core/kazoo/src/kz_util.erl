@@ -505,19 +505,26 @@ is_in_account_hierarchy(CheckFor, InAccount, IncludeSelf) ->
         'true' ->
             lager:debug("account ~s is the same as the account to fetch the hierarchy from", [CheckId]),
             'true';
-        {'ok', JObj} ->
-            Tree = kz_account:tree(JObj),
-            case lists:member(CheckId, Tree) of
-                'true' ->
-                    lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
-                    'true';
-                'false' ->
-                    lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
-                    'false'
-            end;
         {'error', _R} ->
             lager:debug("failed to get the ancestory of the account ~s: ~p", [AccountId, _R]),
-            'false'
+            'false';
+        {'ok', JObj} ->
+            case
+                {lists:member(CheckId, kz_account:tree(JObj))
+                ,kz_account:is_superduper_admin(JObj)
+                }
+            of
+                {'false', 'true'} ->
+                    %% Note: tree(SuperDuper) = []
+                    lager:debug("account ~s is of course below super duper ~s", [CheckId, AccountId]),
+                    'true';
+                {'true', _} ->
+                    lager:debug("account ~s is in the account hierarchy of ~s", [CheckId, AccountId]),
+                    'true';
+                {'false', _} ->
+                    lager:debug("account ~s was not found in the account hierarchy of ~s", [CheckId, AccountId]),
+                    'false'
+            end
     end.
 
 %%--------------------------------------------------------------------
