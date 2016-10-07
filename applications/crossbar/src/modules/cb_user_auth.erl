@@ -414,7 +414,7 @@ save_reset_id_then_send_email(Context) ->
 -spec maybe_load_user_doc_via_reset_id(cb_context:context()) -> cb_context:context().
 maybe_load_user_doc_via_reset_id(Context) ->
     ResetId = kz_json:get_ne_binary_value(?RESET_ID, cb_context:req_data(Context)),
-    MoDb = ?MATCH_MODB_SUFFIX_RAW(A, B, Rest, _Y, _M) = reset_id(ResetId),
+    MoDb = ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _Y, _M) = reset_id(ResetId),
     lager:debug("looking up password reset doc: ~s", [ResetId]),
     case kazoo_modb:open_doc(MoDb, ResetId) of
         {'ok', ResetIdDoc} ->
