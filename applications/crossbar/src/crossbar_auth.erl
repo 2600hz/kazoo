@@ -55,7 +55,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                       ]),
             RespObj = kz_json:set_values(Props, kz_json:delete_key(<<"Claims">>, JObj)),
             Resp = crossbar_util:response_auth(RespObj, AccountId, OwnerId),
-            lager:debug("created new local auth token : ~p", [Resp]),
+            lager:debug("created new local auth token: ~s", [kz_json:encode(Resp)]),
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
             lager:debug("could not create new local auth token, ~p", [R]),
