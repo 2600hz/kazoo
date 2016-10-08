@@ -570,7 +570,8 @@ set_state(N, State)
        State =:= ?NUMBER_STATE_RESERVED;
        State =:= ?NUMBER_STATE_AVAILABLE;
        State =:= ?NUMBER_STATE_DISCONNECTED;
-       State =:= ?NUMBER_STATE_DELETED
+       State =:= ?NUMBER_STATE_DELETED;
+       State =:= ?NUMBER_STATE_AGING
        ->
     N#knm_phone_number{state=State}.
 
