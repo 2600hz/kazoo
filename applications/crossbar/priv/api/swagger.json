@@ -4883,7 +4883,11 @@
                             "type": "string"
                         },
                         "target_type": {
-                            "type": "string"
+                            "enum": [
+                                "device",
+                                "user",
+                                "number"
+                            ]
                         },
                         "unbridged_only": {
                             "default": true,
@@ -4891,6 +4895,7 @@
                         }
                     },
                     "required": [
+                        "target_type",
                         "target_id"
                     ],
                     "type": "object"
