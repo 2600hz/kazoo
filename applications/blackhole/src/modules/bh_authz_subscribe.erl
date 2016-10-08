@@ -34,7 +34,16 @@ authorize_account(Context, #{account_id := <<"*">>}) ->
         'false' -> bh_context:add_error(Context, <<"unauthorized wildcard account id">>)
     end;
 authorize_account(Context, #{account_id := AccountId}) ->
-    case kz_util:is_in_account_hierarchy(bh_context:auth_account_id(Context), AccountId, 'true') of
-        'true' -> Context;
+    AuthAccount = bh_context:auth_account_id(Context),
+    maybe_authorize_account(Context, AuthAccount, AccountId).
+
+-spec maybe_authorize_account(bh_context:context(), binary(), binary()) -> bh_context:context().
+maybe_authorize_account(Context, 'undefined', _AccountId) ->
+    lager:warning("auth_account_id is not set, maybe you need to start bh_token_auth ?"),
+    bh_context:add_error(Context, <<"auth_account_id not set">>);
+
+maybe_authorize_account(Context, AuthAccountId, AccountId) ->
+    case kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true') of
+        'true'  -> Context;
         'false' -> bh_context:add_error(Context, <<"unauthorized account id">>)
     end.
