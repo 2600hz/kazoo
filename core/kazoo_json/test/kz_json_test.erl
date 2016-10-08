@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_json_test).
 
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -ifdef(PROPER).
 - include_lib("proper/include/proper.hrl").
