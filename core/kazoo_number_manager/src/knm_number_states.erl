@@ -55,7 +55,7 @@ change_state(Number, _State) ->
 to_aging(Number) ->
     to_aging(Number, number_state(Number)).
 
-to_aging(Number, ?NUMBER_STATE_AGING) ->
+to_aging(Number, ?NUMBER_STATE_AVAILABLE) ->
     Routines = [fun move_to_aging_state/1
                ],
     apply_transitions(Number, Routines);
