@@ -347,11 +347,15 @@
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(kz_util:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
--define(FS_CUSTOM_EVENTS, [['kazoo::noop', 'kazoo::masquerade']
-                          ,['sofia::transferor', 'sofia::transferee'
-                           ,'sofia::replaced','sofia::intercepted'
+-define(FS_CUSTOM_EVENTS, [['kazoo::noop'
+                           ,'kazoo::masquerade'
+                           ]
+                          ,['sofia::transferor'
+                           ,'sofia::transferee'
+                           ,'sofia::replaced'
+                           ,'sofia::intercepted'
                            ,'sofia::register'
-                          ]
+                           ]
                           ,'conference::maintenance'
                           ,['spandsp::txfaxresult'
                            ,'spandsp::rxfaxresult'
