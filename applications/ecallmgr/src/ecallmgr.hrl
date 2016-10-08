@@ -347,22 +347,23 @@
                                   ]).
 -define(IS_SOFIA_TRANSFER(N), lists:member(kz_util:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
--define(FS_CUSTOM_EVENTS, ['kazoo::noop', 'kazoo::masquerade'
-                          ,'sofia::transferor', 'sofia::transferee'
-                          ,'sofia::replaced','sofia::intercepted'
-                          ,'sofia::register'
+-define(FS_CUSTOM_EVENTS, [['kazoo::noop', 'kazoo::masquerade']
+                          ,['sofia::transferor', 'sofia::transferee'
+                           ,'sofia::replaced','sofia::intercepted'
+                           ,'sofia::register'
+                          ]
                           ,'conference::maintenance'
-                          ,'spandsp::txfaxresult'
-                          ,'spandsp::rxfaxresult'
-                          ,'spandsp::txfaxpageresult'
-                          ,'spandsp::rxfaxpageresult'
-                          ,'spandsp::txfaxnegociateresult'
-                          ,'spandsp::rxfaxnegociateresult'
-                          ,?CHANNEL_MOVE_RELEASED_EVENT
-                          ,?CHANNEL_MOVE_COMPLETE_EVENT
-                          ,'KZ::DELIVERY_REPORT'
-                          ,'SMS::DELIVERY_REPORT'
-                          ,'KZ::MESSAGE'
+                          ,['spandsp::txfaxresult'
+                           ,'spandsp::rxfaxresult'
+                           ,'spandsp::txfaxpageresult'
+                           ,'spandsp::rxfaxpageresult'
+                           ,'spandsp::txfaxnegociateresult'
+                           ,'spandsp::rxfaxnegociateresult'
+                           ]
+                          ,['KZ::DELIVERY_REPORT'
+                           ,'SMS::DELIVERY_REPORT'
+                           ,'KZ::MESSAGE'
+                           ]
                           ,'loopback::bowout'
                           ]).
 
