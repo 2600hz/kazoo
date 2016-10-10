@@ -17,7 +17,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(CB_LIST, <<"limits/crossbar_listing">>).
 -define(PVT_TYPE, <<"limits">>).

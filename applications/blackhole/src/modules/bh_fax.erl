@@ -63,8 +63,12 @@ fax_status_bind_options(AccountId, FaxId) ->
     ,'federate'
     ].
 
--spec fax_object_bind_options(ne_binary(), ne_binary()) -> kz_json:object().
+-spec fax_object_bind_options(ne_binary(), ne_binary()) -> gen_listener:bindings().
 fax_object_bind_options(MODB, Action) ->
-    [{'keys', [[{'action', Action}, {'db', MODB}, {'doc_type', <<"fax">>}]]}
+    [{'keys', [[{'action', Action}
+               ,{'db', MODB}
+               ,{'doc_type', <<"fax">>}
+               ]
+              ]}
     ,'federate'
     ].

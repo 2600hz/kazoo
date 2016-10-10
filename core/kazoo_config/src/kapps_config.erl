@@ -11,7 +11,7 @@
 -module(kapps_config).
 
 -include("kazoo_config.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -export([get/2, get/3, get/4
         ,get_all_kvs/1

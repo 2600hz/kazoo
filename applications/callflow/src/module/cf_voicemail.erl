@@ -18,7 +18,7 @@
 -behaviour(gen_cf_action).
 
 -include("callflow.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -export([handle/2]).
 -export([new_message/4]).

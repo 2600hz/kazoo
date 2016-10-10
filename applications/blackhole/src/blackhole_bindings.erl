@@ -47,7 +47,8 @@
 -define(BH_MODULES,
         kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES)).
 
--type payload() :: bh_context:context() | ne_binary().
+-type payload_el() :: bh_context:context() | ne_binary() | map().
+-type payload() :: [payload_el()] | payload_el().
 
 %%%===================================================================
 %%% API

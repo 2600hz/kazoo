@@ -13,7 +13,7 @@
 -export([event/4]).
 -export([reply/4]).
 
--spec event(map(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+-spec event(map(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 event(Binding, RK, Name, Data) ->
     #{subscribed_key := SubscribedKey
      ,subscription_key := SubscriptionKey
@@ -26,9 +26,10 @@ event(Binding, RK, Name, Data) ->
           ,{<<"routing_key">>, RK}
           ,{<<"data">>, Data}
           ],
-    SessionPid ! {'send_data', kz_json:from_list(Msg)}.
+    SessionPid ! {'send_data', kz_json:from_list(Msg)},
+    'ok'.
 
--spec reply(pid(), ne_binary(), ne_binary(), kz_json:object()) -> any().
+-spec reply(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 reply(SessionPid, RequestId, Status, Data) ->
     lager:debug("sending reply data: ~s : ~s : ~p", [RequestId, Status, Data]),
     Msg = [{<<"action">>, <<"reply">>}
@@ -36,4 +37,5 @@ reply(SessionPid, RequestId, Status, Data) ->
           ,{<<"status">>, Status}
           ,{<<"data">>, Data}
           ],
-    SessionPid ! {'send_data', kz_json:from_list(Msg)}.
+    SessionPid ! {'send_data', kz_json:from_list(Msg)},
+    'ok'.

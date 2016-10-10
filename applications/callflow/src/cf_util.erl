@@ -46,7 +46,7 @@
         ]).
 
 -include("callflow.hrl").
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(OWNER_KEY(Db, User), {?MODULE, 'owner_id', Db, User}).
 -define(SIP_USER_OWNERS_KEY(Db, User), {?MODULE, 'sip_user_owners', Db, User}).

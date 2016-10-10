@@ -1039,7 +1039,6 @@ handle_add_binding(Binding, Props, #state{queue=Q
             handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs)
     end.
 
-
 -spec handle_existing_binding(binding_module(), kz_proplist(), state(), ne_binary(), kz_proplist(), bindings()) ->
                                      state().
 handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->

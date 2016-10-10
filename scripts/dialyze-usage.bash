@@ -3,7 +3,7 @@
 ## give a module name, grep the codebase for calls to that module
 ## create a list of beam files and feed it to dialyzer
 
-ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude=\*{test,pqc}.erl)
+ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude="\*pqc.erl" | grep -v "test/")
 MOD_BEAM=$(find {core,applications} -name "$1.beam")
 
 BEAM_FILES=()

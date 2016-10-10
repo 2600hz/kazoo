@@ -19,7 +19,9 @@ function erl_to_beam {
 
 for ERL in $ERL_FILES; do
     BEAM=$(erl_to_beam $ERL)
-    BEAM_FILES+=($BEAM)
+    if [ -f $BEAM ]; then
+        BEAM_FILES+=($BEAM)
+    fi
 done
 
 ARGS=${BEAM_FILES[@]}

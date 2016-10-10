@@ -35,8 +35,7 @@ websocket_handle({'text', Data}, Req, State) ->
 
     case blackhole_socket_callback:recv({Action, Msg}, State) of
         {'ok', NewState} -> {'ok', Req, NewState};
-        'error' -> {'ok', Req, State};
-        'shutdown' -> {'shutdown', Req, State}
+        'error' -> {'ok', Req, State}
     end;
 
 websocket_handle(_Other, Req, State) ->

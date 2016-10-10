@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
--include_lib("kazoo/src/kz_json.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
 -export([find/1, find/2, find/3
@@ -303,13 +303,13 @@ acquire(Number) ->
     DryRun = knm_phone_number:dry_run(PhoneNumber),
     acquire(Number, Module, DryRun).
 
--spec acquire(knm_number:knm_number(), ne_binary(), boolean()) ->
+-spec acquire(knm_number:knm_number(), api_ne_binary(), boolean()) ->
                      knm_number:knm_number().
 acquire(Number, 'undefined', _DryRun) ->
     knm_errors:carrier_not_specified(Number);
 acquire(Number, _Mod, 'true') ->
     Number;
-acquire(Number, ?NE_BINARY = Mod, 'false') ->
+acquire(Number, ?NE_BINARY=Mod, 'false') ->
     Module = carrier_module(Mod),
     lager:debug("contacting carrier ~s", [Module]),
     Module:acquire_number(Number).
