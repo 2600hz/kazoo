@@ -16,8 +16,11 @@
         ]).
 -export([init/1]).
 
--define(CHILDREN, [event_child(Node, Event) || Event <- ?FS_EVENTS]
-        ++ [custom_child(Node, Subclass) || Subclass <- ?FS_CUSTOM_EVENTS]).
+-define(EVENTS, application:get_env(?APP, 'event_stream', ?FS_EVENTS)).
+-define(CUSTOM_EVENTS, application:get_env(?APP, 'event_stream_custom', ?FS_CUSTOM_EVENTS)).
+
+-define(CHILDREN, [event_child(Node, Event) || Event <- ?EVENTS]
+        ++ [custom_child(Node, Subclass) || Subclass <- ?CUSTOM_EVENTS]).
 
 %% ===================================================================
 %% API functions
@@ -75,3 +78,4 @@ event_child(Node, Event) ->
 -spec custom_child(atom(), atom()) -> sup_child_spec().
 custom_child(Node, Subclass) ->
     ?WORKER_NAME_ARGS('ecallmgr_fs_event_stream', Subclass, [Node, 'CUSTOM', Subclass]).
+

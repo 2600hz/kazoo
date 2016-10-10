@@ -18,4 +18,30 @@
                   , gproc
                   ]}
  , {mod, {ecallmgr_app, []}}
+ , {env, [{event_stream, [['CHANNEL_CREATE', 'CHANNEL_ANSWER', 'CHANNEL_DESTROY']
+                         ,['DETECTED_TONE', 'DTMF','CHANNEL_PROGRESS_MEDIA']
+                         ,['RECORD_START', 'RECORD_STOP']
+                         ,['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE']
+                         ,['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']
+                         ]}
+         ,{event_stream_custom, [['kazoo::noop', 'kazoo::masquerade']
+                                ,['sofia::transferor', 'sofia::transferee'
+                                 ,'sofia::replaced','sofia::intercepted'
+                                 ,'sofia::register'
+                                 ]
+                                ,'conference::maintenance'
+                                ,['spandsp::txfaxresult'
+                                 ,'spandsp::rxfaxresult'
+                                 ,'spandsp::txfaxpageresult'
+                                 ,'spandsp::rxfaxpageresult'
+                                 ,'spandsp::txfaxnegociateresult'
+                                 ,'spandsp::rxfaxnegociateresult'
+                                 ]
+                                ,['KZ::DELIVERY_REPORT'
+                                 ,'SMS::DELIVERY_REPORT'
+                                 ,'KZ::MESSAGE'
+                                 ]
+                                ,'loopback::bowout'
+                                ]}
+         ]}
  ]}.

@@ -21,6 +21,7 @@
         ,set_account_id/2
         ,set_authorized/2
         ,fetch/1, fetch/2
+        ,fetch_other_leg/1, fetch_other_leg/2
         ,renew/2
         ,channel_data/2
         ,get_other_leg/2
@@ -87,6 +88,20 @@ fetch(UUID) ->
 fetch(UUID, Format) ->
     case ets:lookup(?CHANNELS_TBL, UUID) of
         [Channel] -> {'ok', format(Format, Channel)};
+        _Else -> {'error', 'not_found'}
+    end.
+
+-spec fetch_other_leg(ne_binary()) ->
+                             {'ok', fetch_resp()} |
+                             {'error', 'not_found'}.
+-spec fetch_other_leg(ne_binary(), channel_format()) ->
+                             {'ok', fetch_resp()} |
+                             {'error', 'not_found'}.
+fetch_other_leg(UUID) ->
+    fetch_other_leg(UUID, 'json').
+fetch_other_leg(UUID, Format) ->
+    case ets:lookup(?CHANNELS_TBL, UUID) of
+        [#channel{other_leg=OtherLeg}] -> fetch(OtherLeg, Format);
         _Else -> {'error', 'not_found'}
     end.
 

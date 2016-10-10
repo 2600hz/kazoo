@@ -1621,8 +1621,30 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
     [Export | Exports] = ecallmgr_util:process_fs_kv(Node, UUID, Props, 'set'),
     Arg = [Export, [[",", Exported] || Exported <- Exports] ],
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};
-transfer(_Node, _UUID, <<"blind">>, TransferTo, JObj) ->
-    {<<"blind_xfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}.
+transfer(Node, UUID, <<"blind">>, TransferTo, JObj) ->
+    Realm = transfer_realm(UUID),
+    KVs = props:filter_undefined(
+            [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
+            ,{<<"SIP-Referred-By">>, transfer_referred(UUID)}
+            ]),
+    [{<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs)}
+    ,{<<"blind_xfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}
+    ].
+
+-spec transfer_realm(ne_binary()) -> ne_binary().
+transfer_realm(UUID) ->
+    case ecallmgr_fs_channel:fetch(UUID, 'record') of
+        {'ok', #channel{realm=Realm}} -> Realm;
+        _Else -> <<"norealm">>
+    end.
+
+-spec transfer_referred(ne_binary()) -> api_binary().
+transfer_referred(UUID) ->
+    case ecallmgr_fs_channel:fetch_other_leg(UUID, 'record') of
+        {'ok', #channel{presence_id='undefined'}} -> 'undefined';
+        {'ok', #channel{presence_id=PresenceId}} -> <<"<sip:", PresenceId/binary, ">">>;
+        _Else -> 'undefined'
+    end.
 
 -spec transfer_leg(kz_json:object()) -> binary().
 transfer_leg(JObj) ->
