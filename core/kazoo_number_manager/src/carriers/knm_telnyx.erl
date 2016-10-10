@@ -44,9 +44,6 @@
 -define(SHOULD_KEEP_BEST_EFFORT,
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, false)).
 
--define(USER, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"user">>)).
--define(TOKEN, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"token">>)).
-
 
 %%% API
 
@@ -218,9 +215,10 @@ req(post=_Method, Path, JObj) ->
     rep(Resp).
 
 http_headers(BodyJObj) ->
+    {User, Token} = knm_telnyx_util:creds(),
     [{"Accept", "application/json"}
-    ,{"x-api-user", binary_to_list(?USER)}
-    ,{"x-api-token", binary_to_list(?TOKEN)}
+    ,{"x-api-user", binary_to_list(User)}
+    ,{"x-api-token", binary_to_list(Token)}
     ,{"User-Agent", ?KNM_USER_AGENT}
      | [{"Content-Type", "application/json"} || not kz_json:is_empty(BodyJObj)]
     ].
