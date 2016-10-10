@@ -26,8 +26,8 @@ handle(Data, Call) ->
 
 -spec handle(binary(), kz_json:object(), kapps_call:call()) -> any().
 handle(<<"reset">>, _Data, Call) ->
-    Name   = kapps_call:kvs_fetch('original_cid_name', Call),
-    Number = kapps_call:kvs_fetch('original_cid_number', Call),
+    Name   = kapps_call:kvs_fetch(<<"original_cid_name">>, kapps_call:caller_id_name(Call), Call),
+    Number = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
 
     set_values(Name, Number, Call);
 
@@ -35,10 +35,13 @@ handle(<<"prepend">>, Data, Call) ->
     NamePre = kz_json:get_value(<<"caller_id_name_prefix">>, Data, <<"">>),
     NumberPre = kz_json:get_value(<<"caller_id_number_prefix">>, Data, <<"">>),
 
+    OrigName = kapps_call:kvs_fetch(<<"original_cid_name">>, kapps_call:caller_id_name(Call), Call),
+    OrigNum  = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
+
     {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
                          <<"original">> -> {
-                             <<NamePre/binary, (kapps_call:kvs_fetch('original_cid_name', Call))/binary>>
-                                           ,<<NumberPre/binary, (kapps_call:kvs_fetch('original_cid_number', Call))/binary>>
+                             <<NamePre/binary, OrigName/binary>>
+                                           ,<<NumberPre/binary, OrigNum/binary>>
                             };
 
                          <<"current">> -> {
@@ -46,20 +49,19 @@ handle(<<"prepend">>, Data, Call) ->
                                           ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
                             }
                      end,
-
     set_values(Name, Number, Call).
 
 -spec maybe_set_orig_name(kapps_call:call()) -> kapps_call:call().
 maybe_set_orig_name(Call) ->
-    case kapps_call:kvs_fetch('original_cid_name', Call) of
-        'undefined' -> kapps_call:kvs_store('original_cid_name', kapps_call:caller_id_name(Call), Call);
+    case kapps_call:kvs_fetch(<<"original_cid_name">>, 'undefined', Call) of
+        'undefined' -> kapps_call:kvs_store(<<"original_cid_name">>, kapps_call:caller_id_name(Call), Call);
         _Exists     -> Call
     end.
 
 -spec maybe_set_orig_number(kapps_call:call()) -> kapps_call:call().
 maybe_set_orig_number(Call) ->
-    case kapps_call:kvs_fetch('original_cid_number', Call) of
-        'undefined' -> kapps_call:kvs_store('original_cid_number', kapps_call:caller_id_number(Call), Call);
+    case kapps_call:kvs_fetch(<<"original_cid_number">>, 'undefined', Call) of
+        'undefined' -> kapps_call:kvs_store(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call);
         _Exists     -> Call
     end.
 
@@ -69,5 +71,5 @@ set_values(Name, Number, Call) ->
                              fun(C) -> kapps_call:set_caller_id_name(Name, C) end
                             ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
                             ], Call),
-
-    cf_exe:continue(cf_exe:set_call(Call1)).
+    cf_exe:set_call(Call1),
+    cf_exe:continue(Call1).
