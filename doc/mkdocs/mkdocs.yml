@@ -1,0 +1,92 @@
+site_name: Dev Reference
+
+pages:
+- 'index.md'
+- 'Integrations':
+  - 'Pivot':
+    - 'Intro': 'applications/pivot/doc/index.md'
+    - 'applications/crossbar/doc/pivot.md'
+    - 'Websockets':
+      - 'applications/crossbar/doc/websockets.md'
+    - 'Webhooks':
+      - 'applications/webhooks/doc/maintenance.md'
+      - 'applications/webhooks/doc/index.md'
+      - 'applications/crossbar/doc/webhooks.md'
+    - 'Twiml':
+      - 'applications/pivot/doc/twiml/index.md'
+    - 'Tutorials':
+      - 'applications/pivot/doc/kazoocon-2014.md'
+    - 'Known_Issues':
+      - 'applications/pivot/doc/issues.md'
+    - 'Kazoo':
+      - 'applications/pivot/doc/kazoo/say.md'
+      - 'applications/pivot/doc/kazoo/recording.md'
+      - 'applications/pivot/doc/kazoo/presence.md'
+      - 'applications/pivot/doc/kazoo/play.md'
+      - 'applications/pivot/doc/kazoo/index.md'
+      - 'applications/pivot/doc/kazoo/hangups.md'
+      - 'applications/pivot/doc/kazoo/dtmf.md'
+      - 'applications/pivot/doc/kazoo/conferencing.md'
+      - 'applications/pivot/doc/kazoo/collect.md'
+      - 'applications/pivot/doc/kazoo/bridging.md'
+- 'Voice':
+  - 'System Management':
+    - 'applications/crossbar/doc/token_restrictions.md'
+    - 'applications/crossbar/doc/system_configs.md'
+    - 'applications/crossbar/doc/sup.md'
+    - 'applications/crossbar/doc/securing_crossbar.md'
+    - 'applications/crossbar/doc/reverse_proxy.md'
+    - 'applications/crossbar/doc/rate_limiting.md'
+    - 'applications/crossbar/doc/maintenance.md'
+    - 'applications/crossbar/doc/configuration.md'
+    - 'applications/crossbar/doc/call_inspector.md'
+    - 'applications/crossbar/doc/apps_store.md'
+  - 'Status':
+    - 'applications/crossbar/doc/registrations.md'
+    - 'applications/crossbar/doc/presence.md'
+    - 'applications/crossbar/doc/channels.md'
+  - 'PBX Features':
+    - 'applications/crossbar/doc/voicemail.md'
+    - 'applications/crossbar/doc/users.md'
+    - 'applications/crossbar/doc/temporal_rules_sets.md'
+    - 'applications/crossbar/doc/recordings.md'
+    - 'applications/crossbar/doc/phone_numbers.md'
+    - 'applications/crossbar/doc/metaflows.md'
+    - 'applications/crossbar/doc/groups.md'
+    - 'applications/crossbar/doc/faxes.md'
+    - 'applications/crossbar/doc/directories.md'
+    - 'applications/crossbar/doc/devices.md'
+    - 'applications/crossbar/doc/conference.md'
+    - 'applications/crossbar/doc/blacklists.md'
+  - 'Misc':
+    - 'applications/crossbar/doc/comments.md'
+  - 'Media Management':
+    - 'applications/crossbar/doc/media.md'
+  - 'Connectivity':
+    - 'applications/crossbar/doc/resources.md'
+    - 'applications/crossbar/doc/rates.md'
+    - 'applications/crossbar/doc/ips.md'
+  - 'Branding':
+    - 'applications/crossbar/doc/notifications.md'
+  - 'Billing':
+    - 'applications/crossbar/doc/ledgers.md'
+    - 'applications/crossbar/doc/cdrs.md'
+  - 'Account Management':
+    - 'applications/crossbar/doc/whitelabeling.md'
+    - 'applications/crossbar/doc/transactions.md'
+    - 'applications/crossbar/doc/services.md'
+    - 'applications/crossbar/doc/service_plans.md'
+    - 'applications/crossbar/doc/search.md'
+    - 'applications/crossbar/doc/port_requests.md'
+    - 'applications/crossbar/doc/limits.md'
+    - 'applications/crossbar/doc/allotments.md'
+    - 'applications/crossbar/doc/accounts.md'
+  - 'API Basics':
+    - 'applications/crossbar/doc/user_authentication.md'
+    - 'applications/crossbar/doc/token_auth.md'
+    - 'applications/crossbar/doc/schemas.md'
+    - 'applications/crossbar/doc/multipart.md'
+    - 'applications/crossbar/doc/basics.md'
+    - 'applications/crossbar/doc/basic_auth.md'
+    - 'applications/crossbar/doc/api_authentication.md'
+    - 'applications/crossbar/doc/402.md'
