@@ -1649,7 +1649,7 @@ transfer_set_callid(UUID, <<"-bleg">>) ->
         _ -> UUID
     end;
 transfer_set_callid(UUID, _) -> UUID.
-    
+
 -spec transfer_referred(ne_binary(), binary()) -> api_binary().
 transfer_referred(UUID, <<"-bleg">>) ->
     case ecallmgr_fs_channel:fetch(UUID, 'record') of
