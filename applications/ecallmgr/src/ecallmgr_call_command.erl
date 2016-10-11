@@ -1623,12 +1623,15 @@ transfer(Node, UUID, <<"attended">>, TransferTo, JObj) ->
     {<<"att_xfer">>, list_to_binary(["{", Arg, "}loopback/", TransferTo, <<"/">>, transfer_context(JObj)])};
 transfer(Node, UUID, <<"blind">>, TransferTo, JObj) ->
     Realm = transfer_realm(UUID),
+    TransferLeg = transfer_leg(JObj),
+    TargetUUID = transfer_set_callid(UUID, TransferLeg),
     KVs = props:filter_undefined(
             [{<<"SIP-Refer-To">>, <<"<sip:", TransferTo/binary, "@", Realm/binary>>}
-            ,{<<"SIP-Referred-By">>, transfer_referred(UUID)}
+            ,{<<"SIP-Referred-By">>, transfer_referred(UUID, TransferLeg)}
             ]),
-    [{<<"kz_multiset">>, ecallmgr_util:multi_set_args(Node, UUID, KVs)}
-    ,{<<"blind_xfer">>, list_to_binary([transfer_leg(JObj), " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}
+    Args = kz_util:join_binary(ecallmgr_util:process_fs_kv(Node, TargetUUID, KVs, 'set'), <<";">>),
+    [{<<"kz_uuid_setvar_multi">>, list_to_binary([TargetUUID, " ", Args])}
+    ,{<<"blind_xfer">>, list_to_binary([TransferLeg, " ", TransferTo, <<" XML ">>, transfer_context(JObj)])}
     ].
 
 -spec transfer_realm(ne_binary()) -> ne_binary().
@@ -1638,8 +1641,23 @@ transfer_realm(UUID) ->
         _Else -> <<"norealm">>
     end.
 
--spec transfer_referred(ne_binary()) -> api_binary().
-transfer_referred(UUID) ->
+-spec transfer_set_callid(ne_binary(), binary()) -> ne_binary().
+transfer_set_callid(UUID, <<"-bleg">>) ->
+    case ecallmgr_fs_channel:fetch(UUID, 'record') of
+        {'ok', #channel{other_leg='undefined'}} -> UUID;
+        {'ok', #channel{other_leg=OtherUUID}} -> OtherUUID;
+        _ -> UUID
+    end;
+transfer_set_callid(UUID, _) -> UUID.
+    
+-spec transfer_referred(ne_binary(), binary()) -> api_binary().
+transfer_referred(UUID, <<"-bleg">>) ->
+    case ecallmgr_fs_channel:fetch(UUID, 'record') of
+        {'ok', #channel{presence_id='undefined'}} -> 'undefined';
+        {'ok', #channel{presence_id=PresenceId}} -> <<"<sip:", PresenceId/binary, ">">>;
+        _Else -> 'undefined'
+    end;
+transfer_referred(UUID, _) ->
     case ecallmgr_fs_channel:fetch_other_leg(UUID, 'record') of
         {'ok', #channel{presence_id='undefined'}} -> 'undefined';
         {'ok', #channel{presence_id=PresenceId}} -> <<"<sip:", PresenceId/binary, ">">>;
