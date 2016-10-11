@@ -17,6 +17,7 @@
         ,get_change_vmbox_funs/4
 
         ,retention_seconds/0, retention_seconds/1
+        ,maybe_set_deleted_by_retention/1, maybe_set_deleted_by_retention/2
 
         ,publish_saved_notify/5, publish_voicemail_saved/5
         ,get_notify_completed_message/1
@@ -137,6 +138,22 @@ retention_seconds() ->
 
 retention_seconds(Days) ->
     ?SECONDS_IN_DAY * Days + ?SECONDS_IN_HOUR.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% if message is older than retention duration, set folder to deleted
+%% @end
+%%--------------------------------------------------------------------
+maybe_set_deleted_by_retention(Metadata) ->
+    maybe_set_deleted_by_retention(Metadata, retention_seconds()).
+
+maybe_set_deleted_by_retention(Metadata, Timestamp) ->
+    MsgTstamp = kz_json:get_integer_value(<<"timestamp">>, Metadata, 0),
+    case MsgTstamp < Timestamp of
+        'true' -> kzd_box_message:set_folder_deleted(Metadata);
+        'false' -> Metadata
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -78,10 +78,14 @@ fetch(AccountId, MessageId) ->
 
 fetch(AccountId, MessageId, BoxId) ->
     case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
-        {'ok', JObj} = OK ->
+        {'ok', JObj} ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'true' -> OK;
-                'false' -> {'error', 'not_found'}
+                'false' -> {'error', 'not_found'};
+                'true' ->
+                    Metadata = kvm_util:maybe_set_deleted_by_retention(
+                                 kzd_box_message:metadata(JObj)
+                                ),
+                    {'ok', kzd_box_message:set_metadata(Metadata, JObj)}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
