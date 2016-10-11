@@ -126,7 +126,10 @@ content_types_accepted(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
-    content_types_provided_for_vm_download(Context, cb_context:req_verb(Context)).
+    content_types_provided_for_vm_download(Context, cb_context:req_verb(Context));
+content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE, _) ->
+    Context.
+
 content_types_provided(Context, _VMBox, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
     content_types_provided_for_vm_download(Context, cb_context:req_verb(Context)).
 
@@ -226,10 +229,10 @@ check_mailbox_for_messages_array(Context, VMBoxMsgs) ->
 
 post(Context, OldBoxId, ?MESSAGES_RESOURCE) ->
     AccountId = cb_context:account_id(Context),
-    MsgIds = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
+    MsgIds = kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
     Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
 
-    case cb_context:req_value(Context, <<"source_id">>) of
+    case kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)) of
         'undefined' ->
             Result = kvm_messages:change_folder(Folder, MsgIds, AccountId, OldBoxId),
             C = crossbar_util:response(Result, Context),
@@ -248,7 +251,7 @@ post(Context, _DocId, ?MESSAGES_RESOURCE, ?BIN_DATA) ->
     Context;
 post(Context, OldBoxId, ?MESSAGES_RESOURCE, MediaId) ->
     AccountId = cb_context:account_id(Context),
-    case cb_context:req_value(Context, <<"source_id">>) of
+    case kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)) of
         'undefined' ->
             Folder = get_folder_filter(Context, ?VM_FOLDER_SAVED),
             case kvm_message:change_folder(Folder, MediaId, AccountId, OldBoxId) of
@@ -292,7 +295,8 @@ put(Context) ->
 delete(Context, DocId) ->
     AccountId = cb_context:account_id(Context),
     Msgs = kvm_messages:get(AccountId, DocId),
-    _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, Msgs, cb_context:account_id(Context), DocId),
+    MsgIds = [kzd_box_message:media_id(M) || M <- Msgs],
+    _ = kvm_messages:change_folder(?VM_FOLDER_DELETED, MsgIds, cb_context:account_id(Context), DocId),
     C = crossbar_doc:delete(Context),
     update_mwi(C, DocId).
 
@@ -341,7 +345,7 @@ validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', _} ->
-            NewBoxId = cb_context:req_value(Context, <<"source_id">>),
+            NewBoxId = kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)),
             maybe_load_vmboxes(NewBoxId, Context);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, MessageId, Context)
@@ -358,18 +362,18 @@ validate_message(Context, BoxId, MessageId, ?HTTP_DELETE) ->
 validate_messages(Context, DocId, ?HTTP_GET) ->
     load_message_summary(DocId, Context);
 validate_messages(Context, DocId, ?HTTP_POST) ->
-    case cb_context:req_value(Context, ?VM_KEY_MESSAGES, []) =/= [] of
-        'false' ->
-            Message = kz_json:from_list([{<<"message">>, <<"No message ids are specified">>}]),
+    case kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []) of
+        [] ->
+            Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
             cb_context:add_validation_error(<<"messages">>, <<"required">>, Message, Context);
         _ ->
-            NewBoxId = cb_context:req_value(Context, <<"source_id">>),
+            NewBoxId = kz_json:get_value(<<"source_id">>, cb_context:req_data(Context)),
             maybe_load_vmboxes([DocId | NewBoxId], Context)
     end;
 validate_messages(Context, DocId, ?HTTP_DELETE) ->
     Messages = kvm_messages:get(cb_context:account_id(Context), DocId),
 
-    Filter = case cb_context:req_value(Context, ?VM_KEY_MESSAGES) of
+    Filter = case kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context)) of
                  L when is_list(L) -> L;
                  _ -> get_folder_filter(Context, <<"all">>)
              end,
@@ -571,20 +575,39 @@ merge_summary_fold(JObj, AccountMsgCounts) ->
 %% Load a vmbox document from the database
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_load_vmboxes(api_binary() | api_binaries(), cb_context:context()) -> cb_context:context().
+-type source_id() :: api_binary() | api_binaries().
+
+-spec maybe_load_vmboxes(source_id(), cb_context:context()) -> cb_context:context().
+-spec maybe_load_vmboxes_fold(source_id(), cb_context:context()) -> cb_context:context().
 maybe_load_vmboxes('undefined', Context) -> cb_context:set_resp_status(Context, 'success');
-maybe_load_vmboxes(Id, Context) when is_binary(Id) -> load_vmbox(Id, Context);
-maybe_load_vmboxes([], Context) -> Context;
-maybe_load_vmboxes(['undefined'|Ids], Context) ->
-    maybe_load_vmboxes(Ids, Context);
-maybe_load_vmboxes([Id|Ids], Context) ->
+maybe_load_vmboxes(?NE_BINARY = Id, Context) -> load_vmbox(Id, Context);
+maybe_load_vmboxes(<<>>, Context) -> empty_source_id(Context);
+maybe_load_vmboxes([], Context) -> empty_source_id(Context);
+maybe_load_vmboxes(Ids, Context) -> maybe_load_vmboxes_fold(Ids, Context).
+
+maybe_load_vmboxes_fold('undefined', Context) -> Context;
+maybe_load_vmboxes_fold([], Context) -> Context;
+maybe_load_vmboxes_fold([<<>>|_], Context) -> empty_source_id(Context);
+maybe_load_vmboxes_fold(['undefined'|Ids], Context) ->
+    maybe_load_vmboxes_fold(Ids, Context);
+maybe_load_vmboxes_fold([Id|Ids], Context) ->
     C1 = load_vmbox(Id, Context),
-    maybe_load_vmboxes(Ids, C1).
+    case cb_context:resp_status(C1) of
+        'success' ->
+            maybe_load_vmboxes_fold(Ids, C1);
+        _ ->
+            C1
+    end.
 
 -spec load_vmbox(ne_binary(), cb_context:context()) -> cb_context:context().
 load_vmbox(DocId, Context) ->
     C1 = crossbar_doc:load(DocId, Context, ?TYPE_CHECK_OPTION(kzd_voicemail_box:type())),
     cb_context:set_resp_data(C1, kz_json:delete_key(?VM_KEY_MESSAGES, cb_context:resp_data(C1))).
+
+-spec empty_source_id(cb_context:context()) -> cb_context:context().
+empty_source_id(Context) ->
+    Message = kz_json:from_list([{<<"message">>, <<"empty source_id is specified. please set a single or a list of source_ids.">>}]),
+    cb_context:add_validation_error(<<"source_id">>, <<"required">>, Message, Context).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -627,7 +650,7 @@ message_summary_view_options(Context, BoxId) ->
     MaxRange = get_max_range(Context),
     case cb_modules_util:range_view_options(Context, MaxRange) of
         {CreatedFrom, CreatedTo} ->
-            MODBs = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
+            MODBs = lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)),
             {'ok', maybe_add_start_end_key(BoxId, CreatedTo, CreatedFrom, MODBs)};
         Ctx -> Ctx
     end.
@@ -769,8 +792,13 @@ load_attachment_from_message(Doc, Context, Timezone) ->
 -spec load_messages_binaries(ne_binary(), cb_context:context()) -> cb_context:context().
 load_messages_binaries(BoxId, Context) ->
     WorkDir = kz_util:to_list(<<"/tmp/", (cb_context:req_id(Context))/binary, "/">>),
-    Ids = cb_context:req_value(Context, ?VM_KEY_MESSAGES, []),
-    case kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId) of
+    Ids = kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
+    case Ids =/= []
+        andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
+    of
+        'false' ->
+            Message = kz_json:from_list([{<<"message">>, <<"No array of message ids are specified">>}]),
+            cb_context:add_validation_error(<<"messages">>, <<"required">>, Message, Context);
         {'error', Error} ->
             crossbar_doc:handle_datamgr_errors(Error, BoxId, Context);
         {'ok', BoxJObj} ->
