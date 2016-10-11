@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_fsm).
 -behaviour(gen_fsm).
@@ -116,10 +117,11 @@
                ,queue_notifications :: api_object()
 
                ,agent_call_id :: api_binary()
+               ,ambiguous_uuids = [] :: ne_binaries()
                ,next_status :: api_binary()
                ,fsm_call_id :: api_binary() % used when no call-ids are available
                ,endpoints = [] :: kz_json:objects()
-               ,outbound_call_id :: api_binary()
+               ,outbound_call_ids = [] :: ne_binaries()
                ,max_connect_failures :: kz_timeout()
                ,connect_failures = 0 :: non_neg_integer()
                ,agent_state_updates = [] :: list()
@@ -513,7 +515,7 @@ sync({'member_connect_req', _}, State) ->
 sync(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("sync call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-sync(?NEW_CHANNEL_TO(CallId), State) ->
+sync(?NEW_CHANNEL_TO(CallId, _), State) ->
     lager:debug("sync call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 sync(_Evt, State) ->
@@ -614,10 +616,33 @@ ready({'member_connect_req', _}, #state{max_connect_failures=Max
 ready({'member_connect_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:member_connect_resp(AgentListener, JObj),
     {'next_state', 'ready', State};
-ready({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("channel hungup for ~s: ~s", [CallId, _Cause]),
-    acdc_agent_listener:channel_hungup(AgentListener, CallId),
+ready({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("ignoring an outbound call that is the result of a failed originate"),
+    acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
+    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
     {'next_state', 'ready', State};
+ready({'channel_answered', CallId}, #state{outbound_call_ids=OutboundCallIds}=State) ->
+    case lists:member(CallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent picked up outbound call ~s", [CallId]),
+            {'next_state', 'outbound', start_outbound_call_handling(CallId, clear_call(State, 'ready')), 'hibernate'};
+        'false' ->
+            lager:debug("unexpected answer of ~s while in ready", [CallId]),
+            {'next_state', 'ready', State}
+    end;
+ready({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                ,outbound_call_ids=OutboundCallIds
+                                                }=State) ->
+    case lists:member(CallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent outbound channel ~s down", [CallId]),
+            acdc_util:unbind_from_call_events(CallId, AgentListener),
+            {'next_state', 'ready', State#state{outbound_call_ids=lists:delete(CallId, OutboundCallIds)}};
+        'false' ->
+            lager:debug("unexpected channel ~s down", [CallId]),
+            acdc_agent_listener:channel_hungup(AgentListener, CallId),
+            {'next_state', 'ready', State}
+    end;
 ready({'channel_unbridged', CallId}, #state{agent_listener=_AgentListener}=State) ->
     lager:debug("channel unbridged: ~s", [CallId]),
     {'next_state', 'ready', State};
@@ -631,9 +656,11 @@ ready({'originate_failed', _E}, State) ->
 ready(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("ready call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-ready(?NEW_CHANNEL_TO(CallId), State) ->
+ready(?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
     lager:debug("ready call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
+ready(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
+    {'next_state', 'ready', State};
 ready(_Evt, State) ->
     lager:debug("unhandled event while ready: ~p", [_Evt]),
     {'next_state', 'ready', State}.
@@ -746,6 +773,8 @@ ringing({'channel_bridged', MemberCallId}, #state{member_call_id=MemberCallId
     acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
 
     {'next_state', 'answered', State#state{connect_failures=0}};
+ringing({'channel_bridged', _CallId}, State) ->
+    {'next_state', 'ringing', State};
 ringing({'channel_hungup', AgentCallId, Cause}, #state{agent_listener=AgentListener
                                                       ,agent_call_id=AgentCallId
                                                       ,account_id=AccountId
@@ -782,6 +811,18 @@ ringing({'channel_hungup', MemberCallId, _Cause}, #state{agent_listener=AgentLis
 
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     apply_state_updates(clear_call(State, 'ready'));
+ringing({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                  ,outbound_call_ids=OutboundCallIds
+                                                  }=State) ->
+    case lists:member(CallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent outbound channel ~s down", [CallId]),
+            acdc_util:unbind_from_call_events(CallId, AgentListener),
+            {'next_state', 'ringing', State#state{outbound_call_ids=lists:delete(CallId, OutboundCallIds)}};
+        'false' ->
+            lager:debug("unexpected channel ~s down", [CallId]),
+            {'next_state', 'ringing', State}
+    end;
 ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
                                       ,agent_listener=AgentListener
                                       ,agent_call_id=AgentCallId
@@ -799,34 +840,38 @@ ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=DTMF
 ringing({'dtmf_pressed', DTMF}, #state{caller_exit_key=_ExitKey}=State) ->
     lager:debug("caller pressed ~s, exit key is ~s", [DTMF, _ExitKey]),
     {'next_state', 'ringing', State};
-ringing({'channel_answered', ACallId}, #state{agent_call_id=ACallId
-                                             ,member_call_id=MemberCallId
-                                             ,member_call=MemberCall
-                                             ,account_id=AccountId
-                                             ,agent_id=AgentId
-                                             ,agent_listener=AgentListener
-                                             }=State) ->
-    lager:debug("agent answered phone on ~s", [ACallId]),
-
-    CIDName = kapps_call:caller_id_name(MemberCall),
-    CIDNum = kapps_call:caller_id_number(MemberCall),
-
-    acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
-
-    acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID),
-
-    {'next_state', 'answered', State#state{connect_failures=0}};
 ringing({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
     lager:debug("caller's channel answered"),
     {'next_state', 'ringing', State};
-ringing({'channel_answered', ACallId}=Evt, #state{agent_call_id=_NotACallId}=State) ->
-    lager:debug("recv answer for ~s, not ~s", [ACallId, _NotACallId]),
-    ringing(Evt, State#state{agent_call_id=ACallId});
+ringing({'channel_answered', OtherCallId}, #state{account_id=AccountId
+                                                 ,agent_id=AgentId
+                                                 ,member_call=MemberCall
+                                                 ,member_call_id=MemberCallId
+                                                 ,agent_listener=AgentListener
+                                                 ,outbound_call_ids=OutboundCallIds
+                                                 }=State) ->
+    case lists:member(OtherCallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent picked up outbound call ~s instead of the queue call ~s", [OtherCallId, MemberCallId]),
+            acdc_agent_listener:hangup_call(AgentListener),
+            {'next_state', 'outbound', start_outbound_call_handling(OtherCallId, clear_call(State, 'ready')), 'hibernate'};
+        'false' ->
+            lager:debug("recv answer for ~s, probably the agent's call", [OtherCallId]),
+
+            CIDName = kapps_call:caller_id_name(MemberCall),
+            CIDNum = kapps_call:caller_id_number(MemberCall),
+
+            acdc_agent_stats:agent_connected(AccountId, AgentId, MemberCallId, CIDName, CIDNum),
+
+            acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_SOLID),
+
+            {'next_state', 'answered', State#state{agent_call_id=OtherCallId
+                                                  ,connect_failures=0
+                                                  }}
+    end;
 ringing({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ringing', JObj),
-    {'next_state', 'ringing', State};
-ringing(?NEW_CHANNEL_TO(_CallId), #state{agent_call_id=_CallId}=State) ->
     {'next_state', 'ringing', State};
 ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
                                            ,member_call_id=MemberCallId
@@ -848,8 +893,28 @@ ringing({'originate_resp', ACallId}, #state{agent_listener=AgentListener
     {'next_state', 'answered', State#state{agent_call_id=ACallId
                                           ,connect_failures=0
                                           }};
-ringing(?NEW_CHANNEL_TO(_CallId), State) ->
-    lager:debug("new channel ~s for agent", [_CallId]),
+ringing(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener}=State) ->
+    lager:debug("ringing call_from outbound: ~s", [CallId]),
+    acdc_agent_listener:hangup_call(AgentListener),
+    {'next_state', 'outbound', start_outbound_call_handling(CallId, clear_call(State, 'ready')), 'hibernate'};
+ringing(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                    ,outbound_call_ids=OutboundCallIds
+                                                    }=State) ->
+    lager:debug("ringing call_to outbound: ~s", [CallId]),
+    acdc_util:bind_to_call_events(CallId, AgentListener),
+    {'next_state', 'ringing', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
+ringing(?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
+    lager:debug("new channel ~s for agent", [CallId]),
+    {'next_state', 'ringing', State};
+ringing(?NEW_CHANNEL_TO(CallId, _MemberCallId), #state{agent_listener=AgentListener}=State) ->
+    lager:debug("found a uuid ~s that was from a previous queue call", [CallId]),
+    acdc_agent_listener:channel_hungup(AgentListener, CallId),
+    {'next_state', 'ringing', State};
+ringing({'leg_created', _CallId}, State) ->
+    {'next_state', 'ringing', State};
+ringing({'leg_destroyed', _CallId}, State) ->
+    {'next_state', 'ringing', State};
+ringing({'usurp_control', _CallId}, State) ->
     {'next_state', 'ringing', State};
 ringing(_Evt, State) ->
     lager:debug("unhandled event while ringing: ~p", [_Evt]),
@@ -919,19 +984,55 @@ answered({'channel_replaced', JObj}, #state{agent_listener=AgentListener}=State)
     kz_util:put_callid(ReplacedBy),
     lager:info("channel ~s replaced by ~s", [CallId, ReplacedBy]),
     {'next_state', 'answered', State#state{member_call_id = ReplacedBy}};
-answered({'channel_hungup', CallId, <<"ATTENDED_TRANSFER">> = _Cause}, #state{member_call_id = CallId}=State) ->
-    lager:info("caller's channel hung up: ~s", [_Cause]),
-    {'next_state', 'answered', State};
-answered({'channel_hungup', CallId, _Cause}, #state{member_call_id=CallId}=State) ->
-    lager:debug("caller's channel hung up: ~s", [_Cause]),
+answered({'channel_hungup', CallId, Cause}, #state{member_call_id=CallId
+                                                  ,outbound_call_ids=[]
+                                                  }=State) ->
+    lager:debug("caller's channel hung up: ~s", [Cause]),
     {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'member')}};
-answered({'channel_hungup', CallId, _Cause}, #state{agent_call_id=CallId}=State) ->
-    lager:debug("agent's channel has hung up: ~s", [_Cause]),
-    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
-answered({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("someone(~s) hungup, ignoring: ~s", [CallId, _Cause]),
+answered({'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+                                                   ,agent_id=AgentId
+                                                   ,agent_listener=AgentListener
+                                                   ,member_call_id=CallId
+                                                   ,member_call_queue_id=QueueId
+                                                   ,queue_notifications=Ns
+                                                   ,outbound_call_ids=[OutboundCallId|_]
+                                                   }=State) ->
+    lager:debug("caller's channel hung up, but there are still some outbounds"),
+    acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId, 'member'),
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
-    {'next_state', 'answered', State};
+    maybe_notify(Ns, ?NOTIFY_HANGUP, State),
+    {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
+answered({'channel_hungup', CallId, Cause}, #state{agent_call_id=CallId
+                                                  ,outbound_call_ids=[]
+                                                  }=State) ->
+    lager:debug("agent's channel has hung up: ~s", [Cause]),
+    {'next_state', 'wrapup', State#state{wrapup_ref=hangup_call(State, 'agent')}};
+answered({'channel_hungup', CallId, _Cause}, #state{account_id=AccountId
+                                                   ,agent_id=AgentId
+                                                   ,agent_listener=AgentListener
+                                                   ,member_call_id=MemberCallId
+                                                   ,member_call_queue_id=QueueId
+                                                   ,queue_notifications=Ns
+                                                   ,agent_call_id=CallId
+                                                   ,outbound_call_ids=[OutboundCallId|_]
+                                                   }=State) ->
+    lager:debug("agent's channel hung up, but there are still some outbounds"),
+    acdc_stats:call_processed(AccountId, QueueId, AgentId, CallId, 'agent'),
+    acdc_agent_listener:channel_hungup(AgentListener, MemberCallId),
+    maybe_notify(Ns, ?NOTIFY_HANGUP, State),
+    {'next_state', 'outbound', start_outbound_call_handling(OutboundCallId, clear_call(State, 'ready')), 'hibernate'};
+answered({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
+                                                   ,outbound_call_ids=OutboundCallIds
+                                                   }=State) ->
+    case lists:member(CallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent outbound channel ~s down", [CallId]),
+            acdc_util:unbind_from_call_events(CallId, AgentListener),
+            {'next_state', 'answered', State#state{outbound_call_ids=lists:delete(CallId, OutboundCallIds)}};
+        'false' ->
+            lager:debug("unexpected channel ~s down", [CallId]),
+            {'next_state', 'answered', State}
+    end;
 answered({'sync_req', JObj}, #state{agent_listener=AgentListener
                                    ,member_call_id=CallId
                                    }=State) ->
@@ -947,10 +1048,38 @@ answered({'channel_unbridged', CallId}, #state{agent_call_id=CallId}=State) ->
 answered({'channel_answered', MemberCallId}, #state{member_call_id=MemberCallId}=State) ->
     lager:debug("member's channel has answered"),
     {'next_state', 'answered', State};
-answered({'channel_answered', ACallId}, #state{agent_call_id=ACallId}=State) ->
-    lager:debug("agent's channel ~s has answered", [ACallId]),
+answered({'channel_answered', AgentCallId}, #state{agent_call_id=AgentCallId}=State) ->
+    lager:debug("agent's channel ~s has answered", [AgentCallId]),
     {'next_state', 'answered', State};
+answered({'channel_answered', OtherCallId}=Evt, #state{outbound_call_ids=OutboundCallIds}=State) ->
+    case lists:member(OtherCallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent answered outbound call ~s", [OtherCallId]),
+            {'next_state', 'answered', State};
+        'false' ->
+            lager:debug("unexpected event while answered: ~p", [Evt]),
+            {'next_state', 'answered', State}
+    end;
 answered({'originate_started', _CallId}, State) ->
+    {'next_state', 'answered', State};
+answered(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
+                                          ,outbound_call_ids=OutboundCallIds
+                                          }=State) ->
+    lager:debug("answered call_from outbound: ~s", [CallId]),
+    acdc_util:bind_to_call_events(CallId, AgentListener),
+    {'next_state', 'answered', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
+answered(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                     ,outbound_call_ids=OutboundCallIds
+                                                     }=State) ->
+    lager:debug("answered call_to outbound: ~s", [CallId]),
+    acdc_util:bind_to_call_events(CallId, AgentListener),
+    {'next_state', 'answered', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
+answered(?NEW_CHANNEL_TO(CallId, MemberCallId), #state{member_call_id=MemberCallId}=State) ->
+    lager:debug("new channel ~s for agent", [CallId]),
+    {'next_state', 'answered', State};
+answered({'leg_created', _CallId}, State) ->
+    {'next_state', 'answered', State};
+answered({'usurp_control', _CallId}, State) ->
     {'next_state', 'answered', State};
 answered(_Evt, State) ->
     lager:debug("unhandled event while answered: ~p", [_Evt]),
@@ -1008,9 +1137,7 @@ wrapup({'sync_req', JObj}, #state{agent_listener=AgentListener
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Process-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'wrapup', JObj, [{<<"Time-Left">>, time_left(Ref)}]),
     {'next_state', 'wrapup', State};
-wrapup({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener}=State) ->
-    lager:debug("channel ~s hungup: ~s", [CallId, _Cause]),
-    acdc_agent_listener:channel_hungup(AgentListener, CallId),
+wrapup({'channel_hungup', _, _}, State) ->
     {'next_state', 'wrapup', State};
 wrapup({'leg_destroyed', CallId}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("leg ~s destroyed", [CallId]),
@@ -1019,7 +1146,7 @@ wrapup({'leg_destroyed', CallId}, #state{agent_listener=AgentListener}=State) ->
 wrapup(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("wrapup call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-wrapup(?NEW_CHANNEL_TO(CallId), State) ->
+wrapup(?NEW_CHANNEL_TO(CallId, _), State) ->
     lager:debug("wrapup call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
 wrapup({'originate_resp', _}, State) ->
@@ -1072,21 +1199,18 @@ paused({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State)
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
 
     {'next_state', 'paused', State};
+paused({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("ignoring an outbound call that is the result of a failed originate"),
+    acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
+    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
+    {'next_state', 'paused', State};
 paused(?NEW_CHANNEL_FROM(CallId), State) ->
     lager:debug("paused call_from outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-paused(?NEW_CHANNEL_TO(CallId), State) ->
+paused(?NEW_CHANNEL_TO(CallId, 'undefined'), State) ->
     lager:debug("paused call_to outbound: ~s", [CallId]),
     {'next_state', 'outbound', start_outbound_call_handling(CallId, State), 'hibernate'};
-paused({'channel_hungup', CallId, _Reason}, #state{agent_listener=AgentListener
-                                                  ,pause_ref=Ref
-                                                  ,account_id=AccountId
-                                                  ,agent_id=AgentId
-                                                  }=State) ->
-    TimeLeft = time_left(Ref),
-    lager:debug("channel ~s hungup: ~s with ~p left on pause", [CallId, _Reason, TimeLeft]),
-    acdc_agent_listener:channel_hungup(AgentListener, CallId),
-    acdc_agent_stats:agent_paused(AccountId, AgentId, TimeLeft),
+paused(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
     {'next_state', 'paused', State};
 paused(_Evt, State) ->
     lager:debug("unhandled event while paused: ~p", [_Evt]),
@@ -1100,22 +1224,28 @@ paused('status', _, #state{pause_ref=Ref}=State) ->
 paused('current_call', _, State) ->
     {'reply', 'undefined', 'paused', State}.
 
-outbound({'channel_hungup', CallId, _Cause}, #state{agent_listener=AgentListener
-                                                   ,outbound_call_id=CallId
-                                                   }=State) ->
-    lager:debug("outbound channel ~s hungup: ~s", [CallId, _Cause]),
+outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
+                                                  ,outbound_call_ids=OutboundCallIds
+                                                  }=State) ->
     acdc_agent_listener:channel_hungup(AgentListener, CallId),
-    outbound_hungup(State);
-outbound({'leg_destroyed', CallId}, #state{agent_listener=AgentListener
-                                          ,outbound_call_id=CallId
-                                          }=State) ->
-    lager:debug("outbound leg ~s destroyed", [CallId]),
-    acdc_agent_listener:channel_hungup(AgentListener, CallId),
-
-    outbound_hungup(State);
+    case lists:member(CallId, OutboundCallIds) of
+        'true' ->
+            lager:debug("agent outbound channel ~s down: ~s", [CallId, Cause]),
+            outbound_hungup(State#state{outbound_call_ids=lists:delete(CallId, OutboundCallIds)});
+        'false' ->
+            lager:debug("unexpected channel ~s down", [CallId]),
+            {'next_state', 'outbound', State}
+    end;
 outbound({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("agent won, but can't process this right now (on outbound call)"),
     acdc_agent_listener:member_connect_retry(AgentListener, JObj),
+    {'next_state', 'outbound', State};
+outbound({'originate_uuid', ACallId, ACtrlQ}, #state{agent_listener=AgentListener}=State) ->
+    lager:debug("ignoring an outbound call that is the result of a failed originate"),
+    acdc_agent_listener:originate_uuid(AgentListener, ACallId, ACtrlQ),
+    acdc_agent_listener:channel_hungup(AgentListener, ACallId),
+    {'next_state', 'outbound', State};
+outbound({'originate_failed', _E}, State) ->
     {'next_state', 'outbound', State};
 outbound({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref}=State) ->
     lager:debug("pause timer expired while outbound"),
@@ -1123,11 +1253,6 @@ outbound({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref}=State) ->
 outbound({'timeout', WRef, ?WRAPUP_FINISHED}, #state{wrapup_ref=WRef}=State) ->
     lager:debug("wrapup timer ended while on outbound call"),
     {'next_state', 'outbound', State#state{wrapup_ref='undefined'}, 'hibernate'};
-outbound(?NEW_CHANNEL_FROM(CallId), #state{outbound_call_id=CallId}=State) ->
-    {'next_state', 'outbound', State};
-outbound(?NEW_CHANNEL_FROM(_CallId), #state{outbound_call_id=_CurrCallId}=State) ->
-    lager:debug("on outbound call(~s), also starting outbound call: ~s", [_CurrCallId, _CallId]),
-    {'next_state', 'outbound', State};
 outbound({'member_connect_req', _}, State) ->
     {'next_state', 'outbound', State};
 outbound({'leg_created', _}, State) ->
@@ -1138,18 +1263,36 @@ outbound({'channel_bridged', _}, State) ->
     {'next_state', 'outbound', State};
 outbound({'channel_unbridged', _}, State) ->
     {'next_state', 'outbound', State};
-outbound(?NEW_CHANNEL_TO(CallId), #state{outbound_call_id=CallId}=State) ->
+outbound(?NEW_CHANNEL_TO(CallId, _), #state{outbound_call_ids=[CallId]}=State) ->
+    {'next_state', 'outbound', State};
+outbound(?NEW_CHANNEL_FROM(CallId), #state{agent_listener=AgentListener
+                                           ,outbound_call_ids=OutboundCallIds
+                                          }=State) ->
+    lager:debug("outbound call_from outbound: ~s", [CallId]),
+    acdc_util:bind_to_call_events(CallId, AgentListener),
+    {'next_state', 'outbound', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
+outbound(?NEW_CHANNEL_TO(CallId, 'undefined'), #state{agent_listener=AgentListener
+                                                      ,outbound_call_ids=OutboundCallIds
+                                                     }=State) ->
+    lager:debug("outbound call_to outbound: ~s", [CallId]),
+    acdc_util:bind_to_call_events(CallId, AgentListener),
+    {'next_state', 'outbound', State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]}};
+outbound(?NEW_CHANNEL_TO(_CallId, _MemberCallId), State) ->
+    {'next_state', 'outbound', State};
+outbound({'leg_destroyed', _CallId}, State) ->
+    {'next_state', 'outbound', State};
+outbound({'usurp_control', _CallId}, State) ->
     {'next_state', 'outbound', State};
 outbound(_Msg, State) ->
     lager:debug("ignoring msg in outbound: ~p", [_Msg]),
     {'next_state', 'outbound', State}.
 
 outbound('status', _, #state{wrapup_ref=Ref
-                            ,outbound_call_id=OutboundCallId
+                            ,outbound_call_ids=OutboundCallIds
                             }=State) ->
     {'reply', [{'state', <<"outbound">>}
               ,{'wrapup_left', time_left(Ref)}
-              ,{'outbound_call_id', OutboundCallId}
+              ,{'outbound_call_id', hd(OutboundCallIds)}
               ]
     ,'outbound', State};
 outbound('current_call', _, State) ->
@@ -1308,7 +1451,7 @@ handle_info({'endpoint_created', EP}, StateName, #state{endpoints=EPs
 handle_info(?NEW_CHANNEL_FROM(_CallId)=Evt, StateName, State) ->
     gen_fsm:send_event(self(), Evt),
     {'next_state', StateName, State};
-handle_info(?NEW_CHANNEL_TO(_CallId)=Evt, StateName, State) ->
+handle_info(?NEW_CHANNEL_TO(_CallId, _)=Evt, StateName, State) ->
     gen_fsm:send_event(self(), Evt),
     {'next_state', StateName, State};
 handle_info(_Info, StateName, State) ->
@@ -1433,7 +1576,6 @@ clear_call(#state{fsm_call_id=FSMemberCallId
                ,member_call_queue_id = 'undefined'
                ,agent_call_id = 'undefined'
                ,caller_exit_key = <<"#">>
-               ,outbound_call_id = 'undefined'
                }.
 
 -spec current_call(kapps_call:call() | 'undefined', atom(), ne_binary(), 'undefined' | kz_now()) ->
@@ -1496,13 +1638,14 @@ maybe_stop_timer(_, 'false') -> 'ok'.
 start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
                                            ,account_id=AccountId
                                            ,agent_id=AgentId
+                                           ,outbound_call_ids=OutboundCallIds
                                            }=State) when is_binary(CallId) ->
     kz_util:put_callid(CallId),
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(AgentListener, CallId),
     acdc_agent_stats:agent_outbound(AccountId, AgentId, CallId),
 
-    State#state{outbound_call_id=CallId};
+    State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]};
 start_outbound_call_handling(Call, State) ->
     start_outbound_call_handling(kapps_call:call_id(Call), State).
 
@@ -1512,6 +1655,7 @@ outbound_hungup(#state{agent_listener=AgentListener
                       ,agent_id=AgentId
                       ,wrapup_ref=WRef
                       ,pause_ref=PRef
+                      ,outbound_call_ids=[]
                       }=State) ->
     case time_left(WRef) of
         N when is_integer(N), N > 0 ->
@@ -1529,7 +1673,10 @@ outbound_hungup(#state{agent_listener=AgentListener
                     {Next, SwitchTo, State1} = apply_state_updates(clear_call(State, 'ready')),
                     {Next, SwitchTo, State1, 'hibernate'}
             end
-    end.
+    end;
+outbound_hungup(State) ->
+    lager:debug("agent still has some outbound calls active"),
+    {'next_state', 'outbound', State}.
 
 -spec missed_reason(ne_binary()) -> ne_binary().
 missed_reason(<<"-ERR ", Reason/binary>>) ->
