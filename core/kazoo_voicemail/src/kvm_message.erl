@@ -101,7 +101,7 @@ message(AccountId, MessageId) ->
 message(AccountId, MessageId, BoxId) ->
     case fetch(AccountId, MessageId, BoxId) of
         {'ok', JObj} ->
-            kzd_box_message:metadata(JObj);
+            {'ok', kzd_box_message:metadata(JObj)};
         Error -> Error
     end.
 
@@ -225,8 +225,8 @@ copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     Funs = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
     Id = kz_doc:id(JObj),
     NewCopied = case do_copy(AccountId, JObj, Funs) of
-                    {'ok', JObj} ->
-                        NewId = kz_doc:id(JObj),
+                    {'ok', CopiedJObj} ->
+                        NewId = kz_doc:id(CopiedJObj),
                         dict:append(<<"succeeded">>, NewId, Copied);
                     {'error', R} ->
                         Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}]),

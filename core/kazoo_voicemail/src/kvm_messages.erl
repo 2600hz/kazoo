@@ -154,7 +154,7 @@ do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
     Fun = fun(Db, Js, ResDict) ->
                   case kz_datamgr:save_docs(Db, Js) of
                       {'ok', Saved} ->
-                          normalize_bulk_results('undefined', Saved, ResDict);
+                          normalize_bulk_results(<<"update">>, 'undefined', Saved, ResDict);
                       {'error', R} ->
                           lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
                                        ,[Db, R]),
@@ -184,7 +184,7 @@ fetch(AccountId, MsgIds, BoxId) ->
                              ],
                   case kz_datamgr:all_docs(Db, ViewOpts) of
                       {'ok', JObjs} ->
-                          normalize_bulk_results(BoxId, JObjs, ResDict);
+                          normalize_bulk_results(<<"fetch">>, BoxId, JObjs, ResDict);
                       {'error', R} ->
                           lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p"
                                        ,[Db, R]),
@@ -295,23 +295,24 @@ normalize_view_results(JObj, Acc) ->
 %%       messages operation
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_results(api_ne_binary(), kz_json:objects(), dict:dict()) ->
+-spec normalize_bulk_results(ne_binary(), api_ne_binary(), kz_json:objects(), dict:dict()) ->
                                     dict:dict().
-normalize_bulk_results(BoxId, JObjs, Dict) ->
+normalize_bulk_results(Method, BoxId, JObjs, Dict) ->
     DefaultDict = dict:from_list([{<<"succeeded">>, []}
                                  ,{<<"failed">>, []}
                                  ]),
     MergeFun = fun(_K, _V1, V2) -> V2 end,
-    normalize_bulk_results1(BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
+    normalize_bulk_results1(Method, BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
 
-normalize_bulk_results1(_BoxId, [], Dict) ->
-    lager:warning("voicemail bulk operation for mailbox ~s resulted in ~b succeeded and ~b failed docs"
-                 ,[_BoxId
-                  ,length(dict:fetch(<<"succeeded">>, Dict))
-                  ,length(dict:fetch(<<"failed">>, Dict))
-                  ]),
+normalize_bulk_results1(_Method, _BoxId, [], Dict) ->
+    lager:debug("voicemail ~s bulk for mailbox ~s resulted in ~b succeeded and ~b failed docs"
+               ,[_Method
+                ,_BoxId
+                ,length(dict:fetch(<<"succeeded">>, Dict))
+                ,length(dict:fetch(<<"failed">>, Dict))
+                ]),
     Dict;
-normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
+normalize_bulk_results1(Method, BoxId, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
                   andalso kz_json:get_value(<<"error">>, JObj)
@@ -325,7 +326,7 @@ normalize_bulk_results1(BoxId, [JObj | JObjs], Dict) ->
                       Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
                       dict:append(<<"failed">>, Failed, Dict)
               end,
-    normalize_bulk_results1(BoxId, JObjs, NewDict).
+    normalize_bulk_results1(Method, BoxId, JObjs, NewDict).
 
 %%--------------------------------------------------------------------
 %% @private
