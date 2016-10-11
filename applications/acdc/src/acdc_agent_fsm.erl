@@ -117,7 +117,6 @@
                ,queue_notifications :: api_object()
 
                ,agent_call_id :: api_binary()
-               ,ambiguous_uuids = [] :: ne_binaries()
                ,next_status :: api_binary()
                ,fsm_call_id :: api_binary() % used when no call-ids are available
                ,endpoints = [] :: kz_json:objects()
