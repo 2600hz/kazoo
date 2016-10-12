@@ -356,13 +356,12 @@ accounts_config_deprecate_timezone_for_default_timezone() ->
                 'true' -> 'ok';
                 'false' ->
                     %% Remove timezone key
-                    Doc1 = deprecate_timezone_for_default_timezone(
-                             kz_json:get_keys(PublicFields)
-                             ,PublicFields),
+                    Doc1 = deprecate_timezone_for_default_timezone(kz_json:get_keys(PublicFields)
+                                                                  ,PublicFields
+                                                                  ),
                     %% Overwrite doc with new keys
                     kz_datamgr:save_doc(?KZ_CONFIG_DB
-                      ,kz_json:set_values(kz_json:to_proplist(Doc1)
-                                          ,Doc))
+                                       ,kz_json:set_values(kz_json:to_proplist(Doc1), Doc))
             end;
         {'error', E} ->
             lager:warning("unable to fetch system_config/accounts: ~p", [E])
@@ -383,7 +382,7 @@ deprecate_timezone_for_default_timezone([Node|Nodes], Doc) ->
                        'false' -> Doc
                    end,
             deprecate_timezone_for_default_timezone(Nodes
-              ,kz_json:delete_key([Node, <<"timezone">>], Doc1));
+                                                   ,kz_json:delete_key([Node, <<"timezone">>], Doc1));
         'false' ->
             deprecate_timezone_for_default_timezone(Nodes, Doc)
     end.
