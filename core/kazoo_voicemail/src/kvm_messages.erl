@@ -330,7 +330,7 @@ normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
     IsPrior = is_prior_to_retention(
                 kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj))
                                    ,RetenTimestamp
-              ),
+               ),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
                   andalso kz_json:get_value(<<"error">>, JObj)
               of
