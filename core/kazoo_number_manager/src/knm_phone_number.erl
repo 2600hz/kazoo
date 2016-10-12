@@ -544,7 +544,7 @@ set_features(N, Features) ->
 
 -spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
 feature(Number, Feature) ->
-    kz_json:get_value(Feature, features(Number)).
+    kz_json:get_ne_value(Feature, features(Number)).
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
