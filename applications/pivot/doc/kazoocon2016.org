@@ -12,25 +12,44 @@
 #+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
 #+STARTUP: beamer
 #+LaTeX_CLASS: beamer
-#+LaTeX_CLASS_OPTIONS: [article,12pt]
+#+LaTeX_CLASS_OPTIONS: [presentation,14pt]
 #+BEAMER_FRAME_LEVEL: 2
+#+LATEX_HEADER: \renewcommand{\familydefault}{helvetica}
 #+LATEX_HEADER: \usebackgroundtemplate%
 #+LATEX_HEADER:{%
 #+LATEX_HEADER:    \includegraphics[width=\paperwidth,height=\paperheight]{./images/default_slide.png}%
 #+LATEX_HEADER:}
+#+LATEX_HEADER: \definecolor{dkgreen}{rgb}{0,.6,0}
+#+LATEX_HEADER: \definecolor{dkblue}{rgb}{0,0,.6}
+#+LATEX_HEADER: \definecolor{dkyellow}{cmyk}{0,0,.8,.3}
+#+LATEX_HEADER:
+#+LATEX_HEADER: \lstset{
+#+LATEX_HEADER:   language        = php,
+#+LATEX_HEADER:   basicstyle      = \scriptsize\ttfamily,
+#+LATEX_HEADER:   keywordstyle    = \color{dkblue},
+#+LATEX_HEADER:   stringstyle     = \color{red},
+#+LATEX_HEADER:   identifierstyle = \color{dkgreen},
+#+LATEX_HEADER:   showstringspaces=false,
+#+LATEX_HEADER:   commentstyle    = \color{gray},
+#+LATEX_HEADER:   emph            =[1]{php},
+#+LATEX_HEADER:   emphstyle       =[1]\color{black},
+#+LATEX_HEADER:   emph            =[2]{if,and,or,else},
+#+LATEX_HEADER:   emphstyle       =[2]\color{dkyellow}
+#+LATEX_HEADER: }
 
 * Pivot
 #+BEGIN_LaTeX
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
 \begin{frame}
-\begin{center}
-\alert{PIVOT - REAL-TIME CALL CONTROL}
-\end{center}
+\begin{flushright}
+\alert{PIVOT - REAL-TIME CALL CONTROL} \par
+\par
+Presented by: James Aimonetti
+\end{flushright}
 \end{frame}
 }
 #+END_LaTeX
-
 ** About Myself
 *** About Myself                                           :B_column:BMCOL:
     :PROPERTIES:
@@ -91,17 +110,17 @@ Pivot will attempt to reach your server for calls to that callflow.
 :PROPERTIES:
 :BEAMER_env: block
 :END:
-| Name     | Description                                 |
-|----------+---------------------------------------------|
-| Digits   | DTMFs (or collections) received             |
-| User-ID  | Owner ID(s) of the calling device           |
-| Language | Configured language for device/user/account |
+| Name     | Description                           |
+|----------+---------------------------------------|
+| Digits   | DTMFs (or collections) received       |
+| User-ID  | Owner ID(s) of the calling device     |
+| Language | Configured by the device/user/account |
 
 ** Create a handler                                                 :B_block:
 :PROPERTIES:
 :BEAMER_env: block
 :END:
-- Create the script that Pivot will make a request to
+- Create the script that Pivot will call
 - Process and build the Kazoo callflow JSON
 - Set "Content-Type" header to "application/json"
 - Return the JSON as the body of the HTTP response
@@ -109,24 +128,203 @@ Pivot will attempt to reach your server for calls to that callflow.
 #+BEGIN_CENTER
 Demo Time!
 #+END_CENTER
-** Build all the things                                            :B_frame:
+** Say something                                                   :B_frame:
 :PROPERTIES:
 :BEAMER_env: frame
+:BEAMER_opt: fragile
 :END:
-*** Say something
-#+BEGIN_SRC php
+- Uses [[https://freeswitch.org/confluence/display/FREESWITCH/mod_flite][FreeSWITCH mod_flite]] by default
+- Supports [[http://www.ispeech.org/text.to.speech][iSpeech]] and [[https://voicefabric.ru/][VoiceFabric]] as alternatives
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"tts"
  ,"data":{"text":"Hello caller"}
 }
-#+END_SRC
+\end{lstlisting}
+#+END_LaTeX
+** Say Hi to the caller                                            :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header("content-type:application/json");
+
+$caller_id_name = $_REQUEST['Caller-ID-Name'];
+
+if ( ! empty($caller_id_name)
+     && is_string($caller_id_name)
+) {
+    $parts = explode(" ", $caller_id_name);
+    $name = $parts[0];
+} else {
+    $caller_id_number = $_REQUEST['Caller-ID-Number'];
+    $user = db_user_lookup($caller_id_number);
+    $name = user_name($user);
+}
+?>
+{"module":"tts"
+ ,"data":{"text":"Hi <?= $name ?>"}
+}
+\end{lstlisting}
+#+END_LaTeX
+** Play an MP3 to the caller                                       :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header("content-type:application/json"); ?>
+{"module":"play"
+ ,"data":{"id":"http://your.server.com/path/to/file.mp3"}
+}
+\end{lstlisting}
+#+END_LaTeX
+** Bridging the caller to a user                                    :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+Bridge to:
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.device.json][Device]]s
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.user.json][Users]]
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.ring_group.json][Ring Groups]]
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.conference.json][Conferences]]
+- and more!
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header("content-type:application/json"); ?>
+{"module":"user"
+ ,"data":{"id":"user_doc_id"}
+}
+\end{lstlisting}
+#+END_LaTeX
+** Bridging the caller to a carrier                                 :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+- Toggle between local and global resources
+- Statically define a number to dial out to
+- See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.resources.json][schema]] for all the *data* options
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header("content-type:application/json"); ?>
+{"module":"resource"
+ ,"data":{
+   "use_local_resources":"false"
+ }
+}
+\end{lstlisting}
+#+END_LaTeX
+** Collecting DTMF                                                  :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+First, collect the DTMF
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header('content-type:application/json'); ?>
+
+{"module":"tts"
+ ,"data":{"text":"Please enter up to four digits."}
+ ,"children":{
+     "_":{
+         "module":"collect_dtmf"
+         ,"data":{"max_digits":4, "collection_name":"custom_name"}
+         ,"children":{
+             "_":{
+                 "module":"pivot"
+                 ,"data":{"voice_url":"http://pivot.your.company.com/collected.php"}
+                 ,"children":{}
+             }
+         }
+     }
+ }
+}
+\end{lstlisting}
+#+END_LaTeX
+** Collecting DTMF                                                 :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+A followup HTTP request will be sent to =http://pivot.your.company.com/collected.php= with ='Digits[custom_name]=1234'= in the request.
+
+DTMF can either come as a basic string (if no custom name is used) or an array.
+
+Let's see how to process them.
+** Collecting DTMF                                                 :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header('content-type:application/json');
+
+$dtmf = $_REQUEST['Digits'];
+
+if ( empty($dtmf) ) { ?>
+{"module":"tts"
+ ,"data":{"text":"We didn't get that"}
+ ,"children":{}
+}
+<?php } else if ( is_string($dtmf) ) { ?>
+{"module":"tts"
+ ,"data":{"text":"You typed <?= $dtmf ?>"}
+ ,"children":{}
+}
+<?php } else { ?>
+{"module":"tts"
+ ,"data":{"text":"You typed <?= $dtmf['custom_name'] ?>"}
+ ,"children":{}
+}
+<?php } ?>
+\end{lstlisting}
+#+END_LaTeX
+** Sending Presence Updates                                         :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+Send custom presence updates
+- Some IoT devices/appliances can process SIP NOTIFY
+- =presence_id= can be *name* or *name@realm*
+- =status= can be *idle*, *ringing*, or *busy*
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=php]
+<?php header("content-type:application/json"); ?>
+{"module":"manual_presence"
+ ,"data":{
+   "presence_id":"foobar"
+   ,"status":"ringing"
+ }
+}
+\end{lstlisting}
+#+END_LaTeX
+** What's Next?                                                     :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+*** In Progress
+- Building automated doc generation
+- Continuing to add callflow actions
+*** How can you help?
+- Build, build, build!
+- Blog, blog, blog!
+- Contribute to the docs effort
+  - Take ref docs and create/update the *real* docs
 * Thank You
 #+BEGIN_LaTeX
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
 \begin{frame}
 \begin{center}
-\alert{THANK YOU}
+\alert{THANK YOU!}
 \end{center}
 \end{frame}
 }
