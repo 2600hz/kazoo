@@ -17,21 +17,23 @@
 
 -include("knm.hrl").
 
--define(KNM_DASH_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
+-define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
--define(DASH_XML_PROLOG, "<?xml version=\"1.0\"?>").
--define(DASH_AUTH_USERNAME, kapps_config:get_binary(?KNM_DASH_CONFIG_CAT, <<"auth_username">>, <<>>)).
--define(DASH_AUTH_PASSWORD, kapps_config:get_binary(?KNM_DASH_CONFIG_CAT, <<"auth_password">>, <<>>)).
--define(DASH_EMERG_URL
-       ,kapps_config:get_string(?KNM_DASH_CONFIG_CAT
+-define(KEY, ?DASH_KEY).
+
+-define(XML_PROLOG, "<?xml version=\"1.0\"?>").
+-define(AUTH_USERNAME, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"auth_username">>, <<>>)).
+-define(AUTH_PASSWORD, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"auth_password">>, <<>>)).
+-define(EMERG_URL
+       ,kapps_config:get_string(?MOD_CONFIG_CAT
                                ,<<"emergency_provisioning_url">>
                                ,<<"https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1">>
                                )
        ).
 
--define(DASH_DEBUG, kapps_config:get_is_true(?KNM_DASH_CONFIG_CAT, <<"debug">>, 'false')).
--define(DASH_DEBUG(Fmt, Args),
-        ?DASH_DEBUG
+-define(DEBUG, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"debug">>, 'false')).
+-define(DEBUG(Fmt, Args),
+        ?DEBUG
         andalso file:write_file("/tmp/dash_e911.xml", io_lib:format(Fmt, Args))
        ).
 
@@ -51,11 +53,11 @@ save(Number) ->
     save(Number, State).
 
 save(Number, ?NUMBER_STATE_RESERVED) ->
-    maybe_update_dash_e911(Number);
+    maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    maybe_update_dash_e911(Number);
+    maybe_update_e911(Number);
 save(Number, ?NUMBER_STATE_PORT_IN) ->
-    maybe_update_dash_e911(Number);
+    maybe_update_e911(Number);
 save(Number, _State) ->
     delete(Number).
 
@@ -69,13 +71,13 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) ->
                     knm_number:knm_number().
 delete(Number) ->
-    case knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY) of
+    case feature(Number) of
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information from ~s"
                        ,[knm_phone_number:number(knm_number:phone_number(Number))]),
             _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?DASH_KEY)
+            knm_services:deactivate_feature(Number, ?KEY)
     end.
 
 %%--------------------------------------------------------------------
@@ -85,12 +87,16 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 -spec has_emergency_services(knm_number:knm_number()) -> boolean().
 has_emergency_services(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?DASH_KEY)
-        =/= 'undefined'.
+    feature(Number) =/= 'undefined'.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%% @private
+-spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
+feature(Number) ->
+    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -98,36 +104,30 @@ has_emergency_services(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_update_dash_e911(knm_number:knm_number()) ->
-                                    knm_number:knm_number().
-maybe_update_dash_e911(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    Features = knm_phone_number:features(PhoneNumber),
-    CurrentE911 = kz_json:get_ne_value(?DASH_KEY, Features),
-
-    Doc = knm_phone_number:doc(PhoneNumber),
-    E911 = kz_json:get_ne_value(?DASH_KEY, Doc),
-
+-spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
+maybe_update_e911(Number) ->
+    CurrentE911 = feature(Number),
+    E911 = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of
         'true' ->
-            lager:debug("dash e911 information has been removed, updating dash"),
+            lager:debug("information has been removed, updating upstream"),
             _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?DASH_KEY);
+            knm_services:deactivate_feature(Number, ?KEY);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?DASH_KEY);
+            knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
-            lager:debug("e911 information has been changed: ~s", [kz_json:encode(E911)]),
-            Number1 = knm_services:activate_feature(Number, ?DASH_KEY),
-            UpdatedFeatures = maybe_update_dash_e911(Number1, E911, Features),
-            knm_number:set_phone_number(Number1
-                                       ,knm_phone_number:set_features(PhoneNumber, UpdatedFeatures)
-                                       )
+            lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
+            Number1 = knm_services:activate_feature(Number, ?KEY),
+            UpdatedFeatures = maybe_update_e911(Number1, E911, Features),
+            PhoneNumber1 = knm_number:phone_number(Number1),
+            PhoneNumber1 = knm_phone_number:set_features(PhoneNumber1, UpdatedFeatures),
+            knm_number:set_phone_number(Number1, PhoneNumber2)
     end.
 
--spec maybe_update_dash_e911(knm_number:knm_number(), kz_json:object(), kz_json:object()) ->
-                                    kz_json:object().
-maybe_update_dash_e911(Number, Address, JObj) ->
+-spec maybe_update_e911(knm_number:knm_number(), kz_json:object(), kz_json:object()) ->
+                               kz_json:object().
+maybe_update_e911(Number, Address, JObj) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
         {'error', E} ->
@@ -175,36 +175,33 @@ update_e911(Number, Address, JObj) ->
     update_e911(Number, Address, JObj, DryRun).
 
 update_e911(_Number, Address, JObj, 'true') ->
-    kz_json:set_value(?DASH_KEY, Address, JObj);
+    kz_json:set_value(?KEY, Address, JObj);
 update_e911(Number, Address, JObj, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     Location = json_address_to_xml_location(Address),
     CallerName = kz_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Num, Location, CallerName) of
         {'provisioned', E911} ->
-            lager:debug("provisioned dash e911 address"),
-            kz_json:set_value(?DASH_KEY, E911, JObj);
+            lager:debug("provisioned address"),
+            kz_json:set_value(?KEY, E911, JObj);
         {'geocoded', E911} ->
             provision_geocoded(JObj, E911);
         {_E, Reason} ->
-            lager:debug("~s provisioning dash e911 address: ~p", [_E, Reason]),
+            lager:debug("~s provisioning address: ~p", [_E, Reason]),
             knm_errors:unspecified(Reason, Number)
     end.
 
--spec provision_geocoded(kz_json:object(), kz_json:object()) ->
-                                kz_json:object().
+-spec provision_geocoded(kz_json:object(), kz_json:object()) -> kz_json:object().
 provision_geocoded(JObj, E911) ->
-    lager:debug("added location to dash e911, attempting to provision new location"),
+    lager:debug("added location, attempting to provision new location"),
     case provision_location(kz_json:get_value(<<"location_id">>, E911)) of
-        'undefined' ->
-            lager:debug("provisioning attempt moved location to status: undefined"),
-            kz_json:set_value(?DASH_KEY, E911, JObj);
+        'undefined'=Status ->
+            lager:debug("provisioning attempt moved location to status: ~s", [Status]),
+            kz_json:set_value(?KEY, E911, JObj);
         Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-            kz_json:set_value(?DASH_KEY
-                             ,kz_json:set_value(<<"status">>, Status, E911)
-                             ,JObj
-                             )
+            NewE911 = kz_json:set_value(<<"status">>, Status, E911)
+            kz_json:set_value(?KEY, NewE911, JObj)
     end.
 
 %%--------------------------------------------------------------------
@@ -221,8 +218,7 @@ provision_geocoded(JObj, E911) ->
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
         {'ok', Response} -> parse_response(Response);
-        {'error', Reason} ->
-            {'error', kz_util:to_binary(Reason)}
+        {'error', Reason} -> {'error', kz_util:to_binary(Reason)}
     end.
 
 %% @private
@@ -262,8 +258,7 @@ add_location(Number, Location, CallerName) ->
             ],
     case emergency_provisioning_request('addLocation', Props) of
         {'ok', Response} -> parse_response(Response);
-        {'error', Reason} ->
-            {'error', kz_util:to_binary(Reason)}
+        {'error', Reason} -> {'error', kz_util:to_binary(Reason)}
     end.
 
 %%--------------------------------------------------------------------
@@ -290,22 +285,22 @@ provision_location(LocationId) ->
 -spec remove_number(knm_number:knm_number()) -> api_binary().
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    lager:debug("removing dash e911 number '~s'", [Num]),
+    lager:debug("removing from upstream '~s'", [Num]),
     Props = [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
-            lager:debug("removed number from dash e911"),
+            lager:debug("removed number from upstream"),
             <<"REMOVED">>;
         {'error', _E} ->
-            lager:debug("removed number from dash e911: ~p", [_E]),
+            lager:debug("removed number from upstream: ~p", [_E]),
             <<"REMOVED">>;
         {'ok', Response} ->
             case kz_util:get_xml_value("//URIStatus/code/text()", Response) of
                 <<"REMOVED">> = R ->
-                    lager:debug("removed number from dash e911"),
+                    lager:debug("removed number from upstream"),
                     R;
                 Else ->
-                    lager:debug("failed to remove number from dash e911: ~p", [Else]),
+                    lager:debug("failed to remove number from upstream: ~p", [Else]),
                     Else
             end
     end.
@@ -333,11 +328,11 @@ remove_number(Number) ->
                                             {'ok', xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
-    URL = list_to_binary([?DASH_EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
+    URL = list_to_binary([?EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, Props}]
                                 ,'xmerl_xml'
-                                ,[{'prolog', ?DASH_XML_PROLOG}]
+                                ,[{'prolog', ?XML_PROLOG}]
                                 )
             ),
     Headers = [{"Accept", "*/*"}
@@ -347,34 +342,34 @@ emergency_provisioning_request(Verb, Props) ->
     HTTPOptions = [{'ssl', [{'verify', 'verify_none'}]}
                   ,{'timeout', 180 * ?MILLISECONDS_IN_SECOND}
                   ,{'connect_timeout', 180 * ?MILLISECONDS_IN_SECOND}
-                  ,{'basic_auth', {?DASH_AUTH_USERNAME, ?DASH_AUTH_PASSWORD}}
+                  ,{'basic_auth', {?AUTH_USERNAME, ?AUTH_PASSWORD}}
                   ],
-    lager:debug("making ~s request to dash e911 ~s", [Verb, URL]),
-    ?DASH_DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
+    lager:debug("making ~s request to upstream ~s", [Verb, URL]),
+    ?DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
     case kz_http:post(kz_util:to_list(URL), Headers, Body, HTTPOptions) of
         {'ok', 401, _, _Response} ->
-            ?DASH_DEBUG("Response:~n401~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 401 (unauthenticated)"),
+            ?DEBUG("Response:~n401~n~s~n", [_Response]),
+            lager:debug("request error: 401 (unauthenticated)"),
             {'error', 'authentication'};
         {'ok', 403, _, _Response} ->
-            ?DASH_DEBUG("Response:~n403~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 403 (unauthorized)"),
+            ?DEBUG("Response:~n403~n~s~n", [_Response]),
+            lager:debug("request error: 403 (unauthorized)"),
             {'error', 'authorization'};
         {'ok', 404, _, _Response} ->
-            ?DASH_DEBUG("Response:~n404~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 404 (not found)"),
+            ?DEBUG("Response:~n404~n~s~n", [_Response]),
+            lager:debug("request error: 404 (not found)"),
             {'error', 'not_found'};
         {'ok', 500, _, _Response} ->
-            ?DASH_DEBUG("Response:~n500~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 500 (server error)"),
+            ?DEBUG("Response:~n500~n~s~n", [_Response]),
+            lager:debug("request error: 500 (server error)"),
             {'error', 'server_error'};
         {'ok', 503, _, _Response} ->
-            ?DASH_DEBUG("Response:~n503~n~s~n", [_Response]),
-            lager:debug("dash e911 request error: 503"),
+            ?DEBUG("Response:~n503~n~s~n", [_Response]),
+            lager:debug("request error: 503"),
             {'error', 'server_error'};
         {'ok', Code, _, Response} ->
-            ?DASH_DEBUG("Response:~n~p~n~s~n", [Code, Response]),
-            lager:debug("received response from dash e911"),
+            ?DEBUG("Response:~n~p~n~s~n", [Code, Response]),
+            lager:debug("received response from upstream"),
             try xmerl_scan:string(Response) of
                 {Xml, _} -> {'ok', Xml}
             catch
@@ -383,7 +378,7 @@ emergency_provisioning_request(Verb, Props) ->
                     {'error', 'empty_response'}
             end;
         {'error', _Reason} ->
-            lager:debug("dash e911 request error: ~p", [_Reason]),
+            lager:debug("request error: ~p", [_Reason]),
             {'error', 'unreachable'}
     end.
 
@@ -403,11 +398,11 @@ emergency_provisioning_request(Verb, Props) ->
 
 -spec json_address_to_xml_location(kz_json:object()) -> [xml_location()].
 json_address_to_xml_location(JObj) ->
-    Props = [{'address1', [kz_json:get_string_value(<<"street_address">>, JObj)]}
-            ,{'address2', [kz_json:get_string_value(<<"extended_address">>, JObj)]}
-            ,{'community', [kz_json:get_string_value(<<"locality">>, JObj)]}
-            ,{'state', [kz_json:get_string_value(<<"region">>, JObj)]}
-            ,{'postalcode', [kz_json:get_string_value(<<"postal_code">>, JObj)]}
+    Props = [{'address1', [kz_json:get_string_value(?E911_STREET1, JObj)]}
+            ,{'address2', [kz_json:get_string_value(?E911_STREET2, JObj)]}
+            ,{'community', [kz_json:get_string_value(?E911_CITY, JObj)]}
+            ,{'state', [kz_json:get_string_value(?E911_STATE, JObj)]}
+            ,{'postalcode', [kz_json:get_string_value(?E911_ZIP, JObj)]}
             ,{'type', ["ADDRESS"]}
             ],
     [{'location', [KV || {_, V}=KV <- Props, V =/= ['undefined']]}].
@@ -418,7 +413,7 @@ json_address_to_xml_location(JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec location_xml_to_json_address(list()) -> kz_json:object() | kz_json:objects().
+-spec location_xml_to_json_address(xml_el() | xml_els()) -> kz_json:object() | kz_json:objects().
 location_xml_to_json_address([]) ->
     kz_json:new();
 location_xml_to_json_address([Xml]) ->
@@ -427,19 +422,19 @@ location_xml_to_json_address(Xml) when is_list(Xml) ->
     [location_xml_to_json_address(X) || X <- Xml];
 location_xml_to_json_address(Xml) ->
     Props =
-        [{<<"street_address">>, kz_util:get_xml_value("address1/text()", Xml)}
-        ,{<<"extended_address">>, kz_util:get_xml_value("address2/text()", Xml)}
+        [{?E911_STREET1, kz_util:get_xml_value("address1/text()", Xml)}
+        ,{?E911_STREET2, kz_util:get_xml_value("address2/text()", Xml)}
         ,{<<"activated_time">>, kz_util:get_xml_value("activated_time/text()", Xml)}
         ,{<<"caller_name">>, kz_util:get_xml_value("callername/text()", Xml)}
         ,{<<"comments">>, kz_util:get_xml_value("comments/text()", Xml)}
-        ,{<<"locality">>, kz_util:get_xml_value("community/text()", Xml)}
+        ,{?E911_CITY, kz_util:get_xml_value("community/text()", Xml)}
         ,{<<"order_id">>, kz_util:get_xml_value("customerorderid/text()", Xml)}
         ,{<<"latitude">>, kz_util:get_xml_value("latitude/text()", Xml)}
         ,{<<"longitude">>, kz_util:get_xml_value("longitude/text()", Xml)}
         ,{<<"location_id">>, kz_util:get_xml_value("locationid/text()", Xml)}
         ,{<<"plus_four">>, kz_util:get_xml_value("plusfour/text()", Xml)}
-        ,{<<"postal_code">>, kz_util:get_xml_value("postalcode/text()", Xml)}
-        ,{<<"region">>, kz_util:get_xml_value("state/text()", Xml)}
+        ,{?E911_ZIP, kz_util:get_xml_value("postalcode/text()", Xml)}
+        ,{?E911_STATE, kz_util:get_xml_value("state/text()", Xml)}
         ,{<<"status">>, kz_util:get_xml_value("status/code/text()", Xml)}
         ,{<<"legacy_data">>, legacy_data_xml_to_json(xmerl_xpath:string("legacydata", Xml))}
         ],
