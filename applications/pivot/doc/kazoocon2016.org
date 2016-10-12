@@ -1,7 +1,7 @@
 #+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
 #+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
 #+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
-#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:t toc:nil todo:t |:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:nil toc:nil todo:t |:t
 #+TITLE: Pivot - Real-Time Call Control
 #+DATE: \today
 #+AUTHOR: James Aimonetti
@@ -12,12 +12,25 @@
 #+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
 #+STARTUP: beamer
 #+LaTeX_CLASS: beamer
-#+LaTeX_CLASS_OPTIONS: [bigger]
+#+LaTeX_CLASS_OPTIONS: [article,14pt]
 #+BEAMER_FRAME_LEVEL: 2
-#+BEAMER_THEME: Madrid
-#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+#+LATEX_HEADER: \usebackgroundtemplate%
+#+LATEX_HEADER:{%
+#+LATEX_HEADER:    \includegraphics[width=\paperwidth,height=\paperheight]{./images/default_slide.png}%
+#+LATEX_HEADER:}
 
 * Pivot
+#+BEGIN_LaTeX
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
+\begin{frame}
+\begin{center}
+\alert{PIVOT - REAL-TIME CALL CONTROL}
+\end{center}
+\end{frame}
+}
+#+END_LaTeX
+
 ** About Myself
 *** About Myself                                           :B_column:BMCOL:
     :PROPERTIES:
@@ -27,12 +40,13 @@
  - James Aimonetti
  - Kazoo Architect and Community at 2600Hz
  - mc_ on freenode
-*** Presenter                                                         :BMCOL:
+*** Presenter                                                       :BMCOL:
     :PROPERTIES:
     :BEAMER_col: 0.45
     :END:
-    [[./presenter_h280.jpg]]
-
+#+BEGIN_CENTER
+[[./images/presenter_h280.jpg]]
+#+END_CENTER
 ** Overview                                                        :B_frame:
 :PROPERTIES:
 :BEAMER_env: frame
@@ -43,7 +57,7 @@
 - Process the call against your business logic
 - Return Kazoo callflow JSON
 *** Flow
-[[./pivot_flow.png]]
+[[./images/pivot_flow.png]]
 *** Setting up Kazoo
 - create a callflow
 - set the pivot action as the child
@@ -62,4 +76,22 @@ Pivot will attempt to reach your server for calls to that callflow.
 #+BEGIN_CENTER
 Demo Time!
 #+END_CENTER
-** Build a thing
+** Build all the things
+*** Say something
+#+BEGIN_SRC php
+<?php header("content-type:application/json"); ?>
+{"module":"tts"
+ ,"data":{"text":"Hello caller"}
+}
+#+END_SRC
+* Thank You
+#+BEGIN_LaTeX
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
+\begin{frame}
+\begin{center}
+\alert{THANK YOU}
+\end{center}
+\end{frame}
+}
+#+END_LaTeX
