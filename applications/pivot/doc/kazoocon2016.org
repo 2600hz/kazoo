@@ -53,12 +53,14 @@ Presented by: James Aimonetti
 ** About Myself
 *** About Myself                                           :B_column:BMCOL:
     :PROPERTIES:
-    :BEAMER_col: 0.45
+    :BEAMER_col: 0.5
     :BEAMER_env: column
     :END:
- - James Aimonetti
- - Kazoo Architect and Community at 2600Hz
- - mc_ on freenode
+- James Aimonetti
+  - ~Eye-Moe-Net-Tea~
+  - Commit to memory Patrick!
+- Kazoo Architect and Community at 2600Hz
+- mc_ on freenode
 *** Presenter                                                       :BMCOL:
     :PROPERTIES:
     :BEAMER_col: 0.45
