@@ -79,13 +79,16 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-build-dev-release: $(RELX) clean-release rel/relx.config rel/vm.args
+build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
 	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+rel/relx.config-dev: export KAZOO_DEV='true'
+rel/relx.config-dev: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh

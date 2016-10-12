@@ -4,15 +4,28 @@ Apps = [list_to_atom(App)  || "applications/"++App = Dir <- filelib:wildcard("ap
 Core = [list_to_atom(App)  ||         "core/"++App = Dir <- filelib:wildcard(        "core/*"), filelib:is_dir(Dir)],
 Deps = [list_to_atom(App)  ||         "deps/"++App = Dir <- filelib:wildcard(        "deps/*"), filelib:is_dir(Dir)],
 
-Filter = ['rabbitmq_codegen'
-         ,'.erlang.mk'
-         ,'.settings'
-         ,'skel'
-         ,'parse_trans'
-         ,'fs_sync'
-         ,'fs_event'
-         ,'reloader'
-         ],
+Filter = 
+case os:getenv("KAZOO_DEV") of
+    false ->
+        [
+         'rabbitmq_codegen'
+        ,'.erlang.mk'
+        ,'.settings'
+        ,'skel'
+        ,'parse_trans'
+        ,'fs_sync'
+        ,'fs_event'
+        ,'reloader'
+        ];
+    _ ->
+        [
+         'rabbitmq_codegen'
+        ,'.erlang.mk'
+        ,'.settings'
+        ,'skel'
+        ,'parse_trans'
+        ]
+end,
 Base = lists:filter(fun(A) -> not lists:member(A, Filter) end, Apps ++ Core ++ Deps),
 Based = [{A, 'load'} || A <- lists:sort(Base)],
 Included = [runtime_tools
