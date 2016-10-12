@@ -118,16 +118,14 @@ maybe_update_e911(Number) ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            Number1 = knm_services:activate_feature(Number, ?KEY),
-            UpdatedFeatures = maybe_update_e911(Number1, E911, Features),
-            PhoneNumber1 = knm_number:phone_number(Number1),
-            PhoneNumber1 = knm_phone_number:set_features(PhoneNumber1, UpdatedFeatures),
-            knm_number:set_phone_number(Number1, PhoneNumber2)
+            N = knm_services:activate_feature(Number, ?KEY),
+            NewFeature = maybe_update_e911(N, E911),
+            PN = knm_phone_number:set_feature(knm_number:phone_number(N), ?KEY, NewFeature),
+            knm_number:set_phone_number(N, PN)
     end.
 
--spec maybe_update_e911(knm_number:knm_number(), kz_json:object(), kz_json:object()) ->
-                               kz_json:object().
-maybe_update_e911(Number, Address, JObj) ->
+-spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
+maybe_update_e911(Number, Address) ->
     Location = json_address_to_xml_location(Address),
     case is_valid_location(Location) of
         {'error', E} ->
@@ -142,10 +140,10 @@ maybe_update_e911(Number, Address, JObj) ->
             knm_errors:invalid(Number, Error);
         {'provisioned', _} ->
             lager:debug("location seems already provisioned"),
-            update_e911(Number, Address, JObj);
+            update_e911(Number, Address);
         {'geocoded', [_Loc]} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Number, Address, JObj);
+            update_e911(Number, Address);
         {'geocoded', [_|_]=Addresses} ->
             lager:warning("location could correspond to multiple addresses"),
             Msg = <<"more than one address found">>,
@@ -157,7 +155,7 @@ maybe_update_e911(Number, Address, JObj) ->
             knm_errors:multiple_choice(Number, Update);
         {'geocoded', _Loc} ->
             lager:debug("location seems geocoded to only one address"),
-            update_e911(Number, Address, JObj)
+            update_e911(Number, Address)
     end.
 
 %%--------------------------------------------------------------------
@@ -166,42 +164,38 @@ maybe_update_e911(Number, Address, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_e911(knm_number:knm_number(), kz_json:object(), kz_json:object()) ->
-                         kz_json:object().
--spec update_e911(knm_number:knm_number(), kz_json:object(), kz_json:object(), boolean()) ->
-                         kz_json:object().
-update_e911(Number, Address, JObj) ->
+-spec update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
+-spec update_e911(knm_number:knm_number(), kz_json:object(), boolean()) -> kz_json:object().
+update_e911(Number, Address) ->
     DryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
-    update_e911(Number, Address, JObj, DryRun).
+    update_e911(Number, Address, DryRun).
 
-update_e911(_Number, Address, JObj, 'true') ->
-    kz_json:set_value(?KEY, Address, JObj);
-update_e911(Number, Address, JObj, 'false') ->
+update_e911(_Number, Address, 'true') -> Address;
+update_e911(Number, Address, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     Location = json_address_to_xml_location(Address),
     CallerName = kz_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
     case add_location(Num, Location, CallerName) of
         {'provisioned', E911} ->
             lager:debug("provisioned address"),
-            kz_json:set_value(?KEY, E911, JObj);
+            E911;
         {'geocoded', E911} ->
-            provision_geocoded(JObj, E911);
+            provision_geocoded(E911);
         {_E, Reason} ->
             lager:debug("~s provisioning address: ~p", [_E, Reason]),
             knm_errors:unspecified(Reason, Number)
     end.
 
--spec provision_geocoded(kz_json:object(), kz_json:object()) -> kz_json:object().
-provision_geocoded(JObj, E911) ->
+-spec provision_geocoded(kz_json:object()) -> kz_json:object().
+provision_geocoded(E911) ->
     lager:debug("added location, attempting to provision new location"),
     case provision_location(kz_json:get_value(<<"location_id">>, E911)) of
         'undefined'=Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-            kz_json:set_value(?KEY, E911, JObj);
+            E911;
         Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
-            NewE911 = kz_json:set_value(<<"status">>, Status, E911)
-            kz_json:set_value(?KEY, NewE911, JObj)
+            kz_json:set_value(<<"status">>, Status, E911)
     end.
 
 %%--------------------------------------------------------------------
