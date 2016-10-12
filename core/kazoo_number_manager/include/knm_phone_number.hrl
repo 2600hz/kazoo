@@ -57,6 +57,7 @@
 -define(EMERGENCY_SERVICES_KEY, <<"e911">>).
 -define(VITELITY_KEY, <<"vitelity_e911">>).
 -define(DASH_KEY, <<"dash_e911">>).
+-define(TELNYX_KEY, <<"telnyx_e911">>).
 
 -define(CARRIER_INUM, <<"knm_inum">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
