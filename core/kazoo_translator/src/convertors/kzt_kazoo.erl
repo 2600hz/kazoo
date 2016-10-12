@@ -90,5 +90,5 @@ req_params(Call) ->
       ,{<<"Transcription-Text">>, kzt_util:get_transcription_text(Call)}
       ,{<<"Transcription-Status">>, kzt_util:get_transcription_status(Call)}
       ,{<<"Transcription-Url">>, kzt_util:get_transcription_url(Call)}
-      | kz_json:recursive_to_proplist(kapps_call:custom_kvs(Call))
+       | kz_json:recursive_to_proplist(kapps_call:custom_kvs(Call))
       ]).
