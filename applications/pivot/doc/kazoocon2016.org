@@ -135,7 +135,7 @@ Demo Time!
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-- Uses [[https://freeswitch.org/confluence/display/FREESWITCH/mod_flite][FreeSWITCH mod_flite]] by default
+- Uses [[https://freeswitch.org/confluence/display/FREESWITCH/mod_flite][FreeSWITCH =mod_flite=]] by default
 - Supports [[http://www.ispeech.org/text.to.speech][iSpeech]] and [[https://voicefabric.ru/][VoiceFabric]] as alternatives
 #+BEGIN_LaTeX
 \begin{lstlisting}[language=php]
@@ -164,7 +164,7 @@ if ( ! empty($caller_id_name)
 } else {
     $caller_id_number = $_REQUEST['Caller-ID-Number'];
     $user = db_user_lookup($caller_id_number);
-    $name = user_name($user);
+    $name = user_first_name($user);
 }
 ?>
 {"module":"tts"
@@ -235,17 +235,17 @@ First, collect the DTMF
 {"module":"tts"
  ,"data":{"text":"Please enter up to four digits."}
  ,"children":{
-     "_":{
-         "module":"collect_dtmf"
-         ,"data":{"max_digits":4, "collection_name":"custom_name"}
-         ,"children":{
-             "_":{
-                 "module":"pivot"
-                 ,"data":{"voice_url":"http://pivot.your.company.com/collected.php"}
-                 ,"children":{}
-             }
-         }
+   "_":{
+     "module":"collect_dtmf"
+     ,"data":{"max_digits":4, "collection_name":"custom_name"}
+     ,"children":{
+       "_":{
+           "module":"pivot"
+           ,"data":{"voice_url":"http://you.com/collected.php"}
+           ,"children":{}
+       }
      }
+   }
  }
 }
 \end{lstlisting}
@@ -254,11 +254,10 @@ First, collect the DTMF
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
-A followup HTTP request will be sent to =http://pivot.your.company.com/collected.php= with ='Digits[custom_name]=1234'= in the request.
-
-DTMF can either come as a basic string (if no custom name is used) or an array.
-
-Let's see how to process them.
+A followup HTTP request will be sent to =http://pivot.your.company.com/collected.php=
+- Request includes =Digits[custom_name]=1234=
+- DTMF can either come as a basic string (if no custom name is used) or an array.
+- Let's see how to process them.
 ** Collecting DTMF                                                 :B_frame:
 :PROPERTIES:
 :BEAMER_env: frame
