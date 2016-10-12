@@ -1725,7 +1725,7 @@ maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId,
                     {'ok', _} = couch_mgr:del_doc(whapps_call:account_db(Call), MediaId);
                 'save' ->
                     lager:debug("attachment was sent out via notification, saving media file"),
-                    update_folder(?VM_FOLDER_SAVED, MediaId, Box, Call)
+                    save_meta(Length, Box, Call, MediaId, ?VM_FOLDER_SAVED)
             end;
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [wh_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
@@ -1734,17 +1734,21 @@ maybe_save_meta(Length, #mailbox{after_notify_action=Action}=Box, Call, MediaId,
 
 
 -spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary()) -> 'ok'.
-save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId) ->
+-spec save_meta(pos_integer(), mailbox(), whapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+save_meta(Length, Box, Call, MediaId) ->
+    save_meta(Length, Box, Call, MediaId, ?VM_FOLDER_NEW).
+
+save_meta(Length, #mailbox{mailbox_id=Id}, Call, MediaId, Folder) ->
     Timestamp = new_timestamp(),
-    Metadata = create_metadata_object(Length, Call, MediaId, Timestamp),
+    Metadata = create_metadata_object(Length, Call, MediaId, Timestamp, Folder),
     {'ok', _BoxJObj} = save_metadata(Metadata, whapps_call:account_db(Call), Id),
     lager:debug("stored voicemail metadata for ~s", [MediaId]),
 
     publish_voicemail_saved(Length, Id, Call, MediaId, Timestamp).
 
--spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), gregorian_seconds()) ->
+-spec create_metadata_object(pos_integer(), whapps_call:call(), ne_binary(), gregorian_seconds(), ne_binary()) ->
                                     wh_json:object().
-create_metadata_object(Length, Call, MediaId, Timestamp) ->
+create_metadata_object(Length, Call, MediaId, Timestamp, Folder) ->
     ExternalMediaUrl = case couch_mgr:open_doc(whapps_call:account_db(Call), MediaId) of
                            {'ok', JObj} -> wh_json:get_value(<<"external_media_url">>, JObj);
                            {'error', _} -> 'undefined'
@@ -1758,7 +1762,7 @@ create_metadata_object(Length, Call, MediaId, Timestamp) ->
          ,{<<"caller_id_number">>, get_caller_id_number(Call)}
          ,{<<"caller_id_name">>, get_caller_id_name(Call)}
          ,{<<"call_id">>, whapps_call:call_id(Call)}
-         ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
+         ,{?VM_KEY_FOLDER, Folder}
          ,{<<"length">>, Length}
          ,{?KEY_MEDIA_ID, MediaId}
          ,{<<"external_media_url">>, ExternalMediaUrl}
