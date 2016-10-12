@@ -73,7 +73,13 @@
         ,merge_left/2, merge_right/2
         ]).
 
--export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
+-export([from_list/1
+        ,from_list_recursive/1
+        ,merge_jobjs/2
+        ]).
+
+-export([recursive_from_list/1]).
+
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
@@ -374,6 +380,25 @@ merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 %% @doc Only a top-level merge.
 %% Merges JObj1 into JObj2
 %% @end
+-spec recursive_from_list(json_proplist() | json_array()) -> object() | json_array().
+-spec recursive_from_list(json_proplist() | json_array(), json_proplist()) ->
+                                 json_proplist() | json_array().
+recursive_from_list([]) -> from_list([]);
+recursive_from_list(L) when is_list(L) ->
+    %% If no keys are defined, it is a JSON array
+    case props:get_keys(L) of
+        [] -> recursive_from_list(L, []);
+        _ -> ?JSON_WRAPPER(recursive_from_list(L, []))
+    end.
+
+recursive_from_list([], Acc) -> lists:reverse(Acc);
+recursive_from_list([{K,V}|T], Acc) when is_list(V) ->
+    recursive_from_list(T, [{K, recursive_from_list(V)} | Acc]);
+recursive_from_list([H|T], Acc) ->
+    recursive_from_list(T, [H | Acc]).
+
+%% only a top-level merge
+%% merges JObj1 into JObj2
 -spec merge_jobjs(object(), object()) -> object().
 merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->

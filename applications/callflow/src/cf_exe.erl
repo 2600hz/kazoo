@@ -673,7 +673,10 @@ launch_cf_module(#state{call=Call
                        ,cf_module_pid=OldPidRef
                        }=State) ->
     Module = <<"cf_", (kz_json:get_ne_binary_value(<<"module">>, Flow))/binary>>,
-    Data = kz_json:get_json_value(<<"data">>, Flow, kz_json:new()),
+    Data = apply_dynamic_values(kz_json:get_value(<<"variables">>, Flow, kz_json:new())
+                               ,kz_json:get_json_value(<<"data">>, Flow, kz_json:new())
+                               ,kapps_call:custom_kvs(Call)
+                               ),
 
     {PidRef, Action} =
         case maybe_start_cf_module(Module, Data, Call) of
@@ -692,8 +695,45 @@ launch_cf_module(#state{call=Call
                ,call=kapps_call:exec(Routines, Call)
                }.
 
--spec maybe_start_cf_module(kz_term:ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                   {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
+-spec apply_dynamic_values(kz_json:object(), kz_json:object(), kz_json:object()) ->
+                                  kz_json:object().
+-spec apply_dynamic_values(kz_json:keys(), kz_json:object(), kz_json:object(), kz_json:object()) ->
+                                  kz_json:object().
+apply_dynamic_values(Variables, Data, KVs) ->
+    apply_dynamic_values(kz_json:get_keys(Variables), Variables, Data, KVs).
+
+apply_dynamic_values([], _, Data, _) -> Data;
+apply_dynamic_values([DataKey|Keys], Variables, Data, KVs) ->
+    case dynamic_value_variable_reference(DataKey, Data) of
+        'false' ->
+            lager:debug("dynamic value key '~s' not present in cf data, ignored", [DataKey]),
+            apply_dynamic_values(Keys, Variables, Data, KVs);
+        'true' ->
+            %% The KV that should replace the DataKey value in Data
+            VariableReference = kz_json:get_value(DataKey, Variables),
+            apply_dynamic_values(Keys
+                                ,Variables
+                                ,apply_dynamic_value(VariableReference, DataKey, Data, KVs)
+                                ,KVs)
+    end.
+
+-spec dynamic_value_variable_reference(kz_json:key(), kz_json:object()) -> boolean().
+dynamic_value_variable_reference(Key, Data) ->
+    kz_json:get_value(Key, Data) =/= 'undefined'.
+
+-spec apply_dynamic_value(kz_json:key(), kz_json:key(), kz_json:object(), kz_json:object()) ->
+                                 kz_json:object().
+apply_dynamic_value(VariableReference, DataKey, Data, KVs) ->
+    case kz_json:get_value(VariableReference, KVs) of
+        'undefined' ->
+            lager:debug("KV lookup key '~s' not set in KVs", [VariableReference]),
+            Data;
+        Value -> kz_json:set_value(DataKey, Value, Data)
+    end.
+
+-spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
+                                   {'undefined', atom()} |
+                                   {kz_term:pid_ref(), atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_term:to_atom(ModuleBin, 'true'),
     case kz_module:is_exported(CFModule, 'handle', 2) of

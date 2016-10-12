@@ -120,6 +120,10 @@
         ,kvs_update_counter/3
         ]).
 
+-export([custom_kv/2, custom_kvs/1
+        ,set_custom_kvs/2
+        ]).
+
 -export([flush/0
         ,cache/1, cache/2, cache/3
         ,retrieve/1, retrieve/2
@@ -1327,6 +1331,100 @@ kvs_update(Key, Fun, Initial, #kapps_call{kvs=Dict}=Call) ->
 -spec kvs_update_counter(any(), number(), call()) -> call().
 kvs_update_counter(Key, Number, #kapps_call{kvs=Dict}=Call) ->
     Call#kapps_call{kvs=orddict:update_counter(kz_term:to_binary(Key), Number, Dict)}.
+
+-define(CUSTOM_KVS_COLLECTION, <<"Custom-KVs">>).
+
+-spec custom_kv(kz_json:key(), call()) -> kz_json:api_json_term().
+custom_kv(Key, Call) ->
+    Collection = custom_kvs(Call),
+    kz_json:get_value(Key, Collection, Call).
+
+-spec custom_kvs(call()) -> kz_json:object().
+custom_kvs(Call) ->
+    kvs_fetch(?CUSTOM_KVS_COLLECTION, kz_json:new(), Call).
+
+-spec set_custom_kvs(kz_json:object(), call()) -> call().
+set_custom_kvs(JObj, Call) ->
+    set_custom_kvs_fold(kz_json:get_keys(JObj), JObj, Call).
+
+-spec set_custom_kvs_fold(kz_json:keys(), kz_json:object(), call()) -> call().
+set_custom_kvs_fold([], _JObj, Call) -> Call;
+set_custom_kvs_fold([Key|Keys], JObj, Call) ->
+    case custom_kv_evaluate(kz_json:get_value(Key, JObj), Call) of
+        {'error', {EKey, EMsg}} ->
+            lager:error("custom kv evaluate error in key '~s': ~s", [EKey, EMsg]),
+            set_custom_kvs_fold(Keys, JObj, Call);
+        Value ->
+            Call1 = set_custom_kvs_collection(Key, Value, Call),
+            set_custom_kvs_fold(Keys, JObj, Call1)
+    end.
+
+-spec set_custom_kvs_collection(kz_json:key(), kz_json:json_term(), call()) ->
+                                       call().
+set_custom_kvs_collection(Key, Value, Call) ->
+    OldCollection = kvs_fetch(?CUSTOM_KVS_COLLECTION, kz_json:new(), Call),
+    NewCollection = kz_json:set_value(Key, Value, OldCollection),
+    kvs_store(?CUSTOM_KVS_COLLECTION, NewCollection, Call).
+
+-spec custom_kv_evaluate(kz_json:json_term(), call()) ->
+                                kz_json:json_term() |
+                                {'error', {kz_term:ne_binary(), kz_term:ne_binary()}}.
+custom_kv_evaluate(MaybeKey, Call) ->
+    case is_custom_kv_digits_key(MaybeKey) of
+        {'error', _}=E -> E;
+        'false' -> custom_kv_evaluate2(MaybeKey, Call);
+        CollectionName ->
+            case get_dtmf_collection(CollectionName, Call) of
+                'undefined' -> <<>>;
+                DTMF -> DTMF
+            end
+    end.
+
+%% Allow a variable to be assigned the current value of another variable
+-spec custom_kv_evaluate2(kz_json:json_term(), call()) -> kz_json:json_term().
+custom_kv_evaluate2(<<"$", Key/binary>>, Call) ->
+    custom_kv(Key, Call);
+custom_kv_evaluate2(Value, Call) ->
+    custom_kv_evaluate_ui(Value, Call).
+
+-spec custom_kv_evaluate_ui(kz_json:json_term(), call()) ->
+                                   kz_json:json_term().
+-spec custom_kv_evaluate_ui(kz_json:keys(), kz_json:object(), call()) ->
+                                   kz_json:json_term().
+custom_kv_evaluate_ui(Value, Call) ->
+    case kz_json:is_json_object(Value) of
+        'true' -> custom_kv_evaluate_ui(kz_json:get_keys(Value), Value, Call);
+        'false' -> Value
+    end.
+
+%% When assigning a custom KV in Kazoo-UI, a type field is used to create a
+%% dropdown. In this case, use the value field
+custom_kv_evaluate_ui([<<"type">>, <<"value">>], Value, Call) ->
+    KeyToCheck = kz_json:get_value(<<"value">>, Value),
+    kz_json:set_value(<<"value">>, custom_kv_evaluate(KeyToCheck, Call), Value);
+custom_kv_evaluate_ui(_, Value, _) ->
+    Value.
+
+%% Allow a variable to be assigned the value of a DTMF collection
+-spec is_custom_kv_digits_key(kz_json:json_term()) ->
+                                     kz_term:ne_binary() | 'false' |
+                                     {'error', {kz_term:ne_binary(), kz_term:ne_binary()}}.
+is_custom_kv_digits_key(<<"$_digits">>) ->
+    <<"default">>;
+is_custom_kv_digits_key(<<"$_digits[", CollectionName/binary>> = Key)
+                               when byte_size(CollectionName) > 0 ->
+    case binary:part(CollectionName, byte_size(CollectionName), -1) of
+        <<"]">> -> binary:part(CollectionName, 0, byte_size(CollectionName) - 1);
+        _ -> custom_kv_digits_key_eval_error(Key)
+    end;
+is_custom_kv_digits_key(<<"$_digits[">> = Key) ->
+    custom_kv_digits_key_eval_error(Key);
+is_custom_kv_digits_key(_) -> 'false'.
+
+-spec custom_kv_digits_key_eval_error(kz_term:ne_binary()) ->
+                                             {'error', {kz_term:ne_binary(), kz_term:ne_binary()}}.
+custom_kv_digits_key_eval_error(Key) ->
+    {'error', {Key, <<"invalid format for digits lookup key">>}}.
 
 -spec set_dtmf_collection(kz_term:api_binary(), call()) -> call().
 set_dtmf_collection(DTMF, Call) ->
