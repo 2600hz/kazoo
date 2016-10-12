@@ -67,5 +67,11 @@
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 
+-define(E911_STREET1, <<"street_address">>).
+-define(E911_STREET2, <<"extended_address">>).
+-define(E911_CITY, <<"locality">>).
+-define(E911_STATE, <<"region">>).
+-define(E911_ZIP, <<"postal_code">>).
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.
