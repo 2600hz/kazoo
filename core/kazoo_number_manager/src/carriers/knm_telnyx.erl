@@ -22,17 +22,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
 
--define(DEBUG, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"debug">>, 'false')).
--define(DEBUG_FILE, "/tmp/telnyx.json").
--define(DEBUG_WRITE(Format, Args),
-        _ = ?DEBUG
-        andalso file:write_file(?DEBUG_FILE, io_lib:format(Format, Args))
-       ).
--define(DEBUG_APPEND(Format, Args),
-        _ = ?DEBUG
-        andalso file:write_file(?DEBUG_FILE, io_lib:format(Format, Args), ['append'])
-       ).
-
 -define(IS_SANDBOX_PROVISIONING_TRUE,
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
 -define(IS_PROVISIONING_ENABLED,

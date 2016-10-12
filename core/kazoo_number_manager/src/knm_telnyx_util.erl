@@ -15,7 +15,20 @@
 
 -include("knm.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
+
 -define(CARRIER, 'knm_telnyx').
+
+-define(DEBUG, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"debug">>, 'false')).
+-define(DEBUG_FILE, "/tmp/telnyx.json").
+-define(DEBUG_WRITE(Format, Args),
+        _ = ?DEBUG
+        andalso file:write_file(?DEBUG_FILE, io_lib:format(Format, Args))
+       ).
+-define(DEBUG_APPEND(Format, Args),
+        _ = ?DEBUG
+        andalso file:write_file(?DEBUG_FILE, io_lib:format(Format, Args), ['append'])
+       ).
 
 -define(USER, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"user">>)).
 -define(TOKEN, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"token">>)).
