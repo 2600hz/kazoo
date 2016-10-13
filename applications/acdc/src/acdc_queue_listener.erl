@@ -612,8 +612,8 @@ send_member_call_failure(Q, AccountId, QueueId, CallId, MyId, AgentId, Reason) -
 -spec publish_queue_member_remove(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 publish_queue_member_remove(AccountId, QueueId, CallId) ->
     Prop = [{<<"Account-ID">>, AccountId}
-            ,{<<"Queue-ID">>, QueueId}
-            ,{<<"Call-ID">>, CallId}
+           ,{<<"Queue-ID">>, QueueId}
+           ,{<<"Call-ID">>, CallId}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_acdc_queue:publish_queue_member_remove(Prop).

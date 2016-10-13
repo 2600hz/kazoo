@@ -562,8 +562,8 @@ queue_member_routing_key(AcctId, QID) ->
 -define(QUEUE_MEMBER_ADD_TYPES, []).
 
 -spec queue_member_add(api_terms()) ->
-                          {'ok', iolist()} |
-                          {'error', string()}.
+                              {'ok', iolist()} |
+                              {'error', string()}.
 queue_member_add(Prop) when is_list(Prop) ->
     case queue_member_add_v(Prop) of
         'true' -> kz_api:build_message(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?OPTIONAL_QUEUE_MEMBER_ADD_HEADERS);
