@@ -764,8 +764,8 @@ publish_originate_uuid(ServerId, UUID, JObj, CtrlQueue) ->
 
 -spec maybe_send_originate_uuid(created_uuid(), pid(), state()) -> 'ok'.
 maybe_send_originate_uuid({_, UUID}, Pid, #state{server_id=ServerId
-                                                   ,originate_req=JObj
-                                                   }) ->
+                                                ,originate_req=JObj
+                                                }) ->
     CtlQ = gen_listener:queue_name(Pid),
     publish_originate_uuid(ServerId, UUID, JObj, CtlQ).
 
