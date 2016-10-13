@@ -768,6 +768,8 @@ maybe_send_originate_uuid({'fs', UUID}, Pid, #state{server_id=ServerId
                                                    }) ->
     CtlQ = gen_listener:queue_name(Pid),
     publish_originate_uuid(ServerId, UUID, JObj, CtlQ);
+maybe_send_originate_uuid({'api', UUID}, Pid, State) ->
+    maybe_send_originate_uuid({'fs', UUID}, Pid, State);
 maybe_send_originate_uuid(_, _, _) -> 'ok'.
 
 -spec find_originate_timeout(kz_json:object()) -> pos_integer().
