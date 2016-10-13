@@ -35,6 +35,7 @@
 %%% API
 %%%===================================================================
 init() ->
+    _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
     _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, 'crossbar', "views/resources.json"),
 
