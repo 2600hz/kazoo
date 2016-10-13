@@ -10,7 +10,6 @@
 %%%-------------------------------------------------------------------
 -module(knm_telnyx_util).
 
--export([creds/0]).
 -export([req/2, req/3]).
 
 -include("knm.hrl").
@@ -39,10 +38,6 @@
 -define(SHOULD_KEEP_BEST_EFFORT,
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')).
 
-
--spec creds() -> {ne_binary(), ne_binary()}.
-creds() ->
-    {?USER, ?TOKEN}.
 
 
 -spec req(atom(), [nonempty_string()]) -> kz_json:object().
@@ -82,10 +77,9 @@ req('post'=_Method, Path, JObj) ->
     rep(Resp).
 
 http_headers(BodyJObj) ->
-    {User, Token} = knm_telnyx_util:creds(),
     [{"Accept", "application/json"}
-    ,{"x-api-user", binary_to_list(User)}
-    ,{"x-api-token", binary_to_list(Token)}
+    ,{"x-api-user", binary_to_list(?USER)}
+    ,{"x-api-token", binary_to_list(?TOKEN)}
     ,{"User-Agent", ?KNM_USER_AGENT}
      | [{"Content-Type", "application/json"} || not kz_json:is_empty(BodyJObj)]
     ].

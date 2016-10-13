@@ -184,7 +184,7 @@ update_e911(Number, AddressJObj) ->
                             {'error', ne_binary() | any()}.
 create_address(AddressJObj) ->
     Body = e911_address(AddressJObj),
-    try knm_telnyz_util:req('post', ["e911_addresses"], Body) of
+    try knm_telnyx_util:req('post', ["e911_addresses"], Body) of
         Rep ->
             %% Telnyx has at least 2 different ways of returning errors:
             case 'false' =/= kz_json:get_ne_binary_value(<<"success">>, Rep)
@@ -245,7 +245,7 @@ e911_address(JObj) ->
 -spec cleanse(api_ne_binary()) -> api_binary().
 cleanse('undefined') -> 'undefined';
 cleanse(NEBin) ->
-    Upper = kz_json:to_upper_binary(NEBin),
+    Upper = kz_util:to_upper_binary(NEBin),
     << <<C>> || <<C>> <= Upper, is_ALnum_or_space(C)>>.
 
 -spec is_ALnum_or_space(char()) -> boolean().

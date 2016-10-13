@@ -87,7 +87,7 @@ acquire_number(Number) ->
             Num = knm_phone_number:number(PhoneNumber),
             Req = kz_json:from_list([{<<"requested_numbers">>, [Num]}
                                     ]),
-            Rep = knm_telny_util:req('post', ["number_orders"], Req),
+            Rep = knm_telnyx_util:req('post', ["number_orders"], Req),
             case kz_json:get_ne_binary_value(<<"id">>, Rep) of
                 'undefined' ->
                     lager:debug("order failure: ~s", [kz_json:encode(Rep)]),
@@ -144,7 +144,7 @@ numbers(SearchId, Options) ->
     Path = ["number_searches", SearchId],
     AccountId = knm_carriers:account_id(Options),
     [Number
-     || Data <- kz_json:get_value(<<"result">>, knm_telnyx_urtil:req('get', Path)),
+     || Data <- kz_json:get_value(<<"result">>, knm_telnyx_util:req('get', Path)),
         Num <- [kz_json:get_ne_binary_value(<<"number_e164">>, Data)],
         {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
     ].
