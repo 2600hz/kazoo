@@ -1,6 +1,35 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "phone_numbers",
+    "definitions": {
+        "basic_e911": {
+            "description": "Basic E911 properties",
+            "properties": {
+                "extended_address": {
+                    "description": "The suit/floor/apt. address where the number is in service",
+                    "type": "string"
+                },
+                "locality": {
+                    "description": "The locality (city) where the number is in service",
+                    "type": "string"
+                },
+                "postal_code": {
+                    "description": "The zip/postal code where the number is in service",
+                    "type": "string"
+                },
+                "region": {
+                    "description": "The region (state) where the number is in service",
+                    "type": "string"
+                },
+                "required": [],
+                "street_address": {
+                    "description": "The street address where the number is in service",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
     "description": "Schema for a number",
     "properties": {
         "cnam": {
@@ -17,38 +46,8 @@
             },
             "type": "object"
         },
-        "definitions": {
-            "basic_e911": {
-                "description": "Basic E911 properties",
-                "properties": {
-                    "extended_address": {
-                        "description": "The suit/floor/apt. address where the number is in service",
-                        "type": "string"
-                    },
-                    "locality": {
-                        "description": "The locality (city) where the number is in service",
-                        "type": "string"
-                    },
-                    "postal_code": {
-                        "description": "The zip/postal code where the number is in service",
-                        "type": "string"
-                    },
-                    "region": {
-                        "description": "The region (state) where the number is in service",
-                        "type": "string"
-                    },
-                    "street_address": {
-                        "description": "The street address where the number is in service",
-                        "type": "string"
-                    }
-                },
-                "required": [],
-                "type": "object"
-            }
-        },
-        "oneOf": {
-            "dash_e911": {
-                "$ref": "#/definitions/basic_e911",
+        "dash_e911": {
+            "properties": {
                 "activated_time": {
                     "description": "The time stamp e911 was provisioned",
                     "type": "string"
@@ -96,6 +95,7 @@
                     "description": "The extended zip/postal code where the number is in service",
                     "type": "string"
                 },
+                "required": [],
                 "status": {
                     "description": "The e911 provisioning system status for this service address",
                     "enum": [
@@ -106,14 +106,10 @@
                         "ERROR"
                     ],
                     "type": "string"
-                }
+                },
+                "type": "object"
             },
-            "telnyx_e911": {
-                "$ref": "#/definitions/basic_e911"
-            },
-            "vitelity_e911": {
-                "$ref": "#/definitions/basic_e911"
-            }
+            "type": "object"
         },
         "porting": {
             "description": "Porting (in) information for the phone number",
@@ -177,7 +173,12 @@
             },
             "type": "object"
         },
-        "required": []
+        "telnyx_e911": {
+            "$ref": "#/definitions/basic_e911"
+        },
+        "vitelity_e911": {
+            "$ref": "#/definitions/basic_e911"
+        }
     },
     "type": "object"
 }
