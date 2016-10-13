@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_stats).
 -behaviour(gen_listener).

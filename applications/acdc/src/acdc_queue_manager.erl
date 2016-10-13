@@ -9,6 +9,7 @@
 %%% @end
 %%% @contributors
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_queue_manager).
 -behaviour(gen_listener).
@@ -16,8 +17,11 @@
 %% API
 -export([start_link/2, start_link/3
         ,handle_member_call/2
+        ,handle_member_call_success/2
         ,handle_member_call_cancel/2
         ,handle_agent_change/2
+        ,handle_queue_member_add/2
+        ,handle_queue_member_remove/2
         ,are_agents_available/1
         ,handle_config_change/2
         ,should_ignore_member_call/3, should_ignore_member_call/4
@@ -41,32 +45,18 @@
         ]).
 
 -include("acdc.hrl").
+-include("acdc_queue_manager.hrl").
 
 -define(SERVER, ?MODULE).
-
-%% rr :: Round Robin
-%% mi :: Most Idle
--type queue_strategy() :: 'rr' | 'mi'.
--type queue_strategy_state() :: queue:queue() | ne_binaries().
-
--record(state, {ignored_member_calls = dict:new() :: dict:dict()
-               ,account_id :: api_binary()
-               ,queue_id :: api_binary()
-               ,supervisor :: pid()
-               ,strategy = 'rr' :: queue_strategy() % round-robin | most-idle
-               ,strategy_state :: queue_strategy_state() % based on the strategy
-               ,known_agents = dict:new() :: dict:dict() % how many agent processes are available {AgentId, Count}
-               ,enter_when_empty = 'true' :: boolean() % allow caller into queue if no agents are logged in
-               ,moh :: api_binary()
-               }).
--type mgr_state() :: #state{}.
 
 -define(BINDINGS(A, Q), [{'conf', [{'type', <<"queue">>}
                                   ,{'db', kz_util:format_account_id(A, 'encoded')}
                                   ,{'id', Q}
                                   ,'federate'
                                   ]}
-                        ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change']}
+                        ,{'acdc_queue', [{'restrict_to', ['stats_req', 'agent_change'
+                                                         ,'member_addremove', 'member_call_result'
+                                                         ]}
                                         ,{'account_id', A}
                                         ,{'queue_id', Q}
                                         ]}
@@ -85,11 +75,20 @@
                     ,{{?MODULE, 'handle_member_call'}
                      ,[{<<"member">>, <<"call">>}]
                      }
+                    ,{{?MODULE, 'handle_member_call_success'}
+                     ,[{<<"member">>, <<"call_success">>}]
+                     }
                     ,{{?MODULE, 'handle_member_call_cancel'}
                      ,[{<<"member">>, <<"call_cancel">>}]
                      }
                     ,{{?MODULE, 'handle_agent_change'}
                      ,[{<<"queue">>, <<"agent_change">>}]
+                     }
+                    ,{{?MODULE, 'handle_queue_member_add'}
+                     ,[{<<"queue">>, <<"member_add">>}]
+                     }
+                    ,{{?MODULE, 'handle_queue_member_remove'}
+                     ,[{<<"queue">>, <<"member_remove">>}]
                      }
                     ]).
 
@@ -162,18 +161,9 @@ are_agents_available(Srv, EnterWhenEmpty) ->
 
 start_queue_call(JObj, Props, Call) ->
     _ = kapps_call:put_callid(Call),
-    AccountId = kapps_call:account_id(Call),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj),
 
     lager:info("member call for queue ~s recv", [QueueId]),
-
-    acdc_stats:call_waiting(AccountId, QueueId
-                           ,kapps_call:call_id(Call)
-                           ,kapps_call:caller_id_name(Call)
-                           ,kapps_call:caller_id_number(Call)
-                           ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
-                           ),
-
     lager:debug("answering call"),
     kapps_call_command:answer_now(Call),
 
@@ -186,9 +176,6 @@ start_queue_call(JObj, Props, Call) ->
             kapps_call_command:hold(MOH, Call)
     end,
 
-    kapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
-    lager:debug("put call into shared messaging queue"),
-
     _ = kapps_call_command:set('undefined'
                               ,kz_json:from_list([{<<"Eavesdrop-Group-ID">>, QueueId}
                                                  ,{<<"Queue-ID">>, QueueId}
@@ -196,9 +183,12 @@ start_queue_call(JObj, Props, Call) ->
                               ,Call
                               ),
 
-    gen_listener:cast(props:get_value('server', Props), {'monitor_call', Call}),
+    %% Add member to queue for tracking position
+    gen_listener:cast(props:get_value('server', Props), {'add_queue_member', JObj}).
 
-    acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH).
+-spec handle_member_call_success(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_member_call_success(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_remove', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 handle_member_call_cancel(JObj, Props) ->
     kz_util:put_callid(JObj),
@@ -221,6 +211,14 @@ handle_agent_change(JObj, Prop) ->
         <<"unavailable">> ->
             gen_listener:cast(Server, {'agent_unavailable', JObj})
     end.
+
+-spec handle_queue_member_add(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_queue_member_add(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_add', JObj}).
+
+-spec handle_queue_member_remove(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_queue_member_remove(JObj, Prop) ->
+    gen_listener:cast(props:get_value('server', Prop), {'handle_queue_member_remove', kz_json:get_value(<<"Call-ID">>, JObj)}).
 
 -spec handle_config_change(server_ref(), kz_json:object()) -> 'ok'.
 handle_config_change(Srv, JObj) ->
@@ -316,10 +314,15 @@ init(Super, AccountId, QueueId, QueueJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), mgr_state()) -> handle_call_ret_state(mgr_state()).
-handle_call({'should_ignore_member_call', K}, _, #state{ignored_member_calls=Dict}=State) ->
+handle_call({'should_ignore_member_call', {AccountId, QueueId, CallId}=K}, _, #state{ignored_member_calls=Dict
+                                                                                    ,account_id=AccountId
+                                                                                    ,queue_id=QueueId
+                                                                                    }=State) ->
     case catch dict:fetch(K, Dict) of
         {'EXIT', _} -> {'reply', 'false', State};
-        _Res -> {'reply', 'true', State#state{ignored_member_calls=dict:erase(K, Dict)}}
+        _Res ->
+            publish_queue_member_remove(AccountId, QueueId, CallId),
+            {'reply', 'true', State#state{ignored_member_calls=dict:erase(K, Dict)}}
     end;
 
 handle_call('config', _, #state{account_id=AccountId
@@ -396,9 +399,7 @@ handle_cast({'member_call_cancel', K, JObj}, #state{ignored_member_calls=Dict}=S
     Reason = kz_json:get_value(<<"Reason">>, JObj),
 
     acdc_stats:call_abandoned(AccountId, QueueId, CallId, Reason),
-    {'noreply', State#state{
-                  ignored_member_calls=dict:store(K, 'true', Dict)
-                 }};
+    {'noreply', State#state{ignored_member_calls=dict:store(K, 'true', Dict)}};
 handle_cast({'monitor_call', Call}, State) ->
     CallId = kapps_call:call_id(Call),
     gen_listener:add_binding(self(), 'call', [{'callid', CallId}
@@ -511,6 +512,48 @@ handle_cast({'refresh', QueueJObj}, State) ->
 
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
+
+handle_cast({'add_queue_member', JObj}, #state{account_id=AccountId
+                                              ,queue_id=QueueId
+                                              ,current_member_calls=CurrentCalls
+                                              }=State) ->
+    Position = length(CurrentCalls)+1,
+    Call = kapps_call:set_custom_channel_var(<<"Queue-Position">>
+                                            ,Position
+                                            ,kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj))),
+
+    acdc_stats:call_waiting(AccountId, QueueId
+                           ,kapps_call:call_id(Call)
+                           ,kapps_call:caller_id_name(Call)
+                           ,kapps_call:caller_id_number(Call)
+                           ,kz_json:get_integer_value(<<"Member-Priority">>, JObj)
+                           ),
+
+    publish_queue_member_add(AccountId, QueueId, Call),
+
+    %% Add call to shared queue
+    kapi_acdc_queue:publish_shared_member_call(AccountId, QueueId, JObj),
+    lager:debug("put call into shared messaging queue"),
+
+    gen_listener:cast(self(), {'monitor_call', Call}),
+
+    acdc_util:presence_update(AccountId, QueueId, ?PRESENCE_RED_FLASH),
+
+    {'noreply', State#state{current_member_calls=[Call | CurrentCalls]
+                           }};
+
+handle_cast({'handle_queue_member_add', JObj}, #state{current_member_calls=CurrentCalls}=State) ->
+    Call = kapps_call:from_json(kz_json:get_value(<<"Call">>, JObj)),
+    CallId = kapps_call:call_id(Call),
+    lager:debug("received notification of new queue member ~s", [CallId]),
+
+    {'noreply', State#state{current_member_calls = [Call | lists:keydelete(CallId, 2, CurrentCalls)]}};
+
+handle_cast({'handle_queue_member_remove', CallId}, #state{current_member_calls=CurrentCalls}=State) ->
+    lager:debug("removing call id ~s", [CallId]),
+
+    {'noreply', State#state{current_member_calls=lists:keydelete(CallId, 2, CurrentCalls)}};
+
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -589,6 +632,24 @@ lookup_priority_levels(AccountDB, QueueId) ->
 
 make_ignore_key(AccountId, QueueId, CallId) ->
     {AccountId, QueueId, CallId}.
+
+-spec publish_queue_member_add(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+publish_queue_member_add(AccountId, QueueId, Call) ->
+    Prop = [{<<"Account-ID">>, AccountId}
+           ,{<<"Queue-ID">>, QueueId}
+           ,{<<"Call">>, kapps_call:to_json(Call)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_acdc_queue:publish_queue_member_add(Prop).
+
+-spec publish_queue_member_remove(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+publish_queue_member_remove(AccountId, QueueId, CallId) ->
+    Prop = [{<<"Account-ID">>, AccountId}
+           ,{<<"Queue-ID">>, QueueId}
+           ,{<<"Call-ID">>, CallId}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_acdc_queue:publish_queue_member_remove(Prop).
 
 -spec start_agent_and_worker(pid(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 start_agent_and_worker(WorkersSup, AccountId, QueueId, AgentJObj) ->

@@ -6,6 +6,7 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(kapi_acdc_queue).
 
@@ -24,6 +25,8 @@
         ,sync_req/1, sync_req_v/1
         ,sync_resp/1, sync_resp_v/1
         ,agent_change/1, agent_change_v/1
+        ,queue_member_add/1, queue_member_add_v/1
+        ,queue_member_remove/1, queue_member_remove_v/1
         ]).
 
 -export([agent_change_available/0
@@ -51,6 +54,8 @@
         ,publish_sync_req/1, publish_sync_req/2
         ,publish_sync_resp/2, publish_sync_resp/3
         ,publish_agent_change/1, publish_agent_change/2
+        ,publish_queue_member_add/1, publish_queue_member_add/2
+        ,publish_queue_member_remove/1, publish_queue_member_remove/2
         ]).
 
 -export([queue_size/2, shared_queue_name/2]).
@@ -182,6 +187,22 @@ member_call_cancel_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?MEMBER_CALL_CANCEL_HEADERS, ?MEMBER_CALL_CANCEL_VALUES, ?MEMBER_CALL_CANCEL_TYPES);
 member_call_cancel_v(JObj) ->
     member_call_cancel_v(kz_json:to_proplist(JObj)).
+
+-spec member_call_result_routing_key(api_terms()) -> ne_binary().
+-spec member_call_result_routing_key(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
+member_call_result_routing_key(Props) when is_list(Props) ->
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    QueueId = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
+    CallId = props:get_value(<<"Call-ID">>, Props, <<"#">>),
+    member_call_result_routing_key(AcctId, QueueId, CallId);
+member_call_result_routing_key(JObj) ->
+    AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
+    QueueId = kz_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
+    CallId = props:get_value(<<"Call-ID">>, JObj, <<"#">>),
+    member_call_result_routing_key(AcctId, QueueId, CallId).
+
+member_call_result_routing_key(AcctId, QueueId, CallId) ->
+    <<"acdc.member.call_result.", AcctId/binary, ".", QueueId/binary, ".", CallId/binary>>.
 
 %%------------------------------------------------------------------------------
 %% Member Connect Request
@@ -515,6 +536,67 @@ agent_change_v(Prop) when is_list(Prop) ->
 agent_change_v(JObj) -> agent_change_v(kz_json:to_proplist(JObj)).
 
 %%------------------------------------------------------------------------------
+
+%%------------------------------------------------------------------------------
+%% Queue Position tracking
+%%------------------------------------------------------------------------------
+-spec queue_member_routing_key(api_terms()) -> ne_binary().
+-spec queue_member_routing_key(ne_binary(), ne_binary()) -> ne_binary().
+queue_member_routing_key(Props) when is_list(Props) ->
+    Id = props:get_value(<<"Queue-ID">>, Props, <<"*">>),
+    AcctId = props:get_value(<<"Account-ID">>, Props),
+    queue_member_routing_key(AcctId, Id);
+queue_member_routing_key(JObj) ->
+    Id = kz_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
+    AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
+    queue_member_routing_key(AcctId, Id).
+
+queue_member_routing_key(AcctId, QID) ->
+    <<"acdc.queue.position.", AcctId/binary, ".", QID/binary>>.
+
+-define(QUEUE_MEMBER_ADD_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call">>]).
+-define(OPTIONAL_QUEUE_MEMBER_ADD_HEADERS, []).
+-define(QUEUE_MEMBER_ADD_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                 ,{<<"Event-Name">>, <<"member_add">>}
+                                 ]).
+-define(QUEUE_MEMBER_ADD_TYPES, []).
+
+-spec queue_member_add(api_terms()) ->
+                          {'ok', iolist()} |
+                          {'error', string()}.
+queue_member_add(Prop) when is_list(Prop) ->
+    case queue_member_add_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?OPTIONAL_QUEUE_MEMBER_ADD_HEADERS);
+        'false' -> {'error', "proplist failed validation for queue_member_add"}
+    end;
+queue_member_add(JObj) -> queue_member_add(kz_json:to_proplist(JObj)).
+
+-spec queue_member_add_v(api_terms()) -> boolean().
+queue_member_add_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?QUEUE_MEMBER_ADD_HEADERS, ?QUEUE_MEMBER_ADD_VALUES, ?QUEUE_MEMBER_ADD_TYPES);
+queue_member_add_v(JObj) -> queue_member_add_v(kz_json:to_proplist(JObj)).
+
+-define(QUEUE_MEMBER_REMOVE_HEADERS, [<<"Account-ID">>, <<"Queue-ID">>, <<"Call-ID">>]).
+-define(OPTIONAL_QUEUE_MEMBER_REMOVE_HEADERS, []).
+-define(QUEUE_MEMBER_REMOVE_VALUES, [{<<"Event-Category">>, <<"queue">>}
+                                    ,{<<"Event-Name">>, <<"member_remove">>}
+                                    ]).
+-define(QUEUE_MEMBER_REMOVE_TYPES, []).
+
+-spec queue_member_remove(api_terms()) ->
+                                 {'ok', iolist()} |
+                                 {'error', string()}.
+queue_member_remove(Prop) when is_list(Prop) ->
+    case queue_member_remove_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?QUEUE_MEMBER_REMOVE_HEADERS, ?OPTIONAL_QUEUE_MEMBER_REMOVE_HEADERS);
+        'false' -> {'error', "proplist failed validation for queue_member_remove"}
+    end;
+queue_member_remove(JObj) -> queue_member_remove(kz_json:to_proplist(JObj)).
+
+-spec queue_member_remove_v(api_terms()) -> boolean().
+queue_member_remove_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?QUEUE_MEMBER_REMOVE_HEADERS, ?QUEUE_MEMBER_REMOVE_VALUES, ?QUEUE_MEMBER_REMOVE_TYPES);
+queue_member_remove_v(JObj) -> queue_member_remove_v(kz_json:to_proplist(JObj)).
 %% Bind/Unbind the queue as appropriate
 %%------------------------------------------------------------------------------
 -spec shared_queue_name(ne_binary(), ne_binary()) -> ne_binary().
@@ -550,55 +632,73 @@ queue_size(AcctId, QueueId) ->
 bind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props),
-    bind_q(Q, AcctId, QID, props:get_value('restrict_to', Props)).
+    CallId = props:get_value('callid', Props, <<"#">>),
+    bind_q(Q, AcctId, QID, CallId, props:get_value('restrict_to', Props)).
 
-bind_q(Q, AcctId, QID, 'undefined') ->
+bind_q(Q, AcctId, QID, CallId, 'undefined') ->
     amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
     amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
-bind_q(Q, AcctId, QID, ['member_call'|T]) ->
-    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, ['member_connect_req'|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, ['sync_req'|T]) ->
+    amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID));
+bind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['member_call_result'|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['member_connect_req'|T]) ->
+    amqp_util:bind_q_to_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['sync_req'|T]) ->
     amqp_util:bind_q_to_kapps(Q, sync_req_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, ['agent_change'|T]) ->
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
     amqp_util:bind_q_to_kapps(Q, agent_change_routing_key(AcctId, QID)),
-    bind_q(Q, AcctId, QID, T);
-bind_q(Q, AcctId, QID, [_|T]) -> bind_q(Q, AcctId, QID, T);
-bind_q(_, _, _, []) -> 'ok'.
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
+    amqp_util:bind_q_to_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    bind_q(Q, AcctId, QID, CallId, T);
+bind_q(Q, AcctId, QID, CallId, [_|T]) -> bind_q(Q, AcctId, QID, CallId, T);
+bind_q(_, _, _, _, []) -> 'ok'.
 
 -spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AcctId = props:get_value('account_id', Props),
+    CallId = props:get_value('callid', Props, <<"#">>),
 
-    unbind_q(Q, AcctId, QID, props:get_value('restrict_to', Props)).
+    unbind_q(Q, AcctId, QID, CallId, props:get_value('restrict_to', Props)).
 
-unbind_q(Q, AcctId, QID, 'undefined') ->
+unbind_q(Q, AcctId, QID, CallId, 'undefined') ->
     _ = amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID));
-unbind_q(Q, AcctId, QID, ['member_call'|T]) ->
-    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, T);
-unbind_q(Q, AcctId, QID, ['member_connect_req'|T]) ->
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
     _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, T);
-unbind_q(Q, AcctId, QID, ['sync_req'|T]) ->
+    _ = amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID));
+unbind_q(Q, AcctId, QID, CallId, ['member_call'|T]) ->
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['member_call_result'|T]) ->
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_call_result_routing_key(AcctId, QID, CallId)),
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['member_connect_req'|T]) ->
+    _ = amqp_util:unbind_q_from_callmgr(Q, member_connect_req_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['sync_req'|T]) ->
     _ = amqp_util:unbind_q_from_kapps(Q, sync_req_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, T);
-unbind_q(Q, AcctId, QID, ['agent_change'|T]) ->
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['agent_change'|T]) ->
     _ = amqp_util:unbind_q_from_kapps(Q, agent_change_routing_key(AcctId, QID)),
-    unbind_q(Q, AcctId, QID, T);
-unbind_q(Q, AcctId, QID, [_|T]) ->
-    unbind_q(Q, AcctId, QID, T);
-unbind_q(_, _, _, []) -> 'ok'.
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, ['member_addremove'|T]) ->
+    _ = amqp_util:unbind_q_from_kapps(Q, queue_member_routing_key(AcctId, QID)),
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(Q, AcctId, QID, CallId, [_|T]) ->
+    unbind_q(Q, AcctId, QID, CallId, T);
+unbind_q(_, _, _, _, []) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @doc
@@ -631,7 +731,7 @@ publish_member_call_cancel(JObj) ->
     publish_member_call_cancel(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call_cancel(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_CANCEL_VALUES, fun member_call_cancel/1),
-    amqp_util:callmgr_publish(Payload, ContentType, member_call_routing_key(API)).
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_shared_member_call(kz_json:object()) -> 'ok'.
 -spec publish_shared_member_call(ne_binary(), ne_binary(), api_terms()) -> 'ok'.
@@ -659,7 +759,8 @@ publish_member_call_failure(Q, JObj) ->
     publish_member_call_failure(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call_failure(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_FAIL_VALUES, fun member_call_failure/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    amqp_util:targeted_publish(Q, Payload, ContentType),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_call_success(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_member_call_success(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
@@ -667,7 +768,8 @@ publish_member_call_success(Q, JObj) ->
     publish_member_call_success(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_member_call_success(Q, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MEMBER_CALL_SUCCESS_VALUES, fun member_call_success/1),
-    amqp_util:targeted_publish(Q, Payload, ContentType).
+    amqp_util:targeted_publish(Q, Payload, ContentType),
+    amqp_util:callmgr_publish(Payload, ContentType, member_call_result_routing_key(API)).
 
 -spec publish_member_connect_req(api_terms()) -> 'ok'.
 -spec publish_member_connect_req(api_terms(), ne_binary()) -> 'ok'.
@@ -748,3 +850,19 @@ publish_agent_change(JObj) ->
 publish_agent_change(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?AGENT_CHANGE_VALUES, fun agent_change/1),
     amqp_util:kapps_publish(agent_change_publish_key(API), Payload, ContentType).
+
+-spec publish_queue_member_add(api_terms()) -> 'ok'.
+-spec publish_queue_member_add(api_terms(), ne_binary()) -> 'ok'.
+publish_queue_member_add(JObj) ->
+    publish_queue_member_add(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_queue_member_add(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_ADD_VALUES, fun queue_member_add/1),
+    amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
+
+-spec publish_queue_member_remove(api_terms()) -> 'ok'.
+-spec publish_queue_member_remove(api_terms(), ne_binary()) -> 'ok'.
+publish_queue_member_remove(JObj) ->
+    publish_queue_member_remove(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_queue_member_remove(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?QUEUE_MEMBER_REMOVE_VALUES, fun queue_member_remove/1),
+    amqp_util:kapps_publish(queue_member_routing_key(API), Payload, ContentType).
