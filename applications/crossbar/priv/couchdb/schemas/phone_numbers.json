@@ -3,7 +3,6 @@
     "_id": "phone_numbers",
     "description": "Schema for a number",
     "properties": {
-        "required": [],
         "cnam": {
             "properties": {
                 "display_name": {
@@ -13,16 +12,14 @@
                 },
                 "inbound_lookup": {
                     "type": "boolean"
-                }
+                },
                 "required": []
             },
             "type": "object"
         },
-
         "definitions": {
             "basic_e911": {
                 "description": "Basic E911 properties",
-                "required": [],
                 "properties": {
                     "extended_address": {
                         "description": "The suit/floor/apt. address where the number is in service",
@@ -44,22 +41,14 @@
                         "description": "The street address where the number is in service",
                         "type": "string"
                     }
-                }
+                },
+                "required": [],
                 "type": "object"
             }
         },
-
-
         "oneOf": {
-            "vitelity_e911": {
-                "$ref": "#/definitions/basic_e911"
-            },
-            "telnyx_e911": {
-                "$ref": "#/definitions/basic_e911"
-            },
-
             "dash_e911": {
-                "$ref": "#/definitions/basic_e911"
+                "$ref": "#/definitions/basic_e911",
                 "activated_time": {
                     "description": "The time stamp e911 was provisioned",
                     "type": "string"
@@ -75,7 +64,6 @@
                 "legacy_data": {
                     "description": "Legacy E911 information",
                     "properties": {
-                        "required": [],
                         "house_number": {
                             "description": "The name that will show to emergency services",
                             "type": "string"
@@ -84,6 +72,7 @@
                             "description": "The name that will show to emergency services",
                             "type": "string"
                         },
+                        "required": [],
                         "streetname": {
                             "description": "The name that will show to emergency services",
                             "type": "string"
@@ -118,13 +107,17 @@
                     ],
                     "type": "string"
                 }
+            },
+            "telnyx_e911": {
+                "$ref": "#/definitions/basic_e911"
+            },
+            "vitelity_e911": {
+                "$ref": "#/definitions/basic_e911"
             }
         },
-
         "porting": {
             "description": "Porting (in) information for the phone number",
             "properties": {
-                "required": [],
                 "billing_account_id": {
                     "description": "The account id the losing carrier has on file",
                     "type": "string"
@@ -176,13 +169,15 @@
                     "description": "The requested port date",
                     "type": "string"
                 },
+                "required": [],
                 "service_provider": {
                     "description": "The name of the losing carrier",
                     "type": "string"
                 }
             },
             "type": "object"
-        }
+        },
+        "required": []
     },
     "type": "object"
 }
