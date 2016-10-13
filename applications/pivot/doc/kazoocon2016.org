@@ -124,11 +124,11 @@ Pivot will attempt to reach your server for calls to that callflow.
 :END:
 - Create the script that Pivot will call
 - Process and build the Kazoo callflow JSON
-- Set "Content-Type" header to "application/json"
+- Set *Content-Type* to *application/json*
 - Return the JSON as the body of the HTTP response
 ** Let's Build something!
 #+BEGIN_CENTER
-Demo Time!
+Example Time!
 #+END_CENTER
 ** Say something                                                   :B_frame:
 :PROPERTIES:
@@ -307,6 +307,72 @@ Send custom presence updates
 }
 \end{lstlisting}
 #+END_LaTeX
+** Callflow actions                                                :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+*** Bridging                                                       :B_column:
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 0.45
+:END:
+- Device
+- User
+- Group
+- Resource
+- Conference
+- Voicemail Box
+- Fax Box
+*** Caller ID                                                    :B_column:
+:PROPERTIES:
+:BEAMER_col: 0.45
+:BEAMER_env: column
+:END:
+- Statically set Caller ID
+- Dynamically set Caller ID
+- Prepend Caller ID
+- Routing via Whitelist or Regex of Caller IDs
+** Callflow actions (cont)                                         :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+*** Features                                               :B_column:BMCOL:
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 0.45
+:END:
+- Eavesdrop
+- Group Pickup
+- Intercept
+- Page Groups
+- Hotdesk
+*** Miscellaneous                                          :B_column:BMCOL:
+:PROPERTIES:
+:BEAMER_env: column
+:BEAMER_col: 0.45
+:END:
+- Toggle call forwarding
+- Toggle Do Not Disturb
+- Directory services
+- DISA
+- Detect incoming fax
+- Menus
+- Custom Webhook
+** Brainstorm                                                      :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+*** Possible Integrations                                         :B_block:
+:PROPERTIES:
+:BEAMER_env: block
+:END:
+- Calendars (Office365, Google, etc)
+- Recordings into services (Storage, Chat)
+- Ad-driven, free calling?
+- Digital assistants
+- IVR Analytics (track stats as callers progress)
+- CRM/Salesforce access
+- *Your Ideas?*
 ** What's Next?                                                     :B_frame:
 :PROPERTIES:
 :BEAMER_env: frame
