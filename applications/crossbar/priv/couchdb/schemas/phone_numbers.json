@@ -18,20 +18,54 @@
             },
             "type": "object"
         },
-        "dash_e911": {
-            "description": "E911 information for the phone number",
-            "properties": {
+
+        "definitions": {
+            "basic_e911": {
+                "description": "Basic E911 properties",
                 "required": [],
+                "properties": {
+                    "extended_address": {
+                        "description": "The suit/floor/apt. address where the number is in service",
+                        "type": "string"
+                    },
+                    "locality": {
+                        "description": "The locality (city) where the number is in service",
+                        "type": "string"
+                    },
+                    "postal_code": {
+                        "description": "The zip/postal code where the number is in service",
+                        "type": "string"
+                    },
+                    "region": {
+                        "description": "The region (state) where the number is in service",
+                        "type": "string"
+                    },
+                    "street_address": {
+                        "description": "The street address where the number is in service",
+                        "type": "string"
+                    }
+                }
+                "type": "object"
+            }
+        },
+
+
+        "oneOf": {
+            "vitelity_e911": {
+                "$ref": "#/definitions/basic_e911"
+            },
+            "telnyx_e911": {
+                "$ref": "#/definitions/basic_e911"
+            },
+
+            "dash_e911": {
+                "$ref": "#/definitions/basic_e911"
                 "activated_time": {
                     "description": "The time stamp e911 was provisioned",
                     "type": "string"
                 },
                 "caller_name": {
                     "description": "The name that will show to emergency services",
-                    "type": "string"
-                },
-                "extended_address": {
-                    "description": "The suit/floor/apt. address where the number is in service",
                     "type": "string"
                 },
                 "latitude": {
@@ -61,10 +95,6 @@
                     },
                     "type": "object"
                 },
-                "locality": {
-                    "description": "The locality (city) where the number is in service",
-                    "type": "string"
-                },
                 "location_id": {
                     "description": "The e911 provisioning system internal id for this service address",
                     "type": "string"
@@ -77,14 +107,6 @@
                     "description": "The extended zip/postal code where the number is in service",
                     "type": "string"
                 },
-                "postal_code": {
-                    "description": "The zip/postal code where the number is in service",
-                    "type": "string"
-                },
-                "region": {
-                    "description": "The region (state) where the number is in service",
-                    "type": "string"
-                },
                 "status": {
                     "description": "The e911 provisioning system status for this service address",
                     "enum": [
@@ -95,14 +117,10 @@
                         "ERROR"
                     ],
                     "type": "string"
-                },
-                "street_address": {
-                    "description": "The street address where the number is in service",
-                    "type": "string"
                 }
-            },
-            "type": "object"
+            }
         },
+
         "porting": {
             "description": "Porting (in) information for the phone number",
             "properties": {
