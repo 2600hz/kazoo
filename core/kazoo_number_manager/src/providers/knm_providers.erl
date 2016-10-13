@@ -14,6 +14,24 @@
 -export([delete/1]).
 -export([has_emergency_services/1]).
 
+-define(MOD_CNAM_NOTIFIER, <<"knm_cnam_notifier">>).
+-define(DEFAULT_CNAM_PROVIDER, ?MOD_CNAM_NOTIFIER).
+-define(DEFAULT_E911_FEATURE, ?DASH_KEY).
+-define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
+                                  ,?FEATURE_E911
+                                  ,<<"failover">>
+                                  ,<<"port">>
+                                  ,<<"prepend">>
+                                  ]).
+
+-define(CNAM_PROVIDER(ResellerId),
+        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
+-define(E911_FEATURE(ResellerId),
+        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
+
+-define(ALLOWED_FEATURES(ResellerId),
+        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -56,28 +74,34 @@ has_emergency_services(Number) ->
 %%--------------------------------------------------------------------
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 provider_modules(Number) ->
-    Allowed = kapps_config:get(?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES),
-    Possible = kz_json:get_keys(knm_phone_number:doc(knm_number:phone_number(Number))),
-    [provider_module(Feature)
+    PhoneNumber = knm_number:phone_number(Number),
+    ResellerId = kz_services:get_reseller_id(knm_number:assigned_to(PhoneNumber)),
+    Allowed = ?ALLOWED_FEATURES(ResellerId),
+    Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    [provider_module(Feature, ResellerId)
      || Feature <- Possible,
         lists:member(Feature, Allowed)
     ].
 
--spec provider_module(ne_binary()) -> ne_binary().
-provider_module(?FEATURE_CNAM) ->
-    <<"knm_cnam_notifier">>;
-provider_module(?DASH_KEY) ->
+-spec provider_module(ne_binary(), ne_binary()) -> ne_binary().
+provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
+    ?CNAM_PROVIDER(ResellerId);
+provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
+    provider_module(?E911_FEATURE(ResellerId), ResellerId);
+provider_module(?DASH_KEY, _) ->
     <<"knm_dash_e911">>;
-provider_module(?VITELITY_KEY) ->
+provider_module(?VITELITY_KEY, _) ->
     <<"knm_vitelity_e911">>;
-provider_module(<<"prepend">>) ->
+provider_module(?TELNYX_KEY, _) ->
+    <<"knm_telnyx_e911">>;
+provider_module(<<"prepend">>, _) ->
     <<"knm_prepend">>;
-provider_module(<<"port">>) ->
+provider_module(<<"port">>, _) ->
     <<"knm_port_notifier">>;
-provider_module(<<"failover">>) ->
+provider_module(<<"failover">>, _) ->
     <<"knm_failover">>;
-provider_module(Other) ->
-    lager:debug("unmatched feature provider '~s', allowing", [Other]),
+provider_module(Other, _ResellerId) ->
+    lager:warning("unmatched feature provider '~s' (~s), allowing", [Other, _ResellerId]),
     Other.
 
 %%--------------------------------------------------------------------
