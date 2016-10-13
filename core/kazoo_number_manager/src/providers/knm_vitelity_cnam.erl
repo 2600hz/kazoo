@@ -23,10 +23,8 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
@@ -46,8 +44,7 @@ save(Number, _State) ->
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_features(Number
                                     ,[?FEATURE_INBOUND_CNAM
@@ -74,10 +71,8 @@ has_emergency_services(_Number) -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_outbound_cnam(knm_number:knm_number()) ->
-                                  knm_number:knm_number().
--spec handle_outbound_cnam(knm_number:knm_number(), boolean()) ->
-                                  knm_number:knm_number().
+-spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
+-spec handle_outbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     handle_outbound_cnam(Number, IsDryRun).
@@ -192,8 +187,7 @@ process_outbound_resp(Number, Children) ->
                                          knm_number:knm_number().
 check_outbound_response_tag(Number, Children) ->
     case knm_vitelity_util:xml_resp_response_msg(Children) of
-        'undefined' ->
-            knm_errors:unspecified('resp_tag_not_found', Number);
+        'undefined' -> knm_errors:unspecified('resp_tag_not_found', Number);
         <<"ok">> ->
             Number1 = knm_services:activate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
             _ = publish_cnam_update(Number1),
@@ -209,10 +203,8 @@ check_outbound_response_tag(Number, Children) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_inbound_cnam(knm_number:knm_number()) ->
-                                 knm_number:knm_number().
--spec handle_inbound_cnam(knm_number:knm_number(), boolean()) ->
-                                 knm_number:knm_number().
+-spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
+-spec handle_inbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     handle_inbound_cnam(Number, IsDryRun).

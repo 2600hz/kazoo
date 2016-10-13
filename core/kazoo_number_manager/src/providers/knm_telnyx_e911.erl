@@ -249,6 +249,6 @@ cleanse(NEBin) ->
     << <<C>> || <<C>> <= Upper, is_ALnum_or_space(C)>>.
 
 -spec is_ALnum_or_space(char()) -> boolean().
-is_ALnum_or_space(C) when $0 =< C andalso C =< $9 -> 'true';
-is_ALnum_or_space(C) when $A =< C andalso C =< $Z -> 'true';
+is_ALnum_or_space(C) when $0 =< C, C =< $9 -> 'true';
+is_ALnum_or_space(C) when $A =< C, C =< $Z -> 'true';
 is_ALnum_or_space(C) -> $\s =:= C.

@@ -23,10 +23,8 @@
 %% produce notifications if the cnam object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
@@ -46,8 +44,7 @@ save(Number, _State) ->
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_features(Number
                                     ,[?FEATURE_INBOUND_CNAM
@@ -90,8 +87,7 @@ handle(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_outbound_cnam(knm_number:knm_number()) ->
-                                  knm_number:knm_number().
+-spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
@@ -114,8 +110,7 @@ handle_outbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_inbound_cnam(knm_number:knm_number()) ->
-                                 knm_number:knm_number().
+-spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_inbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
@@ -137,8 +132,7 @@ handle_inbound_cnam(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec support_depreciated_cnam(knm_number:knm_number()) ->
-                                      knm_number:knm_number().
+-spec support_depreciated_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 support_depreciated_cnam(Number) ->
     knm_services:deactivate_feature(Number, ?FEATURE_CNAM).
 
