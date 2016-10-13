@@ -804,10 +804,8 @@ get_timezone(JObj, Call) ->
 -spec account_timezone(kapps_call:call()) -> ne_binary().
 account_timezone(Call) ->
     case kz_account:fetch(kapps_call:account_id(Call)) of
-        {'ok', AccountJObj} ->
-            kz_account:timezone(AccountJObj, ?DEFAULT_TIMEZONE);
-        {'error', _E} ->
-            kapps_config:get(<<"accounts">>, <<"timezone">>, ?DEFAULT_TIMEZONE)
+        {'ok', AccountJObj} -> kz_account:timezone(AccountJObj);
+        {'error', _E} -> ?DEFAULT_TIMEZONE
     end.
 
 -spec start_task(fun(), list(), kapps_call:call()) -> 'ok'.

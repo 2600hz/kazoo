@@ -220,7 +220,7 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
     end.
 
 -spec copy_to_vmboxes(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             kz_json:object().
+                             dict:dict().
 copy_to_vmboxes(_, _, _, [], ResDict) -> ResDict;
 copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     AccountDb = kvm_util:get_db(AccountId),
@@ -254,7 +254,11 @@ do_copy(AccountId, JObj, Funs) ->
     TransformFuns = [fun(DestDoc) -> kzd_box_message:update_media_id(ToId, DestDoc) end
                      | Funs
                     ],
-    Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    Options = [{'transform', fun(_, B) ->
+                                     lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns)
+                             end
+               }
+              ],
     case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
         {'ok', _} = OK -> OK;
         {'error', 'not_found'} = NotFound ->

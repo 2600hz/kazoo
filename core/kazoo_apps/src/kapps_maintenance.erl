@@ -197,7 +197,8 @@ refresh(?KZ_CONFIG_DB) ->
     kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'teletype', <<"views/notifications.json">>),
     kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
     cleanup_invalid_notify_docs(),
-    delete_system_media_references();
+    delete_system_media_references(),
+    accounts_config_deprecate_timezone_for_default_timezone();
 refresh(?KZ_DATA_DB) ->
     kz_datamgr:revise_docs_from_folder(?KZ_DATA_DB, 'kazoo_data', <<"views">>);
 refresh(?KZ_OAUTH_DB) ->
@@ -336,6 +337,58 @@ refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
                                               ,<<"views/numbers.json">>
                                               ),
     'ok'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Remove system_config/accounts timezone key and use only
+%% default_timezone
+%% @end
+%%--------------------------------------------------------------------
+-spec accounts_config_deprecate_timezone_for_default_timezone() -> 'ok'.
+-spec accounts_config_deprecate_timezone_for_default_timezone(kz_json:object()) -> 'ok'.
+accounts_config_deprecate_timezone_for_default_timezone() ->
+    case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, <<"accounts">>) of
+        {'ok', AccountsConfig} ->
+            accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig);
+        {'error', E} ->
+            lager:warning("unable to fetch system_config/accounts: ~p", [E])
+    end.
+
+accounts_config_deprecate_timezone_for_default_timezone(AccountsConfig) ->
+    PublicFields = kz_doc:public_fields(AccountsConfig),
+    case kz_json:get_keys(PublicFields) of
+        [] -> 'ok';
+        Keys ->
+            MigratedConfig = deprecate_timezone_for_default_timezone(Keys, AccountsConfig),
+            kz_datamgr:save_doc(?KZ_CONFIG_DB, MigratedConfig),
+            'ok'
+    end.
+
+-spec deprecate_timezone_for_default_timezone(kz_json:keys(), kz_json:object()) ->
+                                                     kz_json:object().
+deprecate_timezone_for_default_timezone(Nodes, AccountsConfig) ->
+    lists:foldl(fun deprecate_timezone_for_node/2, AccountsConfig, Nodes).
+
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object()) ->
+                                         kz_json:object().
+-spec deprecate_timezone_for_node(kz_json:key(), kz_json:object(), api_ne_binary(), api_ne_binary()) ->
+                                         kz_json:object().
+deprecate_timezone_for_node(Node, AccountsConfig) ->
+    Timezone = kz_json:get_value([Node, <<"timezone">>], AccountsConfig),
+    DefaultTimezone = kz_json:get_value([Node, <<"default_timezone">>], AccountsConfig),
+    deprecate_timezone_for_node(Node, AccountsConfig, Timezone, DefaultTimezone).
+
+deprecate_timezone_for_node(_Node, AccountsConfig, 'undefined', _Default) ->
+    AccountsConfig;
+deprecate_timezone_for_node(Node, AccountsConfig, Timezone, 'undefined') ->
+    io:format("setting default timezone to ~s for node ~s~n", [Timezone, Node]),
+    kz_json:set_value([Node, <<"default_timezone">>]
+                     ,Timezone
+                     ,kz_json:delete_key([Node, <<"timezone">>], AccountsConfig)
+                     );
+deprecate_timezone_for_node(Node, AccountsConfig, _Timezone, _Default) ->
+    kz_json:delete_key([Node, <<"timezone">>], AccountsConfig).
 
 %%--------------------------------------------------------------------
 %% @public

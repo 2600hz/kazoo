@@ -218,7 +218,8 @@ fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(ne_binary(), messages(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec change_folder(kvm_message:vm_folder(), messages(), ne_binary(), ne_binary()) ->
+                           kz_json:object().
 change_folder(Folder, Msgs, AccountId, BoxId) ->
     Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
           ],
@@ -243,18 +244,21 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
-                             kz_json:object().
+                             dict:dict().
+-spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
+                             dict:dict().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
+    copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
 
--spec copy_to_vmboxes_fold(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                                  dict:dict().
-copy_to_vmboxes_fold(_, [], _, _, Copied) -> Copied;
-copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
-    CopyRes = kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Copied),
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, CopyRes).
+copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Copied) ->
+    lists:foldl(fun(Id, Acc) ->
+                        kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Acc)
+                end
+               ,Copied
+               ,Ids
+               ).
 
 %%%===================================================================
 %%% Internal functions
@@ -265,10 +269,11 @@ copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) -> kz_json:object().
+-spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) ->
+                              kz_json:objects().
 -spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) ->
                               kz_json:objects().
-get_view_results(AccountId, View, ViewOpts, NormFun) ->
+get_view_results(?NE_BINARY = AccountId, View, ViewOpts, NormFun) ->
     Dbs = kvm_util:get_range_db(AccountId),
     get_view_results(Dbs, View, ViewOpts, NormFun, []).
 
