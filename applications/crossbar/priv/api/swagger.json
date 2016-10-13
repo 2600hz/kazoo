@@ -170,7 +170,6 @@
                     "type": "object"
                 },
                 "timezone": {
-                    "default": "America/Los_Angeles",
                     "description": "The default timezone",
                     "maxLength": 32,
                     "minLength": 5,
@@ -7080,11 +7079,6 @@
                 },
                 "master_account_id": {
                     "description": "accounts master account id"
-                },
-                "timezone": {
-                    "default": "America/Los_Angeles",
-                    "description": "accounts timezone",
-                    "type": "string"
                 }
             },
             "required": [

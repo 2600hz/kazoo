@@ -33,6 +33,9 @@
 -define(SERVER, ?MODULE).
 
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
+-define(DEFAULT_TIMEZONE
+       ,kapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
+       ).
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
@@ -451,6 +454,7 @@ prepare_context(Context, AccountId, AccountDb) ->
                               cb_context:context().
 validate_request(AccountId, Context) ->
     ValidateFuns = [fun ensure_account_has_realm/2
+                   ,fun ensure_account_has_timezone/2
                    ,fun remove_spaces/2
                    ,fun cleanup_leaky_keys/2
                    ,fun validate_realm_is_unique/2
@@ -474,6 +478,19 @@ ensure_account_has_realm(_AccountId, Context) ->
         _Realm ->
             lager:debug("req has realm '~s'", [_Realm]),
             Context
+    end.
+
+-spec ensure_account_has_timezone(api_binary(), cb_context:context()) -> cb_context:context().
+ensure_account_has_timezone(_AccountId, Context) ->
+    JObj = cb_context:req_data(Context),
+    Timezone = kz_json:get_value(<<"timezone">>, JObj, get_timezone_from_parent(Context)),
+    cb_context:set_req_data(Context, kz_account:set_timezone(JObj, Timezone)).
+
+-spec get_timezone_from_parent(cb_context:context()) -> ne_binary().
+get_timezone_from_parent(Context) ->
+    case create_new_tree(Context) of
+        [_|_]=Tree -> kz_account:timezone(lists:last(Tree));
+        [] -> ?DEFAULT_TIMEZONE
     end.
 
 -spec random_realm() -> ne_binary().
