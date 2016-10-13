@@ -75,7 +75,7 @@ has_emergency_services(Number) ->
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    ResellerId = kz_services:get_reseller_id(knm_number:assigned_to(PhoneNumber)),
+    ResellerId = kz_services:get_reseller_id(knm_phone_number:assigned_to(PhoneNumber)),
     Allowed = ?ALLOWED_FEATURES(ResellerId),
     Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
     [provider_module(Feature, ResellerId)
