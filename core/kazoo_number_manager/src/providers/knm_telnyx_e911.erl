@@ -56,8 +56,8 @@ delete(Number) ->
         'undefined' -> Number;
         _Else ->
             lager:debug("removing e911 information"),
-            remove_number(Number),
-            knm_services:deactivate_feature(Number, ?KEY)
+            {'ok', NewNumber} = remove_number(Number),
+            knm_services:deactivate_feature(NewNumber, ?KEY)
     end.
 
 %%--------------------------------------------------------------------
@@ -77,41 +77,6 @@ has_emergency_services(Number) ->
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec remove_number(knm_number:knm_number()) -> 'ok'.
-remove_number(Number) ->
-    Body = kz_json:from_list([{<<"e911_enabled">>, 'false'}]),
-    try knm_telnyx_util:req('put', ["numbers", did(Number), "e911_settings"], Body) of
-        JObj ->
-            %%TOOOOODOOOOOO
-            %%TOOOOODOOOOOO
-            %%TOOOOODOOOOOO: unify with assign_address
-            %%TOOOOODOOOOOO
-            %%TOOOOODOOOOOO
-            case kz_json:is_true(<<"success">>, JObj, 'true') of
-                'true' -> remove_number_address(Number);
-                _ ->
-                    lager:error("cannot disable e911: ~s", [kz_json:encode(JObj)])
-            end
-    catch
-        _T:_E -> 'ok'
-    end.
-
-remove_number_address(Number) ->
-    CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
-    case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of
-        'undefined' -> 'ok';
-        AddrId ->
-            Path = ["e911_addresses", binary_to_list(AddrId)],
-            _ = kz_util:spawn(fun knm_telnyx_util:req/2, ['delete', Path]),
-            'ok'
-    end.
 
 -spec did(knm_number:knm_number()) -> nonempty_string().
 did(Number) ->
@@ -154,20 +119,17 @@ maybe_update_e911(Number, 'false') ->
     case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
-            remove_number(Number),
-            knm_services:deactivate_feature(Number, ?KEY);
+            {'ok', NewNumber} = remove_number(Number),
+            knm_services:deactivate_feature(NewNumber, ?KEY);
         'false' when NotChanged  ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
-            lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            N = knm_services:activate_feature(Number, ?KEY),
-            case update_e911(N, E911) of
-                {'ok', AddressId, NewFeature} ->
+            case update_e911(Number, E911) of
+                {'ok', NewFeature, NewNumber} ->
+                    lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
+                    N = knm_services:activate_feature(NewNumber, ?KEY),
                     PN = knm_phone_number:set_feature(knm_number:phone_number(N), ?KEY, NewFeature),
-                    lager:debug("successfully set e911 address ~s", [AddressId]),
-                    Data = kz_json:from_list([{?ADDRESS_ID, AddressId}]),
-                    PN1 = knm_phone_number:update_carrier_data(PN, Data),
-                    knm_number:set_phone_number(N, PN1);
+                    knm_number:set_phone_number(N, PN);
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
                     knm_errors:unspecified(E, Number)
@@ -176,17 +138,17 @@ maybe_update_e911(Number, 'false') ->
 
 %% @private
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
-                         {'ok', ne_binary(), kz_json:object()} |
+                         {'ok', kz_json:object(), knm_number:knm_number()} |
                          {'error', ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
     AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
     case create_address(AccountId, AddressJObj) of
         {'error', _}=E -> E;
-        {'ok', AddressId, _NewFeature}=Ok ->
+        {'ok', AddressId, NewFeature} ->
             case assign_address(Number, AddressId) of
                 {'error', _}=E -> E;
-                'ok' -> Ok
+                {'ok', NewNumber} -> {'ok', NewFeature, NewNumber}
             end
     end.
 
@@ -218,18 +180,22 @@ filter_empty(JObj) ->
       props:filter_empty(
         kz_json:to_proplist(JObj))).
 
--spec assign_address(knm_number:knm_number(), ne_binary()) ->
-                            'ok' | {'error', ne_binary()}.
+-spec assign_address(knm_number:knm_number(), ne_binary() | 'null') ->
+                            {'ok', knm_number:knm_number()} |
+                            {'error', ne_binary()}.
 assign_address(Number, AddressId) ->
-    Body = kz_json:from_list([{<<"e911_enabled">>, 'true'}
+    IsEnabling = is_binary(AddressId),
+    Body = kz_json:from_list([{<<"e911_enabled">>, IsEnabling}
                              ,{<<"e911_address_id">>, AddressId}
                              ]),
     try knm_telnyx_util:req('put', ["numbers", did(Number), "e911_settings"], Body) of
         Rep ->
             case kz_json:is_true(<<"success">>, Rep, 'true') of
-                'true' -> remove_number_address(Number);
+                'true' ->
+                    _ = remove_number_address(Number),
+                    {'ok', set_address_id(Number, AddressId)};
                 _ ->
-                    lager:error("cannot enable e911: ~s", [kz_json:encode(Rep)]),
+                    lager:error("cannot ~s e911: ~s", [toogle(IsEnabling), kz_json:encode(Rep)]),
                     {'error', reason(Rep)}
             end
     catch
@@ -238,6 +204,38 @@ assign_address(Number, AddressId) ->
             lager:error("~p ~p", [_T, E]),
             kz_util:log_stacktrace(ST),
             {'error', kz_util:to_binary(E)}
+    end.
+
+toogle('true') -> "enable";
+toogle('false') -> "disable".
+
+-spec set_address_id(knm_number:knm_number(), ne_binary() | 'null') -> knm_number:knm_number().
+set_address_id(Number, AddressId) ->
+    PN = knm_number:phone_number(Number),
+    Data = kz_json:from_list([{?ADDRESS_ID, AddressId}]),
+    NewPN = knm_phone_number:update_carrier_data(PN, Data),
+    knm_number:set_phone_number(Number, NewPN).
+
+-spec remove_number(knm_number:knm_number()) -> {'ok', knm_number:knm_number()} |
+                                                {'error', ne_binary()}.
+remove_number(Number) ->
+    CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
+    case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of
+        'undefined' -> {'ok', Number};
+        AddressId ->
+            lager:debug("removing previously set address: ~p", [AddressId]),
+            assign_address(Number, 'null')
+    end.
+
+-spec remove_number_address(knm_number:knm_number()) -> 'ok'.
+remove_number_address(Number) ->
+    CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
+    case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of
+        'undefined' -> 'ok';
+        AddrId ->
+            Path = ["e911_addresses", binary_to_list(AddrId)],
+            _ = kz_util:spawn(fun knm_telnyx_util:req/2, ['delete', Path]),
+            'ok'
     end.
 
 -spec reason(kz_json:object()) -> ne_binary().
