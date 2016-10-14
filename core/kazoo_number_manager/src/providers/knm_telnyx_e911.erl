@@ -107,9 +107,12 @@ remove_number(Number) ->
 
 remove_number_address(Number) ->
     CarrierData = knm_phone_number:carrier_data(knm_number:phone_number(Number)),
-    AddrId = kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData),
-    _ = kz_util:spawn(fun knm_telnyx_util:req/2, ['delete', ["e911_addresses", AddrId]]),
-    'ok'.
+    case kz_json:get_ne_binary_value(?ADDRESS_ID, CarrierData) of
+        'undefined' -> 'ok';
+        AddrId ->
+            _ = kz_util:spawn(fun knm_telnyx_util:req/2, ['delete', ["e911_addresses", AddrId]]),
+            'ok'
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -194,11 +197,17 @@ create_address(AddressJObj) ->
                 'true' ->
                     AddressId = kz_json:get_ne_binary_value(<<"id">>, Rep),
                     Address = kz_json:delete_keys([<<"id">>, <<"status">>], Rep),
-                    {'ok', AddressId, Address}
+                    {'ok', AddressId, filter_empty(Address)}
             end
     catch
         _E:Reason -> {'error', Reason}
     end.
+
+-spec filter_empty(kz_json:object()) -> kz_json:object().
+filter_empty(JObj) ->
+    kz_json:from_list(
+      props:filter_empty(
+        kz_json:to_proplist(JObj))).
 
 -spec assign_address(knm_number:knm_number(), ne_binary()) ->
                             'ok' | {'error', ne_binary()}.

@@ -55,6 +55,13 @@ req('get', ["number_searches", "411384989406463698"], _) ->
     rep_fixture("telnyx_tollfree_search_22.json");
 req('get', ["number_searches", "411381763818915536"], _) ->
     rep_fixture("telnyx_npa_search_22.json");
+req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
+    rep_fixture("telnyx_activate_e911.json");
+req('delete', ["e911_addresses", "421570676474774685"], _) ->
+    rep_fixture("telnyx_delete_e911.json");
+req('post', ["e911_addresses"], Body) ->
+    <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
+    rep_fixture("telnyx_create_e911.json");
 req('post', ["number_orders"], _) ->
     rep_fixture("telnyx_order.json").
 

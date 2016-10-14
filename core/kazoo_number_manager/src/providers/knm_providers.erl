@@ -75,33 +75,57 @@ has_emergency_services(Number) ->
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    ResellerId = kz_services:get_reseller_id(knm_phone_number:assigned_to(PhoneNumber)),
-    Allowed = ?ALLOWED_FEATURES(ResellerId),
+    Allowed = allowed_features(PhoneNumber),
     Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
-    [provider_module(Feature, ResellerId)
+    [provider_module(Feature)
      || Feature <- Possible,
         lists:member(Feature, Allowed)
     ].
 
--spec provider_module(ne_binary(), ne_binary()) -> ne_binary().
+-spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
+-ifdef(TEST).
+allowed_features(PhoneNumber) ->
+    case knm_phone_number:number(PhoneNumber) of
+        ?TEST_AVAILABLE_NUM=_Num ->
+            io:format(user, "\n>>> tis it ~p\n", [_Num]),
+            (?DEFAULT_ALLOWED_FEATURES -- [?DEFAULT_E911_FEATURE]) ++ [?TELNYX_KEY];
+        _Num ->
+            io:format(user, "\n>>> avant ~p\n", [_Num]),
+            ?DEFAULT_ALLOWED_FEATURES
+    end.
+-else.
+allowed_features(PhoneNumber) ->
+    ResellerId = kz_services:get_reseller_id(knm_phone_number:assigned_to(PhoneNumber)),
+    [provider_module(Feature, ResellerId)
+     || Feature <- ?ALLOWED_FEATURES(ResellerId)
+    ].
+
+-spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
     ?CNAM_PROVIDER(ResellerId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
-    provider_module(?E911_FEATURE(ResellerId), ResellerId);
-provider_module(?DASH_KEY, _) ->
+    ?E911_FEATURE(ResellerId);
+provider_module(Feature, _) ->
+    Feature.
+-endif.
+
+-spec provider_module(ne_binary()) -> ne_binary().
+provider_module(?DASH_KEY) ->
     <<"knm_dash_e911">>;
-provider_module(?VITELITY_KEY, _) ->
+provider_module(?VITELITY_KEY) ->
     <<"knm_vitelity_e911">>;
-provider_module(?TELNYX_KEY, _) ->
+provider_module(?TELNYX_KEY) ->
     <<"knm_telnyx_e911">>;
-provider_module(<<"prepend">>, _) ->
+provider_module(<<"prepend">>) ->
     <<"knm_prepend">>;
-provider_module(<<"port">>, _) ->
+provider_module(<<"port">>) ->
     <<"knm_port_notifier">>;
-provider_module(<<"failover">>, _) ->
+provider_module(<<"failover">>) ->
     <<"knm_failover">>;
-provider_module(Other, _ResellerId) ->
-    lager:warning("unmatched feature provider '~s' (~s), allowing", [Other, _ResellerId]),
+provider_module(<<"knm_",_/binary>>=Feature) ->
+    Feature;
+provider_module(Other) ->
+    lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.
 
 %%--------------------------------------------------------------------
