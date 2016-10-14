@@ -91,10 +91,15 @@ flush(Account, Config) ->
 -spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 -spec get(account(), ne_binary(), kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
+-ifdef(TEST).
+get(_, _, _) -> 'undefined'.
+get(_, _, _, Default) -> Default.
+-else.
 get(Account, Config, Key) ->
     get(Account, Config, Key, 'undefined').
 get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
+-endif.
 
 -spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                  kz_json:object().
