@@ -24,13 +24,13 @@
                                   ,<<"prepend">>
                                   ]).
 
--define(CNAM_PROVIDER(ResellerId),
-        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
--define(E911_FEATURE(ResellerId),
-        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
+-define(CNAM_PROVIDER(AccountId),
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
+-define(E911_FEATURE(AccountId),
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
 
--define(ALLOWED_FEATURES(ResellerId),
-        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
+-define(ALLOWED_FEATURES(AccountId),
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,25 +86,22 @@ provider_modules(Number) ->
 -ifdef(TEST).
 allowed_features(PhoneNumber) ->
     case knm_phone_number:number(PhoneNumber) of
-        ?TEST_AVAILABLE_NUM=_Num ->
-            io:format(user, "\n>>> tis it ~p\n", [_Num]),
+        ?TEST_AVAILABLE_NUM ->
             (?DEFAULT_ALLOWED_FEATURES -- [?DEFAULT_E911_FEATURE]) ++ [?TELNYX_KEY];
-        _Num ->
-            io:format(user, "\n>>> avant ~p\n", [_Num]),
-            ?DEFAULT_ALLOWED_FEATURES
+        _ -> ?DEFAULT_ALLOWED_FEATURES
     end.
 -else.
 allowed_features(PhoneNumber) ->
-    ResellerId = kz_services:get_reseller_id(knm_phone_number:assigned_to(PhoneNumber)),
-    [provider_module(Feature, ResellerId)
-     || Feature <- ?ALLOWED_FEATURES(ResellerId)
+    AccountId = knm_phone_number:assigned_to(PhoneNumber),
+    [provider_module(Feature, AccountId)
+     || Feature <- ?ALLOWED_FEATURES(AccountId)
     ].
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
-provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
-    ?CNAM_PROVIDER(ResellerId);
-provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(ResellerId)) ->
-    ?E911_FEATURE(ResellerId);
+provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ?CNAM_PROVIDER(AccountId);
+provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ?E911_FEATURE(AccountId);
 provider_module(Feature, _) ->
     Feature.
 -endif.
