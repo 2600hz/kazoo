@@ -73,5 +73,8 @@
 -define(E911_STATE, <<"region">>).
 -define(E911_ZIP, <<"postal_code">>).
 
+-define(CNAM_DISPLAY_NAME, <<"display_name">>).
+-define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

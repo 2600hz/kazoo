@@ -92,13 +92,13 @@ handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
-    CurrentCNAM = kz_json:get_ne_value(?KEY_DISPLAY_NAME, Feature),
-    case kz_json:get_ne_value([?FEATURE_CNAM, ?KEY_DISPLAY_NAME], Doc) of
+    CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
+    case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of
         'undefined' ->
             knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
         CurrentCNAM -> Number;
         NewCNAM ->
-            FeatureData = kz_json:from_list([{?KEY_DISPLAY_NAME, NewCNAM}]),
+            FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
             Number1 = knm_services:activate_feature(Number, {?FEATURE_OUTBOUND_CNAM, FeatureData}),
             _ = publish_cnam_update(Number1),
             Number1
@@ -115,13 +115,13 @@ handle_inbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_INBOUND_CNAM),
-    case kz_json:is_true([?FEATURE_CNAM, ?KEY_INBOUND_LOOKUP], Doc) of
-        'false' -> knm_services:deactivate_feature(Number, ?KEY_INBOUND_LOOKUP);
+    case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
+        'false' -> knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
         'true' ->
-            case kz_json:is_true(?KEY_INBOUND_LOOKUP, Feature) of
+            case kz_json:is_true(?CNAM_INBOUND_LOOKUP, Feature) of
                 'true' -> Number;
                 'false' ->
-                    FeatureData = kz_json:from_list([{?KEY_INBOUND_LOOKUP, <<"true">>}]),
+                    FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
                     knm_services:activate_feature(Number, {?FEATURE_INBOUND_CNAM, FeatureData})
             end
     end.

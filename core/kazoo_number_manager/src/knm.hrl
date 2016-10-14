@@ -15,9 +15,6 @@
 -define(FEATURE_CNAM, <<"cnam">>).
 -define(FEATURE_E911, <<"e911">>).
 
--define(KEY_DISPLAY_NAME, <<"display_name">>).
--define(KEY_INBOUND_LOOKUP, <<"inbound_lookup">>).
-
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
 -define(IS_US_TOLLFREE(Prefix)
