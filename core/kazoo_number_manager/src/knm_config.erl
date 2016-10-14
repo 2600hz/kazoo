@@ -5,9 +5,12 @@
         ,default_locality_url/0, default_locality_url/1
         ,locality_url/0, locality_url/1
         ,should_age/0
+        ,feature_e911/1
         ]).
 
 -include("knm.hrl").
+
+-define(DEFAULT_E911_FEATURE, ?DASH_KEY).
 
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
@@ -42,3 +45,11 @@ locality_url() ->
     locality_url(default_locality_url()).
 locality_url(Default) ->
     kapps_config:get(?LOCALITY_CONFIG_CAT, <<"url">>, Default).
+
+-spec feature_e911(ne_binary()) -> ne_binary().
+feature_e911(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    kapps_account_config:get_from_reseller(AccountId
+                                          ,?KNM_CONFIG_CAT
+                                          ,<<"e911_feature">>
+                                          ,?DEFAULT_E911_FEATURE
+                                          ).

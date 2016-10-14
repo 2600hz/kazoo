@@ -16,7 +16,6 @@
 
 -define(MOD_CNAM_NOTIFIER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_CNAM_PROVIDER, ?MOD_CNAM_NOTIFIER).
--define(DEFAULT_E911_FEATURE, ?DASH_KEY).
 -define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
                                   ,?FEATURE_E911
                                   ,<<"failover">>
@@ -26,8 +25,6 @@
 
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
--define(E911_FEATURE(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
 
 -define(ALLOWED_FEATURES(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
@@ -78,6 +75,7 @@ provider_modules(Number) ->
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
     Allowed = allowed_features(PhoneNumber),
     Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    lager:debug("allowed ~p, possible ~p", [Allowed, Possible]),
     [provider_module(Feature, AccountId)
      || Feature <- Possible,
         lists:member(Feature, Allowed)
@@ -100,7 +98,7 @@ allowed_features(PhoneNumber) ->
 
 -spec unalias_feature(ne_binary(), api_ne_binary()) -> ne_binary().
 unalias_feature(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ?E911_FEATURE(AccountId);
+    knm_config:feature_e911(AccountId);
 unalias_feature(Feature, _) ->
     Feature.
 -endif.

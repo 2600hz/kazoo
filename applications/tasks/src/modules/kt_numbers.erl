@@ -309,7 +309,8 @@ list_number_row(AuthBy, E164) ->
             PhoneNumber = knm_number:phone_number(KNMNumber),
             InboundCNAM = knm_phone_number:feature(PhoneNumber, <<"inbound_cnam">>),
             OutboundCNAM = knm_phone_number:feature(PhoneNumber, <<"outbound_cnam">>),
-            E911 = knm_phone_number:feature(PhoneNumber, ?DASH_KEY),
+            AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+            E911 = knm_phone_number:feature(PhoneNumber, knm_config:feature_e911(AssignedTo)),
             [E164
             ,knm_phone_number:assigned_to(PhoneNumber)
             ,knm_phone_number:prev_assigned_to(PhoneNumber)
@@ -400,18 +401,20 @@ import(Props, AccountIds
                      _ -> Carrier
                  end,
     CNAMInbound = kz_util:is_true(CNAMInbound0),
-    E911 = props:filter_empty(
-             [{<<"post_code">>, E911PostalCode}
-             ,{<<"street_address">>, E911StreetAddress}
-             ,{<<"extended_address">>, E911ExtendedAddress}
-             ,{<<"locality">>, E911Locality}
-             ,{<<"region">>, E911Region}
-             ]),
+    E911 = e911(AccountId
+               ,props:filter_empty(
+                  [{?E911_ZIP, E911PostalCode}
+                  ,{?E911_STREET1, E911StreetAddress}
+                  ,{?E911_STREET2, E911ExtendedAddress}
+                  ,{?E911_CITY, E911Locality}
+                  ,{?E911_STATE, E911Region}
+                  ])
+               ),
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
               ,{'module_name', ModuleName}
-              ,{'public_fields', kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ e911(E911))}
+              ,{'public_fields', kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ E911)}
               ],
     case handle_result(knm_number:create(E164, Options)) of
         [] -> {[], sets:add_element(AccountId, AccountIds)};
@@ -428,9 +431,9 @@ cnam(Inbound, CallerID=?NE_BINARY) ->
      }].
 
 %% @private
--spec e911(kz_proplist()) -> kz_proplist().
-e911([]) -> [];
-e911(Props) -> [{?DASH_KEY, kz_json:from_list(Props)}].
+-spec e911(ne_binary(), kz_proplist()) -> kz_proplist().
+e911(_, []) -> [];
+e911(AccountId, Props) -> [{knm_config:feature_e911(AccountId), kz_json:from_list(Props)}].
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->
