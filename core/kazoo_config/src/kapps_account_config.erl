@@ -13,6 +13,7 @@
 
 -export([get/2, get/3, get/4
         ,get_global/3, get_global/4
+        ,get_from_reseller/4
         ,set/4
         ,set_global/4
         ,flush/1, flush/2
