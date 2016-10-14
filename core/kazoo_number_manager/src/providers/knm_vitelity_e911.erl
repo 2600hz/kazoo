@@ -283,7 +283,7 @@ get_unit(ExtendedAddress) ->
 -spec get_account_name(ne_binary()) -> api_binary().
 get_account_name(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_json:get_ne_binary_value(<<"name">>, JObj);
+        {'ok', JObj} -> kz_account:name(JObj);
         {'error', _Error} ->
             lager:error('error opening account doc ~p', [AccountId]),
             'undefined'

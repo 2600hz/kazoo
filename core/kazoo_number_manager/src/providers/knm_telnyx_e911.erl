@@ -173,7 +173,8 @@ maybe_update_e911(Number, 'false') ->
                          {'error', ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
-    case create_address(AddressJObj) of
+    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
+    case create_address(AccountId, AddressJObj) of
         {'error', _}=E -> E;
         {'ok', AddressId, _NewFeature}=Ok ->
             case assign_address(Number, AddressId) of
@@ -182,11 +183,11 @@ update_e911(Number, AddressJObj) ->
             end
     end.
 
--spec create_address(kz_json:object()) ->
+-spec create_address(ne_binary(), kz_json:object()) ->
                             {'ok', ne_binary()} |
                             {'error', ne_binary() | any()}.
-create_address(AddressJObj) ->
-    Body = e911_address(AddressJObj),
+create_address(AccountId, AddressJObj) ->
+    Body = e911_address(AccountId, AddressJObj),
     try knm_telnyx_util:req('post', ["e911_addresses"], Body) of
         Rep ->
             %% Telnyx has at least 2 different ways of returning errors:
@@ -238,13 +239,16 @@ reason(RepJObj) ->
                 [{Message, kz_json:get_ne_binary_value(Message, RepJObj)}
                 ,{Reasons, kz_json:get_value(Reasons, RepJObj)}
                 ])),
-    kz_json:encode(Error).
+    Reason = kz_json:encode(Error),
+    lager:error("~s", [Reason]),
+    Reason.
 
--spec e911_address(kz_json:object()) -> kz_json:object().
-e911_address(JObj) ->
+-spec e911_address(ne_binary(), kz_json:object()) -> kz_json:object().
+e911_address(AccountId, JObj) ->
     kz_json:from_list(
       props:filter_empty(
-        [{<<"city">>, cleanse(kz_json:get_ne_binary_value(?E911_CITY, JObj))}
+        [{<<"business_name">>, account_name(AccountId)}
+        ,{<<"city">>, cleanse(kz_json:get_ne_binary_value(?E911_CITY, JObj))}
         ,{<<"state">>, cleanse(kz_json:get_ne_binary_value(?E911_STATE, JObj))}
         ,{<<"postal_code">>, kz_json:get_ne_binary_value(?E911_ZIP, JObj)}
         ,{<<"line_1">>, cleanse(kz_json:get_ne_binary_value(?E911_STREET1, JObj))}
@@ -261,3 +265,19 @@ cleanse(NEBin) ->
 is_ALnum_or_space(C) when $0 =< C, C =< $9 -> 'true';
 is_ALnum_or_space(C) when $A =< C, C =< $Z -> 'true';
 is_ALnum_or_space(C) -> $\s =:= C.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec account_name(ne_binary()) -> ne_binary().
+account_name(AccountId) ->
+    Default = <<"Valued customer">>,
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:name(JObj, Default);
+        {'error', _Error} ->
+            lager:error('error opening account doc ~p', [AccountId]),
+            Default
+    end.
