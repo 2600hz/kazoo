@@ -51,6 +51,11 @@ req('post', ["number_searches"], JObj) ->
         <<"800">> -> rep_fixture("telnyx_tollfree_search_12.json");
         _ -> rep_fixture("telnyx_npa_search_12.json")
     end;
+req('post', ["e911_addresses"], Body) ->
+    <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
+    rep_fixture("telnyx_create_e911.json");
+req('post', ["number_orders"], _) ->
+    rep_fixture("telnyx_order.json");
 req('get', ["number_searches", "411384989406463698"], _) ->
     rep_fixture("telnyx_tollfree_search_22.json");
 req('get', ["number_searches", "411381763818915536"], _) ->
@@ -58,12 +63,7 @@ req('get', ["number_searches", "411381763818915536"], _) ->
 req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
     rep_fixture("telnyx_activate_e911.json");
 req('delete', ["e911_addresses", "421570676474774685"], _) ->
-    rep_fixture("telnyx_delete_e911.json");
-req('post', ["e911_addresses"], Body) ->
-    <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
-    rep_fixture("telnyx_create_e911.json");
-req('post', ["number_orders"], _) ->
-    rep_fixture("telnyx_order.json").
+    rep_fixture("telnyx_delete_e911.json").
 
 rep_fixture(Fixture) ->
     rep({'ok', 200, [], list_to_binary(knm_util:fixture(Fixture))}).
@@ -75,12 +75,25 @@ req('get'=_Method, Path, EmptyJObj) ->
     ?DEBUG_APPEND("Request:~n~s ~s~n~p~n", [_Method, Url, Headers]),
     Resp = kz_http:get(Url, Headers, http_options()),
     rep(Resp);
+req('delete'=_Method, Path, EmptyJObj) ->
+    Url = ?URL(Path),
+    Headers = http_headers(EmptyJObj),
+    ?DEBUG_APPEND("Request:~n~s ~s~n~p~n", [_Method, Url, Headers]),
+    Resp = kz_http:delete(Url, Headers, http_options()),
+    rep(Resp);
 req('post'=_Method, Path, JObj) ->
     Url = ?URL(Path),
     Headers = http_headers(JObj),
     Body = kz_json:encode(JObj),
     ?DEBUG_APPEND("Request:~n~s ~s~n~p~n~s~n", [_Method, Url, Headers, Body]),
     Resp = kz_http:post(Url, Headers, Body, http_options()),
+    rep(Resp);
+req('put'=_Method, Path, JObj) ->
+    Url = ?URL(Path),
+    Headers = http_headers(JObj),
+    Body = kz_json:encode(JObj),
+    ?DEBUG_APPEND("Request:~n~s ~s~n~p~n~s~n", [_Method, Url, Headers, Body]),
+    Resp = kz_http:put(Url, Headers, Body, http_options()),
     rep(Resp).
 
 http_headers(BodyJObj) ->
@@ -103,17 +116,17 @@ http_options() ->
 -spec rep(kz_http:ret()) -> kz_json:object().
 rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
-    lager:debug("received response"),
     maybe_apply_limit(
       maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, kz_json:decode(Response))
      );
 rep({'ok', Code, _Headers, _Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, _Response]),
     Reason = http_code(Code),
-    lager:debug("request error: ~p (~s)", [Code, Reason]),
+    lager:warning("request error: ~p (~s)", [Code, Reason]),
+    lager:debug("response: ~s", [_Response]),
     knm_errors:by_carrier(?CARRIER, Reason, <<>>);
 rep({'error', R}=_E) ->
-    lager:debug("request error: ~p", [_E]),
+    lager:warning("request error: ~p", [_E]),
     knm_errors:by_carrier(?CARRIER, kz_util:to_binary(R), <<>>).
 
 -spec http_code(pos_integer()) -> atom().
