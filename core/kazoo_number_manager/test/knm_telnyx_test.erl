@@ -66,7 +66,7 @@ e911_test_() ->
                                  ,{?E911_ZIP, <<"94123">>}
                                  ])}
                 ])}
-             ],
+            ],
     {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
     Feature = knm_phone_number:feature(PN, ?TELNYX_KEY),
