@@ -127,8 +127,12 @@ merge_jobjs_test_() ->
     ].
 
 merge_recursive_test_() ->
-    Base = ?D2,
-    New = kz_json:set_value([<<"sub_d1">>, <<"d1k1">>], 'd2k2', ?D2),
+    Base = kz_json:set_value([<<"blip">>, <<"blop">>], 42, ?D2),
+    New = kz_json:from_list(
+            [{[<<"sub_d1">>, <<"d1k1">>], 'd2k2'}
+            ,{[<<"blip">>, <<"blop">>], 'null'}
+             | kz_json:to_proplist(Base)
+            ]),
     JObj = kz_json:merge_recursive(Base, New),
     JObj1 = kz_json:merge_recursive([Base, New]),
     lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
@@ -143,6 +147,8 @@ do_merge_recursive(J) ->
      %% second JObj takes precedence
     ,?_assertEqual('d2k2',  kz_json:get_value([<<"sub_d1">>, <<"d1k1">>], J))
     ,?_assertEqual('undefined', kz_json:get_value(<<"missing_k">>, J))
+
+    ,?_assertEqual('true', kz_json:is_empty(kz_json:get_value([<<"blip">>, <<"blop">>], J)))
     ].
 
 get_binary_value_test_() ->

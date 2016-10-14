@@ -239,7 +239,7 @@ from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
 %% only a top-level merge
 %% merges JObj1 into JObj2
 -spec merge_jobjs(object(), object()) -> object().
-merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
+merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
@@ -278,11 +278,18 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when
          ,JObj1
          ,JObj2
          );
+merge_recursive(?JSON_WRAPPER(_)=JObj1, 'null', Pred, Keys) when is_function(Pred, 2) ->
+    delete_key(lists:reverse(Keys), JObj1);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
-    case Pred(get_value(Syek, JObj1), Value) of
-        'false' -> JObj1;
-        'true' -> set_value(Syek, Value, JObj1)
+    V = get_value(Syek, JObj1),
+    case 'null' =:= V of
+        'true' -> delete_key(Syek, JObj1);
+        'false' ->
+            case Pred(V, Value) of
+                'false' -> JObj1;
+                'true' -> set_value(Syek, Value, JObj1)
+            end
     end.
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
