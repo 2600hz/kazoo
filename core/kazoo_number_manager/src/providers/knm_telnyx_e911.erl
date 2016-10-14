@@ -201,7 +201,8 @@ create_address(AccountId, AddressJObj) ->
                     {'ok', AddressId, filter_empty(Address)}
             end
     catch
-        _E:Reason -> {'error', Reason}
+        'throw':{'error', 'by_carrier', _, {_, Reason}} ->
+            {'error', Reason}
     end.
 
 -spec filter_empty(kz_json:object()) -> kz_json:object().
