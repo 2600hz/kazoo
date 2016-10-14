@@ -267,10 +267,12 @@ carrier_module(<<"knm_bandwidth">>) -> 'true';
 carrier_module(<<"knm_inum">>) -> 'true';
 carrier_module(<<"knm_local">>) -> 'true';
 carrier_module(<<"knm_managed">>) -> 'true';
+carrier_module(<<"knm_mdn">>) -> 'true';
 carrier_module(<<"knm_other">>) -> 'true';
 carrier_module(<<"knm_reserved">>) -> 'true';
 carrier_module(<<"knm_reserved_reseller">>) -> 'true';
 carrier_module(<<"knm_simwood">>) -> 'true';
+carrier_module(<<"knm_telnyx">>) -> 'true';
 carrier_module(<<"knm_vitelity">>) -> 'true';
 carrier_module(<<"knm_voip_innovations">>) -> 'true';
 carrier_module(_) -> 'false'.
