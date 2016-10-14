@@ -75,9 +75,10 @@ has_emergency_services(Number) ->
 -spec provider_modules(knm_number:knm_number()) -> ne_binaries().
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
+    AccountId = knm_phone_number:assigned_to(PhoneNumber),
     Allowed = allowed_features(PhoneNumber),
     Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
-    [provider_module(Feature)
+    [provider_module(Feature, AccountId)
      || Feature <- Possible,
         lists:member(Feature, Allowed)
     ].
@@ -93,35 +94,33 @@ allowed_features(PhoneNumber) ->
 -else.
 allowed_features(PhoneNumber) ->
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    [provider_module(Feature, AccountId)
+    [unalias_feature(Feature, AccountId)
      || Feature <- ?ALLOWED_FEATURES(AccountId)
     ].
+
+-spec unalias_feature(ne_binary(), api_ne_binary()) -> ne_binary().
+unalias_feature(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    ?E911_FEATURE(AccountId);
+unalias_feature(Feature, _) ->
+    Feature.
+-endif.
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ?CNAM_PROVIDER(AccountId);
-provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ?E911_FEATURE(AccountId);
-provider_module(Feature, _) ->
-    Feature.
--endif.
-
--spec provider_module(ne_binary()) -> ne_binary().
-provider_module(?DASH_KEY) ->
+provider_module(?DASH_KEY, _) ->
     <<"knm_dash_e911">>;
-provider_module(?VITELITY_KEY) ->
+provider_module(?VITELITY_KEY, _) ->
     <<"knm_vitelity_e911">>;
-provider_module(?TELNYX_KEY) ->
+provider_module(?TELNYX_KEY, _) ->
     <<"knm_telnyx_e911">>;
-provider_module(<<"prepend">>) ->
+provider_module(<<"prepend">>, _) ->
     <<"knm_prepend">>;
-provider_module(<<"port">>) ->
+provider_module(<<"port">>, _) ->
     <<"knm_port_notifier">>;
-provider_module(<<"failover">>) ->
+provider_module(<<"failover">>, _) ->
     <<"knm_failover">>;
-provider_module(<<"knm_",_/binary>>=Feature) ->
-    Feature;
-provider_module(Other) ->
+provider_module(Other, _) ->
     lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.
 
