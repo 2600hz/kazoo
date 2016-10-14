@@ -10,21 +10,16 @@ CLEAN_MOAR = clean-so clean-c_src-env
 include $(ROOT)/make/kz.mk
 
 ifeq ($(PLATFORM),darwin)
-	CC ?= cc
-	CFLAGS ?= -O3 -std=c99 -arch x86_64 -Wall -Wmissing-prototypes -fPIC -shared
-	LDFLAGS ?= -arch x86_64 -flat_namespace -undefined suppress
+	CFLAGS := -O3 -std=c99 -fstack-protector -Wall -Wmissing-prototypes -fPIC
+	LDFLAGS := -bundle -flat_namespace -undefined suppress
 else ifeq ($(PLATFORM),freebsd)
-	CC ?= cc
-	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall -Wmissing-prototypes -fPIC -shared
+	CFLAGS := -O3 -std=c99 -finline-functions -fstack-protector -Wall -Wmissing-prototypes -fPIC -shared
 else ifeq ($(PLATFORM),linux)
-	CC ?= gcc
-	CFLAGS ?= -O3 -std=c99 -finline-functions -Wall -Wmissing-prototypes -fPIC -shared
+	CFLAGS := -O3 -std=c99 -finline-functions -fstack-protector -Wall -Wmissing-prototypes -fPIC -shared
 endif
 
-CFLAGS += -I"$(ERTS_INCLUDE_DIR)" -I"$(ERL_INTERFACE_INCLUDE_DIR)"
-
-LDLIBS += -L"$(ERL_INTERFACE_LIB_DIR)" -lerl_interface -lei
-
+priv/comp128.so: CFLAGS += -I$(ERTS_INCLUDE_DIR) -I$(ERL_INTERFACE_INCLUDE_DIR)
+priv/comp128.so: LDFLAGS += -L$(ERL_INTERFACE_LIB_DIR) -lerl_interface -lei
 priv/comp128.so: c_src/comp128.c
 	$(CC) $(CFLAGS) $(LDFLAGS) c_src/comp128.c -o priv/comp128.so
 
