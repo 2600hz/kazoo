@@ -25,12 +25,12 @@
                                   ]).
 
 -define(CNAM_PROVIDER(ResellerId),
-        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
+        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
 -define(E911_FEATURE(ResellerId),
-        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
+        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"e911_feature">>, ?DEFAULT_E911_FEATURE)).
 
 -define(ALLOWED_FEATURES(ResellerId),
-        kapps_account_config:get(ResellerId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
+        kapps_account_config:get_global(ResellerId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
 
 %%--------------------------------------------------------------------
 %% @public
