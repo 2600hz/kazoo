@@ -54,6 +54,13 @@ Note: the `"e911"` feature is an alias for more specific E911 features (see belo
 * `cnam_provider` (string): should be a CNAM provider module (defaults to `"knm_cnam_notifier"`).
 * `e911_feature` (string): can be one of `"dash_e911"`, `"telnyx_e911"`, `"vitelity_e911"` (defaults to `"dash_e911"`).
 
+So in order for a reseller's sub-accounts to be able to use Telnyx's E911 feature, one must:
+
+1. Have `"e911"` in the `allowed_features` list, and
+1. Set `e911_feature` to `"telnyx_e911"`
+
+before setting the corresponding `telnyx_e911` field in numbers' public fields.
+
 ### Convertors
 
 The `knm_converters` module abstracts how numbers are normalized, classified, and reconciled. The primary implementation is the regex-based system, but there are plans to integrate [libphonenumber](https://github.com/googlei18n/libphonenumber) as another backend.
