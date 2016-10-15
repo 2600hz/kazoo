@@ -56,16 +56,16 @@ is_number_billable(_Number) -> 'true'.
                           {'error', any()}.
 find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
   when ?IS_US_TOLLFREE(Prefix) ->
-    SearchId = search_id(tollfree, Quantity, Prefix, undefined),
-    {ok, numbers(SearchId, Options)};
+    SearchId = search_id('tollfree', Quantity, Prefix, 'undefined'),
+    {'ok', numbers(SearchId, Options)};
 
 find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
     NXX = case byte_size(Num) >= 2+3+3 of
-              true -> binary:part(Num, 2+3, 3);
-              false -> undefined
+              'true' -> binary:part(Num, 2+3, 3);
+              'false' -> 'undefined'
           end,
-    SearchId = search_id(npa, Quantity, NPA, NXX),
-    {ok, numbers(SearchId, Options)}.
+    SearchId = search_id('npa', Quantity, NPA, NXX),
+    {'ok', numbers(SearchId, Options)}.
 
 %%--------------------------------------------------------------------
 %% @public
