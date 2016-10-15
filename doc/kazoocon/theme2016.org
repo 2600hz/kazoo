@@ -1,0 +1,35 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:nil toc:nil todo:t |:t
+
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [presentation,14pt]
+#+BEAMER_FRAME_LEVEL: 2
+#+LATEX_HEADER: \renewcommand{\familydefault}{helvetica}
+#+LATEX_HEADER: \usebackgroundtemplate%
+#+LATEX_HEADER:{%
+#+LATEX_HEADER:    \includegraphics[width=\paperwidth,height=\paperheight]{./images/default_slide.png}%
+#+LATEX_HEADER:}
+#+LATEX_HEADER: \definecolor{dkgreen}{rgb}{0,.6,0}
+#+LATEX_HEADER: \definecolor{dkblue}{rgb}{0,0,.6}
+#+LATEX_HEADER: \definecolor{dkyellow}{cmyk}{0,0,.8,.3}
+#+LATEX_HEADER:
+#+LATEX_HEADER: \lstset{
+#+LATEX_HEADER:   language        = php,
+#+LATEX_HEADER:   basicstyle      = \scriptsize\ttfamily,
+#+LATEX_HEADER:   keywordstyle    = \color{dkblue},
+#+LATEX_HEADER:   stringstyle     = \color{red},
+#+LATEX_HEADER:   identifierstyle = \color{dkgreen},
+#+LATEX_HEADER:   showstringspaces=false,
+#+LATEX_HEADER:   commentstyle    = \color{gray},
+#+LATEX_HEADER:   emph            =[1]{php},
+#+LATEX_HEADER:   emphstyle       =[1]\color{black},
+#+LATEX_HEADER:   emph            =[2]{if,and,or,else},
+#+LATEX_HEADER:   emphstyle       =[2]\color{dkyellow}
+#+LATEX_HEADER: }
