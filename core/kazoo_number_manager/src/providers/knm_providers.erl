@@ -91,10 +91,13 @@ allowed_features(PhoneNumber) ->
     end.
 -else.
 allowed_features(PhoneNumber) ->
-    AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    [unalias_feature(Feature, AccountId)
-     || Feature <- ?ALLOWED_FEATURES(AccountId)
-    ].
+    case knm_phone_number:assigned_to(PhoneNumber) of
+        'undefined' -> [];
+        AccountId ->
+            [unalias_feature(Feature, AccountId)
+             || Feature <- ?ALLOWED_FEATURES(AccountId)
+            ]
+    end.
 
 -spec unalias_feature(ne_binary(), api_ne_binary()) -> ne_binary().
 unalias_feature(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
