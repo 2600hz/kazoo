@@ -78,6 +78,12 @@ has_emergency_services(Number) ->
 feature(Number) ->
     knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Turns +13129677542 into %2B13129677542.
+%% @end
+%%--------------------------------------------------------------------
 -spec did(knm_number:knm_number()) -> nonempty_string().
 did(Number) ->
     binary_to_list(
