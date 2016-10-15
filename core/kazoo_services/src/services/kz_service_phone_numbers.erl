@@ -37,10 +37,10 @@ reconcile(Services) ->
             lager:debug("unable to get current phone numbers in service: ~p", [_R]),
             Services;
         {'ok', JObjs} ->
-            PNs = [knm_phone_number:from_json(kz_json:get_value(<<"doc">>, JObj))
-                   || JObj <- JObjs
-                  ],
-            reconcile(Services, PNs)
+            reconcile(Services
+                     ,[knm_phone_number:from_json(kz_json:get_value(<<"doc">>, JObj))
+                       || JObj <- JObjs
+                      ])
     end.
 
 reconcile(Services, PNs) ->

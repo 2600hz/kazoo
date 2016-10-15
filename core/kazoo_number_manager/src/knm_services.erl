@@ -129,8 +129,8 @@ update_services(Number, _, 'true') ->
     Number;
 update_services(Number, 'true', _) ->
     lager:debug("somewhat dry_run-ing btw"),
-    JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
-    Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
+    PhoneNumber = knm_number:phone_number(Number),
+    Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [PhoneNumber]),
     knm_number:set_services(Number, Services);
 update_services(Number, 'false', _) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -162,8 +162,7 @@ activate_phone_number(Number) ->
 activate_phone_number(Number, BillingId) ->
     Services = fetch_services(Number),
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    Units = kz_service_phone_numbers:
-        phone_number_activation_charge(Services, Num),
+    Units = kz_service_phone_numbers:phone_number_activation_charge(Services, Num),
     activate_phone_number(Number, BillingId, Units).
 
 activate_phone_number(Number, _BillingId, 0) ->

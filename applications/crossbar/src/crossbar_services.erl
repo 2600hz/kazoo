@@ -198,18 +198,14 @@ calc_service_updates(Context, <<"limits">>) ->
           ]),
     kz_service_limits:reconcile(Services, Updates);
 calc_service_updates(Context, <<"port_request">>) ->
-    Services = fetch_service(Context),
-    JObj = cb_context:doc(Context),
-    Numbers = kz_json:get_value(<<"numbers">>, JObj),
     PhoneNumbers =
-        [kz_doc:set_id(
-           kz_json:set_value(?PVT_FEATURES, [?PORT_KEY
-                                             | kz_json:get_list_value(?PVT_FEATURES, NumberJObj, [])
-                                            ], NumberJObj)
-                      ,NumberKey
-          )
-         || {NumberKey, NumberJObj} <- kz_json:to_proplist(Numbers)],
-    kz_service_phone_numbers:reconcile(Services, PhoneNumbers);
+        [knm_phone_number:set_feature(knm_phone_number:from_json(JObj)
+                                     ,?PORT_KEY
+                                     ,kz_json:new()
+                                     )
+         || JObj <- kz_json:values(<<"numbers">>, cb_context:doc(Context))
+        ],
+    kz_service_phone_numbers:reconcile(fetch_service(Context), PhoneNumbers);
 calc_service_updates(Context, <<"app">>) ->
     [{<<"apps_store">>, [Id]} | _] = cb_context:req_nouns(Context),
     case kz_service_ui_apps:is_in_use(cb_context:req_data(Context)) of
@@ -248,8 +244,7 @@ calc_service_updates(_Context, _Type, _Props) ->
 %%--------------------------------------------------------------------
 -spec fetch_service(cb_context:context()) -> kz_services:services().
 fetch_service(Context) ->
-    AccountId = cb_context:account_id(Context),
-    kz_services:fetch(AccountId).
+    kz_services:fetch(cb_context:account_id(Context)).
 
 -spec reconcile(cb_context:context()) -> cb_context:context().
 reconcile(Context) ->
