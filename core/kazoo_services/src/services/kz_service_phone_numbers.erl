@@ -55,6 +55,8 @@ feature_activation_charge(?DASH_KEY, Services) ->
     feature_activation_charge(?EMERGENCY_SERVICES_KEY, Services);
 feature_activation_charge(?VITELITY_KEY, Services) ->
     feature_activation_charge(?EMERGENCY_SERVICES_KEY, Services);
+feature_activation_charge(?TELNYX_KEY, Services) ->
+    feature_activation_charge(?EMERGENCY_SERVICES_KEY, Services);
 feature_activation_charge(Feature, Services) ->
     Charge = kz_services:activation_charges(?NUMBER_SERVICES, Feature, Services),
     wht_util:dollars_to_units(Charge).
@@ -170,6 +172,8 @@ update_feature_quantities([], Services) ->
 update_feature_quantities([?DASH_KEY|Features], Services) ->
     update_feature_quantities([?EMERGENCY_SERVICES_KEY|Features], Services);
 update_feature_quantities([?VITELITY_KEY|Features], Services) ->
+    update_feature_quantities([?EMERGENCY_SERVICES_KEY|Features], Services);
+update_feature_quantities([?TELNYX_KEY|Features], Services) ->
     update_feature_quantities([?EMERGENCY_SERVICES_KEY|Features], Services);
 update_feature_quantities([Feature|Features], Services) ->
     Quantity = kz_services:updated_quantity(?NUMBER_SERVICES, Feature, Services),
