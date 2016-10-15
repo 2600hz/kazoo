@@ -178,9 +178,9 @@ is_reconcilable(Number) ->
 is_reconcilable(Number, AccountId) ->
     Regex = kapps_account_config:get_global(
               AccountId
-              ,?KNM_CONFIG_CAT
-              ,?KEY_RECONCILE_REGEX
-              ,?DEFAULT_RECONCILE_REGEX
+                                           ,?KNM_CONFIG_CAT
+                                           ,?KEY_RECONCILE_REGEX
+                                           ,?DEFAULT_RECONCILE_REGEX
              ),
     Num = normalize(Number, AccountId),
     is_reconcilable_by_regex(Num, Regex).
@@ -205,10 +205,10 @@ is_reconcilable_by_regex(Num, Regex) ->
 -define(CLASSIFIERS, kz_json:from_list(?DEFAULT_CLASSIFIERS)).
 -else.
 -define(CLASSIFIERS
-        ,kapps_config:get(?KNM_CONFIG_CAT
-                           ,<<"classifiers">>
-                           ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
-                          )
+       ,kapps_config:get(?KNM_CONFIG_CAT
+                        ,<<"classifiers">>
+                        ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
+                        )
        ).
 -endif.
 
@@ -226,8 +226,8 @@ classify(Number) ->
 -spec available_classifiers() -> kz_json:object().
 available_classifiers() ->
     kz_json:foldl(fun correct_depreciated_classifiers/3
-                  ,kz_json:new()
-                  ,?CLASSIFIERS
+                 ,kz_json:new()
+                 ,?CLASSIFIERS
                  ).
 
 %%--------------------------------------------------------------------
@@ -287,10 +287,10 @@ get_classifier_regex(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
-                                             kz_json:object().
+                                                 kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}
-                           ,{<<"friendly_name">>, Classifier}
+                          ,{<<"friendly_name">>, Classifier}
                           ]),
     kz_json:set_value(Classifier, J, JObj);
 correct_depreciated_classifiers(Classifier, J, JObj) ->
