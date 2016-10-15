@@ -399,8 +399,26 @@ to_querystring_test_() ->
      || {JSON, QS} <- Tests
     ].
 
+-define(D1_values, [<<"d1v1">>
+                   ,'d1v2'
+                   ,[<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]
+                   ]).
+
 get_values_test() ->
-    ?assertEqual('true', are_all_there(?D1, [<<"d1v1">>, 'd1v2', [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]], [<<"d1k1">>, <<"d1k2">>, <<"d1k3">>])).
+    {Values, Keys} = kz_json:get_values(?D1),
+    ?assertEqual('true', are_all_there(Values
+                                      ,Keys
+                                      ,?D1_values
+                                      ,[<<"d1k1">>, <<"d1k2">>, <<"d1k3">>]
+                                      )).
+
+values_test() ->
+    Values = kz_json:values(?D1),
+    ?assertEqual('true', are_all_there(Values, [], ?D1_values, [])).
+
+are_all_there(Values, Keys, Vs, Ks) ->
+    lists:all(fun(K) -> lists:member(K, Keys) end, Ks)
+        andalso lists:all(fun(V) -> lists:member(V, Values) end, Vs).
 
 -define(K3_JOBJ, ?JSON_WRAPPER([{<<"k3.1">>, <<"v3.1">>}])).
 -define(CODEC_JOBJ, ?JSON_WRAPPER([{<<"k1">>, <<"v1">>}
@@ -410,11 +428,6 @@ get_values_test() ->
                                   ])).
 codec_test() ->
     ?assertEqual(?CODEC_JOBJ, kz_json:decode(kz_json:encode(?CODEC_JOBJ))).
-
-are_all_there(JObj, Vs, Ks) ->
-    {Values, Keys} = kz_json:get_values(JObj),
-    lists:all(fun(K) -> lists:member(K, Keys) end, Ks)
-        andalso lists:all(fun(V) -> lists:member(V, Values) end, Vs).
 
 find_value_test_() ->
     JObjs = kz_json:decode(<<"[{\"k1\":\"v1\"},{\"k1\":\"v2\"}]">>),
