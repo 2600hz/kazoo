@@ -287,11 +287,15 @@ is_ALnum_or_space(C) -> $\s =:= C.
 %% @end
 %%--------------------------------------------------------------------
 -spec account_name(ne_binary()) -> ne_binary().
+default_account_name() -> <<"Valued customer">>.
+-ifdef(TEST).
+account_name(_) -> default_account_name().
+-else.
 account_name(AccountId) ->
-    Default = <<"Valued customer">>,
     case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj, Default);
+        {'ok', JObj} -> kz_account:name(JObj, default_account_name());
         {'error', _Error} ->
             lager:error('error opening account doc ~p', [AccountId]),
-            Default
+            default_account_name()
     end.
+-endif.

@@ -55,7 +55,6 @@ acquire_number() ->
 e911_test_() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>, kz_json:new()}
             ,{'public_fields',
               kz_json:from_list(
@@ -76,7 +75,7 @@ e911_test_() ->
     ,{"Verify city is correctly formatted"
      ,?_assertEqual(<<"SAN FRANCISCO">>, kz_json:get_value(<<"city">>, Feature))
      }
-    ,{"Verify state is set"
+    ,{"Verify state is correctly formatted"
      ,?_assertEqual(<<"CA">>, kz_json:get_value(<<"state">>, Feature))
      }
     ,{"Verify zipcode is set"
