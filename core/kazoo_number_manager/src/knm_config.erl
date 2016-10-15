@@ -10,8 +10,6 @@
 
 -include("knm.hrl").
 
--define(DEFAULT_E911_FEATURE, ?DASH_KEY).
-
 -define(LOCALITY_CONFIG_CAT, <<"number_manager.locality">>).
 
 -spec should_age() -> boolean().
