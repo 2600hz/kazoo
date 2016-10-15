@@ -48,3 +48,5 @@ core/kazoo_auth/c_src/env.mk
 compile_commands.json
 /applications/pivot/doc/kazoocon2016.pdf
 /applications/pivot/doc/kazoocon2016.tex
+/doc/kazoocon/*.pdf
+/doc/kazoocon/*.tex
