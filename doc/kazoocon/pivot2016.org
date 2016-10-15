@@ -54,6 +54,23 @@ Presented by: James Aimonetti
 - create a callflow
 - set the pivot action as the child
 - set the URL to your webserver and script
+#+LaTeX: \scriptsize
+#+BEGIN_SRC shell
+curl -X PUT \
+-H "x-auth-token: {AUTH_TOKEN}" \
+-H "content-type: application/json" \
+-d '{"data":{
+  "numbers":["12345"]
+  ,"flow":{
+    "module":"pivot"
+    ,"data":{
+      "voice_url":"http://your.server/pivot.php"
+    }
+  }
+ }
+}' \
+http://crossbar:8000/v2/accounts/{ACCOUNT_ID}/callflows
+#+END_SRC
 
 Pivot will attempt to reach your server for calls to that callflow.
 ** The Request                                                      :B_block:
@@ -158,10 +175,10 @@ if ( ! empty($caller_id_name)
 :BEAMER_opt: fragile
 :END:
 Bridge to:
-- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.device.json][Device]]s
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.device.json][Device]]s (SIP, CallFwd, WebRTC)
 - [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.user.json][Users]]
 - [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.ring_group.json][Ring Groups]]
-- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.conference.json][Conferences]]
+- [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.conference.json][Conferences]] (Pre-defined or ad-hoc)
 - and more!
 #+BEGIN_LaTeX
 \begin{lstlisting}[language=php]
@@ -334,11 +351,12 @@ Send custom presence updates
 :BEAMER_env: block
 :END:
 - Calendars (Office365, Google, etc)
-- Recordings into services (Storage, Chat)
+- Put received media (vm, fax) into services (storage, chat)
 - Ad-driven, free calling?
 - Digital assistants
 - IVR Analytics (track stats as callers progress)
 - CRM/Salesforce access
+- Combine with metaflows and webhooks: call queues
 - *Your Ideas?*
 ** What's Next?                                                     :B_frame:
 :PROPERTIES:

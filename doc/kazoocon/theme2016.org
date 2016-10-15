@@ -33,3 +33,4 @@
 #+LATEX_HEADER:   emph            =[2]{if,and,or,else},
 #+LATEX_HEADER:   emphstyle       =[2]\color{dkyellow}
 #+LATEX_HEADER: }
+#+LATEX_HEADER: \usepackage{cmap}
