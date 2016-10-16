@@ -82,10 +82,7 @@ fetch(AccountId, MessageId, BoxId) ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
                 'false' -> {'error', 'not_found'};
                 'true' ->
-                    Metadata = kvm_util:maybe_set_deleted_by_retention(
-                                 kzd_box_message:metadata(JObj)
-                                ),
-                    {'ok', kzd_box_message:set_metadata(Metadata, JObj)}
+                    {'ok', kvm_util:maybe_set_deleted_by_retention(JObj)}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
@@ -338,10 +335,10 @@ notify_and_save_meta(Call, MediaId, Length, Props) ->
             maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
         {'timeout', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
+            maybe_save_meta(Length, 'nothing', Call, MediaId, JObj, BoxId);
         {'error', _E} ->
             lager:debug("voicemail new notification error: ~p", [_E]),
-            save_meta(Length, NotifyAction, Call, MediaId, BoxId)
+            save_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
 -spec maybe_save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.

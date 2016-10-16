@@ -145,14 +145,17 @@ retention_seconds(Days) ->
 %% if message is older than retention duration, set folder to deleted
 %% @end
 %%--------------------------------------------------------------------
-maybe_set_deleted_by_retention(Metadata) ->
-    maybe_set_deleted_by_retention(Metadata, retention_seconds()).
+maybe_set_deleted_by_retention(JObj) ->
+    maybe_set_deleted_by_retention(JObj, retention_seconds()).
 
-maybe_set_deleted_by_retention(Metadata, Timestamp) ->
-    MsgTstamp = kz_json:get_integer_value(<<"timestamp">>, Metadata, 0),
-    case MsgTstamp < Timestamp of
-        'true' -> kzd_box_message:set_folder_deleted(Metadata);
-        'false' -> Metadata
+maybe_set_deleted_by_retention(JObj, Timestamp) ->
+    TsTampPath = [<<"utc_seconds">>, <<"timestamp">>],
+    MsgTstamp = kz_util:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
+    case MsgTstamp =/= 0
+        andalso MsgTstamp < Timestamp
+    of
+        'true' -> kzd_box_message:set_folder_deleted(JObj);
+        'false' -> JObj
     end.
 
 %%--------------------------------------------------------------------
