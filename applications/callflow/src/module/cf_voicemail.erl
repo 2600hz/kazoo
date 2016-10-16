@@ -370,8 +370,8 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
     end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                      ,operator=Operator
-                                     ,media_extension=Ext
                                      }
+                          ,media_extension=Ext
                           }=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting_intro(Box, Call),
