@@ -1764,7 +1764,7 @@ update_doc(Key, Value, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec tmp_file(ne_binary()) -> ne_binary().
 tmp_file(Ext) ->
-    <<(kz_util:ran_hex_binary(16))/binary, ".", Ext/binary>>.
+    <<(kz_util:rand_hex_binary(16))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
