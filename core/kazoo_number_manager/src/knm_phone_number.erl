@@ -310,6 +310,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
         ,{?PVT_USED_BY, used_by(N)}
         ,{?PVT_FEATURES, features(N)}
+        ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
         ,{?PVT_STATE, state(N)}
         ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
         ,{?PVT_PORTED_IN, ported_in(N)}
@@ -536,6 +537,10 @@ features(#knm_phone_number{features=Features}) -> Features.
 -spec features_list(knm_phone_number()) -> ne_binaries().
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
+
+-spec features_available(knm_phone_number()) -> ne_binaries().
+features_available(N) ->
+    knm_providers:allowed_features(N).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->

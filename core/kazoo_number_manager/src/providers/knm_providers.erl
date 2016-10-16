@@ -13,6 +13,7 @@
 -export([save/1]).
 -export([delete/1]).
 -export([has_emergency_services/1]).
+-export([allowed_features/1]).
 
 -define(MOD_CNAM_NOTIFIER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_CNAM_PROVIDER, ?MOD_CNAM_NOTIFIER).
@@ -49,7 +50,9 @@ delete(Number) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Return whether a number has emergency services enabled
+%% @doc
+%% Return whether a number has emergency services enabled
+%% @end
 %%--------------------------------------------------------------------
 -spec has_emergency_services(knm_number:number()) -> boolean().
 has_emergency_services(Number) ->
@@ -60,27 +63,12 @@ has_emergency_services(Number) ->
                ,lists:filtermap(F, Providers)
                ).
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
+%% List features a number is allowedby its reseller to enable.
 %% @end
 %%--------------------------------------------------------------------
--spec provider_modules(knm_number:knm_number()) -> ne_binaries().
-provider_modules(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    Allowed = allowed_features(PhoneNumber),
-    Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
-    lager:debug("allowed ~p, possible ~p", [Allowed, Possible]),
-    [provider_module(Feature, AccountId)
-     || Feature <- Possible,
-        lists:member(Feature, Allowed)
-    ].
-
 -spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
 -ifdef(TEST).
 allowed_features(PhoneNumber) ->
@@ -105,6 +93,27 @@ unalias_feature(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
 unalias_feature(Feature, _) ->
     Feature.
 -endif.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec provider_modules(knm_number:knm_number()) -> ne_binaries().
+provider_modules(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    AccountId = knm_phone_number:assigned_to(PhoneNumber),
+    Allowed = allowed_features(PhoneNumber),
+    Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    lager:debug("allowed ~p, possible ~p", [Allowed, Possible]),
+    [provider_module(Feature, AccountId)
+     || Feature <- Possible,
+        lists:member(Feature, Allowed)
+    ].
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
