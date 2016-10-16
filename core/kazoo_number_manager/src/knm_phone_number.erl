@@ -29,7 +29,7 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, features_list/1, set_features/2
+        ,features/1, features_available/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
