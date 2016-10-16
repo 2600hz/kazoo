@@ -74,6 +74,7 @@ activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
             N = knm_number:add_transaction(knm_number:set_charges(Number, Feature, TotalCharges)
                                           ,Transaction
                                           ),
+            lager:debug("updating ~s feature to ~s", [Feature, kz_json:encode(FeatureData)]),
             PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
             knm_number:set_phone_number(N, PN)
     end.

@@ -137,7 +137,7 @@ maybe_update_e911(Number, 'true') ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
-            knm_services:activate_feature(Number, ?KEY)
+            knm_services:activate_feature(Number, {?KEY, E911})
     end;
 
 maybe_update_e911(Number, 'false') ->
@@ -153,11 +153,9 @@ maybe_update_e911(Number, 'false') ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            N = knm_services:activate_feature(Number, ?KEY),
-            case update_e911(N, E911) of
+            case update_e911(Number, E911) of
                 {'ok', Data} ->
-                    PN = knm_phone_number:set_feature(knm_number:phone_number(N), ?KEY, Data),
-                    knm_number:set_phone_number(N, PN);
+                    knm_services:activate_feature(Number, {?KEY, Data});
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
                     knm_errors:unspecified(E, Number)
