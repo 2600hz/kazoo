@@ -82,9 +82,10 @@ allowed_features(PhoneNumber) ->
     case knm_phone_number:assigned_to(PhoneNumber) of
         'undefined' -> [];
         AccountId ->
-            [unalias_feature(Feature, AccountId)
-             || Feature <- ?ALLOWED_FEATURES(AccountId)
-            ]
+            lists:usort(
+              [unalias_feature(Feature, AccountId)
+               || Feature <- ?ALLOWED_FEATURES(AccountId)
+              ])
     end.
 
 -spec unalias_feature(ne_binary(), api_ne_binary()) -> ne_binary().
