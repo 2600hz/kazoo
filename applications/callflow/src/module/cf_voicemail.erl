@@ -62,10 +62,10 @@
 
 -define(ACCOUNT_VM_EXTENSION(AccountId)
        ,kapps_account_config:get_global(AccountId
-                                      ,?CF_CONFIG_CAT
-                                      ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
-                                      ,<<"mp3">>
-                                      )
+                                       ,?CF_CONFIG_CAT
+                                       ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
+                                       ,<<"mp3">>
+                                       )
        ).
 
 -define(DEFAULT_MAX_PIN_LENGTH
