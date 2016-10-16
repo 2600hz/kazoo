@@ -60,6 +60,14 @@
                         )
        ).
 
+-define(ACCOUNT_VM_EXTENSION(AccountId)
+       ,kapps_account_config:get_global(AccountId
+                                      ,?CF_CONFIG_CAT
+                                      ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
+                                      ,<<"mp3">>
+                                      )
+       ).
+
 -define(DEFAULT_MAX_PIN_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
@@ -144,6 +152,7 @@
                  ,use_person_not_available = 'false' :: boolean()
                  ,not_configurable = 'false' :: boolean()
                  ,account_db :: api_binary()
+                 ,media_extension :: api_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
@@ -361,6 +370,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
     end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                      ,operator=Operator
+                                     ,media_extension=Ext
                                      }
                           }=Box, _, Call) ->
     lager:debug("playing mailbox greeting to caller"),
@@ -372,7 +382,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
     case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
         {'ok', _} ->
             lager:info("played greeting and instructions to caller, recording new message"),
-            record_voicemail(tmp_file(), Box, Call);
+            record_voicemail(tmp_file(Ext), Box, Call);
         {'dtmf', Digit} ->
             _ = kapps_call_command:b_flush(Call),
             case Digit of
@@ -383,11 +393,11 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                     lager:info("caller chose to ring the operator"),
                     case cf_util:get_operator_callflow(kapps_call:account_id(Call)) of
                         {'ok', Flow} -> {'branch', Flow};
-                        {'error', _R} -> record_voicemail(tmp_file(), Box, Call)
+                        {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
                     end;
                 _Else ->
                     lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
-                    record_voicemail(tmp_file(), Box, Call)
+                    record_voicemail(tmp_file(Ext), Box, Call)
             end;
         {'error', R} ->
             lager:info("error while playing voicemail greeting: ~p", [R])
@@ -456,7 +466,9 @@ play_instructions(#mailbox{skip_instructions='false'}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec record_voicemail(ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
-record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
+record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
+                                         ,media_extension=Ext
+                                         }=Box, Call) ->
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
@@ -473,7 +485,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
                 'false' ->
                     new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
-                    record_voicemail(tmp_file(), Box, Call);
+                    record_voicemail(tmp_file(Ext), Box, Call);
                 {'ok', _Selection} ->
                     cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
@@ -494,7 +506,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
 %% @end
 %%--------------------------------------------------------------------
 -spec setup_mailbox(mailbox(), kapps_call:call()) -> mailbox().
-setup_mailbox(Box, Call) ->
+setup_mailbox(#mailbox{media_extension=Ext}=Box, Call) ->
     lager:debug("starting voicemail configuration wizard"),
     {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_intro">>, Call),
 
@@ -504,7 +516,7 @@ setup_mailbox(Box, Call) ->
     {'ok', _} = kapps_call_command:b_prompt(<<"vm-setup_rec_greeting">>, Call),
     lager:info("prompting caller to record an unavailable greeting"),
 
-    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(), Box, Call),
+    #mailbox{}=Box1 = record_unavailable_greeting(tmp_file(Ext), Box, Call),
     'ok' = update_doc(<<"is_setup">>, 'true', Box1, Call),
     lager:info("voicemail configuration wizard is complete"),
 
@@ -868,23 +880,27 @@ config_menu(#mailbox{interdigit_timeout=Interdigit}=Box
 -spec handle_config_selection(mailbox(), kapps_call:call(), pos_integer(), binary()) ->
                                      'ok' | mailbox() |
                                      {'error', 'channel_hungup'}.
-handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}}=Box
+handle_config_selection(#mailbox{keys=#keys{rec_unavailable=Selection}
+                                ,media_extension=Ext
+                                }=Box
                        ,Call
                        ,_Loop
                        ,Selection
                        ) ->
     lager:info("caller chose to record their unavailable greeting"),
-    case record_unavailable_greeting(tmp_file(), Box, Call) of
+    case record_unavailable_greeting(tmp_file(Ext), Box, Call) of
         'ok' -> 'ok';
         Else -> config_menu(Else, Call)
     end;
-handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}}=Box
+handle_config_selection(#mailbox{keys=#keys{rec_name=Selection}
+                                ,media_extension=Ext
+                                }=Box
                        ,Call
                        ,_Loop
                        ,Selection
                        ) ->
     lager:info("caller chose to record their name"),
-    case record_name(tmp_file(), Box, Call) of
+    case record_name(tmp_file(Ext), Box, Call) of
         'ok' -> 'ok';
         Else -> config_menu(Else, Call)
     end;
@@ -904,13 +920,15 @@ handle_config_selection(#mailbox{keys=#keys{set_pin=Selection}}=Box
         #mailbox{}=Box1 ->
             config_menu(Box1, Call)
     end;
-handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}}=Box
+handle_config_selection(#mailbox{keys=#keys{rec_temporary_unavailable=Selection}
+                                ,media_extension=Ext
+                                }=Box
                        ,Call
                        ,_Loop
                        ,Selection
                        ) ->
     lager:info("caller chose to record their temporary unavailable greeting"),
-    case record_temporary_unavailable_greeting(tmp_file(), Box, Call) of
+    case record_temporary_unavailable_greeting(tmp_file(Ext), Box, Call) of
         'ok' -> 'ok';
         Box1 -> config_menu(Box1, Call)
     end;
@@ -973,7 +991,9 @@ record_temporary_unavailable_greeting(AttachmentName, Box, Call) ->
 -spec overwrite_temporary_unavailable_greeting(ne_binary(), mailbox(), kapps_call:call()) ->
                                                       'ok' | mailbox().
 overwrite_temporary_unavailable_greeting(AttachmentName
-                                        ,#mailbox{temporary_unavailable_media_id=MediaId}=Box
+                                        ,#mailbox{temporary_unavailable_media_id=MediaId
+                                                 ,media_extension=Ext
+                                                 }=Box
                                         ,Call
                                         ) ->
     lager:info("overwriting temporary unavailable greeting  as ~s", [AttachmentName]),
@@ -992,7 +1012,7 @@ overwrite_temporary_unavailable_greeting(AttachmentName
             case review_recording(AttachmentName, 'false', Box, Call) of
                 {'ok', 'record'} ->
                     lager:info("selected item: record new temporary greetings"),
-                    record_temporary_unavailable_greeting(tmp_file(), Box, Call);
+                    record_temporary_unavailable_greeting(tmp_file(Ext), Box, Call);
                 {'ok', 'save'} ->
                     lager:info("selected item: store recorded temporary greetings"),
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -1051,7 +1071,9 @@ check_media_source(AttachmentName, Box, Call, JObj) ->
 
 -spec overwrite_unavailable_greeting(ne_binary(), mailbox(), kapps_call:call()) ->
                                             'ok' | mailbox().
-overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId}=Box, Call) ->
+overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaId
+                                                       ,media_extension=Ext
+                                                       }=Box, Call) ->
     lager:info("overwriting unavailable greeting  as ~s", [AttachmentName]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
@@ -1066,7 +1088,7 @@ overwrite_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=Med
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of
                 {'ok', 'record'} ->
-                    record_unavailable_greeting(tmp_file(), Box, Call);
+                    record_unavailable_greeting(tmp_file(Ext), Box, Call);
                 {'ok', 'save'} ->
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
                     _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
@@ -1115,7 +1137,9 @@ record_name(AttachmentName, #mailbox{owner_id=OwnerId}=Box, Call) ->
     lager:info("owner_id (~s) set on mailbox, saving into owner's doc", [OwnerId]),
     record_name(AttachmentName, Box, Call, OwnerId).
 
-record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
+record_name(AttachmentName, #mailbox{name_media_id=MediaId
+                                    ,media_extension=Ext
+                                    }=Box, Call, DocId) ->
     lager:info("recording name as ~s in ~s", [AttachmentName, MediaId]),
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
@@ -1128,7 +1152,7 @@ record_name(AttachmentName, #mailbox{name_media_id=MediaId}=Box, Call, DocId) ->
         {'ok', Msg} ->
             case review_recording(AttachmentName, 'false', Box, Call) of
                 {'ok', 'record'} ->
-                    record_name(tmp_file(), Box, Call);
+                    record_name(tmp_file(Ext), Box, Call);
                 {'ok', 'save'} ->
                     Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
                     _ = store_recording(AttachmentName, Length, MediaId, Box, Call),
@@ -1303,6 +1327,7 @@ system_report(Msg, Call) ->
 get_mailbox_profile(Data, Call) ->
     Id = kz_doc:id(Data),
     AccountDb = kapps_call:account_db(Call),
+    AccountId = kapps_call:account_id(Call),
 
     case get_mailbox_doc(AccountDb, Id, Data, Call) of
         {'ok', MailboxJObj} ->
@@ -1375,6 +1400,7 @@ get_mailbox_profile(Data, Call) ->
                     ,not_configurable=
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
+                    ,media_extension = kz_json:get_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
@@ -1736,10 +1762,9 @@ update_doc(Key, Value, Id, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file() -> ne_binary().
-tmp_file() ->
-    Ext = ?DEFAULT_VM_EXTENSION,
-    <<(kz_util:to_hex_binary(crypto:strong_rand_bytes(16)))/binary, ".", Ext/binary>>.
+-spec tmp_file(ne_binary()) -> ne_binary().
+tmp_file(Ext) ->
+    <<(kz_util:ran_hex_binary(16))/binary, ".", Ext/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
