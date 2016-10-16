@@ -281,7 +281,8 @@ get_sip_interface_from_db([FsPath]) ->
     NetworkMap = ecallmgr_config:get(<<"network_map">>, kz_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
         'undefined' ->
-            lager:debug("unable to find network map for ~s, using default interface '~s'", [FsPath, ?SIP_INTERFACE]),
+            lager:debug("unable to find network map for ~s, using default interface '~s'"
+                       ,[FsPath, ?SIP_INTERFACE]),
             ?SIP_INTERFACE;
         Else ->
             lager:debug("found custom interface '~s' in network map for ~s", [Else, FsPath]),
@@ -294,13 +295,12 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
                                              kz_network_utils:verify_cidr(FsPath, K)
                                      end, NetworkMap),
     case kz_json:get_values(SIPInterfaceObj) of
-        {[],[]} -> 'undefined';
-        {[V|_], _} ->
-            kz_json:get_ne_value(<<"custom_sip_interface">>, V)
+        [] -> 'undefined';
+        [V|_] -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
 conference_channel_vars(Props) ->
-    lists:map(fun conference_channel_var_map/1, conference_channel_vars(Props, [])).
+    [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
 
 conference_channel_vars(Props, Initial) ->
     lists:foldl(fun conference_channel_vars_fold/2, Initial, Props).

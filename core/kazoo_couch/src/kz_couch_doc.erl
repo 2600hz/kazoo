@@ -251,7 +251,7 @@ copy_attachments(#server{}=Conn, CopySpec, {[JObj | JObjs], [Key | Keys]}) ->
 -spec maybe_set_account_db(api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
 maybe_set_account_db(DB, DB, DestDbName) ->
     [{<<"pvt_account_db">>, DestDbName}];
-maybe_set_account_db(_1, _, _) -> [].
+maybe_set_account_db(_, _, _) -> [].
 
 -spec move_doc(server(), copy_doc(), kz_proplist()) ->
                       {'ok', kz_json:object()} |

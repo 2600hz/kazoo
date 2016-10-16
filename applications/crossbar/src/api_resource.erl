@@ -957,8 +957,7 @@ try_to_binary(Value) ->
 
 -spec json_to_csv(kz_json:object()) -> iolist().
 json_to_csv(JObj) ->
-    {Vs, _} = kz_json:get_values(JObj),
-    csv_ize(Vs).
+    csv_ize(kz_json:values(JObj)).
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.

@@ -54,6 +54,7 @@
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
         ,get_values/1, get_values/2
+        ,values/1, values/2
         ]).
 -export([get_keys/1, get_keys/2]).
 -export([get_public_keys/1
@@ -710,6 +711,16 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
 get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
     get_value1(Ks, props:get_value(K, Props, Default), Default);
 get_value1(_, _, Default) -> Default.
+
+-spec values(object()) -> json_terms().
+-spec values(path(), object()) -> json_terms().
+values(JObj) ->
+    [get_value(Key, JObj)
+     || Key <- ?MODULE:get_keys(JObj)
+    ].
+
+values(Key, JObj) ->
+    values(get_value(Key, JObj, new())).
 
 %% split the json object into values and the corresponding keys
 -spec get_values(object()) -> {json_terms(), keys()}.
