@@ -53,33 +53,21 @@ acquire_number() ->
     ].
 
 e911_test_() ->
+    E911 = kz_json:from_list(
+             [{?E911_STREET1, <<"301 Marina Blvd.">>}
+             ,{?E911_CITY, <<"San Francisco">>}
+             ,{?E911_STATE, <<"CA">>}
+             ,{?E911_ZIP, <<"94123">>}
+             ]),
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{<<"auth_by_account">>, kz_json:new()}
-            ,{'public_fields',
-              kz_json:from_list(
-                [{?TELNYX_KEY, kz_json:from_list(
-                                 [{?E911_STREET1, <<"301 Marina Blvd.">>}
-                                 ,{?E911_CITY, <<"San Francisco">>}
-                                 ,{?E911_STATE, <<"CA">>}
-                                 ,{?E911_ZIP, <<"94123">>}
-                                 ])}
-                ])}
+            ,{'public_fields', kz_json:from_list([{?TELNYX_KEY, E911}])}
             ],
     {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
-    Feature = knm_phone_number:feature(PN, ?TELNYX_KEY),
-    [{"Verify street is correctly formatted"
-     ,?_assertEqual(<<"301 MARINA BLVD">>, kz_json:get_value(<<"line_1">>, Feature))
-     }
-    ,{"Verify city is correctly formatted"
-     ,?_assertEqual(<<"SAN FRANCISCO">>, kz_json:get_value(<<"city">>, Feature))
-     }
-    ,{"Verify state is correctly formatted"
-     ,?_assertEqual(<<"CA">>, kz_json:get_value(<<"state">>, Feature))
-     }
-    ,{"Verify zipcode is set"
-     ,?_assertEqual(<<"94123">>, kz_json:get_value(<<"postal_code">>, Feature))
+    [{"Verify feature is properly set"
+     ,?_assertEqual(E911, knm_phone_number:feature(PN, ?TELNYX_KEY))
      }
     ,{"Verify we are keeping track of intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>
