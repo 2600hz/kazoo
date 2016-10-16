@@ -1,0 +1,77 @@
+#+SETUPFILE: "theme2016.org"
+#+TITLE: Webhooks and Websockets
+#+DATE: \today
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+
+* Webhooks and Websockets
+#+BEGIN_LaTeX
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
+\begin{frame}
+\begin{flushright}
+\alert{WEBHOOKS AND WEBSOCKETS - REAL-TIME EVENTS} \par
+\par
+Presented by: James Aimonetti
+\end{flushright}
+\end{frame}
+}
+#+END_LaTeX
+** About Myself
+*** About Myself                                           :B_column:BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :BEAMER_env: column
+    :END:
+- James Aimonetti
+  - ~Eye-Moe-Net-Tea~
+  - Commit to memory Patrick!
+- Kazoo Architect and Community at 2600Hz
+- mc_ on freenode
+*** Presenter                                                       :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.45
+    :END:
+#+BEGIN_CENTER
+[[./images/presenter_h280.jpg]]
+#+END_CENTER
+** Webhooks - High level                                            :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Request events to be sent to your server
+- Read-only
+- AMQP->HTTP bridge
+- Custom webhooks via callflows
+** Webhooks                                                        :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Simple HTTP request is sent from Kazoo to your server
+- Update rows in a database or spreadsheet
+- Screen pops
+- Use with Pivot to build reactive routing logic
+** Available Webhooks
+- Code can be found [[https://github.com/2600hz/kazoo/tree/master/applications/webhooks/src/modules][here]]
+- Channel events
+  - CREATE
+  - ANSWER
+  - BRIDGE
+  - DESTROY
+- Inbound/outbound faxes
+** Available Webhooks (cont)
+- Parked calls
+- Account objects
+  - Accounts, callflows, devices, fax boxes, media (MOH, IVR, voicemails), users, voicemail boxes, faxes
+  - Created/edited/deleted
+  - Billing systems
+- Custom webhooks from callflows
+  - Analytics on IVRs
+** Websockets                                                      :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Persistent connection
+- Lower overhead (no polling)
+- Get events *and* issue commands to Kazoo
+- Richer UI interactions with Kazoo (operator console)
