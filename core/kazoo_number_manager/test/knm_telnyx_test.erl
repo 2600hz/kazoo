@@ -62,12 +62,12 @@ e911_test_() ->
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{<<"auth_by_account">>, kz_json:new()}
-            ,{'public_fields', kz_json:from_list([{?TELNYX_KEY, E911}])}
+            ,{'public_fields', kz_json:from_list([{?FEATURE_E911, E911}])}
             ],
     {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
     [{"Verify feature is properly set"
-     ,?_assertEqual(E911, knm_phone_number:feature(PN, ?TELNYX_KEY))
+     ,?_assertEqual(E911, knm_phone_number:feature(PN, ?FEATURE_E911))
      }
     ,{"Verify we are keeping track of intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>

@@ -19,8 +19,6 @@
 
 -define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".dash_e911">>).
 
--define(KEY, ?DASH_KEY).
-
 -define(XML_PROLOG, "<?xml version=\"1.0\"?>").
 -define(AUTH_USERNAME, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(AUTH_PASSWORD, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"auth_password">>, <<>>)).
@@ -77,7 +75,7 @@ delete(Number) ->
             lager:debug("removing e911 information from ~s"
                        ,[knm_phone_number:number(knm_number:phone_number(Number))]),
             _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?KEY)
+            knm_services:deactivate_feature(Number, ?FEATURE_E911)
     end.
 
 %%--------------------------------------------------------------------
@@ -96,7 +94,7 @@ has_emergency_services(Number) ->
 %% @private
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+    knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -107,19 +105,20 @@ feature(Number) ->
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
     CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(Number))),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            NewFeature = maybe_update_e911(Number, E911),
-            knm_services:activate_feature(Number, {?KEY, NewFeature})
+            _NewFeature = maybe_update_e911(Number, E911),
+            lager:debug("using address ~s", [_NewFeature]),
+            knm_services:activate_feature(Number, {?FEATURE_E911, E911})
     end.
 
 -spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().

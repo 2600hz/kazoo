@@ -9,12 +9,6 @@
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
--define(FEATURE_LOCAL, <<"local">>).
--define(FEATURE_OUTBOUND_CNAM, <<"outbound_cnam">>).
--define(FEATURE_INBOUND_CNAM, <<"inbound_cnam">>).
--define(FEATURE_CNAM, <<"cnam">>).
--define(FEATURE_E911, <<"e911">>).
-
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
 -define(IS_US_TOLLFREE(Prefix)

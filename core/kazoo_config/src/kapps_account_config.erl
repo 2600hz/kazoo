@@ -50,6 +50,9 @@ get_global(Account, Category, Key, Default) ->
 %%--------------------------------------------------------------------
 -spec get_from_reseller(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                                kz_json:json_term().
+-ifdef(TEST).
+get_from_reseller(_, _, _, Default) -> Default.
+-else.
 get_from_reseller(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     ResellerId = kz_services:find_reseller_id(AccountId),
@@ -64,6 +67,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
         {'error', _} -> kapps_config:get(Category, Key, Default)
     end.
+-endif.
 
 -spec get_global_from_account(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                                      {'ok', kz_json:object()} |

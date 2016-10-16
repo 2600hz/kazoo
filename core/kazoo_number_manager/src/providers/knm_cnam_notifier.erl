@@ -47,8 +47,8 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_features(Number
-                                    ,[?FEATURE_INBOUND_CNAM
-                                     ,?FEATURE_OUTBOUND_CNAM
+                                    ,[?FEATURE_CNAM_INBOUND
+                                     ,?FEATURE_CNAM_OUTBOUND
                                      ,?FEATURE_CNAM
                                      ]
                                     ).
@@ -91,15 +91,15 @@ handle(Number) ->
 handle_outbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
-    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
     CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
     case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of
         'undefined' ->
-            knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM);
+            knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND);
         CurrentCNAM -> Number;
         NewCNAM ->
             FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
-            Number1 = knm_services:activate_feature(Number, {?FEATURE_OUTBOUND_CNAM, FeatureData}),
+            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
             _ = publish_cnam_update(Number1),
             Number1
     end.
@@ -114,7 +114,7 @@ handle_outbound_cnam(Number) ->
 handle_inbound_cnam(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
-    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_INBOUND_CNAM),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
         'false' -> knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
         'true' ->
@@ -122,7 +122,7 @@ handle_inbound_cnam(Number) ->
                 'true' -> Number;
                 'false' ->
                     FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
-                    knm_services:activate_feature(Number, {?FEATURE_INBOUND_CNAM, FeatureData})
+                    knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
             end
     end.
 
@@ -151,7 +151,7 @@ publish_cnam_update(Number) ->
 publish_cnam_update(_Number, 'true') -> 'ok';
 publish_cnam_update(Number, 'false') ->
     PhoneNumber = knm_number:phone_number(Number),
-    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}

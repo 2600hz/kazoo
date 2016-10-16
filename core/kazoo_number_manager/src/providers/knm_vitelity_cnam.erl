@@ -47,8 +47,8 @@ save(Number, _State) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_features(Number
-                                    ,[?FEATURE_INBOUND_CNAM
-                                     ,?FEATURE_OUTBOUND_CNAM
+                                    ,[?FEATURE_CNAM_INBOUND
+                                     ,?FEATURE_CNAM_OUTBOUND
                                      ,?FEATURE_CNAM
                                      ]
                                     ).
@@ -79,19 +79,19 @@ handle_outbound_cnam(Number) ->
 
 handle_outbound_cnam(Number, IsDryRun) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
     Doc = knm_phone_number:doc(PhoneNumber),
     CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
     case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of
         'undefined' ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
+            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_OUTBOUND_CNAM),
+            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
             handle_inbound_cnam(Number1);
         NewCNAM when IsDryRun ->
             lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
-            Number1 = knm_services:activate_feature(Number, {?FEATURE_OUTBOUND_CNAM, NewCNAM}),
+            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM}),
             handle_inbound_cnam(Number1);
         NewCNAM ->
             lager:debug("cnam display name changed to ~s, updating Vitelity", [NewCNAM]),
@@ -188,7 +188,7 @@ check_outbound_response_tag(Number, NewCNAM, Children) ->
         'undefined' -> knm_errors:unspecified('resp_tag_not_found', Number);
         <<"ok">> ->
             FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
-            Number1 = knm_services:activate_feature(Number, {?FEATURE_OUTBOUND_CNAM, FeatureData}),
+            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
             _ = publish_cnam_update(Number1),
             Number1;
         Msg ->
@@ -211,10 +211,10 @@ handle_inbound_cnam(Number) ->
 handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
-        'false' -> knm_services:deactivate_feature(Number, ?FEATURE_INBOUND_CNAM);
+        'false' -> knm_services:deactivate_feature(Number, ?FEATURE_CNAM_INBOUND);
         'true' ->
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
-            knm_services:activate_feature(Number, {?FEATURE_INBOUND_CNAM, FeatureData})
+            knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end;
 handle_inbound_cnam(Number, 'false') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
@@ -238,7 +238,7 @@ remove_inbound_cnam(Number) ->
             remove_inbound_options(DID)
            )
          ),
-    knm_services:deactivate_feature(Number, ?FEATURE_INBOUND_CNAM).
+    knm_services:deactivate_feature(Number, ?FEATURE_CNAM_INBOUND).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -329,7 +329,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
-            knm_services:activate_feature(Number, {?FEATURE_INBOUND_CNAM, FeatureData})
+            knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end.
 
 %%--------------------------------------------------------------------

@@ -307,10 +307,9 @@ list_number_row(AuthBy, E164) ->
     case knm_number:get(E164, Options) of
         {'ok', KNMNumber} ->
             PhoneNumber = knm_number:phone_number(KNMNumber),
-            InboundCNAM = knm_phone_number:feature(PhoneNumber, <<"inbound_cnam">>),
-            OutboundCNAM = knm_phone_number:feature(PhoneNumber, <<"outbound_cnam">>),
-            AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-            E911 = knm_phone_number:feature(PhoneNumber, knm_config:feature_e911(AssignedTo)),
+            InboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
+            OutboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
+            E911 = knm_phone_number:feature(PhoneNumber, ?FEATURE_E911),
             [E164
             ,knm_phone_number:assigned_to(PhoneNumber)
             ,knm_phone_number:prev_assigned_to(PhoneNumber)
@@ -401,8 +400,7 @@ import(Props, AccountIds
                      _ -> Carrier
                  end,
     CNAMInbound = kz_util:is_true(CNAMInbound0),
-    E911 = e911(AccountId
-               ,props:filter_empty(
+    E911 = e911(props:filter_empty(
                   [{?E911_ZIP, E911PostalCode}
                   ,{?E911_STREET1, E911StreetAddress}
                   ,{?E911_STREET2, E911ExtendedAddress}
@@ -425,15 +423,15 @@ import(Props, AccountIds
 -spec cnam(boolean(), api_binary()) -> kz_proplist().
 cnam(_, 'undefined') -> [];
 cnam(Inbound, CallerID=?NE_BINARY) ->
-    [{<<"cnam">>, kz_json:from_list([{<<"display_name">>, CallerID}
-                                    ,{<<"inbound_lookup">>, Inbound}
-                                    ])
+    [{?FEATURE_CNAM, kz_json:from_list([{?CNAM_DISPLAY_NAME, CallerID}
+                                       ,{?CNAM_INBOUND_LOOKUP, Inbound}
+                                       ])
      }].
 
 %% @private
--spec e911(ne_binary(), kz_proplist()) -> kz_proplist().
-e911(_, []) -> [];
-e911(AccountId, Props) -> [{knm_config:feature_e911(AccountId), kz_json:from_list(Props)}].
+-spec e911(kz_proplist()) -> kz_proplist().
+e911([]) -> [];
+e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
 -spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
 assign_to(Props, _IterValue, Number, AccountId) ->

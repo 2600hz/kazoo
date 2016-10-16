@@ -49,17 +49,16 @@ A reseller can edit the list of features available to its sub-accounts by modify
 This list defaults to `["cnam", "e911", "failover", "port", "prepend"]`.
 
 Other providers can be specified in the same place (see below).
-Note: the `"e911"` feature is an alias for more specific E911 features (see below).
 
 * `cnam_provider` (string): should be a CNAM provider module (defaults to `"knm_cnam_notifier"`).
-* `e911_feature` (string): can be one of `"dash_e911"`, `"telnyx_e911"`, `"vitelity_e911"` (defaults to `"dash_e911"`).
+* `e911_provider` (string): should be an emergency services provider module (defaults to `"knm_dash_e911"`).
 
 So in order for a reseller's sub-accounts to be able to use Telnyx's E911 feature, one must:
 
 1. Have `"e911"` in the `allowed_features` list, and
-1. Set `e911_feature` to `"telnyx_e911"`
+1. Set `e911_provider` to `"knm_telnyx_e911"`
 
-before setting the corresponding `telnyx_e911` field in numbers' public fields.
+Then, these accounts' numbers which have an `"e911"` public field will be querying Telnyx' E911 services.
 
 ### Convertors
 

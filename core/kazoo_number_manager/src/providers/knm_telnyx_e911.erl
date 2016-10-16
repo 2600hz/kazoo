@@ -17,8 +17,6 @@
 
 -include("knm.hrl").
 
--define(KEY, ?TELNYX_KEY).
-
 -define(ADDRESS_ID, <<"address_id">>).
 
 %%--------------------------------------------------------------------
@@ -57,7 +55,7 @@ delete(Number) ->
         _Else ->
             lager:debug("removing e911 information"),
             {'ok', NewNumber} = remove_number(Number),
-            knm_services:deactivate_feature(NewNumber, ?KEY)
+            knm_services:deactivate_feature(NewNumber, ?FEATURE_E911)
     end.
 
 %%--------------------------------------------------------------------
@@ -76,7 +74,7 @@ has_emergency_services(Number) ->
 %% @private
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+    knm_phone_number:feature(knm_number:phone_number(Number), ?FEATURE_E911).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,35 +103,35 @@ maybe_update_e911(Number) ->
 
 maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(Number))),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("dry run: information has been removed, updating upstream"),
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
-            knm_services:activate_feature(Number, {?KEY, E911})
+            knm_services:activate_feature(Number, {?FEATURE_E911, E911})
     end;
 
 maybe_update_e911(Number, 'false') ->
     CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(Number))),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_identical(CurrentE911, E911),
     case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             {'ok', NewNumber} = remove_number(Number),
-            knm_services:deactivate_feature(NewNumber, ?KEY);
+            knm_services:deactivate_feature(NewNumber, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?KEY);
+            knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' ->
             case update_e911(Number, E911) of
                 {'ok', NewNumber} ->
                     lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-                    knm_services:activate_feature(NewNumber, {?KEY, E911});
+                    knm_services:activate_feature(NewNumber, {?FEATURE_E911, E911});
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
                     knm_errors:unspecified(E, Number)

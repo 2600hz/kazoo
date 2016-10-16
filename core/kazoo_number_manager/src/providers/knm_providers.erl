@@ -15,8 +15,8 @@
 -export([has_emergency_services/1]).
 -export([allowed_features/1]).
 
--define(MOD_CNAM_NOTIFIER, <<"knm_cnam_notifier">>).
--define(DEFAULT_CNAM_PROVIDER, ?MOD_CNAM_NOTIFIER).
+-define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
+-define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
 -define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
                                   ,?FEATURE_E911
                                   ,<<"failover">>
@@ -27,8 +27,12 @@
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
 
+-define(E911_PROVIDER(AccountId),
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
+
 -define(ALLOWED_FEATURES(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES)).
+        lists:usort(
+          kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"allowed_features">>, ?DEFAULT_ALLOWED_FEATURES))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -70,30 +74,11 @@ has_emergency_services(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-allowed_features(PhoneNumber) ->
-    case knm_phone_number:number(PhoneNumber) of
-        ?TEST_AVAILABLE_NUM ->
-            (?DEFAULT_ALLOWED_FEATURES -- [?DEFAULT_E911_FEATURE]) ++ [?TELNYX_KEY];
-        _ -> ?DEFAULT_ALLOWED_FEATURES
-    end.
--else.
 allowed_features(PhoneNumber) ->
     case knm_phone_number:assigned_to(PhoneNumber) of
         'undefined' -> [];
-        AccountId ->
-            lists:usort(
-              [unalias_feature(Feature, AccountId)
-               || Feature <- ?ALLOWED_FEATURES(AccountId)
-              ])
+        AccountId -> ?ALLOWED_FEATURES(AccountId)
     end.
-
--spec unalias_feature(ne_binary(), api_ne_binary()) -> ne_binary().
-unalias_feature(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    knm_config:feature_e911(AccountId);
-unalias_feature(Feature, _) ->
-    Feature.
--endif.
 
 %%%===================================================================
 %%% Internal functions
@@ -119,12 +104,8 @@ provider_modules(Number) ->
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     ?CNAM_PROVIDER(AccountId);
-provider_module(?DASH_KEY, _) ->
-    <<"knm_dash_e911">>;
-provider_module(?VITELITY_KEY, _) ->
-    <<"knm_vitelity_e911">>;
-provider_module(?TELNYX_KEY, _) ->
-    <<"knm_telnyx_e911">>;
+provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    e911_provider(AccountId);
 provider_module(<<"prepend">>, _) ->
     <<"knm_prepend">>;
 provider_module(<<"port">>, _) ->
@@ -134,6 +115,13 @@ provider_module(<<"failover">>, _) ->
 provider_module(Other, _) ->
     lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.
+
+-ifdef(TEST).
+e911_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_e911">>;
+e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
+-else.
+e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
