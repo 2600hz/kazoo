@@ -79,7 +79,7 @@ handle_outbound_cnam(Number) ->
 
 handle_outbound_cnam(Number, IsDryRun) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_OUTBOUND_CNAM),
     Doc = knm_phone_number:doc(PhoneNumber),
     CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
     case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of

@@ -131,9 +131,9 @@ maybe_update_e911(Number, 'false') ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
             case update_e911(Number, E911) of
-                {'ok', NewFeature, NewNumber} ->
+                {'ok', NewNumber} ->
                     lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-                    knm_services:activate_feature(NewNumber, {?KEY, NewFeature});
+                    knm_services:activate_feature(NewNumber, {?KEY, E911});
                 {'error', E} ->
                     lager:error("information update failed: ~p", [E]),
                     knm_errors:unspecified(E, Number)
@@ -142,18 +142,14 @@ maybe_update_e911(Number, 'false') ->
 
 %% @private
 -spec update_e911(knm_number:knm_number(), kz_json:object()) ->
-                         {'ok', kz_json:object(), knm_number:knm_number()} |
+                         {'ok', knm_number:knm_number()} |
                          {'error', ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
     AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
     case create_address(AccountId, AddressJObj) of
         {'error', _}=E -> E;
-        {'ok', AddressId, NewFeature} ->
-            case assign_address(Number, AddressId) of
-                {'error', _}=E -> E;
-                {'ok', NewNumber} -> {'ok', NewFeature, NewNumber}
-            end
+        {'ok', AddressId} -> assign_address(Number, AddressId)
     end.
 
 -spec create_address(ne_binary(), kz_json:object()) ->
@@ -170,19 +166,14 @@ create_address(AccountId, AddressJObj) ->
                 'false' -> {'error', reason(Rep)};
                 'true' ->
                     AddressId = kz_json:get_ne_binary_value(<<"id">>, Rep),
-                    Address = kz_json:delete_keys([<<"id">>, <<"status">>], Rep),
-                    {'ok', AddressId, filter_empty(Address)}
+                    lager:debug("created address ~s"
+                               ,[kz_json:encode(kz_json:delete_keys([<<"id">>, <<"status">>], Rep))]),
+                    {'ok', AddressId}
             end
     catch
         'throw':{'error', 'by_carrier', _, {_, Reason}} ->
             {'error', Reason}
     end.
-
--spec filter_empty(kz_json:object()) -> kz_json:object().
-filter_empty(JObj) ->
-    kz_json:from_list(
-      props:filter_empty(
-        kz_json:to_proplist(JObj))).
 
 -spec assign_address(knm_number:knm_number(), ne_binary() | 'null') ->
                             {'ok', knm_number:knm_number()} |

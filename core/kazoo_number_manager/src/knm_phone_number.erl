@@ -284,6 +284,7 @@ to_public_json(Number) ->
             ,State
             ,UsedBy
             ,Features
+            ,{<<"features_available">>, features_available(Number)}
             ])
          ),
     Values = props:filter_empty(
