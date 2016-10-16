@@ -727,9 +727,8 @@ apply_reschedule_logic(JObj) ->
             lager:debug("no rules applied in fax reschedule logic"),
             JObj2;
         {'ok', JObj2} ->
-            lager:debug("rule '~s' applied in fax reschedule logic",
-                        [kz_json:get_value(<<"reschedule_rule">>, JObj2)]
-                       ),
+            lager:debug("rule '~s' applied in fax reschedule logic"
+                       ,[kz_json:get_value(<<"reschedule_rule">>, JObj2)]),
             JObj2
     end.
 
@@ -756,7 +755,9 @@ apply_reschedule_rules({[Rule | Rules], [Key | Keys]}, JObj) ->
             NewJObj = kz_json:set_values([{<<"retry_after">>, RetryAfter}
                                          ,{<<"retries">>, NewRetries}
                                          ,{<<"reschedule_rule">>, Key}
-                                         ], JObj),
+                                         ]
+                                        ,JObj
+                                        ),
             {'ok', NewJObj};
         'false' ->
             apply_reschedule_rules({Rules, Keys}, JObj)

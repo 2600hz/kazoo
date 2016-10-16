@@ -252,7 +252,7 @@ attachment_names(JObj) ->
 
 -spec attachment_revision(kz_json:object()) -> pos_integer().
 attachment_revision(AttachmentJObj) ->
-    {[Values], _} = kz_json:get_values(AttachmentJObj),
+    [Values] = kz_json:values(AttachmentJObj),
     kz_json:get_value(?ATTACHMENT_PROPERTY_REVISION, Values).
 
 -spec compare_attachments(kz_json:object(), kz_json:object()) -> boolean().

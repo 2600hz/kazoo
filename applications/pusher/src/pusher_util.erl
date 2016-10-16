@@ -60,12 +60,12 @@ keycert_fold(_Entry, KeyCert) ->
 -spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api_object().
 user_agent_push_properties(UserAgent) ->
     UAs = kapps_config:get(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
-    {Vs, _Ks} = kz_json:get_values(UAs),
-    user_agent_push_properties(UserAgent, Vs).
+    user_agent_push_properties(UserAgent, kz_json:values(UAs)).
 
 user_agent_push_properties(_UserAgent, []) -> 'undefined';
 user_agent_push_properties(UserAgent, [JObj|UAs]) ->
-    case re:run(UserAgent, kz_json:get_value(<<"regex">>, JObj, <<"^$">>)) of
+    case re:run(UserAgent, kz_json:get_value(<<"regex">>, JObj, <<"^\$">>)) of
         'nomatch' -> user_agent_push_properties(UserAgent, UAs);
-                                                                  _ -> kz_json:get_value(<<"properties">>, JObj, kz_json:new())
-                                                                end.
+        _ ->
+            kz_json:get_value(<<"properties">>, JObj, kz_json:new())
+    end.

@@ -56,15 +56,14 @@ logout_agent(AccountId, AgentId) ->
 -spec current_statuses(text()) -> 'ok'.
 current_statuses(AccountId) ->
     {'ok', Agents} = acdc_agent_util:most_recent_statuses(AccountId),
-    case kz_json:get_values(Agents) of
-        {[], []} ->
-            io:format("No agent statuses found for ~s~n", [AccountId]);
-        {As, _} ->
+    case kz_json:values(Agents) of
+        [] -> io:format("No agent statuses found for ~s~n", [AccountId]);
+        As ->
             io:format("Agent Statuses for ~s~n", [AccountId]),
-            io:format("~4s | ~35s | ~12s | ~20s |~n", [<<>>, <<"Agent-ID">>, <<"Status">>, <<"Timestamp">>]),
+            io:format("~4s | ~35s | ~12s | ~20s |~n"
+                     ,[<<>>, <<"Agent-ID">>, <<"Status">>, <<"Timestamp">>]),
             log_current_statuses(As, 1)
-    end,
-    'ok'.
+    end.
 
 log_current_statuses([], _) -> 'ok';
 log_current_statuses([A|As], N) ->
@@ -72,9 +71,10 @@ log_current_statuses([A|As], N) ->
     log_current_statuses(As, N+1).
 
 log_current_status(A, N) ->
+    TS = kz_json:get_integer_value(<<"timestamp">>, A),
     io:format("~4b | ~35s | ~12s | ~20s |~n", [N, kz_json:get_value(<<"agent_id">>, A)
                                               ,kz_json:get_value(<<"status">>, A)
-                                              ,kz_util:pretty_print_datetime(kz_json:get_integer_value(<<"timestamp">>, A))
+                                              ,kz_util:pretty_print_datetime(TS)
                                               ]).
 
 current_queues(AccountId) ->
