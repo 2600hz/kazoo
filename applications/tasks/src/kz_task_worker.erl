@@ -107,7 +107,9 @@ loop(IterValue, State=#state{task_id = TaskId
                             ,extra_args = ExtraArgs
                             }) ->
     case kz_csv:take_row(get(?IN)) of
-        'eof' -> teardown(State, API, IterValue);
+        'eof' ->
+            _ = is_task_successful(TaskId, API, ExtraArgs, FAssoc, 'eof', IterValue),
+            teardown(State, API, IterValue);
         {Row, CSVRest} ->
             case is_task_successful(TaskId, API, ExtraArgs, FAssoc, Row, IterValue) of
                 'stop' -> teardown(State, API, IterValue);
@@ -166,23 +168,32 @@ is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
             Args = [ExtraArgs, IterValue | RowArgs],
             case tasks_bindings:apply(API, Args) of
                 ['stop'] -> 'stop';
-                [{NewRowOrRows, NewIterValue}] when is_list(NewRowOrRows) ->
-                    Written = store_return(TaskId, RawRow, NewRowOrRows),
-                    {'true', Written, NewIterValue};
-                [{Error, NewIterValue}] ->
-                    Written = store_return(TaskId, RawRow, Error),
-                    {'false', Written, NewIterValue};
-                [NewRowOrRows=NewIterValue] when is_list(NewRowOrRows) ->
-                    Written = store_return(TaskId, RawRow, NewRowOrRows),
+                ['ok'] ->
+                    Written = store_return(TaskId, RawRow, []),
+                    {'true', Written, IterValue};
+                [{'ok', NewIterValue}] ->
+                    Written = store_return(TaskId, RawRow, []),
                     {'true', Written, NewIterValue};
                 [{'EXIT', _}] ->
                     kz_util:log_stacktrace(),
                     lager:debug("args: ~p", [Args]),
                     Written = store_return(TaskId, RawRow, ?WORKER_TASK_FAILED),
                     {'false', Written, 'stop'};
-                NewRow=NewIterValue ->
+                [{NewRowOrRows, NewIterValue}] when is_list(NewRowOrRows) ->
+                    Written = store_return(TaskId, RawRow, NewRowOrRows),
+                    {'true', Written, NewIterValue};
+                [{NewRow, NewIterValue}] when is_binary(NewRow) ->
                     Written = store_return(TaskId, RawRow, NewRow),
-                    {'false', Written, NewIterValue}
+                    {'true', Written, NewIterValue};
+                [{Error, NewIterValue}] ->
+                    Written = store_return(TaskId, RawRow, Error),
+                    {'false', Written, NewIterValue};
+                [NewRowOrRows] when is_list(NewRowOrRows) ->
+                    Written = store_return(TaskId, RawRow, NewRowOrRows),
+                    {'true', Written, IterValue};
+                [Error] when is_binary(Error) ->
+                    Written = store_return(TaskId, RawRow, Error),
+                    {'false', Written, IterValue}
             end;
         'false' ->
             lager:error("verifier failed on ~p", [RawRow]),

@@ -146,7 +146,8 @@ associator(CSVHeader, OrderedFields, Verifier) ->
             [{find_position(Header, OrderedFields, 1), I}
              || {I,Header} <- lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader)
             ]),
-    fun (Row0) ->
+    fun ('eof') -> {'true', ['eof']};
+        (Row0) ->
             Row = pad_row_to(Max, Row0),
             ReOrdered =
                 [ begin
@@ -170,7 +171,8 @@ associator(CSVHeader, OrderedFields, Verifier) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec row_to_iolist(row()) -> iodata().
+-spec row_to_iolist(row() | 'eof') -> iodata().
+row_to_iolist('eof') -> <<>>;
 row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
     kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
