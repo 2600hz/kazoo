@@ -63,6 +63,7 @@ start_link(Node, Bindings, Subclasses) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)

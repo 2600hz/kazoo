@@ -68,6 +68,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     validate_sysconfig(),
     {'ok', #state{}}.

@@ -65,6 +65,7 @@ cleanup_timer() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     knm_port_request:init(),

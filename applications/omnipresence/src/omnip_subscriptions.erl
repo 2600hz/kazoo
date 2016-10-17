@@ -230,6 +230,7 @@ table_config() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     {'ok', #state{expire_ref=start_expire_ref()}}.

@@ -11,6 +11,9 @@
 
 -export([receive_fax/3]).
 
+-include_lib("kazoo/include/kz_types.hrl").
+
+-spec receive_fax(atom(), ne_binary(), kz_json:object()) -> kz_proplist().
 receive_fax(Node, UUID, JObj) ->
     Sets = props:filter_undefined(
              lists:foldl(fun(Header, Acc) ->

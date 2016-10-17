@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_call_sup).
-
 -behaviour(supervisor).
 
 -include("ecallmgr.hrl").
@@ -37,12 +36,16 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_event_process(atom(), ne_binary()) -> sup_startchild_ret().
 start_event_process(Node, UUID) ->
     ecallmgr_call_event_sup:start_proc([Node, UUID]).
 
+-spec start_control_process(atom(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_control_process(Node, CallId, FetchId) ->
     start_control_process(Node, CallId, FetchId, 'undefined', kz_json:new()).
 
+-spec start_control_process(atom(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+                                   sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
     ecallmgr_call_control_sup:start_proc([Node
                                          ,CallId

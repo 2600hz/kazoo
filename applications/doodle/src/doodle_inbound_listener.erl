@@ -24,7 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {connection :: amqp_listener_connection()}).
+-record(state, {connection :: amqp_listener_connection()
+               }).
 -type state() :: #state{}.
 
 -define(BINDINGS(Ex), [{'sms', [{'exchange', Ex}
@@ -93,6 +94,7 @@ start_link(#amqp_listener_connection{broker=Broker
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([amqp_listener_connection()]) -> {'ok', state()}.
 init([#amqp_listener_connection{}=Connection]) ->
     {'ok', #state{connection=Connection}}.
 

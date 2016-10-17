@@ -73,9 +73,10 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("starting new stepswitch outbound responder"),
-    {ok, #state{}}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private

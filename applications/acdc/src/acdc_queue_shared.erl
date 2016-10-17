@@ -105,6 +105,7 @@ deliveries(Srv) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([pid()]) -> {'ok', state()}.
 init([FSMPid]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
 

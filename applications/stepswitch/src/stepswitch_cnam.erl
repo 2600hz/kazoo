@@ -130,6 +130,7 @@ flush_entries(_, _) -> 'false'.
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     TemplateName = kz_util:to_atom(kz_datamgr:get_uuid(), 'true'),
     {'ok', TemplateName}.

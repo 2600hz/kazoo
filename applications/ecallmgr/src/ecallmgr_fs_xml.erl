@@ -47,6 +47,7 @@ acl_xml(AclsJObj) ->
 
     {'ok', xmerl:export([SectionEl], 'fs_xml')}.
 
+-spec sip_profiles_xml(kz_json:object()) -> {'ok', iolist()}.
 sip_profiles_xml(JObj) ->
     ProfilesEl = sofia_profiles_el(JObj),
 
@@ -598,7 +599,9 @@ codec_mappings(Codec) ->
     Codec.
 
 encode_fs_val(Prefix, V) ->
-    list_to_binary([Prefix, "='", escape(V, 39), "'"]). % 39 = '
+    list_to_binary([Prefix, "='", escape(V, $\'), "'"]).
+
+-spec escape(text(), char()) -> ne_binary().
 escape(V, C) ->
     iolist_to_binary([encode(A, C) || <<A>> <= kz_util:to_binary(V)]).
 encode(C, C) -> [$\\, C];
@@ -608,10 +611,10 @@ encode(C, _) -> C.
 get_channel_params(Props) when is_list(Props) ->
     [get_channel_params_fold(K, V) || {K, V} <- Props];
 get_channel_params(JObj) ->
-    Props = kz_json:to_proplist(
-              kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
-             ),
-    get_channel_params(Props).
+    get_channel_params(
+      kz_json:to_proplist(
+        kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+       )).
 
 -spec get_channel_params_fold(ne_binary(), ne_binary()) ->
                                      {ne_binary(), ne_binary()}.
@@ -694,9 +697,11 @@ acl_list_el(Name, Default, Children) ->
 network_list_el(ListsEls) ->
     #xmlElement{name='network-lists', content=ListsEls}.
 
+-spec config_el(ne_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
 config_el(Name, Content) ->
     config_el(Name, <<"configuration ", (kz_util:to_binary(Name))/binary, " built by kazoo">>, Content).
 
+-spec config_el(ne_binary(), ne_binary(), xml_el() | xml_els()) -> xml_el() | xml_els().
 config_el(Name, Desc, #xmlElement{}=Content) ->
     config_el(Name, Desc, [Content]);
 config_el(Name, Desc, Content) ->
@@ -1061,10 +1066,12 @@ sofia_gateway_vars_el(JObj) ->
                         ]
                 end, [], kz_json:get_keys(JObj)).
 
+-spec sofia_gateways_xml_to_json(xml_el() | xml_els()) -> kz_json:object().
 sofia_gateways_xml_to_json(Xml) ->
     lists:foldl(fun sofia_gateway_xml_to_json/2
                ,kz_json:new()
-               ,get_sofia_gateways_el(Xml)).
+               ,get_sofia_gateways_el(Xml)
+               ).
 
 get_sofia_gateways_el(Xml) ->
     case xmerl_xpath:string("/gateways/gateway", Xml) of

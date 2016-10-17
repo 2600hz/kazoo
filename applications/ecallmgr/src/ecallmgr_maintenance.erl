@@ -716,9 +716,11 @@ limit_channel_uptime(MaxAge, AsDefault) ->
     io:format("updating max channel uptime to ~p (use 0 to disable check)~n", [MaxAge]).
 
 -spec hangup_long_running_channels() -> 'ok'.
+-spec hangup_long_running_channels(text() | pos_integer()) -> 'ok'.
 hangup_long_running_channels() ->
     MaxAge = ecallmgr_fs_channels:max_channel_uptime(),
     hangup_long_running_channels(MaxAge).
+
 hangup_long_running_channels(MaxAge) ->
     io:format("hanging up channels older than ~p seconds~n", [MaxAge]),
     N = ecallmgr_fs_channels:cleanup_old_channels(kz_util:to_integer(MaxAge)),

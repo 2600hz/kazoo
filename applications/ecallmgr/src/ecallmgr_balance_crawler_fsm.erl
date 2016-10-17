@@ -55,12 +55,14 @@ start_link() ->
 %%====================================================================
 %% callbacks
 %%====================================================================
+-spec init(list()) -> {'ok', atom(), fsm_state()}.
 init(_Args) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?MODULE),
     gen_fsm:send_event_after(?CRAWLER_CYCLE_MS, 'start_cycle'),
     {'ok', 'idle', 'undefined'}.
 
+-spec handle_info(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_info({'EXIT', WorkerPid, Reason}, StateName, WorkerPid) ->
     lager:debug("worker: ~p exited with reason ~p", [WorkerPid, Reason]),
     gen_fsm:send_event(self(), 'worker_stop'),
@@ -70,17 +72,21 @@ handle_info(_Info, StateName, State) ->
     lager:debug("unhandled msg in ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
+-spec handle_event(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_event(_Event, StateName, State) ->
     lager:debug("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
+-spec handle_sync_event(any(), {pid(),any()}, atom(), fsm_state()) -> handle_sync_event_ret(fsm_state()).
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
+-spec terminate(any(), atom(), fsm_state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("listener terminating: ~p", [_Reason]).
 
+-spec code_change(any(), atom(), fsm_state(), any()) -> {'ok', atom(), fsm_state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
