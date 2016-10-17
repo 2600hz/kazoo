@@ -895,7 +895,7 @@ set_qos(N) when is_integer(N), N >= 0 -> amqp_util:basic_qos(N).
 start_consumer(Q, 'undefined') -> amqp_util:basic_consume(Q, []);
 start_consumer(Q, ConsumeProps) -> amqp_util:basic_consume(Q, ConsumeProps).
 
--spec remove_binding(binding_module(), kz_proplist(), api_binary()) -> any().
+-spec remove_binding(binding_module(), kz_proplist(), api_binary()) -> 'ok'.
 remove_binding(Binding, Props, Q) ->
     Wapi = list_to_binary([<<"kapi_">>, kz_util:to_binary(Binding)]),
     lager:debug("trying to remove bindings with ~s:unbind_q(~s, ~p)", [Wapi, Q, Props]),
