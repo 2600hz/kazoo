@@ -30,7 +30,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?SUPER_TYPE('acdc_agent_sup', 'transient')]).
+-define(CHILDREN, [?SUPER_TYPE('acdc_agent_sup', 'transient')
+                  ]).
 
 %%%===================================================================
 %%% API functions
@@ -66,6 +67,7 @@ new(AcctId, AgentId) ->
         P when is_pid(P) -> lager:debug("agent already started here: ~p", [P])
     end.
 
+-spec new(ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> sup_startchild_ret() | 'ok'.
 new(AcctId, AgentId, AgentJObj, Queues) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> supervisor:start_child(?SERVER, [AgentJObj, AcctId, AgentId, Queues]);
@@ -78,7 +80,10 @@ new_thief(Call, QueueId) -> supervisor:start_child(?SERVER, [Call, QueueId]).
 -spec workers() -> pids().
 workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?SERVER)].
 
+-spec restart_acct(ne_binary()) -> [sup_startchild_ret()].
 restart_acct(AcctId) -> [acdc_agent_sup:restart(S) || S <- workers(), is_agent_in_acct(S, AcctId)].
+
+-spec restart_agent(ne_binary(), ne_binary()) -> sup_startchild_ret() | 'ok'.
 restart_agent(AcctId, AgentId) ->
     case find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no supervisor for agent ~s(~s) to restart", [AgentId, AcctId]);

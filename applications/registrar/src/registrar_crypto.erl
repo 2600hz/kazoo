@@ -17,15 +17,18 @@
         ,load_nif/0
         ]).
 
+-spec a3a8(any(), any()) -> no_return().
 a3a8(_, _) -> ?nif_stub.
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
 
+-spec nif_stub_error(integer()) -> no_return().
 nif_stub_error(Line) ->
     erlang:nif_error({'nif_not_loaded', 'module', ?MODULE, 'line', Line}).
 
+-spec load_nif() -> 'ok' | {'error', {atom(), string()}}.
 load_nif() ->
     PrivDir = case code:priv_dir(?MODULE) of
                   {'error', _} ->

@@ -186,6 +186,7 @@ config(Srv) ->
 send_sync_resp(Srv, Strategy, StrategyState, ReqJObj) ->
     gen_listener:cast(Srv, {'send_sync_resp', Strategy, StrategyState, ReqJObj}).
 
+-spec delivery(pid()) -> gen_listener:basic_deliver().
 delivery(Srv) ->
     gen_listener:call(Srv, 'delivery').
 
@@ -197,26 +198,19 @@ delivery(Srv) ->
 %% @private
 %% @doc Initializes the listener
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', #state{}}.
+-spec init(list()) -> {'ok', state()}.
 init([WorkerSup, MgrPid, AccountId, QueueId]) ->
     kz_util:put_callid(QueueId),
-
     lager:debug("starting queue ~s", [QueueId]),
-
-    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
-                                                 ,QueueId
-                                                 ),
-
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    {'ok', QueueJObj} = kz_datamgr:open_cache_doc(AccountDb, QueueId),
     gen_listener:cast(self(), {'start_friends', QueueJObj}),
-
-    {'ok', #state{
-              queue_id = QueueId
+    {'ok', #state{queue_id = QueueId
                  ,account_id = AccountId
                  ,my_id = acdc_util:proc_id()
-
                  ,worker_sup = WorkerSup
                  ,mgr_pid = MgrPid
-             }}.
+                 }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -276,6 +270,7 @@ start_shared_queue(#state{account_id=AccountId
                            ,my_id = acdc_util:proc_id(FSMPid)
                  }}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'start_friends', QueueJObj}, #state{worker_sup=WorkerSup
                                                 ,mgr_pid=MgrPid
                                                 }=State) ->

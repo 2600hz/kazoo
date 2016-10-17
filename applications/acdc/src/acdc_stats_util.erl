@@ -32,6 +32,8 @@ pause_time(<<"paused">>, JObj) ->
     end;
 pause_time(_, _JObj) -> 'undefined'.
 
+-spec caller_id_name(any(), kz_json:object()) -> api_ne_binary().
+-spec caller_id_number(any(), kz_json:object()) -> api_integer().
 caller_id_name(_, JObj) ->
     kz_json:get_value(<<"Caller-ID-Name">>, JObj).
 caller_id_number(_, JObj) ->

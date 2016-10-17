@@ -33,6 +33,7 @@ json_objs_to_csv([], _) -> [];
 json_objs_to_csv(JObjs, _) ->
     kz_json:encode(JObjs).
 
+-spec test_convert(ne_binary()) -> 'ok' | {'error', any()}.
 test_convert(AccountDb) ->
     ViewOptions = ['include_docs'],
     case kz_datamgr:get_results(AccountDb, <<"cdrs/crossbar_listing">>, ViewOptions) of

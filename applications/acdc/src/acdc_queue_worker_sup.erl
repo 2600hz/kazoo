@@ -8,7 +8,6 @@
 %%%   KAZOO-3596: Sponsored by GTNetwork LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
 -module(acdc_queue_worker_sup).
-
 -behaviour(supervisor).
 
 -include("acdc.hrl").
@@ -77,6 +76,7 @@ start_fsm(WorkerSup, MgrPid, QueueJObj) ->
 child_of_type(WSup, T) ->
     [P || {Type, P,'worker', [_]} <- supervisor:which_children(WSup), T =:= Type].
 
+-spec status(pid()) -> 'ok'.
 status(Supervisor) ->
     lager:info("    Worker Supervisor: ~p", [Supervisor]),
     FSM = fsm(Supervisor),

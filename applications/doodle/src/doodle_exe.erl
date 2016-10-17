@@ -119,6 +119,7 @@ branch(Flow, Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     branch(Flow, Srv).
 
+-spec add_event_listener(pid(), {any(),any()}) -> 'ok'.
 add_event_listener(Srv, {_,_}=SpawnInfo) when is_pid(Srv) ->
     gen_listener:cast(Srv, {'add_event_listener', SpawnInfo});
 add_event_listener(Call, {_,_}=SpawnInfo) ->
