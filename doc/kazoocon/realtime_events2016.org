@@ -1,0 +1,234 @@
+#+SETUPFILE: "theme2016.org"
+#+TITLE: Webhooks and Websockets
+#+DATE: \today
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+
+* Webhooks and Websockets
+#+BEGIN_LaTeX
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
+\begin{frame}
+\begin{flushright}
+\alert{WEBHOOKS AND WEBSOCKETS:\par REAL-TIME EVENTS} \par
+\par
+Presented by: James Aimonetti
+\end{flushright}
+\end{frame}
+}
+#+END_LaTeX
+** About Myself
+*** About Myself                                           :B_column:BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.5
+    :BEAMER_env: column
+    :END:
+- James Aimonetti
+  - ~Eye-Moe-Net-Tea~
+  - Commit to memory Patrick!
+- Kazoo Architect and Community at 2600Hz
+- mc_ on freenode
+*** Presenter                                                       :BMCOL:
+    :PROPERTIES:
+    :BEAMER_col: 0.45
+    :END:
+#+BEGIN_CENTER
+[[./images/presenter_h280.jpg]]
+#+END_CENTER
+** Webhooks - High level                                            :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Request events to be sent to your server
+- Read-only
+- AMQP->HTTP bridge
+- Custom webhooks via callflows
+** Webhooks                                                        :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Simple HTTP request is sent from Kazoo to your server
+  - Respond with 200 only (auto-disabled otherwise)
+  - If possible, relay data to separate process for use
+- Update rows in a database or spreadsheet
+- Screen pops
+- Use with Pivot to build reactive routing logic
+** Available Webhooks
+- Code can be found [[https://github.com/2600hz/kazoo/tree/master/applications/webhooks/src/modules][here]]
+- Channel events
+  - CREATE
+  - ANSWER
+  - BRIDGE
+  - DESTROY
+- Inbound/outbound faxes
+** Available Webhooks (cont)
+- Parked calls
+- Account objects
+  - Accounts, callflows, devices, fax boxes, media (MOH, IVR, voicemails), users, voicemail boxes, faxes
+  - Created/edited/deleted
+  - Billing systems
+- Custom webhooks from callflows
+  - Analytics on IVRs
+** Query for webhooks available
+#+LaTeX: \small
+#+BEGIN_SRC shell
+curl -v -X GET http://{SERVER}:8000/v2/webhooks
+#+END_SRC
+** Creating a webhook                                              :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+#+LaTeX: \small
+#+BEGIN_SRC shell
+curl -v -X PUT \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+-H "Content-Type: application/json" \
+-d '{"data": {
+    "name": "New Calls",
+    "uri": "http://{YOUR_SERVER}/calls/new.php",
+    "http_verb": "post",
+    "hook": "channel_create",
+    "retries":3
+}}' \
+http://{CB_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
+#+END_SRC
+** Webhook Request
+- *GET*: query string parameters
+- *POST*: =x-www-urlencoded-form= body
+- Data sent will be the AMQP JSON payload, encoded for the HTTP method chosen
+- No processing of the response (except HTTP response code)
+
+** The future of webhooks
+- Reseller hooks for all sub-accounts
+  - Added Oct 6
+  - Create one hook, receive events for all sub-accounts
+- Feature requests welcome!
+** Websockets                                                      :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Persistent connection
+- Lower overhead (no polling)
+- Get events *and* issue commands to Kazoo
+- Richer UI interactions with Kazoo (operator console)
+** Anatomy of websocket connection
+#+BEGIN_CENTER
+#+ATTR_LaTeX: :height 0.8\textheight
+[[https://www.pubnub.com/wp-content/uploads/2014/09/WebSockets-Diagram.png][file:./images/WebSockets-Diagram.png]]
+#+END_CENTER
+** Create a websocket connection                                   :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+- Ensure *blackhole* application is running
+- Open a connection
+
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+var socket = new WebSocket("ws://{BLACKHOLE_IP_ADDRESS}:5555");
+\end{lstlisting}
+#+END_LaTeX
+
+** Subscribe for events                                            :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+function send(data) {
+    socket.send(JSON.stringify(data));
+}
+socket.onopen = function() {...}
+
+socket.onmessage = function(raw_message) {
+    var json_data = JSON.parse(raw_message.data);
+
+    console.log(json_data);
+};
+\end{lstlisting}
+#+END_LaTeX
+** Subscribe for an account's new calls                             :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+send({
+    action: 'subscribe',
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    binding: 'call.CHANNEL_CREATE.*'
+});
+\end{lstlisting}
+#+END_LaTeX
+** Subscribe for multiple types of events                          :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+send({
+    action: 'subscribe',
+    account_id: '{ACCOUNT_ID}',
+    auth_token: '{AUTH_TOKEN}',
+    bindings: ['call.CHANNEL_ANSWER.*'
+               ,'call.CHANNEL_DESTROY.*'
+              ]
+});
+\end{lstlisting}
+#+END_LaTeX
+** Subscribe for doc change events                                 :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+send({
+    action: 'subscribe',
+    account_id: accountId,
+    auth_token: token,
+    bindings: ['doc_created.*.user.*'
+               ,'doc_edited.*.user.*'
+              ]
+});
+\end{lstlisting}
+#+END_LaTeX
+** Unsubscribe from events                                         :B_frame:
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+send({
+    "action": "unsubscribe"
+    ,"account_id": "{ACCOUNT_ID}"
+    ,"auth_token": "{AUTH_TOKEN}"
+    ,"binding": "call.CHANNEL_CREATE.*"
+});
+\end{lstlisting}
+#+END_LaTeX
+** The future
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
+- Support sending commands
+  - Currently, =cb_channels= is the way
+- More events exposed for building richer UIs
+- Improved docs for the available events
+* Thank You
+#+BEGIN_LaTeX
+{
+\usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
+\begin{frame}
+\begin{center}
+\alert{THANK YOU!}
+\end{center}
+\end{frame}
+}
+#+END_LaTeX

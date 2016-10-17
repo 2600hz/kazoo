@@ -101,10 +101,9 @@ handle_event(JObj, _Props) ->
     AccountId = find_account_id(JObj),
     case webhooks_util:find_webhooks(?NAME, AccountId) of
         [] ->
-            lager:debug(
-              "no hooks to handle ~s for ~s"
+            lager:debug("no hooks to handle ~s for ~s"
                        ,[kz_api:event_name(JObj), AccountId]
-             );
+                       );
         Hooks ->
             webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
     end.

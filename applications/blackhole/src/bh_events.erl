@@ -28,7 +28,6 @@ init() ->
     blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
     blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close').
 
-
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().
 authorize(Context, Payload) ->
     AccountId = kz_json:get_value([<<"data">>, <<"account_id">>], Payload),

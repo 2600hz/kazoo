@@ -1,0 +1,74 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:2 \n:nil ^:t arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:nil e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:f title:nil toc:nil todo:t |:t
+
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.50.3 (Org mode 8.3.4)
+#+STARTUP: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [presentation,14pt,helvetica]
+#+BEAMER_FRAME_LEVEL: 2
+#+LATEX_HEADER: \setbeamersize{text margin left=10pt,text margin right=10pt}
+#+LATEX_HEADER: \renewcommand{\familydefault}{helvetica}
+#+LATEX_HEADER: \usebackgroundtemplate%
+#+LATEX_HEADER:{%
+#+LATEX_HEADER:    \includegraphics[width=\paperwidth,height=\paperheight]{./images/default_slide.png}%
+#+LATEX_HEADER:}
+#+LATEX_HEADER: \definecolor{dkgreen}{rgb}{0,.6,0}
+#+LATEX_HEADER: \definecolor{dkblue}{rgb}{0,0,.6}
+#+LATEX_HEADER: \definecolor{dkyellow}{cmyk}{0,0,.8,.3}
+#+LATEX_HEADER: \definecolor{lightgray}{rgb}{.9,.9,.9}
+#+LATEX_HEADER: \definecolor{darkgray}{rgb}{.4,.4,.4}
+#+LATEX_HEADER: \definecolor{purple}{rgb}{0.65, 0.12, 0.82}
+
+#+LATEX_HEADER:
+#+LATEX_HEADER: \lstset{
+#+LATEX_HEADER:   language        = php,
+#+LATEX_HEADER:   basicstyle      = \scriptsize\ttfamily,
+#+LATEX_HEADER:   keywordstyle    = \color{dkblue},
+#+LATEX_HEADER:   stringstyle     = \color{red},
+#+LATEX_HEADER:   identifierstyle = \color{dkgreen},
+#+LATEX_HEADER:   showstringspaces=false,
+#+LATEX_HEADER:   commentstyle    = \color{gray},
+#+LATEX_HEADER:   emph            =[1]{php},
+#+LATEX_HEADER:   emphstyle       =[1]\color{black},
+#+LATEX_HEADER:   emph            =[2]{if,and,or,else},
+#+LATEX_HEADER:   emphstyle       =[2]\color{dkyellow}
+#+LATEX_HEADER: }
+
+#+LATEX_HEADER:
+#+LATEX_HEADER: \lstdefinelanguage{JavaScript}{
+#+LATEX_HEADER:   keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+#+LATEX_HEADER:   keywordstyle=\color{blue}\bfseries,
+#+LATEX_HEADER:   ndkeywords={class, export, boolean, throw, implements, import, this},
+#+LATEX_HEADER:   ndkeywordstyle=\color{darkgray}\bfseries,
+#+LATEX_HEADER:   identifierstyle=\color{black},
+#+LATEX_HEADER:   sensitive=false,
+#+LATEX_HEADER:   comment=[l]{//},
+#+LATEX_HEADER:   morecomment=[s]{/*}{*/},
+#+LATEX_HEADER:   commentstyle=\color{purple}\ttfamily,
+#+LATEX_HEADER:   stringstyle=\color{red}\ttfamily,
+#+LATEX_HEADER:   morestring=[b]',
+#+LATEX_HEADER:   morestring=[b]"
+#+LATEX_HEADER: }
+#+LATEX_HEADER:
+#+LATEX_HEADER: \lstset{
+#+LATEX_HEADER:    language=JavaScript,
+#+LATEX_HEADER:    backgroundcolor=\color{lightgray},
+#+LATEX_HEADER:    extendedchars=true,
+#+LATEX_HEADER:    basicstyle=\footnotesize\ttfamily,
+#+LATEX_HEADER:    showstringspaces=false,
+#+LATEX_HEADER:    showspaces=false,
+#+LATEX_HEADER:    numbers=left,
+#+LATEX_HEADER:    numberstyle=\footnotesize,
+#+LATEX_HEADER:    numbersep=9pt,
+#+LATEX_HEADER:    tabsize=2,
+#+LATEX_HEADER:    breaklines=true,
+#+LATEX_HEADER:    showtabs=false,
+#+LATEX_HEADER:    captionpos=b
+#+LATEX_HEADER: }
+#+LATEX_HEADER:
+#+LATEX_HEADER: \usepackage{cmap}
