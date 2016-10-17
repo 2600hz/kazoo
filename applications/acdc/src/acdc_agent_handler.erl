@@ -224,6 +224,7 @@ handle_call_event(Category, <<"CHANNEL_DESTROY">> = Name, FSM, JObj, Props) ->
 handle_call_event(Category, Name, FSM, JObj, _) ->
     acdc_agent_fsm:call_event(FSM, Category, Name, JObj).
 
+-spec handle_new_channel(kz_json:object(), ne_binary()) -> 'ok'.
 handle_new_channel(JObj, AccountId) ->
     'true' = kapi_call:event_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -249,6 +250,7 @@ handle_new_channel_acct(JObj, AccountId) ->
         _ -> lager:debug("invalid call direction for call ~s", [CallId])
     end.
 
+-spec handle_originate_resp(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_originate_resp(JObj, Props) ->
     case kz_json:get_value(<<"Event-Name">>, JObj) of
         <<"originate_resp">> ->
@@ -287,9 +289,9 @@ handle_agent_message(JObj, Props, <<"connect_timeout">>) ->
 handle_agent_message(_, _, _EvtName) ->
     lager:debug("not handling agent event ~s", [_EvtName]).
 
+-spec handle_config_change(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_config_change(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
-
     handle_change(JObj, kz_json:get_value(<<"Type">>, JObj)).
 
 -spec handle_change(kz_json:object(), ne_binary()) -> 'ok'.
@@ -383,11 +385,14 @@ handle_agent_change(_, AccountId, AgentId, ?DOC_DELETED) ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId)
     end.
 
+-spec handle_presence_probe(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, 'raw'));
+        {'ok', AcctDb} ->
+            AccountId = kz_util:format_account_id(AcctDb, 'raw'),
+            maybe_respond_to_presence_probe(JObj, AccountId);
         _ -> lager:debug("ignoring presence probe from realm ~s", [Realm])
     end.
 
@@ -415,6 +420,7 @@ send_probe(JObj, State) ->
         ],
     kapi_presence:publish_update(PresenceUpdate).
 
+-spec handle_destroy(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_destroy(JObj, Props) ->
     'true' = kapi_call:event_v(JObj),
     FSM = props:get_value('fsm_pid', Props),

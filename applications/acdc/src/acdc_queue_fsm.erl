@@ -111,6 +111,7 @@
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
+-spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
 
@@ -233,10 +234,12 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
     }.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ready(any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
+-spec ready(any(), any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                  ,manager_proc=MgrSrv
                                                  ,connection_timeout=ConnTimeout
@@ -302,10 +305,12 @@ ready('current_call', _, State) ->
     {'reply', 'undefined', 'ready', State}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec connect_req(any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
+-spec connect_req(any(), any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 connect_req({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
     CallId = kz_json:get_value(<<"Call-ID">>, CallJObj),
@@ -448,10 +453,12 @@ connect_req('current_call', _, #state{member_call=Call
     {'reply', current_call(Call, ConnRef, Start), 'connect_req', State}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec connecting(any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
+-spec connecting(any(), any(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
 connecting({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),

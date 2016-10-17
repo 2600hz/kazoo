@@ -198,9 +198,11 @@ terminate(Reason, #state{connection=Connection}) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+-spec format_status(any(), list()) -> [].
 format_status(_Opt, [_PDict, _State]) -> [].
 
-handle_debug(FuncState, _Event, _ProcState) ->  FuncState.
+-spec handle_debug(A, any(), any()) -> A.
+handle_debug(FuncState, _Event, _ProcState) -> FuncState.
 
 %%%===================================================================
 %%% Internal functions

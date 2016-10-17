@@ -223,8 +223,12 @@ originate_ready(FSM, JObj) ->
 -spec originate_resp(server_ref(), kz_json:object()) -> 'ok'.
 originate_resp(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
+
+-spec originate_started(server_ref(), kz_json:object()) -> 'ok'.
 originate_started(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
+
+-spec originate_uuid(server_ref(), kz_json:object()) -> 'ok'.
 originate_uuid(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_uuid'
                             ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
@@ -328,6 +332,7 @@ start_link(Supervisor, ThiefCall, _QueueId) ->
 start_link(AccountId, AgentId, Supervisor, Props) ->
     pvt_start_link(AccountId, AgentId, Supervisor, Props, 'false').
 
+-spec start_link(pid(), any(), ne_binary(), ne_binary(), any()) -> startlink_ret().
 start_link(Supervisor, _AgentJObj, AccountId, AgentId, _Queues) ->
     pvt_start_link(AccountId, AgentId, Supervisor, [], 'false').
 
@@ -342,12 +347,16 @@ pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
+-spec new_endpoint(pid(), kz_json:object()) -> 'ok'.
+-spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
+-spec deleted_endpoint(pid(), kz_json:object()) -> 'ok'.
 new_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 edited_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]),
     gen_fsm:send_all_state_event(FSM, {'edited_endpoint', kz_doc:id(EP), EP}).
-deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
+deleted_endpoint(FSM, EP) ->
+    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -419,10 +428,12 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec wait(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec wait(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
                                                             ,agent_id=AgentId
                                                             }=State) ->
@@ -450,6 +461,8 @@ wait('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec sync(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec sync(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                      ,agent_listener=AgentListener
                                                      }=State) when is_reference(Ref) ->
@@ -525,6 +538,8 @@ sync('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ready(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec ready(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 ready({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Server-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ready', JObj),
@@ -667,6 +682,8 @@ ready('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ringing(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec ringing(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 ringing({'member_connect_req', _}, State) ->
     {'next_state', 'ringing', State};
 ringing({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -922,6 +939,8 @@ ringing('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec answered(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec answered(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 answered({'member_connect_req', _}, State) ->
     {'next_state', 'answered', State};
 answered({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -1087,6 +1106,8 @@ answered('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec wrapup(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec wrapup(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 wrapup({'pause', Timeout}, #state{account_id=AccountId
                                  ,agent_id=AgentId
                                  ,agent_listener=AgentListener
@@ -1151,6 +1172,8 @@ wrapup('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec paused(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec paused(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
                                                ,agent_listener=AgentListener
                                                }=State) when is_reference(Ref) ->
@@ -1201,6 +1224,8 @@ paused('status', _, #state{pause_ref=Ref}=State) ->
 paused('current_call', _, State) ->
     {'reply', 'undefined', 'paused', State}.
 
+-spec outbound(any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec outbound(any(), any(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
                                                   ,outbound_call_ids=OutboundCallIds
                                                   }=State) ->

@@ -119,17 +119,20 @@ check_pending_sms_for_offnet_delivery(AccountId) ->
 -spec replay_sms(ne_binary(), kz_json:objects()) -> 'ok'.
 replay_sms(AccountId, JObjs) ->
     lager:debug("starting sms offnet delivery for account ~s", [AccountId]),
-    _ = [begin
-             doodle_util:replay_sms(AccountId, kz_doc:id(JObj)),
-             timer:sleep(200)
-         end
-         || JObj <- JObjs
-        ],
-    'ok'.
+    F = fun (JObj) ->
+                doodle_util:replay_sms(AccountId, kz_doc:id(JObj)),
+                timer:sleep(200)
+        end,
+    lists:foreach(F, JObjs).
 
--define(DEFAULT_ROUTEID, kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_route_id">>, <<"syneverse">>)).
--define(DEFAULT_FROM, kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_from_number">>, <<"15552220001">>)).
+-define(DEFAULT_ROUTEID,
+        kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_route_id">>, <<"syneverse">>)).
+-define(DEFAULT_FROM,
+        kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_test_from_number">>, <<"15552220001">>)).
 
+-spec send_outbound_sms(ne_binary(), ne_binary()) -> 'ok'.
+-spec send_outbound_sms(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
+-spec send_outbound_sms(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_outbound_sms(To, Msg) ->
     send_outbound_sms(To, ?DEFAULT_FROM, ?DEFAULT_ROUTEID, Msg).
 
@@ -147,10 +150,11 @@ send_outbound_sms(To, From, RouteId, Msg) ->
               ],
     kz_amqp_worker:cast(Payload, fun kapi_sms:publish_outbound/1).
 
+-spec send_outbound_sms(ne_binary(), ne_binary(), ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
 send_outbound_sms(To, From, RouteId, Msg, Times) ->
-    [begin
-         send_outbound_sms(To, From, RouteId, <<"MSG - ", (kz_util:to_binary(X))/binary, " => ", Msg/binary>>),
-         timer:sleep(2000)
-     end
-     || X <- lists:seq(1, kz_util:to_integer(Times))
-    ].
+    F = fun (X) ->
+                MSG = <<"MSG - ", (kz_util:to_binary(X))/binary, " => ", Msg/binary>>,
+                send_outbound_sms(To, From, RouteId, MSG),
+                timer:sleep(2000)
+        end,
+    lists:foreach(F, lists:seq(1, kz_util:to_integer(Times))).

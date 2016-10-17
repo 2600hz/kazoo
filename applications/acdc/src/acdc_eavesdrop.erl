@@ -12,6 +12,7 @@
 
 -export([start/3]).
 
+-spec start(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 start(MCall, AcctId, AgentCallId) ->
     Prop = [{<<"Eavesdrop-Mode">>, <<"listen">>}
            ,{<<"Account-ID">>, AcctId}
@@ -24,14 +25,14 @@ start(MCall, AcctId, AgentCallId) ->
     eavesdrop_req(Prop).
 
 eavesdrop_req(Prop) ->
-    lager:debug("Sending eavs ~p", [Prop]),
+    lager:debug("sending eavs ~p", [Prop]),
     case kapps_util:amqp_pool_request(Prop
                                      ,fun kapi_resource:publish_eavesdrop_req/1
                                      ,fun kapi_resource:eavesdrop_resp_v/1
                                      ,2000
                                      )
     of
-        {ok, Resp} -> lager:debug("ok: ~p", [Resp]);
-        {error, timeout} -> lager:debug("err: timeout");
-        {error, E} -> lager:debug("err: ~p", [E])
+        {'ok', Resp} -> lager:debug("ok: ~p", [Resp]);
+        {'error', 'timeout'} -> lager:debug("err: timeout");
+        {'error', E} -> lager:debug("err: ~p", [E])
     end.
