@@ -40,6 +40,7 @@
 %%--------------------------------------------------------------------
 -spec start_link(kz_json:object()) -> startlink_ret().
 -spec start_link(kapps_call:call(), ne_binary()) -> startlink_ret().
+-spec start_link(ne_binary(), ne_binary(), kz_json:object(), ne_binaries()) -> startlink_ret().
 start_link(AgentJObj) ->
     supervisor:start_link(?SERVER, [AgentJObj]).
 start_link(ThiefCall, QueueId) ->
@@ -51,6 +52,7 @@ start_link(AcctId, AgentId, AgentJObj, Queues) ->
 stop(Supervisor) ->
     supervisor:terminate_child('acdc_agents_sup', Supervisor).
 
+-spec restart(pid()) -> sup_startchild_ret().
 restart(Supervisor) ->
     _ = stop(Supervisor),
     supervisor:restart_child('acdc_agents_sup', Supervisor).
