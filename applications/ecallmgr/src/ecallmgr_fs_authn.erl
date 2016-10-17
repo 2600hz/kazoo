@@ -174,6 +174,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec handle_directory_lookup(ne_binary(), kz_proplist(), atom()) -> 'ok' |
+                                                                     fs_handlecall_ret().
 handle_directory_lookup(Id, Props, Node) ->
     kz_util:put_callid(Id),
     case props:get_value(<<"sip_auth_method">>, Props) of

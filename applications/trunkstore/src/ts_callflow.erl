@@ -244,6 +244,7 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
     lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
     kz_amqp_worker:cast(Command, fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end).
 
+-spec send_hangup(state(), api_binary()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
