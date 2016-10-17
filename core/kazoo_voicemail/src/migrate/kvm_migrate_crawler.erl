@@ -213,6 +213,7 @@ handle_cast(_Msg, State) ->
 %% Handling all non call/cast messages
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
                                            ,workers = []
                                            ,retention_passed = 'true'
