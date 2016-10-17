@@ -51,3 +51,27 @@ acquire_number() ->
      ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
+
+e911_test_() ->
+    E911 = kz_json:from_list(
+             [{?E911_STREET1, <<"301 Marina Blvd.">>}
+             ,{?E911_CITY, <<"San Francisco">>}
+             ,{?E911_STATE, <<"CA">>}
+             ,{?E911_ZIP, <<"94123">>}
+             ]),
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{<<"auth_by_account">>, kz_json:new()}
+            ,{'public_fields', kz_json:from_list([{?FEATURE_E911, E911}])}
+            ],
+    {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify feature is properly set"
+     ,?_assertEqual(E911, knm_phone_number:feature(PN, ?FEATURE_E911))
+     }
+    ,{"Verify we are keeping track of intermediary address_id"
+     ,?_assertEqual(<<"421564943280637078">>
+                   ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN))
+                   )
+     }
+    ].

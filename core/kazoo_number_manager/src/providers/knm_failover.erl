@@ -15,7 +15,7 @@
 
 -include("knm.hrl").
 
--define(FAILOVER_KEY, <<"failover">>).
+-define(KEY, <<"failover">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -24,10 +24,8 @@
 %% add the failover route (for in service numbers only)
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     State = knm_phone_number:state(knm_number:phone_number(Number)),
     save(Number, State).
@@ -44,13 +42,11 @@ save(Number, _State) ->
 %% remove the failover route
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
-    case knm_phone_number:feature(knm_number:phone_number(Number), ?FAILOVER_KEY) of
-        'undefined' -> Number;
-        _Else ->
-            knm_services:deactivate_feature(Number, ?FAILOVER_KEY)
+    case feature(Number) =:= 'undefined' of
+        'true' -> Number;
+        'false' -> knm_services:deactivate_feature(Number, ?KEY)
     end.
 
 %%--------------------------------------------------------------------
@@ -65,26 +61,27 @@ has_emergency_services(_Number) -> 'false'.
 %%% Internal functions
 %%%===================================================================
 
+-spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
+feature(Number) ->
+    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_failover(knm_number:knm_number()) ->
-                             knm_number:knm_number().
+-spec update_failover(knm_number:knm_number()) -> knm_number:knm_number().
 update_failover(Number) ->
+    CurrentFailover = feature(Number),
     PhoneNumber = knm_number:phone_number(Number),
-    Features = knm_phone_number:features(PhoneNumber),
-    CurrentFailover = kz_json:get_ne_value(?FAILOVER_KEY, Features),
-    Doc = knm_phone_number:doc(PhoneNumber),
-    Failover = kz_json:get_ne_value(?FAILOVER_KEY, Doc),
+    Failover = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
     NotChanged = kz_json:are_identical(CurrentFailover, Failover),
     case kz_util:is_empty(Failover) of
         'true' ->
-            knm_services:deactivate_feature(Number, ?FAILOVER_KEY);
+            knm_services:deactivate_feature(Number, ?KEY);
         'false' when NotChanged ->
-            knm_services:deactivate_feature(Number, ?FAILOVER_KEY);
+            knm_services:deactivate_feature(Number, ?KEY);
         'false' ->
-            knm_services:activate_feature(Number, ?FAILOVER_KEY)
+            knm_services:activate_feature(Number, {?KEY, Failover})
     end.

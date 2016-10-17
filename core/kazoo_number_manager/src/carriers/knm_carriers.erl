@@ -193,13 +193,12 @@ check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
 transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
     PhoneNumber0 = knm_number:phone_number(Number),
     {'ok', PhoneNumber} =
-        knm_phone_number:setters(
-          ExistingPhoneNumber
+        knm_phone_number:setters(ExistingPhoneNumber
                                 ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
                                  ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
                                  ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
                                  ]
-         ),
+                                ),
     case knm_number:save(knm_number:set_phone_number(Number, PhoneNumber)) of
         {'ok', SavedNumber} ->
             [found_number_to_jobj(SavedNumber) | Acc];

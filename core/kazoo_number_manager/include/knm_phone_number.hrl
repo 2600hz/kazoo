@@ -20,22 +20,23 @@
         {'error', atom()} |
         {'error', knm_errors:error()}.
 
--define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_ASSIGNED_TO, <<"pvt_assigned_to">>).
--define(PVT_PREVIOUSLY_ASSIGNED_TO, <<"pvt_previously_assigned_to">>).
 -define(PVT_AUTH_BY, <<"pvt_authorizing_account">>).
--define(PVT_USED_BY, <<"pvt_used_by">>).
+-define(PVT_CARRIER_DATA, <<"pvt_carrier_data">>).
+-define(PVT_CREATED, <<"pvt_created">>).
+-define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
+-define(PVT_FEATURES_AVAILABLE, <<"pvt_features_available">>).
+-define(PVT_MODIFIED, <<"pvt_modified">>).
+-define(PVT_MODULE_NAME, <<"pvt_module_name">>).
+-define(PVT_PORTED_IN, <<"pvt_ported_in">>).
+-define(PVT_PREVIOUSLY_ASSIGNED_TO, <<"pvt_previously_assigned_to">>).
+-define(PVT_REGION, <<"pvt_region">>).
+-define(PVT_RESERVE_HISTORY, <<"pvt_reserve_history">>).
 -define(PVT_STATE, <<"pvt_state">>).
 -define(PVT_STATE_LEGACY, <<"pvt_number_state">>).
--define(PVT_RESERVE_HISTORY, <<"pvt_reserve_history">>).
--define(PVT_PORTED_IN, <<"pvt_ported_in">>).
--define(PVT_MODULE_NAME, <<"pvt_module_name">>).
--define(PVT_CARRIER_DATA, <<"pvt_carrier_data">>).
--define(PVT_REGION, <<"pvt_region">>).
--define(PVT_MODIFIED, <<"pvt_modified">>).
--define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_TYPE, <<"pvt_type">>).
+-define(PVT_USED_BY, <<"pvt_used_by">>).
 
 -define(KNM_DB_PREFIX, "numbers/+").
 -define(KNM_DB_PREFIX_ENCODED, "numbers%2F%2B").
@@ -54,10 +55,6 @@
 
 -define(KNM_AVAILABLE_STATES, [?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE]).
 
--define(EMERGENCY_SERVICES_KEY, <<"e911">>).
--define(VITELITY_KEY, <<"vitelity_e911">>).
--define(DASH_KEY, <<"dash_e911">>).
-
 -define(CARRIER_INUM, <<"knm_inum">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
 -define(CARRIER_MANAGED, <<"knm_managed">>).
@@ -65,6 +62,21 @@
 -define(CARRIER_OTHER, <<"knm_other">>).
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
+
+-define(FEATURE_CNAM, <<"cnam">>).
+-define(FEATURE_CNAM_INBOUND, <<"inbound_cnam">>).
+-define(FEATURE_CNAM_OUTBOUND, <<"outbound_cnam">>).
+-define(FEATURE_E911, <<"e911">>).
+-define(FEATURE_LOCAL, <<"local">>).
+
+-define(CNAM_DISPLAY_NAME, <<"display_name">>).
+-define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).
+
+-define(E911_STREET1, <<"street_address">>).
+-define(E911_STREET2, <<"extended_address">>).
+-define(E911_CITY, <<"locality">>).
+-define(E911_STATE, <<"region">>).
+-define(E911_ZIP, <<"postal_code">>).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

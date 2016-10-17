@@ -371,10 +371,8 @@ maybe_merge_opaque(JObj, Number) ->
     case kz_json:get_ne_value(<<"opaque">>, JObj) of
         'undefined' -> Number;
         Opaque ->
-            knm_number:set_phone_number(
-              Number
-                                       ,knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque)
-             )
+            PN = knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque),
+            knm_number:set_phone_number(Number, PN)
     end.
 
 %%--------------------------------------------------------------------
@@ -388,11 +386,9 @@ maybe_merge_locality(JObj, Number) ->
     case kz_json:get_ne_value(<<"locality">>,  JObj) of
         'undefined' -> Number;
         Locality ->
-            knm_number:set_phone_number(
-              Number
-                                       ,knm_phone_number:set_feature(knm_number:phone_number(Number)
-                                                                    ,<<"locality">>
-                                                                    ,Locality
-                                                                    )
-             )
+            PN = knm_phone_number:set_feature(knm_number:phone_number(Number)
+                                             ,<<"locality">>
+                                             ,Locality
+                                             ),
+            knm_number:set_phone_number(Number, PN)
     end.

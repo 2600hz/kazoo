@@ -245,6 +245,7 @@ handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, Sta
                          ,total_rows_failed => TotalFailed
                          ,total_rows_succeeded => TotalSucceeded
                          },
+            log_elapsed_time(Task1),
             %% This MUST happen before put_attachment or conflicts won't be resolved.
             {'ok', _JObj} = update_task(Task1),
             State1 = remove_task(TaskId, State),
@@ -379,6 +380,12 @@ task_by_pid(Pid, State) ->
     [T || T=#{worker_pid := WPid} <- State#state.tasks,
           Pid == WPid
     ].
+
+-spec log_elapsed_time(kz_tasks:task()) -> 'ok'.
+log_elapsed_time(#{started := Start
+                  ,finished := End
+                  }) ->
+    lager:debug("task ran for ~s", [kz_util:pretty_print_elapsed_s(End - Start)]).
 
 -spec handle_call_start_task(kz_tasks:task(), state()) -> ?REPLY(state(), Response) when
       Response :: {'ok', kz_json:object()} |

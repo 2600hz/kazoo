@@ -13,6 +13,7 @@
 
 -export([get/2, get/3, get/4
         ,get_global/3, get_global/4
+        ,get_from_reseller/4
         ,set/4
         ,set_global/4
         ,flush/1, flush/2
@@ -21,10 +22,15 @@
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
 
-%% get_global/{3,4} will search the account db first, then system_config for values
--spec get_global(account(), ne_binary(), kz_json:path()) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Will search the account db first, then system_config for values.
+%% @end
+%%--------------------------------------------------------------------
+-spec get_global(account(), ne_binary(), kz_json:key()) ->
                         kz_json:json_term().
--spec get_global(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec get_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
@@ -32,17 +38,27 @@ get_global(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     case get_global_from_account(AccountId, Category, Key, Default) of
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
-        {'error', _} -> maybe_get_global_from_reseller(AccountId, Category, Key, Default)
+        {'error', _} -> get_from_reseller(AccountId, Category, Key, Default)
     end.
 
--spec maybe_get_global_from_reseller(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
-                                            kz_json:json_term().
-maybe_get_global_from_reseller(Account, Category, Key, Default) ->
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get global starting from reseller config.
+%% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
+%% @end
+%%--------------------------------------------------------------------
+-spec get_from_reseller(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+                               kz_json:json_term().
+-ifdef(TEST).
+get_from_reseller(_, _, _, Default) -> Default.
+-else.
+get_from_reseller(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     ResellerId = kz_services:find_reseller_id(AccountId),
     maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
 
--spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                                             kz_json:json_term().
 maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
     kapps_config:get(Category, Key, Default);
@@ -51,8 +67,9 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
         {'error', _} -> kapps_config:get(Category, Key, Default)
     end.
+-endif.
 
--spec get_global_from_account(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec get_global_from_account(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 get_global_from_account(Account, Category, _Key, _Default) ->
@@ -60,7 +77,7 @@ get_global_from_account(Account, Category, _Key, _Default) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
 
--spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+-spec get_global_from_doc(ne_binary(), kz_json:key(), kz_json:json_term(), kz_json:object()) ->
                                  kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -88,15 +105,20 @@ flush(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
--spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
--spec get(account(), ne_binary(), kz_json:path(), Default) ->
+-spec get(account(), ne_binary(), kz_json:key()) -> kz_json:api_json_term().
+-spec get(account(), ne_binary(), kz_json:key(), Default) ->
                  kz_json:json_term() | Default.
+-ifdef(TEST).
+get(_, _, _) -> 'undefined'.
+get(_, _, _, Default) -> Default.
+-else.
 get(Account, Config, Key) ->
     get(Account, Config, Key, 'undefined').
 get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
+-endif.
 
--spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec set(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                  kz_json:object().
 set(Account, Config, Key, Value) ->
     JObj = kz_json:set_value(Key, Value, get(Account, Config)),
@@ -115,7 +137,7 @@ update_config_for_saving(AccountDb, JObj) ->
                                  ,{'account_id', account_id(AccountDb)}
                                  ]).
 
--spec set_global(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
+-spec set_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
                         kz_json:object().
 set_global(Account, Category, Key, Value) ->
     AccountId = account_id(Account),
@@ -180,8 +202,8 @@ account_db_from_jobj(_Obj, 'false') ->
     throw({'error', 'unknown_object'}).
 
 %% Migrates config settings
--type migrate_setting() :: {ne_binary(), kz_json:path()}.
--type migrate_value() :: {ne_binary(), ne_binary(), kz_json:path(), _}.
+-type migrate_setting() :: {ne_binary(), kz_json:key()}.
+-type migrate_value() :: {ne_binary(), ne_binary(), kz_json:key(), _}.
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS
@@ -202,8 +224,7 @@ migrate(Account) ->
     'ok'.
 
 -spec migrate_config_setting(ne_binary(), migrate_setting(), migrate_setting()) ->
-                                    'ok' |
-                                    {'error', any()}.
+                                    'ok' | {'error', any()}.
 migrate_config_setting(AccountDb, From, To) ->
     case remove_config_setting(AccountDb, From) of
         {'ok', _, []} -> 'ok';
@@ -214,8 +235,7 @@ migrate_config_setting(AccountDb, From, To) ->
     end.
 
 -spec migrate_config_setting(ne_binary(), kz_json:object(), migrate_values(), migrate_setting()) ->
-                                    'ok' |
-                                    {'error', any()}.
+                                    'ok' | {'error', any()}.
 migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     case add_config_setting(AccountDb, To, Removed) of
         {'ok', UpdatedTo} ->
@@ -226,14 +246,12 @@ migrate_config_setting(AccountDb, UpdatedFrom, Removed, To) ->
     end.
 
 -spec add_config_setting(ne_binary(), migrate_setting(), migrate_values()) ->
-                                'ok' |
-                                {'error', any()}.
+                                'ok' | {'error', any()}.
 add_config_setting(AccountDb, {Id, Setting}, Values) ->
     add_config_setting(AccountDb, Id, Setting, Values).
 
 -spec add_config_setting(ne_binary(), ne_binary(), kz_json:path(), migrate_values()) ->
-                                'ok' |
-                                {'error', any()}.
+                                'ok' | {'error', any()}.
 add_config_setting(AccountDb, Id, Setting, Values) when is_binary(Id) ->
     case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} -> add_config_setting(JObj, Setting, Values);
@@ -265,13 +283,13 @@ add_config_setting(AccountDb, JObj, ToSetting, [{FromId, Node, FromSetting, Valu
                               );
         Value -> add_config_setting(AccountDb, JObj, ToSetting, Values);
         _Else ->
-            io:format("the system tried to move the parameter listed below but found a different setting already there, you need to correct this disparity manually!~n"),
+            io:format("the system tried to move the parameter listed below"
+                      " but found a different setting already there,"
+                      " you need to correct this disparity manually!~n"),
             io:format("  Source~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                     ,[AccountDb, FromId, Node, FromSetting, Value]
-                     ),
+                     ,[AccountDb, FromId, Node, FromSetting, Value]),
             io:format("  Destination~n    db: ~s~n    id: ~s~n    key: ~s ~s~n    value: ~p~n"
-                     ,[AccountDb, ToId, Node, ToSetting, _Else]
-                     ),
+                     ,[AccountDb, ToId, Node, ToSetting, _Else]),
             {'error', 'disparity'}
     end.
 

@@ -29,7 +29,7 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, features_list/1, set_features/2
+        ,features/1, features_available/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
@@ -284,6 +284,7 @@ to_public_json(Number) ->
             ,State
             ,UsedBy
             ,Features
+            ,{<<"features_available">>, features_available(Number)}
             ])
          ),
     Values = props:filter_empty(
@@ -310,6 +311,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
         ,{?PVT_USED_BY, used_by(N)}
         ,{?PVT_FEATURES, features(N)}
+        ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
         ,{?PVT_STATE, state(N)}
         ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
         ,{?PVT_PORTED_IN, ported_in(N)}
@@ -537,6 +539,10 @@ features(#knm_phone_number{features=Features}) -> Features.
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
+-spec features_available(knm_phone_number()) -> ne_binaries().
+features_available(N) ->
+    knm_providers:allowed_features(N).
+
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
@@ -544,7 +550,7 @@ set_features(N, Features) ->
 
 -spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
 feature(Number, Feature) ->
-    kz_json:get_value(Feature, features(Number)).
+    kz_json:get_ne_value(Feature, features(Number)).
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
@@ -657,7 +663,7 @@ update_carrier_data(N=#knm_phone_number{carrier_data = Data}
                    ,JObj
                    ) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_jobjs(JObj, Data),
+    Updated = kz_json:merge_recursive(JObj, Data),
     N#knm_phone_number{carrier_data = Updated}.
 
 %%--------------------------------------------------------------------
@@ -743,7 +749,7 @@ set_doc(N, JObj) ->
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_jobjs(kz_json:public_fields(JObj), Doc),
+    Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), Doc),
     N#knm_phone_number{doc = kz_json:delete_key(<<"id">>, Updated)}.
 
 %%--------------------------------------------------------------------
