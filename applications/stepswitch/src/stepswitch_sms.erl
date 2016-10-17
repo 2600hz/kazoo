@@ -80,6 +80,7 @@ start_link(Endpoints, OffnetReq) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kz_json:objects() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([Endpoints, OffnetReq]) ->
     _ = kapi_offnet_resource:put_callid(OffnetReq),
     CallId = kapi_offnet_resource:call_id(OffnetReq),

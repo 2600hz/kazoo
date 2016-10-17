@@ -307,6 +307,7 @@ republish_job(Job) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{recovery_ref=start_timer()}}.
 

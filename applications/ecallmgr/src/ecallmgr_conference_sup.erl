@@ -32,6 +32,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_conference_control(node(), ne_binary(), ne_binary()) -> sup_startchild_ret().
 start_conference_control(Node, ConferenceId, InstanceId) ->
     supervisor:start_child(?SERVER, [Node, ConferenceId, InstanceId]).
 

@@ -25,29 +25,31 @@ flush() ->
 
 flush(Account) ->
     AccountId = kz_util:format_account_id(Account),
-
     Flush = kz_cache:filter_local(?CACHE_NAME
                                  ,fun(Key, _Value) -> is_ts_cache_object(Key, AccountId) end
                                  ),
     _ = [kz_cache:erase_local(?CACHE_NAME, Key) || {Key, _Value} <- Flush],
     'ok'.
 
+-spec migrate() -> 'ok'.
 migrate() ->
     io:format("This command is ancient, if you REALLY know what you are doing run:~n"),
     io:format(" sup trunkstore_maintenance i_understand_migrate~n").
 
+-spec i_understand_migrate() -> 'ok'.
 i_understand_migrate() ->
     lager:info("migrating trunkstore information from the ts database"),
     case kz_datamgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, ['include_docs']) of
         {'error', 'not_found'} ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
-        {'ok', TSAccts} ->
-            lager:info("trying ~b ts accounts", [length(TSAccts)]),
-            _ = [maybe_migrate(kz_doc:set_revision(kz_json:get_value(<<"doc">>, Acct), <<>>))
-                 || Acct <- TSAccts
-                ],
+        {'ok', TSAccounts} ->
+            lager:info("trying ~b ts accounts", [length(TSAccounts)]),
+            lists:foreach(fun do_maybe_migrate/1, TSAccounts),
             lager:info("migration complete")
     end.
+
+do_maybe_migrate(Account) ->
+    maybe_migrate(kz_doc:set_revision(kz_json:get_value(<<"doc">>, Account), <<>>)).
 
 maybe_migrate(AcctJObj) ->
     Realm = kz_json:get_value([<<"account">>, <<"auth_realm">>], AcctJObj),
@@ -158,8 +160,11 @@ create_account_doc(Realm, AcctID, AcctDB) ->
             'ignore'
     end.
 
-%% some calls get stuck if they miss the CDR
-%% this clears them out
+%% @public
+%% @doc
+%% Some calls get stuck if they miss the CDR. This clears them out.
+%%@end
+-spec clear_old_calls() -> 'ok'.
 clear_old_calls() ->
     _ = clear_old_calls('ts_offnet_sup'),
     _ = clear_old_calls('ts_onnet_sup'),
@@ -177,15 +182,19 @@ clear_old_calls(Super) ->
      end || P <- Ps
     ].
 
-%%
+%% @public
+%% @doc
 %% Usage example: sup trunkstore_maintenance classifier_inherit international pbx_username@realm.domain.tld
-%%
+%% @end
+-spec classifier_inherit(kz_json:object(), ne_binary()) -> 'ok'.
 classifier_inherit(Classifier, UserR) ->
     set_classifier_action(<<"inherit">>, Classifier, UserR).
 
-%%
+%% @public
+%% @doc
 %% Usage example: sup trunkstore_maintenance classifier_deny international pbx_username@realm.domain.tld
-%%
+%% @end
+-spec classifier_deny(kz_json:object(), ne_binary()) -> 'ok'.
 classifier_deny(Classifier, UserR) ->
     set_classifier_action(<<"deny">>, Classifier, UserR).
 
@@ -199,7 +208,7 @@ set_classifier_action(Action, Classifier, UserR) ->
         _ ->
             io:format("  ... found\n")
     end,
-    [User, Realm] = re:split(UserR, <<"@">>, [{'return','binary'},{'parts',2}]),
+    [User, Realm] = re:split(UserR, <<"@">>, [{'return','binary'}, {'parts',2}]),
     case account_exists_with_realm(Realm) of
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),
@@ -215,4 +224,5 @@ is_ts_cache_object({'lookup_user_flags', _Realm, _User, AccountId}, AccountId) -
     'true';
 is_ts_cache_object({'lookup_did', _DID, AccountId}, AccountId) ->
     'true';
-is_ts_cache_object(_Key, _AccountId) -> 'false'.
+is_ts_cache_object(_Key, _AccountId) ->
+    'false'.

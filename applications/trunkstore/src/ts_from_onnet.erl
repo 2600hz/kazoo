@@ -23,6 +23,7 @@
 start_link(RouteReqJObj) ->
     proc_lib:start_link(?SERVER, 'init', [self(), RouteReqJObj]).
 
+-spec init(pid(), kz_json:object()) -> 'ok'.
 init(Parent, RouteReqJObj) ->
     proc_lib:init_ack(Parent, {'ok', self()}),
     Funs = [fun maybe_referred_call/1

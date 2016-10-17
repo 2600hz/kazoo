@@ -100,6 +100,7 @@ start_link(AccountId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([ne_binary()]) -> {'ok', state()}.
 init([AccountId]) ->
     {'ok', #state{account_id=AccountId
                  ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }

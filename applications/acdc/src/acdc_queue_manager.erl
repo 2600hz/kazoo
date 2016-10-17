@@ -261,6 +261,7 @@ pick_winner(Srv, Resps) -> pick_winner(Srv, Resps, strategy(Srv), next_winner(Sr
 %% @private
 %% @doc Initializes the server
 %%--------------------------------------------------------------------
+-spec init([pid() | kz_json:object() | ne_binary()]) -> {'ok', state()}.
 init([Super, QueueJObj]) ->
     AccountId = kz_doc:account_id(QueueJObj),
     QueueId = kz_doc:id(QueueJObj),

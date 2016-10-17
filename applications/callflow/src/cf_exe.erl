@@ -301,6 +301,7 @@ amqp_call(Call, API, PubFun, VerifyFun) when is_function(PubFun, 1) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     CallId = kapps_call:call_id(Call),

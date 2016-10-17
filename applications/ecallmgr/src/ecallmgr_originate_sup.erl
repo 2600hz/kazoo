@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_originate_sup).
-
 -behaviour(supervisor).
 
 -export([start_link/0]).
@@ -30,6 +29,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_originate_proc(atom(), kz_json:object()) -> sup_startchild_ret().
 start_originate_proc(Node, JObj) ->
     supervisor:start_child(?SERVER, [Node, JObj]).
 

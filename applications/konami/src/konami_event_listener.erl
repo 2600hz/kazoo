@@ -315,6 +315,7 @@ originate(Req) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{cleanup_ref=cleanup_timer()}}.
 

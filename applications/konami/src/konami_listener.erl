@@ -151,6 +151,7 @@ maybe_start_metaflows(_AccountId, _Call, Metaflows) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
 

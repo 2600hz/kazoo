@@ -52,6 +52,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec cache_proc() -> atom().
 cache_proc() -> ?ECALLMGR_UTIL_CACHE.
 
 %% ===================================================================

@@ -104,6 +104,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     lager:debug("starting new notify server"),

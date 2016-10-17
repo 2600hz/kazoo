@@ -93,6 +93,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("onnet handler started"),
     {'ok', dict:new()}.

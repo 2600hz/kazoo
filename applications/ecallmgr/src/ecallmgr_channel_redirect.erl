@@ -22,6 +22,7 @@ redirect(UUID, DestinationNode) ->
         'false' -> redirect_via_endpoint(URL, UUID)
     end.
 
+-spec redirect_remote(ne_binary(), kz_json:object()) -> ecallmgr_util:send_cmd_ret().
 redirect_remote(UUID, ChannelStatusJObj) ->
     URL = kz_json:get_value(<<"Switch-URL">>, ChannelStatusJObj),
 

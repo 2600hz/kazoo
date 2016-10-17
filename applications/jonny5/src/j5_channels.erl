@@ -491,6 +491,7 @@ handle_channel_destroy(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_hooks:register(),
     kz_nodes:notify_expire(),

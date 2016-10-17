@@ -191,6 +191,7 @@ handle_conference_error(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kapps_call:call()]) -> {'ok', state()}.
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     kapps_call:put_callid(Call),

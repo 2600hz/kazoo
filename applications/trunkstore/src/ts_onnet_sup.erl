@@ -5,7 +5,6 @@
 %%% @end
 %%%-------------------------------------------------------------------
 -module(ts_onnet_sup).
-
 -behaviour(supervisor).
 
 %% API
@@ -31,6 +30,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_handler(ne_binary(), kz_json:object()) -> sup_startchild_ret().
 start_handler(CallID, RouteReqJObj) ->
     supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS_TYPE(<<"onnet-", CallID/binary>>
                                                           ,'ts_from_onnet'
@@ -38,9 +38,11 @@ start_handler(CallID, RouteReqJObj) ->
                                                           ,'temporary'
                                                           )).
 
+-spec stop_handler(ne_binary()) -> 'ok'.
 stop_handler(CallID) ->
     'ok' = supervisor:terminate_child(?SERVER, <<"onnet-", CallID/binary>>),
-    supervisor:delete_child(?SERVER, <<"onnet-", CallID/binary>>).
+    _ = supervisor:delete_child(?SERVER, <<"onnet-", CallID/binary>>),
+    'ok'.
 
 %%%===================================================================
 %%% Supervisor callbacks
