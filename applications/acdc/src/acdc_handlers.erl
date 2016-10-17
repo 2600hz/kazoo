@@ -13,6 +13,7 @@
 
 -include("acdc.hrl").
 
+-spec handle_route_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
     _ = kz_util:put_callid(JObj),
