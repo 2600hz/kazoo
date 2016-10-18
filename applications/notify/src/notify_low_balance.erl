@@ -38,6 +38,7 @@ init() ->
     {'ok', _} = notify_util:compile_default_subject_template(?DEFAULT_SUBJ_TMPL, ?MOD_CONFIG_CAT),
     lager:debug("init done for ~s", [?MODULE]).
 
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:low_balance_v(JObj),
     {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),

@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar_module_sup).
-
 -behaviour(supervisor).
 
 %% API
@@ -35,6 +34,8 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_child(module()) -> sup_startchild_ret().
+-spec start_child(module(), 'worker' | 'supervisor') -> sup_startchild_ret().
 start_child(Mod) ->
     start_child(Mod, 'worker').
 start_child(Mod, 'worker') ->
