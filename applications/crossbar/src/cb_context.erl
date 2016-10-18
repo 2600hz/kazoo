@@ -158,15 +158,23 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 
 %% Accessors
 -spec account_id(context()) -> api_binary().
+-spec account_name(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
 -spec user_id(context()) -> api_binary().
 -spec device_id(context()) -> api_binary().
+-spec reseller_id(context()) -> api_binary().
 -spec account_modb(context()) -> api_binary().
 -spec account_modb(context(), kz_now() | kz_timeout()) -> api_binary().
 -spec account_modb(context(), kz_year(), kz_month()) -> api_binary().
 -spec account_realm(context()) -> api_binary().
 -spec account_doc(context()) -> api_object().
 -spec profile_id(context()) -> api_binary().
+-spec is_authenticated(context()) -> boolean().
+-spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
+-spec auth_token(context()) -> api_ne_binary().
+-spec auth_doc(context()) -> api_object().
+-spec auth_account_id(context()) -> api_binary().
+
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
 account_name(#cb_context{account_name=Name}) -> Name.
