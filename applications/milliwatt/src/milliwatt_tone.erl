@@ -15,6 +15,7 @@
 -define(FREQUENCIES, [<<"2600">>]).
 -define(DURATION, 30000).
 
+-spec exec(kapps_call:call()) -> 'ok'.
 exec(Call) ->
     Tone = get_tone(),
     Duration = kz_json:get_integer_value(<<"Duration-ON">>, Tone, ?DURATION),
@@ -30,7 +31,6 @@ get_tone() ->
     JObj = ?TONE,
     Hz = kz_json:get_list_value(<<"frequencies">>, JObj, ?FREQUENCIES),
     Duration = kz_json:get_value(<<"duration">>, JObj, ?DURATION),
-
     kz_json:from_list(
       [{<<"Frequencies">>, Hz}
       ,{<<"Duration-ON">>, kz_util:to_binary(Duration)}

@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(webhooks_disabler).
-
 -behaviour(gen_server).
 
 -export([start_link/0
@@ -25,6 +24,8 @@
 
 -include("webhooks.hrl").
 
+-type state() :: reference().
+
 -define(SERVER, ?MODULE).
 
 -define(EXPIRY_MSG, 'failure_check').
@@ -33,17 +34,20 @@
 start_link() ->
     gen_server:start_link(?SERVER, [], []).
 
--spec init(any()) -> {'ok', reference()}.
+-spec init(any()) -> {'ok', state()}.
 init(_) ->
     kz_util:put_callid(?MODULE),
     {'ok', start_check_timer()}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'noreply', State}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Msg, State) ->
     {'noreply', State}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'timeout', Ref, ?EXPIRY_MSG}, Ref) ->
     _ = kz_util:spawn(fun check_failed_attempts/0),
     {'noreply', start_check_timer()};
@@ -51,9 +55,11 @@ handle_info(_Info, State) ->
     lager:debug("unhandled msg: ~p", [_Info]),
     {'noreply', State}.
 
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _State) ->
     lager:debug("disabler terminating: ~p", [_Reason]).
 
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

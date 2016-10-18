@@ -13,7 +13,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_transfer).
-
 -behaviour(gen_fsm).
 
 -export([handle/2
@@ -74,13 +73,11 @@
                }).
 -type state() :: #state{}.
 
--define(DEFAULT_TAKEBACK_DTMF
-       ,kapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)
-       ).
+-define(DEFAULT_TAKEBACK_DTMF,
+        kapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)).
 
--define(DEFAULT_TARGET_TIMEOUT
-       ,kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)
-       ).
+-define(DEFAULT_TARGET_TIMEOUT,
+        kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)).
 
 -define(DEFAULT_RINGBACK, kapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
 
@@ -147,6 +144,8 @@ handle(Data, Call) ->
 get_extension([Ext|_]) -> Ext;
 get_extension(<<_/binary>> = Ext) -> Ext.
 
+-spec pre_originate(any(), state()) -> handle_fsm_ret(state()).
+-spec pre_originate(any(), atom(), state()) -> handle_fsm_ret(state()).
 pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
              ,#state{call=Call
                     ,moh=MOH
@@ -155,8 +154,8 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
                     ,extension=Extension
                     }=State
              )
-  when UUID =:= Transferee
-       orelse UUID =:= Transferor ->
+  when UUID =:= Transferee;
+       UUID =:= Transferor ->
     MOHToPlay = kz_media_util:media_path(MOH, Call),
     lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
     HoldCommand = kapps_call_command:hold_command(MOHToPlay, Transferee),
@@ -184,6 +183,8 @@ pre_originate(?EVENT(_CallId, _EventName, _Evt), State) ->
 pre_originate(_Msg, _From, State) ->
     {'next_state', 'pre_originate', State}.
 
+-spec attended_wait(any(), state()) -> handle_fsm_ret(state()).
+-spec attended_wait(any(), atom(), state()) -> handle_fsm_ret(state()).
 attended_wait(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_wait', State);
 attended_wait(?EVENT(Transferee, <<"CHANNEL_DESTROY">>, _Evt)
@@ -450,6 +451,8 @@ attended_wait(Msg, State) ->
 attended_wait(_Msg, _From, State) ->
     {'next_state', 'attended_wait', State}.
 
+-spec partial_wait(any(), state()) -> handle_fsm_ret(state()).
+-spec partial_wait(any(), atom(), state()) -> handle_fsm_ret(state()).
 partial_wait(?EVENT(Transferee, <<"CHANNEL_BRIDGE">>, Evt)
             ,#state{transferee=Transferee
                    ,target=Target
@@ -602,6 +605,8 @@ partial_wait(Msg, State) ->
 partial_wait(_Msg, _From, State) ->
     {'next_state', 'partial_wait', State}.
 
+-spec attended_answer(any(), state()) -> handle_fsm_ret(state()).
+-spec attended_answer(any(), atom(), state()) -> handle_fsm_ret(state()).
 attended_answer(?EVENT(Transferor, <<"DTMF">>, Evt), #state{transferor=Transferor}=State) ->
     handle_transferor_dtmf(Evt, 'attended_answer', State);
 attended_answer(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
@@ -716,6 +721,8 @@ attended_answer(Msg, State) ->
 attended_answer(_Msg, _From, State) ->
     {'next_state', 'attended_answer', State}.
 
+-spec finished(any(), state()) -> handle_fsm_ret(state()).
+-spec finished(any(), atom(), state()) -> handle_fsm_ret(state()).
 finished(?EVENT(Transferor, <<"CHANNEL_BRIDGE">>, Evt)
         ,#state{transferee=_Transferee
                ,target=Target
@@ -814,6 +821,8 @@ finished(_Msg, State) ->
 finished(_Req, _From, State) ->
     {'next_state', 'finished', State}.
 
+-spec takeback(any(), state()) -> handle_fsm_ret(state()).
+-spec takeback(any(), atom(), state()) -> handle_fsm_ret(state()).
 takeback(?EVENT(Transferor, <<"CHANNEL_UNBRIDGE">>, _Evt)
         ,#state{transferor=Transferor
                ,call=Call
@@ -933,14 +942,17 @@ takeback(_Msg, State) ->
 takeback(_Req, _From, State) ->
     {'next_state', 'takeback', State}.
 
+-spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event(_Event, StateName, State) ->
     lager:info("unhandled event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
+-spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:info("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'next_state', StateName, State}.
 
+-spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info({'amqp_msg', JObj}, StateName, #state{event_node='undefined'}=State) ->
     send_event(JObj),
     {'next_state', StateName, State};
@@ -1000,6 +1012,7 @@ send_event(JObj) ->
                              )
                       ).
 
+-spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{transferor=Transferor
                                      ,transferee=Transferee
                                      ,target=Target
@@ -1011,9 +1024,11 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
+-spec code_change(any(), atom(), state(), any()) -> handle_fsm_ret(state()).
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
+-spec init(any()) -> handle_fsm_ret(state()).
 init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.

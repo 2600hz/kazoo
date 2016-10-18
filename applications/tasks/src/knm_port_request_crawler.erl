@@ -44,6 +44,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+-spec stop() -> 'ok'.
 stop() ->
     gen_server:cast(?MODULE, 'stop').
 

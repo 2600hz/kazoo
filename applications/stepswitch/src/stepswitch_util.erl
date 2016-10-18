@@ -163,6 +163,7 @@ find_diversion_count(Diversions) ->
                || Diversion <- Diversions
               ]).
 
+-spec format_endpoints(kz_json:objects(), ne_binary(), ne_binary(), kapi_offnet_resource:req()) -> kz_json:objects().
 format_endpoints(Endpoints, Name, Number, OffnetReq) ->
     EndpointFilter = build_filter_fun(Name, Number),
     format_endpoints(Endpoints, Name, Number, OffnetReq, EndpointFilter).

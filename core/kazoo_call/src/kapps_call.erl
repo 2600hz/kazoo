@@ -171,6 +171,8 @@
 -type call() :: #kapps_call{}.
 -export_type([call/0]).
 
+-export_type([kapps_api_std_return/0]).
+
 -type kapps_helper_function() :: fun((api_binary(), call()) -> api_binary()).
 
 -define(SPECIAL_VARS, [{<<"Caller-ID-Name">>, #kapps_call.caller_id_name}

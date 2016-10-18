@@ -57,6 +57,7 @@ bindings_and_responders() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec handle(kz_json:object(), kz_proplist()) -> 'ok'.
 handle(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),

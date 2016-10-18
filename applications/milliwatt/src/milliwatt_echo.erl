@@ -14,6 +14,7 @@
 
 -define(DURATION, 10000).
 
+-spec exec(kapps_call:call()) -> 'ok'.
 exec(Call) ->
     lager:info("milliwatt execute action echo", []),
     kapps_call_command:answer(Call),
