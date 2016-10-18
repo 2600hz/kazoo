@@ -24,11 +24,11 @@
 
 -define(XMPP_EXCHANGE, <<"xmpp">>).
 
-
--define(XMPP_EVENT_ROUTING_KEY(Event, JID), <<"xmpp."
-                                              ,(kz_util:to_binary(Event))/binary
-                                              ,"."
-                                              ,(amqp_util:encode(JID))/binary>>).
+-define(XMPP_EVENT_ROUTING_KEY(Event, JID),
+        <<"xmpp."
+          ,(kz_util:to_binary(Event))/binary
+          ,"."
+          ,(amqp_util:encode(JID))/binary>>).
 -define(XMPP_EVENT_HEADERS, [<<"JID">>]).
 -define(OPTIONAL_XMPP_EVENT_HEADERS, [<<"Application-Name">>
                                      ,<<"Application-Event">>
@@ -100,18 +100,22 @@ publish_event(Event, ContentType) ->
 
 
 regexp_get(Jid, Regex) ->
-    {match, [ShortJid]} =
-        re:run(Jid, Regex, [{capture, all_but_first, binary}]),
+    {'match', [ShortJid]} =
+        re:run(Jid, Regex, [{'capture', 'all_but_first', 'binary'}]),
     ShortJid.
 
+-spec jid_short(ne_binary()) -> ne_binary().
 jid_short(JID) ->
     regexp_get(JID, <<"^([^/]*)">>).
 
+-spec jid_username(ne_binary()) -> ne_binary().
 jid_username(JID) ->
     regexp_get(JID, <<"^([^@]*)">>).
 
+-spec jid_server(ne_binary()) -> ne_binary().
 jid_server(JID) ->
     regexp_get(JID, <<"^[^@]*[@]([^/]*)">>).
 
+-spec jid_resource(ne_binary()) -> ne_binary().
 jid_resource(JID) ->
     regexp_get(JID, <<"^[^/]*[/](.*)">>).

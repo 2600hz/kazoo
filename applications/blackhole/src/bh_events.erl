@@ -20,13 +20,15 @@
 
 -define(SUBSCRIBE_KEYS, [<<"account_id">>, <<"binding">>]).
 
+-spec init() -> 'ok'.
 init() ->
     blackhole_bindings:bind(<<"blackhole.authorize.subscribe">>, ?MODULE, 'authorize'),
     blackhole_bindings:bind(<<"blackhole.validate.subscribe">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.validate.unsubscribe">>, ?MODULE, 'validate'),
     blackhole_bindings:bind(<<"blackhole.command.subscribe">>, ?MODULE, 'subscribe'),
     blackhole_bindings:bind(<<"blackhole.command.unsubscribe">>, ?MODULE, 'unsubscribe'),
-    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close').
+    blackhole_bindings:bind(<<"blackhole.session.close">>, ?MODULE, 'close'),
+    'ok'.
 
 -spec authorize(bh_context:context(), kz_json:object()) -> bh_context:context().
 authorize(Context, Payload) ->
@@ -180,6 +182,7 @@ unbind(Context, Key) ->
     BHKey = <<"blackhole.event.", Key/binary, ".", KSession/binary>>,
     blackhole_bindings:flush(BHKey).
 
+-spec close(bh_context:context()) -> bh_context:context().
 close(Context) ->
     Listeners = bh_context:listeners(Context),
     blackhole_listener:remove_bindings(Listeners),
