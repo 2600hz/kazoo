@@ -27,6 +27,9 @@ count_current_subscriptions() ->
 
 -define(SUBSCRIPTION_FORMAT_STR, " ~50.s | ~50.s | ~10.s | ~20.s |~n").
 
+-spec current_subscriptions() -> 'ok'.
+-spec current_subscriptions(ne_binary()) -> 'ok'.
+-spec current_subscriptions(ne_binary(), ne_binary()) -> 'ok'.
 current_subscriptions() ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
@@ -46,14 +49,15 @@ current_subscriptions(Realm, User) ->
           '_', kz_util:to_binary(Realm), kz_util:to_binary(User)
          ))).
 
-print_subscriptions([]) -> io:format("No subscriptions have been found~n");
+print_subscriptions([]) ->
+    io:format("No subscriptions have been found~n");
 print_subscriptions(Ss) ->
     Now = kz_util:current_tstamp(),
     io:format(?SUBSCRIPTION_FORMAT_STR
              ,[<<"Username@Realm">>, <<"From">>, <<"Expires">>, <<"Event">>]
              ),
-    _ = [print_subscription(S, Now) || S <- Ss],
-    'ok'.
+    F = fun (S) -> print_subscription(S, Now) end,
+    lists:foreach(F, Ss).
 
 print_subscription(JObj, Now) ->
     ExpiresIn = kz_json:get_integer_value(<<"expires">>, JObj) -

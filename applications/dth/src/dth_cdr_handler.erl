@@ -23,7 +23,7 @@
 %% UniqueID: callid
 %% CallType: Interstate
 
-
+-spec init() -> 'ok'.
 init() ->
     ok.
 
@@ -59,8 +59,9 @@ init() ->
 %%     WsdlModel = props:get_value(wsdl, Props),
 %%     detergent:call(WsdlModel, "SubmitCallRecord", [CallRecord]).
 
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, Props) ->
-    true = kapi_call:event_v(JObj),
+    'true' = kapi_call:event_v(JObj),
     CallID = kz_json:get_value(<<"Call-ID">>, JObj),
     kz_util:put_callid(CallID),
 

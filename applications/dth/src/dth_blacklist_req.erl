@@ -12,14 +12,16 @@
 
 -include("dth.hrl").
 
+-spec init() -> 'ok'.
 init() ->
     ok.
 
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
-    true = dth_api:blacklist_req_v(JObj),
+    'true' = dth_api:blacklist_req_v(JObj),
 
-    {ok, Blacklist} = kz_cache:fetch_local(?CACHE_NAME, dth_util:blacklist_cache_key()),
-    {ok, JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
+    {'ok', Blacklist} = kz_cache:fetch_local(?CACHE_NAME, dth_util:blacklist_cache_key()),
+    {'ok', JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
                                          | kz_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
                                         ]),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
