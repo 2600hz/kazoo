@@ -13,7 +13,9 @@
 -export([save/1]).
 -export([delete/1]).
 -export([has_emergency_services/1]).
--export([allowed_features/1]).
+-export([allowed_features/1
+        ,service_name/2
+        ]).
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
@@ -80,9 +82,31 @@ allowed_features(PhoneNumber) ->
         AccountId -> ?ALLOWED_FEATURES(AccountId)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% The name of the billable service associated with a feature.
+%% @end
+%%--------------------------------------------------------------------
+-spec service_name(ne_binary(), ne_binary()) -> ne_binary().
+service_name(?FEATURE_E911, AccountId) ->
+    service_name(?E911_PROVIDER(AccountId));
+service_name(?FEATURE_CNAM, AccountId) ->
+    service_name(?CNAM_PROVIDER(AccountId));
+service_name(Feature, _) ->
+    service_name(Feature).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec service_name(ne_binary()) -> ne_binary().
+service_name(<<"knm_dash_e911">>) -> <<"dash_e911">>;
+service_name(<<"knm_telnyx_e911">>) -> <<"telnyx_e911">>;
+service_name(<<"knm_vitelity_e911">>) -> <<"vitelity_e911">>;
+service_name(<<"knm_cnam_notifier">>) -> <<"cnam">>;
+service_name(<<"knm_vitelity_cnam">>) -> <<"vitelity_cnam">>;
+service_name(Feature) -> Feature.
 
 %%--------------------------------------------------------------------
 %% @private

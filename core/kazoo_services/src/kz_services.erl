@@ -801,7 +801,7 @@ reconcile(#kz_services{}=Services, Module) ->
 account_id(#kz_services{account_id='undefined'
                        ,jobj=JObj
                        }) ->
-    lager:debug("services has no account id, looking in ~p", [JObj]),
+    lager:debug("services has no account id, looking in ~s", [kz_json:encode(JObj)]),
     kz_doc:account_id(JObj);
 account_id(#kz_services{account_id=AccountId}) ->
     AccountId.
