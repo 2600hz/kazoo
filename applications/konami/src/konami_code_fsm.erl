@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(konami_code_fsm).
-
 -behaviour(gen_fsm).
 
 %% API
@@ -138,6 +137,8 @@ init({Call, JObj}) ->
                             ,b_endpoint_id=BEndpointId
                             }}.
 
+-spec unarmed(any(), state()) -> handle_fsm_ret(state()).
+-spec unarmed(any(), any(), state()) -> handle_fsm_ret(state()).
 unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
                                               ,listen_on='a'
                                               ,binding_digit=BindingDigit
@@ -187,6 +188,8 @@ unarmed(_Event, _From, State) ->
     lager:debug("unhandled unarmed/3: ~p", [_Event]),
     {'reply', {'error', 'not_implemented'}, 'unarmed', State}.
 
+-spec armed(any(), state()) -> handle_fsm_ret(state()).
+-spec armed(any(), any(), state()) -> handle_fsm_ret(state()).
 armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
                                     ,a_leg_armed='true'
                                     }=State) ->
@@ -217,6 +220,7 @@ armed(_Event, _From, State) ->
     lager:debug("unhandled armed/3: ~p", [_Event]),
     {'reply', {'error', 'not_implemented'}, 'armed', State}.
 
+-spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event(?EVENT(CallId, <<"metaflow_exe">>, Metaflow), StateName, #state{call=Call}=State) ->
     _Pid = proc_lib:spawn('konami_code_exe', 'handle', [Metaflow, Call]),
     lager:debug("recv metaflow exe request for ~s, processing in ~p", [CallId, _Pid]),
@@ -269,14 +273,17 @@ handle_event(_Event
     lager:debug("listen_on: '~s' call id: '~s' other leg: '~s'", [_LO, _CallId, _OtherLeg]),
     {'next_state', StateName, State}.
 
+-spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync_event in ~s: ~p", [StateName, _Event]),
     {'reply', {'error', 'not_implemented'}, StateName, State}.
 
+-spec handle_info(state(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled msg in ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
 
+-spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{call_id=CallId
                                      ,other_leg=OtherLeg
                                      }) ->
@@ -287,9 +294,11 @@ terminate(_Reason, _StateName, #state{call_id=CallId
     ?WSD_STOP(),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
+-spec code_change(any(), atom(), state(), any()) -> handle_fsm_ret(state()).
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
+-spec format_status(any(), any()) -> any().
 format_status(_, [_Dict, #state{call_id=CallId
                                ,other_leg=OtherLeg
                                }]) ->
