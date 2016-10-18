@@ -15,6 +15,7 @@ api_test_() ->
               ,{'carriers', [<<"knm_telnyx">>]}
               ],
     [find_numbers(Options)
+    ,find_international_numbers(Options)
     ,acquire_number()
     ].
 
@@ -24,7 +25,7 @@ find_numbers(Options) ->
       ,?_assertEqual(Limit, length(Results))
       }
      ,{"Verify results match queried prefix"
-      ,?_assertEqual('true', lists:all(matcher(Prefix), Results))
+      ,?_assertEqual('true', lists:all(matcher(<<"+1">>, Prefix), Results))
       }
      ]
      || {Prefix, Limit} <- [{<<"301359">>, 5}
@@ -33,11 +34,27 @@ find_numbers(Options) ->
         Results <- [knm_carriers:find(Prefix, Limit, Options)]
     ].
 
-matcher(Prefix) ->
+find_international_numbers(Options0) ->
+    Country = <<"GB">>,
+    Options = [{'country', Country} | Options0],
+    [[{"Verify found numbers"
+      ,?_assertEqual(Limit, length(Results))
+      }
+     ,{"Verify results match queried prefix"
+      ,?_assertEqual('true', lists:all(matcher(<<"+44">>, Prefix), Results))
+      }
+     ]
+     || {Prefix, Limit} <- [{<<"1">>, 2}
+                           ],
+        Results <- [knm_carriers:find(Prefix, Limit, Options)]
+    ].
+
+matcher(Dialcode, Prefix) ->
     fun (Result) ->
-            Size = byte_size(Prefix),
+            Num = <<Dialcode/binary, Prefix/binary>>,
+            Size = byte_size(Num),
             case kz_json:get_value(<<"number">>, Result) of
-                <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
+                <<Num:Size/binary, _/binary>> -> 'true';
                 _Else -> 'false'
             end
     end.

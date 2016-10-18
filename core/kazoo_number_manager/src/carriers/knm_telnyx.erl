@@ -64,7 +64,12 @@ find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
               'false' -> 'undefined'
           end,
     Results = numbers('npa', Quantity, NPA, NXX),
-    {'ok', numbers(Results, Options)}.
+    {'ok', numbers(Results, Options)};
+
+find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
+    Country = knm_carriers:country(Options),
+    Results = numbers('region', Quantity, Country, 'undefined'),
+    {'ok', international_numbers(Results, Options)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,7 +140,10 @@ numbers(SearchKind, Quantity, Prefix, NXX) ->
             ,{<<"with_result">>, 'true'}
             ]),
     Rep = knm_telnyx_util:req('post', ["number_searches"], Req),
-    kz_json:get_value(<<"result">>, Rep).
+    case SearchKind of
+        'region' -> kz_json:get_value(<<"inexplicit_result">>, Rep);
+        _ -> kz_json:get_value(<<"result">>, Rep)
+    end.
 
 -spec numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
 numbers(JObjs, Options) ->
@@ -146,11 +154,30 @@ numbers(JObjs, Options) ->
         {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
     ].
 
+-spec international_numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
+international_numbers(JObjs, Options) ->
+    AccountId = knm_carriers:account_id(Options),
+    Dialcode = knm_carriers:dialcode(Options),
+    [Number
+     || Data <- JObjs,
+        Num0 <- [kz_json:get_ne_binary_value(<<"area_code">>, Data)],
+        Num <- [ugly_hack(Dialcode, Num0)],
+        {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
+    ].
+
+%%TODO: once Telnyx gives back real numbers, remove this.
+%% Right now international search returns only prefixes.
+ugly_hack(Dialcode, Num) ->
+    kz_util:pad_binary(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
+
 search_kind('npa') -> 1;
+search_kind('region') -> 2;
 search_kind('tollfree') -> 3.
 
 search_prefix('tollfree', Prefix, _) ->
     [{<<"prefix">>, Prefix}];
+search_prefix('region', Country, _) ->
+    [{<<"country_iso">>, Country}];
 search_prefix('npa', NPA, 'undefined') ->
     [{<<"npa">>, NPA}];
 search_prefix('npa', NPA, NXX) ->
