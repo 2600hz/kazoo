@@ -48,18 +48,14 @@ req(Method, Path) ->
 -ifdef(TEST).
 req('post', ["number_searches"], JObj) ->
     case kz_json:get_value([<<"search_descriptor">>, <<"prefix">>], JObj) of
-        <<"800">> -> rep_fixture("telnyx_tollfree_search_12.json");
-        _ -> rep_fixture("telnyx_npa_search_12.json")
+        <<"800">> -> rep_fixture("telnyx_tollfree_search.json");
+        _ -> rep_fixture("telnyx_npa_search.json")
     end;
 req('post', ["e911_addresses"], Body) ->
     <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
     rep_fixture("telnyx_create_e911.json");
 req('post', ["number_orders"], _) ->
     rep_fixture("telnyx_order.json");
-req('get', ["number_searches", "411384989406463698"], _) ->
-    rep_fixture("telnyx_tollfree_search_22.json");
-req('get', ["number_searches", "411381763818915536"], _) ->
-    rep_fixture("telnyx_npa_search_22.json");
 req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
     rep_fixture("telnyx_activate_e911.json");
 req('delete', ["e911_addresses", "421570676474774685"], _) ->
@@ -69,12 +65,6 @@ rep_fixture(Fixture) ->
     rep({'ok', 200, [], list_to_binary(knm_util:fixture(Fixture))}).
 
 -else.
-req('get'=_Method, Path, EmptyJObj) ->
-    Url = ?URL(Path),
-    Headers = http_headers(EmptyJObj),
-    ?DEBUG_APPEND("Request:~n~s ~s~n~p~n", [_Method, Url, Headers]),
-    Resp = kz_http:get(Url, Headers, http_options()),
-    rep(Resp);
 req('delete'=_Method, Path, EmptyJObj) ->
     Url = ?URL(Path),
     Headers = http_headers(EmptyJObj),
