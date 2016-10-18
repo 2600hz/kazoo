@@ -168,6 +168,7 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
     kazoo_bindings:unbind(Binding, Module, Fun, Payload).
 
+-spec filter(kazoo_bindings:filter_fun()) -> 'ok'.
 filter(Predicate) ->
     kazoo_bindings:filter(Predicate).
 
@@ -204,6 +205,7 @@ init() ->
     Mods = lists:usort(blackhole_config:autoload_modules() ++ ?COMMAND_MODULES),
     lists:foreach(fun init_mod/1, Mods).
 
+-spec init_mod(ne_binary() | atom()) -> 'ok'.
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).

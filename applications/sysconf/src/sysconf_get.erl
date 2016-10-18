@@ -14,6 +14,7 @@
 
 -include("sysconf.hrl").
 
+-spec init() -> 'ok'.
 init() -> 'ok'.
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.

@@ -61,14 +61,12 @@
 -spec new() -> context().
 -spec new(pid(), ne_binary()) -> context().
 new()->
-    Setters = [
-               {fun set_timestamp/2, kz_util:current_tstamp()}
+    Setters = [{fun set_timestamp/2, kz_util:current_tstamp()}
               ],
     setters(#bh_context{}, Setters).
 
 new(SessionPid, SessionId) ->
-    Setters = [
-               {fun set_websocket_session_id/2, SessionId}
+    Setters = [{fun set_websocket_session_id/2, SessionId}
               ,{fun set_websocket_pid/2, SessionPid}
               ],
     setters(new(), Setters).
@@ -84,9 +82,9 @@ from_json(JObj) ->
     from_json(new(), JObj).
 
 from_json(Context, JObj) ->
-    Setters = [
-               {fun set_auth_token/2,kz_json:get_value(<<"auth_token">>, JObj)}
-              ,{fun set_req_id/2,kz_json:get_ne_binary_value(<<"request_id">>, JObj, kz_util:rand_hex_binary(16))}
+    Rand = kz_util:rand_hex_binary(16),
+    Setters = [{fun set_auth_token/2, kz_json:get_value(<<"auth_token">>, JObj)}
+              ,{fun set_req_id/2, kz_json:get_ne_binary_value(<<"request_id">>, JObj, Rand)}
               ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
               ,{fun set_metadata/2, kz_json:get_value(<<"metadata">>, JObj)}
               ],
@@ -100,18 +98,18 @@ from_json(Context, JObj) ->
 -spec to_json(context()) -> kz_json:object().
 to_json(Context) ->
     kz_json:from_list(
-      props:filter_undefined([{<<"auth_token">>, auth_token(Context)}
-                             ,{<<"auth_account_id">>, auth_account_id(Context)}
-                             ,{<<"bindings">>, bindings(Context)}
-                             ,{<<"websocket_session_id">>, websocket_session_id(Context)}
-                             ,{<<"timestamp">>, timestamp(Context)}
-                             ,{<<"name">>, name(Context)}
-                             ,{<<"metadata">>, metadata(Context)}
-                             ,{<<"destination">>, destination(Context)}
-                             ,{<<"source">>, source(Context)}
-                             ,{<<"req_id">>, req_id(Context)}
-                             ])
-     ).
+      props:filter_undefined(
+        [{<<"auth_token">>, auth_token(Context)}
+        ,{<<"auth_account_id">>, auth_account_id(Context)}
+        ,{<<"bindings">>, bindings(Context)}
+        ,{<<"websocket_session_id">>, websocket_session_id(Context)}
+        ,{<<"timestamp">>, timestamp(Context)}
+        ,{<<"name">>, name(Context)}
+        ,{<<"metadata">>, metadata(Context)}
+        ,{<<"destination">>, destination(Context)}
+        ,{<<"source">>, source(Context)}
+        ,{<<"req_id">>, req_id(Context)}
+        ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -340,32 +338,42 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 is_authenticated(#bh_context{auth_account_id='undefined'}) -> 'false';
 is_authenticated(_) -> 'true'.
 
+-spec add_error(context(), text()) -> context().
 add_error(Context, Error) ->
     add_error(Context, 'error', Error).
 
+-spec add_error(context(), 'ok' | 'error' | 'shutdown', text()) -> context().
 add_error(#bh_context{errors=Errors}=Context, Result, Error) ->
     Context#bh_context{result=Result, errors=[kz_util:to_binary(Error) | Errors]}.
 
+-spec add_listeners(context(), list()) -> context().
 add_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
     Context#bh_context{listeners = BListeners ++ Listeners}.
 
+-spec remove_listeners(context(), list()) -> context().
 remove_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->
     Context#bh_context{listeners = BListeners -- Listeners}.
 
+-spec listeners(context()) -> list().
 listeners(#bh_context{listeners=BListeners}) ->
     BListeners.
 
+-spec success(context()) -> boolean().
 success(#bh_context{errors=[]}) -> 'true';
 success(#bh_context{}) -> 'false'.
 
+-spec set_resp_data(context(), kz_json:object()) -> context().
 set_resp_data(#bh_context{}=Context, Data) ->
     Context#bh_context{resp_data=Data}.
 
+-spec set_resp_status(context(), ne_binary()) -> context().
 set_resp_status(#bh_context{}=Context, Status) ->
     Context#bh_context{resp_status=Status}.
 
+-spec resp_data(context()) -> kz_json:object().
 resp_data(#bh_context{resp_data=Data}) ->
     Data.
 
+-spec resp_status(context()) -> ne_binary().
 resp_status(#bh_context{resp_status=Status}) ->
     Status.

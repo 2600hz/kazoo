@@ -23,8 +23,11 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> 'ok'.
 init() ->
-    _ = blackhole_bindings:bind(<<"blackhole.authenticate.*">>, ?MODULE, 'authenticate').
+    _ = blackhole_bindings:bind(<<"blackhole.authenticate.*">>, ?MODULE, 'authenticate'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
