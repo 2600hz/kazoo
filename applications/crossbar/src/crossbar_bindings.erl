@@ -174,7 +174,7 @@ flush_mod(CBMod) -> kazoo_bindings:flush_mod(CBMod).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
-    lists:sort(
+    lists:usort(
       [Mod || Mod <- kazoo_bindings:modules_loaded(),
               is_cb_module(Mod)
       ]).
