@@ -7258,6 +7258,11 @@
                     "description": "crossbar maximum range",
                     "type": "integer"
                 },
+                "otp_strict_validation": {
+                    "default": false,
+                    "description": "crossbar otp strict validation",
+                    "type": "boolean"
+                },
                 "pagination_page_size": {
                     "default": 50,
                     "description": "crossbar pagination page size",

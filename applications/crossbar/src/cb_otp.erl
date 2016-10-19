@@ -8,6 +8,8 @@
 
 -include("crossbar.hrl").
 
+-define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
+
 %% API
 -export([generate_secret/0
         ,filter_secret/1
@@ -91,7 +93,7 @@ generate_hotp(Secret, Interval) ->
 -spec generate_totp(ne_binary()) -> integers().
 generate_totp(Secret) when is_binary(Secret)->
     Timestamp = timestamp(),
-    Strict = kapps_config:get_is_true(?CONFIG_CAT, <<"otp_strict_validation">>, 'false'),
+    Strict = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"otp_strict_validation">>, 'false'),
     case Strict of
         'true' ->
             [generate_otp(Secret, Timestamp)];
@@ -118,8 +120,8 @@ generate_random_otp() ->
 %% @end
 %%---------------------------------------------------------------------
 -spec generate_otp(ne_binary(), integer()) -> integer().
-generate_otp(Secret, Interval) when is_binary(Secret) and
-    is_integer(Interval) ->
+generate_otp(Secret, Interval) when is_binary(Secret)
+        and is_integer(Interval) ->
     Key = base32:decode(Secret),
     Digest = sha_mac(Key, <<Interval:64/integer>>),
     <<_:19/bytes,_:4/bits,Offset:4>> = Digest,
