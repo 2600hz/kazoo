@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(blackhole_config).
 
--export([autoload_modules/0, autoload_modules/1
+-export([autoload_modules/0
         ,set_autoload_modules/1, set_default_autoload_modules/1
 
         ,flush/0
@@ -19,12 +19,8 @@
 flush() -> kapps_config:flush(?CONFIG_CAT).
 
 -spec autoload_modules() -> ne_binaries().
--spec autoload_modules(ne_binaries() | atoms()) -> ne_binaries().
 autoload_modules() ->
-    autoload_modules([]).
-
-autoload_modules(Default) ->
-    kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, Default).
+    kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES).
 
 -spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
 set_autoload_modules(Modules) ->
