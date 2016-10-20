@@ -129,7 +129,8 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec numbers('npa' | 'tollfree', pos_integer(), ne_binary(), api_ne_binary()) ->
+-type kind() :: 'npa' | 'tollfree' | 'region'.
+-spec numbers(kind(), pos_integer(), ne_binary(), api_ne_binary()) ->
                      kz_json:objects().
 numbers(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),
