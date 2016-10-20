@@ -132,13 +132,13 @@ is_task_successful(TaskId, API, ExtraArgs, IterValue) ->
         [{'ok', _Data}=NewIterValue] ->
             %% For initialisation steps. Skeeps writing a CSV output row.
             {'true', 0, NewIterValue};
-        [{[_|_]=NewRowOrRows, _Data}=NewIterValue] ->
+        [{[_|_]=NewRowOrRows, NewIterValue}] ->
             Written = store_return(TaskId, NewRowOrRows),
             {'true', Written, NewIterValue};
-        [{?NE_BINARY=NewRow, _Data}=NewIterValue] ->
+        [{?NE_BINARY=NewRow, NewIterValue}] ->
             Written = store_return(TaskId, NewRow),
             {'true', Written, NewIterValue};
-        [{Error, _Data}=NewIterValue] ->
+        [{Error, NewIterValue}] ->
             Written = store_return(TaskId, Error),
             {'false', Written, NewIterValue}
     end.
