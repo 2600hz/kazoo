@@ -28,7 +28,7 @@
 
 -define(NEW_CHANNEL_REG(AcctId, User), {'p', 'l', {'new_channel', AcctId, User}}).
 -define(NEW_CHANNEL_FROM(CallId), {'call_from', CallId}).
--define(NEW_CHANNEL_TO(CallId), {'call_to', CallId}).
+-define(NEW_CHANNEL_TO(CallId, MemberCallId), {'call_to', CallId, MemberCallId}).
 
 -type abandon_reason() :: ?ABANDON_TIMEOUT | ?ABANDON_EXIT |
                           ?ABANDON_HANGUP.
