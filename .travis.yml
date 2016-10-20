@@ -9,6 +9,7 @@ notifications:
 
 otp_release:
   - 18.2
+  - 19.1
 
 sudo: false
 
