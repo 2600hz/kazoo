@@ -85,7 +85,7 @@ bindings_and_responders() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
-account_bindings(AccountId) -> [].
+account_bindings(_AccountId) -> [].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -106,12 +106,12 @@ handle_event(JObj, _Props) ->
         Hooks ->
             Event = format_event(JObj, AccountId),
             Action = kz_api:event_name(JObj),
-            Type = kapi_conf:get_type(JObj)
+            Type = kapi_conf:get_type(JObj),
             Filtered = [Hook || Hook <- Hooks, match_action_type(Hook, Action, Type)],
             webhooks_util:fire_hooks(Event, Filtered)
     end.
 
-match_action_type(webhook(), api_binary(), api_binary()) -> boolean().
+-spec match_action_type(webhook(), api_binary(), api_binary()) -> boolean().
 match_action_type(#webhook{hook_event = ?NAME
                           ,custom_data='undefined'
                           }, _Action, _Type) -> 'true';
