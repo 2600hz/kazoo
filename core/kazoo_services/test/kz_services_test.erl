@@ -168,8 +168,7 @@ increase_quantities(#state{account_plan=_AccountPlan
                           }) ->
     ItemQuantity = kz_services:quantity(?CAT, ?ITEM, Services),
 
-    random:seed(os:timestamp()),
-    Increment = random:uniform(10),
+    Increment = rand:uniform(10),
 
     UpdatedServices = kz_services:update(?CAT, ?ITEM, ItemQuantity+Increment, Services),
 
