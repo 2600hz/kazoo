@@ -78,10 +78,11 @@ resource_exists() -> 'true'.
 resource_exists(_RecordingId) -> 'true'.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
-%% Add content types accepted and provided by this module
-%%
+%% What content-types will the module be using to respond (matched against
+%% client's Accept header)
+%% Of the form {atom(), [{Type, SubType}]} :: {to_json, [{<<"application">>, <<"json">>}]}
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
