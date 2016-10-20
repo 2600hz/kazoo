@@ -293,7 +293,6 @@ current() -> gen_fsm:sync_send_all_state_event(?SERVER, 'current').
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', atom(), state()}.
 init([]) ->
-    _ = random:seed(kz_util:now()),
     kz_util:put_callid(?MODULE),
     self() ! '$maybe_start_auto_compaction_job',
     {'ok', 'ready', #state{conn='undefined'
@@ -1236,7 +1235,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec get_nodes(server()) -> ne_binaries().
 get_nodes(Server) ->
     case kz_couch_view:all_docs(Server, <<"nodes">>, []) of
-        {'ok', Nodes} ->  shuffle([kz_doc:id(Node) || Node <- Nodes]);
+        {'ok', Nodes} ->  kz_util:shuffle_list([kz_doc:id(Node) || Node <- Nodes]);
         _ -> []
     end.
 
@@ -1244,7 +1243,7 @@ get_nodes(Server) ->
 get_nodes(Server, Database) ->
     case kz_couch_doc:open_doc(Server, <<"dbs">>, Database) of
         {'ok', DbDoc} ->
-            shuffle(kz_json:get_keys(kz_json:get_value(<<"by_node">>, DbDoc)));
+            kz_util:shuffle_list(kz_json:get_keys(kz_json:get_value(<<"by_node">>, DbDoc)));
         {'error', 'not_found'} ->
             lager:debug("database '~s' not found", [Database]),
             [];
@@ -1252,9 +1251,6 @@ get_nodes(Server, Database) ->
             lager:debug("failed to get nodes for db '~s': ~p", [Database, _E]),
             []
     end.
-
--spec shuffle(ne_binaries()) -> ne_binaries().
-shuffle(L) -> [O || {_, O} <- lists:keysort(1, [{random:uniform(), N} || N <- L])].
 
 -spec encode_db(ne_binary()) -> ne_binary().
 encode_db(Database) ->
@@ -1267,7 +1263,7 @@ encode_design_doc(Design) ->
 -spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = kz_couch_view:all_docs(AdminConn, <<"dbs">>, []),
-    {'ok', shuffle([<<"dbs">> | [kz_doc:id(Db) || Db <- Dbs]])}.
+    {'ok', kz_util:shuffle_list([<<"dbs">> | [kz_doc:id(Db) || Db <- Dbs]])}.
 
 -spec db_shards(server(), ne_binary(), ne_binary()) -> ne_binaries().
 db_shards(AdminConn, N, D) ->

@@ -4,8 +4,9 @@ DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam ws
        proper recon getopt fs_event fs_sync eunit inet_cidr
 
 BUILD_DEPS = parse_trans
+IGNORE_DEPS = hamcrest
 
-dep_escalus = hex 2.6.4
+dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
 dep_eiconv = git https://github.com/zotonic/eiconv
 dep_certifi = hex 0.3.0
