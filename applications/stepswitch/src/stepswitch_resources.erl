@@ -79,6 +79,8 @@
         kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>)).
 -define(DEFAULT_PROGRESS_TIMEOUT,
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
+-define(DEFAULT_WEIGHT,
+        kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 1)).
 
 -record(gateway, {server :: api_binary()
                  ,port :: api_integer()
@@ -984,7 +986,10 @@ resource_cid_rules(JObj) ->
 
 -spec resource_grace_period(kz_json:object() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
-    Default = kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3),
+    Default = case kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>) of
+                  'undefined' -> 3;
+                  Weight -> Weight
+              end,
     resource_grace_period(kz_json:get_integer_value(<<"grace_period">>, JObj, Default));
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod > 100 -> 100;
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod < 0 -> 0;
@@ -992,8 +997,7 @@ resource_grace_period(GracePeriod) when is_integer(GracePeriod) -> GracePeriod.
 
 -spec resource_weight(kz_json:object() | integer()) -> integer().
 resource_weight(JObj) when not is_integer(JObj) ->
-    Default = kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 1),
-    resource_weight(kz_json:get_integer_value(<<"weight_cost">>, JObj, Default));
+    resource_weight(kz_json:get_integer_value(<<"weight_cost">>, JObj, ?DEFAULT_WEIGHT));
 resource_weight(W) when W > 100 -> 100;
 resource_weight(W) when W < 1 -> 1;
 resource_weight(W) -> W.
