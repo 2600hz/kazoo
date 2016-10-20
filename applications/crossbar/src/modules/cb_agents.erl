@@ -34,6 +34,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("acdc/include/acdc_config.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
@@ -358,7 +359,7 @@ fetch_all_current_statuses(Context, AgentId, Status) ->
 
 -spec fetch_ranged_agent_stats(cb_context:context(), pos_integer()) -> cb_context:context().
 fetch_ranged_agent_stats(Context, StartRange) ->
-    MaxRange = kapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, 3600),
+    MaxRange = ?ACDC_ARCHIVE_WINDOW,
 
     Now = kz_util:current_tstamp(),
     Past = Now - MaxRange,
@@ -369,15 +370,10 @@ fetch_ranged_agent_stats(Context, StartRange) ->
     case kz_util:to_integer(StartRange) of
         F when F > To ->
             %% start_range is larger than end_range
-            cb_context:add_validation_error(
-              <<"end_range">>
-                                           ,<<"maximum">>
-                                           ,kz_json:from_list([
-                                                               {<<"message">>, <<"value is greater than start_range">>}
-                                                              ,{<<"cause">>, To}
-                                                              ])
-                                           ,Context
-             );
+            Msg = kz_json:from_list([{<<"message">>, <<"value is greater than start_range">>}
+                                    ,{<<"cause">>, To}
+                                    ]),
+            cb_context:add_validation_error(<<"end_range">>, <<"maximum">>, Msg, Context);
         F when F < MaxFrom ->
             %% Range is too big
             fetch_ranged_agent_stats(Context, MaxFrom, To, MaxFrom >= Past);

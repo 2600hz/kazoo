@@ -3,6 +3,7 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_api_literals.hrl").
+-include("acdc_config.hrl").
 
 -define(APP_NAME, <<"acdc">>).
 -define(APP_VERSION, <<"4.0.0">>).
@@ -44,8 +45,7 @@
 %% Archive every 60 seconds
 -define(ARCHIVE_PERIOD, kapps_config:get_integer(?CONFIG_CAT, <<"archive_period_ms">>, 60000)).
 
-%% Save data to the DB
--define(ARCHIVE_WINDOW, kapps_config:get_integer(?CONFIG_CAT, <<"archive_window_s">>, 60)).
+-define(ARCHIVE_WINDOW, ?ACDC_ARCHIVE_WINDOW).
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
