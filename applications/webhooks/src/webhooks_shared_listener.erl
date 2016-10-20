@@ -15,9 +15,6 @@
         ,hooks_configured/1
         ,handle_doc_type_update/2
 
-        ,add_object_bindings/1
-        ,remove_object_bindings/1
-
         ,add_account_bindings/0
         ,remove_account_bindings/0
         ]).
@@ -173,26 +170,6 @@ print_summary({[#webhook{uri=URI
              ,[URI, Verb, Event, kz_util:to_binary(Retries), AccountId]
              ),
     print_summary(ets:select(Continuation), Count+1).
-
--spec add_object_bindings(ne_binary()) -> 'ok'.
-add_object_bindings(AccountId) ->
-    Bindings = webhooks_object:account_bindings(AccountId),
-    Srv = webhooks_sup:shared_listener(),
-
-    _ = [gen_listener:add_binding(Srv, Binding)
-         || Binding <- Bindings
-        ],
-    'ok'.
-
--spec remove_object_bindings(ne_binary()) -> 'ok'.
-remove_object_bindings(AccountId) ->
-    Bindings = webhooks_object:account_bindings(AccountId),
-    Srv = webhooks_sup:shared_listener(),
-
-    _ = [gen_listener:rm_binding(Srv, Binding)
-         || Binding <- Bindings
-        ],
-    'ok'.
 
 -define(ACCOUNT_BINDING
        ,{'conf', [{'restrict_to', ['doc_updates']}

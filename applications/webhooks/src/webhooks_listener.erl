@@ -181,18 +181,16 @@ handle_call(_Request, _From, State) ->
 handle_cast({'add_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("adding hook ~s", [_Id]),
     ets:insert_new(webhooks_util:table_id(), Hook),
-    maybe_add_shared_bindings(Hook),
     {'noreply', State};
 handle_cast({'update_hook', #webhook{id=_Id}=Hook}, State) ->
     lager:debug("updating hook ~s", [_Id]),
     _ = ets:insert(webhooks_util:table_id(), Hook),
-    maybe_add_shared_bindings(Hook),
     {'noreply', State};
 handle_cast({'remove_hook', #webhook{id=Id}}, State) ->
     handle_cast({'remove_hook', Id}, State);
 handle_cast({'remove_hook', <<_/binary>> = Id}, State) ->
     lager:debug("removing hook ~s", [Id]),
-    maybe_remove_shared_bindings(Id),
+    ets:delete(webhooks_util:table_id(), Id),
     {'noreply', State};
 handle_cast({'gen_listener', {'created_queue', _Q}}, State) ->
     {'noreply', State};
@@ -270,46 +268,3 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec maybe_add_shared_bindings(webhook()) -> 'ok'.
-maybe_add_shared_bindings(#webhook{hook_event = <<"object">>
-                                  ,account_id=AccountId
-                                  }) ->
-    lager:debug("adding doc bindings for ~s", [AccountId]),
-    webhooks_shared_listener:add_object_bindings(AccountId);
-maybe_add_shared_bindings(_Hook) -> 'ok'.
-
--spec maybe_remove_shared_bindings(ne_binary()) -> 'true'.
-maybe_remove_shared_bindings(Id) ->
-    case ets:lookup(webhooks_util:table_id(), Id) of
-        [Hook] -> remove_shared_bindings(Hook);
-        _ -> 'ok'
-    end,
-    lager:debug("deleting hook ~s", [Id]),
-    ets:delete(webhooks_util:table_id(), Id).
-
--spec remove_shared_bindings(webhook()) -> 'ok'.
-remove_shared_bindings(#webhook{account_id = AccountId
-                               ,id = Id
-                               }
-                      ) ->
-    lager:debug("account ~s removed an doc hook, seeing if others exist"
-               ,[AccountId]
-               ),
-    case ets:select(webhooks_util:table_id(), object_account_ms(AccountId, Id)) of
-        [] ->
-            lager:debug("no other doc bindings, removing ~s", [AccountId]),
-            webhooks_shared_listener:remove_object_bindings(AccountId);
-        _ ->
-            lager:debug("account ~s has other doc bindings", [AccountId])
-    end.
-
--spec object_account_ms(ne_binary(), ne_binary()) -> ets:match_spec().
-object_account_ms(AccountId, Id) ->
-    [{#webhook{account_id=AccountId
-              ,hook_event='$1'
-              ,hook_id=Id
-              ,_='_'
-              }
-     ,[{'=:=', '$1', {'const', <<"object">>}}]
-     ,['$_']
-     }].
