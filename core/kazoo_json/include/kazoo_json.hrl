@@ -43,5 +43,14 @@
 -type json_terms() :: [json_term()].
 -type api_json_term() :: json_term() | 'undefined'.
 
+-type encode_option() :: 'uescape'
+                       | 'pretty'
+                       | 'force_utf8'
+                       | 'escape_forward_slashes'
+                       | {bytes_per_iter, non_neg_integer()}
+                       | {bytes_per_red, non_neg_integer()}.
+
+-type encode_options() :: [encode_option()].
+
 -define(KAZOO_JSON_HRL, 'true').
 -endif.
