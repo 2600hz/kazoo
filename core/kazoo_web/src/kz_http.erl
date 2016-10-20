@@ -58,6 +58,8 @@
 -export_type([ret/0]).
 -export_type([req_id/0]).
 
+-define(REQ_URL_INDEX, 1).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc Send synchronous request
@@ -194,14 +196,14 @@ async_req(Pid, Method, Url, Hdrs, Body, Opts) ->
 %% @private
 %% @doc Send request using httpc and handle its response
 %%--------------------------------------------------------------------
--spec execute_request(method(), tuple(), kz_proplist()) -> ret().
+-spec execute_request(method(), httpc_request(), kz_proplist()) -> ret().
 execute_request(Method, Request, Opts) ->
     HTTPOptions = get_options(?HTTP_OPTIONS, Opts),
     Opts1 = get_options(?OPTIONS, Opts),
     Options = props:insert_value('body_format', 'binary', Opts1),
     F = fun () ->
                 {Method
-                ,element(1, Request)
+                ,element(?REQ_URL_INDEX, Request)
                 ,catch httpc:request(Method, Request, HTTPOptions, Options)
                 }
         end,
@@ -212,12 +214,10 @@ execute_request(Method, Request, Opts) ->
 %% @doc Response to caller in a proper manner
 %%--------------------------------------------------------------------
 -spec handle_response(httpc_ret() | {pos_integer(), {method(), text(), httpc_ret()}}) -> ret().
-handle_response({Micros, {_Method, _Url, Rep}}) when is_integer(Micros) ->
-    lager:debug("~sms: ~s ~s", [float_to_list(Micros/1000, [{'decimals',2}, 'compact'])
-                               ,_Method
-                               ,_Url
-                               ]),
-    handle_response(Rep);
+handle_response({Micros, {_Method, _Url, Resp}}) when is_integer(Micros) ->
+    ElapsedMs = float_to_list(Micros / ?MILLISECONDS_IN_SECOND, [{'decimals', 2}, 'compact']),
+    lager:debug("~sms: ~s ~s", [ElapsedMs, _Method, _Url]),
+    handle_response(Resp);
 handle_response({'ok', 'saved_to_file'}=Ok) -> Ok;
 handle_response({'ok', ReqId})
   when is_reference(ReqId) ->
@@ -279,7 +279,11 @@ build_request(Method, Url, Headers, Body) when (Method == 'post');
                                           ]
                                          ,Headers
                                          ,""),
-    {kz_util:to_list(Url), ensure_string_headers(Headers), kz_util:to_list(ContentType), Body}.
+    {kz_util:to_list(Url)
+    ,ensure_string_headers(Headers)
+    ,kz_util:to_list(ContentType)
+    ,kz_util:to_binary(Body)
+    }.
 
 ensure_string_headers(Headers) ->
     [{kz_util:to_list(K), kz_util:to_list(V)} || {K,V} <- Headers].
