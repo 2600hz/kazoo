@@ -52,20 +52,24 @@ is_number_billable(_Number) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
-                          {'error', any()}.
+                          {'ok', knm_number:knm_numbers()}.
 find_numbers(<<"+1", Prefix:3/binary, _/binary>>, Quantity, Options)
   when ?IS_US_TOLLFREE(Prefix) ->
-    SearchId = search_id('tollfree', Quantity, Prefix, 'undefined'),
-    {'ok', numbers(SearchId, Options)};
+    Results = numbers('tollfree', Quantity, Prefix, 'undefined'),
+    {'ok', numbers(Results, Options)};
 
 find_numbers(<<"+1", NPA:3/binary, _/binary>>=Num, Quantity, Options) ->
     NXX = case byte_size(Num) >= 2+3+3 of
               'true' -> binary:part(Num, 2+3, 3);
               'false' -> 'undefined'
           end,
-    SearchId = search_id('npa', Quantity, NPA, NXX),
-    {'ok', numbers(SearchId, Options)}.
+    Results = numbers('npa', Quantity, NPA, NXX),
+    {'ok', numbers(Results, Options)};
+
+find_numbers(<<"+",_/binary>>=_InternationalNum, Quantity, Options) ->
+    Country = knm_carriers:country(Options),
+    Results = numbers('region', Quantity, Country, 'undefined'),
+    {'ok', international_numbers(Results, Options)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,18 +110,16 @@ acquire_number(Number) ->
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
+-spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect_number(Number) ->
     Debug = ?IS_SANDBOX_PROVISIONING_TRUE,
     case ?IS_PROVISIONING_ENABLED of
+        'true' -> Number;
         'false' when Debug ->
             lager:debug("allowing sandbox provisioning"),
             Number;
         'false' ->
-            knm_errors:unspecified('provisioning_disabled', Number);
-        'true' ->
-            Number
+            knm_errors:unspecified('provisioning_disabled', Number)
     end.
 
 %% @public
@@ -127,33 +129,56 @@ should_lookup_cnam() -> 'true'.
 
 %%% Internals
 
--spec search_id('npa' | 'tollfree', pos_integer(), ne_binary(), api_ne_binary()) -> nonempty_string().
-search_id(SearchKind, Quantity, Prefix, NXX) ->
+-type kind() :: 'npa' | 'tollfree' | 'region'.
+-spec numbers(kind(), pos_integer(), ne_binary(), api_ne_binary()) ->
+                     kz_json:objects().
+numbers(SearchKind, Quantity, Prefix, NXX) ->
     Descriptor = kz_json:from_list(search_prefix(SearchKind, Prefix, NXX)),
-    SearchIdReq = kz_json:from_list(
-                    [{<<"search_type">>, search_kind(SearchKind)}
-                    ,{<<"search_descriptor">>, Descriptor}
-                    ,{<<"limit">>, Quantity}
-                    ]),
-    SearchIdRep = knm_telnyx_util:req('post', ["number_searches"], SearchIdReq),
-    SearchId = kz_json:get_ne_binary_value(<<"id">>, SearchIdRep),
-    binary_to_list(SearchId).
+    Req = kz_json:from_list(
+            [{<<"search_type">>, search_kind(SearchKind)}
+            ,{<<"search_descriptor">>, Descriptor}
+            ,{<<"limit">>, Quantity}
+            ,{<<"with_result">>, 'true'}
+            ]),
+    Rep = knm_telnyx_util:req('post', ["number_searches"], Req),
+    case SearchKind of
+        'region' -> kz_json:get_value(<<"inexplicit_result">>, Rep);
+        _ -> kz_json:get_value(<<"result">>, Rep)
+    end.
 
--spec numbers(nonempty_string(), knm_carriers:options()) -> knm_number:knm_numbers().
-numbers(SearchId, Options) ->
-    Path = ["number_searches", SearchId],
+-spec numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
+numbers(JObjs, Options) ->
     AccountId = knm_carriers:account_id(Options),
     [Number
-     || Data <- kz_json:get_value(<<"result">>, knm_telnyx_util:req('get', Path)),
+     || Data <- JObjs,
         Num <- [kz_json:get_ne_binary_value(<<"number_e164">>, Data)],
         {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
     ].
 
+-spec international_numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
+international_numbers(JObjs, Options) ->
+    AccountId = knm_carriers:account_id(Options),
+    Dialcode = knm_carriers:dialcode(Options),
+    [Number
+     || Data <- JObjs,
+        Num0 <- [kz_json:get_ne_binary_value(<<"area_code">>, Data)],
+        Num <- [ugly_hack(Dialcode, Num0)],
+        {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
+    ].
+
+%%TODO: once Telnyx gives back real numbers, remove this.
+%% Right now international search returns only prefixes.
+ugly_hack(Dialcode, Num) ->
+    kz_util:pad_binary(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
+
 search_kind('npa') -> 1;
+search_kind('region') -> 2;
 search_kind('tollfree') -> 3.
 
 search_prefix('tollfree', Prefix, _) ->
     [{<<"prefix">>, Prefix}];
+search_prefix('region', Country, _) ->
+    [{<<"country_iso">>, Country}];
 search_prefix('npa', NPA, 'undefined') ->
     [{<<"npa">>, NPA}];
 search_prefix('npa', NPA, NXX) ->

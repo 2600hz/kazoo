@@ -145,7 +145,7 @@ PUT to `/v1/onboard`
         "invite_code": "9351b14aa94b9d580dea57b8deefff0c",
         "phone_numbers": {
             "{ADMIN_EXTENSION_NUMBER}": {
-                "dash_e911": {
+                "e911": {
                     "extended_address": "{ADMIN_EXTENDED_ADDRESS}",
                     "locality": "{ADMIN_CITY}",
                     "postal_code": "{ADMIN_ZIP_CODE}",

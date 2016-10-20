@@ -1267,7 +1267,7 @@ curl -v -X PUT \
     "data": {
         "used_by": "callflow",
         "id": "{{NUMBER}}",
-        "dash_e911": {
+        "e911": {
             "postal_code": "{{ZIP_CODE}}",
             "street_address": "{{ADDRESS}}",
             "extended_address": "{{EXTENDED}}",
@@ -1294,8 +1294,7 @@ curl -v -X PUT \
                     "locality": "{{CITY}}",
                     "region": "{{STATE}}"
                 },
-                "message": "Location is not geocoded",
-                "provider": "dash_e911"
+                "message": "Location is not geocoded"
             }
         }
     },
@@ -1310,7 +1309,7 @@ curl -v -X PUT \
 {
     "data": {
         "multiple_choice": {
-            "dash_e911": {
+            "e911": {
                 "cause": {
                     "postal_code": "{{ZIP_CODE}}",
                     "street_address": "{{ADDRESS}}",
@@ -1348,7 +1347,7 @@ curl -v -X PUT \
     "data": {
         "used_by": "callflow",
         "id": "{{NUMBER}}",
-        "dash_e911": {
+        "e911": {
             "street_address": "116 NATOMA ST",
             "extended_address": "APT 116",
             "caller_name": "Valued Customer",

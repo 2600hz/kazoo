@@ -48,18 +48,18 @@ req(Method, Path) ->
 -ifdef(TEST).
 req('post', ["number_searches"], JObj) ->
     case kz_json:get_value([<<"search_descriptor">>, <<"prefix">>], JObj) of
-        <<"800">> -> rep_fixture("telnyx_tollfree_search_12.json");
-        _ -> rep_fixture("telnyx_npa_search_12.json")
+        <<"800">> -> rep_fixture("telnyx_tollfree_search.json");
+        'undefined' ->
+            case kz_json:get_value([<<"search_descriptor">>, <<"country_iso">>], JObj) of
+                <<"GB">> -> rep_fixture("telnyx_international_search.json");
+                'undefined' -> rep_fixture("telnyx_npa_search.json")
+            end
     end;
 req('post', ["e911_addresses"], Body) ->
     <<"301 MARINA BLVD">> = kz_json:get_value(<<"line_1">>, Body),
     rep_fixture("telnyx_create_e911.json");
 req('post', ["number_orders"], _) ->
     rep_fixture("telnyx_order.json");
-req('get', ["number_searches", "411384989406463698"], _) ->
-    rep_fixture("telnyx_tollfree_search_22.json");
-req('get', ["number_searches", "411381763818915536"], _) ->
-    rep_fixture("telnyx_npa_search_22.json");
 req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
     rep_fixture("telnyx_activate_e911.json");
 req('delete', ["e911_addresses", "421570676474774685"], _) ->
@@ -69,12 +69,6 @@ rep_fixture(Fixture) ->
     rep({'ok', 200, [], list_to_binary(knm_util:fixture(Fixture))}).
 
 -else.
-req('get'=_Method, Path, EmptyJObj) ->
-    Url = ?URL(Path),
-    Headers = http_headers(EmptyJObj),
-    ?DEBUG_APPEND("Request:~n~s ~s~n~p~n", [_Method, Url, Headers]),
-    Resp = kz_http:get(Url, Headers, http_options()),
-    rep(Resp);
 req('delete'=_Method, Path, EmptyJObj) ->
     Url = ?URL(Path),
     Headers = http_headers(EmptyJObj),
@@ -151,10 +145,16 @@ maybe_remove_best_effort('false', JObj) ->
     end.
 
 -spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
+-spec maybe_apply_limit(kz_json:object(), ne_binary()) -> kz_json:object().
 maybe_apply_limit(JObj) ->
+    maybe_apply_limit(maybe_apply_limit(JObj, <<"result">>)
+                     ,<<"inexplicit_result">>
+                     ).
+
+maybe_apply_limit(JObj, ResultField) ->
     Limit = kz_json:get_integer_value(<<"limit">>, JObj, 0),
-    Result = take(Limit, kz_json:get_value(<<"result">>, JObj, [])),
-    kz_json:set_value(<<"result">>, Result, JObj).
+    Result = take(Limit, kz_json:get_value(ResultField, JObj, [])),
+    kz_json:set_value(ResultField, Result, JObj).
 
 -spec take(non_neg_integer(), list()) -> list().
 take(0, _) -> [];
