@@ -572,8 +572,7 @@ select_bookkeeper(BillingId) ->
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case ResellerId =/= MasterAccountId of
         'true' -> 'kz_bookkeeper_local';
-        'false' ->
-            kapps_config:get_atom(?WHS_CONFIG_CAT, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')
+        'false' -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
     end.
 
 %%--------------------------------------------------------------------

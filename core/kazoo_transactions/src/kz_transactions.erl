@@ -25,6 +25,7 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
+-include_lib("kazoo_services/include/kz_service.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 -type kz_transactions() :: kz_transaction:transactions().
@@ -119,7 +120,7 @@ call_charges(Ledger, CallId, Event, 'false') ->
 -spec filter_by_reason(ne_binary(), kz_transactions()) -> kz_transactions().
 filter_by_reason(<<"only_bookkeeper">>, Transactions) ->
     {BTTransactions, LTransactions} = lists:partition(fun is_from_braintree/1, Transactions),
-    case kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>) of
+    case ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER of
         'kz_bookkeeper_braintree' -> BTTransactions;
         'kz_bookkeeper_local'     -> LTransactions
     end;
@@ -298,7 +299,7 @@ do_fetch_bookkeeper(_Account, [], Transactions) ->
                               {'ok', kz_transactions()} |
                               {'error', any()}.
 fetch_bookkeeper(Account, From, To) ->
-    Bookkeeper = kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>),
+    Bookkeeper = ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER,
     try Bookkeeper:transactions(Account, From, To) of
         {'ok', _}=R -> R;
         {'error', _}=Error -> Error
