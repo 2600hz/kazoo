@@ -39,7 +39,7 @@ fields_without_defaults(JObj0) ->
     JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
     lists:sort([Field
                 || {Field, Content} <- kz_json:to_proplist(JObj),
-                   undefined =:= kz_json:get_value(?FIELD_DEFAULT, Content)
+                   'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content)
                ]).
 
 -spec process_project() -> kz_json:objects().
@@ -89,11 +89,15 @@ expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_default', _), Schemas) ->
     Schemas;
+expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_node', _), Schemas) ->
+    Schemas;
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
     config_to_schema(F, Args, Schemas);
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_default', _), Schemas) ->
+    Schemas;
+expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_node', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', F, Args), Schemas) ->
     config_to_schema(F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
