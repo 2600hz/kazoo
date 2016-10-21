@@ -271,7 +271,7 @@ update(Id, Context, 'undefined') ->
         'success' ->
             NodesDoc = kz_json:from_list(nodes_values(cb_context:doc(Context1))),
             ReqData = kz_json:from_list(nodes_values(cb_context:req_data(Context1))),
-            NewNodesDoc = kz_json:normalize_jobj(kz_json:merge_recursive(NodesDoc, ReqData)),
+            NewNodesDoc = kz_json:merge_recursive(NodesDoc, ReqData),
             NewDoc = kz_json:set_values(kz_json:to_proplist(NewNodesDoc), cb_context:doc(Context1)),
             cb_context:set_doc(Context1, NewDoc);
         _Status ->
@@ -284,7 +284,7 @@ update(Id, Context, Node) ->
         'success' ->
             NodeDoc = node_value(Node, Context1),
             ReqData = cb_context:req_data(Context1),
-            NewNodeDoc = kz_json:normalize_jobj(kz_json:merge_recursive(NodeDoc, ReqData)),
+            NewNodeDoc = kz_json:merge_recursive(NodeDoc, ReqData),
             NewDoc = kz_json:set_value(Node, NewNodeDoc, cb_context:doc(Context1)),
             cb_context:set_doc(Context1, NewDoc);
         _Status ->
