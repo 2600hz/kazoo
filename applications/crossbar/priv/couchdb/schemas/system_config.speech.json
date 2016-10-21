@@ -22,12 +22,12 @@
             "type": "string"
         },
         "asr_provider": {
-            "default": "",
+            "default": "ispeech",
             "description": "speech asr provider",
             "type": "string"
         },
         "asr_url": {
-            "default": "http://api.ispeech.org/api/rest",
+            "default": "http://api.ispeech.org/api/json",
             "description": "speech asr url",
             "type": "string"
         },
@@ -62,7 +62,7 @@
             "type": "string"
         },
         "tts_provider": {
-            "default": "ispeech",
+            "default": "flite",
             "description": "speech tts provider",
             "type": "string"
         },
