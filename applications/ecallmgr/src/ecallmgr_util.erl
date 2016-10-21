@@ -862,7 +862,10 @@ maybe_failover(Endpoint) ->
     end.
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().
-get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) -> Route;
+get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route = <<"loopback/", Route/binary>>}) ->
+    <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
+    Route;
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
