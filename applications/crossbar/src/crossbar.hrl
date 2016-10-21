@@ -57,6 +57,9 @@
         ,{?KZ_ACCOUNTS_DB, [_]}
         ]).
 
+-define(DEVICES_ALLOW_AGGREGATES,
+       kapps_config:get_is_true(<<(?CONFIG_CAT)/binary, ".devices">>, <<"allow_aggregates">>, 'true')).
+
 -define(DEFAULT_MODULES, ['cb_about'
                          ,'cb_accounts'
                          ,'cb_alerts'
@@ -119,8 +122,7 @@
                             ,'cb_signup'
                             ]).
 
--record(cb_context, {
-          content_types_provided = [] :: crossbar_content_handlers()
+-record(cb_context, {content_types_provided = [] :: crossbar_content_handlers()
                     ,content_types_accepted = [] :: crossbar_content_handlers()
                     ,allowed_methods = ?ALLOWED_METHODS :: http_methods()
                     ,allow_methods = ?ALLOWED_METHODS :: http_methods()
@@ -171,7 +173,7 @@
                     ,magic_pathed = 'false' :: boolean()
                     ,should_paginate :: api_boolean()
                     ,host_url = <<>> :: binary()
-         }).
+                    }).
 
 -define(MAX_RANGE, kapps_config:get_integer(?CONFIG_CAT
                                            ,<<"maximum_range">>

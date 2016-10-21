@@ -4,7 +4,7 @@
     "description": "Schema for crossbar.devices system_config",
     "properties": {
         "allow_aggregates": {
-            "default": "true",
+            "default": true,
             "description": "crossbar.devices allow aggregates",
             "type": "boolean"
         },

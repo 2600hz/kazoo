@@ -741,7 +741,7 @@ maybe_aggregate_device(DeviceId, Context) ->
     maybe_aggregate_device(DeviceId, Context, cb_context:resp_status(Context)).
 maybe_aggregate_device(DeviceId, Context, 'success') ->
     case kz_util:is_true(cb_context:fetch(Context, 'aggregate_device'))
-        andalso kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"allow_aggregates">>, 'true')
+        andalso ?DEVICES_ALLOW_AGGREGATES
     of
         'false' -> maybe_remove_aggregate(DeviceId, Context);
         'true' ->
