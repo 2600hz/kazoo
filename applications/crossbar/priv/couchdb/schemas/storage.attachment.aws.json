@@ -16,6 +16,9 @@
                 "bucket": {
                     "type": "string"
                 },
+                "host": {
+                    "type": "string"
+                },
                 "key": {
                     "type": "string"
                 },

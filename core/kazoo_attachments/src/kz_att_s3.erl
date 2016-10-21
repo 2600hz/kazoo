@@ -13,6 +13,7 @@
 -export([put_attachment/6]).
 -export([fetch_attachment/4]).
 
+-define(AMAZON_S3_HOST, <<"s3.amazonaws.com">>).
 
 %% ====================================================================
 %% API functions
@@ -20,17 +21,13 @@
 
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
-    #{bucket := Bucket
-     ,key := Key
-     ,secret := Secret
-     ,path := Path
-     } = Params,
-    FilePath = kz_util:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])),
-    Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret)),
+    {Bucket, Key, Secret, Path, Host} = get_map_values(Params),
+    FilePath = get_file_path(Path, DbName, DocId, AName),
+    Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret), kz_util:to_list(Host)),
     case kz_aws_s3:put_object(kz_util:to_list(Bucket), FilePath, Contents, Config) of
         {'ok', Props} ->
             Metadata = [ convert_kv(KV) || KV <- Props, filter_kv(KV)],
-            S3Key = base64:encode(term_to_binary({Key, Secret, Bucket, Path})),
+            S3Key = base64:encode(term_to_binary({Key, Secret, Host, Bucket, Path})),
             {'ok', [{'attachment', [{<<"S3">>, S3Key}
                                    ,{<<"metadata">>, kz_json:from_list(Metadata)}
                                    ]}
@@ -43,9 +40,9 @@ fetch_attachment(HandlerProps, DbName, DocId, AName) ->
     case kz_json:get_value(<<"S3">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};
         S3 ->
-            {Key, Secret, Bucket, Path} = binary_to_term(base64:decode(S3)),
-            FilePath = kz_util:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])),
-            Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret)),
+            {Key, Secret, Host, Bucket, Path} = get_s3_values(S3),
+            FilePath = get_file_path(Path, DbName, DocId, AName),
+            Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret), kz_util:to_list(Host)),
             case kz_aws_s3:get_object(kz_util:to_list(Bucket), FilePath, Config) of
                 {'ok', Props} -> {'ok', props:get_value('content', Props)};
                 _E -> _E
@@ -65,3 +62,27 @@ convert_kv({K, V})
 convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
+
+-spec get_map_values(kz_data:connection()) -> {ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()}.
+get_map_values(#{'bucket' := Bucket
+                ,'key' := Key
+                ,'secret' := Secret
+                }=Map) ->
+    Path = maps:get('path', Map, 'undefined'),
+    Host = maps:get('host', Map,  ?AMAZON_S3_HOST),
+    {Bucket, Key, Secret, Path, Host}.
+
+-spec get_file_path(api_binary(), ne_binary(), ne_binary(), ne_binary()) -> list().
+get_file_path('undefined', DbName, DocId, AName) ->
+    kz_util:to_list(list_to_binary([DbName, "/", DocId, "_", AName]));
+get_file_path(Path, DbName, DocId, AName) ->
+    kz_util:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])).
+
+-spec get_s3_values(ne_binary()) -> {ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()}.
+get_s3_values(S3) ->
+    case binary_to_term(base64:decode(S3)) of
+        {Key, Secret, Bucket, Path} ->
+            {Key, Secret, ?AMAZON_S3_HOST, Bucket, Path};
+        {_Key, _Secret, _Host, _Bucket, _Path} = V2 ->
+            V2
+    end.
