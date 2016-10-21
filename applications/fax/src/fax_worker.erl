@@ -1074,7 +1074,7 @@ get_did(JObj) ->
 -spec get_proxy_url(ne_binary()) -> ne_binary().
 get_proxy_url(JobId) ->
     Hostname = kz_network_utils:get_hostname(),
-    Port = kapps_config:get_binary(?CONFIG_CAT, <<"port">>),
+    Port = integer_to_binary(?PORT),
     list_to_binary(["http://", Hostname, ":", Port, "/fax/", JobId, ".tiff"]).
 
 -spec send_status(state(), ne_binary()) -> any().
