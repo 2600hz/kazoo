@@ -323,8 +323,14 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integ
 
 guess_properties(Document, Key, Type, Default)
   when is_binary(Key) ->
-    Description = fetch_description(Document, Key),
-    true = undefined =/= Description,
+    DescriptionKey = description_key(Document, Key),
+    Description = fetch_description(DescriptionKey),
+    case Description of
+        'undefined' ->
+            io:format("\nMissing description for '~s'\n", [DescriptionKey]),
+            halt(1);
+        _ -> 'ok'
+    end,
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
@@ -341,9 +347,10 @@ guess_properties(Document, [Key, ?FIELD_PROPERTIES], Type, Default) ->
 guess_properties(Document, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
     guess_properties(Document, Rest, Type, Default).
 
-fetch_description(Document, Key) ->
+description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
+fetch_description(DescriptionKey) ->
     {'ok', Bin} = file:read_file(kz_ast_util:api_path(<<"descriptions.system_config.json">>)),
-    kz_json:get_ne_binary_value(<<Document/binary, $., Key/binary>>, kz_json:decode(Bin)).
+    kz_json:get_ne_binary_value(DescriptionKey, kz_json:decode(Bin)).
 
 default_value('undefined') -> 'undefined';
 default_value(?ATOM('true')) -> 'true';

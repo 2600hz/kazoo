@@ -546,6 +546,8 @@
     "speech.tts_speed": "speech tts speed",
     "speech.tts_start_padding": "speech tts start padding",
     "speech.tts_url": "speech tts url",
+    "speech.tts_url_ispeech": "speech TTS URL for iSpeech provider",
+    "speech.tts_url_voicefabric": "speech TTS URL for VoiceFabric provider",
     "speech.tts_voice": "speech tts voice",
     "stepswitch.assume_inbound_e164": "stepswitch assume inbound e164",
     "stepswitch.cid_rules_honor_diversions": "stepswitch cid rules honor diversions",
