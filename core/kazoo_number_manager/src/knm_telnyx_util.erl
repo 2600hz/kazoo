@@ -73,7 +73,7 @@ req('delete'=_Method, Path, EmptyJObj) ->
     Url = ?URL(Path),
     Headers = http_headers(EmptyJObj),
     ?DEBUG_APPEND("Request:~n~s ~s~n~p~n", [_Method, Url, Headers]),
-    Resp = kz_http:delete(Url, Headers, http_options()),
+    Resp = kz_http:delete(Url, Headers, <<>>, http_options()),
     rep(Resp);
 req('post'=_Method, Path, JObj) ->
     Url = ?URL(Path),
