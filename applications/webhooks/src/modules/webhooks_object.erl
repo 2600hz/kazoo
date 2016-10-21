@@ -75,7 +75,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec bindings_and_responders() -> {gen_listener:bindings(), gen_listener:responders()}.
 bindings_and_responders() ->
-    Bindings = bindings(load_accounts()),
+    Bindings = bindings(),
     Responders = [{{?MODULE, 'handle_event'}, [{<<"configuration">>, <<"*">>}]}],
     {Bindings, Responders}.
 
@@ -85,8 +85,7 @@ bindings_and_responders() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_bindings(ne_binary()) -> gen_listener:bindings().
-account_bindings(AccountId) ->
-    bindings([kz_util:format_account_id(AccountId, 'encoded')]).
+account_bindings(_AccountId) -> [].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -105,58 +104,37 @@ handle_event(JObj, _Props) ->
                        ,[kz_api:event_name(JObj), AccountId]
                        );
         Hooks ->
-            webhooks_util:fire_hooks(format_event(JObj, AccountId), Hooks)
+            Event = format_event(JObj, AccountId),
+            Action = kz_api:event_name(JObj),
+            Type = kapi_conf:get_type(JObj),
+            Filtered = [Hook || Hook <- Hooks, match_action_type(Hook, Action, Type)],
+            webhooks_util:fire_hooks(Event, Filtered)
     end.
+
+-spec match_action_type(webhook(), api_binary(), api_binary()) -> boolean().
+match_action_type(#webhook{hook_event = ?NAME
+                          ,custom_data='undefined'
+                          }, _Action, _Type) -> 'true';
+match_action_type(#webhook{hook_event = ?NAME
+                          ,custom_data=JObj
+                          }, Action, Type) ->
+    kz_json:get_value(<<"action">>, JObj) =:= Action
+        andalso kz_json:get_value(<<"type">>, JObj) =:= Type;
+match_action_type(#webhook{}, _Action, _Type) -> 'true'.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec load_accounts() -> ne_binaries().
-load_accounts() ->
-    case
-        kz_datamgr:get_results(
-          ?KZ_WEBHOOKS_DB
-                              ,<<"webhooks/hook_listing">>
-                              ,[{'key', ?NAME}]
-         )
-    of
-        {'ok', View} ->
-            [kz_util:format_account_id(
-               kz_json:get_value(<<"value">>, Result)
-                                      ,'encoded'
-              )
-             || Result <- View
-            ];
-        {'error', _E} ->
-            lager:warning("failed to load accounts: ~p", [_E]),
-            []
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec bindings(ne_binaries()) -> gen_listener:bindings().
-bindings([]) ->
-    lager:debug("no accounts configured"),
-    [];
-bindings(AccountsWithObjectHook) ->
-    [{'conf'
-     ,[{'restrict_to', ['doc_updates']}
-      ,{'type', Type}
-      ,{'db', Account}
-      ]
-     }
-     || Type <- ?OBJECT_TYPES,
-        Account <- lists:usort(AccountsWithObjectHook)
-    ].
+-spec bindings() -> gen_listener:bindings().
+bindings() ->
+    [{'conf', [{'restrict_to', ['doc_updates']}]}].
 
 %%--------------------------------------------------------------------
 %% @private
