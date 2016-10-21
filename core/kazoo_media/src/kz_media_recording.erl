@@ -401,9 +401,10 @@ code_change(_OldVsn, State, _Extra) ->
 
 -spec get_timelimit(api_object() | integer()) -> pos_integer().
 get_timelimit('undefined') ->
-    kapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600);
+    kz_media_util:max_recording_time_limit();
 get_timelimit(TL) when is_integer(TL) ->
-    case (Max = kapps_config:get(?CONFIG_CAT, <<"max_recording_time_limit">>, 600)) > TL of
+    Max = kz_media_util:max_recording_time_limit(),
+    case Max > TL of
         'true' -> TL;
         'false' when Max > 0 -> Max;
         'false' -> Max
