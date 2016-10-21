@@ -729,10 +729,8 @@ replay_profile(V) ->
 
 -spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    kz_util:unix_seconds_to_gregorian_seconds(kz_util:to_integer(V)) -
-        (kz_util:current_tstamp() +
-             ecallmgr_config:get_integer(<<"expires_deviation_time">>, 0)
-        ).
+    kz_util:unix_seconds_to_gregorian_seconds(kz_util:to_integer(V))
+        - (kz_util:current_tstamp() + ?EXPIRES_DEVIATION_TIME).
 
 -spec replay_contact(ne_binary()) -> ne_binary().
 replay_contact(V) ->

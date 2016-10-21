@@ -12,7 +12,6 @@
 %%%   Karl Anderson
 %%%-----------------------------------------------------------------------------
 -module(ecallmgr_fs_nodes).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -193,7 +192,7 @@ sip_external_ip(Node) ->
 
 -spec all_nodes_connected() -> boolean().
 all_nodes_connected() ->
-    length(ecallmgr_config:get(<<"fs_nodes">>, [])) =:= length(connected()).
+    length(?FS_NODES) =:= length(connected()).
 
 -spec summary() -> 'ok'.
 summary() ->

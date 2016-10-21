@@ -615,7 +615,7 @@ insert_fetched_registration(JObj) ->
     %%   use a stale value (also an issue if it re-registers before expiration)
     %%   unless it also expires here at close to the same time (preferably before).
     Expires = kz_json:get_integer_value(<<"Expires">>, JObj, ?EXPIRES_MISSING_VALUE)
-        - ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180),
+        - ?EXPIRES_DEVIATION_TIME,
     Registration = create_registration(JObj),
     insert_registration(Registration#registration{expires=Expires}).
 
