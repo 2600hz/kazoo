@@ -8063,7 +8063,7 @@
             "description": "Schema for crossbar.devices system_config",
             "properties": {
                 "allow_aggregates": {
-                    "default": "true",
+                    "default": true,
                     "description": "crossbar.devices allow aggregates",
                     "type": "boolean"
                 },
@@ -8663,7 +8663,7 @@
                     "type": "integer"
                 },
                 "expires_deviation_time": {
-                    "default": 0,
+                    "default": 180,
                     "description": "ecallmgr expires deviation time",
                     "type": "integer"
                 },
@@ -9217,7 +9217,7 @@
                 },
                 "default_{Key}": {
                     "description": "jonny5 default {Key}",
-                    "type": "integer"
+                    "type": "boolean"
                 },
                 "flat_rate_blacklist": {
                     "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
@@ -9568,7 +9568,7 @@
                     "type": "boolean"
                 },
                 "max_recording_time_limit": {
-                    "default": 600,
+                    "default": 3600,
                     "description": "media maximum recording time limit",
                     "type": "integer"
                 },
@@ -9814,7 +9814,7 @@
                     }
                 },
                 "notification_app": {
-                    "default": "notify",
+                    "default": "teletype",
                     "description": "notify notification app",
                     "type": "string"
                 },
@@ -11019,12 +11019,12 @@
                     "type": "string"
                 },
                 "asr_provider": {
-                    "default": "",
+                    "default": "ispeech",
                     "description": "speech asr provider",
                     "type": "string"
                 },
                 "asr_url": {
-                    "default": "http://api.ispeech.org/api/rest",
+                    "default": "http://api.ispeech.org/api/json",
                     "description": "speech asr url",
                     "type": "string"
                 },
@@ -11059,7 +11059,7 @@
                     "type": "string"
                 },
                 "tts_provider": {
-                    "default": "ispeech",
+                    "default": "flite",
                     "description": "speech tts provider",
                     "type": "string"
                 },
@@ -11073,9 +11073,14 @@
                     "description": "speech tts start padding",
                     "type": "integer"
                 },
-                "tts_url": {
+                "tts_url_ispeech": {
                     "default": "http://api.ispeech.org/api/json",
-                    "description": "speech tts url",
+                    "description": "speech TTS URL for iSpeech provider",
+                    "type": "string"
+                },
+                "tts_url_voicefabric": {
+                    "default": "https://voicefabric.ru/WSServer/ws/tts",
+                    "description": "speech TTS URL for VoiceFabric provider",
                     "type": "string"
                 },
                 "tts_voice": {
@@ -11150,7 +11155,7 @@
                     "type": "array"
                 },
                 "default_weight": {
-                    "default": 3,
+                    "default": 1,
                     "description": "stepswitch default weight",
                     "type": "integer"
                 },
@@ -11429,7 +11434,7 @@
             "description": "Schema for topup system_config",
             "properties": {
                 "enable": {
-                    "default": true,
+                    "default": false,
                     "description": "topup enable",
                     "type": "boolean"
                 }
@@ -11472,9 +11477,6 @@
         "system_config.webhooks": {
             "description": "Schema for webhooks system_config",
             "properties": {
-                "attempt_failure_count": {
-                    "description": "webhooks attempt failure count"
-                },
                 "attempt_failure_expiry_ms": {
                     "default": 60000,
                     "description": "webhooks attempt failure expiry in milliseconds",
@@ -11496,7 +11498,6 @@
                 }
             },
             "required": [
-                "attempt_failure_count",
                 "object_types"
             ],
             "type": "object"
