@@ -235,8 +235,8 @@ log_email_send_error(Reason) ->
 -spec smtp_options() -> kz_proplist().
 smtp_options() ->
     Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"username">>)),
-    Password = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"password">>)),
+    Username = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
+    Password = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
     Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
