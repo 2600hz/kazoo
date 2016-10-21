@@ -27,6 +27,8 @@
         ,blocks/1
         ,account_id/1
         ,reseller_id/1
+
+        ,is_number_billable/1
         ]).
 
 %%% For knm carriers only
@@ -409,6 +411,19 @@ account_id(Options) ->
 -spec reseller_id(options()) -> ne_binary().
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns whether carrier handles numbers local to the system.
+%% @end
+%%--------------------------------------------------------------------
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
+is_number_billable(PhoneNumber) ->
+    Carrier = knm_phone_number:module_name(PhoneNumber),
+    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
+    Module:is_number_billable(PhoneNumber).
 
 
 %%%===================================================================

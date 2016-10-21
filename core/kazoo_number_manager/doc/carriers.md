@@ -50,7 +50,7 @@ Returns a boolean for whether this carrier's numbers should be queried for CNAM.
 
 ### `is_number_billable/1`
 
-The argument is the `#knm_number{}` record.
+The argument is the `#knm_phone_number{}` record.
 
 The result is a boolean, representing whether the number should be billed.
 

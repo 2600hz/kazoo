@@ -91,7 +91,7 @@ disconnect_number(Number) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec should_lookup_cnam() -> 'false'.
+-spec should_lookup_cnam() -> boolean().
 should_lookup_cnam() -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -100,7 +100,7 @@ should_lookup_cnam() -> 'false'.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(_) -> 'true'.
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_) -> 'true'.
 
 %%%===================================================================

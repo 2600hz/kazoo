@@ -26,76 +26,66 @@
 
 -ifdef(TEST).
 -define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
-
 -define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
-
 -else.
--define(DEFAULT_CONVERTER, kapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
-
+-define(DEFAULT_CONVERTER,
+        kapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
 -define(RECONCILE_REGEX,
         kapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
-
 -endif.
 
 -define(CONVERTER_MOD, kz_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
--define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$">>).
+-define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
--define(CLASSIFIER_TOLLFREE_US
-       ,kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})$">>}
-                            ,{<<"friendly_name">>, <<"US TollFree">>}
-                                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                                           ])
-       ).
+-define(CLASSIFIER_TOLLFREE_US,
+        kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})\$">>}
+                          ,{<<"friendly_name">>, <<"US TollFree">>}
+                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ])).
 
--define(CLASSIFIER_TOLLFREE
-        ,kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})$">>}
-                            ,{<<"friendly_name">>, <<"US Toll">>}
-                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                           ])
-       ).
+-define(CLASSIFIER_TOLLFREE,
+        kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})\$">>}
+                          ,{<<"friendly_name">>, <<"US Toll">>}
+                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ])).
 
--define(CLASSIFIER_EMERGENCY
-        ,kz_json:from_list([{<<"regex">>, <<"^(911)$">>}
-                            ,{<<"emergency">>, 'true'}
-                            ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
-                           ])
-       ).
+-define(CLASSIFIER_EMERGENCY,
+        kz_json:from_list([{<<"regex">>, <<"^(911)\$">>}
+                          ,{<<"emergency">>, 'true'}
+                          ,{<<"friendly_name">>, <<"Emergency Dispatcher">>}
+                          ])).
 
--define(CLASSIFIER_CARIBBEAN
-        ,kz_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})$">>}
-                            ,{<<"friendly_name">>, <<"Caribbean">>}
-                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                           ])
-       ).
+-define(CLASSIFIER_CARIBBEAN,
+        kz_json:from_list([{<<"regex">>, <<"^\\+?1((?:684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340)\\d{7})\$">>}
+                          ,{<<"friendly_name">>, <<"Caribbean">>}
+                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ])).
 
--define(CLASSIFIER_DID_US
-        ,kz_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>}
-                            ,{<<"friendly_name">>, <<"US DID">>}
-                            ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
-                           ])
-       ).
+-define(CLASSIFIER_DID_US,
+        kz_json:from_list([{<<"regex">>, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>}
+                          ,{<<"friendly_name">>, <<"US DID">>}
+                          ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
+                          ])).
 
--define(CLASSIFIER_INTERNATIONAL
-        ,kz_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)$">>}
-                            ,{<<"friendly_name">>, <<"International">>}
-                           ])
-       ).
+-define(CLASSIFIER_INTERNATIONAL,
+        kz_json:from_list([{<<"regex">>, <<"^(011\\d*)$|^(00\\d*)\$">>}
+                          ,{<<"friendly_name">>, <<"International">>}
+                          ])).
 
--define(CLASSIFIER_UNKNOWN
-        ,kz_json:from_list([{<<"regex">>, <<"^(.*)$">>}
-                            ,{<<"friendly_name">>, <<"Unknown">>}
-                           ])
-       ).
+-define(CLASSIFIER_UNKNOWN,
+        kz_json:from_list([{<<"regex">>, <<"^(.*)\$">>}
+                          ,{<<"friendly_name">>, <<"Unknown">>}
+                          ])).
 
 -define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
-                              ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
-                              ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
-                              ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
-                              ,{<<"did_us">>, ?CLASSIFIER_DID_US}
-                              ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
-                              ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
+                             ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
+                             ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
+                             ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
+                             ,{<<"did_us">>, ?CLASSIFIER_DID_US}
+                             ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
+                             ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
                              ]).
 
 %%--------------------------------------------------------------------
@@ -188,9 +178,9 @@ is_reconcilable(Number) ->
 is_reconcilable(Number, AccountId) ->
     Regex = kapps_account_config:get_global(
               AccountId
-              ,?KNM_CONFIG_CAT
-              ,?KEY_RECONCILE_REGEX
-              ,?DEFAULT_RECONCILE_REGEX
+                                           ,?KNM_CONFIG_CAT
+                                           ,?KEY_RECONCILE_REGEX
+                                           ,?DEFAULT_RECONCILE_REGEX
              ),
     Num = normalize(Number, AccountId),
     is_reconcilable_by_regex(Num, Regex).
@@ -215,10 +205,10 @@ is_reconcilable_by_regex(Num, Regex) ->
 -define(CLASSIFIERS, kz_json:from_list(?DEFAULT_CLASSIFIERS)).
 -else.
 -define(CLASSIFIERS
-        ,kapps_config:get(?KNM_CONFIG_CAT
-                           ,<<"classifiers">>
-                           ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
-                          )
+       ,kapps_config:get(?KNM_CONFIG_CAT
+                        ,<<"classifiers">>
+                        ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
+                        )
        ).
 -endif.
 
@@ -236,8 +226,8 @@ classify(Number) ->
 -spec available_classifiers() -> kz_json:object().
 available_classifiers() ->
     kz_json:foldl(fun correct_depreciated_classifiers/3
-                  ,kz_json:new()
-                  ,?CLASSIFIERS
+                 ,kz_json:new()
+                 ,?CLASSIFIERS
                  ).
 
 %%--------------------------------------------------------------------
@@ -297,10 +287,10 @@ get_classifier_regex(JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
-                                             kz_json:object().
+                                                 kz_json:object().
 correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}
-                           ,{<<"friendly_name">>, Classifier}
+                          ,{<<"friendly_name">>, Classifier}
                           ]),
     kz_json:set_value(Classifier, J, JObj);
 correct_depreciated_classifiers(Classifier, J, JObj) ->

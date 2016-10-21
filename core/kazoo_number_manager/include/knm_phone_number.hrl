@@ -27,6 +27,7 @@
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
 -define(PVT_FEATURES_AVAILABLE, <<"pvt_features_available">>).
+-define(PVT_IS_BILLABLE, <<"pvt_is_billable">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).
 -define(PVT_PORTED_IN, <<"pvt_ported_in">>).
