@@ -2,6 +2,7 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
+-include("kazoo_translator.hrl").
 
 -type ok_return() :: {'ok', kapps_call:call()}.
 -type stop_return() :: {'stop', kapps_call:call()}.
@@ -38,7 +39,6 @@
 -define(APP_NAME, <<"translator">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(DEFAULT_TTS_ENGINE, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_provider">>, <<"flite">>)).
 -define(DEFAULT_TTS_LANG, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_language">>, <<"en-US">>)).
 -define(DEFAULT_TTS_VOICE, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_voice">>, <<"male">>)).
 

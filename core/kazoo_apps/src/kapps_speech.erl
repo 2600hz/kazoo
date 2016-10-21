@@ -16,6 +16,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_speech).
 
+-include_lib("kazoo_translator/include/kazoo_translator.hrl").
 -include("kazoo_apps.hrl").
 -include("kapps_speech.hrl").
 
@@ -65,7 +66,7 @@ create(Text, Voice, Format) ->
 
 -spec create(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
-    Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
+    Provider = ?DEFAULT_TTS_ENGINE,
     create(Provider, Text, Voice, Format, Options).
 
 -spec create(api_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
