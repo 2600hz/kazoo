@@ -23,17 +23,19 @@ Configuring recording at the user level starts recording for any calls to/from a
 
 Configuring recording at the device level starts recording for any calls to/from the device.
 
-To enable call recording, add `"record_call":true` to the document of choice. For example, if you have a user with user ID of `{USER_ID}`, you can patch the user's document using Crossbar:
+To enable call recording, add `"record_call":{...}` to the document of choice. For example, if you have a user with user ID of `{USER_ID}`, you can patch the user's document using Crossbar:
 
 ```shell
 curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    -d '{"data":{"record_call":true}}' \
+    -d '{"data":{
+    "record_call":{"url":"http://storage.you.com/"}
+    }}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}
 ```
 
-If successful, all calls to/from this user will be recorded.
+If successful, all calls to/from this user will be recorded. See the callflow action table below for all the fields.
 
 ##### Callflow action - Record Call
 
