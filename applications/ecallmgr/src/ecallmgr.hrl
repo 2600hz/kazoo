@@ -14,10 +14,8 @@
 
 -define(DEFAULT_FETCH_TIMEOUT, ?ECALLMGR_DEFAULT_FETCH_TIMEOUT).
 
--define(FS_NODES,
-       ecallmgr_config:get(<<"fs_nodes">>, [])).
--define(FS_NODES(Node),
-       ecallmgr_config:get(<<"fs_nodes">>, [], Node)).
+-define(FS_NODES, ecallmgr_config:get(<<"fs_nodes">>, [])).
+-define(FS_NODES(Node), ecallmgr_config:get(<<"fs_nodes">>, [], Node)).
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 

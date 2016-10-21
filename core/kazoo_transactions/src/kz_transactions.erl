@@ -128,7 +128,7 @@ filter_by_reason(<<"no_calls">>, Transactions) -> %% Legacy of only_bookkeeper
     lists:foldr(
       fun(Transaction, Acc) ->
               Code = kz_transaction:code(Transaction),
-              case Code >= 1000 andalso Code < 2000 of
+              case (Code >= 1000) and (Code < 2000) of
                   'false' -> [Transaction | Acc];
                   'true' -> Acc
               end
@@ -137,7 +137,7 @@ filter_by_reason(<<"only_calls">>, Transactions) ->
     lists:foldr(
       fun(Transaction, Acc) ->
               Code = kz_transaction:code(Transaction),
-              case Code >= 1000 andalso Code < 2000 of
+              case (Code >= 1000) and (Code < 2000) of
                   'true' -> [Transaction | Acc];
                   'false' -> Acc
               end

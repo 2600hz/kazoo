@@ -356,7 +356,8 @@ create_response(<<"voicefabric">> = _Engine, {'ok', 200, Headers, Content}) ->
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
     CmdOut = os:cmd(Cmd),
-    CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
+    CmdOut =:= []
+        orelse lager:debug("cmd out: ~ts", [CmdOut]),
     kz_util:delete_file(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of

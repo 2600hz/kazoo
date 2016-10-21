@@ -58,7 +58,7 @@
         ]).
 
 -define(DEVICES_ALLOW_AGGREGATES,
-       kapps_config:get_is_true(<<(?CONFIG_CAT)/binary, ".devices">>, <<"allow_aggregates">>, 'true')).
+        kapps_config:get_is_true(<<(?CONFIG_CAT)/binary, ".devices">>, <<"allow_aggregates">>, 'true')).
 
 -define(DEFAULT_MODULES, ['cb_about'
                          ,'cb_accounts'
