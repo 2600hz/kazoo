@@ -345,6 +345,7 @@ from_json(JObj) ->
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
+    IsBillable = kz_json:is_true(?PVT_IS_BILLABLE, JObj, 'undefined'),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
@@ -355,7 +356,7 @@ from_json(JObj) ->
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
-                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
+                ,{fun set_module_name/3, kz_json:get_value(?PVT_MODULE_NAME, JObj), IsBillable}
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
@@ -640,15 +641,23 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    N#knm_phone_number{module_name = Name
-                      ,is_billable = 'false'
-                      };
+    N#knm_phone_number{module_name = Name};
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
     N#knm_phone_number{module_name = Name
                       ,is_billable = knm_carriers:is_number_billable(N)
                       }.
+
+%% Do not override is_billable when field is already set on doc.
+-spec set_module_name(knm_phone_number(), ne_binary(), api_boolean()) -> knm_phone_number().
+set_module_name(N0, Name, IsBillable)
+  when is_boolean(IsBillable) ->
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_billable = IsBillable};
+set_module_name(N0, Name, 'undefined') ->
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_billable = knm_carriers:is_number_billable(N)}.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -192,20 +192,17 @@ check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
     end.
 
 -spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number()
-                                      ,kz_json:objects()) ->
-                                              kz_json:objects().
+                                      ,kz_json:objects()) -> kz_json:objects().
 transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
     PhoneNumber0 = knm_number:phone_number(Number),
+    Setters = [{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
+              ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
+              ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+              ],
     {'ok', PhoneNumber} =
-        knm_phone_number:setters(ExistingPhoneNumber
-                                ,[{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
-                                 ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
-                                 ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-                                 ]
-                                ),
+        knm_phone_number:setters(ExistingPhoneNumber, Setters),
     case knm_number:save(knm_number:set_phone_number(Number, PhoneNumber)) of
-        {'ok', SavedNumber} ->
-            [found_number_to_jobj(SavedNumber) | Acc];
+        {'ok', SavedNumber} -> [found_number_to_jobj(SavedNumber) | Acc];
         {'error', _R} ->
             lager:debug("skipping number ~s: ~p", [knm_phone_number:number(PhoneNumber), _R]),
             Acc
@@ -214,15 +211,13 @@ transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-    AssignTo = knm_phone_number:assign_to(PhoneNumber),
     DID = knm_phone_number:number(PhoneNumber),
     kz_json:from_list(
       props:filter_undefined(
         [{<<"number">>, DID}
-        ,{<<"activation_charge">>, activation_charge(DID, AssignTo)}
+        ,{<<"activation_charge">>, activation_charge(DID, knm_phone_number:assign_to(PhoneNumber))}
         ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
-        ])
-     ).
+        ])).
 
 -spec activation_charge(ne_binary(), api_binary()) -> api_number().
 -ifdef(TEST).
@@ -232,10 +227,7 @@ activation_charge(_Number, _AccountId) -> 1.0.
 -else.
 activation_charge(_DID, 'undefined') -> 'undefined';
 activation_charge(DID, AccountId) ->
-    kz_services:activation_charges(<<"phone_numbers">>
-                                  ,knm_converters:classify(DID)
-                                  ,AccountId
-                                  ).
+    kz_services:activation_charges(<<"phone_numbers">>, knm_converters:classify(DID), AccountId).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -248,8 +240,7 @@ activation_charge(DID, AccountId) ->
                             }].
 -spec check(ne_binaries()) -> checked_numbers().
 -spec check(ne_binaries(), options()) -> checked_numbers().
-check(Numbers) ->
-    check(Numbers, []).
+check(Numbers) -> check(Numbers, []).
 
 check(Numbers, Options) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
