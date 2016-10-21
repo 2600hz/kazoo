@@ -221,10 +221,8 @@ should_handle(JObj) ->
 
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
-    kapps_config:get(?NOTIFY_CONFIG_CAT
-                    ,<<"notification_app">>
-                    ,?APP_NAME
-                    ) =:= ?APP_NAME.
+    kapps_config:get(?NOTIFY_CONFIG_CAT, <<"notification_app">>, <<"teletype">>)
+        =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
 should_handle_account(Account) ->

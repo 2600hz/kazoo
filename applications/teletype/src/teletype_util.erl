@@ -604,10 +604,7 @@ should_handle_notification(JObj, 'false') ->
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
     lager:debug("should system handle notification"),
-    kapps_config:get(?NOTIFY_CONFIG_CAT
-                    ,<<"notification_app">>
-                    ,?APP_NAME
-                    )
+    kapps_config:get(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
         =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().

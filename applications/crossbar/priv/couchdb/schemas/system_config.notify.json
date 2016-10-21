@@ -23,7 +23,7 @@
             }
         },
         "notification_app": {
-            "default": "notify",
+            "default": "teletype",
             "description": "notify notification app",
             "type": "string"
         },
