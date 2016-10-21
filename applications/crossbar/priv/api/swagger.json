@@ -5475,8 +5475,7 @@
                         },
                         "inbound_lookup": {
                             "type": "boolean"
-                        },
-                        "required": []
+                        }
                     },
                     "type": "object"
                 },
@@ -5509,7 +5508,6 @@
                                     "description": "The name that will show to emergency services",
                                     "type": "string"
                                 },
-                                "required": [],
                                 "streetname": {
                                     "description": "The name that will show to emergency services",
                                     "type": "string"
@@ -5545,12 +5543,6 @@
                             "description": "The region (state) where the number is in service",
                             "type": "string"
                         },
-                        "required": [
-                            "locality",
-                            "postal_code",
-                            "region",
-                            "street_address"
-                        ],
                         "status": {
                             "description": "The e911 provisioning system status for this service address",
                             "enum": [
@@ -5565,8 +5557,7 @@
                         "street_address": {
                             "description": "The street address where the number is in service",
                             "type": "string"
-                        },
-                        "type": "object"
+                        }
                     },
                     "type": "object"
                 },
@@ -5624,7 +5615,6 @@
                             "description": "The requested port date",
                             "type": "string"
                         },
-                        "required": [],
                         "service_provider": {
                             "description": "The name of the losing carrier",
                             "type": "string"
@@ -5633,6 +5623,12 @@
                     "type": "object"
                 }
             },
+            "required": [
+                "locality",
+                "postal_code",
+                "region",
+                "street_address"
+            ],
             "type": "object"
         },
         "port_requests": {
