@@ -640,12 +640,15 @@ flush(Category) ->
     kz_datamgr:flush_cache_doc(?KZ_CONFIG_DB, Category).
 
 -spec flush(ne_binary(), ne_binary()) -> 'ok'.
--spec flush(ne_binary(), ne_binary() | ne_binaries(), atom() | ne_binary()) -> 'ok'.
+-spec flush(ne_binary(), ne_binary() | ne_binaries(), api_ne_binary()) -> 'ok'.
 flush(Category, Key) ->
     flush(Category, Key, ?KEY_DEFAULT).
 
 flush(Category, Key, 'undefined') ->
-    flush(Category, Key, ?KEY_DEFAULT);
+    flush(Category, Key);
+flush(Category, Key, <<"undefined">>) ->
+    flush(Category, Key);
+
 flush(Category, Key, Node) when not is_list(Key) ->
     flush(Category, [Key], Node);
 flush(Category, Keys, Node) when not is_binary(Category) ->
