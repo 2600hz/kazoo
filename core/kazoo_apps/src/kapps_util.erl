@@ -284,10 +284,9 @@ get_all_accounts_and_mods(Encoding) ->
 
 -spec format_db(ne_binary(), kz_util:account_format()) -> ne_binary().
 format_db(Db, Encoding) ->
-    Fs =
-        [{fun is_account_db/1, fun kz_util:format_account_id/2}
-        ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
-        ],
+    Fs = [{fun is_account_db/1, fun kz_util:format_account_id/2}
+         ,{fun is_account_mod/1, fun kz_util:format_account_modb/2}
+         ],
     format_db(Db, Encoding, Fs).
 
 format_db(Db, Encoding, [{Predicate, Formatter}|Fs]) ->
