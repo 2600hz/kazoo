@@ -228,12 +228,7 @@ config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
     %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
     Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
-    Existing = kz_json:get_json_value([Document, ?FIELD_PROPERTIES | Key]
-                                     ,Schemas
-                                     ,kz_json:new()
-                                     ),
-    Updated = kz_json:merge_jobjs(Existing, Properties),
-    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Updated, Schemas).
+    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
