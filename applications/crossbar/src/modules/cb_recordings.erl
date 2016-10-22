@@ -90,7 +90,9 @@ content_types_provided(Context, _) ->
 
 -spec content_types_provided_for_download(cb_context:context(), http_method()) -> cb_context:context().
 content_types_provided_for_download(Context, ?HTTP_GET) ->
-    CTP = [{'to_binary', ?MEDIA_MIME_TYPES}],
+    CTP = [{'to_json', ?JSON_CONTENT_TYPES}
+          ,{'to_binary', ?MEDIA_MIME_TYPES}
+          ],
     cb_context:set_content_types_provided(Context, CTP);
 content_types_provided_for_download(Context, _Verb) ->
     Context.
