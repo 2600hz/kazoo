@@ -6,6 +6,11 @@ DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam ws
 BUILD_DEPS = parse_trans
 IGNORE_DEPS = hamcrest
 
+ifeq ($(USER),travis)
+    DEPS += ecoveralls
+    dep_ecoveralls = git https://github.com/nifoc/ecoveralls master
+endif
+
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
 dep_exml = git https://github.com/paulgray/exml 2.2.1
 dep_eiconv = git https://github.com/zotonic/eiconv
