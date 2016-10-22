@@ -68,8 +68,6 @@ Some of the highlights:
 
 Some 2600Hz specifics:
 
-* Tickie all atoms
-  * Use `'foo'` not `foo`
 * Write accurate specs for all functions
   * Use the most restrictive type(s) you can.
   ```erlang
