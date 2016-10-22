@@ -37,15 +37,23 @@ fetch_attachment(#{}=Server, DbName, DocId, AName) ->
         {'error', _}=E -> E
     end.
 
-do_fetch_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att) ->
+do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att) ->
+    AttHandler = maps:get('att_handler', Server, 'undefined'),
     case kz_json:get_value(<<"handler">>, Att) of
         'undefined' -> App:fetch_attachment(Conn, DbName, DocId, AName);
-        Handler -> do_fetch_attachment_from_handler(kz_json:to_proplist(Handler), DbName, DocId, AName)
+        Handler ->
+            do_fetch_attachment_from_handler(kz_json:to_proplist(Handler), AttHandler, DbName, DocId, AName)
     end.
 
-do_fetch_attachment_from_handler([{Handler, Props}], DbName, DocId, AName) ->
+do_fetch_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName) ->
     Module = kz_util:to_atom(Handler, 'true'),
-    Module:fetch_attachment(Props, DbName, DocId, AName).
+    Module:fetch_attachment(Props, DbName, DocId, AName);
+do_fetch_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName) ->
+    Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps),
+    case kz_util:to_atom(Handler, 'true') of
+        Module -> Module:fetch_attachment(Props, DbName, DocId, AName);
+        DiffModule -> DiffModule:fetch_attachment(HandlerProps, DbName, DocId, AName)
+    end.
 
 -spec stream_attachment(map(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
                                {'ok', reference()} |
@@ -60,16 +68,29 @@ stream_attachment(#{}=Server, DbName, DocId, AName, Caller) ->
         {'error', _}=E -> E
     end.
 
-do_stream_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Att, Caller) ->
+do_stream_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att, Caller) ->
+    AttHandler = maps:get('att_handler', Server, 'undefined'),
     case kz_json:get_value(<<"handler">>, Att) of
         'undefined' -> App:stream_attachment(Conn, DbName, DocId, AName, Caller);
-        Handler -> do_stream_attachment_from_handler(kz_json:to_proplist(Handler), DbName, DocId, AName, Caller)
+        Handler -> do_stream_attachment_from_handler(kz_json:to_proplist(Handler), AttHandler, DbName, DocId, AName, Caller)
     end.
 
-do_stream_attachment_from_handler([{Handler, Props}], DbName, DocId, AName, Caller) ->
+do_stream_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName, Caller) ->
     Module = kz_util:to_atom(Handler, 'true'),
     Ref = make_ref(),
     kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
+    {'ok', Ref};
+do_stream_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName, Caller) ->
+    case kz_util:to_atom(Handler, 'true') of
+        Module ->
+            FinalModule = Module,
+            Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps);
+        DiffModule ->
+            FinalModule = DiffModule,
+            Props = HandlerProps
+    end,
+    Ref = make_ref(),
+    kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, FinalModule, Props, DbName, DocId, AName]),
     {'ok', Ref}.
 
 relay_stream_attachment(Caller, Ref, Module, Props, DbName, DocId, AName) ->
