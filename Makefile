@@ -43,7 +43,7 @@ test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 coverage-report:
-	erl -noshell -pa deps/*/ebin -eval 'cover:start(), lists:foreach(fun cover:import/1, filelib:wildcard("*/*/*.coverdata")), All = "all_kazoo.coverdata", cover:export(All), ecoveralls:travis_ci(All).' -s init stop
+	erl -noshell -pa deps/*/ebin -eval 'cover:start(), lists:foreach(fun cover:import/1, filelib:wildcard("*/*/*_.coverdata")), All = "kazoo.coverdata", cover:export(All), ecoveralls:travis_ci(All).' -s init stop
 
 check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
