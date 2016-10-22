@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger coverage-report
 
 all: compile rel/dev-vm.args
 
@@ -41,6 +41,9 @@ proper: $(KAZOODIRS)
 test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
+
+coverage-report:
+	erl -noshell -pa deps/*/ebin -eval 'cover:start(), lists:foreach(fun cover:import/1, filelib:wildcard("*/*/*.coverdata")), All = "all_kazoo.coverdata", cover:export(All), ecoveralls:travis_ci(All).' -s init stop
 
 check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
