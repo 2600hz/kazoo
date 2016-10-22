@@ -85,7 +85,7 @@
         ,is_private_key/1
         ]).
 
--export([encode/1]).
+-export([encode/1, encode/2]).
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
@@ -105,7 +105,10 @@
 new() -> ?JSON_WRAPPER([]).
 
 -spec encode(json_term()) -> text().
-encode(JObj) -> jiffy:encode(JObj).
+-spec encode(json_term(), encode_options()) -> text().
+encode(JObj) -> encode(JObj, []).
+
+encode(JObj, Options) -> jiffy:encode(JObj, Options).
 
 -spec unsafe_decode(iolist() | ne_binary()) -> json_term().
 -spec unsafe_decode(iolist() | ne_binary(), ne_binary()) -> json_term().

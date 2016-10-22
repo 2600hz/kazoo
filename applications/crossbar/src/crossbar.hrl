@@ -145,6 +145,7 @@
                     ,reseller_id :: api_binary()
                     ,db_name :: api_binary() | ne_binaries()
                     ,doc :: api_object() | kz_json:objects()
+                    ,pretty_print = 'false' :: boolean()
                     ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
                     ,resp_etag :: 'automatic' | string() | api_binary()
                     ,resp_status = 'error' :: crossbar_status()
