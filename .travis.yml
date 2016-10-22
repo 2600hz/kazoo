@@ -31,6 +31,8 @@ before_install:
 script:
   - make compile-test
   - make eunit
-  - make coverage-report
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
   - # ERL_LIBS="$HOME/proper" make eunit
+
+after_success:
+  - make coverage-report
