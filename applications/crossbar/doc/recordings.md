@@ -31,7 +31,7 @@ curl -v -X GET \
 
 Gets a specific recording document attachment if available.
 Mind the `Accept` header in example below.
-For clients that do not support setting the `Accept` header, a querystring parameter can be included: `?accept=text/html`.
+For clients that do not support setting the `Accept` header, a querystring parameter can be included: `?accept=audio/mpeg`.
 
 Optional parameter `inline` can be either `true` or `false`.
 
