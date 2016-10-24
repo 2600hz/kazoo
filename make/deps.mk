@@ -8,7 +8,7 @@ IGNORE_DEPS = hamcrest
 
 ifeq ($(USER),travis)
     DEPS += coveralls
-    dep_coveralls = git https://github.com/markusn/coveralls-erl master
+    dep_coveralls = git https://github.com/fenollp/coveralls-erl str-join
 endif
 
 dep_escalus = git https://github.com/esl/escalus 0de0463c345a1ade6fccfb9aadad719b58a1cef5
