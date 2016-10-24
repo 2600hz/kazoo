@@ -57,7 +57,7 @@ sync(Items, AccountId) ->
 
 -spec http_request(sync()) -> bookkeeper_sync_result().
 http_request(#sync{url = 'undefined'}) ->
-    lager:warn("skipping http sync to empty URL");
+    lager:info("skipping http sync to empty URL");
 http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
     Headers = [{"Content-Type", kz_util:to_list(Sync#sync.content_type)}
                | ?HTTP_REQ_HEADERS(Sync)

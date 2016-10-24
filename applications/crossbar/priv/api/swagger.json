@@ -10885,6 +10885,22 @@
             ],
             "type": "object"
         },
+        "system_config.services.http_sync": {
+            "description": "Schema for services.http_sync system_config",
+            "properties": {
+                "connect_timeout_ms": {
+                    "default": 10000,
+                    "description": "services.http_sync connect timeout in milliseconds",
+                    "type": "integer"
+                },
+                "http_url": {
+                    "default": "",
+                    "description": "services.http_sync http url",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.sms": {
             "description": "Schema for sms system_config",
             "properties": {

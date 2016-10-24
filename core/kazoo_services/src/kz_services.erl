@@ -429,8 +429,8 @@ delete(Account) ->
 %%--------------------------------------------------------------------
 -spec list_categories(services()) -> api_binaries().
 list_categories(#kz_services{jobj=JObj
-                       ,updates=Updates
-                       ,cascade_quantities=CascadeQuantities}) ->
+                            ,updates=Updates
+                            ,cascade_quantities=CascadeQuantities}) ->
     Set = sets:union([
              sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
              ,sets:from_list(kz_json:get_keys(Updates))
