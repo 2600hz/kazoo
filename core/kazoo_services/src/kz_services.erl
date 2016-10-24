@@ -66,6 +66,7 @@
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
 -define(SERVICE_MODULE_PREFIX, "kz_service_").
+-define(SERVICE_MODULES, application:get_env(?APP, 'service_modules', default_service_modules())).
 
 -record(kz_services, {account_id :: api_binary()
                      ,billing_id :: api_binary()
@@ -1211,7 +1212,7 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
     case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
-        'undefined' -> default_service_modules();
+        'undefined' -> ?SERVICE_MODULES;
         ConfModules ->
             lager:debug("configured service modules: ~p", [ConfModules]),
             [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
