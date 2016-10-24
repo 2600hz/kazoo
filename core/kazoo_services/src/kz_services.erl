@@ -1210,27 +1210,11 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
-    UnfilteredModules =
-        case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
-            'undefined' -> get_modules();
-            ConfModules ->
-                lager:debug("configured service modules: ~p", [ConfModules]),
-                [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
-        end,
-    Modules =
-        [Module ||
-            Module <- UnfilteredModules,
-            <<?SERVICE_MODULE_PREFIX,_/binary>> <- [kz_util:to_binary(Module)],
-            erlang:function_exported(Module, 'reconcile', 1)
-        ],
-    lager:debug("got service modules ~p", [Modules]),
-    Modules.
-
--spec get_modules() -> atoms().
-get_modules() ->
-    case application:get_key(?APP, 'modules') of
-        {'ok', AllModules=[_|_]} -> AllModules;
-        _ -> default_service_modules()
+    case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
+        'undefined' -> default_service_modules();
+        ConfModules ->
+            lager:debug("configured service modules: ~p", [ConfModules]),
+            [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
     end.
 
 -spec default_service_modules() -> atoms().
