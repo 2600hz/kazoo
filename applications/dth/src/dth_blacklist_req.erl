@@ -22,7 +22,7 @@ handle_req(JObj, _Props) ->
 
     {'ok', Blacklist} = kz_cache:fetch_local(?CACHE_NAME, dth_util:blacklist_cache_key()),
     {'ok', JSON} = dth_api:blacklist_resp([{<<"Accounts">>, Blacklist}
-                                         | kz_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
-                                        ]),
+                                           | kz_api:default_headers(<<>>, <<"dth">>, <<"blacklist_resp">>, ?APP_NAME, ?APP_VERSION)
+                                          ]),
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
     amqp_util:targeted_publish(RespQ, JSON, <<"application/json">>).
