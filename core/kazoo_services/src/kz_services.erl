@@ -433,10 +433,10 @@ list_categories(#kz_services{jobj=JObj
                             ,updates=Updates
                             ,cascade_quantities=CascadeQuantities}) ->
     Set = sets:union([
-             sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
-             ,sets:from_list(kz_json:get_keys(Updates))
-             ,sets:from_list(kz_json:get_keys(CascadeQuantities))
-          ]),
+                      sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
+                     ,sets:from_list(kz_json:get_keys(Updates))
+                     ,sets:from_list(kz_json:get_keys(CascadeQuantities))
+                     ]),
     sets:to_list(Set).
 
 %%--------------------------------------------------------------------
@@ -450,10 +450,10 @@ list_items(#kz_services{jobj=JObj
                        ,updates=Updates
                        ,cascade_quantities=CascadeQuantities}, Category) ->
     Set = sets:union([
-             sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
-             ,sets:from_list(kz_json:get_keys(Category, Updates))
-             ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
-          ]),
+                      sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
+                     ,sets:from_list(kz_json:get_keys(Category, Updates))
+                     ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
+                     ]),
     sets:to_list(Set).
 
 %%--------------------------------------------------------------------

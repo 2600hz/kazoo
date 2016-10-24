@@ -75,12 +75,12 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, _ItemId, 'undefine
         'kz_bookkeeper_http' ->
             ItemPlan = get_generic_item_plan(ServicePlan, CategoryId),
             create_items(ServicePlan, ServiceItems, Services, CategoryId, _ItemId, ItemPlan);
-         _Bookkeeper ->
-             AccountId = kzd_service_plan:account_id(ServicePlan),
-             ServicePlanId = kz_doc:id(ServicePlan),
-             lager:warning("unable to create service plan item ~s/~s from ~s/~s for bookkeeper ~s"
-                          ,[CategoryId, _ItemId, AccountId, ServicePlanId, _Bookkeeper]),
-             ServiceItems
+        _Bookkeeper ->
+            AccountId = kzd_service_plan:account_id(ServicePlan),
+            ServicePlanId = kz_doc:id(ServicePlan),
+            lager:warning("unable to create service plan item ~s/~s from ~s/~s for bookkeeper ~s"
+                         ,[CategoryId, _ItemId, AccountId, ServicePlanId, _Bookkeeper]),
+            ServiceItems
     end;
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) ->
     {Rate, Quantity} = get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services),
@@ -126,7 +126,7 @@ get_plan_items(ServicePlan, Services) ->
              || CategoryId <- kz_services:list_categories(Services),
                 ItemId <- kz_services:list_items(Services, CategoryId)
             ];
-         _Else ->
+        _Else ->
             [{CategoryId, ItemId}
              || CategoryId <- kzd_service_plan:categories(ServicePlan),
                 ItemId <- kzd_service_plan:items(ServicePlan, CategoryId)

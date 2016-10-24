@@ -15,11 +15,11 @@
 -include("kazoo_services.hrl").
 
 -record(sync, {id :: ne_binary() | '_'
-               ,account_id :: ne_binary() | '_'
-               ,items :: ne_binary() | '_'
-               ,url :: binary() | '_'
-               ,method :: ne_binary() | '_'
-               ,content_type = <<"application/json">> :: ne_binary() | '_'
+              ,account_id :: ne_binary() | '_'
+              ,items :: ne_binary() | '_'
+              ,url :: binary() | '_'
+              ,method :: ne_binary() | '_'
+              ,content_type = <<"application/json">> :: ne_binary() | '_'
               }).
 -type sync() :: #sync{}.
 
@@ -34,7 +34,7 @@
 
 -define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}]).
 -define(HTTP_REQ_HEADERS(Sync)
-        ,[{"X-Sync-ID", kz_util:to_list(Sync#sync.id)}
+       ,[{"X-Sync-ID", kz_util:to_list(Sync#sync.id)}
         ,{"X-Account-ID", kz_util:to_list(Sync#sync.account_id)}
         ]).
 
@@ -47,10 +47,10 @@
 -spec sync(any(), any()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     Sync = #sync{id = get_sync_id(AccountId)
-                 ,account_id = AccountId
-                 ,items = Items
-                 ,url = ?HTTP_URL
-                 ,method = <<"post">>
+                ,account_id = AccountId
+                ,items = Items
+                ,url = ?HTTP_URL
+                ,method = <<"post">>
                 },
     kz_util:put_callid(Sync#sync.id),
     http_request(Sync).
@@ -65,9 +65,9 @@ http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
     Payload = http_payload(Sync),
     lager:debug("attempting http billing sync with ~s: ~s", [Url, Payload]),
     handle_resp(
-        kz_http:post(Url, Headers, Payload, ?HTTP_OPTS)
-        ,Sync
-    ).
+      kz_http:post(Url, Headers, Payload, ?HTTP_OPTS)
+               ,Sync
+     ).
 
 -spec handle_resp(kz_http:ret(), sync()) -> bookkeeper_sync_result().
 handle_resp({'ok', 200, _, _}, _Sync) ->
@@ -91,10 +91,10 @@ get_sync_id(AccountId) ->
 http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
     lager:debug("creating application/json payload for http billing sync"),
     JObj = kz_json:from_list([
-             {<<"account_id">>, Sync#sync.account_id}
-             ,{<<"sync_id">>, Sync#sync.id}
-             ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
-           ]),
+                              {<<"account_id">>, Sync#sync.account_id}
+                             ,{<<"sync_id">>, Sync#sync.id}
+                             ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
+                             ]),
     kz_json:encode(JObj).
 
 %%--------------------------------------------------------------------

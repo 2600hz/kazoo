@@ -283,7 +283,7 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
             io:format("synchronization with bookkeeper complete (delinquent)~n"),
             lager:debug("synchronization with bookkeeper complete (delinquent)"),
             maybe_sync_reseller(AccountId, ServicesJObj);
-         'retry' ->
+        'retry' ->
             io:format("synchronization with bookkeeper complete (retry)~n"),
             lager:debug("synchronization with bookkeeper complete (retry)"),
             {'error', 'retry'}
