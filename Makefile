@@ -43,7 +43,7 @@ test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
 
 coverage-report:
-	erl -noshell -pa deps/*/ebin -eval 'All = filelib:wildcard("*/*/*.coverdata"), io:format(">>> ~p\n",[All]), Id = os:getenv("TRAVIS_JOB_ID"), io:format(">>> ~p\n",[Id]), io:format(">>> ~p", [coveralls:convert_and_send_file(All, Id, "travis-ci")]), io:format("\nthere\n").' -s init stop
+	$(ROOT)/scripts/cover.escript
 
 check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
