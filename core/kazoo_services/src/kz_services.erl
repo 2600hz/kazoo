@@ -26,6 +26,8 @@
 -export([update/4]).
 -export([save/1]).
 -export([delete/1]).
+-export([list_categories/1]).
+-export([list_items/2]).
 
 -export([activation_charges/3]).
 -export([commit_transactions/2]).
@@ -418,6 +420,40 @@ delete(Account) ->
             lager:debug("unable to mark service plan ~s as deleted: ~p", [AccountId, _R]),
             E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec list_categories(services()) -> api_binaries().
+list_categories(#kz_services{jobj=JObj
+                       ,updates=Updates
+                       ,cascade_quantities=CascadeQuantities}) ->
+    Set = sets:union([
+             sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
+             ,sets:from_list(kz_json:get_keys(Updates))
+             ,sets:from_list(kz_json:get_keys(CascadeQuantities))
+          ]),
+    sets:to_list(Set).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec list_items(services(), ne_binary()) -> api_binaries().
+list_items(#kz_services{jobj=JObj
+                       ,updates=Updates
+                       ,cascade_quantities=CascadeQuantities}, Category) ->
+    Set = sets:union([
+             sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
+             ,sets:from_list(kz_json:get_keys(Category, Updates))
+             ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
+          ]),
+    sets:to_list(Set).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1205,6 +1241,7 @@ default_service_modules() ->
     ,'kz_service_ui_apps'
     ,'kz_service_users'
     ,'kz_service_whitelabel'
+    ,'kz_service_opaque'
     ].
 
 %%--------------------------------------------------------------------
