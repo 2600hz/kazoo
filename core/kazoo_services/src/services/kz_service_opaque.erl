@@ -27,7 +27,7 @@ reconcile(Services) ->
     ViewOptions = ['reduce'
                   ,'group'
                   ],
-    case kz_datamgr:get_results(AccountDb, <<"services/opaque_billing_quantities">>, ViewOptions) of
+    case kz_datamgr:get_results(AccountDb, <<"services/opaque_billing">>, ViewOptions) of
         {'error', _R} ->
             lager:debug("unable to get current opaque billing quantites: ~p", [_R]),
             Services;
