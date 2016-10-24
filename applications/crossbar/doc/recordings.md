@@ -9,7 +9,7 @@ Recordings endpoint provides a way to access call recordings.
 > GET /v2/accounts/{ACCOUNT_ID}/recordings
 > GET /v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/recordings
 
-lists the call recording with pagination and filtering
+Lists the call recording with pagination and filtering.
 
 ```shell
 curl -v -X GET \
@@ -17,11 +17,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings
 ```
 
-#### Fetch recording
+#### Fetch recording media or document
 
 > GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 
-gets a specific recording document
+Gets a specific recording document.
 
 ```shell
 curl -v -X GET \
@@ -29,15 +29,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
 ```
 
-#### Fetch recording media
+Gets a specific recording document attachment if available.
+Mind the `Accept` header in example below.
+For clients that do not support setting the `Accept` header, a querystring parameter can be included: `?accept=audio/mpeg`.
 
-> GET /v2/accounts/{ACCOUNT_ID}/recordings/{RECORDING_ID}
-
-gets a specific recording document attachment if available.
-mind `Accept` header in example below.
-for clients that do not support setting the `Accept` header, a querystring parameter can be included: ?accept=text/html
-
-optional parameter `inline` true|false
+Optional parameter `inline` can be either `true` or `false`.
 
 ```shell
 curl -v -X GET \
