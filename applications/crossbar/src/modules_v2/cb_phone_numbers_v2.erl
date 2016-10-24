@@ -33,6 +33,7 @@
 
 -define(ACTIVATE, <<"activate">>).
 -define(RESERVE, <<"reserve">>).
+-define(PORT, <<"port">>).
 
 -define(CLASSIFIERS, <<"classifiers">>).
 -define(IDENTIFY, <<"identify">>).
@@ -160,6 +161,8 @@ allowed_methods(_PhoneNumber, ?ACTIVATE) ->
     [?HTTP_PUT];
 allowed_methods(_PhoneNumber, ?RESERVE) ->
     [?HTTP_PUT];
+allowed_methods(_PhoneNumber, ?PORT) ->
+    [?HTTP_PUT];
 allowed_methods(_PhoneNumber, ?IDENTIFY) ->
     [?HTTP_GET].
 
@@ -185,6 +188,7 @@ resource_exists(_PhoneNumber) -> 'true'.
 
 resource_exists(_PhoneNumber, ?ACTIVATE) -> 'true';
 resource_exists(_PhoneNumber, ?RESERVE) -> 'true';
+resource_exists(_PhoneNumber, ?PORT) -> 'true';
 resource_exists(_PhoneNumber, ?IDENTIFY) -> 'true';
 resource_exists(?CLASSIFIERS, _PhoneNumber) -> 'true';
 resource_exists(_, _) -> 'false'.
@@ -277,6 +281,8 @@ validate(Context, _Number, ?ACTIVATE) ->
         'false' -> cb_context:add_system_error('too_many_requests', Context)
     end;
 validate(Context, _Number, ?RESERVE) ->
+    validate_request(Context);
+validate(Context, _Number, ?PORT) ->
     validate_request(Context);
 validate(Context, Number, ?IDENTIFY) ->
     identify(Context, Number).
@@ -377,6 +383,16 @@ put(Context, Number, ?RESERVE) ->
               ],
     Result = knm_number:reserve(Number, Options),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
+    set_response(Result, Context, CB);
+put(Context, Number, ?PORT) ->
+    Options = [{'assign_to', cb_context:account_id(Context)}
+              ,{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'dry_run', not cb_context:accepting_charges(Context)}
+              ,{'public_fields', cb_context:doc(Context)}
+              ,{'state', ?NUMBER_STATE_PORT_IN}
+              ],
+    Result = knm_number:create(Number, Options),
+    CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
     set_response(Result, Context, CB).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
