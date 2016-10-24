@@ -98,6 +98,38 @@ create_existing_number_test_() ->
      }
     ].
 
+create_new_port_in_test_() ->
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             }
+            ,{'state', ?NUMBER_STATE_PORT_IN}
+            ,{'module_name', ?CARRIER_LOCAL}
+            ],
+    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify phone number is assigned to reseller account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
+     }
+    ,{"Verify new phone number was authorized by master account"
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     }
+    ,{"Verify new phone number database is properly set"
+     ,?_assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN))
+     }
+    ,{"Verify new phone number is in PORT_IN state"
+     ,?_assertEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(PN))
+     }
+    ,{"Verify reserve history is empty"
+     ,?_assertEqual([], knm_phone_number:reserve_history(PN))
+     }
+    ,{"Verify the local carrier module is being used"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
+     }
+    ].
+
 create_existing_in_service_test_() ->
     InServicePN =
         knm_phone_number:set_state(knm_phone_number:from_json(?AVAILABLE_NUMBER)
@@ -130,8 +162,7 @@ create_dry_run_test_() ->
              ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
             ],
-    {'dry_run', Services, Charges} =
-        knm_number:create(?TEST_CREATE_NUM, Props),
+    {'dry_run', Services, Charges} = knm_number:create(?TEST_CREATE_NUM, Props),
     %% Eventually make a stub service plan to test this
     [{"Verify charges for dry_run"
      ,?_assertEqual(0, Charges)
