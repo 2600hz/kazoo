@@ -1066,6 +1066,50 @@ curl -v -X GET \
 ```
 
 
+#### Create a number in the `port_in` state
+
+> PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+     -d '{"data": {"blip": 432}}' \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/%2B14145137345/port
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63644564835,
+            "features": [
+                "local"
+            ],
+            "features_available": [
+                "cnam",
+                "e911",
+                "failover",
+                "port",
+                "prepend"
+            ],
+            "modified": 63644564835,
+            "state": "port_in"
+        },
+        "blip": 432,
+        "features": [
+            "local"
+        ],
+        "id": "+14145137345",
+        "state": "port_in"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
 #### Move a number to the reserved state
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/reserve
