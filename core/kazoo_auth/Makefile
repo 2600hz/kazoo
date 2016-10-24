@@ -15,7 +15,7 @@ ifeq ($(PLATFORM),darwin)
 
 	# Apple has deprecated use of OpenSSL in favor of its own TLS and crypto libraries
 	OSXRELEASE = $(shell uname -r | sed 's/\..*//')
-	ifeq (($(filter $(OSXRELEASE), 15-16),) #El Capitan, Sierra
+	ifeq ($(filter $(OSXRELEASE), 15-16),) #El Capitan, Sierra
 		OPENSSL_BREW_PREFIX = $(shell brew --prefix openssl)
 		CFLAGS += -I$(OPENSSL_BREW_PREFIX)/include
 		LDFLAGS += -L$(OPENSSL_BREW_PREFIX)/lib
