@@ -6,13 +6,13 @@
 %%% @contributors
 %%% VCCS Telecom
 %%%-------------------------------------------------------------------
--module(kz_service_opaque).
+-module(kz_service_billing).
 
 -export([reconcile/1, reconcile/2]).
 
 -include("kazoo_services.hrl").
 
--define(SERVICE_CATEGORY, <<"opaque">>).
+-define(SERVICE_CATEGORY, <<"billing">>).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -1243,7 +1243,7 @@ default_service_modules() ->
     ,'kz_service_ui_apps'
     ,'kz_service_users'
     ,'kz_service_whitelabel'
-    ,'kz_service_opaque'
+    ,'kz_service_billing'
     ].
 
 %%--------------------------------------------------------------------
