@@ -563,7 +563,9 @@ commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec select_bookkeeper(ne_binary()) -> bookkeeper().
+-spec select_bookkeeper(services() | ne_binary()) -> bookkeeper().
+select_bookkeeper(#kz_services{billing_id=BillingId}) ->
+    select_bookkeeper(BillingId);
 select_bookkeeper(BillingId) ->
     ResellerId = get_reseller_id(BillingId),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
