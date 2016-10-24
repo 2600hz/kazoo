@@ -73,8 +73,8 @@ customer_has_card(Customer, AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(kz_service_items:items(), ne_binary()) -> 'ok'.
--spec sync(kz_service_item:items(), ne_binary(), updates()) -> 'ok'.
+-spec sync(kz_service_items:items(), ne_binary()) -> bookkeeper_sync_result().
+-spec sync(kz_service_item:items(), ne_binary(), updates()) -> bookkeeper_sync_result().
 sync(Items, AccountId) ->
     ItemList = kz_service_items:to_list(Items),
     case fetch_bt_customer(AccountId, ItemList =/= []) of
