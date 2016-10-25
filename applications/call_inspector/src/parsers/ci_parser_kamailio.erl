@@ -29,7 +29,7 @@
                ,iodevice :: file:io_device()
                ,logip :: ne_binary()
                ,logport :: pos_integer()
-               ,timer :: reference()
+               ,timer :: api_reference()
                ,counter :: pos_integer()
                }
        ).
@@ -62,7 +62,7 @@ start_link(Args) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init({'parser_args', ne_binary(), ne_binary(), pos_integer()}) -> {'ok', state()}.
+-spec init({'parser_args', file:filename_all(), ne_binary(), pos_integer()}) -> {'ok', state()}.
 init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
     ParserId = ci_parsers_util:make_name(Args),
     _ = kz_util:put_callid(ParserId),
@@ -73,6 +73,7 @@ init({'parser_args', LogFile, LogIP, LogPort} = Args) ->
                   ,logip = LogIP
                   ,logport = LogPort
                   ,counter = 1
+                  ,timer = 'undefined'
                   },
     self() ! 'start_parsing',
     {'ok', State}.

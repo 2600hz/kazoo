@@ -7,7 +7,6 @@
 %%%   SIPLABS LLC (Maksim Krzhemenevskiy)
 %%%-------------------------------------------------------------------
 -module(camper_onnet_handler).
-
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -29,13 +28,11 @@
 
 -define(RINGING_TIMEOUT, 30).
 
--record('state', {'requests' :: dict:dict()
-                 ,'requestor_queues' :: dict:dict()
-                 ,'sipnames' :: dict:dict()
-                 ,'account_db' :: ne_binary()
-                 }
-       ).
-
+-record('state', {'requests' = dict:new() :: dict:dict()
+                 ,'requestor_queues' = dict:new() :: dict:dict()
+                 ,'sipnames' = dict:new() :: dict:dict()
+                 ,'account_db' :: api_ne_binary()
+                 }).
 -type state() :: #state{}.
 
 -spec get_requests(state()) -> dict:dict().
@@ -86,30 +83,16 @@ start_link() ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("onnet handler started"),
-    {'ok', dict:new()}.
+    {'ok', #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% Handling call messages
-%%
-%% @spec handle_call(Request, From, State) ->
-%%                                   {reply, Reply, State} |
-%%                                   {reply, Reply, State, Timeout} |
-%%                                   {noreply, State} |
-%%                                   {noreply, State, Timeout} |
-%%                                   {stop, Reason, Reply, State} |
-%%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
@@ -120,10 +103,6 @@ handle_call(_Request, _From, State) ->
 %% @private
 %% @doc
 %% Handling cast messages
-%%
-%% @spec handle_cast(Msg, State) -> {noreply, State} |
-%%                                  {noreply, State, Timeout} |
-%%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).

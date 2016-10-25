@@ -27,12 +27,12 @@
 -record(state, {node :: atom()
                ,bindings :: bindings()
                ,subclasses :: bindings()
-               ,ip :: inet:ip_address()
-               ,port :: inet:port_number()
-               ,socket :: inet:socket()
+               ,ip :: inet:ip_address() | 'undefined'
+               ,port :: inet:port_number() | 'undefined'
+               ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: kz_timeout()
-               ,switch_url :: api_binary()
-               ,switch_uri :: api_binary()
+               ,switch_url :: api_ne_binary()
+               ,switch_uri :: api_ne_binary()
                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -66,9 +66,7 @@ start_link(Node, Bindings, Subclasses) ->
 -spec init([]) -> {'ok', state()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
-                                      ,<<"-eventstream">>
-                                      ])),
+    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node), <<"-eventstream">>])),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
                                ,subclasses=Subclasses
