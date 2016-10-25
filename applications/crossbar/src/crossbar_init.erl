@@ -168,6 +168,7 @@ declare_exchanges() ->
     _ = kapi_acdc_agent:declare_exchanges(),
     _ = kapi_acdc_stats:declare_exchanges(),
     _ = kapi_money:declare_exchanges(),
+    _ = kapi_conference:declare_exchanges(),
     _ = kapi_notifications:declare_exchanges(),
     _ = kapi_presence:declare_exchanges(),
     _ = kapi_registration:declare_exchanges(),

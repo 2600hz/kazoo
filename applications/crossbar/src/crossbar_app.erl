@@ -7,7 +7,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(crossbar_app).
-
 -behaviour(application).
 
 -include_lib("kazoo/include/kz_types.hrl").
