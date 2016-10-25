@@ -16,6 +16,7 @@
 
         ,type/0, type/1
         ,status_good/0
+        ,status_delinquent/0
 
         ,plans/1, plans/2, plan_ids/1
         ,plan/2, plan/3
@@ -51,6 +52,7 @@
 -define(IS_DIRTY, <<"pvt_dirty">>).
 -define(STATUS, <<"pvt_status">>).
 -define(STATUS_GOOD, <<"good_standing">>).
+-define(STATUS_DELINQUENT, <<"delinquent">>).
 -define(TREE, <<"pvt_tree">>).
 -define(TYPE, <<"service">>).
 -define(PLANS, <<"plans">>).
@@ -112,6 +114,10 @@ type(JObj) ->
 -spec status_good() -> ne_binary().
 status_good() ->
     ?STATUS_GOOD.
+
+-spec status_delinquent() -> ne_binary().
+status_delinquent() ->
+    ?STATUS_DELINQUENT.
 
 -spec plans(doc()) -> kz_json:object().
 -spec plans(doc(), Default) -> kz_json:object() | Default.

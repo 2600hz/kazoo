@@ -26,6 +26,8 @@
 -export([update/4]).
 -export([save/1]).
 -export([delete/1]).
+-export([list_categories/1]).
+-export([list_items/2]).
 
 -export([activation_charges/3]).
 -export([commit_transactions/2]).
@@ -64,6 +66,7 @@
 -define(QUANTITIES_CASCADE, <<"cascade_quantities">>).
 -define(PLANS, <<"plans">>).
 -define(SERVICE_MODULE_PREFIX, "kz_service_").
+-define(SERVICE_MODULES, application:get_env(?APP, 'service_modules', default_service_modules())).
 
 -record(kz_services, {account_id :: api_binary()
                      ,billing_id :: api_binary()
@@ -425,6 +428,40 @@ delete(Account) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec list_categories(services()) -> api_binaries().
+list_categories(#kz_services{jobj=JObj
+                            ,updates=Updates
+                            ,cascade_quantities=CascadeQuantities}) ->
+    Set = sets:union([
+                      sets:from_list(kz_json:get_keys(kzd_services:quantities(JObj, kz_json:new())))
+                     ,sets:from_list(kz_json:get_keys(Updates))
+                     ,sets:from_list(kz_json:get_keys(CascadeQuantities))
+                     ]),
+    sets:to_list(Set).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec list_items(services(), ne_binary()) -> api_binaries().
+list_items(#kz_services{jobj=JObj
+                       ,updates=Updates
+                       ,cascade_quantities=CascadeQuantities}, Category) ->
+    Set = sets:union([
+                      sets:from_list(kz_json:get_keys(kzd_services:category_quantities(JObj, Category, kz_json:new())))
+                     ,sets:from_list(kz_json:get_keys(Category, Updates))
+                     ,sets:from_list(kz_json:get_keys(Category, CascadeQuantities))
+                     ]),
+    sets:to_list(Set).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec set_billing_id(api_binary(), ne_binary() | services()) -> 'undefined' | services().
 set_billing_id('undefined', _) -> 'undefined';
 set_billing_id(BillingId, #kz_services{billing_id=BillingId}) ->
@@ -527,7 +564,9 @@ commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec select_bookkeeper(ne_binary()) -> bookkeeper().
+-spec select_bookkeeper(services() | ne_binary()) -> bookkeeper().
+select_bookkeeper(#kz_services{billing_id=BillingId}) ->
+    select_bookkeeper(BillingId);
 select_bookkeeper(BillingId) ->
     ResellerId = get_reseller_id(BillingId),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
@@ -1172,27 +1211,11 @@ get_item_plan(CategoryId, ItemId, ServicePlan) ->
 %%--------------------------------------------------------------------
 -spec get_service_modules() -> atoms().
 get_service_modules() ->
-    UnfilteredModules =
-        case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
-            'undefined' -> get_modules();
-            ConfModules ->
-                lager:debug("configured service modules: ~p", [ConfModules]),
-                [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
-        end,
-    Modules =
-        [Module ||
-            Module <- UnfilteredModules,
-            <<?SERVICE_MODULE_PREFIX,_/binary>> <- [kz_util:to_binary(Module)],
-            erlang:function_exported(Module, 'reconcile', 1)
-        ],
-    lager:debug("got service modules ~p", [Modules]),
-    Modules.
-
--spec get_modules() -> atoms().
-get_modules() ->
-    case application:get_key(?APP, 'modules') of
-        {'ok', AllModules=[_|_]} -> AllModules;
-        _ -> default_service_modules()
+    case kapps_config:get(?WHS_CONFIG_CAT, <<"modules">>) of
+        'undefined' -> ?SERVICE_MODULES;
+        ConfModules ->
+            lager:debug("configured service modules: ~p", [ConfModules]),
+            [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
     end.
 
 -spec default_service_modules() -> atoms().
@@ -1205,6 +1228,7 @@ default_service_modules() ->
     ,'kz_service_ui_apps'
     ,'kz_service_users'
     ,'kz_service_whitelabel'
+    ,'kz_service_billing'
     ].
 
 %%--------------------------------------------------------------------

@@ -417,10 +417,20 @@ check_plan_id(Context, PlanId, ResellerId) ->
 
 -spec maybe_forbid_delete(cb_context:context()) -> cb_context:context().
 maybe_forbid_delete(Context) ->
-    Services = kz_services:fetch_services_doc(cb_context:account_id(Context), 'false'),
-    ExistingPlansIds = kzd_services:plan_ids(Services),
-    DeletePlansIds = kz_json:get_value(<<"delete">>, cb_context:req_data(Context), []),
-    case DeletePlansIds -- ExistingPlansIds of
+    case kz_json:get_value(<<"delete">>, cb_context:req_data(Context), []) of
         [] -> Context;
-        _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
+        DeletePlansIds ->
+            maybe_forbid_delete(DeletePlansIds, Context)
+    end.
+
+-spec maybe_forbid_delete(ne_binaries(), cb_context:context()) -> cb_context:context().
+maybe_forbid_delete(DeletePlansIds, Context) ->
+    case kz_services:fetch_services_doc(cb_context:account_id(Context), 'false') of
+        {'error', 'not_found'} -> Context;
+        {'ok', Services} ->
+            ExistingPlansIds = kzd_services:plan_ids(Services),
+            case DeletePlansIds -- ExistingPlansIds of
+                [] -> Context;
+                _ -> cb_context:add_system_error('plan_is_not_assigned', Context)
+            end
     end.

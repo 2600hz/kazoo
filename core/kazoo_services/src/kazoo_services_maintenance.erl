@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kazoo_services_maintenance).
 
+-export([flush/0]).
 -export([credit/2]).
 -export([debit/2]).
 -export([refresh/0]).
@@ -18,6 +19,16 @@
 -export([set_reseller_id/2]).
 
 -include("kazoo_services.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec flush() -> 'ok'.
+flush() ->
+    kz_services:flush_services().
 
 %%--------------------------------------------------------------------
 %% @public
