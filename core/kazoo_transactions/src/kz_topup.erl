@@ -16,9 +16,9 @@
 -type error() :: 'topup_disabled' |
                  'topup_undefined' |
                  'amount_undefined' |
-                 'limit_undefined' |
+                 'threshold_undefined' |
                  'balance_above_threshold' |
-                 'undefined' |
+                 'amount_and_threshold_undefined' |
                  atom().
 
 
@@ -132,7 +132,7 @@ top_up(Account, Amount) ->
         {'error', _R}=E ->
             lager:warning("failed to top up account ~s: ~p", [Account, _R]),
             E;
-        {'ok', TransactionJObj} ->
+        {'ok', SavedTransaction} ->
             lager:info("account ~s top up for ~p, transaction id ~s"
-                      ,[Account, Amount, kz_doc:id(TransactionJObj)])
+                      ,[Account, Amount, kz_transaction:id(SavedTransaction)])
     end.
