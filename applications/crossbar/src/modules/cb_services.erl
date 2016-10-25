@@ -177,7 +177,7 @@ post(Context) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?PATH_STATUS) ->
-   maybe_update_status(Context).
+    maybe_update_status(Context).
 
 -spec maybe_update_status(cb_context:context()) -> cb_context:context().
 maybe_update_status(Context) ->
@@ -192,19 +192,19 @@ update_status(Context) ->
     Routines = [fun update_good_standing/2
                ,fun maybe_update_reason/2
                ,fun maybe_update_reason_code/2
-              ],
+               ],
     Update = lists:foldl(fun(F, J) -> F(J, ReqData) end
                         ,kz_services:to_json(cb_context:fetch(Context, 'services'))
                         ,Routines
-             ),
+                        ),
     Services = kz_services:save(kz_services:from_service_json(Update, 'false')),
     create_status_payload(
-        cb_context:setters(Context
-                          ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
-                           ,{fun cb_context:store/3, 'services', Services}
-                           ,{fun cb_context:set_resp_status/2, 'success'}
-                           ])
-    ).
+      cb_context:setters(Context
+                        ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
+                         ,{fun cb_context:store/3, 'services', Services}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ])
+     ).
 
 -spec update_good_standing(kz_json:object(), kz_json:object()) -> kz_json:object().
 update_good_standing(JObj, ReqData) ->
@@ -336,9 +336,9 @@ create_status_payload('true', _JObj) ->
     kz_json:from_list([{<<"in_good_standing">>, 'true'}]);
 create_status_payload('false', JObj) ->
     kz_json:from_list(
-        props:filter_undefined([
-            {<<"in_good_standing">>, 'false'}
-            ,{<<"reason">>, kzd_services:reason(JObj)}
-            ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
-        ])
-    ).
+      props:filter_undefined([
+                              {<<"in_good_standing">>, 'false'}
+                             ,{<<"reason">>, kzd_services:reason(JObj)}
+                             ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
+                             ])
+     ).
