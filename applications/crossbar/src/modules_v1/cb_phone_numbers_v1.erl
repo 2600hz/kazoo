@@ -440,6 +440,11 @@ set_response({'ok', Doc}, _, Context) ->
         'true' -> crossbar_util:response(knm_number:to_public_json(Doc), Context);
         'false' -> crossbar_util:response(Doc, Context)
     end;
+set_response({'error', 'not_found'}, _, Context) ->
+    Msg = kz_json:from_list([{<<"message">>, <<"bad identifier">>}
+                            ,{<<"not_found">>, <<"The number could not be found">>}
+                            ]),
+    cb_context:add_system_error('bad_identifier', Msg, Context);
 set_response({'error', Data}, _, Context) ->
     case kz_json:is_json_object(Data) of
         'true' ->
