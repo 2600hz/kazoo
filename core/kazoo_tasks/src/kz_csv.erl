@@ -49,24 +49,22 @@
 -spec count_rows(binary()) -> non_neg_integer().
 count_rows(<<>>) -> 0;
 count_rows(CSV) when is_binary(CSV) ->
-    ThrowBad =
-        fun (Header, {-1,0}) ->
-                case lists:all(fun is_binary/1, Header) of
-                    %% Strip header line from total rows count
-                    'true' -> {length(Header), 0};
-                    'false' -> throw('bad_csv')
-                end;
-            (Row, {MaxRow,RowsCounted}) ->
-                case length(Row) of
-                    MaxRow -> {MaxRow, RowsCounted+1};
-                    _ -> throw('bad_csv')
-                end
-        end,
-    try fold(CSV, ThrowBad, {-1,0}) of
-        {0, _} -> 0;
+    try fold(CSV, fun throw_bad/2, {-1,0}) of
         {_, TotalRows} -> TotalRows
     catch
         'throw':'bad_csv' -> 0
+    end.
+
+throw_bad(Header, {-1,0}) ->
+    case lists:all(fun is_binary/1, Header) of
+        %% Strip header line from total rows count
+        'true' -> {length(Header), 0};
+        'false' -> throw('bad_csv')
+    end;
+throw_bad(Row, {MaxRow,RowsCounted}) ->
+    case length(Row) of
+        MaxRow -> {MaxRow, RowsCounted+1};
+        _ -> throw('bad_csv')
     end.
 
 %%--------------------------------------------------------------------
@@ -259,9 +257,16 @@ take_row_test_() ->
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, take_row(<<"1,B">>))
     ].
 
+pad_row_to_test_() ->
+    [?_assertEqual([?ZILCH], pad_row_to(1, []))
+    ,?_assertEqual([?ZILCH], pad_row_to(1, [?ZILCH]))
+    ,?_assertEqual([?ZILCH, ?ZILCH, ?ZILCH], pad_row_to(3, [?ZILCH]))
+    ].
+
 count_rows_test_() ->
     [?_assertEqual(0, count_rows(<<"a,b,\n,1,2,">>))
     ,?_assertEqual(0, count_rows(<<"abc">>))
+    ,?_assertEqual(0, count_rows(<<>>))
     ,?_assertEqual(0, count_rows(<<"a,b,c\n1\n2\n3">>))
     ,?_assertEqual(1, count_rows(<<"a,b,c\n1,2,3">>))
     ,?_assertEqual(3, count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
