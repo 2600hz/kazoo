@@ -9,7 +9,7 @@
 
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
-
+-define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
@@ -327,7 +327,7 @@ guess_properties(Document, Key, Type, Default)
     Description = fetch_description(DescriptionKey),
     case Description of
         'undefined' ->
-            io:format("\nMissing description for '~s'\n", [DescriptionKey]),
+            io:format("\nMissing key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
             halt(1);
         _ -> 'ok'
     end,
@@ -349,7 +349,7 @@ guess_properties(Document, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
 
 description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
 fetch_description(DescriptionKey) ->
-    {'ok', Bin} = file:read_file(kz_ast_util:api_path(<<"descriptions.system_config.json">>)),
+    {'ok', Bin} = file:read_file(?SYSTEM_CONFIG_DESCRIPTIONS),
     kz_json:get_ne_binary_value(DescriptionKey, kz_json:decode(Bin)).
 
 default_value('undefined') -> 'undefined';
