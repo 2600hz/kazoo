@@ -253,6 +253,7 @@ hunt_for_callflow(Digits, Menu, Call) ->
                     ,{'cf_capture_groups', kz_json:get_value(<<"capture_groups">>, Flow, kz_json:new())}
                     ],
             UpdatedCall = kapps_call:kvs_store_proplist(Props, Call),
+            cf_exe:set_call(UpdatedCall),
             cf_exe:branch(kz_json:get_value(<<"flow">>, Flow, kz_json:new()), UpdatedCall),
             'true';
         _ ->
