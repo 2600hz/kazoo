@@ -9,6 +9,7 @@ notifications:
 
 otp_release:
   - 18.2
+  - 19.1
 
 sudo: false
 
@@ -32,3 +33,6 @@ script:
   - make eunit
   - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
   - # ERL_LIBS="$HOME/proper" make eunit
+
+after_success:
+  - make coverage-report

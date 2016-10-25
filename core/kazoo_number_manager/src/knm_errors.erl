@@ -87,18 +87,15 @@ service_restriction(Message) ->
 carrier_not_specified(Number) ->
     throw({'error', 'carrier_not_specified', Number}).
 
--spec not_enough_credit(kn(), integer()) ->
-                               no_return().
+-spec not_enough_credit(kn(), integer()) -> no_return().
 not_enough_credit(Number, Units) ->
     throw({'error', 'not_enough_credit', Number, Units}).
 
--spec invalid(kn(), kz_json:object()) ->
-                     no_return().
+-spec invalid(kn(), kz_json:object()) -> no_return().
 invalid(Number, Reason) ->
     throw({'error', 'invalid', Number, Reason}).
 
--spec multiple_choice(kn(), kz_json:object()) ->
-                             no_return().
+-spec multiple_choice(kn(), kz_json:object()) -> no_return().
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
 

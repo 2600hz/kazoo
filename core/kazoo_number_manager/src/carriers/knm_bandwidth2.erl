@@ -81,7 +81,7 @@
 is_local() -> 'false'.
 
 %% @public
--spec is_number_billable(knm_number:knm_number()) -> 'true'.
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------

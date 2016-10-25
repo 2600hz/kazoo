@@ -35,6 +35,7 @@
 %%% API
 %%%===================================================================
 init() ->
+    _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
     _ = kz_datamgr:revise_doc_from_file(?KZ_OFFNET_DB, 'crossbar', "views/resources.json"),
 
@@ -566,8 +567,8 @@ collection_process(Context) ->
     end.
 collection_process(Context, []) -> Context;
 collection_process(Context, Successes) ->
-    {Resources, _} = kz_json:get_values(Successes),
-    _ = [lager:debug("save ~p", [Resource]) || Resource <- Resources],
+    Resources = kz_json:values(Successes),
+    lists:foreach(fun (R) -> lager:debug("save ~p", [R]) end, Resources),
     Context1 = crossbar_doc:save(cb_context:set_doc(Context, Resources)),
     case cb_context:resp_status(Context1) of
         'success' ->

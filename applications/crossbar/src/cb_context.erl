@@ -62,6 +62,7 @@
         ,doc/1, set_doc/2, update_doc/2
         ,load_merge_bypass/1, set_load_merge_bypass/2
         ,start/1, set_start/2
+        ,pretty_print/1
         ,resp_file/1, set_resp_file/2
         ,resp_data/1, set_resp_data/2
         ,resp_status/1, set_resp_status/2
@@ -92,6 +93,7 @@
         ,validation_errors/1, set_validation_errors/2
 
         ,host_url/1, set_host_url/2
+        ,set_pretty_print/2
         ,set_raw_host/2
         ,set_port/2
         ,set_raw_path/2
@@ -263,6 +265,9 @@ resp_envelope(#cb_context{resp_envelope=E}) -> E.
 allow_methods(#cb_context{allow_methods=AMs}) -> AMs.
 allowed_methods(#cb_context{allowed_methods=AMs}) -> AMs.
 method(#cb_context{method=M}) -> M.
+
+-spec pretty_print(context()) -> boolean().
+pretty_print(#cb_context{pretty_print = PrettyPrint}) -> PrettyPrint.
 
 -spec path_token(binary()) -> binary().
 path_token(Token) ->
@@ -478,6 +483,10 @@ set_host_url(#cb_context{}=Context, Value) ->
 
 -spec host_url(context()) -> binary().
 host_url(#cb_context{host_url = Value}) -> Value.
+
+-spec set_pretty_print(context(), boolean()) -> context().
+set_pretty_print(#cb_context{}=Context, Value) ->
+    Context#cb_context{pretty_print = Value}.
 
 set_raw_host(#cb_context{}=Context, Value) ->
     Context#cb_context{raw_host = Value}.

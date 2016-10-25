@@ -103,7 +103,7 @@ format_numbers(JObjs) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_number:knm_number()) -> 'false'.
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -112,8 +112,7 @@ is_number_billable(_Number) -> 'false'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+-spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) -> Number.
 
 %%--------------------------------------------------------------------

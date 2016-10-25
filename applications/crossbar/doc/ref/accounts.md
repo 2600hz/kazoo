@@ -25,7 +25,7 @@ Key | Description | Type | Default | Required
 `ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
-`timezone` | The default timezone | `string(5..32)` | `America/Los_Angeles` | `false`
+`timezone` | The default timezone | `string(5..32)` |   | `false`
 `voicemail` |   | `object` |   | `false`
 `voicemail.notify` |   | `object` |   | `false`
 `voicemail.notify.callback` |   | `#/definitions/notify.callback` |   | `false`

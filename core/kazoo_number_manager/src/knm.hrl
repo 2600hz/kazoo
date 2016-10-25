@@ -9,22 +9,6 @@
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
--define(FEATURE_LOCAL, <<"local">>).
--define(FEATURE_OUTBOUND_CNAM, <<"outbound_cnam">>).
--define(FEATURE_INBOUND_CNAM, <<"inbound_cnam">>).
--define(FEATURE_CNAM, <<"cnam">>).
-
--define(KEY_DISPLAY_NAME, <<"display_name">>).
--define(KEY_INBOUND_LOOKUP, <<"inbound_lookup">>).
-
--define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
-                                  ,?DASH_KEY
-                                  ,<<"failover">>
-                                  ,<<"port">>
-                                  ,<<"prepend">>
-                                  ,?VITELITY_KEY
-                                  ]).
-
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
 -define(IS_US_TOLLFREE(Prefix)
@@ -46,6 +30,8 @@
             orelse Prefix == <<"888">>
             orelse Prefix == <<"889">>
        ).
+
+-define(DEFAULT_E911_FEATURE, ?DASH_KEY).
 
 
 -ifdef(TEST).

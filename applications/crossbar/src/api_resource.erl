@@ -145,10 +145,11 @@ rest_init(Req0, Opts) ->
             {'ok', Req9, Context2};
         {Context1, Req8} ->
             {Req9, Context2} = api_util:get_auth_token(Req8, Context1),
-            Event = api_util:create_event_name(Context2, <<"init">>),
-            {Context3, _} = crossbar_bindings:fold(Event, {Context2, Opts}),
+            {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
+            Event = api_util:create_event_name(Context3, <<"init">>),
+            {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
             lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
-            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req9), Context3}
+            {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req10), Context4}
     end.
 
 -spec metrics() -> {non_neg_integer(), non_neg_integer()}.
@@ -957,8 +958,7 @@ try_to_binary(Value) ->
 
 -spec json_to_csv(kz_json:object()) -> iolist().
 json_to_csv(JObj) ->
-    {Vs, _} = kz_json:get_values(JObj),
-    csv_ize(Vs).
+    csv_ize(kz_json:values(JObj)).
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.

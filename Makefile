@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger coverage-report
 
 all: compile rel/dev-vm.args
 
@@ -41,6 +41,9 @@ proper: $(KAZOODIRS)
 test: ACTION = test
 test: ERLC_OPTS += -DPROPER
 test: $(KAZOODIRS)
+
+coverage-report:
+	$(ROOT)/scripts/cover.escript
 
 check: ERLC_OPTS += -DPROPER
 check: compile-test eunit clean-kazoo kazoo
@@ -79,13 +82,16 @@ clean-release:
 
 build-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo'
-build-dev-release: $(RELX) clean-release rel/relx.config rel/vm.args
+build-dev-release: $(RELX) clean-release rel/relx.config-dev rel/vm.args
 	$(RELX) --dev-mode true --config rel/relx.config -V 2 release --relname 'kazoo'
 build-ci-release: $(RELX) clean-release rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release --relname 'kazoo' --sys_config rel/ci-sys.config
 tar-release: $(RELX) rel/relx.config rel/vm.args
 	$(RELX) --config rel/relx.config -V 2 release tar --relname 'kazoo'
 rel/relx.config: rel/relx.config.src
+	$(ROOT)/scripts/src2any.escript $<
+rel/relx.config-dev: export KAZOO_DEV='true'
+rel/relx.config-dev: rel/relx.config.src
 	$(ROOT)/scripts/src2any.escript $<
 
 rel/dev-vm.args: rel/args  # Used by scripts/dev-start-*.sh

@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_local).
 
+-export([is_good_standing/2]).
 -export([sync/2]).
 -export([transactions/3]).
 -export([commit_transactions/2]).
@@ -20,7 +21,16 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec sync(any(), any()) -> 'ok'.
+-spec is_good_standing(ne_binary(), ne_binary()) -> 'true'.
+is_good_standing(_AccountId, _Status) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec sync(any(), any()) -> bookkeeper_sync_result().
 sync(_Items, _AccountId) -> 'ok'.
 
 %%--------------------------------------------------------------------

@@ -47,16 +47,11 @@ release_available_number(Tests) ->
 release_in_service_number(Tests) ->
     {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_NUM),
     PhoneNumber = knm_number:phone_number(Released),
-
     [{"verify number state is changed"
-     ,?_assertEqual(knm_config:released_state()
-                   ,knm_phone_number:state(PhoneNumber)
-                   )
+     ,?_assertEqual(knm_config:released_state(), knm_phone_number:state(PhoneNumber))
      }
     ,{"verify reserve history is empty now"
-     ,?_assertEqual([]
-                   ,knm_phone_number:reserve_history(PhoneNumber)
-                   )
+     ,?_assertEqual([], knm_phone_number:reserve_history(PhoneNumber))
      }
      | Tests
     ].
@@ -64,21 +59,14 @@ release_in_service_number(Tests) ->
 release_with_history(Tests) ->
     {'ok', Unwound} = knm_number:release(?TEST_IN_SERVICE_WITH_HISTORY_NUM),
     PhoneNumber = knm_number:phone_number(Unwound),
-
     [{"verify number state is moved to RESERVED"
-     ,?_assertEqual(?NUMBER_STATE_RESERVED
-                   ,knm_phone_number:state(PhoneNumber)
-                   )
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PhoneNumber))
      }
     ,{"verify reserve history is unwound"
-     ,?_assertEqual([?MASTER_ACCOUNT_ID]
-                   ,knm_phone_number:reserve_history(PhoneNumber)
-                   )
+     ,?_assertEqual([?MASTER_ACCOUNT_ID], knm_phone_number:reserve_history(PhoneNumber))
      }
     ,{"verify number is assigned to prev account"
-     ,?_assertEqual(?MASTER_ACCOUNT_ID
-                   ,knm_phone_number:assigned_to(PhoneNumber)
-                   )
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:assigned_to(PhoneNumber))
      }
      | Tests
     ].
@@ -86,11 +74,8 @@ release_with_history(Tests) ->
 release_for_hard_delete(Tests) ->
     {'ok', Deleted} = knm_number:release(?TEST_IN_SERVICE_NUM, [{'should_delete', 'true'}]),
     PhoneNumber = knm_number:phone_number(Deleted),
-
     [{"verify number state is moved to DELETED"
-     ,?_assertEqual(?NUMBER_STATE_DELETED
-                   ,knm_phone_number:state(PhoneNumber)
-                   )
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
      }
      | Tests
     ].

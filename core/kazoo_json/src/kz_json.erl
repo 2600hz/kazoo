@@ -54,6 +54,7 @@
 -export([get_ne_value/2, get_ne_value/3]).
 -export([get_value/2, get_value/3
         ,get_values/1, get_values/2
+        ,values/1, values/2
         ]).
 -export([get_keys/1, get_keys/2]).
 -export([get_public_keys/1
@@ -84,7 +85,7 @@
         ,is_private_key/1
         ]).
 
--export([encode/1]).
+-export([encode/1, encode/2]).
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
@@ -104,7 +105,10 @@
 new() -> ?JSON_WRAPPER([]).
 
 -spec encode(json_term()) -> text().
-encode(JObj) -> jiffy:encode(JObj).
+-spec encode(json_term(), encode_options()) -> text().
+encode(JObj) -> encode(JObj, []).
+
+encode(JObj, Options) -> jiffy:encode(JObj, Options).
 
 -spec unsafe_decode(iolist() | ne_binary()) -> json_term().
 -spec unsafe_decode(iolist() | ne_binary(), ne_binary()) -> json_term().
@@ -239,7 +243,7 @@ from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
 %% only a top-level merge
 %% merges JObj1 into JObj2
 -spec merge_jobjs(object(), object()) -> object().
-merge_jobjs(?JSON_WRAPPER(Props1)=_JObj1, ?JSON_WRAPPER(_)=JObj2) ->
+merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
                         set_value(K, V, JObj2Acc)
                 end, JObj2, Props1).
@@ -278,11 +282,18 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when
          ,JObj1
          ,JObj2
          );
+merge_recursive(?JSON_WRAPPER(_)=JObj1, 'null', Pred, Keys) when is_function(Pred, 2) ->
+    delete_key(lists:reverse(Keys), JObj1);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
-    case Pred(get_value(Syek, JObj1), Value) of
-        'false' -> JObj1;
-        'true' -> set_value(Syek, Value, JObj1)
+    V = get_value(Syek, JObj1),
+    case 'null' =:= V of
+        'true' -> delete_key(Syek, JObj1);
+        'false' ->
+            case Pred(V, Value) of
+                'false' -> JObj1;
+                'true' -> set_value(Syek, Value, JObj1)
+            end
     end.
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
@@ -710,6 +721,16 @@ get_value1([K|Ks], JObjs, Default) when is_list(JObjs) ->
 get_value1([K|Ks], ?JSON_WRAPPER(Props)=_JObj, Default) ->
     get_value1(Ks, props:get_value(K, Props, Default), Default);
 get_value1(_, _, Default) -> Default.
+
+-spec values(object()) -> json_terms().
+-spec values(path(), object()) -> json_terms().
+values(JObj) ->
+    [get_value(Key, JObj)
+     || Key <- ?MODULE:get_keys(JObj)
+    ].
+
+values(Key, JObj) ->
+    values(get_value(Key, JObj, new())).
 
 %% split the json object into values and the corresponding keys
 -spec get_values(object()) -> {json_terms(), keys()}.

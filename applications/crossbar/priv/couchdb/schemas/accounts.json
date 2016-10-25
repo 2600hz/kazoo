@@ -118,7 +118,6 @@
             "type": "object"
         },
         "timezone": {
-            "default": "America/Los_Angeles",
             "description": "The default timezone",
             "maxLength": 32,
             "minLength": 5,

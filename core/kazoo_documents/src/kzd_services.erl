@@ -13,9 +13,12 @@
         ,is_dirty/1, is_dirty/2
         ,status/1, status/2
         ,tree/1, tree/2
+        ,reason/1, reason/2
+        ,reason_code/1, reason_code/2
 
         ,type/0, type/1
         ,status_good/0
+        ,status_delinquent/0
 
         ,plans/1, plans/2, plan_ids/1
         ,plan/2, plan/3
@@ -38,6 +41,8 @@
         ,set_plan/3
         ,set_quantities/2
         ,set_transactions/2
+        ,set_reason/2
+        ,set_reason_code/2
         ]).
 
 -include("kz_documents.hrl").
@@ -51,11 +56,14 @@
 -define(IS_DIRTY, <<"pvt_dirty">>).
 -define(STATUS, <<"pvt_status">>).
 -define(STATUS_GOOD, <<"good_standing">>).
+-define(STATUS_DELINQUENT, <<"delinquent">>).
 -define(TREE, <<"pvt_tree">>).
 -define(TYPE, <<"service">>).
 -define(PLANS, <<"plans">>).
 -define(QUANTITIES, <<"quantities">>).
 -define(TRANSACTIONS, <<"transactions">>).
+-define(REASON, <<"pvt_status_reason">>).
+-define(REASON_CODE, <<"pvt_status_reason_code">>).
 
 -spec billing_id(doc()) -> api_binary().
 -spec billing_id(doc(), Default) -> ne_binary() | Default.
@@ -103,6 +111,20 @@ tree(JObj) ->
 tree(JObj, Default) ->
     kz_json:get_value(?TREE, JObj, Default).
 
+-spec reason(doc()) -> ne_binaries().
+-spec reason(doc(), Default) -> ne_binaries() | Default.
+reason(JObj) ->
+    reason(JObj, 'undefined').
+reason(JObj, Default) ->
+    kz_json:get_value(?REASON, JObj, Default).
+
+-spec reason_code(doc()) -> ne_binaries().
+-spec reason_code(doc(), Default) -> ne_binaries() | Default.
+reason_code(JObj) ->
+    reason_code(JObj, 'undefined').
+reason_code(JObj, Default) ->
+    kz_json:get_value(?REASON_CODE, JObj, Default).
+
 -spec type() -> ne_binary().
 -spec type(kz_json:object()) -> ne_binary().
 type() -> ?TYPE.
@@ -112,6 +134,10 @@ type(JObj) ->
 -spec status_good() -> ne_binary().
 status_good() ->
     ?STATUS_GOOD.
+
+-spec status_delinquent() -> ne_binary().
+status_delinquent() ->
+    ?STATUS_DELINQUENT.
 
 -spec plans(doc()) -> kz_json:object().
 -spec plans(doc(), Default) -> kz_json:object() | Default.
@@ -192,6 +218,14 @@ set_status(JObj, Status) ->
 -spec set_tree(doc(), ne_binaries()) -> doc().
 set_tree(JObj, Tree) ->
     kz_json:set_value(?TREE, Tree, JObj).
+
+-spec set_reason(doc(), ne_binary()) -> doc().
+set_reason(JObj, Reason) ->
+    kz_json:set_value(?REASON, Reason, JObj).
+
+-spec set_reason_code(doc(), non_neg_integer()) -> doc().
+set_reason_code(JObj, Code) when is_integer(Code) ->
+    kz_json:set_value(?REASON_CODE, Code, JObj).
 
 -spec set_type(doc()) -> doc().
 set_type(JObj) ->

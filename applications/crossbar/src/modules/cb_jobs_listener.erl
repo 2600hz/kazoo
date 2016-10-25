@@ -173,8 +173,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
         {'ok', Number} ->
             PhoneNumber = knm_number:phone_number(Number),
             lager:debug("successfully created number ~s for account ~s"
-                       ,[knm_phone_number:number(PhoneNumber), AccountId]
-                       ),
+                       ,[knm_phone_number:number(PhoneNumber), AccountId]),
             update_status(kz_json:set_value([?KEY_SUCCESS, Number]
                                            ,knm_phone_number:to_public_json(PhoneNumber)
                                            ,Job
@@ -186,8 +185,7 @@ create_number(Job, AccountId, AuthAccountId, CarrierModule, DID) ->
     catch
         E:_R ->
             lager:debug("exception creating number ~s for account ~s: ~s: ~p"
-                       ,[DID, AccountId, E, _R]
-                       ),
+                       ,[DID, AccountId, E, _R]),
             update_status(kz_json:set_value([<<"errors">>, DID]
                                            ,kz_json:from_list([{<<"reason">>, kz_util:to_binary(E)}])
                                            ,Job

@@ -109,7 +109,7 @@ check_numbers(Numbers, _Options) ->
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec is_number_billable(knm_number:knm_number()) -> 'true'.
+-spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -118,8 +118,7 @@ is_number_billable(_Number) -> 'true'.
 %% Acquire a given number from the carrier
 %% @end
 %%--------------------------------------------------------------------
--spec acquire_number(knm_number:knm_number()) ->
-                            knm_number:knm_number().
+-spec acquire_number(knm_number:knm_number()) -> knm_number:knm_number().
 acquire_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     DefaultCountry = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY),
@@ -371,10 +370,8 @@ maybe_merge_opaque(JObj, Number) ->
     case kz_json:get_ne_value(<<"opaque">>, JObj) of
         'undefined' -> Number;
         Opaque ->
-            knm_number:set_phone_number(
-              Number
-                                       ,knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque)
-             )
+            PN = knm_phone_number:set_carrier_data(knm_number:phone_number(Number), Opaque),
+            knm_number:set_phone_number(Number, PN)
     end.
 
 %%--------------------------------------------------------------------
@@ -388,11 +385,9 @@ maybe_merge_locality(JObj, Number) ->
     case kz_json:get_ne_value(<<"locality">>,  JObj) of
         'undefined' -> Number;
         Locality ->
-            knm_number:set_phone_number(
-              Number
-                                       ,knm_phone_number:set_feature(knm_number:phone_number(Number)
-                                                                    ,<<"locality">>
-                                                                    ,Locality
-                                                                    )
-             )
+            PN = knm_phone_number:set_feature(knm_number:phone_number(Number)
+                                             ,<<"locality">>
+                                             ,Locality
+                                             ),
+            knm_number:set_phone_number(Number, PN)
     end.

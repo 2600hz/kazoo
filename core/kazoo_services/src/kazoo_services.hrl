@@ -14,6 +14,8 @@
 
 -define(CACHE_NAME, 'kazoo_services_cache').
 
+-type bookkeeper_sync_result() :: 'ok' | 'delinquent' | 'retry'.
+
 -ifndef(TEST).
 -define(SUPPORT_BILLING_ID, kapps_config:get_is_true(?WHS_CONFIG_CAT, <<"support_billing_id">>, 'true')).
 -else.

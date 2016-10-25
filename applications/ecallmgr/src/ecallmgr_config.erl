@@ -37,11 +37,11 @@ flush() ->
     flush('undefined').
 
 flush(Key) ->
-    flush(Key, '_').
+    flush(Key, 'undefined').
 
--spec flush(api_binary(), atom() | ne_binary()) -> 'ok'.
+-spec flush(api_binary(), api_ne_binary()) -> 'ok'.
 flush(Key, 'undefined') ->
-    flush(Key);
+    flush(Key, <<"undefined">>);
 flush(Key, Node) when not is_binary(Key), Key =/= 'undefined' ->
     flush(kz_util:to_binary(Key), Node);
 flush(Key, Node) when not is_binary(Node) ->

@@ -6,6 +6,10 @@
             "map": "function(doc) { if (doc.pvt_type != 'device' || doc.pvt_deleted || doc.enabled == false) return; emit(doc.device_type || 'sip_device', 1); }",
             "reduce": "_sum"
         },
+        "opaque_billing": {
+            "map": "function(doc) { if(!doc.billing || doc.pvt_deleted) return; for (index in doc.billing) emit( index, doc.billing[index] ); }",
+            "reduce": "_sum"
+        },
         "users": {
             "map": "function(doc) { if (doc.pvt_type != 'user' || doc.pvt_deleted || doc.enabled == false) return; emit(doc.priv_level || 'user', 1); }",
             "reduce": "_sum"

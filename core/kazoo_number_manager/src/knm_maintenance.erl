@@ -133,6 +133,7 @@ fix_docs({error, _R}, _, _, _NumberDb, _DID) ->
 fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
     case app_using(DID) =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
+        andalso are_features_available_synced(NumDoc)
     of
         true -> ?LOG("~s already sync-ed", [DID]);
         false ->
@@ -178,6 +179,13 @@ have_same_pvt_values(NumDoc0, Doc0) ->
     NumDoc = cleanse(kz_json:private_fields(NumDoc0)),
     Doc = cleanse(kz_json:private_fields(Doc0)),
     NumDoc == Doc.
+
+-spec are_features_available_synced(kz_json:object()) -> boolean().
+are_features_available_synced(NumDoc) ->
+    kz_json:get_value(?PVT_FEATURES_AVAILABLE, NumDoc) =:=
+        knm_phone_number:features_available(
+          knm_phone_number:from_json(NumDoc)
+         ).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().
 cleanse(JObj) ->

@@ -19,6 +19,7 @@
         ,get_req_data/2
         ,get_http_verb/2
         ,get_auth_token/2
+        ,get_pretty_print/2
         ,is_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
@@ -265,7 +266,7 @@ set_request_data_in_context(Context, Req, 'undefined', QS) ->
 set_request_data_in_context(Context, Req, JObj, QS) ->
     case is_valid_request_envelope(JObj, Context) of
         'true' ->
-            lager:debug("request json is valid : ~p", [JObj]),
+            lager:debug("request json is valid: ~s", [kz_json:encode(JObj)]),
             {set_valid_data_in_context(Context, JObj, QS), Req};
         Errors ->
             lager:info("failed to validate json request, invalid request"),
@@ -798,6 +799,30 @@ get_authorization_token_type(Token) -> {Token, 'unknown'}.
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% This function will try to find pretty print option inside the headers
+%% if not found will look into the request to find the options
+%% otherwise will result in false
+%% @end
+%%--------------------------------------------------------------------
+-spec get_pretty_print(cowboy_req:req(), cb_context:context()) ->
+                              {cowboy_req:req(), cb_context:context()}.
+get_pretty_print(Req0, Context) ->
+    case cowboy_req:header(<<"x-pretty-print">>, Req0) of
+        {'undefined', Req1} ->
+            case cb_context:req_value(Context, <<"pretty_print">>) of
+                'undefined' -> {Req1, cb_context:set_pretty_print(Context, 'false')};
+                Value ->
+                    lager:debug("using pretty print value from inside the request"),
+                    {Req1, cb_context:set_pretty_print(Context, kz_util:is_true(Value))}
+            end;
+        {Value, Req1} ->
+            lager:debug("found pretty print options inside header"),
+            {Req1, cb_context:set_pretty_print(Context, kz_util:is_true(Value))}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% This function will use event bindings to determine if the client is
 %% authorized for this request
 %% @end
@@ -1102,7 +1127,10 @@ finish_request(_Req, Context) ->
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
     _ = kz_util:spawn(fun crossbar_bindings:map/2, [Event, Context]),
-    'ok'.
+    case kz_json:get_value(<<"billing">>, cb_context:doc(Context)) of
+        'undefined' -> 'ok';
+        _Else -> crossbar_services:reconcile(Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1114,7 +1142,8 @@ finish_request(_Req, Context) ->
                                  {ne_binary() | iolist(), cowboy_req:req()}.
 create_resp_content(Req0, Context) ->
     Resp = create_resp_envelope(Context),
-    try kz_json:encode(Resp) of
+    Options = get_encode_options(Context),
+    try kz_json:encode(Resp, Options) of
         JSON ->
             case cb_context:req_value(Context, <<"jsonp">>) of
                 'undefined' ->
@@ -1148,6 +1177,13 @@ create_resp_file(Req, Context) ->
                   Res
           end,
     {{Len, Fun}, Req}.
+
+-spec get_encode_options(cb_context:context()) -> kz_json:encode_options().
+get_encode_options(Context) ->
+    case cb_context:pretty_print(Context) of
+        'true' ->  ['pretty'];
+        'false' -> []
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

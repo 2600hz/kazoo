@@ -29,7 +29,7 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, features_list/1, set_features/2
+        ,features/1, features_available/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
@@ -44,6 +44,7 @@
         ,doc/1, update_doc/2
         ,modified/1, set_modified/2
         ,created/1, set_created/2
+        ,is_billable/1
         ]).
 
 -export([list_attachments/2]).
@@ -74,6 +75,7 @@
                           ,doc = kz_json:new() :: kz_json:object()
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
+                          ,is_billable = 'false' :: boolean()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -284,6 +286,7 @@ to_public_json(Number) ->
             ,State
             ,UsedBy
             ,Features
+            ,{<<"features_available">>, features_available(Number)}
             ])
          ),
     Values = props:filter_empty(
@@ -310,6 +313,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
         ,{?PVT_USED_BY, used_by(N)}
         ,{?PVT_FEATURES, features(N)}
+        ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
         ,{?PVT_STATE, state(N)}
         ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
         ,{?PVT_PORTED_IN, ported_in(N)}
@@ -318,6 +322,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
         ,{?PVT_REGION, region(N)}
         ,{?PVT_MODIFIED, modified(N)}
         ,{?PVT_CREATED, created(N)}
+        ,{?PVT_IS_BILLABLE, is_billable(N)}
         ,{?PVT_TYPE, <<"number">>}
          | kz_json:to_proplist(
              kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
@@ -340,6 +345,7 @@ from_json(JObj) ->
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
+    IsBillable = kz_json:is_true(?PVT_IS_BILLABLE, JObj, 'undefined'),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
@@ -350,7 +356,7 @@ from_json(JObj) ->
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
-                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
+                ,{fun set_module_name/3, kz_json:get_value(?PVT_MODULE_NAME, JObj), IsBillable}
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
@@ -537,6 +543,10 @@ features(#knm_phone_number{features=Features}) -> Features.
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
+-spec features_available(knm_phone_number()) -> ne_binaries().
+features_available(N) ->
+    knm_providers:allowed_features(N).
+
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
@@ -544,7 +554,7 @@ set_features(N, Features) ->
 
 -spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
 feature(Number, Feature) ->
-    kz_json:get_value(Feature, features(Number)).
+    kz_json:get_ne_value(Feature, features(Number)).
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
@@ -631,11 +641,23 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    N#knm_phone_number{module_name=Name};
+    N#knm_phone_number{module_name = Name};
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
-    N#knm_phone_number{module_name=Name}.
+    N#knm_phone_number{module_name = Name
+                      ,is_billable = knm_carriers:is_number_billable(N)
+                      }.
+
+%% Do not override is_billable when field is already set on doc.
+-spec set_module_name(knm_phone_number(), ne_binary(), api_boolean()) -> knm_phone_number().
+set_module_name(N0, Name, IsBillable)
+  when is_boolean(IsBillable) ->
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_billable = IsBillable};
+set_module_name(N0, Name, 'undefined') ->
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_billable = knm_carriers:is_number_billable(N)}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -657,7 +679,7 @@ update_carrier_data(N=#knm_phone_number{carrier_data = Data}
                    ,JObj
                    ) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_jobjs(JObj, Data),
+    Updated = kz_json:merge_recursive(JObj, Data),
     N#knm_phone_number{carrier_data = Updated}.
 
 %%--------------------------------------------------------------------
@@ -743,7 +765,7 @@ set_doc(N, JObj) ->
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_jobjs(kz_json:public_fields(JObj), Doc),
+    Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), Doc),
     N#knm_phone_number{doc = kz_json:delete_key(<<"id">>, Updated)}.
 
 %%--------------------------------------------------------------------
@@ -771,6 +793,14 @@ created(#knm_phone_number{created=Created}) -> Created.
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created=Created}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_billable(knm_phone_number()) -> boolean().
+is_billable(#knm_phone_number{is_billable = IsBillable}) -> IsBillable.
 
 %%--------------------------------------------------------------------
 %% @public

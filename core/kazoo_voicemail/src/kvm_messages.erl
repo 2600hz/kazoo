@@ -151,20 +151,21 @@ update(AccountId, _BoxId, JObjs, Funs) ->
 do_update(AccountId, SucceededJObjs, Funs, FailedJObjs) ->
     ToUpdateDict = apply_fun_and_map_msgs_to_modb(AccountId, SucceededJObjs, Funs, dict:new()),
     ResultsDict = dict:from_list([{<<"failed">>, FailedJObjs}]),
-    Fun = fun(Db, Js, ResDict) ->
-                  case kz_datamgr:save_docs(Db, Js) of
-                      {'ok', Saved} ->
-                          normalize_bulk_results(<<"update">>, 'undefined', Saved, ResDict);
-                      {'error', R} ->
-                          lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
-                                       ,[Db, R]),
-                          Failed = kz_json:from_list([{kz_doc:id(D), kz_util:to_binary(R)}
-                                                      || D <- Js
-                                                     ]),
-                          dict:append(<<"failed">>, Failed, ResDict)
-                  end
-          end,
-    dict:fold(Fun, ResultsDict, ToUpdateDict).
+    dict:fold(fun update_fun/3, ResultsDict, ToUpdateDict).
+
+-spec update_fun(ne_binary(), kz_json:objects(), dict:dict()) -> dict:dict().
+update_fun(Db, JObj, ResDict) ->
+    case kz_datamgr:save_docs(Db, JObj) of
+        {'ok', Saved} ->
+            normalize_bulk_results(<<"update">>, 'undefined', 'undefined', Saved, ResDict);
+        {'error', R} ->
+            lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
+                         ,[Db, R]),
+            Failed = kz_json:from_list([{kz_doc:id(D), kz_util:to_binary(R)}
+                                        || D <- JObj
+                                       ]),
+            dict:append(<<"failed">>, Failed, ResDict)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,34 +179,47 @@ fetch(AccountId, MsgIds) ->
 
 fetch(AccountId, MsgIds, BoxId) ->
     DbsRange = kvm_util:create_range_dbs(AccountId, MsgIds),
+    RetenTimestamp = kz_util:current_tstamp() - kvm_util:retention_seconds(),
     Fun = fun(Db, Ids, ResDict) ->
-                  ViewOpts = [{'keys', Ids}
-                             ,'include_docs'
-                             ],
-                  case kz_datamgr:all_docs(Db, ViewOpts) of
-                      {'ok', JObjs} ->
-                          normalize_bulk_results(<<"fetch">>, BoxId, JObjs, ResDict);
-                      {'error', R} ->
-                          lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p"
-                                       ,[Db, R]),
-                          Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}
-                                                      || Id <- Ids
-                                                     ]),
-                          dict:append(<<"failed">>, Failed, ResDict)
-                  end
+                  fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp)
           end,
     kz_json:from_list(
       dict:to_list(
         dict:fold(Fun, dict:new(), DbsRange)
        )
      ).
+-spec fetch_fun(ne_binary(), ne_binary(), ne_binaries(), dict:dict(), gregorian_seconds()) -> dict:dict().
+fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp) ->
+    ViewOpts = [{'keys', Ids}
+               ,'include_docs'
+               ],
+    case kz_datamgr:db_exists(Db)
+        andalso kz_datamgr:all_docs(Db, ViewOpts)
+    of
+        'false' ->
+            fetch_faild_with_reason("not_found", Db, Ids, ResDict);
+        {'ok', JObjs} ->
+            normalize_bulk_results(<<"fetch">>, BoxId, RetenTimestamp, JObjs, ResDict);
+        {'error', R} ->
+            fetch_faild_with_reason(R, Db, Ids, ResDict)
+    end.
+
+-spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), dict:dict()) -> dict:dict().
+fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
+    lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p"
+                 ,[Db, Reason]),
+    Failed = kz_json:from_list([{Id, kz_util:to_binary(Reason)}
+                                || Id <- Ids
+                               ]),
+    dict:append(<<"failed">>, Failed, ResDict).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec change_folder(ne_binary(), messages(), ne_binary(), ne_binary()) -> kz_json:object().
+-spec change_folder(kvm_message:vm_folder(), messages(), ne_binary(), ne_binary()) ->
+                           kz_json:object().
 change_folder(Folder, Msgs, AccountId, BoxId) ->
     Fun = [fun(JObj) -> kzd_box_message:apply_folder(Folder, JObj) end
           ],
@@ -230,18 +244,21 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
-                             kz_json:object().
+                             dict:dict().
+-spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
+                             dict:dict().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
+    copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
 
--spec copy_to_vmboxes_fold(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                                  dict:dict().
-copy_to_vmboxes_fold(_, [], _, _, Copied) -> Copied;
-copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
-    CopyRes = kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Copied),
-    copy_to_vmboxes_fold(AccountId, Ids, OldBoxId, NewBoxIds, CopyRes).
+copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Copied) ->
+    lists:foldl(fun(Id, Acc) ->
+                        kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Acc)
+                end
+               ,Copied
+               ,Ids
+               ).
 
 %%%===================================================================
 %%% Internal functions
@@ -252,10 +269,11 @@ copy_to_vmboxes_fold(AccountId, [Id | Ids], OldBoxId, NewBoxIds, Copied) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) -> kz_json:object().
+-spec get_view_results(ne_binary(), ne_binary(), kz_proplist(), norm_fun()) ->
+                              kz_json:objects().
 -spec get_view_results(ne_binaries(), ne_binary(), kz_proplist(), norm_fun(), kz_json:objects()) ->
                               kz_json:objects().
-get_view_results(AccountId, View, ViewOpts, NormFun) ->
+get_view_results(?NE_BINARY = AccountId, View, ViewOpts, NormFun) ->
     Dbs = kvm_util:get_range_db(AccountId),
     get_view_results(Dbs, View, ViewOpts, NormFun, []).
 
@@ -295,16 +313,16 @@ normalize_view_results(JObj, Acc) ->
 %%       messages operation
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_bulk_results(ne_binary(), api_ne_binary(), kz_json:objects(), dict:dict()) ->
+-spec normalize_bulk_results(ne_binary(), api_ne_binary(), api_seconds(), kz_json:objects(), dict:dict()) ->
                                     dict:dict().
-normalize_bulk_results(Method, BoxId, JObjs, Dict) ->
+normalize_bulk_results(Method, BoxId, RetenTimestamp, JObjs, Dict) ->
     DefaultDict = dict:from_list([{<<"succeeded">>, []}
                                  ,{<<"failed">>, []}
                                  ]),
     MergeFun = fun(_K, _V1, V2) -> V2 end,
-    normalize_bulk_results1(Method, BoxId, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
+    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, dict:merge(MergeFun, DefaultDict, Dict)).
 
-normalize_bulk_results1(_Method, _BoxId, [], Dict) ->
+normalize_bulk_results1(_Method, _BoxId, _, [], Dict) ->
     lager:debug("voicemail ~s bulk for mailbox ~s resulted in ~b succeeded and ~b failed docs"
                ,[_Method
                 ,_BoxId
@@ -312,21 +330,34 @@ normalize_bulk_results1(_Method, _BoxId, [], Dict) ->
                 ,length(dict:fetch(<<"failed">>, Dict))
                 ]),
     Dict;
-normalize_bulk_results1(Method, BoxId, [JObj | JObjs], Dict) ->
+normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
     Id = kz_json:get_first_defined([<<"key">>, <<"id">>], JObj),
+    IsPrior = is_prior_to_retention(
+                kzd_box_message:utc_seconds(kz_json:get_value(<<"doc">>, JObj))
+                                   ,RetenTimestamp
+               ),
     NewDict = case kvm_util:check_msg_belonging(BoxId, JObj)
                   andalso kz_json:get_value(<<"error">>, JObj)
               of
                   'false' ->
                       Failed = kz_json:from_list([{Id, <<"not_found">>}]),
                       dict:append(<<"failed">>, Failed, Dict);
-                  'undefined' ->
+                  'undefined' when not IsPrior ->
                       dict:append(<<"succeeded">>, kz_json:get_value(<<"doc">>, JObj, Id), Dict);
+                  'undefined' ->
+                      Failed = kz_json:from_list([{Id, <<"prior_to_retention_duration">>}]),
+                      dict:append(<<"failed">>, Failed, Dict);
                   Error ->
                       Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
                       dict:append(<<"failed">>, Failed, Dict)
               end,
-    normalize_bulk_results1(Method, BoxId, JObjs, NewDict).
+    normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, NewDict).
+
+-spec is_prior_to_retention(pos_integer(), api_seconds()) -> boolean().
+is_prior_to_retention(0, _RetenTimestamp) -> 'false';
+is_prior_to_retention(_UtcSeconds, 'undefined') -> 'false';
+is_prior_to_retention(UtcSeconds, RetenTimestamp) when UtcSeconds > RetenTimestamp -> 'false';
+is_prior_to_retention(_UtcSeconds, _RetenTimestamp) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private

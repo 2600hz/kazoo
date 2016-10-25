@@ -177,3 +177,15 @@ You can also choose to receive pages in bigger or smaller increments by specifyi
 ###### Disabling Pagination
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
+
+###### Pretty Printing 
+
+If needed the json response from the server can be pretty printed
+
+Include pretty printing inside the header
+
+    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" -H "X-Pretty-Print:true" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/
+
+If the client cannot use headers the options can be included inside the url
+
+    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}?pretty_print=true

@@ -78,10 +78,11 @@ fetch(AccountId, MessageId) ->
 
 fetch(AccountId, MessageId, BoxId) ->
     case kvm_util:open_modb_doc(AccountId, MessageId, kzd_box_message:type()) of
-        {'ok', JObj} = OK ->
+        {'ok', JObj} ->
             case kvm_util:check_msg_belonging(BoxId, JObj) of
-                'true' -> OK;
-                'false' -> {'error', 'not_found'}
+                'false' -> {'error', 'not_found'};
+                'true' ->
+                    {'ok', kvm_util:maybe_set_deleted_by_retention(JObj)}
             end;
         {'error', _E} = Error ->
             lager:debug("failed to open message ~s:~p", [MessageId, _E]),
@@ -216,7 +217,7 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
     end.
 
 -spec copy_to_vmboxes(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             kz_json:object().
+                             dict:dict().
 copy_to_vmboxes(_, _, _, [], ResDict) -> ResDict;
 copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
     AccountDb = kvm_util:get_db(AccountId),
@@ -250,7 +251,11 @@ do_copy(AccountId, JObj, Funs) ->
     TransformFuns = [fun(DestDoc) -> kzd_box_message:update_media_id(ToId, DestDoc) end
                      | Funs
                     ],
-    Options = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    Options = [{'transform', fun(_, B) ->
+                                     lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns)
+                             end
+               }
+              ],
     case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
         {'ok', _} = OK -> OK;
         {'error', 'not_found'} = NotFound ->
@@ -330,10 +335,10 @@ notify_and_save_meta(Call, MediaId, Length, Props) ->
             maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
         {'timeout', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
+            maybe_save_meta(Length, 'nothing', Call, MediaId, JObj, BoxId);
         {'error', _E} ->
             lager:debug("voicemail new notification error: ~p", [_E]),
-            save_meta(Length, NotifyAction, Call, MediaId, BoxId)
+            save_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
 -spec maybe_save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.

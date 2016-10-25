@@ -170,7 +170,6 @@
                     "type": "object"
                 },
                 "timezone": {
-                    "default": "America/Los_Angeles",
                     "description": "The default timezone",
                     "maxLength": 32,
                     "minLength": 5,
@@ -5472,38 +5471,31 @@
                         "display_name": {
                             "maxLength": 15,
                             "minLength": 1,
-                            "required": false,
                             "type": "string"
                         },
                         "inbound_lookup": {
-                            "required": false,
                             "type": "boolean"
-                        }
+                        },
+                        "required": []
                     },
-                    "required": false,
                     "type": "object"
                 },
-                "dash_e911": {
-                    "description": "E911 information for the phone number",
+                "e911": {
                     "properties": {
                         "activated_time": {
                             "description": "The time stamp e911 was provisioned",
-                            "required": false,
                             "type": "string"
                         },
                         "caller_name": {
                             "description": "The name that will show to emergency services",
-                            "required": false,
                             "type": "string"
                         },
                         "extended_address": {
                             "description": "The suit/floor/apt. address where the number is in service",
-                            "required": false,
                             "type": "string"
                         },
                         "latitude": {
                             "description": "The e911 provisioning system calculated service address latitude",
-                            "required": false,
                             "type": "string"
                         },
                         "legacy_data": {
@@ -5511,58 +5503,54 @@
                             "properties": {
                                 "house_number": {
                                     "description": "The name that will show to emergency services",
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "predirectional": {
                                     "description": "The name that will show to emergency services",
-                                    "required": false,
                                     "type": "string"
                                 },
+                                "required": [],
                                 "streetname": {
                                     "description": "The name that will show to emergency services",
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "suite": {
                                     "description": "The name that will show to emergency services",
-                                    "required": false,
                                     "type": "string"
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "locality": {
                             "description": "The locality (city) where the number is in service",
-                            "required": false,
                             "type": "string"
                         },
                         "location_id": {
                             "description": "The e911 provisioning system internal id for this service address",
-                            "required": false,
                             "type": "string"
                         },
                         "longitude": {
                             "description": "The e911 provisioning system calculated service address longitude",
-                            "required": false,
                             "type": "string"
                         },
                         "plus_four": {
                             "description": "The extended zip/postal code where the number is in service",
-                            "required": false,
                             "type": "string"
                         },
                         "postal_code": {
                             "description": "The zip/postal code where the number is in service",
-                            "required": false,
                             "type": "string"
                         },
                         "region": {
                             "description": "The region (state) where the number is in service",
-                            "required": false,
                             "type": "string"
                         },
+                        "required": [
+                            "locality",
+                            "postal_code",
+                            "region",
+                            "street_address"
+                        ],
                         "status": {
                             "description": "The e911 provisioning system status for this service address",
                             "enum": [
@@ -5572,16 +5560,14 @@
                                 "REMOVED",
                                 "ERROR"
                             ],
-                            "required": false,
                             "type": "string"
                         },
                         "street_address": {
                             "description": "The street address where the number is in service",
-                            "required": false,
                             "type": "string"
-                        }
+                        },
+                        "type": "object"
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "porting": {
@@ -5589,79 +5575,64 @@
                     "properties": {
                         "billing_account_id": {
                             "description": "The account id the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_extended_address": {
                             "description": "The suit/floor/apt. address the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_locality": {
                             "description": "The locality (city) the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_name": {
                             "description": "The name or company name the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_postal_code": {
                             "description": "The zip/postal code the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_region": {
                             "description": "The region (state) the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_street_address": {
                             "description": "The street address the losing carrier has on file",
-                            "required": false,
                             "type": "string"
                         },
                         "billing_telephone_number": {
                             "description": "The BTN of the account the number belongs to",
-                            "required": false,
                             "type": "string"
                         },
                         "comments": {
                             "description": "An array of comments",
                             "items": {
-                                "required": false,
                                 "type": "string"
                             },
-                            "required": false,
                             "type": "array"
                         },
                         "customer_contact": {
                             "description": "The phone number that can be used to contact the owner of the number",
-                            "required": false,
                             "type": "string"
                         },
                         "port_id": {
                             "description": "The id of the port request",
-                            "required": false,
                             "type": "string"
                         },
                         "requested_port_date": {
                             "description": "The requested port date",
-                            "required": false,
                             "type": "string"
                         },
+                        "required": [],
                         "service_provider": {
                             "description": "The name of the losing carrier",
-                            "required": false,
                             "type": "string"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "port_requests": {
@@ -6803,6 +6774,9 @@
                         "bucket": {
                             "type": "string"
                         },
+                        "host": {
+                            "type": "string"
+                        },
                         "key": {
                             "type": "string"
                         },
@@ -7080,11 +7054,6 @@
                 },
                 "master_account_id": {
                     "description": "accounts master account id"
-                },
-                "timezone": {
-                    "default": "America/Los_Angeles",
-                    "description": "accounts timezone",
-                    "type": "string"
                 }
             },
             "required": [
@@ -10255,18 +10224,6 @@
         "system_config.number_manager": {
             "description": "Schema for number_manager system_config",
             "properties": {
-                "allowed_features": {
-                    "default": [
-                        "cnam",
-                        "dash_e911",
-                        "failover",
-                        "port",
-                        "prepend",
-                        "vitelity_e911"
-                    ],
-                    "description": "number_manager allowed features",
-                    "type": "array"
-                },
                 "available_module_name": {
                     "default": "knm_local",
                     "description": "number_manager available module name",
@@ -10926,6 +10883,22 @@
             "required": [
                 "modules"
             ],
+            "type": "object"
+        },
+        "system_config.services.http_sync": {
+            "description": "Schema for services.http_sync system_config",
+            "properties": {
+                "connect_timeout_ms": {
+                    "default": 10000,
+                    "description": "services.http_sync connect timeout in milliseconds",
+                    "type": "integer"
+                },
+                "http_url": {
+                    "default": "",
+                    "description": "services.http_sync http url",
+                    "type": "string"
+                }
+            },
             "type": "object"
         },
         "system_config.sms": {
@@ -19285,6 +19258,30 @@
         },
         "/accounts/{ACCOUNT_ID}/services/plan": {
             "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/services/status": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header",

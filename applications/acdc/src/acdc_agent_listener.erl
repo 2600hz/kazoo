@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_listener).
 -behaviour(gen_listener).
@@ -16,6 +17,7 @@
         ,member_connect_accepted/1, member_connect_accepted/2
         ,agent_timeout/1
         ,bridge_to_member/6
+        ,hangup_call/1
         ,monitor_call/4
         ,channel_hungup/2
         ,rebind_events/3
@@ -221,6 +223,10 @@ member_connect_accepted(Srv) ->
     gen_listener:cast(Srv, {'member_connect_accepted'}).
 member_connect_accepted(Srv, ACallId) ->
     gen_listener:cast(Srv, {'member_connect_accepted', ACallId}).
+
+-spec hangup_call(pid()) -> 'ok'.
+hangup_call(Srv) ->
+    gen_listener:cast(Srv, {'hangup_call'}).
 
 -spec bridge_to_member(pid(), kapps_call:call(), kz_json:object()
                       ,kz_json:objects(), api_binary(), api_binary()
@@ -693,6 +699,30 @@ handle_cast({'member_connect_resp', ReqJObj}, #state{agent_id=AgentId
             ,'hibernate'}
     end;
 
+handle_cast({'hangup_call'}, #state{my_id=MyId
+                                   ,msg_queue_id=Server
+                                   ,agent_call_ids=ACallIds
+                                   ,call=Call
+                                   ,agent_id=AgentId
+                                   }=State) ->
+    %% Hangup this agent's calls
+    lager:debug("agent FSM requested a hangup of the agent call, sending retry"),
+    _ = filter_agent_calls(ACallIds, AgentId),
+
+    %% Pass the call on to another agent
+    CallId = kapps_call:call_id(Call),
+    send_member_connect_retry(Server, CallId, MyId, AgentId),
+    acdc_util:unbind_from_call_events(CallId),
+
+    put('callid', AgentId),
+    {'noreply', State#state{call='undefined'
+                           ,msg_queue_id='undefined'
+                           ,acdc_queue_id='undefined'
+                           ,agent_call_ids=[]
+                           ,recording_url='undefined'
+                           }
+    ,'hibernate'};
+
 handle_cast({'monitor_call', Call, _CDRUrl, RecordingUrl}, State) ->
     _ = kapps_call:put_callid(Call),
 
@@ -1021,6 +1051,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                   ,{<<"Request-ID">>, ReqId}
                                   ,{<<"Retain-CID">>, <<"true">>}
                                   ,{<<"Agent-ID">>, AgentId}
+                                  ,{<<"Member-Call-ID">>, MCallId}
                                   ]),
 
     {ACallIds, Endpoints} = lists:foldl(fun(EP, {Cs, Es}) ->

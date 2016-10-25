@@ -90,7 +90,7 @@ loop(IterValue, State=#state{task_id = TaskId
                                                   ,?OUT(TaskId)
                                                   ),
             'stop';
-        {IsSuccessful, Written, {_PrevRow, NewIterValue}} ->
+        {IsSuccessful, Written, NewIterValue} ->
             NewState = state_after_writing(IsSuccessful, Written, State),
             loop(NewIterValue, NewState)
     end.
@@ -124,20 +124,21 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
 is_task_successful(TaskId, API, ExtraArgs, IterValue) ->
     case tasks_bindings:apply(API, [ExtraArgs, IterValue]) of
         ['stop'] -> 'stop';
-        [{'ok', _Data}=NewIterValue] ->
-            %% For initialisation steps. Skeeps writing a CSV output row.
-            {'true', 0, NewIterValue};
-        [{[_|_]=NewRowOrRows, _Data}=NewIterValue] ->
-            Written = store_return(TaskId, NewRowOrRows),
-            {'true', Written, NewIterValue};
-        [{?NE_BINARY=NewRow, _Data}=NewIterValue] ->
-            Written = store_return(TaskId, NewRow),
-            {'true', Written, NewIterValue};
-        [{'EXIT', _}] ->
-            kz_util:log_stacktrace(),
+        [{'EXIT', {_Error, _ST=[_|_]}}] ->
+            lager:error("error: ~p", [_Error]),
+            kz_util:log_stacktrace(_ST),
             Written = store_return(TaskId, ?WORKER_TASK_FAILED),
             {'false', Written, 'stop'};
-        [{Error, _Data}=NewIterValue] ->
+        [{'ok', NewIterValue}] ->
+            %% For initialisation steps. Skeeps writing a CSV output row.
+            {'true', 0, NewIterValue};
+        [{[_|_]=NewRowOrRows, NewIterValue}] ->
+            Written = store_return(TaskId, NewRowOrRows),
+            {'true', Written, NewIterValue};
+        [{?NE_BINARY=NewRow, NewIterValue}] ->
+            Written = store_return(TaskId, NewRow),
+            {'true', Written, NewIterValue};
+        [{Error, NewIterValue}] ->
             Written = store_return(TaskId, Error),
             {'false', Written, NewIterValue}
     end.

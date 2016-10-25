@@ -36,20 +36,26 @@
 -type set_feature() :: {ne_binary(), kz_json:object()}.
 -spec activate_feature(knm_number:knm_number(), set_feature() | ne_binary()) ->
                               knm_number:knm_number().
--spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary()) ->
-                              knm_number:knm_number().
--spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary(), kz_services:services()) ->
-                              knm_number:knm_number().
 activate_feature(Number, Feature=?NE_BINARY) ->
     activate_feature(Number, {Feature, kz_json:new()});
 activate_feature(Number, FeatureToSet) ->
     BillingId = fetch_billing_id(Number),
     activate_feature(Number, FeatureToSet, BillingId).
 
+-ifdef(TEST).
+activate_feature(Number, {Feature,FeatureData}, _) ->
+    %% Adding feature regardless of service plan
+    PN = knm_phone_number:set_feature(knm_number:phone_number(Number), Feature, FeatureData),
+    knm_number:set_phone_number(Number, PN).
+-else.
 activate_feature(Number, FeatureToSet, BillingId) ->
     Services = fetch_services(Number),
     activate_feature(Number, FeatureToSet, BillingId, Services).
 
+-spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary()) ->
+                              knm_number:knm_number().
+-spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary(), kz_services:services()) ->
+                              knm_number:knm_number().
 activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
     Units = kz_service_phone_numbers:feature_activation_charge(Feature, Services),
     Charges = knm_number:charges(Number, Feature),
@@ -65,13 +71,14 @@ activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
             lager:debug("adding feature ~s to ~s"
                        ,[Feature, knm_phone_number:number(PhoneNumber)]),
             Transaction = create_transaction(Number, Feature, Units),
-            knm_number:set_phone_number(
-              knm_number:add_transaction(knm_number:set_charges(Number, Feature, TotalCharges)
-                                        ,Transaction
-                                        ),
-              knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData)
-             )
+            N = knm_number:add_transaction(knm_number:set_charges(Number, Feature, TotalCharges)
+                                          ,Transaction
+                                          ),
+            lager:debug("updating ~s feature to ~s", [Feature, kz_json:encode(FeatureData)]),
+            PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
+            knm_number:set_phone_number(N, PN)
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -122,8 +129,8 @@ update_services(Number, _, 'true') ->
     Number;
 update_services(Number, 'true', _) ->
     lager:debug("somewhat dry_run-ing btw"),
-    JObj = knm_phone_number:to_json(knm_number:phone_number(Number)),
-    Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [JObj]),
+    PhoneNumber = knm_number:phone_number(Number),
+    Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [PhoneNumber]),
     knm_number:set_services(Number, Services);
 update_services(Number, 'false', _) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -155,8 +162,7 @@ activate_phone_number(Number) ->
 activate_phone_number(Number, BillingId) ->
     Services = fetch_services(Number),
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    Units = kz_service_phone_numbers:
-        phone_number_activation_charge(Services, Num),
+    Units = kz_service_phone_numbers:phone_number_activation_charge(Services, Num),
     activate_phone_number(Number, BillingId, Units).
 
 activate_phone_number(Number, _BillingId, 0) ->
@@ -245,6 +251,7 @@ create_transaction(Number, Units) ->
                ,Routines
                ).
 
+-ifndef(TEST).
 -spec create_transaction(knm_number:knm_number(), ne_binary(), integer()) ->
                                 kz_transaction:transaction().
 create_transaction(Number, Feature, Units) ->
@@ -266,6 +273,7 @@ create_transaction(Number, Feature, Units) ->
                ,kz_transaction:debit(LedgerId, Units)
                ,Routines
                ).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -39,9 +39,26 @@ The `knm_gen_carrier` module provides an Erlang behaviour which all carrier modu
 
 ### Providers
 
-The `knm_providers` module provides the interface to the enabled provider modules. Just as the `knm_carriers` module abstracts the carrier, `knm_proviers` abstracts the provider modules, allowing providers to be added/removed without needing knowledge of which provider modules are in play.
+The `knm_providers` module provides the interface to feature provider modules. Just as the `knm_carriers` module abstracts the carrier, `knm_proviers` abstracts the provider modules, allowing providers to be added or removed without needing knowledge of which provider modules are in play.
 
 The `knm_gen_provider` module provides an Erlang behaviour which all provider modules must implement.
+
+#### White-listing feature providers
+
+A reseller can edit the list of features available to its sub-accounts by modifying the `allowed_features` account config list in its account DB.
+This list defaults to `["cnam", "e911", "failover", "port", "prepend"]`.
+
+Other providers can be specified in the same place (see below).
+
+* `cnam_provider` (string): should be a CNAM provider module (defaults to `"knm_cnam_notifier"`).
+* `e911_provider` (string): should be an emergency services provider module (defaults to `"knm_dash_e911"`).
+
+So in order for a reseller's sub-accounts to be able to use Telnyx's E911 feature, one must:
+
+1. Have `"e911"` in the `allowed_features` list, and
+1. Set `e911_provider` to `"knm_telnyx_e911"`
+
+Then, these accounts' numbers which have an `"e911"` public field will be querying Telnyx' E911 services.
 
 ### Convertors
 

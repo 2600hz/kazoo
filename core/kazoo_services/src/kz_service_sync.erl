@@ -275,27 +275,35 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
     try sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) of
         'ok' ->
             _ = mark_clean_and_status(kzd_services:status_good(), ServicesJObj),
-            io:format("synchronization with bookkeeper complete~n"),
-            lager:debug("synchronization with bookkeeper complete"),
-            maybe_sync_reseller(AccountId, ServicesJObj)
+            io:format("synchronization with bookkeeper complete (good-standing)~n"),
+            lager:debug("synchronization with bookkeeper complete (good-standing)"),
+            maybe_sync_reseller(AccountId, ServicesJObj);
+        'delinquent' ->
+            _ = mark_clean_and_status(kzd_services:status_delinquent(), ServicesJObj),
+            io:format("synchronization with bookkeeper complete (delinquent)~n"),
+            lager:debug("synchronization with bookkeeper complete (delinquent)"),
+            maybe_sync_reseller(AccountId, ServicesJObj);
+        'retry' ->
+            io:format("synchronization with bookkeeper complete (retry)~n"),
+            lager:debug("synchronization with bookkeeper complete (retry)"),
+            {'error', 'retry'}
     catch
         'throw':{Reason, _}=_R ->
             lager:info("bookkeeper error: ~p", [_R]),
             _ = mark_clean_and_status(kz_util:to_binary(Reason), ServicesJObj),
             maybe_sync_reseller(AccountId, ServicesJObj);
         _E:R ->
-            %% TODO: certain errors (such as no CC or expired, etc) should
-            %%    move the account of good standing...
             lager:info("unable to sync services(~p): ~p", [_E, R]),
             {'error', R}
     end.
 
--spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok'.
+-spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok' | 'delinquent' | 'retry'.
 sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
     Bookkeeper = kz_services:select_bookkeeper(AccountId),
-    Bookkeeper:sync(ServiceItems, AccountId),
-
-    maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper).
+    lager:debug("attempting to sync with bookkeeper ~s", [Bookkeeper]),
+    Result = Bookkeeper:sync(ServiceItems, AccountId),
+    maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper),
+    Result.
 
 -spec maybe_sync_transactions(ne_binary(), kzd_services:doc()) -> 'ok'.
 -spec maybe_sync_transactions(ne_binary(), kzd_services:doc(), atom()) -> 'ok'.

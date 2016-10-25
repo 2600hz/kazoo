@@ -16,7 +16,7 @@
         ,content_types_provided/2
         ,validate/1, validate/2
         ,get/1, get/2
-        ,post/1
+        ,post/1, post/2
         ]).
 
 -include("crossbar.hrl").
@@ -30,6 +30,7 @@
 
 -define(PATH_PLAN, <<"plan">>).
 -define(PATH_AUDIT, <<"audit">>).
+-define(PATH_STATUS, <<"status">>).
 
 %%%===================================================================
 %%% API
@@ -66,7 +67,9 @@ allowed_methods() ->
 allowed_methods(?PATH_PLAN) ->
     [?HTTP_GET];
 allowed_methods(?PATH_AUDIT) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(?PATH_STATUS) ->
+    [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -82,6 +85,7 @@ allowed_methods(?PATH_AUDIT) ->
 resource_exists() -> 'true'.
 resource_exists(?PATH_PLAN) -> 'true';
 resource_exists(?PATH_AUDIT) -> 'true';
+resource_exists(?PATH_STATUS) -> 'true';
 resource_exists(_) -> 'false'.
 
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
@@ -107,8 +111,7 @@ content_types_provided(Context, ?PATH_AUDIT) ->
 validate(Context) ->
     validate_services(Context, cb_context:req_verb(Context)).
 
-validate_services(Context, ?HTTP_GET) ->
-    crossbar_util:response(kz_services:public_json(cb_context:account_id(Context)), Context);
+validate_services(Context, ?HTTP_GET) -> load_services(Context);
 validate_services(Context, ?HTTP_POST) ->
     BillingId = kz_json:get_value(<<"billing_id">>, cb_context:req_data(Context)),
     try kz_services:set_billing_id(BillingId, cb_context:account_id(Context)) of
@@ -132,7 +135,13 @@ validate_services(Context, ?HTTP_POST) ->
 validate(Context, ?PATH_PLAN) ->
     crossbar_util:response(kz_services:service_plan_json(cb_context:account_id(Context)), Context);
 validate(Context, ?PATH_AUDIT) ->
-    load_audit_logs(Context).
+    load_audit_logs(Context);
+validate(Context0, ?PATH_STATUS) ->
+    Context1 = load_services(Context0),
+    case cb_context:resp_status(Context1) of
+        'success' -> create_status_payload(Context1);
+        _Else -> Context1
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -151,6 +160,8 @@ get(Context) ->
 get(Context, ?PATH_PLAN) ->
     Context;
 get(Context, ?PATH_AUDIT) ->
+    Context;
+get(Context, ?PATH_STATUS) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -162,10 +173,62 @@ get(Context, ?PATH_AUDIT) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    post(Context, cb_context:fetch(Context, 'services')).
+    maybe_save_services(Context, cb_context:fetch(Context, 'services')).
 
-post(Context, 'undefined') -> Context;
-post(Context, Services) ->
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?PATH_STATUS) ->
+    maybe_update_status(Context).
+
+-spec maybe_update_status(cb_context:context()) -> cb_context:context().
+maybe_update_status(Context) ->
+    case cb_context:is_superduper_admin(cb_context:auth_account_id(Context)) of
+        'false' -> cb_context:add_system_error('forbidden', Context);
+        'true' -> update_status(Context)
+    end.
+
+-spec update_status(cb_context:context()) -> cb_context:context().
+update_status(Context) ->
+    ReqData = cb_context:req_data(Context),
+    Routines = [fun update_good_standing/2
+               ,fun maybe_update_reason/2
+               ,fun maybe_update_reason_code/2
+               ],
+    Update = lists:foldl(fun(F, J) -> F(J, ReqData) end
+                        ,kz_services:to_json(cb_context:fetch(Context, 'services'))
+                        ,Routines
+                        ),
+    Services = kz_services:save(kz_services:from_service_json(Update, 'false')),
+    create_status_payload(
+      cb_context:setters(Context
+                        ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
+                         ,{fun cb_context:store/3, 'services', Services}
+                         ,{fun cb_context:set_resp_status/2, 'success'}
+                         ])
+     ).
+
+-spec update_good_standing(kz_json:object(), kz_json:object()) -> kz_json:object().
+update_good_standing(JObj, ReqData) ->
+    case kz_json:get_ne_binary_value(<<"in_good_standing">>, ReqData) of
+        <<"true">> -> kzd_services:set_status(JObj, kzd_services:status_good());
+        <<"false">> -> kzd_services:set_status(JObj, kzd_services:status_delinquent())
+    end.
+
+-spec maybe_update_reason(kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_update_reason(JObj, ReqData) ->
+    case kz_json:get_ne_binary_value(<<"reason">>, ReqData) of
+        'undefined' -> JObj;
+        Reason -> kzd_services:set_reason(JObj, Reason)
+    end.
+
+-spec maybe_update_reason_code(kz_json:object(), kz_json:object()) -> kz_json:object().
+maybe_update_reason_code(JObj, ReqData) ->
+    case kz_json:get_number_value(<<"reason_code">>, ReqData) of
+        'undefined' -> JObj;
+        ReasonCore -> kzd_services:set_reason_code(JObj, ReasonCore)
+    end.
+
+maybe_save_services(Context, 'undefined') -> Context;
+maybe_save_services(Context, Services) ->
     try kz_services:save(Services) of
         NewServices ->
             crossbar_util:response(kz_services:public_json(NewServices), Context)
@@ -189,6 +252,8 @@ load_audit_logs(Context) ->
 -spec normalize_audit_logs(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_audit_logs(JObj, Acc) ->
     [kz_json:get_value(<<"doc">>, JObj) || Acc].
+
+
 
 %%--------------------------------------------------------------------
 %% @private
@@ -236,3 +301,44 @@ create_view_options(Context, CreatedFrom, CreatedTo) ->
                           ne_binaries().
 ranged_modbs(Context, From, To) ->
     kazoo_modb:get_range(cb_context:account_id(Context), From, To).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec load_services(cb_context:context()) -> cb_context:context().
+load_services(Context) ->
+    Services = kz_services:fetch(cb_context:account_id(Context)),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_doc/2, kz_services:public_json(Services)}
+                       ,{fun cb_context:store/3, 'services', Services}
+                       ,{fun cb_context:set_resp_data/2, kz_services:public_json(Services)}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_status_payload(cb_context:context()) -> cb_context:context().
+create_status_payload(Context) ->
+    JObj = kz_services:to_json(cb_context:fetch(Context, 'services')),
+    Status = kzd_services:status(JObj) =:= kzd_services:status_good(),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_resp_data/2, create_status_payload(Status, JObj)}
+                       ,{fun cb_context:set_resp_status/2, 'success'}
+                       ]).
+
+-spec create_status_payload(boolean(), kz_json:object()) -> kz_json:object().
+create_status_payload('true', _JObj) ->
+    kz_json:from_list([{<<"in_good_standing">>, 'true'}]);
+create_status_payload('false', JObj) ->
+    kz_json:from_list(
+      props:filter_undefined([
+                              {<<"in_good_standing">>, 'false'}
+                             ,{<<"reason">>, kzd_services:reason(JObj)}
+                             ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
+                             ])
+     ).

@@ -10,12 +10,13 @@ Looks for numbers using the carrier module set up for your account.
 - `PREFIX`: a 3-digit number prefix such as an area code (e.g. `415`)
 - `QUANTITY`: maximum amount of numbers to be returned (e.g. `2`)
 - `OFFSET`: page number (e.g. `0`)
+- `COUNTRY`: ISO3166 alpha-2 country code (e.g. `US`)
 
-> GET /v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
+> GET /v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}&country={COUNTRY}
 
 ```shell
 curl -v -X GET \
-    http://{SERVER}:8000/v2/phone_numbers?prefix={PREFIX}&quantity={QUANTITY}&offset={OFFSET}
+    http://{SERVER}:8000/v2/phone_numbers?prefix=415&quantity=2
 ```
 
 ```json
@@ -1266,7 +1267,7 @@ curl -v -X PUT \
     "data": {
         "used_by": "callflow",
         "id": "{{NUMBER}}",
-        "dash_e911": {
+        "e911": {
             "postal_code": "{{ZIP_CODE}}",
             "street_address": "{{ADDRESS}}",
             "extended_address": "{{EXTENDED}}",
@@ -1293,8 +1294,7 @@ curl -v -X PUT \
                     "locality": "{{CITY}}",
                     "region": "{{STATE}}"
                 },
-                "message": "Location is not geocoded",
-                "provider": "dash_e911"
+                "message": "Location is not geocoded"
             }
         }
     },
@@ -1309,7 +1309,7 @@ curl -v -X PUT \
 {
     "data": {
         "multiple_choice": {
-            "dash_e911": {
+            "e911": {
                 "cause": {
                     "postal_code": "{{ZIP_CODE}}",
                     "street_address": "{{ADDRESS}}",
@@ -1347,7 +1347,7 @@ curl -v -X PUT \
     "data": {
         "used_by": "callflow",
         "id": "{{NUMBER}}",
-        "dash_e911": {
+        "e911": {
             "street_address": "116 NATOMA ST",
             "extended_address": "APT 116",
             "caller_name": "Valued Customer",

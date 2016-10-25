@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_handler).
 
@@ -246,17 +247,22 @@ handle_new_channel(JObj, AccountId) ->
 -spec handle_new_channel_acct(kz_json:object(), api_binary()) -> 'ok'.
 handle_new_channel_acct(_, 'undefined') -> 'ok';
 handle_new_channel_acct(JObj, AccountId) ->
-    [FromUser, _FromHost] = binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>),
-    [ToUser, _ToHost] = binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>),
-    [ReqUser, _ReqHost] = binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>),
+    FromUser = hd(binary:split(kz_json:get_value(<<"From">>, JObj), <<"@">>)),
+    ToUser = hd(binary:split(kz_json:get_value(<<"To">>, JObj), <<"@">>)),
+    ReqUser = hd(binary:split(kz_json:get_value(<<"Request">>, JObj), <<"@">>)),
 
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
+    MemberCallId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Member-Call-ID">>], JObj),
 
     lager:debug("new channel in acct ~s: from ~s to ~s(~s)", [AccountId, FromUser, ToUser, ReqUser]),
 
-    gproc:send(?NEW_CHANNEL_REG(AccountId, FromUser), ?NEW_CHANNEL_FROM(CallId)),
-    gproc:send(?NEW_CHANNEL_REG(AccountId, ToUser), ?NEW_CHANNEL_TO(CallId)),
-    gproc:send(?NEW_CHANNEL_REG(AccountId, ReqUser), ?NEW_CHANNEL_TO(CallId)).
+    case kz_json:get_value(<<"Call-Direction">>, JObj) of
+        <<"inbound">> -> gproc:send(?NEW_CHANNEL_REG(AccountId, FromUser), ?NEW_CHANNEL_FROM(CallId));
+        <<"outbound">> ->
+            gproc:send(?NEW_CHANNEL_REG(AccountId, ToUser), ?NEW_CHANNEL_TO(CallId, MemberCallId)),
+            gproc:send(?NEW_CHANNEL_REG(AccountId, ReqUser), ?NEW_CHANNEL_TO(CallId, MemberCallId));
+        _ -> lager:debug("invalid call direction for call ~s", [CallId])
+    end.
 
 handle_originate_resp(JObj, Props) ->
     case kz_json:get_value(<<"Event-Name">>, JObj) of

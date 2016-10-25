@@ -18,6 +18,8 @@
 -include("knm.hrl").
 -include("knm_port_request.hrl"). %% PORT_KEY
 
+-define(KEY, ?PORT_KEY).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -25,20 +27,20 @@
 %% produce notifications if the porting object changes
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) ->
-                  knm_number:knm_number().
--spec save(knm_number:knm_number(), ne_binary(), ne_binary()) ->
-                  knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary(), ne_binary()) -> knm_number:knm_number().
 save(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     CurrentState = knm_phone_number:state(PhoneNumber),
     Doc = knm_phone_number:doc(PhoneNumber),
-    State = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),
+    State = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),%%%
     save(Number, CurrentState, State).
 
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
-    Features = knm_phone_number:features(knm_number:phone_number(Number)),
-    Port = kz_json:get_ne_value(?PORT_KEY, Features, kz_json:new()),
+    Port = case feature(Number) of
+               'undefined' -> kz_json:new();
+               Data -> Data
+           end,
     _ = publish_ported(Number, Port),
     Number;
 save(Number, _CurrentState, ?NUMBER_STATE_PORT_IN) ->
@@ -52,10 +54,9 @@ save(Number, _CurrentState, _State) ->
 %% This function is called each time a number is deleted
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) ->
-                    knm_number:knm_number().
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
-    knm_services:deactivate_feature(Number, ?PORT_KEY).
+    knm_services:deactivate_feature(Number, ?KEY).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -65,21 +66,23 @@ delete(Number) ->
 -spec has_emergency_services(knm_number:knm_number()) -> boolean().
 has_emergency_services(_Number) -> 'false'.
 
+-spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
+feature(Number) ->
+    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_port_feature(knm_number:knm_number()) ->
-                                knm_number:knm_number().
+-spec maybe_port_feature(knm_number:knm_number()) -> knm_number:knm_number().
 maybe_port_feature(Number) ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
-    case kz_json:get_ne_value(?PORT_KEY, Doc) of
-        'undefined' ->
-            knm_services:deactivate_feature(Number, ?PORT_KEY);
+    case kz_json:get_ne_value(?KEY, Doc) of
+        'undefined' -> knm_services:deactivate_feature(Number, ?KEY);
         Port ->
-            Number1 = knm_services:activate_feature(Number, ?PORT_KEY),
+            Number1 = knm_services:activate_feature(Number, {?KEY, Port}),
             maybe_port_changed(Number1, Port)
     end.
 
@@ -93,13 +96,11 @@ maybe_port_changed(Number, Port) ->
 
 maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
-    CurrentPort = knm_phone_number:feature(knm_number:phone_number(Number), ?PORT_KEY),
+    CurrentPort = feature(Number),
     case kz_json:are_identical(CurrentPort, Port) of
         'true' -> Number;
         'false' ->
-            lager:debug("port information has been changed: ~s"
-                       ,[kz_json:encode(Port)]
-                       ),
+            lager:debug("port information has been changed: ~s", [kz_json:encode(Port)]),
             _ = publish_port_update(Number, Port),
             Number
     end.
@@ -113,7 +114,7 @@ maybe_port_changed(Number, Port, 'false') ->
 -spec publish_port_update(knm_number:knm_number(), kz_json:object()) -> 'ok'.
 publish_port_update(Number, Port) ->
     PhoneNumber = knm_number:phone_number(Number),
-    Notify = [{<<"Account-ID">>,  knm_phone_number:assigned_to(PhoneNumber)}
+    Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
              ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}

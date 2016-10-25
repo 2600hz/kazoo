@@ -59,27 +59,29 @@ activation_charges(CategoryId, ItemId, ServicePlan) ->
                   ) ->
                           kz_service_items:items().
 create_items(ServicePlan, ServiceItems, Services) ->
-    Plans = [{CategoryId, ItemId}
-             || CategoryId <- kzd_service_plan:categories(ServicePlan),
-                ItemId <- kzd_service_plan:items(ServicePlan, CategoryId)
-            ],
     lists:foldl(fun({CategoryId, ItemId}, SIs) ->
                         create_items(ServicePlan, SIs, Services, CategoryId, ItemId)
                 end
                ,ServiceItems
-               ,Plans
+               ,get_plan_items(ServicePlan, Services)
                ).
 
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId) ->
     ItemPlan = kzd_service_plan:item(ServicePlan, CategoryId, ItemId),
     create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan).
 
-create_items(ServicePlan, ServiceItems, _Services, _CategoryId, _ItemId, 'undefined') ->
-    AccountId = kzd_service_plan:account_id(ServicePlan),
-    lager:warning("unable to create service plan items (~s/~s) for account ~s", [_CategoryId, _ItemId, AccountId]),
-    lager:warning("account ~s service plan : ~p", [AccountId, ServicePlan]),
-    lager:warning("account ~s services : ~p", [AccountId, _Services]),
-    ServiceItems;
+create_items(ServicePlan, ServiceItems, Services, CategoryId, _ItemId, 'undefined') ->
+    case kz_services:select_bookkeeper(Services) of
+        'kz_bookkeeper_http' ->
+            ItemPlan = get_generic_item_plan(ServicePlan, CategoryId),
+            create_items(ServicePlan, ServiceItems, Services, CategoryId, _ItemId, ItemPlan);
+        _Bookkeeper ->
+            AccountId = kzd_service_plan:account_id(ServicePlan),
+            ServicePlanId = kz_doc:id(ServicePlan),
+            lager:warning("unable to create service plan item ~s/~s from ~s/~s for bookkeeper ~s"
+                         ,[CategoryId, _ItemId, AccountId, ServicePlanId, _Bookkeeper]),
+            ServiceItems
+    end;
 create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) ->
     {Rate, Quantity} = get_rate_at_quantity(CategoryId, ItemId, ItemPlan, Services),
     lager:debug("for ~s/~s, found rate ~p for quantity ~p", [CategoryId, ItemId, Rate, Quantity]),
@@ -109,6 +111,27 @@ create_items(ServicePlan, ServiceItems, Services, CategoryId, ItemId, ItemPlan) 
                              ,Routines
                              ),
     kz_service_items:update(ServiceItem, ServiceItems).
+
+-spec get_generic_item_plan(kzd_service_plan:doc(), ne_binary()) -> kz_json:object().
+get_generic_item_plan(ServicePlan, CategoryId) ->
+    case kzd_service_plan:item(ServicePlan, CategoryId, <<"_all">>) of
+        'undefined' -> kz_json:new();
+        ItemPlan -> ItemPlan
+    end.
+-spec get_plan_items(kzd_service_plan:doc(), kz_services:services()) -> kz_proplist().
+get_plan_items(ServicePlan, Services) ->
+    case kz_services:select_bookkeeper(Services) of
+        'kz_bookkeeper_http' ->
+            [{CategoryId, ItemId}
+             || CategoryId <- kz_services:list_categories(Services),
+                ItemId <- kz_services:list_items(Services, CategoryId)
+            ];
+        _Else ->
+            [{CategoryId, ItemId}
+             || CategoryId <- kzd_service_plan:categories(ServicePlan),
+                ItemId <- kzd_service_plan:items(ServicePlan, CategoryId)
+            ]
+    end.
 
 -spec maybe_set_discounts(kz_service_item:item(), kzd_item_plan:doc()) ->
                                  kz_service_item:item().
