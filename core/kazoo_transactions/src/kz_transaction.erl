@@ -571,7 +571,13 @@ service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) 
                       [{<<"transactions">>, [TransactionJObj|Transactions]}
                       ,{<<"pvt_dirty">>, 'true'}
                       ], JObj),
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1)
+            case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
+                {'ok', _SavedJObj1} ->
+                    {'ok', TransactionJObj};
+                {'error', _R} = Error ->
+                    lager:debug("failed to save services doc for ~s: ~p", [AccountId, _R]),
+                    Error
+            end
     end.
 
 %%--------------------------------------------------------------------
