@@ -35,4 +35,4 @@ script:
   - # ERL_LIBS="$HOME/proper" make eunit
 
 after_success:
-  - make coverage-report
+  - if [[ "$TRAVIS_REPO_SLUG" == '2600hz/kazoo' ]]; then make coverage-report; fi
