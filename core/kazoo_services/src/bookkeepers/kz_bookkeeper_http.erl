@@ -14,12 +14,14 @@
 
 -include("kazoo_services.hrl").
 
+-define(DEFAULT_SYNC_CONTENT_TYPE, ?DEFAULT_CONTENT_TYPE).
+
 -record(sync, {id :: ne_binary() | '_'
               ,account_id :: ne_binary() | '_'
               ,items :: ne_binary() | '_'
               ,url :: binary() | '_'
               ,method :: ne_binary() | '_'
-              ,content_type = <<"application/json">> :: ne_binary() | '_'
+              ,content_type = ?DEFAULT_SYNC_CONTENT_TYPE :: ne_binary() | '_'
               }).
 -type sync() :: #sync{}.
 
@@ -57,7 +59,7 @@ sync(Items, AccountId) ->
 
 -spec http_request(sync()) -> bookkeeper_sync_result().
 http_request(#sync{url = 'undefined'}) ->
-    lager:info("skipping http sync to empty URL");
+    lager:info("http sync URL is empty - skipping");
 http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
     Headers = [{"Content-Type", kz_util:to_list(Sync#sync.content_type)}
                | ?HTTP_REQ_HEADERS(Sync)
