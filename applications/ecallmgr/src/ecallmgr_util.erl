@@ -1241,7 +1241,7 @@ maybe_add_expires_deviation(Expires) when not is_integer(Expires) ->
     maybe_add_expires_deviation(kz_util:to_integer(Expires));
 maybe_add_expires_deviation(0) -> 0;
 maybe_add_expires_deviation(Expires) ->
-    Expires + ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180).
+    Expires + ?EXPIRES_DEVIATION_TIME.
 
 -spec maybe_add_expires_deviation_ms(api_integer()) -> api_integer().
 maybe_add_expires_deviation_ms('undefined') -> 'undefined';

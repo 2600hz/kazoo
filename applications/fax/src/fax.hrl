@@ -77,5 +77,7 @@
 
 -define(FAX_OUTBOUND_SERVER(AccountId), <<"fax_outbound_", AccountId/binary>>).
 
+-define(PORT, kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950)).
+
 -define(FAX_HRL, 'true').
 -endif.

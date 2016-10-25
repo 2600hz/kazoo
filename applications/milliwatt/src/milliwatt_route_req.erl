@@ -14,11 +14,6 @@
 
 -define(CONFLICT_ACTION, 'tone').
 
--define(TONE, kz_json:from_list(
-                [{<<"caller_id">>,[]}
-                ,{<<"number">>,[<<"5555555551">>]}
-                ])
-       ).
 -define(ECHO, kz_json:from_list(
                 [{<<"caller_id">>,[]}
                 ,{<<"number">>,[<<"5555555552">>]}
@@ -84,7 +79,7 @@ tone_or_echo(Call) ->
     To = kz_json:get_binary_value(<<"To-User">>, CallJObj, <<>>),
 
     case {kapps_config:get_non_empty(?CONFIG_CAT, <<"echo">>, ?ECHO)
-         ,kapps_config:get_non_empty(?CONFIG_CAT, <<"tone">>, ?TONE)
+         ,?TONE
          }
     of
         {'undefined', 'undefined'} -> 'undefined';

@@ -79,9 +79,10 @@
         kapps_config:get_binary(?SS_CONFIG_CAT, <<"default_caller_id_type">>, <<"external">>)).
 -define(DEFAULT_PROGRESS_TIMEOUT,
         kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_progress_timeout">>, 8)).
+-define(DEFAULT_WEIGHT,
+        kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 1)).
 
--record(gateway, {
-          server :: api_binary()
+-record(gateway, {server :: api_binary()
                  ,port :: api_integer()
                  ,realm :: api_binary()
                  ,username :: api_binary()
@@ -104,10 +105,9 @@
                  ,from_uri_realm :: api_binary()
                  ,is_emergency = 'false' :: boolean()
                  ,force_port = 'false' :: boolean()
-         }).
+                 }).
 
--record(resrc, {
-          id :: api_binary()
+-record(resrc, {id :: api_binary()
                ,rev :: api_binary()
                ,name :: api_binary()
                ,weight = 1 :: 1..100
@@ -130,7 +130,7 @@
                ,formatters :: api_objects()
                ,proxies = [] :: kz_proplist()
                ,selector_marks = [] :: [tuple()]
-         }).
+               }).
 
 -type resource() :: #resrc{}.
 -type resources() :: [#resrc{}].
@@ -426,9 +426,7 @@ resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
     of
         'true' -> 'true';
         'false' ->
-            lager:debug("resource ~s does not have the required flag: ~s"
-                       ,[_Id, Flag]
-                       ),
+            lager:debug("resource ~s does not have the required flag: ~s", [_Id, Flag]),
             'false'
     end.
 
@@ -565,7 +563,8 @@ evaluate_rules([Rule|Rules], Number) ->
             %% matching groups by list, reverse so head is largest, then take the head of the list
             {Start, End} = hd(lists:reverse(lists:keysort(2, tl(CaptureGroups)))),
             {'ok', binary:part(Number, Start, End)};
-        _ -> evaluate_rules(Rules, Number)
+        _ ->
+            evaluate_rules(Rules, Number)
     end.
 
 -spec evaluate_cid_rules(re:mp(), ne_binary()) ->
@@ -689,10 +688,9 @@ maybe_get_t38(#gateway{fax_option=FaxOption}, OffnetJObj) ->
     case lists:member(<<"fax">>, Flags) of
         'false' -> [];
         'true' ->
-            kapps_call_command:get_outbound_t38_settings(
-              FaxOption
+            kapps_call_command:get_outbound_t38_settings(FaxOption
                                                         ,kapi_offnet_resource:t38_enabled(OffnetJObj)
-             )
+                                                        )
     end.
 
 -spec gateway_emergency_resource(gateway()) -> api_binary().
@@ -853,20 +851,18 @@ create_resource([{Classifier, ClassifierJObj}|Classifiers], ConfigClassifiers, R
         'false' -> create_resource(Classifiers, ConfigClassifiers, Resource, Resources);
         'true' ->
             JObj =
-                create_classifier_resource(
-                  Resource
+                create_classifier_resource(Resource
                                           ,ClassifierJObj
                                           ,Classifier
                                           ,ConfigClassifier
-                 ),
-            create_resource(
-              Classifiers
+                                          ),
+            create_resource(Classifiers
                            ,ConfigClassifiers
                            ,Resource
                            ,[resource_from_jobj(JObj)
                              | Resources
                             ]
-             )
+                           )
     end.
 
 -spec create_classifier_resource(kz_json:object(), kz_json:object(), ne_binary(), kz_proplist()) -> kz_json:object().
@@ -990,7 +986,10 @@ resource_cid_rules(JObj) ->
 
 -spec resource_grace_period(kz_json:object() | integer()) -> 0..100.
 resource_grace_period(JObj) when not is_integer(JObj) ->
-    Default = kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 3),
+    Default = case kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>) of
+                  'undefined' -> 3;
+                  Weight -> Weight
+              end,
     resource_grace_period(kz_json:get_integer_value(<<"grace_period">>, JObj, Default));
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod > 100 -> 100;
 resource_grace_period(GracePeriod) when is_integer(GracePeriod), GracePeriod < 0 -> 0;
@@ -998,8 +997,7 @@ resource_grace_period(GracePeriod) when is_integer(GracePeriod) -> GracePeriod.
 
 -spec resource_weight(kz_json:object() | integer()) -> integer().
 resource_weight(JObj) when not is_integer(JObj) ->
-    Default = kapps_config:get_integer(?SS_CONFIG_CAT, <<"default_weight">>, 1),
-    resource_weight(kz_json:get_integer_value(<<"weight_cost">>, JObj, Default));
+    resource_weight(kz_json:get_integer_value(<<"weight_cost">>, JObj, ?DEFAULT_WEIGHT));
 resource_weight(W) when W > 100 -> 100;
 resource_weight(W) when W < 1 -> 1;
 resource_weight(W) -> W.

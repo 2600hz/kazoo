@@ -9,7 +9,7 @@
 
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
-
+-define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
@@ -39,7 +39,7 @@ fields_without_defaults(JObj0) ->
     JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
     lists:sort([Field
                 || {Field, Content} <- kz_json:to_proplist(JObj),
-                   undefined =:= kz_json:get_value(?FIELD_DEFAULT, Content)
+                   'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content)
                ]).
 
 -spec process_project() -> kz_json:objects().
@@ -85,8 +85,20 @@ clause_to_schema(?CLAUSE(_Args, _Guards, Expressions), Schemas) ->
 expressions_to_schema(Expressions, Schemas) ->
     lists:foldl(fun expression_to_schema/2, Schemas, Expressions).
 
+expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set', _), Schemas) ->
+    Schemas;
+expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_default', _), Schemas) ->
+    Schemas;
+expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_node', _), Schemas) ->
+    Schemas;
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
     config_to_schema(F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set', _), Schemas) ->
+    Schemas;
+expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_default', _), Schemas) ->
+    Schemas;
+expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_node', _), Schemas) ->
+    Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', F, Args), Schemas) ->
     config_to_schema(F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
@@ -220,12 +232,7 @@ config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
     %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
     Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
-    Existing = kz_json:get_json_value([Document, ?FIELD_PROPERTIES | Key]
-                                     ,Schemas
-                                     ,kz_json:new()
-                                     ),
-    Updated = kz_json:merge_jobjs(Existing, Properties),
-    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Updated, Schemas).
+    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
@@ -316,11 +323,19 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integ
 
 guess_properties(Document, Key, Type, Default)
   when is_binary(Key) ->
+    DescriptionKey = description_key(Document, Key),
+    Description = fetch_description(DescriptionKey),
+    case Description of
+        'undefined' ->
+            io:format("\nMissing key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
+            halt(1);
+        _ -> 'ok'
+    end,
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
-        ,{<<"description">>, guess_description(Document, Key, Type)}
-        ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> undefined end}
+        ,{<<"description">>, Description}
+        ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
         ]
        )
      );
@@ -332,22 +347,10 @@ guess_properties(Document, [Key, ?FIELD_PROPERTIES], Type, Default) ->
 guess_properties(Document, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
     guess_properties(Document, Rest, Type, Default).
 
-guess_description(Document, Key, _Type) ->
-    Sentence = guess_description(Document, Key),
-    kz_util:join_binary(Sentence, <<$\s>>).
-guess_description(Document, Key) ->
-    [Document | guess_description(Key)].
-guess_description(Key) ->
-    [case Word of
-         <<"s">> -> <<"in seconds">>;
-         <<"ms">> -> <<"in milliseconds">>;
-         <<"d">> -> <<"in days">>;
-         <<"max">> -> <<"maximum">>;
-         <<"min">> -> <<"minimum">>;
-         _ -> Word
-     end
-     || Word <- binary:split(Key, <<$_>>, ['global'])
-    ].
+description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
+fetch_description(DescriptionKey) ->
+    {'ok', Bin} = file:read_file(?SYSTEM_CONFIG_DESCRIPTIONS),
+    kz_json:get_ne_binary_value(DescriptionKey, kz_json:decode(Bin)).
 
 default_value('undefined') -> 'undefined';
 default_value(?ATOM('true')) -> 'true';

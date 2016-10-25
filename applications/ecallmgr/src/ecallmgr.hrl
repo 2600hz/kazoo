@@ -3,6 +3,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
+-include("ecallmgr_config.hrl").
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
@@ -11,7 +12,10 @@
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 
--define(DEFAULT_FETCH_TIMEOUT, 2600).
+-define(DEFAULT_FETCH_TIMEOUT, ?ECALLMGR_DEFAULT_FETCH_TIMEOUT).
+
+-define(FS_NODES, ecallmgr_config:get(<<"fs_nodes">>, [])).
+-define(FS_NODES(Node), ecallmgr_config:get(<<"fs_nodes">>, [], Node)).
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
@@ -136,6 +140,9 @@
 -define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
 -define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)). % 10 seconds
 -define(MAX_NODE_RESTART_FAILURES, 3).
+
+-define(EXPIRES_DEVIATION_TIME,
+        ecallmgr_config:get_integer(<<"expires_deviation_time">>, 180)).
 
 %% list of dialplan Application-Names that can execute after a call has hung up
 -define(POST_HANGUP_COMMANDS, [<<"store">>, <<"set">>, <<"presence">>

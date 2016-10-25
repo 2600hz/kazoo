@@ -49,7 +49,7 @@
         ,{<<"male/tr-tr">>, <<"eurturkishmale">>}
         ]
        ).
--define(ISPEECH_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"http://api.ispeech.org/api/json">>)).
+-define(ISPEECH_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url_ispeech">>, <<"http://api.ispeech.org/api/json">>)).
 
 -define(VOICEFABRIC_VOICE_MAPPINGS
        ,[{<<"male/ru-ru">>, <<"Владимир8000"/utf8>>}
@@ -76,7 +76,7 @@
         ]
        ).
 
--define(VOICEFABRIC_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url">>, <<"https://voicefabric.ru/WSServer/ws/tts">>)).
+-define(VOICEFABRIC_TTS_URL, kapps_config:get_string(?MOD_CONFIG_CAT, <<"tts_url_voicefabric">>, <<"https://voicefabric.ru/WSServer/ws/tts">>)).
 
 -define(TMP_PATH, kapps_config:get(?MOD_CONFIG_CAT, <<"temporary_storage_path">>, <<"/tmp">>)).
 

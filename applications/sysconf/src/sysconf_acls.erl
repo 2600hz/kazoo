@@ -9,6 +9,7 @@
 
 -export([build/1]).
 
+-include_lib("ecallmgr/include/ecallmgr_config.hrl").
 -include("sysconf.hrl").
 
 -define(REQUEST_TIMEOUT, kapps_config:get_integer(?APP_NAME, <<"acl_request_timeout_ms">>, 2 * ?MILLISECONDS_IN_SECOND)).
@@ -36,10 +37,8 @@ collect(ACLs, PidRefs) ->
 
 -spec request_timeout() -> pos_integer().
 request_timeout() ->
-    case kapps_config:get(<<"ecallmgr">>, <<"fetch_timeout">>) of
-        'undefined' -> ?REQUEST_TIMEOUT;
-        Timeout -> Timeout - ?REQUEST_TIMEOUT_FUDGE
-    end.
+    kapps_config:get(<<"ecallmgr">>, <<"fetch_timeout">>, ?ECALLMGR_DEFAULT_FETCH_TIMEOUT)
+        - ?REQUEST_TIMEOUT_FUDGE.
 
 collect(ACLs, [], _Timeout) ->
     lager:debug("acls built with ~p ms to spare", [_Timeout]),

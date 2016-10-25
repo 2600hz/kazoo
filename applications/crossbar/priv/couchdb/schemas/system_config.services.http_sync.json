@@ -5,12 +5,12 @@
     "properties": {
         "connect_timeout_ms": {
             "default": 10000,
-            "description": "services.http_sync connect timeout in milliseconds",
+            "description": "services http sync connect timeout in milliseconds",
             "type": "integer"
         },
         "http_url": {
             "default": "",
-            "description": "services.http_sync http url",
+            "description": "services http sync http url",
             "type": "string"
         }
     },

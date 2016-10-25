@@ -567,7 +567,7 @@ remove_fs_node(FSNode, FSNodes, ConfigFun) ->
 
 -spec get_fs_nodes(ne_binary() | atom()) -> ne_binaries().
 get_fs_nodes(Node) ->
-    case ecallmgr_config:get(<<"fs_nodes">>, 'undefined', Node) of
+    case ?FS_NODES(Node) of
         [_|_]=FSNodes -> FSNodes;
         [] -> [];
         _Other ->

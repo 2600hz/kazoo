@@ -16,6 +16,7 @@
 %%%-------------------------------------------------------------------
 -module(kapps_speech).
 
+-include_lib("kazoo_translator/include/kazoo_translator.hrl").
 -include("kazoo_apps.hrl").
 -include("kapps_speech.hrl").
 
@@ -35,6 +36,9 @@
         ,asr_commands/4
         ,asr_commands/5
         ]).
+
+-define(TTS_API_KEY, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)).
+-define(ASR_PROVIDER, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>)).
 
 -type provider_errors() :: 'invalid_voice' | 'unknown_provider'.
 -type provider_return() :: {'error', provider_errors()} |
@@ -65,7 +69,7 @@ create(Text, Voice, Format) ->
 
 -spec create(ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
 create(Text, Voice, Format, Options) ->
-    Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_provider">>, <<"ispeech">>),
+    Provider = ?DEFAULT_TTS_ENGINE,
     create(Provider, Text, Voice, Format, Options).
 
 -spec create(api_binary(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) -> create_resp().
@@ -83,7 +87,7 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
                     ,{<<"voice">>, ISpeechVoice}
                     ,{<<"format">>, Format}
                     ,{<<"action">>, <<"convert">>}
-                    ,{<<"apikey">>, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>, <<>>)}
+                    ,{<<"apikey">>, ?TTS_API_KEY}
                     ,{<<"speed">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_speed">>, 0)}
                     ,{<<"startpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_start_padding">>, 1)}
                     ,{<<"endpadding">>, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"tts_end_padding">>, 0)}
@@ -119,8 +123,7 @@ create_voicefabric(Engine, Text, Voice, Opts) ->
             {'error', 'invalid_voice'};
         VFabricVoice ->
             BaseUrl = ?VOICEFABRIC_TTS_URL,
-            ApiKey = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"tts_api_key">>),
-            Data = [{<<"apikey">>, ApiKey}
+            Data = [{<<"apikey">>, ?TTS_API_KEY}
                    ,{<<"ttsVoice">>, VFabricVoice}
                    ,{<<"textFormat">>, <<"text/plain">>}
                    ,{<<"text">>, Text}
@@ -191,8 +194,7 @@ asr_freeform(Content, ContentType) ->
 asr_freeform(Content, ContentType, Locale) ->
     asr_freeform(Content, ContentType, Locale, []).
 asr_freeform(Content, ContentType, Locale, Options) ->
-    Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<>>),
-    case kz_util:is_empty(Provider) of
+    case kz_util:is_empty(?ASR_PROVIDER) of
         'true' -> {'error', 'no_asr_provider'};
         'false' -> maybe_convert_content(Content, ContentType, Locale, Options)
     end.
@@ -220,15 +222,13 @@ maybe_convert_content(Content, ContentType, Locale, Options) ->
 
 -spec attempt_asr_freeform(binary(), ne_binary(), ne_binary(), kz_proplist()) -> provider_return().
 attempt_asr_freeform(Content, ContentType, Locale, Options) ->
-    Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<>>),
-    case attempt_asr_freeform(Provider, Content, ContentType, Locale, Options) of
+    case attempt_asr_freeform(?ASR_PROVIDER, Content, ContentType, Locale, Options) of
         {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
         {'http_req_id', ReqID} ->
             lager:debug("streaming response ~p to provided option: ~p"
-                       ,[ReqID, props:get_value('receiver', Options)]
-                       ),
+                       ,[ReqID, props:get_value('receiver', Options)]),
             {'ok', ReqID};
         {'ok', 200, _Headers, Content2} ->
             lager:debug("asr of media succeeded: ~s", [Content2]),
@@ -285,8 +285,7 @@ asr_commands(Bin, Commands, ContentType) ->
 asr_commands(Bin, Commands, ContentType, Locale) ->
     asr_commands(Bin, Commands, ContentType, Locale, []).
 asr_commands(Bin, Commands, ContentType, Locale, Options) ->
-    Provider = kapps_config:get_binary(?MOD_CONFIG_CAT, <<"asr_provider">>, <<"ispeech">>),
-    case asr_commands(Provider, Bin, Commands, ContentType, Locale, Options) of
+    case asr_commands(?ASR_PROVIDER, Bin, Commands, ContentType, Locale, Options) of
         {'error', _R}=E ->
             lager:debug("asr failed with error ~p", [_R]),
             E;
@@ -357,7 +356,8 @@ create_response(<<"voicefabric">> = _Engine, {'ok', 200, Headers, Content}) ->
     Cmd = binary_to_list(iolist_to_binary(["sox -t ", From, " ", RawFile, " -t ", To, " ", WavFile])),
     lager:debug("os cmd: ~ts", [Cmd]),
     CmdOut = os:cmd(Cmd),
-    CmdOut =:= [] orelse lager:debug("cmd out: ~ts", [CmdOut]),
+    CmdOut =:= []
+        orelse lager:debug("cmd out: ~ts", [CmdOut]),
     kz_util:delete_file(RawFile),
     lager:debug("reading file"),
     case file:read_file(WavFile) of

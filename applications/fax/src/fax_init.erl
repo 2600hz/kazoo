@@ -23,11 +23,10 @@ start_link() ->
                                       {'_', [{<<"/fax/[...]">>, 'fax_file_proxy', []}]}
                                      ]),
 
-    Port = kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950),
     Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 50),
     %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
     cowboy:start_http('fax_file', Workers
-                     ,[{'port', Port}]
+                     ,[{'port', ?PORT}]
                      ,[{'env', [{'dispatch', Dispatch}]}]
                      ),
     'ignore'.

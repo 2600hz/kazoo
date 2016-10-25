@@ -22,12 +22,12 @@
             "type": "string"
         },
         "asr_provider": {
-            "default": "",
+            "default": "ispeech",
             "description": "speech asr provider",
             "type": "string"
         },
         "asr_url": {
-            "default": "http://api.ispeech.org/api/rest",
+            "default": "http://api.ispeech.org/api/json",
             "description": "speech asr url",
             "type": "string"
         },
@@ -62,7 +62,7 @@
             "type": "string"
         },
         "tts_provider": {
-            "default": "ispeech",
+            "default": "flite",
             "description": "speech tts provider",
             "type": "string"
         },
@@ -76,9 +76,14 @@
             "description": "speech tts start padding",
             "type": "integer"
         },
-        "tts_url": {
+        "tts_url_ispeech": {
             "default": "http://api.ispeech.org/api/json",
-            "description": "speech tts url",
+            "description": "speech TTS URL for iSpeech provider",
+            "type": "string"
+        },
+        "tts_url_voicefabric": {
+            "default": "https://voicefabric.ru/WSServer/ws/tts",
+            "description": "speech TTS URL for VoiceFabric provider",
             "type": "string"
         },
         "tts_voice": {

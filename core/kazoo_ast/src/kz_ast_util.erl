@@ -5,6 +5,7 @@
         ,binary_match_to_binary/1
 
         ,schema_path/1
+        ,api_path/1
         ,ensure_file_exists/1
         ,create_schema/1
 
@@ -55,6 +56,13 @@ schema_path(Base) ->
     filename:join([code:priv_dir('crossbar')
                   ,<<"couchdb">>
                   ,<<"schemas">>
+                  ,Base
+                  ]).
+
+-spec api_path(binary()) -> binary().
+api_path(Base) ->
+    filename:join([code:priv_dir('crossbar')
+                  ,<<"api">>
                   ,Base
                   ]).
 

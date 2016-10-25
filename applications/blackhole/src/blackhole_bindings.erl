@@ -44,9 +44,6 @@
 
 -include("blackhole.hrl").
 
--define(BH_MODULES,
-        kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES)).
-
 -type payload_el() :: bh_context:context() | ne_binary() | map().
 -type payload() :: [payload_el()] | payload_el().
 
@@ -204,7 +201,8 @@ is_bh_module(Mod) -> is_bh_module(kz_util:to_binary(Mod)).
 init() ->
     lager:debug("initializing blackhole bindings"),
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    lists:foreach(fun init_mod/1, ?BH_MODULES ++ ?COMMAND_MODULES).
+    Mods = lists:usort(blackhole_config:autoload_modules() ++ ?COMMAND_MODULES),
+    lists:foreach(fun init_mod/1, Mods).
 
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),

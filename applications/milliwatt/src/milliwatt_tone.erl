@@ -27,7 +27,7 @@ exec(Call) ->
 
 -spec get_tone() -> kz_json:object().
 get_tone() ->
-    JObj = kapps_config:get_non_empty(?CONFIG_CAT, <<"tone">>),
+    JObj = ?TONE,
     Hz = kz_json:get_list_value(<<"frequencies">>, JObj, ?FREQUENCIES),
     Duration = kz_json:get_value(<<"duration">>, JObj, ?DURATION),
 

@@ -4,7 +4,7 @@
     "description": "Schema for topup system_config",
     "properties": {
         "enable": {
-            "default": true,
+            "default": false,
             "description": "topup enable",
             "type": "boolean"
         }

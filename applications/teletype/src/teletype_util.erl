@@ -235,8 +235,8 @@ log_email_send_error(Reason) ->
 -spec smtp_options() -> kz_proplist().
 smtp_options() ->
     Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"username">>)),
-    Password = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"password">>)),
+    Username = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
+    Password = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
     Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
@@ -604,10 +604,7 @@ should_handle_notification(JObj, 'false') ->
 -spec should_handle_system() -> boolean().
 should_handle_system() ->
     lager:debug("should system handle notification"),
-    kapps_config:get(?NOTIFY_CONFIG_CAT
-                    ,<<"notification_app">>
-                    ,?APP_NAME
-                    )
+    kapps_config:get(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
         =:= ?APP_NAME.
 
 -spec should_handle_account(ne_binary()) -> boolean().
