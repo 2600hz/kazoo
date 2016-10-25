@@ -24,8 +24,6 @@ Presented by: James Aimonetti
     :BEAMER_env: column
     :END:
 - James Aimonetti
-  - ~Eye-Moe-Net-Tea~
-  - Commit to memory Patrick!
 - Kazoo Architect and Community at 2600Hz
 - mc_ on freenode
 *** Presenter                                                       :BMCOL:
@@ -126,7 +124,7 @@ http://{CB_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 
 #+BEGIN_LaTeX
 \begin{lstlisting}[language=javascript]
-var socket = new WebSocket("ws://{BLACKHOLE_IP_ADDRESS}:5555");
+var socket = new WebSocket("ws://{BH_IP}:5555");
 \end{lstlisting}
 #+END_LaTeX
 
@@ -190,10 +188,10 @@ send({
 \begin{lstlisting}[language=javascript]
 send({
     action: 'subscribe',
-    account_id: accountId,
-    auth_token: token,
-    bindings: ['doc_created.*.user.*'
-               ,'doc_edited.*.user.*'
+    account_id: "{ACCOUNT_ID}",
+    auth_token: "{AUTH_TOKEN}",
+    bindings: ["doc_created.*.user.*"
+               ,"doc_edited.*.user.*"
               ]
 });
 \end{lstlisting}
@@ -213,14 +211,145 @@ send({
 });
 \end{lstlisting}
 #+END_LaTeX
+
+** Monster makes this easy
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+- See [[https://github.com/2600hz/monster-ui/blob/master/docs/kazoocon.md][the docs]] for specifics
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+monster.socket.emit("subscribe", { account_id: self.accountId
+,auth_token: self.authToken
+,binding: "call.CHANNEL_CREATE.*"
+});
+
+addEvent = function(data) {
+  var formattedEvent = self.formatEvent(data),
+      eventTemplate = monster.template(self, 'event', formattedEvent);
+
+      template.find('.list-events tbody').prepend(eventTemplate);
+};
+\end{lstlisting}
+#+END_LaTeX
+** Monster makes this easy (cont)
+:PROPERTIES:
+:BEAMER_env: frame
+:BEAMER_opt: fragile
+:END:
+#+BEGIN_LaTeX
+\begin{lstlisting}[language=javascript]
+// Bind some js code to the reception of call events
+monster.socket.on("CHANNEL_CREATE", function (data) {
+  addEvent(data);
+});
+monster.socket.on("CHANNEL_ANSWER", function (data) {
+  addEvent(data);
+});
+
+monster.socket.on("CHANNEL_DESTROY", function (data) {
+  addEvent(data);
+});
+\end{lstlisting}
+#+END_LaTeX
+** Query for available bindings
+#+LaTeX: \scriptsize
+#+BEGIN_SRC shell
+curl -v -X GET http://{CROSSBAR}:8000/v2/websockets | python -mjson.tool
+#+END_SRC
+#+LaTeX: \scriptsize
+#+BEGIN_SRC json
+{
+    "data": {
+        "call": [
+            {
+                "binding": "call.CHANNEL_CREATE.*",
+                "event": "CHANNEL_CREATE"
+            },
+            {
+                "binding": "call.CHANNEL_ANSWER.*",
+                "event": "CHANNEL_ANSWER"
+            },
+            {
+                "binding": "call.CHANNEL_DESTROY.*",
+                "event": "CHANNEL_DESTROY"
+            },
+            {
+                "binding": "call.CHANNEL_BRIDGE.*",
+                "event": "CHANNEL_BRIDGE"
+            }
+        ]
+        ,...
+    }
+}
+#+END_SRC
+** Event categories available
+- Channel events
+- Fax events
+- Objects - identical to webhooks
+** Fetch account's socket connections
+#+LaTeX: \scriptsize
+#+BEGIN_SRC shell
+curl -v -X GET \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets
+#+END_SRC
+#+LaTeX: \scriptsize
+#+BEGIN_SRC json
+{
+    "data": [
+        "{SOCKET_ID1}",
+        "{SOCKET_ID2}",
+        "{SOCKET_ID3}"
+    ],
+    "status": "success"
+}
+#+END_SRC
+** Fetch bindings for a socket ID
+#+LaTeX: \scriptsize
+#+BEGIN_SRC shell
+curl -v -X GET \
+-H "X-Auth-Token: {AUTH_TOKEN}" \
+http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}
+#+END_SRC
+#+LaTeX: \scriptsize
+#+BEGIN_SRC json
+{
+    "data": [
+        {
+            "account_id": "{ACCOUNT_ID}",
+            "auth_token": "{AUTH_TOKEN}",
+            "bindings": [
+                "call.CHANNEL_DESTROY.*",
+                "call.CHANNEL_ANSWER.*",
+                "call.CHANNEL_CREATE.*"
+            ],
+            "websocket_session_id": "{SOCKET_ID}"
+        }
+    ],
+    "status": "success"
+}
+#+END_SRC
+** Execute commands
+#+LaTeX: \scriptsize
+#+BEGIN_SRC shell
+curl -v -X PUT \
+    -H "Content-Type: application/json" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"action": "metaflow", "data": { "module", "hangup" }}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/channels/{UUID}
+#+END_SRC
 ** The future
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
 - Support sending commands
-  - Currently, =cb_channels= is the way
+  - Currently, =cb_channels= is the way (via metaflows/konami)
+  - Pivot over websockets (great idea from yesterday!)
 - More events exposed for building richer UIs
-- Improved docs for the available events
+  - Conference events
+  - Notifications (vm left, system alerts)
 * Thank You
 #+BEGIN_LaTeX
 {
