@@ -44,7 +44,7 @@ start_event_process(Node, UUID) ->
 start_control_process(Node, CallId, FetchId) ->
     start_control_process(Node, CallId, FetchId, 'undefined', kz_json:new()).
 
--spec start_control_process(atom(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
+-spec start_control_process(atom(), ne_binary(), ne_binary(), api_ne_binary(), kz_proplist()) ->
                                    sup_startchild_ret().
 start_control_process(Node, CallId, FetchId, ControllerQ, CCVs) ->
     ecallmgr_call_control_sup:start_proc([Node

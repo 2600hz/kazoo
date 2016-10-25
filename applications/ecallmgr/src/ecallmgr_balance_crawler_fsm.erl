@@ -55,7 +55,7 @@ start_link() ->
 %%====================================================================
 %% callbacks
 %%====================================================================
--spec init(list()) -> {'ok', atom(), fsm_state()}.
+-spec init(list()) -> {'ok', 'idle', 'undefined'}.
 init(_Args) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(?MODULE),
