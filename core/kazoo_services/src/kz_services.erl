@@ -588,8 +588,15 @@ check_bookkeeper(BillingId, Amount) ->
         'kz_bookkeeper_local' ->
             Balance = wht_util:current_balance(BillingId),
             Balance - Amount >= 0;
-        Bookkeeper -> Bookkeeper:is_good_standing(BillingId)
+        Bookkeeper ->
+            CurrentStatus = current_service_status(BillingId),
+            Bookkeeper:is_good_standing(BillingId, CurrentStatus)
     end.
+
+-spec current_service_status(ne_binary()) -> ne_binary().
+current_service_status(AccountId) ->
+    {'ok', ServicesJObj} = fetch_services_doc(AccountId),
+    kzd_services:status(ServicesJObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -725,19 +732,13 @@ maybe_allow_updates(AccountId, ServicesJObj) ->
             lager:debug("checking local bookkeeper for account ~s in status ~s"
                        ,[AccountId, Status]
                        ),
-            maybe_local_bookkeeper_allow_updates(AccountId, Status)
+            maybe_bookkeeper_allow_updates(AccountId, Status)
     end.
 
--spec maybe_local_bookkeeper_allow_updates(ne_binary(), ne_binary()) -> 'true'.
-maybe_local_bookkeeper_allow_updates(AccountId, Status) ->
-    case select_bookkeeper(AccountId) of
-        'kz_bookkeeper_local' -> spawn_move_to_good_standing(AccountId);
-        Bookkeeper -> maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status)
-    end.
-
--spec maybe_bookkeeper_allow_updates(atom(), ne_binary(), ne_binary()) -> 'true'.
-maybe_bookkeeper_allow_updates(Bookkeeper, AccountId, Status) ->
-    case Bookkeeper:is_good_standing(AccountId) of
+-spec maybe_bookkeeper_allow_updates(ne_binary(), ne_binary()) -> 'true'.
+maybe_bookkeeper_allow_updates(AccountId, Status) ->
+    Bookkeeper = select_bookkeeper(AccountId),
+    case Bookkeeper:is_good_standing(AccountId, Status) of
         'true' -> spawn_move_to_good_standing(AccountId);
         'false' ->
             lager:debug("denying update request for services ~s due to status ~s", [AccountId, Status]),

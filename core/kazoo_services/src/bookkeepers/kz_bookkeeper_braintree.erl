@@ -8,7 +8,7 @@
 -module(kz_bookkeeper_braintree).
 
 -export([sync/2]).
--export([is_good_standing/1]).
+-export([is_good_standing/2]).
 -export([transactions/3]).
 -export([subscriptions/1]).
 -export([commit_transactions/2]).
@@ -39,8 +39,8 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec is_good_standing(ne_binary()) -> boolean().
-is_good_standing(AccountId) ->
+-spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
+is_good_standing(AccountId, _Status) ->
     try braintree_customer:find(AccountId) of
         Customer -> customer_has_card(Customer, AccountId)
     catch

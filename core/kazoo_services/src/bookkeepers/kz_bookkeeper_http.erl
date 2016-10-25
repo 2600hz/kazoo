@@ -7,6 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_bookkeeper_http).
 
+-export([is_good_standing/2]).
 -export([sync/2]).
 -export([transactions/3]).
 -export([commit_transactions/2]).
@@ -39,6 +40,16 @@
        ,[{"X-Sync-ID", kz_util:to_list(Sync#sync.id)}
         ,{"X-Account-ID", kz_util:to_list(Sync#sync.account_id)}
         ]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec is_good_standing(ne_binary(), ne_binary()) -> boolean().
+is_good_standing(_AccountId, Status) ->
+    Status =:= kzd_services:status_good().
 
 %%--------------------------------------------------------------------
 %% @public
