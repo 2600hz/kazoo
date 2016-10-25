@@ -297,7 +297,7 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
             {'error', R}
     end.
 
--spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok'.
+-spec sync_services_bookkeeper(ne_binary(), kz_json:object(), kz_service_items:items()) -> 'ok' | 'delinquent' | 'retry'.
 sync_services_bookkeeper(AccountId, ServicesJObj, ServiceItems) ->
     Bookkeeper = kz_services:select_bookkeeper(AccountId),
     lager:debug("attempting to sync with bookkeeper ~s", [Bookkeeper]),
