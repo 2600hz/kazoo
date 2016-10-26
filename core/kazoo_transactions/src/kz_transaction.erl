@@ -547,7 +547,7 @@ save_transaction(#kz_transaction{pvt_account_id=AccountId
 %% @end
 %%--------------------------------------------------------------------
 -spec service_save(transaction()) ->
-                          {'ok', kz_json:object()} |
+                          {'ok', transaction()} |
                           {'error', any()}.
 service_save(#kz_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
@@ -557,7 +557,7 @@ service_save(#kz_transaction{}=Transaction) ->
     end.
 
 -spec service_save_transaction(transaction()) ->
-                                      {'ok', kz_json:object()} |
+                                      {'ok', transaction()} |
                                       {'error', any()}.
 service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified=kz_util:current_tstamp()}),
@@ -571,7 +571,14 @@ service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) 
                       [{<<"transactions">>, [TransactionJObj|Transactions]}
                       ,{<<"pvt_dirty">>, 'true'}
                       ], JObj),
-            kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1)
+            case kz_datamgr:save_doc(?KZ_SERVICES_DB, JObj1) of
+                {'ok', _SavedJObj1} ->
+                    {'ok', from_json(TransactionJObj)};
+                {'error', _R} = Error ->
+                    lager:debug("failed to save account ~s services doc for transaction ~s: ~p"
+                               ,[AccountId, kz_doc:id(TransactionJObj), _R]),
+                    Error
+            end
     end.
 
 %%--------------------------------------------------------------------

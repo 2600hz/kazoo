@@ -16,9 +16,9 @@
 -type error() :: 'topup_disabled' |
                  'topup_undefined' |
                  'amount_undefined' |
-                 'limit_undefined' |
+                 'threshold_undefined' |
                  'balance_above_threshold' |
-                 'undefined' |
+                 'amount_and_threshold_undefined' |
                  atom().
 
 
@@ -31,11 +31,14 @@
 -spec init(api_binary(), integer()) ->
                   'ok' |
                   {'error', error()}.
-init(Account, Balance) ->
+init(Account, CurrentBalance) ->
+    Balance = wht_util:units_to_dollars(CurrentBalance),
     case get_top_up(Account) of
         {'error', _}=E -> E;
         {'ok', Amount, Threshold} ->
-            maybe_top_up(Account, wht_util:units_to_dollars(Balance), Amount, Threshold)
+            lager:info("checking if account ~s balance $~w is below top up threshold $~w"
+                      ,[Account, Balance, Threshold]),
+            maybe_top_up(Account, Balance, Amount, Threshold)
     end.
 
 %%--------------------------------------------------------------------
@@ -66,11 +69,11 @@ get_top_up(JObj) ->
         }
     of
         {'undefined', _} -> {'error', 'amount_undefined'};
-        {_, 'undefined'} -> {'error', 'limit_undefined'};
+        {_, 'undefined'} -> {'error', 'threshold_undefined'};
         {Amount, Threshold} when Amount > 0
                                  andalso Threshold > 0 ->
             {'ok', Amount, Threshold};
-        {_, _} -> {'error', 'undefined'}
+        {_, _} -> {'error', 'amount_and_threshold_undefined'}
     end.
 
 %%--------------------------------------------------------------------
@@ -124,8 +127,12 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 top_up(Account, Amount) ->
     Transaction = kz_transaction:debit(Account, wht_util:dollars_to_units(Amount)),
     Transaction1 = kz_transaction:set_reason(<<"topup">>, Transaction),
+    lager:info("attemptting to top up account ~s for ~p", [Account, Amount]),
     case kz_transaction:service_save(Transaction1) of
-        {'error', _E}=E -> E;
-        {'ok', _} ->
-            lager:info("account ~s top up for ~p", [Account, Amount])
+        {'error', _R}=E ->
+            lager:warning("failed to top up account ~s: ~p", [Account, _R]),
+            E;
+        {'ok', SavedTransaction} ->
+            lager:info("account ~s top up for ~p, transaction id ~s"
+                      ,[Account, Amount, kz_transaction:id(SavedTransaction)])
     end.
