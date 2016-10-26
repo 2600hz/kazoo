@@ -344,7 +344,7 @@ check_dbs_existence([Db | Dbs], MsgsDict) ->
         'false' ->
             lager:warning("modb ~s is not exists", [Db]),
             update_stats(?FAILED_MODB, dict:fetch(Db, MsgsDict), <<"modb_not_exists">>),
-            dict:erase(Db, MsgsDict)
+            check_dbs_existence(Dbs, dict:erase(Db, MsgsDict))
     end.
 
 %%--------------------------------------------------------------------
