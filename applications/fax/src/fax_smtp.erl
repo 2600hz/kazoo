@@ -792,7 +792,7 @@ process_part(CT, Body, State) ->
 maybe_ignore_no_valid_attachment(#state{filename='undefined'}=State) -> State;
 maybe_ignore_no_valid_attachment(#state{errors=Errors}=State) ->
     NewErrors = [Error || Error <- Errors
-                         ,Error =/= ?ERROR_NO_VALID_ATTACHMENT],
+                              ,Error =/= ?ERROR_NO_VALID_ATTACHMENT],
     State#state{errors=NewErrors}.
 
 -spec is_allowed_content_type(ne_binary()) -> boolean().
