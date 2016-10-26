@@ -21,5 +21,5 @@ function sup_() {
 sleep 360 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
 sleep 440 && sup_ init stop &
 
-export KAZOO_CONFIG=rel/ci-config.ini
+export KAZOO_CONFIG=$PWD/rel/ci-config.ini
 REL=$rel make release
