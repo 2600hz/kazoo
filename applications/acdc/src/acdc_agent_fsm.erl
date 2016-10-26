@@ -1741,7 +1741,8 @@ get_endpoints(OrigEPs, AgentListener, Call, AgentId, QueueId) ->
 -spec return_to_state(non_neg_integer(), pos_integer()) -> 'paused' | 'ready'.
 return_to_state(Fails, MaxFails) ->
     lager:debug("fails ~b max ~b going to pause", [Fails, MaxFails]),
-    case is_integer(MaxFails) andalso Fails >= MaxFails of
+    case is_integer(MaxFails)
+        andalso Fails >= MaxFails of
         'true' -> 'paused';
         'false' -> 'ready'
     end.
