@@ -19,6 +19,9 @@
 %%%-------------------------------------------------------------------
 -module(kz_token_bucket_pqc).
 
+-define(DO_NOT_RUN_QC_TOKEN_BUCKETS, true).
+-ifndef(DO_NOT_RUN_QC_TOKEN_BUCKETS).
+
 %% -include_lib("kazoo_token_buckets/src/kz_buckets.hrl").
 
 -ifdef(PROPER).
@@ -284,5 +287,7 @@ tokens_credit(Credit, #state{current=T
         N when N > M -> Model#state{current=M};
         N -> Model#state{current=N}
     end.
+
+-endif.
 
 -endif.

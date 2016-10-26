@@ -29,10 +29,11 @@ before_install:
   - cd $TRAVIS_BUILD_DIR
 
 script:
-  - make compile-test
-  - make eunit
-  - # ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
-  - # ERL_LIBS="$HOME/proper" make eunit
+  - # make compile-test
+  - # make eunit
+  - make deps
+  - ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
+  - ERL_LIBS="$HOME/proper" make eunit
 
 after_success:
   - if [[ "$TRAVIS_REPO_SLUG" == '2600hz/kazoo' ]]; then make coverage-report; fi
