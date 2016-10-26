@@ -25,6 +25,7 @@
 -export([purge_discovery/0
         ,purge_discovery/1
         ]).
+-export([maybe_update_number_services_view/1]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
@@ -77,6 +78,31 @@ refresh_numbers_db(<<"+", Suffix/binary>>) ->
 refresh_numbers_db(Suffix) ->
     NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
     refresh_numbers_db(NumberDb).
+
+%% @public
+-spec maybe_update_number_services_view(ne_binary()) -> any().
+maybe_update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
+    Classifiers = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
+    Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], JObj)}
+             || JObj <- [Classifiers],
+                Classification <- kz_json:get_keys(JObj)
+            ],
+    {Classifications, Regexs} = lists:unzip(lists:keysort(1, Pairs)),
+    MapView = number_services_map(Classifications, Regexs),
+    RedView = number_services_red(Classifications, Regexs),
+    ViewName = <<"_design/numbers">>,
+    {ok, View} = kz_datamgr:open_doc(AccountDb, ViewName),
+    NewView = kz_json:set_values([{[<<"views">>, <<"reconcile_services">>, <<"map">>], MapView}
+                                 ,{[<<"views">>, <<"reconcile_services">>, <<"reduce">>], RedView}
+                                 ]
+                                ,View
+                                ),
+    case kz_json:are_identical(View, NewView) of
+        true -> io:format("View is up to date.\n");
+        false ->
+            true = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
+            io:format("View updated!\n")
+    end.
 
 %% @public
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
@@ -191,6 +217,48 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+escape(?NE_BINARY=Bin0) ->
+    StartSz = byte_size(Start= <<"<<">>),
+    EndSz   = byte_size(End  = <<">>">>),
+    Bin = iolist_to_binary(io_lib:format("~p", [Bin0])),
+    SizeOfWhatIWant = byte_size(Bin) - (StartSz + EndSz),
+    <<Start:StartSz/binary, Escaped:SizeOfWhatIWant/binary, End:EndSz/binary>> = Bin,
+    Escaped.
+
+number_services_map(Classifications, Regexs) ->
+    %% Cs = binary_to_list(kz_json:encode(Classifications)),
+    %% Rs = binary_to_list(kz_json:encode(Regexs)),
+    iolist_to_binary(
+      ["function(doc) {"
+       "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
+       "  var e164 = doc._id;"
+       "  var res = {", kz_util:iolist_join(", ", [[$',C,"':0"] || C <- Classifications]), "};"
+       %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
+       "  if (false) return;"
+      ,[["  else if (e164.match(", escape(R), ")) res['", C, "'] = 1;"]
+        || {C, R} <- lists:zip(Classifications, Regexs)
+       ]
+      ,"  emit(doc._id, res);"
+       "}"
+      ]).
+
+number_services_red(Classifications, _Regexs) ->
+    iolist_to_binary(
+      ["function(Keys, Values, _Rereduce) {"
+       "  var res = {", kz_util:iolist_join(", ", [[$',C,"':0"] || C <- Classifications]), "};"
+       "  var keys = [];",
+       "  for (var p in res)",
+       "    if (res.hasOwnProperty(p))",
+       "      keys.push(p);",
+       "  for (var i in Values)",
+       "    for (var k in keys) {",
+       "      var key = keys[k];",
+       "      res[key] += Values[i][key] || 0;",
+       "    }",
+       "  return res;",
+       "}"
+      ]).
 
 -spec foreach_pause_in_between(non_neg_integer(), fun(), list()) -> 'ok'.
 foreach_pause_in_between(_, _, []) -> 'ok';
