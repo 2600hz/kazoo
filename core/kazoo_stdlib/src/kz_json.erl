@@ -383,7 +383,6 @@ merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 -spec recursive_from_list(json_proplist() | json_array()) -> object() | json_array().
 -spec recursive_from_list(json_proplist() | json_array(), json_proplist()) ->
                                  json_proplist() | json_array().
-recursive_from_list([]) -> from_list([]);
 recursive_from_list(L) when is_list(L) ->
     %% If no keys are defined, it is a JSON array
     case props:get_keys(L) of
@@ -394,6 +393,8 @@ recursive_from_list(L) when is_list(L) ->
 recursive_from_list([], Acc) -> lists:reverse(Acc);
 recursive_from_list([{K,V}|T], Acc) when is_list(V) ->
     recursive_from_list(T, [{K, recursive_from_list(V)} | Acc]);
+recursive_from_list([V|T], Acc) when is_list(V) ->
+    recursive_from_list(T, [recursive_from_list(V) | Acc]);
 recursive_from_list([H|T], Acc) ->
     recursive_from_list(T, [H | Acc]).
 
