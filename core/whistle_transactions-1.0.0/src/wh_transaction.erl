@@ -534,7 +534,7 @@ save_transaction(#wh_transaction{pvt_account_id=AccountId
 %% @end
 %%--------------------------------------------------------------------
 -spec service_save(transaction()) ->
-                          {'ok', wh_json:object()} |
+                          {'ok', transaction()} |
                           {'error', any()}.
 service_save(#wh_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
@@ -544,7 +544,7 @@ service_save(#wh_transaction{}=Transaction) ->
     end.
 
 -spec service_save_transaction(transaction()) ->
-                                      {'ok', wh_json:object()} |
+                                      {'ok', transaction()} |
                                       {'error', any()}.
 service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) ->
     TransactionJObj = to_json(Transaction#wh_transaction{pvt_modified=wh_util:current_tstamp()}),
@@ -558,7 +558,13 @@ service_save_transaction(#wh_transaction{pvt_account_id=AccountId}=Transaction) 
                       [{<<"transactions">>, [TransactionJObj|Transactions]}
                       ,{<<"pvt_dirty">>, 'true'}
                       ], JObj),
-            couch_mgr:save_doc(?WH_SERVICES_DB, JObj1)
+            case couch_mgr:save_doc(?WH_SERVICES_DB, JObj1) of
+                {'ok', _SavedJObj} ->
+                    {'ok', from_json(TransactionJObj)};
+                {'error', _R} = Error ->
+                    lager:debug("failed to save services doc for ~s: ~p", [AccountId, _R]),
+                    Error
+            end
     end.
 
 %%--------------------------------------------------------------------
