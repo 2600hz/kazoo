@@ -5,7 +5,7 @@ PROJECT = kazoo_number_manager
 ITU = src/knm_iso3166a2_itu.erl
 ITU_SRC = src/knm_iso3166a2_itu.erl.src
 ITU_FILE = dialcodes.json
-ITU_URL = https://raw.githubusercontent.com/mledoze/countries/master/countries.json
+ITU_URL = https://raw.githubusercontent.com/mledoze/countries/c212082894e48e8be123dad5dea7d9e6abc0c1b9/countries.json
 # official list https://www.itu.int/pub/T-SP-E.164D
 # but there are newer ones… https://www.itu.int/pub/T-SP-OB
 #
