@@ -227,26 +227,34 @@ escape(?NE_BINARY=Bin0) ->
     Escaped.
 
 number_services_map(Classifications, Regexs) ->
-    %% Cs = binary_to_list(kz_json:encode(Classifications)),
-    %% Rs = binary_to_list(kz_json:encode(Regexs)),
+    Features = ?DEFAULT_ALLOWED_FEATURES,
+    Items = Classifications ++ Features,
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
        "  var e164 = doc._id;"
-       "  var res = {", kz_util:iolist_join(", ", [[$',C,"':0"] || C <- Classifications]), "};"
+       "  var res = {", kz_util:iolist_join(", ", [[$',I,"':0"] || I <- Items]), "};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
        "  if (false) return;"
       ,[["  else if (e164.match(", escape(R), ")) res['", C, "'] = 1;"]
         || {C, R} <- lists:zip(Classifications, Regexs)
        ]
-      ,"  emit(doc._id, res);"
+      ,"  var features = [", kz_util:iolist_join($,,[[$',F,$'] || F <- Features]), "];"
+      ,"  var used = doc.pvt_features || {};"
+       "  for (var i in features) {"
+       "    var feature = features[i];"
+       "    if (used.hasOwnProperty(feature))"
+       "      res[feature] += 1;"
+       "  }"
+       "  emit(doc._id, res);"
        "}"
       ]).
 
 number_services_red(Classifications, _Regexs) ->
+    Items = Classifications ++ ?DEFAULT_ALLOWED_FEATURES,
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
-       "  var res = {", kz_util:iolist_join(", ", [[$',C,"':0"] || C <- Classifications]), "};"
+       "  var res = {", kz_util:iolist_join(", ", [[$',I,"':0"] || I <- Items]), "};"
        "  var keys = [];",
        "  for (var p in res)",
        "    if (res.hasOwnProperty(p))",
