@@ -103,7 +103,9 @@ db_info(#server{}=Conn, DbName) ->
 db_exists(#server{}=Conn, DbName) ->
     couchbeam:db_exists(Conn, kz_util:to_list(DbName)).
 
--spec db_archive(server(), ne_binary(), ne_binary()) -> 'ok'.
+-spec db_archive(server(), ne_binary(), ne_binary()) ->
+                        'ok' |
+                        couchbeam_error().
 db_archive(#server{}=Conn, DbName, Filename) ->
     Db = get_db(Conn, DbName),
     {'ok', DbInfo} = db_info(Conn, DbName),

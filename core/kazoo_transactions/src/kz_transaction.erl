@@ -79,6 +79,7 @@
 -export_type([transaction/0
              ,transactions/0
              ,units/0
+             ,dollars/0
              ]).
 
 %%--------------------------------------------------------------------

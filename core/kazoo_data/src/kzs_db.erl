@@ -116,14 +116,14 @@ db_exists_others(_, []) -> 'true';
 db_exists_others(DbName, Others) ->
     lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
 
--spec db_archive(map(), ne_binary(), ne_binary()) -> boolean().
+-spec db_archive(map(), ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_archive(Conn, DbName, Filename);
         'false' -> 'ok'
     end.
 
--spec db_import(map(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec db_import(map(), ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);

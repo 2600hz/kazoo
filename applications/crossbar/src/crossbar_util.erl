@@ -246,8 +246,10 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
 %% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
--spec response_bad_identifier(ne_binary(), cb_context:context()) ->
+-spec response_bad_identifier(atom() | ne_binary(), cb_context:context()) ->
                                      cb_context:context().
+response_bad_identifier(Id, Context) when is_atom(Id) ->
+    response('error', <<"bad identifier">>, 404, [kz_util:to_binary(Id)], Context);
 response_bad_identifier(?NE_BINARY = Id, Context) ->
     response('error', <<"bad identifier">>, 404, [Id], Context).
 

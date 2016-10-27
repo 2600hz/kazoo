@@ -55,9 +55,11 @@
         ]).
 
 %% Server operations
--spec new_connection(ne_binary()) -> kz_data:connection().
+-spec new_connection(map()) -> kz_data:connection() |
+                               {'error', 'timeout' | 'ehostunreach' | _}.
 new_connection(Map) ->
     kz_couch_util:new_connection(Map).
+
 -spec format_error(any()) -> any().
 format_error(Error) ->
     kz_couch_util:format_error(Error).

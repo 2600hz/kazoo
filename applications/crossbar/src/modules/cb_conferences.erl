@@ -171,7 +171,7 @@ delete(Context, _) ->
 %%%===================================================================
 %%% Conference validation helpers
 %%%===================================================================
--spec load_conference(ne_binary(), cb_context:context()) -> kz_json:object().
+-spec load_conference(ne_binary(), cb_context:context()) -> cb_context:context().
 load_conference(ConferenceId, Context) ->
     crossbar_doc:load(ConferenceId, Context).
 

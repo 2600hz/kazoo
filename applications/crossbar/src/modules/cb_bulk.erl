@@ -78,7 +78,7 @@ validate(Context) ->
 -spec maybe_load_docs(cb_context:context()) -> cb_context:context().
 maybe_load_docs(Context) ->
     JObj = cb_context:req_data(Context),
-    Ids = sets:from_list(kz_json:get_value(<<"ids">>, JObj, [])),
+    Ids = sets:from_list(kz_json:get_list_value(<<"ids">>, JObj, [])),
     Context1 = crossbar_doc:load(sets:to_list(Ids), Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_follow_groups(Ids, Context1);
@@ -87,9 +87,7 @@ maybe_load_docs(Context) ->
 
 -spec maybe_follow_groups(sets:set(), cb_context:context()) -> cb_context:context().
 maybe_follow_groups(Ids, Context) ->
-    JObjs = cb_context:doc(Context),
-    Context1 = cb_context:set_doc(Context, []),
-    maybe_follow_groups(JObjs, Ids, Context1).
+    maybe_follow_groups(cb_context:doc(Context), Ids, cb_context:set_doc(Context, [])).
 
 -spec maybe_follow_groups(kz_json:objects(), sets:set(), cb_context:context()) ->
                                  cb_context:context().

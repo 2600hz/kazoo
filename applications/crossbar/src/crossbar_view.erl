@@ -13,7 +13,7 @@
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
     Mapper = props:get_value('mapper', Options, fun id/1),
     CouchOptions = props:get_value('couch_options', Options, []),
@@ -25,7 +25,7 @@ map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
 map_keymap(K) when is_function(K) -> K.
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(), Mapper :: fun(), KeyMap :: fun()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary(), kz_proplist(), Mapper :: fun(), KeyMap :: fun()) -> cb_context:context().
 load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
@@ -107,12 +107,12 @@ page_size(Context, _Version) ->
 
 -spec add_paging(integer(), integer(), integer(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
-    kz_json:set_values([
-                        {<<"start_key">>, StartKey},
+    kz_json:set_values([{<<"start_key">>, StartKey},
                         {<<"page_size">>, PageSize},
                         {<<"next_start_key">>, NextStartKey}
-                       ],
-                       JObj).
+                       ]
+                      ,JObj
+                      ).
 
 -spec remove_paging(kz_json:object()) -> kz_json:object().
 remove_paging(JObj) ->
@@ -126,14 +126,14 @@ format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
     Envelope = add_paging(StartKey, PageSize, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
--spec build_qs_filter_mapper(kz_json:object()) -> fun().
+-spec build_qs_filter_mapper(cb_context:context()) -> fun((kz_json:object()) -> kz_json:json_term()).
 build_qs_filter_mapper(Context) ->
     case crossbar_filter:is_defined(Context) of
         'true' -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
         'false' -> fun id/1
     end.
 
--spec build_qs_filter_options(kz_json:object()) -> list().
+-spec build_qs_filter_options(cb_context:context()) -> ['include_docs'] | [].
 build_qs_filter_options(Context) ->
     case crossbar_filter:is_defined(Context) of
         'true' -> ['include_docs'];

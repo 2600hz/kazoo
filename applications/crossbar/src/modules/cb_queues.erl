@@ -591,9 +591,7 @@ add_queue_to_agents(Id, Context, AgentIds) ->
 
 add_queue_to_agents_diff(_Id, Context, []) ->
     lager:debug("no more agent ids to add to queue"),
-    cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
-                      ,[]
-                      );
+    cb_context:set_doc(cb_context:set_resp_status(Context, 'success'), []);
 add_queue_to_agents_diff(Id, Context, AgentIds) ->
     Context1 = crossbar_doc:load(AgentIds, Context, ?TYPE_CHECK_OPTION(<<"user">>)),
     case cb_context:resp_status(Context1) of
