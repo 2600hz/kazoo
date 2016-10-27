@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_agent_sup).
 
@@ -26,8 +27,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
--define(CHILDREN, [?WORKER_ARGS('acdc_agent_listener', [self() | Args])
-                  ,?WORKER_ARGS('acdc_agent_fsm', [self() | Args])
+-define(CHILDREN, [?WORKER_ARGS_TYPE('acdc_agent_listener', [self() | Args], 'transient')
+                  ,?WORKER_ARGS_TYPE('acdc_agent_fsm', [self() | Args], 'transient')
                   ]).
 
 %%%===================================================================

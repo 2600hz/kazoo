@@ -25,6 +25,7 @@
         ,originate_execute/2
         ,originate_uuid/3
         ,outbound_call/2
+        ,send_agent_available/1
         ,send_sync_req/1
         ,send_sync_resp/3, send_sync_resp/4
         ,config/1, refresh_config/2
@@ -172,28 +173,17 @@
 start_link(Supervisor, AgentJObj) ->
     AgentId = kz_doc:id(AgentJObj),
     AcctId = account_id(AgentJObj),
-
     Queues = kz_json:get_value(<<"queues">>, AgentJObj, []),
     start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues).
-start_link(Supervisor, _, _AcctId, _AgentId, []) ->
-    lager:debug("agent ~s has no queues, not starting", [_AgentId]),
-    _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-    'ignore';
+
 start_link(Supervisor, AgentJObj, AcctId, AgentId, Queues) ->
-    case acdc_agent_util:most_recent_status(AcctId, AgentId) of
-        {'ok', <<"logged_out">>} ->
-            lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AcctId]),
-            _ = kz_util:spawn(fun acdc_agent_sup:stop/1, [Supervisor]),
-            'ignore';
-        {'ok', _S} ->
-            lager:debug("start bindings for ~s(~s) in ~s", [AcctId, AgentId, _S]),
-            gen_listener:start_link(?SERVER
-                                   ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
-                                    ,{'responders', ?RESPONDERS}
-                                    ]
-                                   ,[Supervisor, AgentJObj, Queues]
-                                   )
-    end.
+    lager:debug("start bindings for ~s(~s) in ready", [AcctId, AgentId]),
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?BINDINGS(AcctId, AgentId)}
+                            ,{'responders', ?RESPONDERS}
+                            ]
+                           ,[Supervisor, AgentJObj, Queues]
+                           ).
 
 start_link(Supervisor, ThiefCall, QueueId) ->
     AgentId = kapps_call:owner_id(ThiefCall),
@@ -258,6 +248,10 @@ originate_uuid(Srv, UUID, CtlQ) ->
 outbound_call(Srv, CallId) ->
     gen_listener:cast(Srv, {'outbound_call', CallId}).
 
+-spec send_agent_available(pid()) -> 'ok'.
+send_agent_available(Srv) ->
+    gen_listener:cast(Srv, 'send_agent_available').
+
 send_sync_req(Srv) -> gen_listener:cast(Srv, {'send_sync_req'}).
 
 send_sync_resp(Srv, Status, ReqJObj) -> send_sync_resp(Srv, Status, ReqJObj, []).
@@ -277,10 +271,10 @@ send_status_resume(Srv) ->
     gen_listener:cast(Srv, {'send_status_update', 'resume'}).
 
 add_acdc_queue(Srv, Q) ->
-    gen_listener:cast(Srv, {'queue_login', Q}).
+    gen_listener:cast(Srv, {'add_acdc_queue', Q}).
 
 rm_acdc_queue(Srv, Q) ->
-    gen_listener:cast(Srv, {'queue_logout', Q}).
+    gen_listener:cast(Srv, {'rm_acdc_queue', Q}).
 
 call_status_req(Srv) ->
     gen_listener:cast(Srv, 'call_status_req').
@@ -414,8 +408,8 @@ handle_cast({'refresh_config', Qs}, #state{agent_queues=Queues}=State) ->
     {Add, Rm} = acdc_agent_util:changed(Queues, Qs),
 
     Self = self(),
-    _ = [gen_listener:cast(Self, {'queue_login', A}) || A <- Add],
-    _ = [gen_listener:cast(Self, {'queue_logout', R}) || R <- Rm],
+    _ = [gen_listener:cast(Self, {'add_acdc_queue', A}) || A <- Add],
+    _ = [gen_listener:cast(Self, {'rm_acdc_queue', R}) || R <- Rm],
     {'noreply', State};
 handle_cast({'stop_agent', Req}, #state{supervisor=Supervisor}=State) ->
     lager:debug("stop agent requested by ~p", [Req]),
@@ -432,39 +426,35 @@ handle_cast({'fsm_started', FSMPid}, State) ->
 handle_cast({'gen_listener', {'created_queue', Q}}, State) ->
     {'noreply', State#state{my_q=Q}, 'hibernate'};
 
-handle_cast({'queue_login', Q}, #state{agent_queues=Qs
-                                      ,acct_id=AcctId
-                                      ,agent_id=AgentId
-                                      }=State) when is_binary(Q) ->
+handle_cast({'add_acdc_queue', Q}, #state{agent_queues=Qs
+                                         ,acct_id=AcctId
+                                         ,agent_id=AgentId
+                                         }=State) when is_binary(Q) ->
     case lists:member(Q, Qs) of
         'true' ->
-            lager:debug("already logged into queue ~s", [Q]),
+            lager:debug("queue ~s already added", [Q]),
             {'noreply', State};
         'false' ->
-            lager:debug("adding binding (logging in) to queue ~s", [Q]),
-            login_to_queue(AcctId, AgentId, Q),
+            add_queue_binding(AcctId, AgentId, Q),
             {'noreply', State#state{agent_queues=[Q|Qs]}}
     end;
-handle_cast({'queue_login', QJObj}, State) ->
-    lager:debug("queue jobj: ~p", [QJObj]),
-    handle_cast({'queue_login', kz_doc:id(QJObj)}, State);
 
-handle_cast({'queue_logout', Q}, #state{agent_queues=[Q]
-                                       ,acct_id=AcctId
-                                       ,agent_id=AgentId
-                                       }=State) ->
+handle_cast({'rm_acdc_queue', Q}, #state{agent_queues=[Q]
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                        ,fsm_pid=FSM
+                                        }=State) ->
     lager:debug("agent logged out of last known queue ~s, logging out", [Q]),
-    logout_from_queue(AcctId, AgentId, Q),
-    logout_agent(self()),
+    rm_queue_binding(AcctId, AgentId, Q),
+    acdc_agent_fsm:agent_logout(FSM),
     {'noreply', State#state{agent_queues=[]}};
-handle_cast({'queue_logout', Q}, #state{agent_queues=Qs
-                                       ,acct_id=AcctId
-                                       ,agent_id=AgentId
-                                       }=State) ->
+handle_cast({'rm_acdc_queue', Q}, #state{agent_queues=Qs
+                                        ,acct_id=AcctId
+                                        ,agent_id=AgentId
+                                        }=State) ->
     case lists:member(Q, Qs) of
         'true' ->
-            lager:debug("removing binding (logging out) from queue ~s", [Q]),
-            logout_from_queue(AcctId, AgentId, Q),
+            rm_queue_binding(AcctId, AgentId, Q),
             {'noreply', State#state{agent_queues=lists:delete(Q, Qs)}, 'hibernate'};
         'false' ->
             lager:debug("not logged into queue ~s", [Q]),
@@ -475,8 +465,7 @@ handle_cast('bind_to_member_reqs', #state{agent_queues=Qs
                                          ,acct_id=AcctId
                                          ,agent_id=AgentId
                                          }=State) ->
-    lager:debug("binding to queues: ~p", [Qs]),
-    _ = [login_to_queue(AcctId, AgentId, Q) || Q <- Qs],
+    _ = [add_queue_binding(AcctId, AgentId, Q) || Q <- Qs],
     {'noreply', State};
 
 handle_cast({'rebind_events', OldCallId, NewCallId}, State) ->
@@ -752,6 +741,13 @@ handle_cast({'outbound_call', CallId}, State) ->
     lager:debug("bound to agent's outbound call ~s", [CallId]),
     {'noreply', State#state{call=kapps_call:set_call_id(CallId, kapps_call:new())}, 'hibernate'};
 
+handle_cast('send_agent_available', #state{agent_id=AgentId
+                                          ,acct_id=AcctId
+                                          ,agent_queues=Qs
+                                          }=State) ->
+    [send_agent_available(AcctId, AgentId, QueueId) || QueueId <- Qs],
+    {'noreply', State};
+
 handle_cast({'send_sync_req'}, #state{my_id=MyId
                                      ,my_q=MyQ
                                      ,acct_id=AcctId
@@ -909,7 +905,7 @@ terminate(Reason, #state{agent_queues=Queues
                         ,agent_id=AgentId
                         }
          ) when Reason == 'normal'; Reason == 'shutdown' ->
-    _ = [logout_from_queue(AcctId, AgentId, QueueId) || QueueId <- Queues],
+    _ = [rm_queue_binding(AcctId, AgentId, QueueId) || QueueId <- Queues],
     lager:debug("agent process going down: ~p", [Reason]);
 terminate(_Reason, _State) ->
     lager:debug("agent process going down: ~p", [_Reason]).
@@ -1099,14 +1095,30 @@ outbound_call_id(CallId, AgentId) when is_binary(CallId) ->
     <<(kz_util:to_hex_binary(erlang:md5(CallId)))/binary, "-", AgentId/binary, "-", Rnd/binary>>;
 outbound_call_id(Call, AgentId) -> outbound_call_id(kapps_call:call_id(Call), AgentId).
 
--spec login_to_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-login_to_queue(AcctId, AgentId, QueueId) ->
+-spec add_queue_binding(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+add_queue_binding(AcctId, AgentId, QueueId) ->
+    lager:debug("adding queue binding for ~s", [QueueId]),
     gen_listener:add_binding(self()
                             ,'acdc_queue'
                             ,[{'restrict_to', ['member_connect_req']}
                              ,{'queue_id', QueueId}
                              ,{'account_id', AcctId}
                              ]),
+    send_agent_available(AcctId, AgentId, QueueId).
+
+-spec rm_queue_binding(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+rm_queue_binding(AcctId, AgentId, QueueId) ->
+    lager:debug("removing queue binding for ~s", [QueueId]),
+    gen_listener:rm_binding(self()
+                           ,'acdc_queue'
+                           ,[{'restrict_to', ['member_connect_req']}
+                            ,{'queue_id', QueueId}
+                            ,{'account_id', AcctId}
+                            ]),
+    send_agent_unavailable(AcctId, AgentId, QueueId).
+
+-spec send_agent_available(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_agent_available(AcctId, AgentId, QueueId) ->
     Prop = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Queue-ID">>, QueueId}
@@ -1115,14 +1127,8 @@ login_to_queue(AcctId, AgentId, QueueId) ->
            ],
     kapi_acdc_queue:publish_agent_change(Prop).
 
--spec logout_from_queue(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
-logout_from_queue(AcctId, AgentId, QueueId) ->
-    gen_listener:rm_binding(self()
-                           ,'acdc_queue'
-                           ,[{'restrict_to', ['member_connect_req']}
-                            ,{'queue_id', QueueId}
-                            ,{'account_id', AcctId}
-                            ]),
+-spec send_agent_unavailable(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_agent_unavailable(AcctId, AgentId, QueueId) ->
     Prop = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Queue-ID">>, QueueId}
