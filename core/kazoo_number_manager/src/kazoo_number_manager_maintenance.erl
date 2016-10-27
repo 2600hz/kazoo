@@ -245,6 +245,12 @@ escape(?NE_BINARY=Bin0) ->
     <<Start:StartSz/binary, Escaped:SizeOfWhatIWant/binary, End:EndSz/binary>> = Bin,
     Escaped.
 
+fields_zeros(Fields) ->
+    kz_util:iolist_join($,, [[$',Field,"':0"] || Field <- Fields]).
+
+array_items(Items) ->
+    kz_util:iolist_join($,, [[$',I,$'] || I <- Items]).
+
 number_services_map(Classifications, Regexs) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
     Modules = ?ALL_KNM_CARRIERS,
@@ -252,8 +258,8 @@ number_services_map(Classifications, Regexs) ->
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
        "  var e164 = doc._id;"
-       "  var resCB = {", kz_util:iolist_join($,, [[$',C,"':0"] || C <- Classifications]), "};"
-       "  var resCnB = {", kz_util:iolist_join($,, [[$',C,"':0"] || C <- Classifications]), "};"
+       "  var resCB = {", fields_zeros(Classifications), "};"
+       "  var resCnB = {", fields_zeros(Classifications), "};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
        "  var is_billable = (true === doc.pvt_is_billable);"
        "  if (false) return;"
@@ -266,15 +272,15 @@ number_services_map(Classifications, Regexs) ->
         ]
         || {C, R} <- lists:zip(Classifications, Regexs)
        ]
-      ,"  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
-       "  var features = [", kz_util:iolist_join($,, [[$',F,$'] || F <- Features]), "];"
+      ,"  var resF = {", fields_zeros(Features), "};"
+       "  var features = [", array_items(Features), "];"
        "  var used = doc.pvt_features || {};"
        "  for (var i in features) {"
        "    var feature = features[i];"
        "    if (used.hasOwnProperty(feature))"
        "      resF[feature] += 1;"
        "  }"
-       "  var resM = {", kz_util:iolist_join($,, [[$',M,"':0"] || M <- Modules]), "};"
+       "  var resM = {", fields_zeros(Modules), "};"
        "  resM[doc.pvt_module_name] = 1;"
        "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM});"
        "}"
@@ -285,13 +291,13 @@ number_services_red(Classifications) ->
     Modules = ?ALL_KNM_CARRIERS,
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
-       "  var resC = {'billable':     {", kz_util:iolist_join($,, [["'",C,"':0"] || C <- Classifications]), "}"
-       "             ,'non_billable': {", kz_util:iolist_join($,, [["'",C,"':0"] || C <- Classifications]), "}};"
-       "  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
-       "  var resM = {", kz_util:iolist_join($,, [[$',M,"':0"] || M <- Modules]), "};"
-       "  var keysC = [", kz_util:iolist_join($,, [[$',C,$'] || C <- Classifications]), "];"
-       "  var keysF = [", kz_util:iolist_join($,, [[$',F,$'] || F <- Features]), "];"
-       "  var keysM = [", kz_util:iolist_join($,, [[$',M,$'] || M <- Modules]), "];"
+       "  var resC = {'billable':     {", fields_zeros(Classifications), "}"
+       "             ,'non_billable': {", fields_zeros(Classifications), "}};"
+       "  var resF = {", fields_zeros(Features), "};"
+       "  var resM = {", fields_zeros(Modules), "};"
+       "  var keysC = [", array_items(Classifications), "];"
+       "  var keysF = [", array_items(Features), "];"
+       "  var keysM = [", array_items(Modules), "];"
        "  for (var i in Values) {"
        "    var Value = Values[i];"
        "    for (var k in keysC) {"
