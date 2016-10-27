@@ -10,40 +10,6 @@
         },
         "list_reserved": {
             "map": "function(doc) {if (doc.pvt_type != 'number' || doc.pvt_deleted || doc.pvt_state != 'reserved') return; emit(doc._id, null);}"
-        },
-        "reconcile_features": {
-            "map": [
-                "function(doc) {",
-                "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;",
-                "  var featAvail = doc.pvt_features_available;",
-                "  var res = {'val':1};",
-                "  for (var p in featAvail) {",
-                "    if (featAvail.hasOwnProperty(p)) {",
-                "      res[p] = (doc.pvt_features || {}).hasOwnProperty(p) ? 1 : 0;",
-                "    }",
-                "  }",
-                "  emit(featAvail, res);}",
-                "}"
-            ],
-            "reduce": [
-                "function(Keys, Vals, _Rereduce) {",
-                "  var res = {'val':0};",
-                "  var featAvail = (Keys ? Keys[0][0] : []);",
-                "  for (var i in featAvail) {",
-                "    res[(featAvail[i])] = 0;",
-                "  }",
-                "  var keys = [];",
-                "  for (var p in res)",
-                "    if (res.hasOwnProperty(p))",
-                "      keys.push(p);",
-                "  for (var i in Vals)",
-                "    for (var k in keys) {",
-                "      var key = keys[k];",
-                "      res[key] += Vals[i][key] || 0;",
-                "    }",
-                "  return res;",
-                "}"
-            ]
         }
     }
 }
