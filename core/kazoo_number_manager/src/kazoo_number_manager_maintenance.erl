@@ -33,6 +33,22 @@
 -define(TIME_BETWEEN_NUMBERS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
+-define(ALL_KNM_CARRIERS,
+        [<<"knm_bandwidth2">>
+        ,<<"knm_bandwidth">>
+        ,<<"knm_inum">>
+        ,<<"knm_local">>
+        ,<<"knm_managed">>
+        ,<<"knm_mdn">>
+        ,<<"knm_other">>
+        ,<<"knm_reserved">>
+        ,<<"knm_reserved_reseller">>
+        ,<<"knm_simwood">>
+        ,<<"knm_telnyx">>
+        ,<<"knm_vitelity">>
+        ,<<"knm_voip_innovations">>
+        ]).
+
 -define(LOG(Format, Args)
        ,begin
             lager:debug(Format, Args),
@@ -231,6 +247,7 @@ escape(?NE_BINARY=Bin0) ->
 
 number_services_map(Classifications, Regexs) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
+    Modules = ?ALL_KNM_CARRIERS,
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
@@ -257,19 +274,24 @@ number_services_map(Classifications, Regexs) ->
        "    if (used.hasOwnProperty(feature))"
        "      resF[feature] += 1;"
        "  }"
-       "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF});"
+       "  var resM = {", kz_util:iolist_join($,, [[$',M,"':0"] || M <- Modules]), "};"
+       "  resM[doc.pvt_module_name] = 1;"
+       "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM});"
        "}"
       ]).
 
 number_services_red(Classifications) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
+    Modules = ?ALL_KNM_CARRIERS,
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
        "  var resC = {'billable':     {", kz_util:iolist_join($,, [["'",C,"':0"] || C <- Classifications]), "}"
        "             ,'non_billable': {", kz_util:iolist_join($,, [["'",C,"':0"] || C <- Classifications]), "}};"
        "  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
+       "  var resM = {", kz_util:iolist_join($,, [[$',M,"':0"] || M <- Modules]), "};"
        "  var keysC = [", kz_util:iolist_join($,, [[$',C,$'] || C <- Classifications]), "];"
        "  var keysF = [", kz_util:iolist_join($,, [[$',F,$'] || F <- Features]), "];"
+       "  var keysM = [", kz_util:iolist_join($,, [[$',M,$'] || M <- Modules]), "];"
        "  for (var i in Values) {"
        "    var Value = Values[i];"
        "    for (var k in keysC) {"
@@ -281,8 +303,12 @@ number_services_red(Classifications) ->
        "      var key = keysF[k];"
        "      resF[key] += Value['features'][key] || 0;"
        "    }"
+       "    for (var k in keysM) {"
+       "      var key = keysM[k];"
+       "      resM[key] += Value['modules'][key] || 0;"
+       "    }"
        "  }"
-       "  return {'classifications':resC, 'features':resF};"
+       "  return {'classifications':resC, 'features':resF, 'modules':resM};"
        "}"
       ]).
 
