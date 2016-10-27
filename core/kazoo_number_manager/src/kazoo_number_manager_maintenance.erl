@@ -87,7 +87,7 @@ maybe_update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
              || JObj <- [Classifiers],
                 Classification <- kz_json:get_keys(JObj)
             ],
-    {Classifications, Regexs} = lists:unzip(lists:keysort(1, Pairs)),
+    {Classifications, Regexs} = lists:unzip(Pairs),
     MapView = number_services_map(Classifications, Regexs),
     RedView = number_services_red(Classifications),
     ViewName = <<"_design/numbers">>,
