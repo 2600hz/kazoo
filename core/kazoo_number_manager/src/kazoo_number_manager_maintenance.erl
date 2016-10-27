@@ -237,12 +237,14 @@ number_services_map(Classifications, Regexs) ->
        "  var e164 = doc._id;"
        "  var resC = {", kz_util:iolist_join($,, [[$',C,"':0"] || C <- Classifications]), "};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
-       "  if (false) return;"
-      ,[["  else if (e164.match(", escape(R), ")) resC['", C, "'] = 1;"]
+       "  if (true === doc.pvt_is_billable) {"
+       "    if (false) return;"
+      ,[["    else if (e164.match(", escape(R), ")) resC['", C, "'] = 1;"]
         || {C, R} <- lists:zip(Classifications, Regexs)
        ]
-      ,"  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
-       "  var features = [", kz_util:iolist_join($,,[[$',F,$'] || F <- Features]), "];"
+      ,"  }"
+       "  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
+       "  var features = [", kz_util:iolist_join($,, [[$',F,$'] || F <- Features]), "];"
        "  var used = doc.pvt_features || {};"
        "  for (var i in features) {"
        "    var feature = features[i];"
@@ -312,6 +314,7 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
     case app_using(DID) =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
         andalso are_features_available_synced(NumDoc)
+        andalso is_billable_a_boolean(NumDoc)
     of
         true -> ?LOG("~s already synced", [DID]);
         false ->
@@ -379,6 +382,10 @@ are_features_available_synced(NumDoc) ->
         knm_phone_number:features_available(
           knm_phone_number:from_json(NumDoc)
          ).
+
+-spec is_billable_a_boolean(kz_json:object()) -> boolean().
+is_billable_a_boolean(NumDoc) ->
+    undefined =/= kz_json:get_value(?PVT_IS_BILLABLE, NumDoc).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().
 cleanse(JObj) ->
