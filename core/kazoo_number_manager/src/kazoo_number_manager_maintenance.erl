@@ -249,7 +249,6 @@ number_services_map(Classifications, Regexs) ->
        "    if (used.hasOwnProperty(feature))"
        "      resF[feature] += 1;"
        "  }"
-       "log(1);log(resC); log(2);log(resF);"
        "  emit(doc._id, {'classifications':resC, 'features':resF});"
        "}"
       ]).
@@ -273,7 +272,6 @@ number_services_red(Classifications) ->
        "      resF[key] += Value['features'][key] || 0;"
        "    }"
        "  }"
-       "log(3); log(resC); log(4);log(resF);"
        "  return {'classifications':resC, 'features':resF};"
        "}"
       ]).
