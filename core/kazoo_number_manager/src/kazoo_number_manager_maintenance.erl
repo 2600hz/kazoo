@@ -33,22 +33,6 @@
 -define(TIME_BETWEEN_NUMBERS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
--define(ALL_KNM_CARRIERS,
-        [<<"knm_bandwidth2">>
-        ,<<"knm_bandwidth">>
-        ,<<"knm_inum">>
-        ,<<"knm_local">>
-        ,<<"knm_managed">>
-        ,<<"knm_mdn">>
-        ,<<"knm_other">>
-        ,<<"knm_reserved">>
-        ,<<"knm_reserved_reseller">>
-        ,<<"knm_simwood">>
-        ,<<"knm_telnyx">>
-        ,<<"knm_vitelity">>
-        ,<<"knm_voip_innovations">>
-        ]).
-
 -define(LOG(Format, Args)
        ,begin
             lager:debug(Format, Args),
@@ -253,7 +237,7 @@ array_items(Items) ->
 
 number_services_map(Classifications, Regexs) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
-    Modules = ?ALL_KNM_CARRIERS,
+    Modules = knm_carriers:all_modules(),
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
@@ -288,7 +272,7 @@ number_services_map(Classifications, Regexs) ->
 
 number_services_red(Classifications) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
-    Modules = ?ALL_KNM_CARRIERS,
+    Modules = knm_carriers:all_modules(),
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
        "  var resC = {'billable':     {", fields_zeros(Classifications), "}"
