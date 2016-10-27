@@ -108,7 +108,8 @@ maybe_update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
 -spec fix_account_numbers(ne_binary()) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, Accounts).
+    AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, AccountDbs).
 
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     kz_util:put_callid(?MODULE),
