@@ -25,6 +25,9 @@ filter_empty_test_() ->
     ,?_assertEqual([], props:filter_empty([{'a', 0}, {'b', []}, {'c', <<>>}, {'z', 'undefined'}]))
     ,?_assertEqual(['a'], props:filter_empty(['a']))
     ,?_assertEqual(['a'], props:filter_empty(['a', {'b', 0}]))
+    ,?_assertEqual([], props:filter_empty([{<<"a">>, undefined}]))
+    ,?_assertEqual([{<<"a">>, false}], props:filter_empty([{<<"a">>, false}]))
+    ,?_assertEqual([{<<"a">>, true}], props:filter_empty([{<<"a">>, true}]))
     ].
 
 filter_undefined_test_() ->
