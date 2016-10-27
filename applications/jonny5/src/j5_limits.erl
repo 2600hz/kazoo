@@ -26,6 +26,7 @@
 -export([allow_postpay/1]).
 -export([reserve_amount/1]).
 -export([max_postpay/1]).
+-export([promised_payment/1]).
 
 -include("jonny5.hrl").
 
@@ -48,6 +49,7 @@
                 ,allotments = kz_json:new() :: kz_json:object()
                 ,soft_limit_inbound = 'false' :: boolean()
                 ,soft_limit_outbound = 'false' :: boolean()
+                ,promised_payment = kz_json:new() :: kz_json:object()
                 }).
 
 -type limits() :: #limits{}.
@@ -247,6 +249,15 @@ reserve_amount(#limits{reserve_amount=ReserveAmount}) -> ReserveAmount.
 max_postpay(#limits{max_postpay_amount=MaxPostpay}) -> MaxPostpay.
 
 %%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec promised_payment(limits()) -> kz_json:object().
+promised_payment(#limits{promised_payment=PromisedPayment}) -> PromisedPayment.
+
+%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %%
@@ -379,6 +390,16 @@ filter_bundled_limit(JObjs) ->
                                    ,'true')
            ]).
 
+-spec get_allotments(kz_json:objects(), kz_json:object()) -> kz_json:object().
+get_allotments(JObj, Default) ->
+    DefaultJObj = kapps_config:get_json(?APP_NAME, <<"default_allotments">>, Default),
+    kz_json:get_json_value(<<"pvt_allotments">>, JObj,  DefaultJObj).
+
+-spec get_promised_payment(kz_json:objects(), kz_json:object()) -> kz_json:object().
+get_promised_payment(JObj, Default) ->
+    DefaultJObj = kapps_config:get_json(?APP_NAME, <<"default_promised_payment">>, Default),
+    kz_json:get_json_value(<<"pvt_promised_payment">>, JObj,  DefaultJObj).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -433,11 +454,12 @@ create_limits(AccountId, AccountDb, JObj) ->
            ,bundled_outbound_trunks = get_bundled_outbound_limit(AccountDb, JObj)
            ,bundled_twoway_trunks = get_bundled_twoway_limit(AccountDb, JObj)
            ,burst_trunks = get_limit(<<"burst_trunks">>, JObj, 0)
-           ,max_postpay_amount = get_limit_units(<<"max_postpay_amount">>, JObj, 0.0) * -1
+           ,max_postpay_amount = get_limit_units(<<"max_postpay_amount">>, JObj, 0.0)
            ,reserve_amount = get_limit_units(<<"reserve_amount">>, JObj, ?DEFAULT_RATE)
            ,allow_prepay = get_limit_boolean(<<"allow_prepay">>, JObj, 'true')
            ,allow_postpay = get_limit_boolean(<<"allow_postpay">>, JObj, 'false')
-           ,allotments = kz_json:get_value(<<"pvt_allotments">>, JObj, kz_json:new())
+           ,allotments = get_allotments(JObj, kz_json:new())
            ,soft_limit_inbound = get_limit_boolean(<<"soft_limit_inbound">>, JObj, 'false')
            ,soft_limit_outbound = get_limit_boolean(<<"soft_limit_outbound">>, JObj, 'false')
+           ,promised_payment = get_promised_payment(JObj, ?DEFAULT_PROMISED_PAYMENT)
            }.

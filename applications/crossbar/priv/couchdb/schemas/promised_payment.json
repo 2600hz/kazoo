@@ -1,0 +1,50 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "promised_payment",
+    "additionalProperties": false,
+    "description": "",
+    "properties": {
+        "amount": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "required": true,
+            "type": "number"
+        },
+        "armed": {
+            "default": false,
+            "required": true,
+            "type": "boolean"
+        },
+        "duration": {
+            "default": 0,
+            "minimum": 0,
+            "required": true,
+            "type": "integer"
+        },
+        "enabled": {
+            "default": false,
+            "required": true,
+            "type": "boolean"
+        },
+        "max_amount": {
+            "default": 0.0,
+            "minimum": 0.0,
+            "required": true,
+            "type": "number"
+        },
+        "max_duration": {
+            "default": 86400,
+            "minimum": 0,
+            "required": true,
+            "type": "integer"
+        },
+        "start": {
+            "default": 0,
+            "minimum": 0,
+            "required": true,
+            "type": "integer"
+        }
+    },
+    "required": true,
+    "type": "object"
+}

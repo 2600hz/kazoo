@@ -3,8 +3,16 @@
     "_id": "system_config.jonny5",
     "description": "Schema for jonny5 system_config",
     "properties": {
+        "default_allotments": {
+            "description": "jonny5 default allotments data",
+            "type": "object"
+        },
         "default_inbound_trunks": {
             "description": "jonny5 default inbound trunks"
+        },
+        "default_promised_payment": {
+            "description": "jonny5 default promised payment data",
+            "type": "object"
         },
         "default_twoway_trunks": {
             "description": "jonny5 default twoway trunks"
@@ -21,8 +29,11 @@
         }
     },
     "required": [
+        "default_allotments",
         "default_inbound_trunks",
-        "default_twoway_trunks"
+        "default_promised_payment",
+        "default_twoway_trunks",
+        "default_{Key}"
     ],
     "type": "object"
 }

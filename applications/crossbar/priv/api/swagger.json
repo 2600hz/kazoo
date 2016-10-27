@@ -5831,6 +5831,54 @@
             "required": false,
             "type": "object"
         },
+        "promised_payment": {
+            "additionalProperties": false,
+            "description": "",
+            "properties": {
+                "amount": {
+                    "default": 0.0,
+                    "minimum": 0.0,
+                    "required": true,
+                    "type": "number"
+                },
+                "armed": {
+                    "default": false,
+                    "required": true,
+                    "type": "boolean"
+                },
+                "duration": {
+                    "default": 0,
+                    "minimum": 0,
+                    "required": true,
+                    "type": "integer"
+                },
+                "enabled": {
+                    "default": false,
+                    "required": true,
+                    "type": "boolean"
+                },
+                "max_amount": {
+                    "default": 0.0,
+                    "minimum": 0.0,
+                    "required": true,
+                    "type": "number"
+                },
+                "max_duration": {
+                    "default": 86400,
+                    "minimum": 0,
+                    "required": true,
+                    "type": "integer"
+                },
+                "start": {
+                    "default": 0,
+                    "minimum": 0,
+                    "required": true,
+                    "type": "integer"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "provisioner_v5": {
             "description": "Provisioner schema",
             "properties": {
@@ -9184,8 +9232,16 @@
         "system_config.jonny5": {
             "description": "Schema for jonny5 system_config",
             "properties": {
+                "default_allotments": {
+                    "description": "jonny5 default allotments data",
+                    "type": "object"
+                },
                 "default_inbound_trunks": {
                     "description": "jonny5 default inbound trunks"
+                },
+                "default_promised_payment": {
+                    "description": "jonny5 default promised payment data",
+                    "type": "object"
                 },
                 "default_twoway_trunks": {
                     "description": "jonny5 default twoway trunks"
@@ -9202,8 +9258,11 @@
                 }
             },
             "required": [
+                "default_allotments",
                 "default_inbound_trunks",
-                "default_twoway_trunks"
+                "default_promised_payment",
+                "default_twoway_trunks",
+                "default_{Key}"
             ],
             "type": "object"
         },
@@ -18088,6 +18147,49 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/extension"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/promised_payment": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "promised_payment",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/promised_payment"
+                        }
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
