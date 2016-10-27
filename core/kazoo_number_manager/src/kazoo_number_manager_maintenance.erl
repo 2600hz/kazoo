@@ -89,7 +89,7 @@ maybe_update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
             ],
     {Classifications, Regexs} = lists:unzip(lists:keysort(1, Pairs)),
     MapView = number_services_map(Classifications, Regexs),
-    RedView = number_services_red(Classifications, Regexs),
+    RedView = number_services_red(Classifications),
     ViewName = <<"_design/numbers">>,
     {ok, View} = kz_datamgr:open_doc(AccountDb, ViewName),
     NewView = kz_json:set_values([{[<<"views">>, <<"reconcile_services">>, <<"map">>], MapView}
@@ -231,43 +231,50 @@ escape(?NE_BINARY=Bin0) ->
 
 number_services_map(Classifications, Regexs) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
-    Items = Classifications ++ Features,
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
        "  var e164 = doc._id;"
-       "  var res = {", kz_util:iolist_join(", ", [[$',I,"':0"] || I <- Items]), "};"
+       "  var resC = {", kz_util:iolist_join($,, [[$',C,"':0"] || C <- Classifications]), "};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
        "  if (false) return;"
-      ,[["  else if (e164.match(", escape(R), ")) res['", C, "'] = 1;"]
+      ,[["  else if (e164.match(", escape(R), ")) resC['", C, "'] = 1;"]
         || {C, R} <- lists:zip(Classifications, Regexs)
        ]
-      ,"  var features = [", kz_util:iolist_join($,,[[$',F,$'] || F <- Features]), "];"
-      ,"  var used = doc.pvt_features || {};"
+      ,"  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
+       "  var features = [", kz_util:iolist_join($,,[[$',F,$'] || F <- Features]), "];"
+       "  var used = doc.pvt_features || {};"
        "  for (var i in features) {"
        "    var feature = features[i];"
        "    if (used.hasOwnProperty(feature))"
-       "      res[feature] += 1;"
+       "      resF[feature] += 1;"
        "  }"
-       "  emit(doc._id, res);"
+       "log(1);log(resC); log(2);log(resF);"
+       "  emit(doc._id, {'classifications':resC, 'features':resF});"
        "}"
       ]).
 
-number_services_red(Classifications, _Regexs) ->
-    Items = Classifications ++ ?DEFAULT_ALLOWED_FEATURES,
+number_services_red(Classifications) ->
+    Features = ?DEFAULT_ALLOWED_FEATURES,
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
-       "  var res = {", kz_util:iolist_join(", ", [[$',I,"':0"] || I <- Items]), "};"
-       "  var keys = [];",
-       "  for (var p in res)",
-       "    if (res.hasOwnProperty(p))",
-       "      keys.push(p);",
-       "  for (var i in Values)",
-       "    for (var k in keys) {",
-       "      var key = keys[k];",
-       "      res[key] += Values[i][key] || 0;",
-       "    }",
-       "  return res;",
+       "  var resC = {", kz_util:iolist_join($,, [[$',C,"':0"] || C <- Classifications]), "};"
+       "  var resF = {", kz_util:iolist_join($,, [[$',F,"':0"] || F <- Features]), "};"
+       "  var keysC = [", kz_util:iolist_join($,, [[$',C,$'] || C <- Classifications]), "];"
+       "  var keysF = [", kz_util:iolist_join($,, [[$',F,$'] || F <- Features]), "];"
+       "  for (var i in Values) {"
+       "    var Value = Values[i];"
+       "    for (var k in keysC) {"
+       "      var key = keysC[k];"
+       "      resC[key] += Value['classifications'][key] || 0;"
+       "    }"
+       "    for (var k in keysF) {"
+       "      var key = keysF[k];"
+       "      resF[key] += Value['features'][key] || 0;"
+       "    }"
+       "  }"
+       "log(3); log(resC); log(4);log(resF);"
+       "  return {'classifications':resC, 'features':resF};"
        "}"
       ]).
 
