@@ -1,19 +1,19 @@
 site_name: Dev Reference
 
 pages:
-- 'index.md'
+- 'README.md'
 - 'Integrations':
   - 'Pivot':
-    - 'Intro': 'applications/pivot/doc/index.md'
+    - 'Intro': 'applications/pivot/doc/README.md'
     - 'applications/crossbar/doc/pivot.md'
     - 'Websockets':
       - 'applications/crossbar/doc/websockets.md'
     - 'Webhooks':
       - 'applications/webhooks/doc/maintenance.md'
-      - 'applications/webhooks/doc/index.md'
+      - 'applications/webhooks/doc/README.md'
       - 'applications/crossbar/doc/webhooks.md'
     - 'Twiml':
-      - 'applications/pivot/doc/twiml/index.md'
+      - 'applications/pivot/doc/twiml/README.md'
     - 'Tutorials':
       - 'applications/pivot/doc/kazoocon-2014.md'
     - 'Known_Issues':
@@ -23,7 +23,7 @@ pages:
       - 'applications/pivot/doc/kazoo/recording.md'
       - 'applications/pivot/doc/kazoo/presence.md'
       - 'applications/pivot/doc/kazoo/play.md'
-      - 'applications/pivot/doc/kazoo/index.md'
+      - 'applications/pivot/doc/kazoo/README.md'
       - 'applications/pivot/doc/kazoo/hangups.md'
       - 'applications/pivot/doc/kazoo/dtmf.md'
       - 'applications/pivot/doc/kazoo/conferencing.md'
