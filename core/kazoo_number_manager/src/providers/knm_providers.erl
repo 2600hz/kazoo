@@ -105,6 +105,7 @@ service_name(<<"knm_dash_e911">>) -> <<"dash_e911">>;
 service_name(<<"knm_telnyx_e911">>) -> <<"telnyx_e911">>;
 service_name(<<"knm_vitelity_e911">>) -> <<"vitelity_e911">>;
 service_name(<<"knm_cnam_notifier">>) -> <<"cnam">>;
+service_name(<<"knm_telnyx_cnam">>) -> <<"telnyx_cnam">>;
 service_name(<<"knm_vitelity_cnam">>) -> <<"vitelity_cnam">>;
 service_name(Feature) -> Feature.
 
