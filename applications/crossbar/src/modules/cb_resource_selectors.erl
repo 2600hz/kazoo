@@ -180,7 +180,7 @@ validate_doc(Context, UUID, ?HTTP_GET) ->
     crossbar_doc:load(UUID, Context, ?TYPE_CHECK_OPTION(?DOC_PVT_TYPE));
 validate_doc(Context, UUID, ?HTTP_POST) ->
     OnSuccess = fun(C) -> on_successful_doc_validation(C, UUID) end,
-    cb_context:validate_request_data(<<"resource_selector">>, Context, OnSuccess);
+    cb_context:validate_request_data(<<"resource_selectors">>, Context, OnSuccess);
 validate_doc(Context, UUID, ?HTTP_DELETE) ->
     crossbar_doc:load(UUID, Context, ?TYPE_CHECK_OPTION(?DOC_PVT_TYPE)).
 

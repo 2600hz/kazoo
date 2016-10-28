@@ -6266,7 +6266,7 @@
             "required": true,
             "type": "object"
         },
-        "resource_selector": {
+        "resource_selectors": {
             "description": "Schema for resource selector document",
             "properties": {
                 "name": {
@@ -18634,6 +18634,14 @@
             "post": {
                 "parameters": [
                     {
+                        "in": "body",
+                        "name": "resource_selectors",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resource_selectors"
+                        }
+                    },
+                    {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
                     },
@@ -18674,6 +18682,14 @@
             },
             "post": {
                 "parameters": [
+                    {
+                        "in": "body",
+                        "name": "resource_selectors",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resource_selectors"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/uuid"
                     },
