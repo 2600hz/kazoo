@@ -10308,7 +10308,7 @@
                 },
                 "porting_module_name": {
                     "default": "knm_local",
-                    "description": "number_manager porting module name",
+                    "description": "number manager porting module name",
                     "type": "string"
                 },
                 "reconcile_regex": {
