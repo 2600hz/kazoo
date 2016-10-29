@@ -38,7 +38,8 @@ init(Account, CurrentBalance) ->
         {'ok', Amount, Threshold} ->
             lager:info("checking if account ~s balance $~w is below top up threshold $~w"
                       ,[Account, Balance, Threshold]),
-            maybe_top_up(Account, Balance, Amount, Threshold)
+            AccountId = kz_util:format_account_id(Account, 'raw'),
+            maybe_top_up(AccountId, Balance, Amount, Threshold)
     end.
 
 %%--------------------------------------------------------------------
@@ -85,16 +86,19 @@ get_top_up(JObj) ->
 -spec maybe_top_up(ne_binary(), number(), integer(), integer()) ->
                           'ok' |
                           {'error', error()}.
-maybe_top_up(Account, Balance, Amount, Threshold) when Balance =< Threshold ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_datamgr:open_cache_doc(?KZ_SERVICES_DB, AccountId) of
-        {'error', _R}=E -> E;
-        {'ok', ServicesJObj} ->
-            Transactions = kzd_services:transactions(ServicesJObj),
-            trying_top_up(Account, Amount, Transactions)
+maybe_top_up(AccountId, Balance, Amount, Threshold) when Balance =< Threshold ->
+    To = kz_util:current_tstamp(),
+    From = To - ?SECONDS_IN_DAY,
+    case kz_transactions:fetch(AccountId, From, To) of
+        {'error', _Reason} = Error ->
+            lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
+            Error;
+        {'ok', Transactions} ->
+            TopupTransactions = kz_transactions:filter_by_reason(<<"topup">>, Transactions),
+            trying_top_up(AccountId, Amount, TopupTransactions)
     end;
-maybe_top_up(Account, Balance, _, Threshold) ->
-    lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [Balance, Threshold, Account]),
+maybe_top_up(_AccountId, _Balance, _, _Threshold) ->
+    lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [_Balance, _Threshold, _AccountId]),
     {'error', 'balance_above_threshold'}.
 
 %%--------------------------------------------------------------------
@@ -104,18 +108,11 @@ maybe_top_up(Account, Balance, _, Threshold) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec trying_top_up(ne_binary(), integer(), kz_json:objects()) -> 'ok'.
-trying_top_up(Account, Amount, []) ->
+trying_top_up(AccountId, Amount, []) ->
     lager:info("no top up transactions found, processing..."),
-    top_up(Account, Amount);
-trying_top_up(Account, Amount, [JObj|JObjs]) ->
-    Transaction = kz_transaction:from_json(JObj),
-    case kz_transaction:reason(Transaction) =:= <<"topup">> of
-        'true' ->
-            lager:info("top up for ~s already done, skipping...", [Account]),
-            'ok';
-        'false' ->
-            trying_top_up(Account, Amount, JObjs)
-    end.
+    top_up(AccountId, Amount);
+trying_top_up(_AccountId, _Amount, _TopupTransactions) ->
+    lager:info("top up for ~s already done, skipping...", [_AccountId]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -124,15 +121,27 @@ trying_top_up(Account, Amount, [JObj|JObjs]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec top_up(ne_binary(), integer()) -> 'ok' | {'error', any()}.
-top_up(Account, Amount) ->
-    Transaction = kz_transaction:debit(Account, wht_util:dollars_to_units(Amount)),
+top_up(AccountId, Amount) ->
+    Services = kz_services:fetch(AccountId),
+    Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Amount)),
     Transaction1 = kz_transaction:set_reason(<<"topup">>, Transaction),
-    lager:info("attemptting to top up account ~s for ~p", [Account, Amount]),
-    case kz_transaction:service_save(Transaction1) of
-        {'error', _R}=E ->
-            lager:warning("failed to top up account ~s: ~p", [Account, _R]),
-            E;
-        {'ok', SavedTransaction} ->
-            lager:info("account ~s top up for ~p, transaction id ~s"
-                      ,[Account, Amount, kz_transaction:id(SavedTransaction)])
+
+    lager:info("attemptting to top up account ~s for ~p", [AccountId, Amount]),
+    case kz_services:charge_transactions(Services, [Transaction1]) of
+        [] ->
+            lager:info("account ~s top up successfully for ~p", [AccountId, Amount]),
+            case kz_transaction:save(Transaction1) of
+                {'ok', _} -> 'ok';
+                {'error', 'conflict'} ->
+                    lager:warning("did not write top up transaction for account ~s already exist for today", [AccountId]);
+                {'error', _Reason} ->
+                    lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p)"
+                               ,[_Reason, AccountId, Amount]
+                               ),
+                    'ok'
+            end;
+        [FailedTransaction] ->
+            _Reason = kz_json:get_value(<<"failed_reason">>, FailedTransaction),
+            lager:warning("failed to top up account ~s: ~p", [AccountId, _Reason]),
+            {'error', 'bookkeeper_failed'}
     end.

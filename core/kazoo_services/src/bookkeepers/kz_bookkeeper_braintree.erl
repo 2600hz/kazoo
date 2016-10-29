@@ -193,7 +193,9 @@ charge_transactions(BillingId, [], Dict) ->
       fun(Code, JObjs, Acc) when Code =:= ?CODE_TOPUP ->
               case handle_topup(BillingId, JObjs) of
                   'true' -> Acc;
-                  'false' -> JObjs ++ Acc
+                  {'true', _} -> Acc;
+                  {'false', ResponseText} ->
+                      kz_json:set_value(<<"failed_reason">>, ResponseText, JObjs) ++ Acc
               end;
          (Code, JObjs, Acc) ->
               case handle_charged_transactions(BillingId, Code, JObjs) of
@@ -268,7 +270,7 @@ handle_quick_sale_response(BtTransaction) ->
 
 
 -spec send_topup_notification(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined' | ne_binary()) ->
-                                     boolean().
+                                     {boolean(), ne_binary()}.
 send_topup_notification(Success, BillingId, Amount, 'undefined') ->
     send_topup_notification(Success, BillingId, Amount, <<"unknown error">>);
 send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary(ResponseText) ->
@@ -288,7 +290,7 @@ send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary
                            ,[BillingId, _R]
                            )
         end,
-    Success;
+    {Success, ResponseText};
 send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
     Transaction = braintree_transaction:record_to_json(BraintreeTransaction),
     ResponseText = kz_json:get_ne_value(<<"processor_response_text">>, Transaction, <<"missing response">>),
