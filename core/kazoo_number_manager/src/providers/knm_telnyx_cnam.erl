@@ -1,0 +1,133 @@
+%%%-------------------------------------------------------------------
+%%% @copyright (C) 2016, 2600Hz INC
+%%% @doc
+%%%
+%%%
+%%% @end
+%%% @contributors
+%%%   Pierre Fenoll
+%%%-------------------------------------------------------------------
+-module(knm_telnyx_cnam).
+-behaviour(knm_gen_provider).
+
+-export([save/1]).
+-export([delete/1]).
+-export([has_emergency_services/1]).
+
+-include("knm.hrl").
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function is called each time a number is saved, and will
+%% produce notifications if the cnam object changes
+%% @end
+%%--------------------------------------------------------------------
+-spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
+save(Number) ->
+    State = knm_phone_number:state(knm_number:phone_number(Number)),
+    save(Number, State).
+
+save(Number, ?NUMBER_STATE_RESERVED) ->
+    handle(Number);
+save(Number, ?NUMBER_STATE_IN_SERVICE) ->
+    handle(Number);
+save(Number, ?NUMBER_STATE_PORT_IN) ->
+    handle(Number);
+save(Number, _State) ->
+    Number.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% This function is called each time a number is deleted
+%% @end
+%%--------------------------------------------------------------------
+-spec delete(knm_number:knm_number()) -> knm_number:knm_number().
+delete(Number) ->
+    knm_services:deactivate_features(Number
+                                    ,[?FEATURE_CNAM_INBOUND
+                                     ,?FEATURE_CNAM_OUTBOUND
+                                     ,?FEATURE_CNAM
+                                     ]
+                                    ).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec has_emergency_services(knm_number:knm_number()) -> boolean().
+has_emergency_services(_Number) -> 'false'.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%% @private
+-spec handle(knm_number:knm_number()) -> knm_number:knm_number().
+handle(Number) ->
+    support_depreciated_cnam(
+      handle_inbound_cnam(
+        handle_outbound_cnam(
+          Number
+         )
+       )
+     ).
+
+%% @private
+-spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
+handle_outbound_cnam(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    Doc = knm_phone_number:doc(PhoneNumber),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
+    CurrentCNAM = kz_json:get_ne_value(?CNAM_DISPLAY_NAME, Feature),
+    case kz_json:get_ne_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], Doc) of
+        'undefined' ->
+            knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND);
+        CurrentCNAM -> Number;
+        NewCNAM ->
+            FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
+            knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData})
+    end.
+
+%% @private
+-spec handle_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
+handle_inbound_cnam(Number) ->
+    PN = knm_number:phone_number(Number),
+    CurrentInboundCNAM = kz_json:is_true(?CNAM_INBOUND_LOOKUP
+                                        ,knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND)),
+    InboundCNAM = kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP]
+                                 ,knm_phone_number:doc(PN)),
+    NotChanged = CurrentInboundCNAM =:= InboundCNAM,
+    case InboundCNAM of
+        false when NotChanged ->
+            knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
+        false ->
+            _ = disable_inbound(Number),
+            knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
+        true when NotChanged ->
+            Number;
+        true ->
+            _ = enable_inbound(Number),
+            FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
+            knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
+    end.
+
+%% @private
+-spec support_depreciated_cnam(knm_number:knm_number()) -> knm_number:knm_number().
+support_depreciated_cnam(Number) ->
+    knm_services:deactivate_feature(Number, ?FEATURE_CNAM).
+
+enable_inbound(Number) -> toggle_inbound(Number, true).
+disable_inbound(Number) -> toggle_inbound(Number, false).
+toggle_inbound(Number, ShouldEnable) ->
+    case knm_phone_number:dry_run(knm_number:phone_number(Number)) of
+        true -> ok;
+        false ->
+            Key = <<"enable_caller_id_name">>,
+            Body = kz_json:from_list([{Key, ShouldEnable}]),
+            Rep = knm_telnyx_util:req(put, ["numbers", knm_telnyx_util:did(Number)], Body),
+            ShouldEnable = kz_json:is_true(Key, Rep)
+    end.

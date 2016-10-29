@@ -79,19 +79,6 @@ feature(Number) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Turns +13129677542 into %2B13129677542.
-%% @end
-%%--------------------------------------------------------------------
--spec did(knm_number:knm_number()) -> nonempty_string().
-did(Number) ->
-    binary_to_list(
-      kz_http_util:urlencode(
-        knm_phone_number:number(
-          knm_number:phone_number(Number)))).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %%
 %% @end
 %%--------------------------------------------------------------------
@@ -181,7 +168,7 @@ assign_address(Number, AddressId) ->
     Body = kz_json:from_list([{<<"e911_enabled">>, IsEnabling}
                              ,{<<"e911_address_id">>, AddressId}
                              ]),
-    try knm_telnyx_util:req('put', ["numbers", did(Number), "e911_settings"], Body) of
+    try knm_telnyx_util:req('put', ["numbers", knm_telnyx_util:did(Number), "e911_settings"], Body) of
         Rep ->
             case kz_json:is_true(<<"success">>, Rep, 'true') of
                 'true' ->

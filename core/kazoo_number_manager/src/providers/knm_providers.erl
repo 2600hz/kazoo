@@ -128,7 +128,7 @@ provider_modules(Number) ->
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ?CNAM_PROVIDER(AccountId);
+    cnam_provider(AccountId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     e911_provider(AccountId);
 provider_module(<<"prepend">>, _) ->
@@ -146,6 +146,13 @@ e911_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_e911">>;
 e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
 -else.
 e911_provider(AccountId) -> ?E911_PROVIDER(AccountId).
+-endif.
+
+-ifdef(TEST).
+cnam_provider(?RESELLER_ACCOUNT_ID) -> <<"knm_telnyx_cnam">>;
+cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
+-else.
+cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -endif.
 
 %%--------------------------------------------------------------------
