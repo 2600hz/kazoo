@@ -141,10 +141,12 @@ validate_delete_acls(Context) ->
     end.
 
 validate_delete_acls(Context, Doc) ->
-    crossbar_util:response(kz_json:new()
-                          ,cb_context:set_doc(Context
-                                             ,kz_json:delete_key(<<"access_lists">>, Doc)
-                                             )).
+    Context1 = crossbar_util:response(kz_json:new()
+                                     ,cb_context:set_doc(Context
+                                                        ,kz_json:delete_key(<<"access_lists">>, Doc)
+                                                        )),
+    _ = flush_acl(Doc),
+    Context1.
 
 -spec validate_set_acls(cb_context:context()) ->
                                cb_context:context().
@@ -162,10 +164,11 @@ validate_set_acls(Context, AccessLists) ->
 
 validate_set_acls(Context, AccessLists, Doc) ->
     Doc1 = kz_json:set_value(<<"access_lists">>, AccessLists, Doc),
-
-    crossbar_util:response(AccessLists
-                          ,cb_context:set_doc(Context, Doc1)
-                          ).
+    Context1 = crossbar_util:response(AccessLists
+                                     ,cb_context:set_doc(Context, Doc1)
+                                     ),
+    _ = flush_acl(Doc1),
+    Context1.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -208,3 +211,11 @@ after_delete(Context, 'success') ->
     crossbar_util:response(kz_json:new(), Context);
 after_delete(Context, _RespStatus) ->
     Context.
+
+-spec flush_acl(kz_json:object()) -> 'ok' | {'error', any()}.
+flush_acl(Doc) ->
+    Cmd = props:filter_undefined([{<<"Realm">>, kz_util:get_account_realm(kz_json:get_value(<<"pvt_account_id">>, Doc))}
+                                 ,{<<"Device">>, kz_json:get_value([<<"sip">>,<<"username">>], Doc)}
+                                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                                 ]),
+    kapps_util:amqp_pool_send(Cmd, fun kapi_frontier:publish_flush/1).

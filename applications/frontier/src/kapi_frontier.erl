@@ -14,17 +14,22 @@
         ,ratelimits_resp_v/1
         ,acls_req_v/1
         ,acls_resp_v/1
+        ,flush/1, flush_v/1
         ]).
 -export([publish_ratelimits_resp/2
         ,publish_acls_resp/2
+        ,publish_flush/1, publish_flush/2
         ]).
 
 -include("frontier.hrl").
 
 -define(FRONTIER_EXCHANGE, <<"frontier">>).
 -define(EXCHANGE_TYPE, <<"direct">>).
-
 -define(ROUTE_KEY, <<"sbc_config">>).
+
+-define(ACL_FRONTIER_EXCHANGE, <<"frontier_acl">>).
+-define(ACL_EXCHANGE_TYPE, <<"topic">>).
+-define(ACL_ROUTE_KEY, <<"flush">>).
 
 -define(REQ_HEADERS, [<<"Entity">>]).
 -define(OPTIONAL_REQ_HEADERS, [<<"With-Realm">>]).
@@ -51,6 +56,15 @@
 -define(ACL_RESP_TYPES, [{<<"Realm">>, fun kz_json:is_json_object/1}
                         ,{<<"Device">>, fun kz_json:is_json_object/1}
                         ]).
+
+%% ACL Flush
+-define(ACL_FLUSH_HEADERS, [<<"Realm">>]).
+-define(OPTIONAL_ACL_FLUSH_HEADERS, [<<"Device">>]).
+-define(ACL_FLUSH_VALUES, [{<<"Event-Category">>, <<"acl">>}
+                          ,{<<"Event-Name">>, <<"acl_flush">>}
+                          ]).
+-define(ACL_FLUSH_TYPES, []).
+
 
 -spec ratelimits_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 ratelimits_resp(Prop) when is_list(Prop) ->
@@ -106,6 +120,29 @@ bind_q(Q, _Props) ->
 unbind_q(Q, _Props) ->
     amqp_util:unbind_q_from_exchange(Q, ?ROUTE_KEY, ?FRONTIER_EXCHANGE).
 
+-spec flush(api_terms()) ->
+                   {'ok', iolist()} |
+                   {'error', string()}.
+flush(Prop) when is_list(Prop) ->
+    case flush_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?ACL_FLUSH_HEADERS, ?OPTIONAL_ACL_FLUSH_HEADERS);
+        'false' -> {'error', "Proplist failed validation for acl_flush"}
+    end;
+flush(JObj) -> flush(kz_json:to_proplist(JObj)).
+
+-spec flush_v(api_terms()) -> boolean().
+flush_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?ACL_FLUSH_HEADERS, ?ACL_FLUSH_VALUES, ?ACL_FLUSH_TYPES);
+flush_v(JObj) -> flush_v(kz_json:to_proplist(JObj)).
+
+-spec publish_flush(api_terms()) -> 'ok'.
+-spec publish_flush(api_terms(), ne_binary()) -> 'ok'.
+publish_flush(JObj) ->
+    publish_flush(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_flush(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ACL_FLUSH_VALUES, fun flush/1),
+    amqp_util:basic_publish(?ACL_FRONTIER_EXCHANGE, ?ACL_ROUTE_KEY, Payload, ContentType).
+
 %%--------------------------------------------------------------------
 %% @doc
 %% declare the exchanges used by this API
@@ -113,4 +150,5 @@ unbind_q(Q, _Props) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    amqp_util:new_exchange(?FRONTIER_EXCHANGE, ?EXCHANGE_TYPE).
+    amqp_util:new_exchange(?FRONTIER_EXCHANGE, ?EXCHANGE_TYPE),
+    amqp_util:new_exchange(?ACL_FRONTIER_EXCHANGE, ?ACL_EXCHANGE_TYPE).
