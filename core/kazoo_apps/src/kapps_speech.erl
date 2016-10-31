@@ -376,8 +376,8 @@ create_response(<<"voicefabric">> = _Engine, {'ok', 200, Headers, Content}) ->
             {'error', 'tts_provider_failure', <<"converting failed">>}
     end;
 create_response(_Engine, {'ok', 200, Headers, Content}) ->
-    ContentType = props:get_value("Content-Type", Headers),
-    ContentLength = props:get_value("Content-Length", Headers),
+    ContentType = props:get_value("content-type", Headers),
+    ContentLength = props:get_value("content-length", Headers),
     lager:debug("created speech file ~s of length ~s", [ContentType, ContentLength]),
     {'ok', kz_util:to_binary(ContentType), Content};
 create_response(Engine, {'ok', _Code, RespHeaders, Content}) ->
