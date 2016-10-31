@@ -141,9 +141,9 @@
                     ,req_files = [] :: req_files()
                     ,req_data :: kz_json:json_term()  % the "data" from the request JSON envelope
                     ,req_headers = [] :: cowboy:http_headers()
-                    ,query_json = kz_json:new() :: api_object()
+                    ,query_json = kz_json:new() :: kz_json:object()
                     ,account_id :: api_ne_binary()
-                    ,account_name :: api_binary()
+                    ,account_name :: api_ne_binary()
                     ,user_id :: api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/users/{user-id}/*
                     ,device_id :: api_ne_binary()   % Will be loaded in validate stage for endpoints such as /accounts/{acct-id}/devices/{device-id}/*
                     ,reseller_id :: api_ne_binary()
@@ -153,9 +153,9 @@
                     ,resp_expires = {{1999,1,1},{0,0,0}} :: kz_datetime()
                     ,resp_etag :: 'automatic' | string() | api_binary()
                     ,resp_status = 'error' :: crossbar_status()
-                    ,resp_error_msg :: kz_json:path()
+                    ,resp_error_msg :: api_ne_binary()
                     ,resp_error_code :: api_integer()
-                    ,resp_file = <<>> :: api_binary()
+                    ,resp_file = <<>> :: binary()
                     ,resp_data :: resp_data()
                     ,resp_headers = [] :: kz_proplist() %% allow the modules to set headers (like Location: XXX to get a 201 response code)
                     ,resp_envelope = kz_json:new() :: kz_json:object()
@@ -168,7 +168,7 @@
                     ,raw_qs = <<>> :: binary()
                     ,method = ?HTTP_GET :: http_method()
                     ,validation_errors = kz_json:new() :: kz_json:object()
-                    ,client_ip = <<"127.0.0.1">> :: api_ne_binary()
+                    ,client_ip = <<"127.0.0.1">> :: ne_binary()
                     ,load_merge_bypass :: api_object()
                     ,profile_id :: api_ne_binary()
                     ,api_version = ?VERSION_1 :: ne_binary()
