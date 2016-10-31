@@ -174,6 +174,41 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec auth_token(context()) -> api_ne_binary().
 -spec auth_doc(context()) -> api_object().
 -spec auth_account_id(context()) -> api_binary().
+-spec auth_user_id(context()) -> api_binary().
+-spec req_verb(context()) -> http_method().
+-spec req_data(context()) -> kz_json:json_term().
+-spec req_files(context()) -> req_files().
+-spec req_nouns(context()) -> req_nouns().
+-spec req_headers(context()) -> cowboy:http_headers().
+-spec req_header(context(), ne_binary()) -> api_ne_binary().
+-spec query_string(context()) -> kz_json:object().
+-spec req_param(context(), ne_binary()) -> kz_json:api_json_term().
+-spec req_param(context(), ne_binary(), Default) -> kz_json:json_term() | Default.
+-spec client_ip(context()) -> ne_binary().
+-spec req_id(context()) -> ne_binary().
+-spec auth_account_doc(context()) -> api_object().
+-spec doc(context()) -> api_object() | kz_json:objects().
+-spec load_merge_bypass(context()) -> api_object().
+-spec start(context()) -> os:timestamp().
+-spec resp_file(context()) -> binary().
+-spec resp_data(context()) -> resp_data().
+-spec resp_status(context()) -> crossbar_status().
+-spec resp_expires(context()) -> kz_datetime().
+-spec resp_headers(context()) -> kz_proplist().
+-spec api_version(context()) -> ne_binary().
+-spec resp_etag(context()) -> 'automatic' | string() | api_binary().
+-spec resp_envelope(context()) -> kz_json:object().
+-spec allow_methods(context()) -> http_methods().
+-spec allowed_methods(context()) -> http_methods().
+-spec method(context()) -> http_method().
+-spec req_json(context()) -> kz_json:object().
+-spec content_types_accepted(context()) -> crossbar_content_handlers().
+-spec content_types_provided(context()) -> crossbar_content_handlers().
+-spec languages_provided(context()) -> ne_binaries().
+-spec encodings_provided(context()) -> ne_binaries().
+-spec validation_errors(context()) -> kz_json:object().
+-spec resp_error_code(context()) -> api_integer().
+-spec resp_error_msg(context()) -> api_ne_binary().
 
 
 account_id(#cb_context{account_id=AcctId}) -> AcctId.
@@ -364,7 +399,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_languages_provided(context(), ne_binaries()) -> context().
 -spec set_encodings_provided(context(), ne_binaries()) -> context().
 -spec set_resp_error_code(context(), integer()) -> context().
--spec set_resp_error_msg(context(), api_binary()) -> context().
+-spec set_resp_error_msg(context(), api_ne_binary()) -> context().
 -spec set_magic_pathed(context(), boolean()) -> context().
 -spec set_should_paginate(context(), boolean()) -> context().
 -spec set_validation_errors(context(), kz_json:object()) -> context().
@@ -374,6 +409,11 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_raw_qs(context(), binary()) -> context().
 -spec set_client_ip(context(), ne_binary()) -> context().
 -spec set_profile_id(context(), ne_binary()) -> context().
+-spec set_account_name(context(), api_ne_binary()) -> context().
+-spec set_reseller_id(context(), api_ne_binary()) -> context().
+-spec set_account_modb(context(), kz_year() | ne_binary(), kz_month() | ne_binary()) -> context().
+-spec set_account_modb(context(), ne_binary(), kz_year() | ne_binary(), kz_month() | ne_binary()) -> context().
+-spec set_auth_token_type(context(), 'x-auth-token' | 'basic' | 'oauth' | 'unknown') -> context().
 
 set_account_id(#cb_context{}=Context, AcctId) ->
     Context#cb_context{account_id=AcctId}.
@@ -600,10 +640,11 @@ put_reqid(#cb_context{req_id=ReqId}) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec has_errors(context()) -> boolean().
 has_errors(#cb_context{validation_errors=JObj
                       ,resp_status='success'
                       }) ->
-    (not kz_util:is_empty(JObj));
+    not kz_util:is_empty(JObj);
 has_errors(#cb_context{}) -> 'true'.
 
 %%--------------------------------------------------------------------
@@ -612,6 +653,7 @@ has_errors(#cb_context{}) -> 'true'.
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec import_errors(context()) -> context().
 import_errors(#cb_context{}=Context) ->
     case response(Context) of
         {'ok', _} -> Context;
@@ -623,6 +665,8 @@ import_errors(#cb_context{}=Context) ->
                               }
     end.
 
+-spec response(context()) -> {ok, kz_json:object()} |
+                             {error, {pos_integer(), ne_binary(), kz_json:object()}}.
 response(#cb_context{resp_status='success'
                     ,resp_data=JObj
                     }) ->
@@ -777,6 +821,7 @@ find_schema(<<_/binary>> = Schema) ->
 %%--------------------------------------------------------------------
 -spec add_system_error(atom() | binary(), context()) -> context().
 -spec add_system_error(atom() | binary(), ne_binary() | kz_json:object(), context()) -> context().
+-spec add_system_error(integer(), atom() | ne_binary(), ne_binary() | kz_json:object(), context()) -> context().
 add_system_error('too_many_requests', Context) ->
     build_system_error(429, 'too_many_requests', <<"too many requests">>, Context);
 add_system_error('no_credit', Context) ->
