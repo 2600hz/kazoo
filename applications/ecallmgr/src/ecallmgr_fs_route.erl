@@ -143,8 +143,16 @@ handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
             lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
             {'noreply', State, 'hibernate'}
     end;
-handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node}=State) ->
-    handle_fetch(Section, FSId, CallId, FSData, Node),
+handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node
+                                                                                   ,switch_info='true'
+                                                                                   ,switch_uri=SwitchURI
+                                                                                   ,switch_url=SwitchURL
+                                                                                   }=State) ->
+    Props = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
+                                   ,{<<"Switch-URI">>, SwitchURI}
+                                   ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+                                   ]) ++ FSData,
+    handle_fetch(Section, FSId, CallId, Props, Node),
     {'noreply', State, 'hibernate'};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
