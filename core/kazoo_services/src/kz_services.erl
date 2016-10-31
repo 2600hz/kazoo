@@ -565,7 +565,7 @@ commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(services(), kz_transactions:kz_transactions()) -> atom().
+-spec charge_transactions(services(), kz_transactions:kz_transactions()) -> kz_json:objects().
 charge_transactions(#kz_services{billing_id=BillingId}, Activations) ->
     Bookkeeper = select_bookkeeper(BillingId),
     Transactions = [kz_transaction:to_json(Activation)

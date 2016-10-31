@@ -131,7 +131,7 @@ top_up(AccountId, Amount) ->
         [] ->
             lager:info("account ~s top up successfully for ~p", [AccountId, Amount]),
             case kz_transaction:save(Transaction1) of
-                {'ok', Saved} ->
+                {'ok', _} ->
                     lager:info("auto top up transaction for account ~s saved succesfully", [AccountId]);
                 {'error', 'conflict'} ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [AccountId]);
