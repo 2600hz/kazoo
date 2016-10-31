@@ -89,7 +89,7 @@ get_top_up(JObj) ->
 maybe_top_up(AccountId, Balance, Amount, Threshold) when Balance =< Threshold ->
     To = kz_util:current_tstamp(),
     From = To - ?SECONDS_IN_DAY,
-    case kz_transactions:fetch(AccountId, From, To) of
+    case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason} = Error ->
             lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
             Error;
