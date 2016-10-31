@@ -112,7 +112,7 @@ trying_top_up(AccountId, Amount, []) ->
     lager:info("no top up transactions found, processing..."),
     top_up(AccountId, Amount);
 trying_top_up(_AccountId, _Amount, _TopupTransactions) ->
-    lager:info("top up for ~s already done, skipping...", [_AccountId]).
+    lager:info("today auto top up for ~s already done, skipping...", [_AccountId]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,17 +131,17 @@ top_up(AccountId, Amount) ->
         [] ->
             lager:info("account ~s top up successfully for ~p", [AccountId, Amount]),
             case kz_transaction:save(Transaction1) of
-                {'ok', _} -> 'ok';
+                {'ok', Saved} ->
+                    lager:info("auto top up transaction for account ~s saved succesfully", [AccountId]);
                 {'error', 'conflict'} ->
                     lager:warning("did not write top up transaction for account ~s already exist for today", [AccountId]);
                 {'error', _Reason} ->
                     lager:error("failed to write top up transaction ~p , for account ~s (amount: ~p)"
                                ,[_Reason, AccountId, Amount]
-                               ),
-                    'ok'
+                               )
             end;
         [FailedTransaction] ->
             _Reason = kz_json:get_value(<<"failed_reason">>, FailedTransaction),
-            lager:warning("failed to top up account ~s: ~p", [AccountId, _Reason]),
+            lager:error("failed to top up account ~s: ~p", [AccountId, _Reason]),
             {'error', 'bookkeeper_failed'}
     end.

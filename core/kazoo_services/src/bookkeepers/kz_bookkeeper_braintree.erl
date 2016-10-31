@@ -195,7 +195,9 @@ charge_transactions(BillingId, [], Dict) ->
                   'true' -> Acc;
                   {'true', _} -> Acc;
                   {'false', ResponseText} ->
-                      kz_json:set_value(<<"failed_reason">>, ResponseText, JObjs) ++ Acc
+                      [kz_json:set_value(<<"failed_reason">>, ResponseText, J)
+                       || J <- JObjs
+                      ] ++ Acc
               end;
          (Code, JObjs, Acc) ->
               case handle_charged_transactions(BillingId, Code, JObjs) of
@@ -493,7 +495,7 @@ calculate_amount(JObjs) ->
 %%--------------------------------------------------------------------
 -spec already_charged(ne_binary() | integer() , integer() | kz_json:objects()) -> boolean().
 already_charged(BillingId, Code) when is_integer(Code) ->
-    lager:debug("checking if ~s has been charged for transaction of type ~p today", [BillingId, Code]),
+    lager:warning("checking if ~s has been charged for transaction of type ~p today", [BillingId, Code]),
     BtTransactions = braintree_transaction:find_by_customer(BillingId),
     Transactions = [braintree_transaction:record_to_json(BtTransaction)
                     || BtTransaction <- BtTransactions
@@ -501,7 +503,7 @@ already_charged(BillingId, Code) when is_integer(Code) ->
     already_charged(kz_util:to_binary(Code), Transactions);
 
 already_charged(_, []) ->
-    lager:debug("no transactions found matching code or made today"),
+    lager:warning("no transactions found matching code or made today"),
     'false';
 already_charged(Code, [Transaction|Transactions]) ->
     case
@@ -526,7 +528,7 @@ already_charged(Code, [Transaction|Transactions]) ->
 -spec already_charged_transaction(integer(), ne_binary(), integer(), kz_json:object()) -> boolean().
 already_charged_transaction(_ , ?BT_TRANS_VOIDED, _, Transaction) ->
     _Id = kz_doc:id(Transaction),
-    lager:debug("transaction was voided (~s)", [_Id]),
+    lager:warning("transaction was voided (~s)", [_Id]),
     'false';
 already_charged_transaction(Code , _, Code, Transaction) ->
     <<Year:4/binary, _:1/binary
@@ -538,10 +540,10 @@ already_charged_transaction(Code , _, Code, Transaction) ->
     {YearNow, M, D} = erlang:date(),
     case {kz_util:to_binary(YearNow), kz_util:pad_month(M), kz_util:pad_month(D)} of
         {Year, Month, Day} ->
-            lager:debug("found transaction matching code and date (~s)", [Id]),
+            lager:warning("found transaction matching code and date (~s)", [Id]),
             'true';
         _Now ->
-            lager:debug("found transaction matching code but not date (~s)", [Id]),
+            lager:warning("found transaction matching code but not date (~s)", [Id]),
             'false'
     end;
 already_charged_transaction(_, _, _, _) ->
