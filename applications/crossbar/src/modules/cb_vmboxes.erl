@@ -45,6 +45,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_accpeted.vmboxes">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.vmboxes">>, ?MODULE, 'content_types_provided'),
@@ -55,7 +57,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.vmboxes">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.vmboxes">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.vmboxes">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.finish_request.post.vmboxes">>, ?MODULE, 'finish_request').
+    _ = crossbar_bindings:bind(<<"*.finish_request.post.vmboxes">>, ?MODULE, 'finish_request'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

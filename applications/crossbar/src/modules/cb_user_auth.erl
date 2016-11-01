@@ -42,6 +42,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -49,7 +51,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.user_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.user_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.user_auth">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"*.execute.post.user_auth">>, ?MODULE, 'post'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

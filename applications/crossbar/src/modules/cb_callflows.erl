@@ -33,15 +33,18 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
-    cb_modules_util:bind(?MODULE, [{<<"*.allowed_methods.callflows">>, 'allowed_methods'}
-                                  ,{<<"*.resource_exists.callflows">>, 'resource_exists'}
-                                  ,{<<"*.validate.callflows">>, 'validate'}
-                                  ,{<<"*.execute.put.callflows">>, 'put'}
-                                  ,{<<"*.execute.post.callflows">>, 'post'}
-                                  ,{<<"*.execute.patch.callflows">>, 'patch'}
-                                  ,{<<"*.execute.delete.callflows">>, 'delete'}
-                                  ]).
+    _ = cb_modules_util:bind(?MODULE, [{<<"*.allowed_methods.callflows">>, 'allowed_methods'}
+                                      ,{<<"*.resource_exists.callflows">>, 'resource_exists'}
+                                      ,{<<"*.validate.callflows">>, 'validate'}
+                                      ,{<<"*.execute.put.callflows">>, 'put'}
+                                      ,{<<"*.execute.post.callflows">>, 'post'}
+                                      ,{<<"*.execute.patch.callflows">>, 'patch'}
+                                      ,{<<"*.execute.delete.callflows">>, 'delete'}
+                                      ]),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

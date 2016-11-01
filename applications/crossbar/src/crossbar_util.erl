@@ -788,18 +788,23 @@ format_app(Lang, AppJObj) ->
 %% Update all descendants of the account id pvt_enabled flag with State
 %% @end
 %%--------------------------------------------------------------------
+-spec change_pvt_enabled(boolean(), api_ne_binary()) -> ok | {error, any()}.
 change_pvt_enabled(_, 'undefined') -> 'ok';
 change_pvt_enabled(State, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     try
         {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, AccountId),
         lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
-        {'ok', JObj2} = kz_datamgr:ensure_saved(AccountDb, kz_json:set_value(<<"pvt_enabled">>, State, JObj1)),
+        JObj2 = case State of
+                    true -> kz_account:enable(JObj1);
+                    false -> kz_account:disable(JObj1)
+                end,
+        {'ok', JObj3} = kz_datamgr:ensure_saved(AccountDb, JObj2),
         case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
             {'ok', Rev} ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj2, Rev));
+                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj3, Rev));
             _Else ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj2))
+                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj3))
         end
     catch
         _:R ->

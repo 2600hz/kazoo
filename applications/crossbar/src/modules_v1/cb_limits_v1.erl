@@ -25,13 +25,16 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.limits">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.resource_exists.limits">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"v1_resource.billing">>, ?MODULE, 'billing'),
     _ = crossbar_bindings:bind(<<"v1_resource.validate.limits">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.limits">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'crossbar_services', 'reconcile').
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.limits">>, 'crossbar_services', 'reconcile'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

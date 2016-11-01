@@ -36,6 +36,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = ssl:start(),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.braintree">>, ?MODULE, 'allowed_methods'),
@@ -43,7 +45,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.braintree">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.braintree">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.braintree">>, ?MODULE, 'post'),
-    crossbar_bindings:bind(<<"*.execute.delete.braintree">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.braintree">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -107,6 +110,7 @@ resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 %% CUSTOMER API
 validate(Context, ?CUSTOMER_PATH_TOKEN) ->
     validate_customer(Context, cb_context:req_verb(Context));

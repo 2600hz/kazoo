@@ -39,6 +39,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ProdURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
     _StagURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
@@ -56,7 +58,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.ubiquiti_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.ubiquiti_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.ubiquiti_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.ubiquiti_auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.execute.put.ubiquiti_auth">>, ?MODULE, 'put'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
