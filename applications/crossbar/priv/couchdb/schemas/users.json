@@ -140,6 +140,11 @@
             "required": false,
             "type": "boolean"
         },
+        "feature_level": {
+            "description": "The user level for assigning feature sets",
+            "required": false,
+            "type": "string"
+        },
         "first_name": {
             "description": "The first name of the user",
             "maxLength": 128,

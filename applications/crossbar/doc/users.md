@@ -28,6 +28,7 @@ Key | Description | Type | Default | Required
 `do_not_disturb.enabled` | Is do-not-disturb enabled for this user? | `boolean` |   | `false`
 `email` | The email of the user | `string(1..254)` |   | `false`
 `enabled` | Determines if the user is currently enabled | `boolean` | `true` | `false`
+`feature_level` | The user level for assigning feature sets | `string` |   | `false`
 `first_name` | The first name of the user | `string(1..128)` |   | `true`
 `hotdesk` | The user hotdesk parameters | `object` | `{}` | `false`
 `hotdesk.enabled` | Determines if the user has hotdesking enabled | `boolean` | `false` | `false`
