@@ -32,8 +32,10 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
-%% @spec upgrade() -> ok
-%% @doc Add processes if necessary.
+%% @doc
+%% Add processes if necessary.
+%% @end
+-spec upgrade() -> ok.
 upgrade() ->
     {'ok', {_, Specs}} = init([]),
 
@@ -45,8 +47,7 @@ upgrade() ->
                           _ = supervisor:terminate_child(?SERVER, Id),
                           supervisor:delete_child(?SERVER, Id)
                   end, sets:to_list(Kill)),
-    lists:foreach(fun(Spec) -> supervisor:start_child(?SERVER, Spec) end, Specs),
-    'ok'.
+    lists:foreach(fun(Spec) -> supervisor:start_child(?SERVER, Spec) end, Specs).
 
 %% ===================================================================
 %% Supervisor callbacks

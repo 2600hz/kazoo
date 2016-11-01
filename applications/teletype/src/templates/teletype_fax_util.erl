@@ -18,6 +18,7 @@
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
 
+-spec convert(ne_binary(), ne_binary(), binary()) -> binary().
 convert(FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
 convert(FromFormat0, ToFormat0, Bin) ->

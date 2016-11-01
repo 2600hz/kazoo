@@ -414,6 +414,7 @@ default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
 render_subject(Template, Macros) ->
     render(<<"subject">>, Template, Macros).
 
+-spec render(ne_binary(), ne_binary(), kz_proplist()) -> binary().
 render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
