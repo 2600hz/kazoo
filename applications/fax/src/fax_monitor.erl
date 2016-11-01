@@ -62,7 +62,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state()}.
+-spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
     _ = kz_util:spawn(fun cleanup_jobs/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.

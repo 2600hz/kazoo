@@ -1024,11 +1024,11 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
     ?WSD_STOP(),
     lager:info("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
--spec code_change(any(), atom(), state(), any()) -> handle_fsm_ret(state()).
+-spec code_change(any(), atom(), state(), any()) -> {ok, atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
--spec init(any()) -> handle_fsm_ret(state()).
+-spec init(any()) -> {ok, atom(), state()}.
 init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.

@@ -294,7 +294,7 @@ terminate(_Reason, _StateName, #state{call_id=CallId
     ?WSD_STOP(),
     lager:debug("fsm terminating while in ~s: ~p", [_StateName, _Reason]).
 
--spec code_change(any(), atom(), state(), any()) -> handle_fsm_ret(state()).
+-spec code_change(any(), atom(), state(), any()) -> {ok, atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
