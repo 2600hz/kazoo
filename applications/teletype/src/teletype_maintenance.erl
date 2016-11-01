@@ -70,12 +70,12 @@ receipt_for_printing(Receipt) ->
 default_receipt_printing(Receipt) ->
     kz_util:strip_binary(Receipt, [$\n, $\r]).
 
+-spec restore_system_templates() -> ok.
 restore_system_templates() ->
-    [restore_system_template(Template) || Template <- list_system_templates()],
-    'ok'.
+    lists:foreach(fun restore_system_template/1, list_system_templates()).
 
-restore_system_template(<<"skel">>) ->
-    'ok';
+-spec restore_system_template(ne_binary()) -> ok.
+restore_system_template(<<"skel">>) -> 'ok';
 restore_system_template(TemplateId) ->
     DbId = kz_notification:db_id(TemplateId),
     ModId = kz_notification:resp_id(TemplateId),

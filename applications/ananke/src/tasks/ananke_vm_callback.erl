@@ -46,6 +46,7 @@ check(AccountId, VMBoxId) ->
                       )
     end.
 
+-spec has_unread(ne_binary(), ne_binary()) -> boolean().
 has_unread(AccountId, VMBoxId) ->
     {New, _} = kvm_messages:count_none_deleted(AccountId, VMBoxId),
     New > 0.

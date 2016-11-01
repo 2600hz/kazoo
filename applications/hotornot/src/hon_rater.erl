@@ -12,6 +12,7 @@
 
 -include("hotornot.hrl").
 
+-spec init() -> ok.
 init() -> kapps_maintenance:refresh(?KZ_RATES_DB).
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
