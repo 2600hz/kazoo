@@ -356,7 +356,7 @@
 -define(CONFERENCE_EVENT_TYPES, []).
 
 %% Conference Error
--define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>]).
+-define(CONFERENCE_ERROR_HEADERS, [<<"Error-Message">>, <<"Request">>, <<"Conference-ID">>]).
 -define(OPTIONAL_CONFERENCE_ERROR_HEADERS, []).
 -define(CONFERENCE_ERROR_VALUES, [{<<"Event-Category">>, <<"conference">>}
                                  ,{<<"Event-Name">>, <<"error">>}
