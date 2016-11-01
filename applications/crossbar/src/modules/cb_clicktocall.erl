@@ -43,6 +43,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.clicktocall">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.clicktocall">>, ?MODULE, 'resource_exists'),
@@ -52,7 +54,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.clicktocall">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.clicktocall">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.clicktocall">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.clicktocall">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

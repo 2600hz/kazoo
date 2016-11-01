@@ -28,6 +28,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.connectivity">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.connectivity">>, ?MODULE, 'resource_exists'),
@@ -35,7 +37,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.connectivity">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.connectivity">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.connectivity">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.connectivity">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

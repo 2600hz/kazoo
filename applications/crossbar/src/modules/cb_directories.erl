@@ -34,6 +34,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.directories">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.directories">>, ?MODULE, 'resource_exists'),
@@ -43,7 +45,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.directories">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.directories">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.directories">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.directories">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

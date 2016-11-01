@@ -7,7 +7,6 @@
 %%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(crossbar_default_handler).
-
 -behaviour(cowboy_http_handler).
 
 -export([init/3
@@ -64,6 +63,7 @@ path_matches_template_tokens([Token|PathTokens], [Token|TemplateTokens]) ->
     path_matches_template_tokens(PathTokens, TemplateTokens);
 path_matches_template_tokens(_, _) -> 'false'.
 
+-spec upgrade(cowboy_req:req(), kz_proplist(), any(), any()) -> cowboy_req:req().
 upgrade(Req, Env, _Handler, HandlerOpts) ->
     cowboy_rest:upgrade(Req
                        ,props:set_value('handler', 'api_resource', Env)

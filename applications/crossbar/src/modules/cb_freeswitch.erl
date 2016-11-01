@@ -41,6 +41,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = supervisor:start_child('crossbar_sup', ?WORKER(?FS_OFFLINE_SERVER)),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -48,7 +50,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.content_types_provided.freeswitch">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.freeswitch">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.freeswitch">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.freeswitch">>, ?MODULE, 'validate_freeswitch').
+    _ = crossbar_bindings:bind(<<"*.validate.freeswitch">>, ?MODULE, 'validate_freeswitch'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

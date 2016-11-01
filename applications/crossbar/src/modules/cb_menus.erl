@@ -29,6 +29,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.menus">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.menus">>, ?MODULE, 'resource_exists'),
@@ -36,7 +38,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.menus">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.menus">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.menus">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.menus">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @private

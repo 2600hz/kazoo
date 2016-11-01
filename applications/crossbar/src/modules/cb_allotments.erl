@@ -26,11 +26,14 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.allotments">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.allotments">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.allotments">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post').
+    _ = crossbar_bindings:bind(<<"*.execute.post.allotments">>, ?MODULE, 'post'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -42,9 +45,9 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
+-spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
-
 allowed_methods(?CONSUMED) ->
     [?HTTP_GET].
 

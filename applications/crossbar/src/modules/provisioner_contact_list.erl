@@ -22,6 +22,7 @@
                  ,internal_numbers = []
                  }).
 
+-spec build(ne_binary()) -> kz_json:objects().
 build(AccountDb) ->
     [contact_to_json(Contact)
      || Contact <- build_contacts(AccountDb)

@@ -45,6 +45,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     Bindings = [{<<"v2_resource.allowed_methods.devices">>, 'allowed_methods'}
                ,{<<"v2_resource.resource_exists.devices">>, 'resource_exists'}
@@ -59,10 +61,11 @@ init() ->
                ,{<<"v2_resource.execute.delete.devices">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>
-                          ,'crossbar_services'
-                          ,'reconcile'
-                          ).
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.devices">>
+                              ,'crossbar_services'
+                              ,'reconcile'
+                              ),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -119,6 +122,7 @@ resource_exists(_DeviceId, ?QUICKCALL_PATH_TOKEN, _Number) -> 'true'.
 %% Ensure we will be able to bill for devices
 %% @end
 %%--------------------------------------------------------------------
+-spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
     billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 

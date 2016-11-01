@@ -32,18 +32,23 @@
 
 -include("crossbar.hrl").
 
+-define(AUTHORITATIVE_CROSSBAR,
+        kapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
-    Url = kapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
-    lager:debug("shared auth started up, using ~s as authoritative crossbar", [Url]),
+    lager:debug("shared auth started up, using ~s as authoritative crossbar", [?AUTHORITATIVE_CROSSBAR]),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.shared_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.shared_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.shared_auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.execute.put.shared_auth">>, ?MODULE, 'put'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -127,9 +132,8 @@ validate(Context) ->
 
 validate_request(Context, ?HTTP_PUT, _) ->
     _ = cb_context:put_reqid(Context),
-    XBarUrl = kapps_config:get_string(<<"crossbar.shared_auth">>, <<"authoritative_crossbar">>),
     SharedToken = kz_json:get_value(<<"shared_token">>, cb_context:req_data(Context)),
-    case authenticate_shared_token(SharedToken, XBarUrl) of
+    case authenticate_shared_token(SharedToken, ?AUTHORITATIVE_CROSSBAR) of
         {'ok', Payload} ->
             lager:debug("authoritive shared auth request succeeded"),
             RemoteData = kz_json:get_value(<<"data">>, kz_json:decode(Payload)),
@@ -185,6 +189,7 @@ validate_request(Context, ?HTTP_GET, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     _ = cb_context:put_reqid(Context),
     create_local_token(Context).

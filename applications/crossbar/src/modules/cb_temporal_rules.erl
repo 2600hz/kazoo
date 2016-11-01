@@ -26,6 +26,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.temporal_rules">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.temporal_rules">>, ?MODULE, 'resource_exists'),
@@ -33,7 +35,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.temporal_rules">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.temporal_rules">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.temporal_rules">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.temporal_rules">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.temporal_rules">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
