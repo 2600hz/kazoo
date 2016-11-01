@@ -9,8 +9,8 @@
 -module(teletype_maintenance).
 
 -export([receipts/0
-         ,restore_system_templates/0
-         ,restore_system_template/1
+        ,restore_system_templates/0
+        ,restore_system_template/1
         ]).
 
 -include("teletype.hrl").
@@ -35,19 +35,19 @@ sort_receipts({_, #email_receipt{timestamp=S1}}, {_, #email_receipt{timestamp=S2
 
 -spec print_receipt({{'receipt', ne_binary()}, email_receipt()}, pos_integer()) -> pos_integer().
 print_receipt({{'receipt', Receipt}
-               ,#email_receipt{to=To
-                               ,from=From
-                               ,timestamp=GregSecs
-                               ,call_id=CallId
-                              }}
-              ,Count
+              ,#email_receipt{to=To
+                             ,from=From
+                             ,timestamp=GregSecs
+                             ,call_id=CallId
+                             }}
+             ,Count
              ) ->
     io:format(?RECEIPT_FORMAT, [kz_util:to_binary(Count)
-                                ,CallId
-                                ,receipt_for_printing(Receipt)
-                                ,convert_for_printing(To)
-                                ,convert_for_printing(From)
-                                ,kz_util:pretty_print_datetime(GregSecs)
+                               ,CallId
+                               ,receipt_for_printing(Receipt)
+                               ,convert_for_printing(To)
+                               ,convert_for_printing(From)
+                               ,kz_util:pretty_print_datetime(GregSecs)
                                ]),
     Count+1.
 
@@ -58,8 +58,8 @@ convert_for_printing([_|_]=Vs) -> kz_util:join_binary(Vs, <<",">>).
 -spec receipt_for_printing(ne_binary()) -> ne_binary().
 receipt_for_printing(Receipt) ->
     case re:run(Receipt
-                ,<<"^2.0.0 Ok: queued as ([[:alnum:]]+).*$">>
-                ,[{'capture', 'all_but_first', 'binary'}]
+               ,<<"^2.0.0 Ok: queued as ([[:alnum:]]+).*\$">>
+               ,[{'capture', 'all_but_first', 'binary'}]
                )
     of
         {'match', [QueuedReceipt]} ->
