@@ -40,7 +40,7 @@ collect(ACLs, PidRefs) ->
 %%         'undefined' -> ?REQUEST_TIMEOUT;
 %%         Timeout -> Timeout - ?REQUEST_TIMEOUT_FUDGE
 %%     end.
-%% 
+%%
 collect(ACLs, [], _Timeout) ->
     lager:debug("acls built with ~p ms to spare", [_Timeout]),
     ACLs;
