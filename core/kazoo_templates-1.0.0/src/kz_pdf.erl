@@ -76,7 +76,7 @@ generate(Account, Props, Template) ->
 
     Rand = wh_util:rand_hex_binary(5),
     Renderer = wh_util:to_atom(<<"kz_pdf_", DocType/binary, "_", Rand/binary>>, 'true'),
-    {'ok', Renderer} = kz_template:compile_template(Template, Renderer),
+    {'ok', Renderer} = kz_template:compile(Template, Renderer),
     {'ok', Rendered} = kz_template:render(Renderer, Props),
 
     code:purge(Renderer),

@@ -1,4 +1,4 @@
-PROJECT = kazoo_template
+PROJECT = kazoo_templates
 ROOT = ../..
 
 EBINS = $(shell find $(ROOT)/core/whistle-* -maxdepth 2 -name ebin -print) \

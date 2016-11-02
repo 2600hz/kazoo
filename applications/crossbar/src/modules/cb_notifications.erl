@@ -843,7 +843,7 @@ update_template(Context, Id, FileJObj) ->
                                         );
         {'error', Error} ->
             lager:warning("failed to compile uploaded ~s template: ~p", [CT, Error]),
-            cb_context:add_system_error('faulty_request', Context)
+            crossbar_util:response('error', <<"Failed to compile notification template">>, Context)
     end.
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().
