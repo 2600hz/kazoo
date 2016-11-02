@@ -405,7 +405,7 @@ handle_cast({'continue', Key}, #state{flow=Flow
             stop(self()),
             {'noreply', State};
         'undefined' ->
-            lager:info("requested child does not exist, trying wild card", [Key]),
+            lager:info("requested child '~s' does not exist, trying wild card", [Key]),
             continue(self()),
             {'noreply', State};
         NewFlow ->
