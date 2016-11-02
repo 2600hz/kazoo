@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   James Aimonetti
+%%%   Daniel Finke
 %%%-------------------------------------------------------------------
 -module(acdc_init).
 
@@ -55,12 +56,8 @@ init_acct(Account) ->
 
     acdc_stats:init_db(AccountId),
 
-    init_queues(AccountId
-               ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
-               ),
-    init_agents(AccountId
-               ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
-               ).
+    init_acct_queues(AccountDb, AccountId),
+    init_acct_agents(AccountDb, AccountId).
 
 -spec init_acct_queues(ne_binary()) -> any().
 init_acct_queues(Account) ->
@@ -68,9 +65,7 @@ init_acct_queues(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account queues: ~s", [AccountId]),
-    init_agents(AccountId
-               ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
-               ).
+    init_acct_queues(AccountDb, AccountId).
 
 -spec init_acct_agents(ne_binary()) -> any().
 init_acct_agents(Account) ->
@@ -78,8 +73,18 @@ init_acct_agents(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
 
     lager:debug("init acdc account agents: ~s", [AccountId]),
+    init_acct_agents(AccountDb, AccountId).
+
+-spec init_acct_queues(ne_binary(), ne_binary()) -> any().
+init_acct_queues(AccountDb, AccountId) ->
+    init_queues(AccountId
+               ,kz_datamgr:get_results(AccountDb, <<"queues/crossbar_listing">>, [])
+               ).
+
+-spec init_acct_agents(ne_binary(), ne_binary()) -> any().
+init_acct_agents(AccountDb, AccountId) ->
     init_agents(AccountId
-               ,kz_datamgr:get_results(AccountDb, <<"users/crossbar_listing">>, [])
+               ,kz_datamgr:get_results(AccountDb, <<"queues/agents_listing">>, [])
                ).
 
 -spec init_queues(ne_binary(), kz_datamgr:get_results_return()) -> any().
@@ -115,22 +120,31 @@ init_agents(AccountId, {'error', _E}) ->
     wait_a_bit(),
     'ok';
 init_agents(AccountId, {'ok', As}) ->
-    [acdc_agents_sup:new(AccountId, kz_doc:id(A)) || A <- As].
+    [spawn_previously_logged_in_agent(AccountId, kz_doc:id(A)) || A <- As].
 
 wait_a_bit() -> timer:sleep(1000 + rand:uniform(500)).
 
 try_queues_again(AccountId) ->
-    try_again(AccountId, <<"queues/crossbar_listing">>, fun init_queues/2).
+    try_again(AccountId, fun init_acct_queues/2).
 try_agents_again(AccountId) ->
-    try_again(AccountId, <<"users/crossbar_listing">>, fun init_agents/2).
+    try_again(AccountId, fun init_acct_agents/2).
 
-try_again(AccountId, View, F) ->
+try_again(AccountId, F) ->
     kz_util:spawn(
       fun() ->
-              kz_util:put_callid(?MODULE),
               wait_a_bit(),
               AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-              F(AccountId, kz_datamgr:get_results(AccountDb, View, []))
+              F(AccountDb, AccountId)
+      end).
+
+-spec spawn_previously_logged_in_agent(ne_binary(), ne_binary()) -> any().
+spawn_previously_logged_in_agent(AccountId, AgentId) ->
+    kz_util:spawn(
+      fun() ->
+              case acdc_agent_util:most_recent_status(AccountId, AgentId) of
+                  {'ok', <<"logged_out">>} -> lager:debug("agent ~s in ~s is logged out, not starting", [AgentId, AccountId]);
+                  {'ok', _Status} -> acdc_agents_sup:new(AccountId, AgentId)
+              end
       end).
 
 -spec declare_exchanges() -> 'ok'.

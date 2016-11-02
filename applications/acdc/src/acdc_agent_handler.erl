@@ -39,7 +39,7 @@ handle_status_update(JObj, _Props) ->
     case kz_json:get_value(<<"Event-Name">>, JObj) of
         <<"login">> ->
             'true' = kapi_acdc_agent:login_v(JObj),
-            maybe_start_agent(AccountId, AgentId, JObj);
+            login(AccountId, AgentId, JObj);
         <<"logout">> ->
             'true' = kapi_acdc_agent:logout_v(JObj),
             maybe_stop_agent(AccountId, AgentId, JObj);
@@ -58,42 +58,30 @@ handle_status_update(JObj, _Props) ->
                                          )
     end.
 
+-spec login(ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
+login(AccountId, AgentId, JObj) ->
+    case maybe_start_agent(AccountId, AgentId, JObj) of
+        'fail' -> login_fail(JObj);
+        _ -> login_success(JObj)
+    end.
+
+-spec maybe_agent_queue_change(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
 maybe_agent_queue_change(AccountId, AgentId, <<"login_queue">>, QueueId, JObj) ->
     lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
-    update_agent(acdc_agents_sup:find_agent_supervisor(AccountId, AgentId)
-                ,QueueId
-                ,fun acdc_agent_listener:add_acdc_queue/2
-                ,AccountId, AgentId, JObj
-                );
+    case maybe_start_agent(AccountId, AgentId, JObj) of
+        'fail' -> lager:error("could not start agent process for ~s", [AgentId]);
+        Sup -> acdc_agent_listener:add_acdc_queue(acdc_agent_sup:listener(Sup), QueueId)
+    end;
 maybe_agent_queue_change(AccountId, AgentId, <<"logout_queue">>, QueueId, JObj) ->
     lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
-    update_agent(acdc_agents_sup:find_agent_supervisor(AccountId, AgentId)
-                ,QueueId
-                ,fun acdc_agent_listener:rm_acdc_queue/2
-                ,JObj
-                );
-maybe_agent_queue_change(_AccountId, _AgentId, _Evt, _QueueId, _JObj) ->
-    lager:debug("unhandled evt: ~s for ~s", [_Evt, _QueueId]).
+    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
+        'undefined' -> lager:debug("agent process for ~s already stopped");
+        Sup ->
+            maybe_update_presence(Sup, JObj),
+            acdc_agent_listener:rm_acdc_queue(acdc_agent_sup:listener(Sup), QueueId)
+    end.
 
-update_agent('undefined', QueueId, _F, AccountId, AgentId, _JObj) ->
-    lager:debug("new agent process needs starting"),
-    {'ok', AgentJObj} = kz_datamgr:open_cache_doc(kz_util:format_account_id(AccountId, 'encoded')
-                                                 ,AgentId
-                                                 ),
-    lager:debug("agent loaded"),
-    acdc_agent_stats:agent_ready(AccountId, AgentId),
-    acdc_agents_sup:new(AccountId, AgentId, AgentJObj, [QueueId]);
-update_agent(Sup, Q, F, _, _, _) when is_pid(Sup) ->
-    lager:debug("agent super ~p", [Sup]),
-    F(acdc_agent_sup:listener(Sup), Q).
-
-update_agent('undefined', _QueueId, _F, _JObj) ->
-    lager:debug("agent's supervisor not around, ignoring for queue ~s", [_QueueId]);
-update_agent(Sup, Q, F, JObj) when is_pid(Sup) ->
-    APid = acdc_agent_sup:listener(Sup),
-    maybe_update_presence(Sup, JObj),
-    F(APid, Q).
-
+-spec maybe_start_agent(ne_binary(), ne_binary(), kz_json:object()) -> pid() | 'fail'.
 maybe_start_agent(AccountId, AgentId, JObj) ->
     try maybe_start_agent(AccountId, AgentId) of
         {'ok', Sup} ->
@@ -102,22 +90,22 @@ maybe_start_agent(AccountId, AgentId, JObj) ->
                 'true' ->
                     maybe_update_presence(Sup, JObj),
                     acdc_agent_stats:agent_logged_in(AccountId, AgentId),
-                    login_success(JObj);
+                    Sup;
                 'false' ->
                     acdc_agent_stats:agent_logged_out(AccountId, AgentId),
-                    login_fail(JObj)
+                    'fail'
             end;
         {'exists', Sup} ->
             FSM = acdc_agent_sup:fsm(Sup),
             acdc_agent_fsm:update_presence(FSM, presence_id(JObj), presence_state(JObj, 'undefined')),
-            login_success(JObj);
+            Sup;
         {'error', _E} ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId),
-            login_fail(JObj)
+            'fail'
     catch
         _E:_R ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId),
-            login_fail(JObj)
+            'fail'
     end.
 
 login_fail(JObj) ->
@@ -146,7 +134,6 @@ maybe_start_agent(AccountId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
         'undefined' ->
             lager:debug("agent ~s (~s) not found, starting", [AgentId, AccountId]),
-            acdc_agent_stats:agent_ready(AccountId, AgentId),
             case kz_datamgr:open_doc(kz_util:format_account_id(AccountId, 'encoded'), AgentId) of
                 {'ok', AgentJObj} -> acdc_agents_sup:new(AgentJObj);
                 {'error', _E}=E ->
@@ -166,8 +153,6 @@ maybe_stop_agent(AccountId, AgentId, JObj) ->
             acdc_agent_stats:agent_logged_out(AccountId, AgentId);
         Sup when is_pid(Sup) ->
             lager:debug("agent ~s(~s) is logging out, stopping ~p", [AgentId, AgentId, Sup]),
-            acdc_agent_stats:agent_pending_logged_out(AccountId, AgentId),
-
             case catch acdc_agent_sup:fsm(Sup) of
                 APid when is_pid(APid) ->
                     acdc_agent_fsm:update_presence(APid, presence_id(JObj), presence_state(JObj, ?PRESENCE_RED_SOLID)),
