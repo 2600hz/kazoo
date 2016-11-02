@@ -32,7 +32,7 @@ build(Node) ->
 -spec collect(kz_json:object(), pid_refs(), kz_timeout()) ->
                      kz_json:object().
 collect(ACLs, PidRefs) ->
-    collect(ACLs, PidRefs, ?REQUEST_TIMEOUT).
+    collect(ACLs, PidRefs, ?REQUEST_TIMEOUT + ?REQUEST_TIMEOUT_FUDGE).
 
 %% -spec request_timeout() -> pos_integer().
 %% request_timeout() ->
