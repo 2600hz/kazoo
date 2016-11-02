@@ -32,15 +32,15 @@ build(Node) ->
 -spec collect(kz_json:object(), pid_refs(), kz_timeout()) ->
                      kz_json:object().
 collect(ACLs, PidRefs) ->
-    collect(ACLs, PidRefs, request_timeout()).
+    collect(ACLs, PidRefs, ?REQUEST_TIMEOUT).
 
--spec request_timeout() -> pos_integer().
-request_timeout() ->
-    case kapps_config:get(<<"ecallmgr">>, <<"fetch_timeout">>) of
-        'undefined' -> ?REQUEST_TIMEOUT;
-        Timeout -> Timeout - ?REQUEST_TIMEOUT_FUDGE
-    end.
-
+%% -spec request_timeout() -> pos_integer().
+%% request_timeout() ->
+%%     case kapps_config:get(<<"ecallmgr">>, <<"fetch_timeout">>) of
+%%         'undefined' -> ?REQUEST_TIMEOUT;
+%%         Timeout -> Timeout - ?REQUEST_TIMEOUT_FUDGE
+%%     end.
+%% 
 collect(ACLs, [], _Timeout) ->
     lager:debug("acls built with ~p ms to spare", [_Timeout]),
     ACLs;
