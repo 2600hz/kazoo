@@ -79,6 +79,7 @@ handle(Number) ->
 %% @private
 -spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
+    IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
     PhoneNumber = knm_number:phone_number(Number),
     Doc = knm_phone_number:doc(PhoneNumber),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
@@ -87,9 +88,14 @@ handle_outbound_cnam(Number) ->
         'undefined' ->
             knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND);
         CurrentCNAM -> Number;
+        NewCNAM when IsDryRun ->
+            lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
+            knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM});
         NewCNAM ->
             FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
-            knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData})
+            Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
+            _ = set_outbound(Number1, NewCNAM),
+            Number1
     end.
 
 %% @private
@@ -131,3 +137,12 @@ toggle_inbound(Number, ShouldEnable) ->
             Rep = knm_telnyx_util:req(put, ["numbers", knm_telnyx_util:did(Number)], Body),
             ShouldEnable = kz_json:is_true(Key, Rep)
     end.
+
+%% @private
+set_outbound(Number, NewCNAM) ->
+    Key = <<"cnam_listing_details">>,
+    Body = kz_json:from_list([{Key, NewCNAM}
+                             ,{<<"enable_caller_id_name">>, true}
+                             ]),
+    Rep = knm_telnyx_util:req(put, ["numbers", knm_telnyx_util:did(Number)], Body),
+    NewCNAM = kz_json:get_ne_binary_value(Key, Rep).

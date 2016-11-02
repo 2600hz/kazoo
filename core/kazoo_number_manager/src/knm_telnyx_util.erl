@@ -76,8 +76,11 @@ req('post', ["number_orders"], _) ->
     rep_fixture("telnyx_order.json");
 req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
     rep_fixture("telnyx_activate_e911.json");
-req('put', ["numbers", "%2B1"++_], _) ->
-    rep_fixture("telnyx_activate_cnam.json");
+req('put', ["numbers", "%2B1"++_], Body) ->
+    case kz_json:get_ne_binary_value(<<"cnam_listing_details">>, Body) of
+        undefined -> rep_fixture("telnyx_activate_cnam_inbound.json");
+        _ -> rep_fixture("telnyx_activate_cnam_outbound.json")
+    end;
 req('delete', ["e911_addresses", "421570676474774685"], _) ->
     rep_fixture("telnyx_delete_e911.json").
 

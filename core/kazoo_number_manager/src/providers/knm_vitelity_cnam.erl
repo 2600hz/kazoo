@@ -72,12 +72,8 @@ has_emergency_services(_Number) -> 'false'.
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_outbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
--spec handle_outbound_cnam(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 handle_outbound_cnam(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
-    handle_outbound_cnam(Number, IsDryRun).
-
-handle_outbound_cnam(Number, IsDryRun) ->
     PhoneNumber = knm_number:phone_number(Number),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
     Doc = knm_phone_number:doc(PhoneNumber),
@@ -94,7 +90,7 @@ handle_outbound_cnam(Number, IsDryRun) ->
             Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM}),
             handle_inbound_cnam(Number1);
         NewCNAM ->
-            lager:debug("cnam display name changed to ~s, updating Vitelity", [NewCNAM]),
+            lager:debug("cnam display name changed to ~s, updating", [NewCNAM]),
             Number1 = try_update_outbound_cnam(Number, NewCNAM),
             handle_inbound_cnam(Number1)
     end.
