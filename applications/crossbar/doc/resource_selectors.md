@@ -22,19 +22,19 @@ Example:
 here we call modue `filter_list` (which filter resources comparing 2 lists).
 More info about modules and their parameters can be found [here](https://github.com/2600hz/kazoo/blob/master/applications/stepswitch/doc/resource_selectors.md).
 
-Rules can be managed via http://{{IP}}:8000/v2/resource_selectors or http://{{IP}}:8000/v2/accounts/{{ACCOUNT_ID}}/resource_selectors
+Rules can be managed via http://{{IP}}:8000/v2/resource_selectors or http://{{IP}}:8000/v2/accounts/{{ACCOUNT_ID}}/resource_selectors/rules
 
-Rules storred in `resource_selector_rules` file in Account database. System-wide rules is stored in Master-Account database, so http://{{IP}}:8000/v2/resource_selectors is equal to http://{{IP}}:8000/v2/accounts/{{MASTER_ACCOUNT_ID}}/resource_selectors
+Rules storred in `resource_selector_rules` file in Account database. System-wide rules is stored in Master-Account database, so http://{{IP}}:8000/v2/resource_selectors/rules is equal to http://{{IP}}:8000/v2/accounts/{{MASTER_ACCOUNT_ID}}/resource_selectors/rules
 
 ### Show rules
 
-> GET /v2/resource_selectors
+> GET /v2/resource_selectors/rules
 
 ```shell
 curl -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/json" \
-    http://{SERVER}:8000/v2/resource_selectors
+    http://{SERVER}:8000/v2/resource_selectors/rules
 ```
 
 ```json
@@ -85,7 +85,7 @@ curl -X GET \
 
 ### Update rules
 
-> POST /v2/resource_selectors
+> POST /v2/resource_selectors/rules
 
 ```shell
 curl -X POST \
@@ -95,7 +95,7 @@ curl -X POST \
         {"get_resources":{}},
         {"filter_list": {"value_a": "request:Flags", "value_b": "resource:flags", "action": "keep"}}
     ]}}'
-    http://{SERVER}:8000/v2/resource_selectors
+    http://{SERVER}:8000/v2/resource_selectors/rules
 ```
 
 ```json
@@ -300,84 +300,19 @@ curl -v -X GET \
 
 Here we ses selectors for resource `RES-4` with selector name `lcr`. Resulted list can be simple list of strings or list of objects, its dependind if there additional `value` or not.
 
-### Add selectors
+### Manage selectors
 
-> PUT /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
+Manage (import/delete) resource selectors made via kazoo tasks (CSV file).
 
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {
-        "selectors":["123","456","789"]
-    }}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
-```
+Category `resourse_selectors`, action `import` or `delete`.
 
-```json
-{
-  "data": {
-    "total": 3,
-    "success": 3,
-    "error": 0
-  },
-  "revision": "{REVISION_ID}",
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "{AUTH_TOKEN}"
-}
-```
+CSV columns:
+* mandatory
+ * name
+ * selector
+ * resource
+* optional
+ * stat_time
+ * stop_time
+ * value
 
-### Delete selectors
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {
-        "selectors":["123","456","789"]
-    }}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
-```
-
-```json
-{
-  "data": {
-    "total": 3,
-    "success": 3,
-    "error": 0
-  },
-  "revision": "{REVISION_ID}",
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "{AUTH_TOKEN}"
-}
-```
-
-If you want delete all selectors, you can use special word `_all`, instead explictly list each selector.
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {
-        "selectors":["_all"]
-    }}' \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/RES-4/name/lcr
-```
-
-```json
-{
-  "data": {
-    "total": 36039,
-    "success": 36039,
-    "error": 0
-  },
-  "revision": "{REVISION_ID}",
-  "request_id": "{REQUEST_ID}",
-  "status": "success",
-  "auth_token": "{AUTH_TOKEN}"
-}
-```
-
-## Import selectors from CSV-files
-TODO

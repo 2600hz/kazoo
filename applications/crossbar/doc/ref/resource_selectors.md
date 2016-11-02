@@ -6,7 +6,12 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`selectors` | Data used for selectors | `array()` |   | `true`
+`name` | Selector name | `string` |   | `true`
+`resource` | Resource ID | `string` |   | `true`
+`selector` | Selector data | `string` |   | `true`
+`start_time` | Start time (gregorian seconds) | `integer` |   | `false`
+`stop_time` | Stop time (gregorian seconds) | `integer` |   | `false`
+`value` | Extra selector data | `string` |   | `false`
 
 
 #### Fetch
@@ -19,14 +24,34 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors
 ```
 
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+```
+
 #### Change
 
-> POST /v2/accounts/{ACCOUNT_ID}/resource_selectors
+> POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 ```
 
 #### Fetch
@@ -51,6 +76,26 @@ curl -v -X GET \
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/rules
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}
 
 ```shell
@@ -69,16 +114,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
@@ -89,62 +124,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
 ```
 
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-```
-
-#### Create
-
-> PUT /v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}
-```
-
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-```
-
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-```
-
-#### Create
-
-> PUT /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
-
-```shell
-curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
 ```

@@ -69,6 +69,7 @@ mode | Filter specific paramter
 `value_a` and `value_b` can be:
 - number - dialed phone number in e164 format
 - cid_number - Caller-ID number
+- service_plans - list of service plans in form "plan-id:account-id" (account-id is account which created this service plan, usualy it is master or reseller account). Example [ "2fa2e806f0ba8c00796a27788861be78:37c8ecfc3cbddc3a5d7e83634ae8241d", "ff9462f98263fd203e776282cabf7d65:37c8ecfc3cbddc3a5d7e83634ae8241d" ]
 - resource:{RESOURCE_FIELD} - value ov the resource field like flags, weight, etc... (resource:flags, resource:weight_cost)
 - request:{REQUEST_FIELD} - value of field in Offnet-Request (request:Flags)
 - database:{SELECTOR_NAME} - value got from database (this selectors managed via cb_resource_selectors module)
@@ -131,7 +132,7 @@ Here we got list of flags from "Flags" field in Offent-Request, and compare it w
 - ne_subset - similar to "subset", but empty list in `value_a` always fail
 - ne_subset_or_exact - similar to "subset", but empty list in `value_a` match only with empty list in `value_b`
 - intersect - match if any elemnt in `value_a` exist in `value_b`, empty `vaule_a` and/or `value_b` will fail to match
-- disjopint - inverse of "intersect" mode
+- disjoint - inverse of "intersect" mode
 
 ### order (kz_srs_order)
 

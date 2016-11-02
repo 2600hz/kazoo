@@ -56,7 +56,7 @@ maybe_db_type({'database', SelectorName}, Resources, PrefixSrc) ->
     Prefixes = build_prefixes(PrefixSrc),
     Keys = [[stepswitch_resources:get_resrc_id(R), SelectorName, P] || R <- Resources, P <- Prefixes],
     Options = [{'keys', Keys}],
-    View = <<"resource_selectors/resource_name_data_listing">>,
+    View = <<"resource_selectors/resource_name_selector_listing">>,
     {'database', View, Options};
 maybe_db_type(Other, _Resources, _PrefixSrc) -> Other.
 

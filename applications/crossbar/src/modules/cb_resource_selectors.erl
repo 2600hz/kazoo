@@ -12,11 +12,9 @@
         ,authorize/1
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2, allowed_methods/4
         ,resource_exists/0, resource_exists/1, resource_exists/2, resource_exists/4
-        ,content_types_accepted/1, content_types_accepted/2, content_types_accepted/3, content_types_accepted/5
         ,validate/1, validate/2, validate/3, validate/5
-        ,put/5
-        ,post/1, post/5
-        ,delete/5
+        ,post/2
+        ,delete/2
         ]).
 
 -export([normalize_view_results/2]).
@@ -27,27 +25,13 @@
 -define(SRS_SEARCH, <<"resource_selectors/crossbar_search">>).
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".resource_selectors">>).
 -define(SUPPRESS_SRS_NOTICE, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"suppress_selectors_change_notice">>, 'false')).
--define(UPLOAD_MIME_TYPES, [{<<"text">>, <<"csv">>}
-                           ,{<<"text">>, <<"comma-separated-values">>}
-                           ]).
 -define(NAME, <<"name">>).
 -define(RESOURCE, <<"resource">>).
--define(ZERO_STATS, [{'total', 0}
-                    ,{'success', 0}
-                    ,{'error', 0}
-                    ]).
--type stat() :: {'total', integer()} |
-                {'success', integer()} |
-                {'error', integer()}.
--type stats() :: [stat()].
+-define(RULES, <<"rules">>).
 
 -define(DEFAULT_RULES, kz_json:new()).
+-define(DOC_PVT_TYPE, <<"resource_selector">>).
 -define(RULES_PVT_TYPE, <<"resource_selector_rules">>).
--define(DEFAULT_CSV_CONFIG
-       ,kz_json:from_list([{<<"selector_column">>, 1}
-                          ,{<<"value_column">>, 2}
-                          ])
-       ).
 
 %%%===================================================================
 %%% API
@@ -56,12 +40,9 @@ init() ->
     [crossbar_bindings:bind(Binding, ?MODULE, F)
      || {Binding, F} <- [{<<"*.allowed_methods.resource_selectors">>, 'allowed_methods'}
                         ,{<<"*.resource_exists.resource_selectors">>, 'resource_exists'}
-                        ,{<<"*.content_types_accepted.resource_selectors">>, 'content_types_accepted'}
                         ,{<<"*.validate.resource_selectors">>, 'validate'}
-                        ,{<<"*.execute.put.resource_selectors">>, 'put'}
                         ,{<<"*.execute.post.resource_selectors">>, 'post'}
                         ,{<<"*.execute.delete.resource_selectors">>, 'delete'}
-
                         ,{<<"*.authorize">>, 'authorize'}
                         ]
     ].
@@ -106,20 +87,26 @@ maybe_authorize_admin(Context) ->
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_POST].
+    [?HTTP_GET].
 
+allowed_methods(?RULES) ->
+    [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?NAME) ->
     [?HTTP_GET];
 allowed_methods(?RESOURCE) ->
-    [?HTTP_GET].
+    [?HTTP_GET];
+allowed_methods(_UUID) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+
 allowed_methods(?NAME, _SelectorName) ->
     [?HTTP_GET];
 allowed_methods(?RESOURCE, _ResourceId) ->
     [?HTTP_GET].
+
 allowed_methods(?RESOURCE, _ResourceId, ?NAME, _SelectorName) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE];
+    [?HTTP_GET];
 allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -134,37 +121,17 @@ allowed_methods(?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token(), path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+resource_exists(?RULES) -> 'true';
 resource_exists(?NAME) -> 'true';
-resource_exists(?RESOURCE) -> 'true'.
+resource_exists(?RESOURCE) -> 'true';
+resource_exists(_UUID) -> 'true'.
+
 resource_exists(?NAME, _SelectorName) -> 'true';
 resource_exists(?RESOURCE, _ResourceId) -> 'true'.
+
 resource_exists(?RESOURCE, _ResourceId, ?NAME, _SelectorName) -> 'true';
 resource_exists(?NAME, _SelectorName, ?RESOURCE, _ResourceId) -> 'true'.
-
--spec content_types_accepted(cb_context:context()) -> cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token()) -> cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token(), path_token()) -> cb_context:context().
--spec content_types_accepted(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-content_types_accepted(Context) ->
-    Context.
-content_types_accepted(Context, ?NAME) ->
-    Context;
-content_types_accepted(Context, ?RESOURCE) ->
-    Context.
-content_types_accepted(Context, ?NAME, _SelectorName) ->
-    Context;
-content_types_accepted(Context, ?RESOURCE, _ResourceId) ->
-    Context.
-content_types_accepted(Context, ?RESOURCE, _ResourceId, ?NAME, _SelectorName) ->
-    content_types_accepted_by_verb(Context, cb_context:req_verb(Context));
-content_types_accepted(Context, ?NAME, _SelectorName, ?RESOURCE, _ResourceId) ->
-    content_types_accepted_by_verb(Context, cb_context:req_verb(Context)).
-
--spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
-content_types_accepted_by_verb(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]);
-content_types_accepted_by_verb(Context, _) ->
-    Context.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -180,22 +147,56 @@ content_types_accepted_by_verb(Context, _) ->
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 -spec validate(cb_context:context(), path_token(), path_token(),  path_token(), path_token()) -> cb_context:context().
 validate(Context) ->
-    validate_rules(set_account_db(Context), cb_context:req_verb(Context)).
+    summary(set_selectors_db(Context), [], <<"resource_selectors/id_listing">>, 'false').
 
+validate(Context, ?RULES) ->
+    validate_rules(set_account_db(Context), cb_context:req_verb(Context));
 validate(Context, ?NAME) ->
-    validate_selector(set_selectors_db(Context));
+    summary(set_selectors_db(Context), [], <<"resource_selectors/name_listing">>, 'true');
 validate(Context, ?RESOURCE) ->
-    validate_resource(set_selectors_db(Context)).
+    summary(set_selectors_db(Context), [], <<"resource_selectors/resource_listing">>, 'true');
+validate(Context, UUID) ->
+    validate_doc(set_selectors_db(Context), UUID, cb_context:req_verb(Context)).
 
 validate(Context, ?NAME, SelectorName) ->
-    validate_selector(set_selectors_db(Context), SelectorName);
+    summary(set_selectors_db(Context), [SelectorName], <<"resource_selectors/name_resource_listing">>, 'true');
 validate(Context, ?RESOURCE, ResourceId) ->
-    validate_resource(set_selectors_db(Context), ResourceId).
+    summary(set_selectors_db(Context), [ResourceId], <<"resource_selectors/resource_name_listing">>, 'true').
 
 validate(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
-    validate_resource_selector(set_selectors_db(Context), ResourceId, SelectorName, cb_context:req_verb(Context));
+    summary(set_selectors_db(Context), [ResourceId, SelectorName], <<"resource_selectors/resource_name_id_listing">>, 'false');
 validate(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
-    validate_resource_selector(set_selectors_db(Context), ResourceId, SelectorName, cb_context:req_verb(Context)).
+    summary(set_selectors_db(Context), [ResourceId, SelectorName], <<"resource_selectors/resource_name_id_listing">>, 'false').
+
+-spec validate_rules(cb_context:context(), http_method()) -> cb_context:context().
+validate_rules(Context, ?HTTP_GET) ->
+    load_rules(Context);
+validate_rules(Context, ?HTTP_POST) ->
+    OnSuccess = fun on_successful_rules_validation/1,
+    cb_context:validate_request_data(<<"resource_selectors.rules">>, Context, OnSuccess).
+
+-spec validate_doc(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_doc(Context, UUID, ?HTTP_GET) ->
+    crossbar_doc:load(UUID, Context, ?TYPE_CHECK_OPTION(?DOC_PVT_TYPE));
+validate_doc(Context, UUID, ?HTTP_POST) ->
+    OnSuccess = fun(C) -> on_successful_doc_validation(C, UUID) end,
+    cb_context:validate_request_data(<<"resource_selectors">>, Context, OnSuccess);
+validate_doc(Context, UUID, ?HTTP_DELETE) ->
+    crossbar_doc:load(UUID, Context, ?TYPE_CHECK_OPTION(?DOC_PVT_TYPE)).
+
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?RULES) ->
+    post_rules(Context);
+post(Context, _UUID) ->
+    post_doc(Context).
+
+-spec post_rules(cb_context:context()) -> cb_context:context().
+post_rules(Context) ->
+    crossbar_doc:save(Context).
+
+-spec post_doc(cb_context:context()) -> cb_context:context().
+post_doc(Context) ->
+    crossbar_doc:save(Context).
 
 -spec set_selectors_db(cb_context:context()) -> cb_context:context().
 set_selectors_db(Context) ->
@@ -219,272 +220,13 @@ set_account_db(Context) ->
         'false' -> Context
     end.
 
--spec validate_rules(cb_context:context(), http_method()) -> cb_context:context().
-validate_rules(Context, ?HTTP_GET) ->
-    load_rules(Context);
-validate_rules(Context, ?HTTP_POST) ->
-    OnSuccess = fun on_successful_rules_validation/1,
-    cb_context:validate_request_data(<<"resource_selectors.rules">>, Context, OnSuccess).
-
--spec validate_resource(cb_context:context()) -> cb_context:context().
--spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
-validate_resource(Context) ->
-    summary_resource(Context).
-validate_resource(Context, ResourceId) ->
-    summary_resource(Context, ResourceId).
-
--spec validate_selector(cb_context:context()) -> cb_context:context().
--spec validate_selector(cb_context:context(), path_token()) -> cb_context:context().
-validate_selector(Context) ->
-    summary_selector(Context).
-validate_selector(Context, SelectorName) ->
-    summary_selector(Context, SelectorName).
-
--spec validate_resource_selector(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-validate_resource_selector(Context, ResourceId, SelectorName, ?HTTP_GET) ->
-    summary_resource_selector(Context, ResourceId, SelectorName);
-validate_resource_selector(Context, ResourceId, SelectorName, ?HTTP_PUT) ->
-    validate_put_resource_selector(Context, ResourceId, SelectorName);
-validate_resource_selector(Context, ResourceId, SelectorName, ?HTTP_POST) ->
-    validate_post_resource_selector(Context, ResourceId, SelectorName);
-validate_resource_selector(Context, ResourceId, SelectorName, ?HTTP_DELETE) ->
-    validate_delete_resource_selector(Context, ResourceId, SelectorName).
-
--spec validate_put_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate_put_resource_selector(Context, _ResourceId, _SelectorName) ->
-    cb_context:validate_request_data(<<"resource_selectors">>, Context).
-
--spec validate_post_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate_post_resource_selector(Context, _ResourceId, _SelectorName) ->
-    check_uploaded_file(Context).
-
--spec validate_delete_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate_delete_resource_selector(Context, _ResourceId, _SelectorName) ->
-    cb_context:validate_request_data(<<"resource_selectors">>, Context).
-
--spec post(cb_context:context()) -> cb_context:context().
--spec post(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-post(Context) ->
-    post_rules(Context).
-post(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
-    post_resource_selector(Context, ResourceId, SelectorName);
-post(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
-    post_resource_selector(Context, ResourceId, SelectorName).
-
--spec post_rules(cb_context:context()) -> cb_context:context().
-post_rules(Context) ->
-    crossbar_doc:save(Context).
-
--spec post_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post_resource_selector(Context, ResourceId, SelectorName) ->
-    _ = init_db(Context),
-    upload_selectors_csv(Context, ResourceId, SelectorName).
-
--spec put(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-put(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
-    put_resource_selector(Context, ResourceId, SelectorName);
-put(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
-    put_resource_selector(Context, ResourceId, SelectorName).
-
--spec put_resource_selector(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-put_resource_selector(Context, ResourceId, SelectorName) ->
-    maybe_suppress_change_notice(),
-    Data = kz_json:get_ne_value(<<"selectors">>, cb_context:req_data(Context), []),
-    _ = init_db(Context),
-    {Stats, LastJObjs} =
-        lists:foldl(fun(Datum, Acc) ->
-                            fold_datum(Datum, Acc, Context, ResourceId, SelectorName)
-                    end
-                   ,{?ZERO_STATS, []}
-                   ,Data
-                   ),
-
-    FinalStats = do_save_selectors(cb_context:account_db(Context)
-                                  ,Stats
-                                  ,LastJObjs
-                                  ),
-    maybe_send_db_change_notice(cb_context:account_db(Context), FinalStats),
-    crossbar_util:response(kz_json:from_list(FinalStats), Context).
-
--spec fold_datum(kz_json:object() | kz_json:path(), {stats(), kz_json:objects()}, cb_context:context(), ne_binary(), ne_binary()) ->
-                        {stats(), kz_json:objects()}.
-fold_datum(MaybeJObj, {AccStats, JObjs}, Context, ResourceId, SelectorName) ->
-    J =
-        case kz_json:is_json_object(MaybeJObj)
-            andalso kz_json:get_values(MaybeJObj)
-        of
-            {[V],[S]} ->
-                generate_selector_doc(Context, ResourceId, SelectorName, S, V);
-            'false' ->
-                generate_selector_doc(Context, ResourceId, SelectorName, MaybeJObj, 'undefined')
-        end,
-    maybe_save_selectors(cb_context:account_db(Context)
-                        ,AccStats
-                        ,[J|JObjs]
-                        ,kz_datamgr:max_bulk_insert()
-                        ).
-
--spec generate_selector_doc(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), api_binary()) ->
-                                   kz_json:object().
-generate_selector_doc(Context, ResourceId, SelectorName, Selector, Value) ->
-    Props = [{<<"pvt_type">>, <<"resource_selector">>}
-            ,{<<"name">>, SelectorName}
-            ,{<<"selector">>, Selector}
-            ,{<<"resource">>, ResourceId}
-            ,{<<"value">>, Value}
-            ,{<<"pvt_auth_account_id">>, cb_context:auth_account_id(Context)}
-            ,{<<"pvt_request_id">>, cb_context:req_id(Context)}
-            ],
-    kz_json:from_list(props:filter_undefined(Props)).
-
--spec delete(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-delete(Context, ?RESOURCE, ResourceId, ?NAME, SelectorName) ->
-    delete_resource_selector(Context, ResourceId, SelectorName);
-delete(Context, ?NAME, SelectorName, ?RESOURCE, ResourceId) ->
-    delete_resource_selector(Context, ResourceId, SelectorName).
-
--spec delete_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete_resource_selector(Context, ResourceId, SelectorName) ->
-    Data = kz_json:get_ne_value(<<"selectors">>, cb_context:req_data(Context), []),
-    bulk_delete_selectors(Context, ResourceId, SelectorName, Data).
-
--spec bulk_delete_selectors(cb_context:context(), path_token(), path_token(), ne_binaries()) -> cb_context:context().
-bulk_delete_selectors(Context, ResourceId, SelectorName, [<<"_all">>]) ->
-    kz_datamgr:suppress_change_notice(),
-    do_bulk_delete_all_selectors(Context, ResourceId, SelectorName);
-bulk_delete_selectors(Context, ResourceId, SelectorName, DelKeys) ->
-    maybe_suppress_change_notice(),
-    Db = cb_context:account_db(Context),
-    BulkLimit = kz_datamgr:max_bulk_insert(),
-    DelKeysBlocks = split_keys(DelKeys, BulkLimit),
-    DelIDs = lists:foldl(fun(Block, AccIDs) ->
-                                 Keys = [ [ResourceId, SelectorName, K ] || K <- Block ],
-                                 Options = [{'keys', Keys}],
-                                 {'ok', Result} = kz_datamgr:get_results(Db, <<"resource_selectors/resource_name_selector_listing">>, Options),
-                                 lists:foldl(fun(R, Acc) ->
-                                                     ID = kz_json:get_ne_value(<<"id">>, R, []),
-                                                     [ ID |  Acc ]
-                                             end
-                                            ,AccIDs
-                                            ,Result
-                                            )
-                         end
-                        ,[]
-                        ,DelKeysBlocks
-                        ),
-    DelIDsBlocks = split_keys(DelIDs, BulkLimit),
-    Stats = lists:foldl(fun(Block, AccStats) ->
-                                NewStats = do_delete_selectors(Db, Block, AccStats),
-                                _ = refresh_selectors_index(Db),
-                                NewStats
-                        end
-                       ,?ZERO_STATS
-                       ,DelIDsBlocks
-                       ),
-    maybe_send_db_change_notice(Db, Stats),
-    crossbar_util:response(kz_json:from_list(Stats), Context).
-
--spec do_bulk_delete_all_selectors(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-do_bulk_delete_all_selectors(Context, ResourceId, SelectorName) ->
-    Db = cb_context:account_db(Context),
-    BulkLimit = kz_datamgr:max_bulk_insert(),
-    Options = [{'key', [ResourceId, SelectorName]}
-              ,{'limit', BulkLimit}
-              ,{'reduce', 'false'}
-              ],
-    Stats = do_delete_all_selectors(Db, Options, ?ZERO_STATS),
-    crossbar_util:response(kz_json:from_list(Stats), Context).
-
--spec do_delete_all_selectors(ne_binary(), kz_proplist(), kz_proplist()) ->
-                                     kz_proplist().
-do_delete_all_selectors(Db, Options, AccStats) ->
-    maybe_suppress_change_notice(),
-    {'ok', SearchResult}  = kz_datamgr:get_results(Db, <<"resource_selectors/resource_name_listing">>, Options),
-    Stats = case [ kz_json:get_ne_value(<<"id">>, R, []) || R <- SearchResult ] of
-                [] -> AccStats;
-                [[]] -> AccStats;
-                IDs ->
-                    NewStats = do_delete_selectors(Db, IDs, AccStats),
-                    do_delete_all_selectors(Db, Options, NewStats)
-            end,
-    _ = refresh_selectors_index(Db),
-    maybe_send_db_change_notice(Db, Stats),
-    Stats.
-
--spec do_delete_selectors(ne_binary(), ne_binaries(), kz_proplist()) ->
-                                 kz_proplist().
-do_delete_selectors(Db, IDs, AccStats) ->
-    {'ok', Result} = kz_datamgr:del_docs(Db, IDs),
-    get_stat_from_result(Result, AccStats).
-
--spec split_keys(ne_binaries(), non_neg_integer()) -> [ne_binaries()].
--spec split_keys(ne_binaries(), [ne_binaries()], non_neg_integer()) -> [ne_binaries()].
-split_keys(Keys, BlockSize) -> split_keys(Keys, [], BlockSize).
-split_keys(Keys, Acc, BlockSize) when length(Keys) =< BlockSize -> [Keys | Acc];
-split_keys(Keys, Acc, BlockSize) ->
-    {Block, Rest} = lists:split(BlockSize, Keys),
-    split_keys(Rest, [Block | Acc], BlockSize).
-
--spec refresh_selectors_index(ne_binary()) -> 'ok'.
-refresh_selectors_index(Db) ->
-    {'ok', _} = kz_datamgr:get_results(Db, ?SRS_LIST, [{'limit', 1}]),
-    'ok'.
-
--spec get_stat_from_result(kz_json:objects(), kz_proplist()) -> kz_proplist().
-get_stat_from_result(JObjs, AccStats) ->
-    lists:foldl(fun get_stat_fold/2
-               ,AccStats
-               ,JObjs
-               ).
-
-get_stat_fold(RowJObj, Acc) ->
-    case kz_doc:revision(RowJObj) of
-        'undefined' ->
-            Err = props:get_integer_value('error', Acc),
-            Total = props:get_integer_value('total', Acc),
-            props:set_values([{'error', Err + 1}
-                             ,{'total', Total + 1}
-                             ]
-                            ,Acc
-                            );
-        _ ->
-            Success = props:get_integer_value('success', Acc),
-            Total = props:get_integer_value('total', Acc),
-            props:set_values([{'success', Success + 1}
-                             ,{'total', Total + 1}
-                             ]
-                            ,Acc
-                            )
-    end.
-
--spec maybe_suppress_change_notice() -> 'ok'.
-maybe_suppress_change_notice() ->
-    case ?SUPPRESS_SRS_NOTICE of
-        'false' -> 'ok';
-        'true' ->
-            kz_datamgr:suppress_change_notice(),
-            'ok'
-    end.
-
--spec maybe_send_db_change_notice(ne_binary(), kz_proplist()) -> 'ok'.
-maybe_send_db_change_notice(Db, Stats) ->
-    case props:get_integer_value('success', Stats, 0) > 0
-        andalso ?SUPPRESS_SRS_NOTICE
-    of
-        'true' ->
-            _ = kz_util:spawn(fun() -> kzs_publish:publish_db(Db, 'edited') end),
-            'ok';
-        'false' -> 'ok'
-    end.
+-spec delete(cb_context:context(), path_token()) -> cb_context:context().
+delete(Context, _UUID) ->
+    crossbar_doc:delete(Context).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-init_db(Context) ->
-    Db = cb_context:account_db(Context),
-    _ = kz_datamgr:db_create(Db),
-    kz_datamgr:revise_doc_from_file(Db, 'crossbar', "views/resource_selectors.json").
 
 %%--------------------------------------------------------------------
 %% @private
@@ -497,41 +239,56 @@ init_db(Context) ->
 load_rules(Context) ->
     crossbar_doc:load(?RULES_PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?RULES_PVT_TYPE)).
 
--spec summary_resource(cb_context:context()) -> cb_context:context().
--spec summary_resource(cb_context:context(), path_token()) -> cb_context:context().
-summary_resource(Context) ->
-    Fun = fun normalize_view_results/2,
-    Options = ['group'],
-    crossbar_doc:load_view(<<"resource_selectors/resource_listing">>, Options, Context, Fun).
-summary_resource(Context, ResourceId) ->
-    Fun = fun normalize_resource_result/2,
-    Options = [{'startkey', [ResourceId]}
-              ,{'endkey', [ResourceId, "{}"]}
-              ,'group'
-              ],
-    crossbar_doc:load_view(<<"resource_selectors/resource_name_listing">>, Options, Context, Fun).
+-spec summary(cb_context:context(), api_binaries(), api_binary(), boolean()) -> cb_context:context().
+summary(Context, Prefix, ViewName, Reduce) ->
+    case kz_util:is_true(Reduce) of
+        'true' ->
+            Options = [{'startkey', build_start_key(Context, Prefix)}
+                      ,{'endkey', build_end_key(Context, Prefix)}
+                      ,'group'
+                      ],
+            Fun = fun normalize_view_results/2;
+        'false' ->
+            Options = [{'startkey', build_start_key(Context, Prefix)}
+                      ,{'endkey', build_end_key(Context, Prefix)}
+                      ],
+            Fun = fun normalize_resource_selector_result/2
+    end,
+    Context1 = crossbar_doc:load_view(ViewName, Options, Context, Fun),
+    RespEnvelope = fix_envelope_start_keys(cb_context:resp_envelope(Context1), Prefix),
+    cb_context:set_resp_envelope(Context1, RespEnvelope).
 
--spec summary_selector(cb_context:context()) -> cb_context:context().
--spec summary_selector(cb_context:context(), path_token()) -> cb_context:context().
-summary_selector(Context) ->
-    Fun = fun normalize_view_results/2,
-    Options = ['group'],
-    crossbar_doc:load_view(<<"resource_selectors/name_listing">>, Options, Context, Fun).
-summary_selector(Context, SelectorName) ->
-    Fun = fun normalize_selector_result/2,
-    Options = [{'startkey', [SelectorName]}
-              ,{'endkey', [SelectorName, "{}"]}
-              ,'group'
-              ],
-    crossbar_doc:load_view(<<"resource_selectors/name_resource_listing">>, Options, Context, Fun).
+-spec build_start_key(cb_cntext:context(), api_binaries()) -> api_binaries().
+build_start_key(Context, PrefixKeys) ->
+    case cb_context:req_value(Context, <<"start_key">>) of
+        'undefined' -> PrefixKeys;
+        StartKey -> build_key(PrefixKeys, StartKey)
+    end.
 
--spec summary_resource_selector(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-summary_resource_selector(Context, ResourceId, SelectorName) ->
-    Fun = fun normalize_resource_selector_result/2,
-    Options = [{'key', [ResourceId, SelectorName]}
-              ,{'reduce', 'false'}
-              ],
-    crossbar_doc:load_view(<<"resource_selectors/resource_name_listing">>, Options, Context, Fun).
+-spec build_end_key(cb_cntext:context(), api_binaries()) -> api_binaries().
+build_end_key(Context, PrefixKeys) ->
+    case cb_context:req_value(Context, <<"end_key">>) of
+        'undefined' -> build_key(PrefixKeys, <<16#fff0/utf8>>);
+        EndKey -> build_key(PrefixKeys, EndKey)
+    end.
+
+-spec build_key(api_binaries(), api_binary()) -> api_binaries().
+build_key(PrefixKeys, Suffix) -> lists:reverse([Suffix | lists:reverse(PrefixKeys)]).
+
+-spec fix_envelope_start_keys(kz_json:object(), api_binaries()) -> kz_json:object().
+fix_envelope_start_keys(JObj, Prefix) ->
+    lists:foldl(fun(K,J) ->
+                        case {kz_json:get_value(K, J), Prefix} of
+                            {'undefined', _} -> J;
+                            {[], _} -> kz_json:delete_key(K, J);
+                            {_, []} -> J;
+                            {P, P} -> kz_json:delete_key(K, J);
+                            {[P, Value], [P]} -> kz_json:set_value(K, Value, J);
+                            {[P1, P2, Value], [P1, P2]} -> kz_json:set_value(K, Value, J)
+                        end
+                end
+               ,JObj
+               ,[<<"start_key">>, <<"next_start_key">>]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -541,64 +298,30 @@ summary_resource_selector(Context, ResourceId, SelectorName) ->
 %%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    Key = kz_json:get_value(<<"key">>, JObj),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    [kz_json:from_list([{Key, Value}]) | Acc].
-
--spec normalize_selector_result(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_selector_result(JObj, Acc) ->
-    [ _, Key ] = kz_json:get_value(<<"key">>, JObj),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    [kz_json:from_list([{Key, Value}]) | Acc].
-
--spec normalize_resource_result(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_resource_result(JObj, Acc) ->
-    [ _, Key ] = kz_json:get_value(<<"key">>, JObj),
+    Key = lists:last(kz_json:get_value(<<"key">>, JObj)),
     Value = kz_json:get_value(<<"value">>, JObj),
     [kz_json:from_list([{Key, Value}]) | Acc].
 
 -spec normalize_resource_selector_result(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_resource_selector_result(JObj, Acc) ->
-    Selector = kz_json:get_value([<<"value">>, <<"selector">>], JObj),
-    case kz_json:get_value([<<"value">>, <<"value">>], JObj) of
-        'undefined' -> [Selector | Acc];
-        Value -> [kz_json:from_list([{Selector, Value}]) | Acc]
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Check the uploaded file for CSV
-%% resource.
-%% @end
-%%--------------------------------------------------------------------
--spec check_uploaded_file(cb_context:context()) -> cb_context:context().
-check_uploaded_file(Context) ->
-    check_uploaded_file(Context, cb_context:req_files(Context)).
-
-check_uploaded_file(Context, [{_Name, File}|_]) ->
-    lager:debug("checking file ~s", [_Name]),
-    case kz_json:get_value(<<"contents">>, File) of
-        'undefined' ->
-            error_no_file(Context);
-        Bin when is_binary(Bin) ->
-            lager:debug("file: ~s", [Bin]),
-            cb_context:set_resp_status(Context, 'success')
-    end;
-check_uploaded_file(Context, _ReqFiles) ->
-    error_no_file(Context).
-
--spec error_no_file(cb_context:context()) -> cb_context:context().
-error_no_file(Context) ->
-    cb_context:add_validation_error(<<"file">>
-                                   ,<<"required">>
-                                   ,kz_json:from_list([{<<"message">>, <<"no file to process">>}])
-                                   ,Context
-                                   ).
+    Props = props:filter_undefined(
+              [{<<"id">>, kz_json:get_value(<<"id">>, JObj)}
+              ,{<<"name">>, kz_json:get_value([<<"value">>, <<"name">>], JObj)}
+              ,{<<"resource">>, kz_json:get_value([<<"value">>, <<"resource">>], JObj)}
+              ,{<<"selector">>, kz_json:get_value([<<"value">>, <<"selector">>], JObj)}
+              ,{<<"value">>, kz_json:get_value([<<"value">>, <<"value">>], JObj)}
+              ,{<<"start_time">>, kz_json:get_value([<<"value">>, <<"stop_time">>], JObj)}
+              ,{<<"stop_time">>, kz_json:get_value([<<"value">>, <<"stop_time">>], JObj)}
+              ]),
+    [kz_json:from_list(Props) | Acc].
 
 -spec on_successful_rules_validation(cb_context:context()) -> cb_context:context().
 on_successful_rules_validation(Context) ->
     maybe_handle_load_failure(crossbar_doc:load_merge(?RULES_PVT_TYPE, Context, ?TYPE_CHECK_OPTION(?RULES_PVT_TYPE))).
+
+-spec on_successful_doc_validation(cb_context:context(), path_token()) -> cb_context:context().
+on_successful_doc_validation(Context, UUID) ->
+    maybe_handle_load_failure(crossbar_doc:load_merge(UUID, Context, ?TYPE_CHECK_OPTION(?DOC_PVT_TYPE))).
 
 -spec is_global_request(cb_context:context()) -> boolean().
 is_global_request(Context) ->
@@ -626,110 +349,3 @@ maybe_handle_load_failure(Context, 404) ->
                        ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
                        ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.
-
-%%
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Convert the file, based on content-type, to selector documents
-%% @end
-%%--------------------------------------------------------------------
--spec upload_selectors_csv(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-upload_selectors_csv(Context, RessourceId, SelectorName) ->
-    _ = cb_context:put_reqid(Context),
-    process_upload_file(Context, cb_context:req_files(Context), RessourceId, SelectorName).
-
--spec process_upload_file(cb_context:context(), req_files(), ne_binary(), ne_binary()) ->
-                                 cb_context:context().
-process_upload_file(Context, [{_Name, File}|_], RessourceId, SelectorName) ->
-    maybe_suppress_change_notice(),
-    lager:debug("converting file ~s", [_Name]),
-    Stats = convert_file(kz_json:get_binary_value([<<"headers">>, <<"content_type">>], File)
-                        ,kz_json:get_value(<<"contents">>, File)
-                        ,Context
-                        ,RessourceId
-                        ,SelectorName
-                        ),
-    Db = cb_context:account_db(Context),
-    maybe_send_db_change_notice(Db, Stats),
-    crossbar_util:response(kz_json:from_list(Stats), Context);
-process_upload_file(Context, _ReqFiles, _, _) ->
-    error_no_file(Context).
-
--spec convert_file(ne_binary(), ne_binary(), cb_context:context(), ne_binary(), ne_binary()) ->
-                          kz_proplist().
-convert_file(<<"text/csv">>, FileContents, Context, RessourceId, SelectorName) ->
-    csv_to_selectors(FileContents, Context, RessourceId, SelectorName);
-convert_file(<<"text/comma-separated-values">>, FileContents, Context, RessourceId, SelectorName) ->
-    csv_to_selectors(FileContents, Context, RessourceId, SelectorName);
-convert_file(ContentType, _, _, _, _) ->
-    lager:debug("unknown content type: ~s", [ContentType]),
-    throw({'unknown_content_type', ContentType}).
-
--spec csv_to_selectors(ne_binary(), cb_context:context(), ne_binary(), ne_binary()) ->
-                              kz_proplist().
-csv_to_selectors(CSV, Context, ResourceId, SelectorName) ->
-    BulkLimit = kz_datamgr:max_bulk_insert(),
-    Db = cb_context:account_db(Context),
-    CsvConfig = maybe_override_csv_config(Context
-                                         ,kapps_config:get(?MOD_CONFIG_CAT
-                                                          ,<<"csv_config">>
-                                                          ,?DEFAULT_CSV_CONFIG
-                                                          )
-                                         ),
-    SelectorCol = kz_json:get_integer_value(<<"selector_column">>, CsvConfig),
-    ValueCol = kz_json:get_integer_value(<<"value_column">>, CsvConfig),
-    Fun = fun(Row, {AccStats, JObjs}) ->
-                  {Selector, Value} = get_selector_data_from_row(Row, SelectorCol, ValueCol),
-                  JObj = generate_selector_doc(Context, ResourceId, SelectorName, Selector, Value),
-                  maybe_save_selectors(Db, AccStats, [JObj | JObjs], BulkLimit)
-          end,
-    {'ok', {Stats, LastJObjs}} = ecsv:process_csv_binary_with(CSV
-                                                             ,Fun
-                                                             ,{?ZERO_STATS, []}
-                                                             ),
-    do_save_selectors(Db, Stats, LastJObjs).
-
--spec maybe_override_csv_config(cb_context:context(), kz_json:object()) -> kz_json:object().
-maybe_override_csv_config(Context, CsvConfig) ->
-    kz_json:foldl(fun(Key, Value, Acc) ->
-                          NewValue = cb_context:req_value(Context, Key, Value),
-                          kz_json:set_value(Key, NewValue, Acc)
-                  end
-                 ,kz_json:new()
-                 ,CsvConfig
-                 ).
-
--spec get_selector_data_from_row(strings(), integer(), integer()) -> {api_binary(), api_binary()}.
-get_selector_data_from_row(Row, SelectorCol, ValueCol)
-  when is_integer(SelectorCol)
-       andalso is_integer(ValueCol)
-       andalso SelectorCol > 0
-       andalso ValueCol > 0
-       andalso length(Row) >= SelectorCol
-       andalso length(Row) >= ValueCol
-       ->
-    {kz_util:to_binary(lists:nth(SelectorCol, Row)), kz_util:to_binary(lists:nth(ValueCol, Row))};
-get_selector_data_from_row(Row, SelectorCol, _ValueCol)
-  when is_integer(SelectorCol)
-       andalso SelectorCol > 0
-       andalso length(Row) >= SelectorCol
-       ->
-    {kz_util:to_binary(lists:nth(SelectorCol, Row)), 'undefined'};
-get_selector_data_from_row(_Row, _SelectorCol, _ValueCol) -> {'undefined', 'undefined'}.
-
--spec maybe_save_selectors(ne_binary(), kz_proplist(), kz_json:objects(), integer()) ->
-                                  {kz_proplist(), kz_json:objects()}.
-maybe_save_selectors(Db, AccStats, JObjs, BulkLimit) when length(JObjs) >= BulkLimit ->
-    NewStats = do_save_selectors(Db, AccStats, JObjs),
-    {NewStats, []};
-maybe_save_selectors(_Db, AccStats, JObjs, _BulkLimit) ->
-    {AccStats, JObjs}.
-
--spec do_save_selectors(ne_binary(), kz_proplist(), kz_json:objects()) ->
-                               kz_proplist().
-do_save_selectors(_Db, AccStats, []) -> AccStats;
-do_save_selectors(Db, AccStats, JObjs) ->
-    {'ok', Result} = kz_datamgr:save_docs(Db, JObjs),
-    _ = refresh_selectors_index(Db),
-    get_stat_from_result(Result, AccStats).

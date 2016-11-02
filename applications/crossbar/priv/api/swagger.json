@@ -6266,21 +6266,46 @@
             "required": true,
             "type": "object"
         },
-        "resource_selector_rules": {
-            "default": {},
-            "description": "Schema for resource selector rules",
+        "resource_selectors": {
+            "description": "Schema for resource selector document",
+            "properties": {
+                "name": {
+                    "description": "Selector name",
+                    "required": true,
+                    "type": "string"
+                },
+                "resource": {
+                    "description": "Resource ID",
+                    "required": true,
+                    "type": "string"
+                },
+                "selector": {
+                    "description": "Selector data",
+                    "required": true,
+                    "type": "string"
+                },
+                "start_time": {
+                    "description": "Start time (gregorian seconds)",
+                    "required": false,
+                    "type": "integer"
+                },
+                "stop_time": {
+                    "description": "Stop time (gregorian seconds)",
+                    "required": false,
+                    "type": "integer"
+                },
+                "value": {
+                    "description": "Extra selector data",
+                    "required": false,
+                    "type": "string"
+                }
+            },
             "required": true,
             "type": "object"
         },
-        "resource_selectors": {
-            "description": "Schema for resource selectors",
-            "properties": {
-                "selectors": {
-                    "description": "Data used for selectors",
-                    "required": true,
-                    "type": "array"
-                }
-            },
+        "resource_selectors.rules": {
+            "default": {},
+            "description": "Schema for resource selector rules",
             "required": true,
             "type": "object"
         },
@@ -18530,25 +18555,6 @@
                         "$ref": "#/parameters/account_id"
                     }
                 ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/resource_selectors/name": {
@@ -18581,75 +18587,8 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/resource_selectors/name/{SELECTOR_NAME}/resource/{RESOURCE_ID}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
             "get": {
                 "parameters": [
-                    {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
-                    },
                     {
                         "$ref": "#/parameters/selector_name"
                     },
@@ -18696,7 +18635,7 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}": {
-            "delete": {
+            "get": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/selector_name"
@@ -18712,14 +18651,59 @@
                         "$ref": "#/parameters/account_id"
                     }
                 ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/resource_selectors/rules": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "resource_selectors",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/resource_selectors"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/uuid"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
             },
             "get": {
                 "parameters": [
                     {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
+                        "$ref": "#/parameters/uuid"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
@@ -18741,35 +18725,7 @@
                         }
                     },
                     {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "in": "body",
-                        "name": "resource_selectors",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/resource_selectors"
-                        }
-                    },
-                    {
-                        "$ref": "#/parameters/selector_name"
-                    },
-                    {
-                        "$ref": "#/parameters/resource_id"
+                        "$ref": "#/parameters/uuid"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
