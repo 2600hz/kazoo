@@ -3,7 +3,6 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
--include("ecallmgr_config.hrl").
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
@@ -12,7 +11,7 @@
 
 -define(CHANNELS_TBL, 'ecallmgr_channels').
 
--define(DEFAULT_FETCH_TIMEOUT, ?ECALLMGR_DEFAULT_FETCH_TIMEOUT).
+-define(DEFAULT_FETCH_TIMEOUT, 2600).
 
 -define(FS_NODES, ecallmgr_config:get(<<"fs_nodes">>, [])).
 -define(FS_NODES(Node), ecallmgr_config:get(<<"fs_nodes">>, [], Node)).

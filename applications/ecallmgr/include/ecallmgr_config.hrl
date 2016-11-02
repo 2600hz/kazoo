@@ -1,6 +1,0 @@
--ifndef(ECALLMGR_CONFIG_HRL).
-
--define(ECALLMGR_DEFAULT_FETCH_TIMEOUT, 2600).
-
--define(ECALLMGR_CONFIG_HRL, 'true').
--endif.
