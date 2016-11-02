@@ -29,6 +29,7 @@
 -define(ADDRESSES_PATH_TOKEN, <<"addresses">>).
 -define(TRANSACTIONS_PATH_TOKEN, <<"transactions">>).
 -define(CREDITS_PATH_TOKEN, <<"credits">>).
+-define(CLIENT_TOKEN_PATH_TOKEN, <<"client_token">>).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".braintree">>).
 
@@ -62,9 +63,11 @@ allowed_methods(?CARDS_PATH_TOKEN) ->
 allowed_methods(?ADDRESSES_PATH_TOKEN) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(?TRANSACTIONS_PATH_TOKEN) ->
-    [?HTTP_GET, ?HTTP_PUT];
+    [?HTTP_GET];
 allowed_methods(?CREDITS_PATH_TOKEN) ->
-    [?HTTP_GET, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_PUT];
+allowed_methods(?CLIENT_TOKEN_PATH_TOKEN) ->
+    [?HTTP_GET].
 
 allowed_methods(?CARDS_PATH_TOKEN, _CardId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
@@ -87,7 +90,8 @@ resource_exists(?CUSTOMER_PATH_TOKEN) -> 'true';
 resource_exists(?CARDS_PATH_TOKEN) -> 'true';
 resource_exists(?ADDRESSES_PATH_TOKEN) -> 'true';
 resource_exists(?TRANSACTIONS_PATH_TOKEN) -> 'true';
-resource_exists(?CREDITS_PATH_TOKEN) -> 'true'.
+resource_exists(?CREDITS_PATH_TOKEN) -> 'true';
+resource_exists(?CLIENT_TOKEN_PATH_TOKEN) -> 'true'.
 
 resource_exists(?CARDS_PATH_TOKEN, _) -> 'true';
 resource_exists(?ADDRESSES_PATH_TOKEN, _) -> 'true';
@@ -113,8 +117,11 @@ validate(Context, ?ADDRESSES_PATH_TOKEN) ->
 validate(Context, ?TRANSACTIONS_PATH_TOKEN) ->
     validate_transactions(Context, cb_context:req_verb(Context));
 validate(Context, ?CREDITS_PATH_TOKEN) ->
-    validate_credits(Context, cb_context:req_verb(Context)).
+    validate_credits(Context, cb_context:req_verb(Context));
+validate(Context, ?CLIENT_TOKEN_PATH_TOKEN) ->
+    validate_token(Context, cb_context:req_verb(Context)).
 
+-spec validate_customer(cb_context:context(), path_token()) -> cb_context:context().
 validate_customer(Context, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     try braintree_customer:find(AccountId) of
@@ -149,6 +156,7 @@ validate_customer(Context, ?HTTP_POST) ->
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Customer)).
 
 %% CARD API
+-spec validate_cards(cb_context:context(), path_token()) -> cb_context:context().
 validate_cards(Context, ?HTTP_GET) ->
     try braintree_customer:find(cb_context:account_id(Context)) of
         #bt_customer{credit_cards=Cards} ->
@@ -165,6 +173,7 @@ validate_cards(Context, ?HTTP_PUT) ->
     Card = Card0#bt_card{customer_id = cb_context:account_id(Context)},
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Card)).
 
+-spec validate_addresses(cb_context:context(), path_token()) -> cb_context:context().
 validate_addresses(Context, ?HTTP_GET) ->
     try braintree_customer:find(cb_context:account_id(Context)) of
         #bt_customer{addresses=Addresses} ->
@@ -181,6 +190,7 @@ validate_addresses(Context, ?HTTP_PUT) ->
     Address = Address0#bt_address{customer_id = cb_context:account_id(Context)},
     crossbar_util:response(kz_json:new(), cb_context:store(Context, 'braintree', Address)).
 
+-spec validate_transactions(cb_context:context(), path_token()) -> cb_context:context().
 validate_transactions(Context, ?HTTP_GET) ->
     try braintree_transaction:find_by_customer(cb_context:account_id(Context)) of
         Transactions ->
@@ -193,6 +203,7 @@ validate_transactions(Context, ?HTTP_GET) ->
             crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end.
 
+-spec validate_credits(cb_context:context(), path_token()) -> cb_context:context().
 validate_credits(Context, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     Doc = cb_context:doc(Context),
@@ -223,6 +234,18 @@ validate_credits(Context, ?HTTP_PUT) ->
                               maybe_charge_billing_id(Amount, Context1)
                       end.
 
+-spec validate_token(cb_context:context(), path_token()) -> cb_context:context().
+validate_token(Context, ?HTTP_GET) ->
+    try braintree_client_token:get_client_token(cb_context:account_id(Context)) of
+        Token ->
+            JObj = kz_json:set_value(<<"client_token">>, Token, kz_json:new()),
+            crossbar_util:response(JObj, Context)
+    catch
+        'throw':{Error, Reason} ->
+            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+    end.
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, ?CARDS_PATH_TOKEN, CardId) ->
     validate_card(Context, CardId, cb_context:req_verb(Context));
 validate(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
@@ -230,6 +253,7 @@ validate(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
 validate(Context, ?TRANSACTIONS_PATH_TOKEN, TransactionId) ->
     validate_transaction(Context, TransactionId, cb_context:req_verb(Context)).
 
+-spec validate_card(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate_card(Context, CardId, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     try braintree_card:find(CardId) of
@@ -251,6 +275,7 @@ validate_card(Context, CardId, ?HTTP_POST) ->
 validate_card(Context, _CardId, ?HTTP_DELETE) ->
     crossbar_util:response(kz_json:new(), Context).
 
+-spec validate_address(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate_address(Context, AddressId, ?HTTP_GET) ->
     AccountId = cb_context:account_id(Context),
     try braintree_address:find(AccountId, AddressId) of
@@ -272,6 +297,7 @@ validate_address(Context, AddressId, ?HTTP_POST) ->
 validate_address(Context, _AddressId, ?HTTP_DELETE) ->
     crossbar_util:response(kz_json:new(), Context).
 
+-spec validate_transaction(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate_transaction(Context, TransactionId, ?HTTP_GET) ->
     try braintree_transaction:find(TransactionId) of
         #bt_transaction{}=Transaction ->

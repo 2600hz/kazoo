@@ -195,10 +195,25 @@ update(#bt_customer{}=Customer) ->
                   braintree_card:make_default(Card) =:= 'true'
          ]
     of
-        [] -> do_update(Customer);
+        [] ->
+            maybe_add_card_nonce(Customer);
         [Card] ->
             update_card(Customer, Card)
     end.
+
+-spec maybe_add_card_nonce(customer()) -> customer().
+maybe_add_card_nonce(#bt_customer{payment_method_nonce = 'undefined'}=Customer) ->
+    do_update(Customer);
+maybe_add_card_nonce(Customer) ->
+    OldCustomer = find(Customer),
+    OldPaymentTokens = braintree_card:payment_tokens(get_cards(OldCustomer)),
+
+    %% Add new credit card, not setting it as default yet.
+    UpdatedCustomer = do_update(Customer),
+
+    NewPaymentTokens = braintree_card:payment_tokens(get_cards(UpdatedCustomer)),
+    [NewPaymentToken] = lists:subtract(NewPaymentTokens, OldPaymentTokens),
+    updateSubsciption(NewPaymentToken, UpdatedCustomer).
 
 -spec update_card(customer(), bt_card()) -> customer().
 update_card(Customer, Card) ->
@@ -209,6 +224,10 @@ update_card(Customer, Card) ->
     UpdatedCustomer = do_update(Customer#bt_customer{credit_cards = Cards}),
 
     NewPaymentToken = braintree_card:payment_token(Card),
+    updateSubsciption(NewPaymentToken, UpdatedCustomer).
+
+-spec updateSubsciption(ne_binary(), bt_customer()) -> bt_customer().
+updateSubsciption(NewPaymentToken, UpdatedCustomer) ->
     %% NewCard = Card with updated fields
     {[NewCard], OldCards} =
         lists:partition(fun(CC) -> braintree_card:payment_token(CC) =:= NewPaymentToken end
@@ -329,6 +348,7 @@ record_to_xml(Customer, ToString) ->
             ,{'phone', Customer#bt_customer.phone}
             ,{'fax', Customer#bt_customer.fax}
             ,{'website', Customer#bt_customer.website}
+            ,{'payment-method-nonce', Customer#bt_customer.payment_method_nonce}
              |
              [{'credit-card', braintree_card:record_to_xml(Card)}
               || Card <- Customer#bt_customer.credit_cards, Card =/= 'undefined'
@@ -356,8 +376,16 @@ json_to_record(JObj) ->
                 ,phone = kz_json:get_binary_value(<<"phone">>, JObj)
                 ,fax = kz_json:get_binary_value(<<"fax">>, JObj)
                 ,website = kz_json:get_binary_value(<<"website">>, JObj)
-                ,credit_cards = [braintree_card:json_to_record(kz_json:get_value(<<"credit_card">>, JObj))]
+                ,payment_method_nonce = kz_json:get_binary_value(<<"payment_method_nonce">>, JObj)
+                ,credit_cards = maybe_add_credit_card(JObj)
                 }.
+
+-spec maybe_add_credit_card(api_object()) -> bt_cards().
+maybe_add_credit_card(JObj) ->
+    case kz_json:get_value(<<"credit_card">>, JObj) of
+        'undefined' -> [];
+        Card -> [braintree_card:json_to_record(Card)]
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

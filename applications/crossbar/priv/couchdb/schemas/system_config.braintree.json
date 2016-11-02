@@ -3,6 +3,11 @@
     "_id": "system_config.braintree",
     "description": "Schema for braintree system_config",
     "properties": {
+        "client_token_version": {
+            "default": "2",
+            "description": "braintree client token version",
+            "type": "string"
+        },
         "debug": {
             "default": false,
             "description": "braintree debug",
