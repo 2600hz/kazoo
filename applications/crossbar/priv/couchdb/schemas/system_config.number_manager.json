@@ -89,6 +89,11 @@
             "description": "number_manager force port out outbound",
             "type": "boolean"
         },
+        "porting_module_name": {
+            "default": "knm_local",
+            "description": "number manager porting module name",
+            "type": "string"
+        },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
             "description": "number_manager reconcile regex",

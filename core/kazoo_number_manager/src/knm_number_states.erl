@@ -12,6 +12,7 @@
         ,to_deleted/1
         ,to_in_service/1
         ,to_aging/1
+        ,to_port_in/1
         ,to_state/2, to_state/3
         ]).
 
@@ -46,9 +47,23 @@ change_state(Number, ?NUMBER_STATE_AVAILABLE) ->
     to_available(Number);
 change_state(Number, ?NUMBER_STATE_AGING) ->
     to_aging(Number);
+change_state(Number, ?NUMBER_STATE_PORT_IN) ->
+    to_port_in(Number);
 change_state(Number, _State) ->
     lager:debug("unhandled state change to ~p", [_State]),
     knm_errors:unspecified('invalid_state', Number).
+
+-spec to_port_in(kn()) -> kn().
+-spec to_port_in(kn(), ne_binary()) -> kn().
+to_port_in(Number) ->
+    to_port_in(Number, number_state(Number)).
+
+to_port_in(Number, ?NUMBER_STATE_PORT_IN) ->
+    Routines = [fun move_to_port_in_state/1
+               ],
+    apply_transitions(Number, Routines);
+to_port_in(Number, State) ->
+    knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_PORT_IN).
 
 -spec to_aging(kn()) -> kn().
 -spec to_aging(kn(), ne_binary()) -> kn().
@@ -258,6 +273,10 @@ update_reserve_history(Number) ->
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
     PN = knm_phone_number:add_reserve_history(PhoneNumber, AssignTo),
     knm_number:set_phone_number(Number, PN).
+
+-spec move_to_port_in_state(kn()) -> kn().
+move_to_port_in_state(Number) ->
+    move_number_to_state(Number, ?NUMBER_STATE_PORT_IN).
 
 -spec move_to_aging_state(kn()) -> kn().
 move_to_aging_state(Number) ->
