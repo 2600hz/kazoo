@@ -15,7 +15,7 @@
 
 -include("knm.hrl").
 
--define(KEY, <<"prepend">>).
+-define(KEY, ?FEATURE_PREPEND).
 
 %%--------------------------------------------------------------------
 %% @public

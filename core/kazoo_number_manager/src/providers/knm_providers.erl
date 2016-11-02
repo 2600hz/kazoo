@@ -23,7 +23,7 @@
                                   ,?FEATURE_E911
                                   ,<<"failover">>
                                   ,<<"port">>
-                                  ,<<"prepend">>
+                                  ,?FEATURE_PREPEND
                                   ]).
 
 -define(CNAM_PROVIDER(AccountId),
@@ -131,7 +131,7 @@ provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     cnam_provider(AccountId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     e911_provider(AccountId);
-provider_module(<<"prepend">>, _) ->
+provider_module(?FEATURE_PREPEND, _) ->
     <<"knm_prepend">>;
 provider_module(<<"port">>, _) ->
     <<"knm_port_notifier">>;
