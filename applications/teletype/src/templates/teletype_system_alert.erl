@@ -277,28 +277,16 @@ request_macros(DataJObj) ->
 
 -spec build_renderers() -> 'ok'.
 build_renderers() ->
-    [build_renderer(ContentType, Template) ||
-        {ContentType, Template} <- teletype_templates:fetch(?TEMPLATE_ID)
-    ],
+    _ = [build_renderer(ContentType, Template) ||
+            {ContentType, Template} <- teletype_templates:fetch(?TEMPLATE_ID)
+        ],
     lager:debug("built renderers for system_alerts").
 
 -spec build_renderer(ne_binary(), iolist()) -> 'ok'.
 build_renderer(ContentType, Template) ->
     ModuleName = renderer_name(ContentType),
-    case erlydtl:compile_template(Template
-                                 ,ModuleName
-                                 ,[{'out_dir', 'false'}
-                                  ,'return'
-                                  ]
-                                 )
-    of
-        {'ok', Name} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
-        {'ok', Name, []} ->
-            lager:debug("built system_alerts renderer for ~s", [Name]);
-        {'ok', Name, Warnings} ->
-            lager:debug("compiling template ~s produced warnings: ~p", [Name, Warnings])
-    end.
+    _ = kz_template:compile(Template, ModuleName),
+    'ok'.
 
 -spec renderer_name(ne_binary()) -> atom().
 renderer_name(ContentType) ->
@@ -308,22 +296,4 @@ renderer_name(ContentType) ->
                                             {'error', any()}.
 render(ContentType, Macros) ->
     ModuleName = renderer_name(ContentType),
-    try ModuleName:render(Macros) of
-        {'ok', IOList} ->
-            lager:debug("rendered ~s template successfully", [ContentType]),
-            iolist_to_binary(IOList);
-        {'error', _E} ->
-            lager:debug("failed to render ~s template: ~p", [ContentType, _E]),
-            throw({'error', 'template_error'})
-    catch
-        'error':'undef' ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("something in the template ~s is undefined", [ModuleName]),
-            wh_util:log_stacktrace(ST),
-            throw({'error', 'template_error'});
-        _E:R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug("crashed rendering template ~s: ~s: ~p", [ModuleName, _E, R]),
-            wh_util:log_stacktrace(ST),
-            throw({'error', 'template_error'})
-    end.
+    kz_template:render(ModuleName, Macros).

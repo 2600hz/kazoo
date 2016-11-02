@@ -397,7 +397,7 @@ build_variables(User, Props) ->
 build_body(User, Props) ->
     Variables = build_variables(User, Props),
     Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
-    {'ok', Text} = Mod:render(Variables),
+    {'ok', Text} = kz_template:render(Mod, Variables),
     Body = wh_util:to_binary(Text),
     binary:replace(Body, <<"\n\n">>, <<"\n">>, ['global']).
 
@@ -406,7 +406,7 @@ ensure_template() ->
     BasePath = code:lib_dir('omnipresence', 'priv'),
     File = lists:concat([BasePath, "/packages/presence.xml"]),
     Mod = wh_util:to_atom(<<"sub_package_presence">>, 'true'),
-    {'ok', _CompileResult} = erlydtl:compile(File, Mod, [{'record_info', [{'call', record_info('fields', 'call')}]}]).
+    {'ok', _CompileResult} = kz_template:compile(File, Mod, [{'record_info', [{'call', record_info('fields', 'call')}]}]).
 
 -spec presence_reset(wh_json:object()) -> any().
 presence_reset(JObj) ->
