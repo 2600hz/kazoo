@@ -832,7 +832,7 @@ update_template(Context, Id, FileJObj) ->
 
     Opts = [{'content_type', wh_util:to_list(CT)}],
 
-    case kz_template:render(Contents, template_module_name(Id, Context, CT), []) of
+    case kz_template:compile(Contents, template_module_name(Id, Context, CT)) of
         {'ok', _} ->
             AttachmentName = attachment_name_by_content_type(CT),
             crossbar_doc:save_attachment(DbId
