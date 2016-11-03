@@ -354,7 +354,8 @@ maybe_topup_account(AccountJObj, CurrentBalance) ->
         'ok' ->
             maybe_reset_low_balance_sent(AccountJObj),
             lager:info("topup successful for ~s", [AccountId]);
-        {'error', _Error = topup_disabled} -> 'ok';
+        {'error', topup_disabled} -> 'ok';
+        {'error', 'balance_above_threshold'} -> 'ok';
         {'error', _Error} ->
             lager:error("topup failed for ~s: ~p", [AccountId, _Error])
     end.

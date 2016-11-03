@@ -8,6 +8,7 @@
 -module(kz_topup).
 
 -export([init/2]).
+-export([should_topup/1, should_topup/2]).
 
 -include("include/kazoo_transactions.hrl").
 
@@ -40,6 +41,25 @@ init(Account, CurrentBalance) ->
                       ,[Account, Balance, Threshold]),
             AccountId = kz_util:format_account_id(Account, 'raw'),
             maybe_top_up(AccountId, Balance, Amount, Threshold)
+    end.
+
+-spec should_topup(ne_binary()) -> boolean().
+-spec should_topup(ne_binary(), integer()) -> boolean().
+should_topup(AccountId) ->
+    CurrentBalance = wht_util:current_balance(AccountId),
+    should_topup(AccountId, CurrentBalance).
+
+should_topup(AccountId, CurrentBalance) ->
+    Balance = wht_util:units_to_dollars(CurrentBalance),
+    case get_top_up(AccountId) of
+        {'error', _} -> 'false';
+        {'ok', _Amount, Threshold} ->
+            lager:info("checking if account ~s balance $~w is below top up threshold $~w"
+                      ,[AccountId, Balance, Threshold]),
+            case should_topup(AccountId, Balance, Threshold) of
+                {'error', _} -> 'false';
+                Boolean -> Boolean
+            end
     end.
 
 %%--------------------------------------------------------------------
@@ -86,7 +106,23 @@ get_top_up(JObj) ->
 -spec maybe_top_up(ne_binary(), number(), integer(), integer()) ->
                           'ok' |
                           {'error', error()}.
-maybe_top_up(AccountId, Balance, Amount, Threshold) when Balance =< Threshold ->
+maybe_top_up(AccountId, Balance, Amount, Threshold) ->
+    case should_topup(AccountId, Balance, Threshold) of
+        'true' -> top_up(AccountId, Amount);
+        'false' -> 'ok';
+        {'error', _} = Error -> Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec should_topup(ne_binary(), number(), integer()) ->
+                          boolean() |
+                          {'error', error()}.
+should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
     To = kz_util:current_tstamp(),
     From = To - ?SECONDS_IN_DAY,
     case kz_transactions:fetch_local(AccountId, From, To) of
@@ -95,24 +131,19 @@ maybe_top_up(AccountId, Balance, Amount, Threshold) when Balance =< Threshold ->
             Error;
         {'ok', Transactions} ->
             TopupTransactions = kz_transactions:filter_by_reason(<<"topup">>, Transactions),
-            trying_top_up(AccountId, Amount, TopupTransactions)
+            is_topup_today(AccountId, TopupTransactions)
     end;
-maybe_top_up(_AccountId, _Balance, _, _Threshold) ->
+should_topup(_AccountId, _Balance, _Threshold) ->
     lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [_Balance, _Threshold, _AccountId]),
     {'error', 'balance_above_threshold'}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec trying_top_up(ne_binary(), integer(), kz_json:objects()) -> 'ok'.
-trying_top_up(AccountId, Amount, []) ->
-    lager:info("no top up transactions found, processing..."),
-    top_up(AccountId, Amount);
-trying_top_up(_AccountId, _Amount, _TopupTransactions) ->
-    lager:info("today auto top up for ~s already done, skipping...", [_AccountId]).
+-spec is_topup_today(ne_binary(), kz_json:objects()) -> boolean().
+is_topup_today(_AccountId, []) ->
+    lager:info("no top up transactions found for ~s, processing...", [_AccountId]),
+    'true';
+is_topup_today(_AccountId, _TopupTransactions) ->
+    lager:info("today auto top up for ~s already done, skipping...", [_AccountId]),
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -130,7 +161,7 @@ top_up(AccountId, Amount) ->
     case kz_services:charge_transactions(Services, [Transaction1]) of
         [] ->
             lager:info("account ~s top up successfully for ~p", [AccountId, Amount]),
-            case kz_transaction:save(Transaction1) of
+            case kz_transaction:save(kz_transaction:set_type(<<"credit">>, Transaction1)) of
                 {'ok', _} ->
                     lager:info("auto top up transaction for account ~s saved succesfully", [AccountId]);
                 {'error', 'conflict'} ->

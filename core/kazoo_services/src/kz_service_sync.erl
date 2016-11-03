@@ -314,8 +314,25 @@ maybe_sync_transactions(AccountId, ServicesJObj) ->
 maybe_sync_transactions(AccountId, ServicesJObj, Bookkeeper) ->
     case kzd_services:transactions(ServicesJObj) of
         [] -> 'ok';
-        Transactions ->
+        Trs ->
+            Transactions = maybe_delete_topup_transaction(AccountId, Trs),
             sync_transactions(AccountId, ServicesJObj, Bookkeeper, Transactions)
+    end.
+
+-spec maybe_delete_topup_transaction(ne_binary(), kz_json:objects()) -> kz_json:objects().
+maybe_delete_topup_transaction(AccountId, Transactions) ->
+    NonTopup = lists:filter(
+                 fun(J) ->
+                         kz_json:get_integer_value(<<"pvt_code">>, J) =/= ?CODE_TOPUP
+                 end, Transactions
+                ),
+    case NonTopup of
+        Transactions -> Transactions;
+        _Other ->
+            case kz_topup:should_topup(AccountId) of
+                'true' -> Transactions;
+                'false' -> NonTopup
+            end
     end.
 
 -spec sync_transactions(ne_binary(), kzd_services:doc(), atom(), kz_json:objects()) ->
