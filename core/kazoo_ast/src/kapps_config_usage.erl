@@ -58,9 +58,11 @@ process_app(App, Schemas) ->
     lists:foldl(fun module_to_schema/2, Schemas, kz_ast_util:app_modules(App)).
 
 -spec process_module(module()) -> kz_json:object().
+process_module('kz_bookkeeper_http') -> kz_json:new();
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
 
+module_to_schema('kz_bookkeeper_http', _Schemas) -> kz_json:new();
 module_to_schema(Module, Schemas) ->
     io:format("."),
     case kz_ast_util:module_ast(Module) of
