@@ -684,7 +684,7 @@ check_account(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec feature_prepend(knm_phone_number:knm_phone_number()) -> api_binary().
 feature_prepend(PhoneNumber) ->
-    Prepend = knm_phone_number:feature(PhoneNumber, <<"prepend">>),
+    Prepend = knm_phone_number:feature(PhoneNumber, ?FEATURE_PREPEND),
     case kz_json:is_true(<<"enabled">>, Prepend) of
         'false' -> 'undefined';
         'true' -> kz_json:get_ne_value(<<"name">>, Prepend)
@@ -697,7 +697,7 @@ feature_prepend(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec feature_inbound_cname(knm_phone_number:knm_phone_number()) -> boolean().
 feature_inbound_cname(PhoneNumber) ->
-    case knm_phone_number:feature(PhoneNumber, <<"inbound_cnam">>) of
+    case knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND) of
         'undefined' -> 'false';
         _ ->
             Mod = knm_phone_number:module_name(PhoneNumber),
@@ -716,7 +716,7 @@ feature_inbound_cname(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_early_ringback(PhoneNumber) ->
-    RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
+    RingBack = knm_phone_number:feature(PhoneNumber, ?FEATURE_RINGBACK),
     kz_json:get_ne_value(<<"early">>, RingBack).
 
 %%--------------------------------------------------------------------
@@ -726,7 +726,7 @@ find_early_ringback(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_transfer_ringback(PhoneNumber) ->
-    RingBack = knm_phone_number:feature(PhoneNumber, <<"ringback">>),
+    RingBack = knm_phone_number:feature(PhoneNumber, ?FEATURE_RINGBACK),
     kz_json:get_ne_value(<<"transfer">>, RingBack).
 
 %%--------------------------------------------------------------------
@@ -755,7 +755,7 @@ is_force_outbound(_State, _Module, ForceOutbound) ->
 
 -spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().
 force_outbound_feature(PhoneNumber) ->
-    case knm_phone_number:feature(PhoneNumber, <<"force_outbound">>) of
+    case knm_phone_number:feature(PhoneNumber, ?FEATURE_FORCE_OUTBOUND) of
         'undefined' -> default_force_outbound();
         FO -> kz_util:is_true(FO)
     end.

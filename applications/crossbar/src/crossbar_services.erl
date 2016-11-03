@@ -14,7 +14,6 @@
 
 -include("crossbar.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl"). %% PVT_FEATURES
--include_lib("kazoo_number_manager/include/knm_port_request.hrl"). %% PORT_KEY
 
 %%--------------------------------------------------------------------
 %% @public
@@ -199,10 +198,7 @@ calc_service_updates(Context, <<"limits">>) ->
     kz_service_limits:reconcile(Services, Updates);
 calc_service_updates(Context, <<"port_request">>) ->
     PhoneNumbers =
-        [knm_phone_number:set_feature(knm_phone_number:from_json(JObj)
-                                     ,?PORT_KEY
-                                     ,kz_json:new()
-                                     )
+        [knm_phone_number:set_feature(knm_phone_number:from_json(JObj), ?FEATURE_PORT, kz_json:new())
          || JObj <- kz_json:values(<<"numbers">>, cb_context:doc(Context))
         ],
     kz_service_phone_numbers:reconcile(fetch_service(Context), PhoneNumbers);

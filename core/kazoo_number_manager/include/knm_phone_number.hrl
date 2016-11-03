@@ -68,7 +68,12 @@
 -define(FEATURE_CNAM_INBOUND, <<"inbound_cnam">>).
 -define(FEATURE_CNAM_OUTBOUND, <<"outbound_cnam">>).
 -define(FEATURE_E911, <<"e911">>).
+-define(FEATURE_FAILOVER, <<"failover">>).
+-define(FEATURE_FORCE_OUTBOUND, <<"force_outbound">>).
 -define(FEATURE_LOCAL, <<"local">>).
+-define(FEATURE_PORT, <<"port">>).
+-define(FEATURE_PREPEND, <<"prepend">>).
+-define(FEATURE_RINGBACK, <<"ringback">>).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).

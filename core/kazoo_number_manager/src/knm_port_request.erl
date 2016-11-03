@@ -248,7 +248,7 @@ charge_for_port(JObj) ->
     charge_for_port(JObj, kz_doc:account_id(JObj)).
 charge_for_port(_JObj, AccountId) ->
     Services = kz_services:fetch(AccountId),
-    Cost = kz_services:activation_charges(<<"number_services">>, <<"port">>, Services),
+    Cost = kz_services:activation_charges(<<"number_services">>, ?FEATURE_PORT, Services),
     Transaction = kz_transaction:debit(AccountId, wht_util:dollars_to_units(Cost)),
     kz_services:commit_transactions(Services, [Transaction]).
 

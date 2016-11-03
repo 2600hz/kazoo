@@ -21,9 +21,9 @@
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
 -define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
                                   ,?FEATURE_E911
-                                  ,<<"failover">>
-                                  ,<<"port">>
-                                  ,<<"prepend">>
+                                  ,?FEATURE_FAILOVER
+                                  ,?FEATURE_PORT
+                                  ,?FEATURE_PREPEND
                                   ]).
 
 -define(CNAM_PROVIDER(AccountId),
@@ -118,8 +118,14 @@ service_name(Feature) -> Feature.
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    Allowed = allowed_features(PhoneNumber),
     Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    AllowedBase = allowed_features(PhoneNumber),
+    Allowed = case lists:member(?FEATURE_E911, Possible) of
+                  true -> AllowedBase;
+                  false ->
+                      %% For backward compatibility
+                      AllowedBase ++ [<<"dash_e911">>, <<"vitelity_e911">>]
+              end,
     lager:debug("allowed ~p, possible ~p", [Allowed, Possible]),
     [provider_module(Feature, AccountId)
      || Feature <- Possible,
@@ -131,12 +137,17 @@ provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     cnam_provider(AccountId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     e911_provider(AccountId);
-provider_module(<<"prepend">>, _) ->
+provider_module(?FEATURE_PREPEND, _) ->
     <<"knm_prepend">>;
-provider_module(<<"port">>, _) ->
+provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
-provider_module(<<"failover">>, _) ->
+provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
+%% These 2 for backward compatibility:
+provider_module(<<"dash_e911">>=OldFeature, _) ->
+    <<"knm_", OldFeature/binary>>;
+provider_module(<<"vitelity_e911">>=OldFeature, _) ->
+    <<"knm_", OldFeature/binary>>;
 provider_module(Other, _) ->
     lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.
