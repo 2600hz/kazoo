@@ -327,7 +327,7 @@ guess_properties(Document, Key, Type, Default)
     Description = fetch_description(DescriptionKey),
     case Description of
         'undefined' ->
-            io:format("\nMissing key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
+            io:format("\nYou need to add the key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
             halt(1);
         _ -> 'ok'
     end,
