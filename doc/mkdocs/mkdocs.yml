@@ -1,7 +1,7 @@
 site_name: Dev Reference
 
 pages:
-- 'README.md'
+- 'index.md'
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
