@@ -513,6 +513,7 @@
     "reorder.unknown-error-message": "reorder unknown-error-message",
     "servers.clock_timezone": "servers clock timezone",
     "services.default_allow_updates": "services default allow updates",
+    "services.http_sync.authorization_header": "services http sync authorization header",
     "services.http_sync.connect_timeout_ms": "services http sync connect timeout in milliseconds",
     "services.http_sync.http_url": "services http sync http url",
     "services.master_account_bookkeeper": "services master account bookkeeper",

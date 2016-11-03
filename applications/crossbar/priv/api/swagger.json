@@ -10919,6 +10919,11 @@
         "system_config.services.http_sync": {
             "description": "Schema for services.http_sync system_config",
             "properties": {
+                "authorization_header": {
+                    "default": "",
+                    "description": "services http sync authorization header",
+                    "type": "string"
+                },
                 "connect_timeout_ms": {
                     "default": 10000,
                     "description": "services http sync connect timeout in milliseconds",

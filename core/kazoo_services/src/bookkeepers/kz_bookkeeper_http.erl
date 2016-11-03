@@ -34,12 +34,11 @@
 -define(HTTP_URL
        ,kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"http_url">>, <<>>)
        ).
+-define(AUTH_HEADER
+       ,kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"authorization_header">>, <<>>)
+       ).
 
 -define(HTTP_OPTS, [{'connect_timeout', ?CONNECT_TIMEOUT_MS}]).
--define(HTTP_REQ_HEADERS(Sync)
-       ,[{"X-Sync-ID", kz_util:to_list(Sync#sync.id)}
-        ,{"X-Account-ID", kz_util:to_list(Sync#sync.account_id)}
-        ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,7 +72,7 @@ http_request(#sync{url = 'undefined'}) ->
     lager:info("http sync URL is empty - skipping");
 http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
     Headers = [{"Content-Type", kz_util:to_list(Sync#sync.content_type)}
-               | ?HTTP_REQ_HEADERS(Sync)
+               | http_headers(Sync)
               ],
     Payload = http_payload(Sync),
     lager:debug("attempting http billing sync with ~s: ~s", [Url, Payload]),
@@ -109,6 +108,23 @@ http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
                              ,{<<"items">>, kz_service_items:public_json(Sync#sync.items)}
                              ]),
     kz_json:encode(JObj).
+
+-spec http_headers(sync()) -> proplist().
+http_headers(Sync) ->
+    props:filter_empty(
+      [{"X-Sync-ID", to_list(Sync#sync.id)}
+      ,{"X-Account-ID", to_list(Sync#sync.account_id)}
+      ,{"Authorization", to_list(?AUTH_HEADER)}
+      ]
+     ).
+
+-spec to_list(api_binary()) -> 'undefined' | list().
+to_list('undefined') -> 'undefined';
+to_list(Value) ->
+    case kz_util:is_empty(Value) of
+        'true' -> 'undefined';
+        'false' -> kz_util:to_list(Value)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
