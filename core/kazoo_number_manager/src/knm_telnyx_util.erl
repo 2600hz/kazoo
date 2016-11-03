@@ -10,6 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_telnyx_util).
 
+-export([did/1]).
 -export([req/2, req/3]).
 
 -include("knm.hrl").
@@ -39,6 +40,19 @@
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')).
 
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Turns +13129677542 into %2B13129677542.
+%% @end
+%%--------------------------------------------------------------------
+-spec did(knm_number:knm_number()) -> nonempty_string().
+did(Number) ->
+    binary_to_list(
+      kz_http_util:urlencode(
+        knm_phone_number:number(
+          knm_number:phone_number(Number)))).
+
 
 -spec req(atom(), [nonempty_string()]) -> kz_json:object().
 -spec req(atom(), [nonempty_string()], kz_json:object()) -> kz_json:object().
@@ -62,6 +76,11 @@ req('post', ["number_orders"], _) ->
     rep_fixture("telnyx_order.json");
 req('put', ["numbers", "%2B1"++_, "e911_settings"], _) ->
     rep_fixture("telnyx_activate_e911.json");
+req('put', ["numbers", "%2B1"++_], Body) ->
+    case kz_json:get_ne_binary_value(<<"cnam_listing_details">>, Body) of
+        undefined -> rep_fixture("telnyx_activate_cnam_inbound.json");
+        _ -> rep_fixture("telnyx_activate_cnam_outbound.json")
+    end;
 req('delete', ["e911_addresses", "421570676474774685"], _) ->
     rep_fixture("telnyx_delete_e911.json").
 

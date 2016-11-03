@@ -92,3 +92,28 @@ e911_test_() ->
                    )
      }
     ].
+
+cnam_test_() ->
+    CNAM = kz_json:from_list(
+             [{?CNAM_INBOUND_LOOKUP, true}
+             ,{?CNAM_DISPLAY_NAME, <<"my CNAM">>}
+             ]),
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{<<"auth_by_account">>, kz_json:new()}
+            ,{'public_fields', kz_json:from_list([{?FEATURE_CNAM, CNAM}])}
+            ],
+    {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify inbound CNAM is properly activated"
+     ,?_assertEqual(true, kz_json:is_true(?CNAM_INBOUND_LOOKUP
+                                         ,knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND)))
+     }
+    ,{"Verify outbound CNAM is properly set"
+     ,?_assertEqual(<<"my CNAM">>
+                   ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME
+                                               ,knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND)
+                                               )
+                   )
+     }
+    ].
