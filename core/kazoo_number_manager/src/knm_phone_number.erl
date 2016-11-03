@@ -348,7 +348,7 @@ from_json(JObj) ->
         case kz_json:get_value(?PVT_FEATURES, JObj) of
             'undefined' -> kz_json:new();
             FeaturesList when is_list(FeaturesList) ->
-                lists:foldl(fun (FeatureKey, Acc) -> kz_json:set_value(FeatureKey, kz_json:new(), Acc) end, kz_json:new(), FeaturesList);
+                lists:foldl(fun (F, A) -> features_fold(F, A, JObj) end, kz_json:new(), FeaturesList);
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
@@ -372,6 +372,43 @@ from_json(JObj) ->
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
                 ]),
     PhoneNumber.
+
+%% Handle 3.22 -> 4.0 features migration.
+%% Note: if a feature matches here that means it was enabled in 3.22.
+features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
+    Data = kz_json:is_true(?FEATURE_FORCE_OUTBOUND, JObj),
+    kz_json:set_value(?FEATURE_FORCE_OUTBOUND, Data, Acc);
+features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
+    Data = kz_json:from_list(
+             props:filter_undefined(
+               [{<<"early">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
+               ,{<<"transfer">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
+               ])),
+    kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
+features_fold(?FEATURE_PREPEND, Acc, JObj) ->
+    Name = kz_json:get_ne_value([?FEATURE_PREPEND, <<"name">>], JObj),
+    Data = kz_json:from_list([{<<"enabled">>, true}
+                             ,{<<"name">>, Name}
+                             ]),
+    kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
+features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
+    DisplayName = kz_json:get_ne_binary_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], JObj),
+    Data = kz_json:from_list([{?CNAM_DISPLAY_NAME, DisplayName}]),
+    kz_json:set_value(?FEATURE_CNAM_OUTBOUND, Data, Acc);
+features_fold(?CNAM_INBOUND_LOOKUP, Acc, _) ->
+    Data = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
+    kz_json:set_value(?FEATURE_CNAM_INBOUND, Data, Acc);
+features_fold(<<"dash_e911">>=Feature, Acc, JObj) ->
+    Data = kz_json:get_value(Feature, JObj),
+    kz_json:set_value(?FEATURE_E911, Data, Acc);
+features_fold(<<"vitelity_e911">>=Feature, Acc, JObj) ->
+    Data = kz_json:get_value(Feature, JObj),
+    kz_json:set_value(?FEATURE_E911, Data, Acc);
+features_fold(FeatureKey, Acc, JObj) ->
+    %% Encompasses at least:
+    %%   ?FEATURE_PORT & ?FEATURE_FAILOVER
+    Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
+    kz_json:set_value(FeatureKey, Data, Acc).
 
 %%--------------------------------------------------------------------
 %% @private
