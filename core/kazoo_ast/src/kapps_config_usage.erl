@@ -61,7 +61,6 @@ process_app(App, Schemas) ->
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
 
-module_to_schema('kz_bookkeeper_http', Schemas) -> Schemas;
 module_to_schema(Module, Schemas) ->
     io:format("."),
     case kz_ast_util:module_ast(Module) of
