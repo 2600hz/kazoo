@@ -31,6 +31,15 @@
             orelse Prefix == <<"889">>
        ).
 
+-define(IS_US_TOLLFREE_WILDCARD(Prefix)
+       ,Prefix == <<"80*">>
+            orelse Prefix == <<"84*">>
+            orelse Prefix == <<"85*">>
+            orelse Prefix == <<"86*">>
+            orelse Prefix == <<"87*">>
+            orelse Prefix == <<"88*">>
+       ).
+
 -define(DEFAULT_E911_FEATURE, ?DASH_KEY).
 
 

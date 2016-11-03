@@ -112,6 +112,18 @@ find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_T
            ]
     };
 
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
+    Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
+               "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
+             ],
+    Result = search(Num, Params),
+    AccountId = knm_carriers:account_id(Options),
+    {'ok', [N
+            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+               {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
+           ]
+    };
+
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
              , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
