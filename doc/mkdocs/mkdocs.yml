@@ -1,4 +1,6 @@
 site_name: Dev Reference
+theme: null
+theme_dir: '2600Hz_theme'
 
 pages:
 - 'index.md'
