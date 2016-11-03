@@ -121,7 +121,7 @@ handle_inbound_cnam(Number) ->
             case kz_json:is_true(?CNAM_INBOUND_LOOKUP, Feature) of
                 'true' -> Number;
                 'false' ->
-                    FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
+                    FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
                     knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
             end
     end.

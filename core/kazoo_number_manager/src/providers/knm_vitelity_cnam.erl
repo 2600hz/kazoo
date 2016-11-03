@@ -209,7 +209,7 @@ handle_inbound_cnam(Number, 'true') ->
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
         'false' -> knm_services:deactivate_feature(Number, ?FEATURE_CNAM_INBOUND);
         'true' ->
-            FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
+            FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
             knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end;
 handle_inbound_cnam(Number, 'false') ->
@@ -324,7 +324,7 @@ process_xml_content_tag(Number, #xmlElement{name='content'
             Msg = knm_vitelity_util:xml_resp_error_msg(Els),
             knm_errors:unspecified(Msg, Number);
         <<"ok">> ->
-            FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, <<"true">>}]),
+            FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
             knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
     end.
 
