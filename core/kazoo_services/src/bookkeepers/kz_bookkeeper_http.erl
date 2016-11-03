@@ -111,12 +111,12 @@ http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
 
 -spec http_headers(sync()) -> proplist().
 http_headers(Sync) ->
-    props:filter_undefined(
-        [{"X-Sync-ID", to_list(Sync#sync.id)}
-        ,{"X-Account-ID", to_list(Sync#sync.account_id)}
-        ,{"Authorization", to_list(?AUTH_HEADER)}
-        ]
-    ).
+    props:filter_empty(
+      [{"X-Sync-ID", to_list(Sync#sync.id)}
+      ,{"X-Account-ID", to_list(Sync#sync.account_id)}
+      ,{"Authorization", to_list(?AUTH_HEADER)}
+      ]
+     ).
 
 -spec to_list(api_binary()) -> 'undefined' | list().
 to_list('undefined') -> 'undefined';
