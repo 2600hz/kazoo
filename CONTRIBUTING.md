@@ -140,9 +140,7 @@ Some in-progress work is using [Elvis](https://github.com/inaka/elvis) to enforc
 
 ## Testing Your Code
 
-You must meet the testing standards listed in the “Testing / Verification Standards” section (below)
-
-All code commits require testing and evidence that tests were performed.
+**DONT PROVE IT WORKS, PROVE YOU CANT BREAK IT!**
 
 ## Commits and Commit Messages
 
