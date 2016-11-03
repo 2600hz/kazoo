@@ -140,7 +140,7 @@ Some in-progress work is using [Elvis](https://github.com/inaka/elvis) to enforc
 
 ## Testing Your Code
 
-**DONT PROVE IT WORKS, PROVE YOU CANT BREAK IT!**
+**DONT JUST PROVE IT WORKS, PROVE YOU CANT BREAK IT!**
 
 ## Commits and Commit Messages
 
