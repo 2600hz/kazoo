@@ -15,7 +15,7 @@
 
 -include("knm.hrl").
 
--define(KEY, <<"failover">>).
+-define(KEY, ?FEATURE_FAILOVER).
 
 %%--------------------------------------------------------------------
 %% @public

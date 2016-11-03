@@ -1,7 +1,5 @@
 -ifndef(KNM_PORT_REQUEST_HRL).
 
--define(PORT_KEY, <<"port">>).
-
 -define(PORT_UNCONFIRMED, <<"unconfirmed">>).
 -define(PORT_WAITING, ?PORT_UNCONFIRMED).
 -define(PORT_SUBMITTED, <<"submitted">>).

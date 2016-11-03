@@ -21,8 +21,8 @@
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
 -define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
                                   ,?FEATURE_E911
-                                  ,<<"failover">>
-                                  ,<<"port">>
+                                  ,?FEATURE_FAILOVER
+                                  ,?FEATURE_PORT
                                   ,?FEATURE_PREPEND
                                   ]).
 
@@ -139,9 +139,9 @@ provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     e911_provider(AccountId);
 provider_module(?FEATURE_PREPEND, _) ->
     <<"knm_prepend">>;
-provider_module(<<"port">>, _) ->
+provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
-provider_module(<<"failover">>, _) ->
+provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 %% These 2 for backward compatibility:
 provider_module(<<"dash_e911">>=OldFeature, _) ->
