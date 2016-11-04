@@ -64,11 +64,12 @@
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
+-define(MAX_SEARCH_QUANTITY,
+        kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 1000)).
+
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
-
--define(MAX_BW_SEARCH_QUANTITY, 5000).
 
 -type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
 
@@ -169,28 +170,28 @@ query_bw_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
-               "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
+               "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
              ],
     Result = search(Num, Params),
     {'ok', process_tollfree_search_response(Result, Quantity, Options)};
 
 query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
+               "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
              ],
     Result = search(Num, Params),
     {'ok', process_tollfree_search_response(Result, Quantity, Options)};
 
 query_bw_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
+             , "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
              ],
     {'ok', process_search_response(search(NPA, Params), Quantity, Options)};
 
 query_bw_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
+             , "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
              ],
     {'ok', process_search_response(search(Search, Params), Quantity, Options)}.
 
@@ -464,7 +465,7 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    knm_carriers:create_found(Num, 'knm_bandwidth', AccountId, JObj).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 -spec maybe_add_us_prefix(binary()) -> binary().
 maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
@@ -475,7 +476,7 @@ maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
                                              knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = maybe_add_us_prefix(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
-    knm_carriers:create_found(Num, 'knm_bandwidth', AccountId, kz_json:new()).
+    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
