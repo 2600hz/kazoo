@@ -105,6 +105,7 @@ find_numbers(Number, Quantity, Options) ->
     end.
 
 -spec query_local_bw_numbers(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary()) -> search_ret().
+-ifndef(TEST).
 query_local_bw_numbers(Number, Quantity, Options, AccountId)
   when is_integer(Quantity), Quantity > 0 ->
     Offset = knm_carriers:offset(Options),
@@ -153,6 +154,10 @@ format_numbers(JObjs) ->
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
 
+-else.
+query_local_bw_numbers(Number, Quantity, Options, _AccountId) ->
+    query_bw_numbers(Number, Quantity, Options).
+-endif.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
