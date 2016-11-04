@@ -13,6 +13,11 @@
             "description": "webhooks connect timeout in milliseconds",
             "type": "integer"
         },
+        "disable_disabler": {
+            "default": false,
+            "description": "if true webhooks will not be automatically disabled",
+            "type": "boolean"
+        },
         "log_successful_attempts": {
             "default": false,
             "description": "webhooks log successful attempts",
