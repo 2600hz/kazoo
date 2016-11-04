@@ -813,13 +813,6 @@ get_category(Category, 'false') ->
          ,{<<"tasks">>, <<"unfinished_port_request_lifetime_s">>}
          }
 
-        ,{{<<"speech">>, <<"tts_url">>}
-         ,{<<"speech">>, <<"tts_url_ispeech">>}
-         }
-        ,{{<<"speech">>, <<"tts_url">>}
-         ,{<<"speech">>, <<"tts_url_voicefabric">>}
-         }
-
         ]).
 
 -spec migrate() -> 'ok'.
