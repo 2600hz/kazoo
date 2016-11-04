@@ -139,15 +139,15 @@ schema_to_table(Schema=?NE_BINARY) ->
     schema_to_table(JObj);
 schema_to_table(SchemaJObj) ->
     Properties = kz_json:get_value(<<"properties">>, SchemaJObj, kz_json:new()),
-    TopLevelRequired = kz_json:get_list_value(<<"required">>, SchemaJObj, []),
-    F = fun (K, V, Acc) -> property_to_row(TopLevelRequired, K, V, Acc) end,
+    F = fun (K, V, Acc) -> property_to_row(SchemaJObj, K, V, Acc) end,
     Reversed = kz_json:foldl(F, [?TABLE_HEADER], Properties),
     lists:reverse(Reversed).
 
-property_to_row(TopRequired, Name=?NE_BINARY, Settings, Acc) ->
-    property_to_row(TopRequired, [Name], Settings, Acc);
-property_to_row(TopRequired, Names, Settings, Acc) ->
-    maybe_sub_properties_to_row(TopRequired
+property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, Acc) ->
+    property_to_row(SchemaJObj, [Name], Settings, Acc);
+property_to_row(SchemaJObj, Names, Settings, Acc) ->
+    RequiredV4 = local_required(Names, SchemaJObj),
+    maybe_sub_properties_to_row(SchemaJObj
                                ,kz_json:get_value(<<"type">>, Settings)
                                ,Names
                                ,Settings
@@ -155,25 +155,32 @@ property_to_row(TopRequired, Names, Settings, Acc) ->
                                            ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
                                            ,cell_wrap(schema_type(Settings))
                                            ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
-                                           ,cell_wrap(is_row_required(Names, TopRequired, kz_json:get_value(<<"required">>, Settings)))
+                                           ,cell_wrap(is_row_required(Names, RequiredV4, kz_json:is_true(<<"required">>, Settings)))
                                            )
                                  | Acc
                                 ]
                                ).
 
+local_required(Names, SchemaJObj) ->
+    kz_json:get_value(path_local_required(Names), SchemaJObj).
+
+path_local_required([_Name]) -> [<<"required">>];
+path_local_required(Names) ->
+    ExceptLast = lists:reverse(tl(lists:reverse(Names))),
+    [<<"properties">> | ExceptLast] ++ [<<"required">>].
+
 %% @private
 %% @doc
 %% JSON schema draft v3 wants local/nested boolean "required" fields.
-%% Draft v4 wants root-level non-empty string array "required" field.
+%% Draft v4 wants non-empty string array "required" fields.
 %% @end
 -spec is_row_required(ne_binaries() | ne_binary(), ne_binaries(), api_boolean()) -> ne_binary().
-is_row_required(Names=[_|_], TopRequired, LocalRequired) ->
-    is_row_required(lists:last(Names), TopRequired, LocalRequired);
-is_row_required(Name=?NE_BINARY, TopRequired=[_|_], _) ->
-    lists:member(Name, TopRequired);
-is_row_required(_, _, 'undefined') -> <<"false">>;
-is_row_required(_, [], 'true') -> <<"true">>;
-is_row_required(_, [], 'false') -> <<"false">>.
+is_row_required(Names=[_|_], V4, V3) ->
+    is_row_required(lists:last(Names), V4, V3);
+is_row_required(Name=?NE_BINARY, Required=[_|_], _) ->
+    lists:member(Name, Required);
+is_row_required(_, _, 'true') -> <<"true">>;
+is_row_required(_, _, 'false') -> <<"false">>.
 
 schema_type(Settings) ->
     schema_type(Settings, kz_json:get_value(<<"type">>, Settings)).
@@ -222,39 +229,40 @@ cell_wrap(Type) ->
         false -> [<<"`">>, kz_util:to_binary(Type), <<"`">>]
     end.
 
-maybe_sub_properties_to_row(TopRequired, <<"object">>, Names, Settings, Acc0) ->
+maybe_sub_properties_to_row(SchemaJObj, <<"object">>, Names, Settings, Acc0) ->
     lists:foldl(fun(Key, Acc1) ->
-                        maybe_object_properties_to_row(TopRequired, Key, Acc1, Names, Settings)
+                        maybe_object_properties_to_row(SchemaJObj, Key, Acc1, Names, Settings)
                 end
                ,Acc0
                ,[<<"properties">>, <<"patternProperties">>]
                );
-maybe_sub_properties_to_row(TopRequired, <<"array">>, Names, Settings, Acc) ->
+maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, Acc) ->
     case kz_json:get_value([<<"items">>, <<"type">>], Settings) of
         <<"object">> = Type ->
-            maybe_sub_properties_to_row(TopRequired
+            maybe_sub_properties_to_row(SchemaJObj
                                        ,Type
                                        ,Names ++ ["[]"]
                                        ,kz_json:get_value(<<"items">>, Settings, kz_json:new())
                                        ,Acc
                                        );
         <<"string">> = Type ->
+            RequiredV4 = local_required(Names, SchemaJObj),
             [?TABLE_ROW(cell_wrap(kz_util:join_binary(Names ++ ["[]"], <<".">>))
                        ,<<" ">>
                        ,cell_wrap(Type)
                        ,<<" ">>
-                       ,cell_wrap(is_row_required(Names, TopRequired, kz_json:get_value([<<"items">>, <<"required">>], Settings)))
+                       ,cell_wrap(is_row_required(Names, RequiredV4, kz_json:is_true(<<"required">>, Settings)))
                        )
              | Acc
             ];
         _Type -> Acc
     end;
-maybe_sub_properties_to_row(_TopRequired, _Type, _Keys, _Settings, Acc) ->
+maybe_sub_properties_to_row(_SchemaJObj, _Type, _Keys, _Settings, Acc) ->
     Acc.
 
-maybe_object_properties_to_row(TopRequired, Key, Acc0, Names, Settings) ->
+maybe_object_properties_to_row(SchemaJObj, Key, Acc0, Names, Settings) ->
     kz_json:foldl(fun(Name, SubSettings, Acc1) ->
-                          property_to_row(TopRequired, Names ++ [Name], SubSettings, Acc1)
+                          property_to_row(SchemaJObj, Names ++ [Name], SubSettings, Acc1)
                   end
                  ,Acc0
                  ,kz_json:get_value(Key, Settings, kz_json:new())
