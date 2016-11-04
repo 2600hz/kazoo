@@ -68,6 +68,10 @@
 -define(ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
 
+-define(MAX_BW_SEARCH_QUANTITY, 5000).
+
+-type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
+
 %%% API
 
 %%--------------------------------------------------------------------
@@ -87,63 +91,135 @@ is_number_billable(_Number) -> 'true'.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Try search for locally numbers in discovery state first, if it's not enough
+%% or there's no such a numbers query BW for a big quantity of numbers
+%% @end
+%%--------------------------------------------------------------------
+-spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
+find_numbers(Number, Quantity, Options) ->
+    case knm_carriers:account_id(Options) of
+        'undefined' -> {'error', 'not_available'};
+        AccountId ->
+            query_local_bw_numbers(Number, Quantity, Options, AccountId)
+    end.
+
+-spec query_local_bw_numbers(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary()) -> search_ret().
+query_local_bw_numbers(Number, Quantity, Options, AccountId)
+  when is_integer(Quantity), Quantity > 0 ->
+    Offset = knm_carriers:offset(Options),
+    BW2Module = erlang:atom_to_binary(?MODULE, 'utf8'),
+    ViewOptions = [{'startkey', [?NUMBER_STATE_DISCOVERY, BW2Module, Number]}
+                  ,{'endkey', [?NUMBER_STATE_DISCOVERY, BW2Module, <<"\ufff0">>]}
+                  ,{'limit', Quantity}
+                  ,{skip, Offset}
+                  ],
+    case
+        'undefined' /= (DB = knm_converters:to_db(Number))
+        andalso kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
+    of
+        'false' -> query_bw_numbers(Number, Quantity, Options);
+        {'ok', []} ->
+            lager:debug("found no available discoverable bandwidth numbers for account ~s, finding by their API...", [AccountId]),
+            query_bw_numbers(Number, Quantity, Options);
+        {'ok', JObjs} ->
+            lager:debug("found discoverable bandwidth numbers for account ~s", [AccountId]),
+            Numbers = format_numbers(JObjs),
+            find_more(Number, Quantity, Options, AccountId, length(Numbers), Numbers);
+        {'error', _R} ->
+            lager:debug("failed to lookup discoverable bandwidth numbers: ~p , finding by their API...", [_R]),
+            query_bw_numbers(Number, Quantity, Options)
+    end;
+query_local_bw_numbers(Number, Quantity, Options, _AccountId) ->
+    query_bw_numbers(Number, Quantity, Options).
+
+-spec find_more(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
+                       {'ok', knm_number:knm_numbers()}.
+find_more(Number, Quantity, Options, AccountId, NotEnough, Numbers)
+  when NotEnough < Quantity ->
+    NewOffset = knm_carriers:offset(Options) + NotEnough,
+    NewOptions = props:set_value('offset', NewOffset, Options),
+    case query_local_bw_numbers(Number, Quantity - NotEnough, NewOptions, AccountId) of
+        {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
+        _Error -> {'ok', Numbers}
+    end;
+find_more(_, _, _, _, _Enough, Numbers) ->
+    {'ok', Numbers}.
+
+-spec format_numbers(kz_json:objects()) -> knm_number:knm_numbers().
+format_numbers(JObjs) ->
+    Nums = [kz_doc:id(JObj) || JObj <- JObjs],
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+              ],
+    [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
-find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
-    find_numbers(Rest, Quantity, Options);
+-spec query_bw_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
+query_bw_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
+    query_bw_numbers(Rest, Quantity, Options);
 
-find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
-    find_numbers(Rest, Quantity, Options);
+query_bw_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
+    query_bw_numbers(Rest, Quantity, Options);
 
-find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
-               "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
+               "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
              ],
     Result = search(Num, Params),
-    AccountId = knm_carriers:account_id(Options),
-    {'ok', [N
-            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
-               {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
-           ]
-    };
+    {'ok', process_tollfree_search_response(Result, Quantity, Options)};
 
-find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
+query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
+               "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
              ],
     Result = search(Num, Params),
-    AccountId = knm_carriers:account_id(Options),
-    {'ok', [N
-            || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
-               {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
-           ]
-    };
+    {'ok', process_tollfree_search_response(Result, Quantity, Options)};
 
-find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
+query_bw_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
+             , "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
              ],
-    {'ok', process_search_response(search(NPA, Params), Options)};
+    {'ok', process_search_response(search(NPA, Params), Quantity, Options)};
 
-find_numbers(Search, Quantity, Options) ->
+query_bw_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=true&quantity=", integer_to_list(Quantity)
+             , "&enableTNDetail=true&quantity=", ?MAX_BW_SEARCH_QUANTITY
              ],
-    {'ok', process_search_response(search(Search, Params), Options)}.
+    {'ok', process_search_response(search(Search, Params), Quantity, Options)}.
 
--spec process_search_response(xml_el(), knm_carriers:options()) -> knm_number:knm_numbers().
-process_search_response(Result, Options) ->
+-spec process_tollfree_search_response(xml_el(), pos_integer(), knm_carriers:options()) -> knm_number:knm_numbers().
+process_tollfree_search_response(Result, Quantity, Options) ->
     AccountId = knm_carriers:account_id(Options),
-    [N
-     || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
-        {'ok', N} <- [search_response_to_KNM(X, AccountId)]
-    ].
+    Found = [N
+             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+                {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
+            ],
+    return_requested_quantity(Found, Quantity).
+
+-spec process_search_response(xml_el(), pos_integer(), knm_carriers:options()) -> knm_number:knm_numbers().
+process_search_response(Result, Quantity, Options) ->
+    AccountId = knm_carriers:account_id(Options),
+    Found = [N
+             || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
+                {'ok', N} <- [search_response_to_KNM(X, AccountId)]
+            ],
+    return_requested_quantity(Found, Quantity).
+
+-spec return_requested_quantity(knm_number:knm_numbers(), pos_integer()) -> knm_number:knm_numbers().
+return_requested_quantity(Numbers, Quantity) ->
+  try lists:split(Quantity, Numbers) of
+      {Found, _Rest} -> Found
+  catch
+      'error':'badarg' ->
+          Numbers
+  end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -388,7 +464,7 @@ search_response_to_KNM(Xml, AccountId) ->
                ,{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
+    knm_carriers:create_found(Num, 'knm_bandwidth', AccountId, JObj).
 
 -spec maybe_add_us_prefix(binary()) -> binary().
 maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
@@ -399,7 +475,7 @@ maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
                                              knm_number:knm_number_return().
 tollfree_search_response_to_KNM(Xml, AccountId) ->
     Num = maybe_add_us_prefix(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new()).
+    knm_carriers:create_found(Num, 'knm_bandwidth', AccountId, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
