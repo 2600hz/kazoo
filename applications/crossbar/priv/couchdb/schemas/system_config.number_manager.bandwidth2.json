@@ -28,6 +28,11 @@
             "description": "number_manager.bandwidth2 enable provisioning",
             "type": "boolean"
         },
+        "max_search_quantity": {
+            "default": 1000,
+            "description": "number_manager.bandwidth2 max search quantity",
+            "type": "integer"
+        },
         "order_name_prefix": {
             "default": "Kazoo",
             "description": "number_manager.bandwidth2 order name prefix",

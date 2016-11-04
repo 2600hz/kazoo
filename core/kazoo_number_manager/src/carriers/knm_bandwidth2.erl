@@ -131,8 +131,8 @@ query_local_bw_numbers(Number, Quantity, Options, AccountId)
             lager:debug("failed to lookup discoverable bandwidth numbers: ~p , finding by their API...", [_R]),
             query_bw_numbers(Number, Quantity, Options)
     end;
-query_local_bw_numbers(Number, Quantity, Options, _AccountId) ->
-    query_bw_numbers(Number, Quantity, Options).
+query_local_bw_numbers(_Number, _Quantity, _Options, _AccountId) ->
+    {'error', 'not_available'}.
 
 -spec find_more(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
                        {'ok', knm_number:knm_numbers()}.
@@ -153,11 +153,11 @@ format_numbers(JObjs) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
-
 -else.
 query_local_bw_numbers(Number, Quantity, Options, _AccountId) ->
     query_bw_numbers(Number, Quantity, Options).
 -endif.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -220,12 +220,12 @@ process_search_response(Result, Quantity, Options) ->
 
 -spec return_requested_quantity(knm_number:knm_numbers(), pos_integer()) -> knm_number:knm_numbers().
 return_requested_quantity(Numbers, Quantity) ->
-  try lists:split(Quantity, Numbers) of
-      {Found, _Rest} -> Found
-  catch
-      'error':'badarg' ->
-          Numbers
-  end.
+    try lists:split(Quantity, Numbers) of
+        {Found, _Rest} -> Found
+    catch
+        'error':'badarg' ->
+            Numbers
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

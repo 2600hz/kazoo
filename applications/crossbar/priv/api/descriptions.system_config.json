@@ -440,6 +440,7 @@
     "number_manager.bandwidth2.api_username": "number_manager.bandwidth2 api username",
     "number_manager.bandwidth2.debug": "number_manager.bandwidth2 debug",
     "number_manager.bandwidth2.enable_provisioning": "number_manager.bandwidth2 enable provisioning",
+    "number_manager.bandwidth2.max_search_quantity": "number_manager.bandwidth2 max search quantity",
     "number_manager.bandwidth2.order_name_prefix": "number_manager.bandwidth2 order name prefix",
     "number_manager.bandwidth2.sandbox_provisioning": "number_manager.bandwidth2 sandbox provisioning",
     "number_manager.bandwidth2.sip_peer": "number_manager.bandwidth2 sip peer",
