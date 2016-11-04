@@ -923,7 +923,7 @@ update_template(Context, Id, FileJObj) ->
 
     Opts = [{'content_type', kz_util:to_list(CT)}],
 
-    case kz_template:render(Contents, template_module_name(Id, Context, CT), []) of
+    case kz_template:compile(Contents, template_module_name(Id, Context, CT)) of
         {'ok', _} ->
             AttachmentName = attachment_name_by_content_type(CT),
             crossbar_doc:save_attachment(DbId
@@ -934,7 +934,7 @@ update_template(Context, Id, FileJObj) ->
                                         );
         {'error', Error} ->
             lager:warning("failed to compile uploaded ~s template: ~p", [CT, Error]),
-            cb_context:add_system_error('faulty_request', Context)
+            crossbar_util:response('error', <<"Failed to compile notification template">>, Context)
     end.
 
 -spec attachment_name_by_content_type(ne_binary()) -> ne_binary().

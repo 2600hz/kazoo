@@ -733,10 +733,11 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
-    {Key, kz_json:find(Key, [DataJObj, TemplateMetaJObj])};
+    {Key, check_address_value(kz_json:find(Key, [DataJObj, TemplateMetaJObj]))};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
-    {Key, find_address([Key, <<"email_addresses">>], DataJObj, TemplateMetaJObj)};
+    Emails = kz_json:find([Key, <<"email_addresses">>], [DataJObj, TemplateMetaJObj]),
+    {Key, check_address_value(Emails)};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
     {Key, find_address(Key, DataJObj, TemplateMetaJObj)};
@@ -747,10 +748,23 @@ find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
 -spec find_address(kz_json:path(), kz_json:object(), kz_json:object()) ->
                           api_binaries().
 find_address(Key, DataJObj, TemplateMetaJObj) ->
-    case kz_json:get_ne_value(Key, DataJObj) of
-        'undefined' -> kz_json:get_ne_value(Key, TemplateMetaJObj);
+    case check_address_value(kz_json:get_value(Key, DataJObj)) of
+        'undefined' ->
+            check_address_value(kz_json:get_value(Key, TemplateMetaJObj));
         Emails -> Emails
     end.
+
+-spec check_address_value(binary() | binaries() | kz_json:object() | 'undefined') -> api_binaries().
+check_address_value('undefined') -> 'undefined';
+check_address_value(<<>>) -> 'undefined';
+check_address_value(<<_/binary>> = Email) -> Email;
+check_address_value(Emails) when is_list(Emails) ->
+    case [E || E <- Emails, not kz_util:is_empty(E)] of
+        [] -> 'undefined';
+        Es -> Es
+    end;
+check_address_value(JObj) ->
+    check_address_value(kz_json:get_value(<<"email_addresses">>, JObj)).
 
 -spec find_admin_emails(kz_json:object(), ne_binary(), kz_json:path()) ->
                                api_binaries().
