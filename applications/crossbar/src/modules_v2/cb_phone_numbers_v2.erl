@@ -342,7 +342,7 @@ post(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Updaters = [{fun knm_phone_number:update_doc/2, cb_context:doc(Context)}
+    Updaters = [{fun knm_phone_number:reset_doc/2, cb_context:doc(Context)}
                ],
     Result = knm_number:update(Number, Updaters, Options),
     set_response(Result, Context).
@@ -1009,7 +1009,7 @@ numbers_action(Context, ?HTTP_POST, Numbers) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Routines = [{fun knm_phone_number:update_doc/2, cb_context:req_data(Context)}
+    Routines = [{fun knm_phone_number:reset_doc/2, cb_context:req_data(Context)}
                ],
     knm_numbers:update(Numbers, Routines, Options);
 numbers_action(Context, ?HTTP_DELETE, Numbers) ->

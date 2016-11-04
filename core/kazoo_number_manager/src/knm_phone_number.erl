@@ -41,7 +41,7 @@
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,locality/1, set_locality/2
-        ,doc/1, update_doc/2
+        ,doc/1, update_doc/2, reset_doc/2
         ,modified/1, set_modified/2
         ,created/1, set_created/2
         ,is_billable/1
@@ -810,6 +810,12 @@ set_doc(N, JObj) ->
 update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
     Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), Doc),
+    N#knm_phone_number{doc = kz_json:delete_key(<<"id">>, Updated)}.
+
+-spec reset_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
+reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
+    'true' = kz_json:is_json_object(JObj),
+    Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), kz_json:private_fields(Doc)),
     N#knm_phone_number{doc = kz_json:delete_key(<<"id">>, Updated)}.
 
 %%--------------------------------------------------------------------
