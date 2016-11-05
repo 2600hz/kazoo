@@ -151,8 +151,10 @@ templates_source(TemplateId, <<_/binary>> = AccountId) ->
     ResellerId = kz_services:find_reseller_id(AccountId),
     templates_source(TemplateId, AccountId, ResellerId);
 templates_source(TemplateId, DataJObj) ->
-    AccountId = teletype_util:find_account_id(DataJObj),
-    templates_source(TemplateId, AccountId).
+    case teletype_util:find_account_id(DataJObj) of
+        'undefined' -> ?KZ_CONFIG_DB;
+        AccountId -> templates_source(TemplateId, AccountId)
+    end.
 
 templates_source(_TemplateId, 'undefined', _ResellerId) ->
     lager:warning("failed to find parent account for template ~s", [_TemplateId]),
