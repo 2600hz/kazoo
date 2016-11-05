@@ -235,7 +235,7 @@ maybe_adapt_multilines(JObj) ->
                 [{View, kz_json:foldl(fun inline_js_fun/3, kz_json:new(), Pairs)}
                  || {View, Pairs} <- kz_json:to_proplist(Views)
                 ],
-            kz_json:set_value(<<"views">>, NewViews, JObj)
+            kz_json:set_value(<<"views">>, kz_json:from_list(NewViews), JObj)
     end.
 
 %% @private
