@@ -621,6 +621,7 @@
     "webhooks.attempt_failure_count": "webhooks attempt failure count",
     "webhooks.attempt_failure_expiry_ms": "webhooks attempt failure expiry in milliseconds",
     "webhooks.connect_timeout_ms": "webhooks connect timeout in milliseconds",
+    "webhooks.disable_disabler": "if true webhooks will not be automatically disabled",
     "webhooks.log_successful_attempts": "webhooks log successful attempts",
     "webhooks.object_types": "webhooks object types",
     "whitelabel.domains": "whitelabel domains"

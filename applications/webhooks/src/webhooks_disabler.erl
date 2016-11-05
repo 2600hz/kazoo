@@ -57,9 +57,14 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
+-spec start_check_timer() -> 'disabled' | reference().
 start_check_timer() ->
-    Expiry = webhooks_util:system_expires_time(),
-    erlang:start_timer(Expiry, self(), ?EXPIRY_MSG).
+    case kapps_config:get_is_true(?APP_NAME, <<"disable_disabler">>, 'false') of
+        'true' -> 'disabled';
+        'false' ->
+            Expiry = webhooks_util:system_expires_time(),
+            erlang:start_timer(Expiry, self(), ?EXPIRY_MSG)
+    end.
 
 -spec check_failed_attempts() -> 'ok'.
 check_failed_attempts() ->
