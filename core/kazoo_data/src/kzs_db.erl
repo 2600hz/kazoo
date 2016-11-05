@@ -107,16 +107,8 @@ db_exists(#{server := {App, Conn}}, DbName) ->
 db_exists_all(Map, DbName) ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}) of
         {'ok', Exists} -> Exists;
-        _ ->
-            case db_exists(Map, DbName)
-                andalso db_exists_others(DbName, maps:get('others', Map, []))
-            of
-                {'error', 'resource_not_available'} -> 'true';
-                Exists ->
-                    Props = [{'origin', {'db', DbName}}],
-                    kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {'database', DbName}, Exists, Props),
-                    Exists
-            end
+        _ -> db_exists(Map, DbName)
+                 andalso db_exists_others(DbName, maps:get('others', Map, []))
     end.
 
 -spec db_exists_others(ne_binary(), list()) -> boolean().
