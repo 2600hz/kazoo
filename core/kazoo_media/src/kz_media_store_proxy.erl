@@ -60,8 +60,8 @@ maybe_basic_authentication(Username, Password) ->
     AuthPassword = kapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, ""),
     not kz_util:is_empty(AuthUsername)
         andalso not kz_util:is_empty(AuthPassword)
-        andalso Username == AuthUsername
-        andalso Password == AuthPassword.
+        andalso kz_util:to_list(Username) == AuthUsername
+        andalso kz_util:to_list(Password) == AuthPassword.
 
 -spec maybe_acl_authentication(cowboy_req:req()) -> boolean().
 maybe_acl_authentication(Req) ->
