@@ -26,8 +26,8 @@
                     ,{<<"authenticated_playback">>, 'false'}
                     ,{<<"authenticated_store">>, 'true'}
                     ,{<<"proxy_store_authenticate">>, 'true'}
-                    ,{<<"proxy_username">>, ""}
-                    ,{<<"proxy_password">>, ""}
+                    ,{<<"proxy_username">>, 'undefined'}
+                    ,{<<"proxy_password">>, 'undefined'}
                     ,{<<"proxy_store_acls">>, [<<"127.0.0.0/24">>]}
                     ,{<<"max_recording_time_limit">>, kz_media_util:max_recording_time_limit()}
                     ,{[<<"call_recording">>, <<"extension">>], <<"mp3">>}

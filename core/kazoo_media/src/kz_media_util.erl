@@ -28,8 +28,8 @@
 
 -define(USE_HTTPS, kapps_config:get_is_true(?CONFIG_CAT, <<"use_https">>, 'false')).
 -define(AUTH_PLAYBACK, kapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, 'false')).
--define(AUTH_USERNAME, kapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, "")).
--define(AUTH_PASSWORD, kapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, "")).
+-define(AUTH_USERNAME, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, kz_util:rand_hex_binary(8))).
+-define(AUTH_PASSWORD, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, kz_util:rand_hex_binary(8))).
 -define(USE_AUTH_STORE, kapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
 
 -define(NORMALIZE_EXE, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
@@ -174,7 +174,7 @@ build_url(H, P, User, Pwd) ->
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
-    list_to_binary([Scheme, "://", kz_util:to_binary(User), ":", kz_util:to_binary(Pwd)
+    list_to_binary([Scheme, "://", User, ":", Pwd
                    ,"@", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"
                    ]).
 

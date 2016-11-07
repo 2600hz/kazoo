@@ -56,8 +56,8 @@ maybe_basic_authentication(Req) ->
 
 -spec maybe_basic_authentication(ne_binary(), ne_binary()) -> boolean().
 maybe_basic_authentication(Username, Password) ->
-    AuthUsername = kapps_config:get_string(?CONFIG_CAT, <<"proxy_username">>, ""),
-    AuthPassword = kapps_config:get_string(?CONFIG_CAT, <<"proxy_password">>, ""),
+    AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
+    AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
     not kz_util:is_empty(AuthUsername)
         andalso not kz_util:is_empty(AuthPassword)
         andalso Username == AuthUsername

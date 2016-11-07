@@ -58,7 +58,6 @@
             "type": "integer"
         },
         "proxy_password": {
-            "default": "",
             "description": "media proxy password",
             "type": "string"
         },
@@ -80,7 +79,6 @@
             "type": "boolean"
         },
         "proxy_username": {
-            "default": "",
             "description": "media proxy username",
             "type": "string"
         },
@@ -140,9 +138,7 @@
     },
     "required": [
         "call_recording",
-        "default_language",
-        "ssl_cert",
-        "ssl_key"
+        "default_language"
     ],
     "type": "object"
 }

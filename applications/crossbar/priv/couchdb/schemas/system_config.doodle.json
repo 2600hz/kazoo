@@ -64,7 +64,6 @@
     },
     "required": [
         "connections",
-        "inbound_broker",
         "inbound_queue_name",
         "reschedule"
     ],
