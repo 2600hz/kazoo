@@ -31,6 +31,7 @@
 
 -export([activation_charges/3]).
 -export([commit_transactions/2]).
+-export([charge_transactions/2]).
 -export([select_bookkeeper/1]).
 -export([check_bookkeeper/2]).
 -export([set_billing_id/2]).
@@ -557,6 +558,21 @@ commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
                            ,kz_transaction:amount(Activation) > 0
                    ],
     Bookkeeper:commit_transactions(BillingId, Transactions).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec charge_transactions(services(), kz_transactions:kz_transactions()) -> kz_json:objects().
+charge_transactions(#kz_services{billing_id=BillingId}, Activations) ->
+    Bookkeeper = select_bookkeeper(BillingId),
+    Transactions = [kz_transaction:to_json(Activation)
+                    || Activation <- Activations
+                           ,kz_transaction:amount(Activation) > 0
+                   ],
+    Bookkeeper:charge_transactions(BillingId, Transactions).
 
 %%--------------------------------------------------------------------
 %% @public

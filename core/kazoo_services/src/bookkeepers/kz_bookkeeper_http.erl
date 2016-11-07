@@ -143,7 +143,7 @@ commit_transactions(_BillingId, Transactions) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec charge_transactions(ne_binary(), kz_transactions:kz_transactions()) -> [].
+-spec charge_transactions(ne_binary(), kz_json:objects()) -> [].
 charge_transactions(_BillingId, _Transactions) -> [].
 
 %%--------------------------------------------------------------------
