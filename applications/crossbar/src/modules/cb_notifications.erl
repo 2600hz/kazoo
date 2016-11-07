@@ -947,7 +947,7 @@ attachment_name_by_media_type(CT) ->
 
 -spec template_module_name(ne_binary(), cb_context:context(), ne_binary()) -> atom().
 template_module_name(Id, Context, CT) ->
-    AccountId = cb_context:account_id(Context),
+    AccountId = cb_context:account_db(Context),
     [_C, Type] = binary:split(CT, <<"/">>),
     kz_util:to_atom(
       <<AccountId/binary
