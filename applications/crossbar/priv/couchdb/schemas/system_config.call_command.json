@@ -8,6 +8,11 @@
             "description": "call_command application timeout",
             "type": "integer"
         },
+        "bridge_timeout_extended_ms": {
+            "default": 20000,
+            "description": "call_command extended bridge timeout in ms",
+            "type": "integer"
+        },
         "collect_timeout": {
             "default": 5000,
             "description": "call_command collect timeout",

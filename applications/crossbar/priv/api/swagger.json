@@ -1051,8 +1051,8 @@
                     "type": "boolean"
                 },
                 "timeout": {
-                    "default": 0,
-                    "description": "How long, in seconds, to ring the endpoint(s)",
+                    "default": 20,
+                    "description": "How long, in seconds, to bridge the endpoint(s)",
                     "required": false,
                     "type": "integer"
                 }
@@ -7301,6 +7301,11 @@
                 "application_timeout": {
                     "default": 500000,
                     "description": "call_command application timeout",
+                    "type": "integer"
+                },
+                "bridge_timeout_extended_ms": {
+                    "default": 20000,
+                    "description": "call_command extended bridge timeout in ms",
                     "type": "integer"
                 },
                 "collect_timeout": {

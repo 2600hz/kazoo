@@ -237,6 +237,9 @@
 -define(STORAGE_TIMEOUT(App), kapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, kz_util:to_binary(App), <<"save_timeout_ms">>], 5 * ?MILLISECONDS_IN_MINUTE, <<"default">>)).
 -define(STORAGE_RETRIES(App), kapps_config:get_integer(?CONFIG_CAT, [<<"store_file">>, kz_util:to_binary(App), <<"retries">>], 5, <<"default">>)).
 
+-define(EXTRA_BRIDGE_TIMEOUT, kapps_config:get_integer(?CONFIG_CAT, <<"bridge_timeout_extended_ms">>, 20 * ?MILLISECONDS_IN_SECOND)).
+-define(BRIDGE_DEFAULT_TIMEOUT, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S * ?MILLISECONDS_IN_SECOND).
+
 -spec default_collect_timeout() -> pos_integer().
 default_collect_timeout() ->
     ?DEFAULT_COLLECT_TIMEOUT.
@@ -1072,8 +1075,10 @@ b_bridge(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHeaders, I
     b_bridge_wait(Timeout, Call).
 
 -spec b_bridge_wait(pos_integer(), kapps_call:call()) -> kapps_api_bridge_return().
+b_bridge_wait(0, Call) ->
+    wait_for_bridge(?BRIDGE_DEFAULT_TIMEOUT + ?EXTRA_BRIDGE_TIMEOUT , Call);
 b_bridge_wait(Timeout, Call) ->
-    wait_for_bridge((kz_util:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + (10 * ?MILLISECONDS_IN_SECOND) , Call).
+    wait_for_bridge((kz_util:to_integer(Timeout) * ?MILLISECONDS_IN_SECOND) + ?EXTRA_BRIDGE_TIMEOUT , Call).
 
 -spec unbridge(kapps_call:call()) -> 'ok'.
 -spec unbridge(kapps_call:call(), ne_binary()) -> 'ok'.
@@ -2491,6 +2496,8 @@ wait_for_dtmf(Timeout) ->
                              kapps_api_bridge_return().
 -spec wait_for_bridge(kz_timeout(), 'undefined' | fun((kz_json:object()) -> any()), kapps_call:call()) ->
                              kapps_api_bridge_return().
+wait_for_bridge(0, Call) ->
+    wait_for_bridge(?BRIDGE_DEFAULT_TIMEOUT, 'undefined', Call);
 wait_for_bridge(Timeout, Call) ->
     wait_for_bridge(Timeout, 'undefined', Call).
 
