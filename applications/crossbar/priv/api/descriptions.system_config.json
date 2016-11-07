@@ -32,6 +32,7 @@
     "braintree.min_amount": "braintree minimum amount",
     "braintree.should_prorate": "braintree should prorate",
     "call_command.application_timeout": "call_command application timeout",
+    "call_command.bridge_timeout_extended_ms": "call_command extended bridge timeout in ms",
     "call_command.collect_timeout": "call_command collect timeout",
     "call_command.digit_timeout": "call_command digit timeout",
     "call_command.interdigit_timeout": "call_command interdigit timeout",

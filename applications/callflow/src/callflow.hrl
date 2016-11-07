@@ -39,7 +39,7 @@
 
 -define(NO_MATCH_CF, <<"no_match">>).
 
--define(DEFAULT_TIMEOUT_S, 20).
+-define(DEFAULT_TIMEOUT_S, ?BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S).
 
 -define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
 

@@ -52,8 +52,8 @@
             "type": "boolean"
         },
         "timeout": {
-            "default": 0,
-            "description": "How long, in seconds, to ring the endpoint(s)",
+            "default": 20,
+            "description": "How long, in seconds, to bridge the endpoint(s)",
             "required": false,
             "type": "integer"
         }
