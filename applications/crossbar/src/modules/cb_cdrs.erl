@@ -668,7 +668,7 @@ col_rate(JObj, _Timestamp) -> kz_util:to_binary(wht_util:units_to_dollars(kz_jso
 col_rate_name(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"rate_name">>], JObj, <<>>).
 col_bridge_id(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"bridge_id">>], JObj, <<>>).
 col_recording_url(JObj, _Timestamp) -> kz_json:get_value([<<"recording_url">>], JObj, <<>>).
-col_media_recordings(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, <<>>).
+col_media_recordings(JObj, _Timestamp) -> format_recordings(JObj).
 col_call_priority(JObj, _Timestamp) -> kz_json:get_value([?KEY_CCV, <<"call_priority">>], JObj, <<>>).
 
 col_reseller_cost(JObj, _Timestamp) -> kz_util:to_binary(reseller_cost(JObj)).
@@ -681,6 +681,13 @@ pretty_print_datetime({{Y,Mo,D},{H,Mi,S}}) ->
     iolist_to_binary(io_lib:format("~4..0w-~2..0w-~2..0w ~2..0w:~2..0w:~2..0w"
                                   ,[Y, Mo, D, H, Mi, S]
                                   )).
+
+-spec format_recordings(kz_json:object()) -> binaries().
+format_recordings(JObj) ->
+    case kz_json:get_value([?KEY_CCV, <<"media_recordings">>], JObj, []) of
+        Recordings when is_list(Recordings) -> Recordings;
+        Recording -> [Recording]
+    end.
 
 -spec dialed_number(kz_json:object()) -> binary().
 dialed_number(JObj) ->
