@@ -40,7 +40,6 @@
         }
     },
     "required": [
-        "offline_configuration_key",
         "{Module}"
     ],
     "type": "object"

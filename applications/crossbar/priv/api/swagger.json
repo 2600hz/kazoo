@@ -7213,10 +7213,6 @@
                     "type": "string"
                 }
             },
-            "required": [
-                "secret_for_user_signature",
-                "system_key"
-            ],
             "type": "object"
         },
         "system_config.blackhole": {
@@ -7957,9 +7953,7 @@
             },
             "required": [
                 "autoload_modules",
-                "ssl_ca_cert",
-                "ssl_cert",
-                "ssl_key"
+                "ssl_ca_cert"
             ],
             "type": "object"
         },
@@ -8167,7 +8161,6 @@
                 }
             },
             "required": [
-                "offline_configuration_key",
                 "{Module}"
             ],
             "type": "object"
@@ -8530,7 +8523,6 @@
             },
             "required": [
                 "connections",
-                "inbound_broker",
                 "inbound_queue_name",
                 "reschedule"
             ],
@@ -9619,7 +9611,6 @@
                     "type": "integer"
                 },
                 "proxy_password": {
-                    "default": "",
                     "description": "media proxy password",
                     "type": "string"
                 },
@@ -9641,7 +9632,6 @@
                     "type": "boolean"
                 },
                 "proxy_username": {
-                    "default": "",
                     "description": "media proxy username",
                     "type": "string"
                 },
@@ -9701,9 +9691,7 @@
             },
             "required": [
                 "call_recording",
-                "default_language",
-                "ssl_cert",
-                "ssl_key"
+                "default_language"
             ],
             "type": "object"
         },

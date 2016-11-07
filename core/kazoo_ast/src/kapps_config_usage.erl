@@ -21,7 +21,19 @@ to_schema_docs(Schemas) ->
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
     JObj = static_fields(Name, AutoGenSchema),
-    'ok' = file:write_file(Path, kz_json:encode(JObj)).
+    'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj))).
+
+filter_system(JObj) ->
+    filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
+
+filter_system_fold({[], []}, JObj) -> JObj;
+filter_system_fold({['_system' | Vc], [ _| Kc]}, JObj) ->
+    filter_system_fold({Vc, Kc}, JObj);
+filter_system_fold({[V | Vc], [K | Kc]}, JObj) ->
+    case kz_json:is_json_object(V) of
+        'true' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, filter_system(V), JObj));
+        'false' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, V, JObj))
+    end.
 
 static_fields(Name, JObj) ->
     Id = <<"system_config.", Name/binary>>,
@@ -374,7 +386,7 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
-    'undefined';
+    '_system';
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
     default_value(kz_util:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
@@ -395,9 +407,9 @@ default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Def
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
-    'undefined';
+    '_system';
 default_value(?FUN_ARGS(_F, _Args)) ->
-    'undefined'.
+    '_system'.
 
 default_values_from_list(KVs) ->
     lists:foldl(fun default_value_from_kv/2, kz_json:new(), KVs).

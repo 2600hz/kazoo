@@ -12,9 +12,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "secret_for_user_signature",
-        "system_key"
-    ],
     "type": "object"
 }
