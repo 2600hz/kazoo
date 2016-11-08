@@ -76,7 +76,11 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
     RouteOptions = kz_json:get_value(<<"Options">>, JObj, []),
     RouteFlags   = kz_json:get_value(<<"Outbound-Flags">>, JObj, []),
     Direction    = kz_json:get_value(<<"Direction">>, JObj),
-    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags),
+    ResourceFlag = case kz_json:get_value(<<"Account-ID">>, JObj) of
+                       'undefined' -> [];
+                       AccountId -> maybe_add_resource_flag(JObj, AccountId)
+                   end,
+    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags++ResourceFlag),
 
     case hon_util:sort_rates(Matching) of
         [] ->
@@ -93,6 +97,17 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
                         ]
                        ),
             {'ok', rate_resp(Rate, JObj)}
+    end.
+
+-spec maybe_add_resource_flag(kz_json:object(), ne_binary()) -> kz_proplist().
+maybe_add_resource_flag(JObj, AccountId) ->
+    case kapps_account_config:get_from_reseller(AccountId, ?APP_NAME, <<"filter_by_resource_id">>, 'false') of
+        'true' ->
+            case kz_json:get_value(<<"Resource-ID">>, JObj) of
+                'undefined' -> [];
+                ResourceId -> [ResourceId]
+            end;
+        'false' -> []
     end.
 
 -spec maybe_get_rate_discount(kz_json:object()) -> api_binary().
