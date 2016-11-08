@@ -47,9 +47,15 @@ init_from_doc(Url, Req) ->
         {'ok', Pid} ->
             {'ok', Req, kz_media_file_cache:continuous(Pid)};
         {'error', _} ->
-            lager:debug("missing file server: 404"),
-            {'ok', Req1} = cowboy_req:reply(404, Req),
-            {'shutdown', Req1, 'ok'}
+            lager:debug("starting file server ~s/~s/~s", [Db, Id, Attachment]),
+            case kz_media_cache_sup:start_file_server(Db, Id, Attachment) of
+                {'ok', Pid} ->
+                    {'ok', Req, kz_media_file_cache:continuous(Pid)};
+                {'error', Error} ->
+                    lager:debug("start server failed ~s/~s/~s: ~p", [Db, Id, Attachment, Error]),
+                    {'ok', Req1} = cowboy_req:reply(404, Req),
+                    {'shutdown', Req1, 'ok'}
+            end
     end.
 
 -spec handle(cowboy_req:req(), state()) -> {'ok', cowboy_req:req(), 'ok'}.
@@ -64,7 +70,8 @@ handle(Req0, {Meta, Bin}) ->
     lager:debug("media: ~s content-type: ~s size: ~b", [MediaName, ContentType, Size]),
 
     Req2 = case ContentType of
-               CT when CT =:= <<"audio/mpeg">> orelse CT =:= <<"audio/mp3">> ->
+               CT when CT =:= <<"audio/mpeg">>
+                       orelse CT =:= <<"audio/mp3">> ->
                    Req1 = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
                    cowboy_req:set_resp_body_fun(Size
                                                ,fun(Socket, Transport) ->
