@@ -109,7 +109,7 @@ find(Prefix, Quantity, Options0) ->
                    ,Carriers
                    ),
     lager:debug("~s found ~p/~p numbers", [NormalizedPrefix, _Count, Quantity]),
-    Found.
+    lists:sort(fun sort_find_result/2, Found).
 
 -type find_acc() :: #{found => kz_json:objects()
                      ,count => non_neg_integer()
@@ -420,6 +420,16 @@ is_number_billable(PhoneNumber) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Sort whole number search result
+%% @end
+%%--------------------------------------------------------------------
+-spec sort_find_result(kz_json:object(), kz_json:object()) -> boolean().
+sort_find_result(A, B) ->
+    kz_json:get_value(<<"number">>, A) =< kz_json:get_value(<<"number">>, B).
 
 %%--------------------------------------------------------------------
 %% @private

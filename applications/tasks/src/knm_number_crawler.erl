@@ -34,7 +34,7 @@
         kapps_config:get_integer(?CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
 
 -define(DISCOVERY_EXPIRY,
-        kapps_config:get_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 90)).
+        kapps_config:get_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)).
 
 -define(AGING_EXPIRY,
         kapps_config:get_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)).

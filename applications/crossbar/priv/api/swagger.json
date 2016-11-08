@@ -10445,6 +10445,11 @@
                     "description": "number_manager.bandwidth2 enable provisioning",
                     "type": "boolean"
                 },
+                "max_search_quantity": {
+                    "default": 120,
+                    "description": "number_manager.bandwidth2 max search quantity",
+                    "type": "integer"
+                },
                 "order_name_prefix": {
                     "default": "Kazoo",
                     "description": "number_manager.bandwidth2 order name prefix",
@@ -11352,7 +11357,7 @@
                     "type": "integer"
                 },
                 "discovery_expiry_d": {
-                    "default": 90,
+                    "default": 1,
                     "description": "tasks discovery expiry in days",
                     "type": "integer"
                 },

@@ -34,7 +34,7 @@
             "type": "integer"
         },
         "discovery_expiry_d": {
-            "default": 90,
+            "default": 1,
             "description": "tasks discovery expiry in days",
             "type": "integer"
         },
