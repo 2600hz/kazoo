@@ -51,9 +51,15 @@ init_from_doc(Url, Req) ->
         {'ok', Pid} ->
             {'ok', Req, kz_media_file_cache:single(Pid)};
         {'error', _} ->
-            lager:debug("missing file server: 404"),
-            {'ok', Req1} = cowboy_req:reply(404, Req),
-            {'shutdown', Req1, 'ok'}
+            lager:debug("starting file server ~s/~s/~s", [Db, Id, Attachment]),
+            case kz_media_cache_sup:start_file_server(Db, Id, Attachment) of
+                {'ok', Pid} ->
+                    {'ok', Req, kz_media_file_cache:single(Pid)};
+                {'error', Error} ->
+                    lager:debug("start server failed ~s/~s/~s: ~p", [Db, Id, Attachment, Error]),
+                    {'ok', Req1} = cowboy_req:reply(404, Req),
+                    {'shutdown', Req1, 'ok'}
+            end
     catch
         _E:_R ->
             kz_util:log_stacktrace(),
