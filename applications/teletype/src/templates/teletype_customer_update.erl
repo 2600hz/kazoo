@@ -60,11 +60,13 @@ handle_req(JObj, _Props) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> process_req(DataJObj)
+        'true' -> process_req(DataJObj, teletype_util:is_preview(DataJObj))
     end.
 
--spec process_req(kz_json:object()) -> kz_proplist()|'ok'.
-process_req(DataJObj) ->
+-spec process_req(kz_json:object(), boolean()) -> kz_proplist()|'ok'.
+process_req(DataJObj, 'true') ->
+    send_update_to_user(kz_json:new(), DataJObj);
+process_req(DataJObj, 'false') ->
     case kz_json:get_value(<<"recipient_id">>, DataJObj) of
         <<RecipientId:32/binary>> -> process_account(RecipientId, DataJObj);
         'undefined' -> process_accounts(DataJObj)
@@ -108,7 +110,7 @@ select_users_to_update(Users, DataJObj) ->
 send_update_to_user(UserJObj, DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              | build_macro_data(UserJObj)
+              | build_macro_data(UserJObj, DataJObj)
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj, 'true'),
@@ -118,21 +120,31 @@ send_update_to_user(UserJObj, DataJObj) ->
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                                           ,Macros
                ),
-    Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
-    To = [kz_json:get_value(<<"email">>, UserJObj)],
-    case teletype_util:send_email(props:set_value(<<"to">>, To, Emails), Subject, RenderedTemplates) of
+    Emails = maybe_replace_to_field(
+               teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT)
+                                   ,kz_json:get_value(<<"email">>, UserJObj)
+              ),
+    case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec build_macro_data(kz_json:object()) -> kz_proplist().
-build_macro_data(UserJObj) ->
-    kz_json:foldl(fun(MacroKey, _V, Acc) ->
-                          maybe_add_macro_key(MacroKey, Acc, UserJObj)
-                  end
-                 ,[]
-                 ,?TEMPLATE_MACROS
-                 ).
+-spec maybe_replace_to_field(email_map(), api_binary()) -> email_map().
+maybe_replace_to_field(Emails, 'undefined') -> Emails;
+maybe_replace_to_field(Emails, To) -> props:set_value(<<"to">>, [To], Emails).
+
+-spec build_macro_data(kz_json:object(), kz_json:object()) -> kz_proplist().
+build_macro_data(UserJObj, DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'true' -> [];
+        'false' ->
+            kz_json:foldl(fun(MacroKey, _V, Acc) ->
+                                  maybe_add_macro_key(MacroKey, Acc, UserJObj)
+                          end
+                         ,[]
+                         ,?TEMPLATE_MACROS
+                         )
+    end.
 
 -spec maybe_add_macro_key(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
 maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, UserJObj) ->
