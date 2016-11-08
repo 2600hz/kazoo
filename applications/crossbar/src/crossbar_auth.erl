@@ -15,6 +15,7 @@
 
 -include("crossbar.hrl").
 
+-define(TOKEN_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
 
 -spec create_auth_token(cb_context:context(), atom()) ->
                                cb_context:context().
@@ -35,12 +36,17 @@ create_auth_token(Context, AuthModule, JObj) ->
 
     AccountId = kz_json:get_first_defined([<<"account_id">>, [<<"Claims">>, <<"account_id">>]], JObj),
     OwnerId = kz_json:get_first_defined([<<"owner_id">>, [<<"Claims">>, <<"owner_id">>]], JObj),
+    Expiration = case ?TOKEN_AUTH_EXPIRY of
+                     TokenExp when TokenExp > 0 -> erlang:system_time('seconds') + TokenExp;
+                     _ -> 'undefined'
+                 end,
 
     Claims = props:filter_undefined(
                [{<<"account_id">>, AccountId}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"method">>, kz_util:to_binary(AuthModule)}
+               ,{<<"exp">>, Expiration}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
 
@@ -77,3 +83,4 @@ authorize_auth_token(Token) ->
 
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
+
