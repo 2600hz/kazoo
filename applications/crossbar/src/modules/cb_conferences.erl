@@ -424,12 +424,13 @@ search_conferences(Context) ->
         {'error', _E} ->
             lager:debug("error searching conferences for account ~s: ~p", [AccountId, _E]),
             cb_context:store(Context, 'conferences', kz_json:new());
-        {'ok', [JObj | JObjs]} ->
-            Acc = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
-            Res = lists:foldl(fun search_conferences_fold/2, Acc, JObjs),
+        {'ok', JObjs} ->
+            Res = lists:foldl(fun search_conferences_fold/2, kz_json:new(), JObjs),
             cb_context:store(Context, 'conferences', Res)
     end.
 
+-spec search_conferences_fold(kz_json:object(), kz_json:object()) ->
+                                     kz_json:object().
 search_conferences_fold(JObj, Acc) ->
     V = kz_json:get_value(<<"Conferences">>, JObj, kz_json:new()),
     kz_json:merge_jobjs(V, Acc).
