@@ -79,8 +79,8 @@ handle(Req0, {Meta, Bin}) ->
     Url = kz_json:get_value(<<"url">>, Meta, <<>>),
 
     Req2 = case ContentType of
-               CT when CT =:= <<"audio/mpeg">> orelse
-                   CT =:= <<"audio/mp3">> ->
+               CT when CT =:= <<"audio/mpeg">>
+                   orelse CT =:= <<"audio/mp3">> ->
                    Req1 = set_resp_headers(Req0, ChunkSize, ContentType, MediaName, Url),
                    cowboy_req:set_resp_body_fun(Size
                                                ,fun(Socket, Transport) ->
