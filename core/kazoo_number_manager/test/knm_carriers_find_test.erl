@@ -106,7 +106,7 @@ verify_number_results(Results) ->
     {Tests, _} =
         lists:foldl(fun verify_number_result/2
                    ,{[], 0}
-                   ,lists:reverse(Results)
+                   ,Results
                    ),
     Tests.
 
