@@ -386,5 +386,6 @@ rating_req(CallId, Props) ->
     ,{<<"Direction">>, kzd_freeswitch:call_direction(Props)}
     ,{<<"Send-Empty">>, 'true'}
     ,{<<"Outbound-Flags">>, props:get_value(<<"Outbound-Flags">>, Props)}
+    ,{<<"Resource-ID">>, props:get_value(<<"variable_ecallmgr_Resource-ID">>, Props)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
