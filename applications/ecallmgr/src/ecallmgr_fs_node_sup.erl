@@ -47,6 +47,7 @@
                     ,{<<"recordings">>, ?NODE_WORKER}
                     ,{<<"resource">>, ?NODE_WORKER}
                     ,{<<"route_sup">>, ?NODE_SUPERVISOR}
+                    ,{<<"channel_hold">>, ?NODE_WORKER}
                     ])).
 
 %% ===================================================================
