@@ -109,7 +109,7 @@ find(Prefix, Quantity, Options0) ->
                    ,Carriers
                    ),
     lager:debug("~s found ~p/~p numbers", [NormalizedPrefix, _Count, Quantity]),
-    Found.
+    lists:sort(Found).
 
 -type find_acc() :: #{found => kz_json:objects()
                      ,count => non_neg_integer()
