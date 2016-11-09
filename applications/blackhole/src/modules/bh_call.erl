@@ -18,6 +18,7 @@
 -include("blackhole.hrl").
 
 -define(LISTEN_TO, [<<"CHANNEL_CREATE">>, <<"CHANNEL_ANSWER">>, <<"CHANNEL_DESTROY">>
+                   ,<<"CHANNEL_HOLD">>, <<"CHANNEL_UNHOLD">>
                    ,<<"CHANNEL_BRIDGE">>
                    ,<<"PARK_PARKED">>, <<"PARK_RETRIEVED">>, <<"PARK_ABANDONED">>
                    ]).

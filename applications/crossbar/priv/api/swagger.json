@@ -8773,6 +8773,9 @@
                         "channel": {
                             "type": "worker"
                         },
+                        "channel_hold": {
+                            "type": "worker"
+                        },
                         "conference": {
                             "type": "worker"
                         },

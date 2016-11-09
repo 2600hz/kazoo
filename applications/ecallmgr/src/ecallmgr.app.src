@@ -23,6 +23,7 @@
                          ,['RECORD_START', 'RECORD_STOP']
                          ,['CHANNEL_BRIDGE', 'CHANNEL_UNBRIDGE', 'CHANNEL_EXECUTE_COMPLETE']
                          ,['CHANNEL_DATA','CALL_UPDATE', 'CALL_SECURE']
+                         ,['CHANNEL_HOLD', 'CHANNEL_UNHOLD']
                          ]}
          ,{event_stream_custom, [['kazoo::noop', 'kazoo::masquerade']
                                 ,['sofia::transferor', 'sofia::transferee'

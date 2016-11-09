@@ -244,6 +244,7 @@ to_props(Channel) ->
       ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
       ,{<<"loopback_other_leg">>, Channel#channel.loopback_other_leg}
       ,{<<"callflow_id">>, Channel#channel.callflow_id}
+      ,{<<"is_onhold">>, Channel#channel.is_onhold}
       ]).
 
 -spec to_api_json(channel()) -> kz_json:object().
@@ -287,6 +288,7 @@ to_api_props(Channel) ->
       ,{<<"Loopback-Leg-Name">>, Channel#channel.loopback_leg_name}
       ,{<<"Loopback-Other-Leg">>, Channel#channel.loopback_other_leg}
       ,{<<"CallFlow-ID">>, Channel#channel.callflow_id}
+      ,{<<"Is-On-Hold">>, Channel#channel.is_onhold}
       ]).
 
 -spec channel_ccvs(channel() | kz_json:object() | kz_proplist()) -> kz_proplist().
