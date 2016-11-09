@@ -36,11 +36,12 @@ put_attachment(Params, DbName, DocId, AName, Contents, _Options) ->
     end.
 
 -spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
-fetch_attachment(HandlerProps, DbName, DocId, AName) ->
-    case kz_json:get_value(<<"S3">>, HandlerProps) of
+fetch_attachment(Conn, DbName, DocId, AName) ->
+    HandlerProps = kz_json:get_value(<<"handler_props">>, Conn, 'undefined'),
+    case kz_json:get_value(<<"S3">>, Conn) of
         'undefined' -> {'error', 'invalid_data'};
         S3 ->
-            {Key, Secret, Host, Bucket, Path} = get_s3_values(S3),
+            {Key, Secret, Host, Bucket, Path} = get_s3_values(S3, HandlerProps),
             FilePath = get_file_path(Path, DbName, DocId, AName),
             Config = kz_aws_s3:new(kz_util:to_list(Key), kz_util:to_list(Secret), kz_util:to_list(Host)),
             case kz_aws_s3:get_object(kz_util:to_list(Bucket), FilePath, Config) of
@@ -63,7 +64,8 @@ convert_kv({<<"etag">> = K, V}) ->
     {K, binary:replace(V, <<$">>, <<>>, ['global'])};
 convert_kv(KV) -> KV.
 
--spec get_map_values(kz_data:connection()) -> {ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()}.
+-spec get_map_values(kz_data:connection()) ->
+                            {ne_binary(), ne_binary(), ne_binary(), api_binary(), ne_binary()}.
 get_map_values(#{'bucket' := Bucket
                 ,'key' := Key
                 ,'secret' := Secret
@@ -78,11 +80,23 @@ get_file_path('undefined', DbName, DocId, AName) ->
 get_file_path(Path, DbName, DocId, AName) ->
     kz_util:to_list(list_to_binary([Path, "/", DbName, "/", DocId, "_", AName])).
 
--spec get_s3_values(ne_binary()) -> {ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()}.
-get_s3_values(S3) ->
+-spec get_s3_values(ne_binary(), kz_data:connection()) ->
+                           {ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_binary()}.
+get_s3_values(S3, 'undefined') ->
     case binary_to_term(base64:decode(S3)) of
         {Key, Secret, Bucket, Path} ->
             {Key, Secret, ?AMAZON_S3_HOST, Bucket, Path};
         {_Key, _Secret, _Host, _Bucket, _Path} = V2 ->
             V2
+    end;
+get_s3_values(S3, HandlerProps) ->
+    Original =  {_, _, Host, Bucket, Path} = get_s3_values(S3, 'undefined'),
+    try get_map_values(HandlerProps) of
+        {Bucket, Key, Secret, _Path, Host} ->
+            {Key, Secret, Host, Bucket, Path};
+        _ -> Original
+    catch
+        _E:_R ->
+            lager:info("unable to get s3 cred value using att values (~s): ~p", [_E, _R]),
+            Original
     end.
