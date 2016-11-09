@@ -55,6 +55,8 @@
                }).
 -type state() :: #state{}.
 
+-type release_ret() :: {kz_json:object(), kz_json:object()}.
+
 -define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
 -define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
 -define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
@@ -480,7 +482,7 @@ handle_cast(_Msg, State) ->
 handle_info('timeout', #state{stage='undefined'}=State) ->
     {'noreply', State};
 handle_info('timeout', #state{stage=Stage, job=JObj}=State) ->
-    release_failed_job('job_timeout', Stage, JObj),
+    _ = release_failed_job('job_timeout', Stage, JObj),
     gen_server:cast(self(), 'stop'),
     {'noreply', State};
 handle_info(_Info, State) ->
@@ -567,7 +569,7 @@ attempt_to_acquire_job(JObj, _Q, Status) ->
     lager:debug("job not in an available status: ~s : ~p", [Status, JObj]),
     {'error', 'job_not_available'}.
 
--spec release_failed_job(atom(), any(), kz_json:object()) -> 'failure'.
+-spec release_failed_job(atom(), any(), kz_json:object()) -> release_ret().
 release_failed_job('fetch_failed', Status, JObj) ->
     Msg = <<"could not retrieve file, http response ~p", (integer_to_binary(Status))/binary>>,
     Result = [{<<"success">>, 'false'}
@@ -699,7 +701,7 @@ release_failed_job('job_timeout', Reason, JObj) ->
              ],
     release_job(Result, JObj).
 
--spec release_successful_job(kz_json:object(), kz_json:object()) -> 'ok'.
+-spec release_successful_job(kz_json:object(), kz_json:object()) -> release_ret().
 release_successful_job(Resp, JObj) ->
     <<"sip:", Code/binary>> = kz_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:200">>),
     Result = props:filter_undefined(
@@ -716,11 +718,11 @@ release_successful_job(Resp, JObj) ->
                ]),
     release_job(Result, JObj, Resp).
 
--spec release_job(kz_proplist(), kz_json:object()) -> 'ok' | 'failure'.
+-spec release_job(kz_proplist(), kz_json:object()) -> release_ret().
 release_job(Result, JObj) ->
     release_job(Result, JObj, kz_json:new()).
 
--spec release_job(kz_proplist(), kz_json:object(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
+-spec release_job(kz_proplist(), kz_json:object(), kz_json:object()) -> release_ret().
 release_job(Result, JObj, Resp) ->
     Success = props:is_true(<<"success">>, Result, 'false'),
     Updaters = [fun(J) -> kz_json:set_value(<<"tx_result">>, kz_json:from_list(Result), J) end
