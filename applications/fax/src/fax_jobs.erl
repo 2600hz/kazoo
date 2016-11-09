@@ -349,6 +349,7 @@ number(JObj) ->
         Number -> Number
     end.
 
+-spec check_pending(ne_binary(), map(), map()) -> map().
 check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending, numbers := Numbers} = Map) ->
     case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
         'true'  ->
