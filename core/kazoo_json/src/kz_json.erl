@@ -751,7 +751,7 @@ get_values(Key, JObj) ->
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
 -type set_value_funs() :: [set_value_fun(),...].
 
--spec set_values(json_proplist() | set_value_funs(), object()) -> object().
+-spec set_values([{path(), json_term()}] | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
     lists:foldr(fun set_value_fold/2, JObj, KVs).
 
