@@ -239,6 +239,7 @@
         ,<<"CHANNEL_PROGRESS_MEDIA">>,<<"CHANNEL_REPLACED">>
         ,<<"CHANNEL_TRANSFEREE">>,<<"CHANNEL_TRANSFEROR">>
         ,<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
+        ,<<"CHANNEL_HOLD">>, <<"CHANNEL_UNHOLD">>
         ,<<"DETECTED_TONE">>,<<"DTMF">>
         ,<<"LEG_CREATED">>, <<"LEG_DESTROYED">>
         ,<<"RECORD_START">>,<<"RECORD_STOP">>
