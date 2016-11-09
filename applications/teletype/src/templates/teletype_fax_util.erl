@@ -21,6 +21,7 @@
 convert(FromFormat, FromFormat, Bin) ->
     {'ok', Bin};
 convert(FromFormat0, ToFormat0, Bin) ->
+    lager:debug("converting from ~s to ~s", [FromFormat0, ToFormat0]),
     FromFormat = valid_format(FromFormat0),
     ToFormat = valid_format(ToFormat0),
     Filename = kz_util:rand_hex_binary(8),
@@ -103,7 +104,6 @@ maybe_get_attachments(DataJObj, Macros, 'false') ->
 maybe_convert_attachment(Macros, ContentType, Bin) ->
     ToFormat = kapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
-    lager:debug("converting from ~s to ~s", [FromFormat, ToFormat]),
 
     case convert(FromFormat, ToFormat, Bin) of
         {'ok', Converted} ->
