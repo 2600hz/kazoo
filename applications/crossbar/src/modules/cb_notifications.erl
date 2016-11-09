@@ -390,7 +390,7 @@ post(Context, Id, ?PREVIEW) ->
                           ,{Preview, Notification}
                           ,headers(Id)
                           ),
-    case kz_amqp_worker:call(API
+    case kz_amqp_worker:call(maybe_add_extra_data(Id, API)
                             ,publish_fun(Id)
                             ,fun kapi_notifications:notify_update_v/1
                             ,?NOTIFICATION_TIMEOUT
@@ -462,6 +462,13 @@ headers(<<"fax_inbound_error_to_email_filtered">>) ->
     kapi_notifications:headers(<<"fax_inbound_error_to_email">>);
 headers(Id) ->
     kapi_notifications:headers(Id).
+
+-spec maybe_add_extra_data(ne_binary(), kz_proplist()) -> kz_proplist().
+maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
+    props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
+maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
+    props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
+maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
 publish_fun(<<"cnam_request">>) ->
