@@ -91,7 +91,7 @@
                  ,loopback_leg_name :: api_binary() | '_'
                  ,loopback_other_leg :: api_binary() | '_'
                  ,callflow_id :: api_binary() | '_'
-                 ,is_onhold = 'false' :: boolean()
+                 ,is_onhold = 'false' :: boolean() | '_'
                  }).
 
 -type channel() :: #channel{}.
