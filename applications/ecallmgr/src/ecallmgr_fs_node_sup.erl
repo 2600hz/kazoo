@@ -154,7 +154,7 @@ child_name(NodeB, Args, Module, <<"worker">>) ->
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS_TYPE(Name, Mod, Args, 'transient').
 
--spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
+-spec srv([{atom(), pid(), any(), any()}] | tuple(), list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     %% FIXME: use lists:suffix

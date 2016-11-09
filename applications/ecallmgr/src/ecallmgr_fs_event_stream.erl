@@ -68,12 +68,12 @@ init([Node, Bindings, Subclasses]) ->
     kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
                                       ,<<"-eventstream">>
                                       ])),
-    gen_server:cast(self(), 'request_event_stream'),
-    {'ok', #state{node=Node
-                 ,bindings=Bindings
-                 ,subclasses=Subclasses
-                 ,idle_alert=idle_alert_timeout()
-                 }}.
+    request_event_stream(#state{node=Node
+                                ,bindings=Bindings
+                                ,subclasses=Subclasses
+                                ,idle_alert=idle_alert_timeout()
+                               }
+    ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -103,22 +103,6 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('request_event_stream', #state{node=Node}=State) ->
-    Bindings = get_event_bindings(State),
-    case maybe_bind(Node, Bindings) of
-        {'ok', {IP, Port}} ->
-            {'ok', IPAddress} = inet_parse:address(IP),
-            gen_server:cast(self(), 'connect'),
-            kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
-                                              ,$-, kz_util:to_binary(IP)
-                                              ,$:, kz_util:to_binary(Port)
-                                              ])),
-            {'noreply', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
-        {'error', Reason} ->
-            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
-            {'stop', Reason, State}
-    end;
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
@@ -194,12 +178,13 @@ handle_info({'tcp_closed', Socket}, #state{socket=Socket, node=Node}=State) ->
     lager:info("event stream for ~p on node ~p closed"
               ,[get_event_bindings(State), Node]
               ),
-    {'stop', 'normal', State#state{socket='undefined'}};
+    timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
+    {'stop', 'tcp_close', State#state{socket='undefined'}};
 handle_info({'tcp_error', Socket, _Reason}, #state{socket=Socket}=State) ->
     lager:warning("event stream tcp error: ~p", [_Reason]),
     gen_tcp:close(Socket),
-    gen_server:cast(self(), 'request_event_stream'),
-    {'noreply', State#state{socket='undefined'}};
+    timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
+    {'stop', 'tcp_error', State#state{socket='undefined'}};
 handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
     lager:warning("event stream for ~p on node ~p is unexpectedly idle",
                   [get_event_bindings(State), Node]
@@ -264,6 +249,25 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec request_event_stream(state()) -> {'ok', state()} | {'stop', any(), state()}.
+request_event_stream(#state{node=Node}=State) ->
+    Bindings = get_event_bindings(State),
+    case maybe_bind(Node, Bindings) of
+        {'ok', {IP, Port}} ->
+            {'ok', IPAddress} = inet_parse:address(IP),
+            gen_server:cast(self(), 'connect'),
+            kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
+                                              ,$-, kz_util:to_binary(IP)
+                                              ,$:, kz_util:to_binary(Port)
+                                              ])),
+            {'ok', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
+        {'EXIT', Reason} ->
+            {'stop', {'shutdown', Reason}, State};
+        {'error', Reason} ->
+            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
+            {'stop', Reason, State}
+    end.
+
 -spec get_event_bindings(state()) -> atoms().
 get_event_bindings(State) ->
     get_event_bindings(State, []).
