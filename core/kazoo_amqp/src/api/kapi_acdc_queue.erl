@@ -60,7 +60,7 @@
 
 -export([queue_size/2, shared_queue_name/2]).
 
--include("acdc.hrl").
+-include("../../applications/acdc/src/acdc.hrl").
 
 %%------------------------------------------------------------------------------
 %% Member Call
