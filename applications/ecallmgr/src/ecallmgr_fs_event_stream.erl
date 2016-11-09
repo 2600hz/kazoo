@@ -69,11 +69,10 @@ init([Node, Bindings, Subclasses]) ->
                                       ,<<"-eventstream">>
                                       ])),
     request_event_stream(#state{node=Node
-                                ,bindings=Bindings
-                                ,subclasses=Subclasses
-                                ,idle_alert=idle_alert_timeout()
-                               }
-    ).
+                               ,bindings=Bindings
+                               ,subclasses=Subclasses
+                               ,idle_alert=idle_alert_timeout()
+                               }).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -261,11 +260,11 @@ request_event_stream(#state{node=Node}=State) ->
                                               ,$:, kz_util:to_binary(Port)
                                               ])),
             {'ok', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
-        {'EXIT', Reason} ->
-            {'stop', {'shutdown', Reason}, State};
-        {'error', Reason} ->
-            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, Reason]),
-            {'stop', Reason, State}
+        {'EXIT', ExitReason} ->
+            {'stop', {'shutdown', ExitReason}, State};
+        {'error', ErrorReason} ->
+            lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, ErrorReason]),
+            {'stop', ErrorReason, State}
     end.
 
 -spec get_event_bindings(state()) -> atoms().
