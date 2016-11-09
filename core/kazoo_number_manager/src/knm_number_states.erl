@@ -223,21 +223,34 @@ in_service_from_reserved_authorize(Number) ->
 
 -spec in_service_from_in_service_authorize(kn()) -> kn();
                                           (t()) -> t().
-in_service_from_in_service_authorize(T=#{todo := Ns, options := Options}) ->
-    AssignTo = knm_number_options:assign_to(Options),
-    AuthBy = knm_number_options:auth_by(Options),
+in_service_from_in_service_authorize(T0=#{todo := Ns}) ->
+    F = fun (N, T) ->
+                case knm_number:attempt(fun in_service_from_in_service_authorize/1, [N]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} -> knm_numbers:ko(N, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns);
+in_service_from_in_service_authorize(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    AssignTo = knm_phone_number:assign_to(PhoneNumber),
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    AuthBy = knm_phone_number:auth_by(PhoneNumber),
     Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
     case Sudo
-        orelse ?ACCT_HIERARCHY(AssignTo, AuthBy, 'true')
-        orelse ?ACCT_HIERARCHY(AuthBy, AssignTo, 'false')
+        %% Assign to self or parent
+        %% Allowed when account is parent of owner or owner
+        orelse (?ACCT_HIERARCHY(AssignTo, AuthBy, 'true')
+                andalso ?ACCT_HIERARCHY(AuthBy, AssignedTo, 'true'))
+        %% Assign to another child
+        %% Allowed when account is parent of owner
+        orelse ?ACCT_HIERARCHY(AuthBy, AssignedTo, 'false')
     of
-        false ->
-            Reason = knm_errors:to_json(unauthorized),
-            knm_numbers:ko(Ns, Reason, T);
+        false -> knm_errors:unauthorized();
         true ->
             Sudo
                 andalso lager:info("bypassing auth"),
-            knm_numbers:ok(Ns, T)
+            Number
     end.
 
 -spec not_assigning_to_self(kn()) -> kn();

@@ -198,7 +198,9 @@ get_numbers_fold(Server, Acc) ->
 %%--------------------------------------------------------------------
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
-    OnSuccess = fun(C) -> on_successful_validation('undefined', C) end,
+    OnSuccess = fun(C) ->
+                        validate_number_ownership(on_successful_validation('undefined', C))
+                end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -220,7 +222,9 @@ read(Id, Context) ->
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
-    OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
+    OnSuccess = fun(C) ->
+                        validate_number_ownership(on_successful_validation(Id, C))
+                end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
 %%--------------------------------------------------------------------
@@ -245,6 +249,48 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_number_ownership(cb_context:context()) -> cb_context:context().
+-spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
+                                       cb_context:context().
+-spec validate_number_ownership(knm_number:knm_number()
+                               ,ne_binaries()
+                               ,cb_context:context()) -> cb_context:context().
+validate_number_ownership(Context) ->
+    NewNums = get_numbers(cb_context:doc(Context)),
+
+    Assigned =  [Num
+                 || Num <- NewNums,
+                    Num =/= <<"undefined">>
+                ],
+
+    validate_number_ownership(Assigned, Context).
+
+validate_number_ownership([], Context) -> Context;
+validate_number_ownership([Number|Numbers], Context) ->
+    case knm_number:get(Number) of
+        {'ok', NumberObj} ->
+            validate_number_ownership(NumberObj, Numbers, Context);
+        _ -> validate_number_ownership(Numbers, Context)
+    end.
+
+validate_number_ownership(NumberObj, Numbers, Context) ->
+    AuthBy = cb_context:auth_account_id(Context),
+    PhoneNumber = knm_number:phone_number(NumberObj),
+    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+    case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
+        'true' -> validate_number_ownership(Numbers, Context);
+        'false' ->
+            Number = knm_phone_number:number(PhoneNumber),
+            Message = <<"unauthorized to add/modify ", Number/binary>>,
+            cb_context:add_system_error(403, 'forbidden', Message, Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
