@@ -308,7 +308,7 @@ attachment_content_type(JObj, AName, DefaultContentType) ->
         ContentType -> ContentType
     end.
 
--spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) -> kz_json:json_term().
+-spec attachment_property(kz_json:object(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 attachment_property(JObj, AName, Key) ->
     kz_json:get_value(Key, attachment(JObj, AName, kz_json:new())).
 
