@@ -152,7 +152,7 @@ child_name(NodeB, Args, Module, <<"supervisor">>) ->
 child_name(NodeB, Args, Module, <<"worker">>) ->
     Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
     Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
-    ?WORKER_NAME_ARGS(Mod, Name, Args).
+    ?WORKER_NAME_ARGS_TYPE(Name, Mod, Args, 'transient').
 
 -spec srv([{atom(), pid(), any(), any()}], list()) -> api_pid().
 srv([], _) -> 'undefined';
@@ -161,7 +161,8 @@ srv([{Name, Pid, _, _} | Children], Suffix) ->
     case lists:prefix(Suffix, lists:reverse(kz_util:to_list(Name))) of
         'true' -> Pid;
         'false' -> srv(Children, Suffix)
-    end.
+    end;
+srv(_, _) -> 'undefined'.
 
 -spec maybe_correct_modules(list() | kz_json:object()) -> kz_json:object().
 maybe_correct_modules(Modules)

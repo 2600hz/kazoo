@@ -64,6 +64,7 @@ start_link(Node, Bindings, Subclasses) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Bindings, Subclasses]) ->
+    process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
                                       ,<<"-eventstream">>
                                       ])),
@@ -204,6 +205,10 @@ handle_info('timeout', #state{node=Node, idle_alert=Timeout}=State) ->
                   [get_event_bindings(State), Node]
                  ),
     {'noreply', State, Timeout};
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Msg, #state{socket='undefined'}=State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State};

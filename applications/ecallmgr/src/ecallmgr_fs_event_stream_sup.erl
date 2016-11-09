@@ -73,9 +73,9 @@ init([Node, _Props]) ->
 
 -spec event_child(atom(), atom()) -> sup_child_spec().
 event_child(Node, Event) ->
-    ?WORKER_NAME_ARGS('ecallmgr_fs_event_stream', Event, [Node, Event, 'undefined']).
+    ?WORKER_NAME_ARGS_TYPE(Event, 'ecallmgr_fs_event_stream', [Node, Event, 'undefined'], 'transient').
 
 -spec custom_child(atom(), atom()) -> sup_child_spec().
 custom_child(Node, Subclass) ->
-    ?WORKER_NAME_ARGS('ecallmgr_fs_event_stream', Subclass, [Node, 'CUSTOM', Subclass]).
+    ?WORKER_NAME_ARGS_TYPE(Subclass, 'ecallmgr_fs_event_stream', [Node, 'CUSTOM', Subclass], 'transient').
 
