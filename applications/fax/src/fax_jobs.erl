@@ -25,9 +25,12 @@
 
 -include("fax.hrl").
 
+-define(STALE_LIMIT, 360).
 -define(POLLING_INTERVAL, 5000).
--define(DEFAULT_LIMITS, #{account => 5
-                         }).
+-define(DEFAULT_LIMITS(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"max_outbound">>, 10)).
+
+-define(MAX_WAIT_FOR_PENDING, 25000).
+
 -define(INIT_JOBS, #{distribute => []
                     ,serialize => []
                     ,pending => #{}
@@ -39,6 +42,7 @@
                ,queue = 'undefined' :: api_binary()
                ,jobs = #{}
                ,limits = #{}
+               ,stale = 0 :: integer()
                }).
 
 -type state() :: #state{}.
@@ -98,7 +102,7 @@ start_link(AccountId) ->
 %%--------------------------------------------------------------------
 init([AccountId]) ->
     {'ok', #state{account_id=AccountId
-                 ,limits = ?DEFAULT_LIMITS
+                 ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }
                  ,jobs = ?INIT_JOBS
                  }, ?POLLING_INTERVAL}.
 
@@ -135,7 +139,7 @@ handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending
                                                                         ,running := Running
                                                                         }=Jobs
                                                                  }=State) ->
-    #{JobId := Number} = Pending,
+    #{JobId := #{number := Number}} = Pending,
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
                                                                      ,queue => ServerId
@@ -178,33 +182,36 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', #state{queue='undefined'}=State) ->
     {'noreply', State, ?POLLING_INTERVAL};
+handle_info('timeout', #state{jobs=#{distribute := []
+                                    ,serialize := []
+                                    }
+                             ,stale= ?STALE_LIMIT
+                             }=State) ->
+    {'stop', 'normal', State};
 handle_info('timeout', #state{account_id=AccountId
                              ,jobs=#{distribute := []
                                     ,serialize := []
-                                    }=Map
+                                    ,pending := Pending
+                                    }=Map0
+                             ,stale=Stale
                              }=State) ->
+    Map = maps:fold(fun check_pending/3, Map0, Pending),
     Upto = kz_util:current_tstamp(),
     ViewOptions = [{'limit', 100}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, Upto]}
                   ],
     case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
-        {'ok', []} -> {'noreply', State, ?POLLING_INTERVAL};
+        {'ok', []} -> {'noreply', State#state{stale = Stale + 1}, ?POLLING_INTERVAL};
         {'ok', Jobs} ->
             lager:debug("fetched ~b jobs for account ~s, attempting to distribute to workers"
                        ,[length(Jobs), AccountId]
                        ),
-            {'noreply', distribute_jobs(State#state{jobs=Map#{distribute => Jobs}}), ?POLLING_INTERVAL};
+            {'noreply', distribute_jobs(State#state{jobs=Map#{distribute => Jobs}, stale = 0}), ?POLLING_INTERVAL};
         {'error', _Reason} ->
             lager:debug("failed to fetch fax jobs for account ~s : ~p", [AccountId, _Reason]),
-            {'noreply', State, ?POLLING_INTERVAL}
+            {'noreply', State#state{stale = Stale + 1}, ?POLLING_INTERVAL}
     end;
-%% handle_info({'DOWN', _Ref, process, Pid, 'normal'}, #state{jobs=Jobs}=State) ->
-%%     lager:debug("fax worker (~p) ended normally",[Pid]),
-%%     {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
-%% handle_info({'DOWN', _Ref, process, Pid, Reason}, #state{jobs=Jobs}=State) ->
-%%     lager:debug("fax worker (~p) crashed with reason ~p",[Pid, Reason]),
-%%     {'noreply', State#state{jobs=distribute_jobs(Jobs)}, ?POLLING_INTERVAL};
 handle_info('timeout', State) ->
     {'noreply', distribute_jobs(State), ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
@@ -305,7 +312,11 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                       ],
             kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
-            distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => ToNumber}
+            Start = kz_util:now_ms(),
+            distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => #{number => ToNumber
+                                                                                ,start => Start
+                                                                                }
+                                                                     }
                                                  ,numbers => Numbers#{ToNumber => JobId}
                                                  }})
     end.
@@ -336,4 +347,16 @@ number(JObj) ->
         'undefined' -> 'undefined';
         <<>> -> <<>>;
         Number -> Number
+    end.
+
+-spec check_pending(ne_binary(), map(), map()) -> map().
+check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending, numbers := Numbers} = Map) ->
+    case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
+        'true'  ->
+            lager:debug("recovering fax job ~s", [JobId]),
+            Map#{pending => maps:remove(JobId, Pending)
+                ,numbers => maps:remove(ToNumber, Numbers)
+                };
+        'false' ->
+            Map
     end.

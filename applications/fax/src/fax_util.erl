@@ -18,6 +18,8 @@
 
 -include("fax.hrl").
 
+-define(RETRY_SAVE_ATTACHMENT_DELAY, 5000).
+
 -spec fax_properties(kz_json:object()) -> kz_proplist().
 fax_properties(JObj) ->
     [{kz_json:normalize_key(K), V} || {<<"Fax-", K/binary>>, V} <- kz_json:to_proplist(JObj)].
@@ -103,7 +105,7 @@ save_fax_attachment(JObj, FileContents, CT) ->
 
 save_fax_attachment(JObj, _FileContents, _CT, 0) ->
     DocId = kz_doc:id(JObj),
-    lager:debug("max retry saving attachment on fax id ~s rev ~s",[DocId, kz_doc:revision(JObj)]),
+    lager:error("max retry saving attachment on fax id ~s rev ~s",[DocId, kz_doc:revision(JObj)]),
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = kz_doc:id(JObj),
@@ -114,10 +116,12 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
-            lager:debug("missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            lager:warning("missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             save_fax_attachment(J, FileContents, CT, Count-1);
         {'error', _R} ->
-            lager:debug("error ~p saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            lager:debug("error '~p' saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             {'ok', J} = kz_datamgr:open_doc(?KZ_FAXES_DB, DocId),
             save_fax_attachment(J, FileContents, CT, Count-1)
     end.
