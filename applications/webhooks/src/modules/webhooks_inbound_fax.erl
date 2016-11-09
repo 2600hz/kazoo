@@ -87,7 +87,7 @@ format_inbound_fax_event(JObj) ->
                  ,<<"Event-Category">>
                  ,<<"Fax-Info">>
                  ],
-    FaxInfo = kz_json:normalize_jobj(kz_json:get_value(<<"Fax-Info">>, JObj, kz_json:new())),
+    FaxInfo = kz_json:normalize_jobj(kz_json:get_json_value(<<"Fax-Info">>, JObj, kz_json:new())),
     kz_json:merge_jobjs(FaxInfo
                        ,kz_json:normalize_jobj(JObj, RemoveKeys, [])
                        ).

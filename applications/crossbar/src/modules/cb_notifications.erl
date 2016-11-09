@@ -390,7 +390,7 @@ post(Context, Id, ?PREVIEW) ->
                           ,{Preview, Notification}
                           ,headers(Id)
                           ),
-    case kz_amqp_worker:call(API
+    case kz_amqp_worker:call(maybe_add_extra_data(Id, API)
                             ,publish_fun(Id)
                             ,fun kapi_notifications:notify_update_v/1
                             ,?NOTIFICATION_TIMEOUT
@@ -458,58 +458,79 @@ headers(<<"voicemail_to_email">>) ->
     kapi_notifications:headers(<<"voicemail">>);
 headers(<<"port_request_admin">>) ->
     kapi_notifications:headers(<<"port_request">>);
+headers(<<"fax_inbound_error_to_email_filtered">>) ->
+    kapi_notifications:headers(<<"fax_inbound_error_to_email">>);
 headers(Id) ->
     kapi_notifications:headers(Id).
 
+-spec maybe_add_extra_data(ne_binary(), kz_proplist()) -> kz_proplist().
+maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
+    props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
+maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
+    props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
+maybe_add_extra_data(_Id, API) -> API.
+
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
-publish_fun(<<"voicemail_to_email">>) ->
-    fun kapi_notifications:publish_voicemail/1;
-publish_fun(<<"voicemail_full">>) ->
-    fun kapi_notifications:publish_voicemail_full/1;
-publish_fun(<<"fax_inbound_to_email">>) ->
-    fun kapi_notifications:publish_fax_inbound/1;
+publish_fun(<<"cnam_request">>) ->
+    fun kapi_notifications:publish_cnam_request/1;
+publish_fun(<<"customer_update">>) ->
+    fun kapi_notifications:publish_customer_update/1;
+publish_fun(<<"denied_emergency_bridge">>) ->
+    fun kapi_notifications:publish_denied_emergency_bridge/1;
+publish_fun(<<"deregister">>) ->
+    fun kapi_notifications:publish_deregister/1;
 publish_fun(<<"fax_inbound_error_to_email">>) ->
     fun kapi_notifications:publish_fax_inbound_error/1;
-publish_fun(<<"fax_outbound_to_email">>) ->
-    fun kapi_notifications:publish_fax_outbound/1;
+publish_fun(<<"fax_inbound_error_to_email_filtered">>) ->
+    fun kapi_notifications:publish_fax_inbound_error/1;
+publish_fun(<<"fax_inbound_to_email">>) ->
+    fun kapi_notifications:publish_fax_inbound/1;
 publish_fun(<<"fax_outbound_error_to_email">>) ->
     fun kapi_notifications:publish_fax_outbound_error/1;
+publish_fun(<<"fax_outbound_to_email">>) ->
+    fun kapi_notifications:publish_fax_outbound/1;
+publish_fun(<<"first_occurrence">>) ->
+    fun kapi_notifications:publish_first_occurrence/1;
 publish_fun(<<"low_balance">>) ->
     fun kapi_notifications:publish_low_balance/1;
 publish_fun(<<"new_account">>) ->
     fun kapi_notifications:publish_new_account/1;
 publish_fun(<<"new_user">>) ->
     fun kapi_notifications:publish_new_user/1;
-publish_fun(<<"deregister">>) ->
-    fun kapi_notifications:publish_deregister/1;
-publish_fun(<<"transaction">>) ->
-    fun kapi_notifications:publish_transaction/1;
 publish_fun(<<"password_recovery">>) ->
     fun kapi_notifications:publish_password_recovery/1;
-publish_fun(<<"system_alert">>) ->
-    fun kapi_notifications:publish_system_alert/1;
-publish_fun(<<"cnam_request">>) ->
-    fun kapi_notifications:publish_cnam_request/1;
-publish_fun(<<"topup">>) ->
-    fun kapi_notifications:publish_topup/1;
+publish_fun(<<"port_cancel">>) ->
+    fun kapi_notifications:publish_port_cancel/1;
+publish_fun(<<"port_comment">>) ->
+    fun kapi_notifications:publish_port_comment/1;
+publish_fun(<<"port_pending">>) ->
+    fun kapi_notifications:publish_port_pending/1;
 publish_fun(<<"port_request">>) ->
     fun kapi_notifications:publish_port_request/1;
+publish_fun(<<"port_rejected">>) ->
+    fun kapi_notifications:publish_port_rejected/1;
 publish_fun(<<"port_request_admin">>) ->
     fun kapi_notifications:publish_port_request/1;
 publish_fun(<<"port_scheduled">>) ->
     fun kapi_notifications:publish_port_scheduled/1;
-publish_fun(<<"port_rejected">>) ->
-    fun kapi_notifications:publish_port_rejected/1;
-publish_fun(<<"port_cancel">>) ->
-    fun kapi_notifications:publish_port_cancel/1;
+publish_fun(<<"port_unconfirmed">>) ->
+    fun kapi_notifications:publish_port_unconfirmed/1;
 publish_fun(<<"ported">>) ->
     fun kapi_notifications:publish_ported/1;
+publish_fun(<<"service_added">>) ->
+    fun kapi_notifications:publish_service_added/1;
+publish_fun(<<"system_alert">>) ->
+    fun kapi_notifications:publish_system_alert/1;
+publish_fun(<<"topup">>) ->
+    fun kapi_notifications:publish_topup/1;
+publish_fun(<<"transaction">>) ->
+    fun kapi_notifications:publish_transaction/1;
+publish_fun(<<"voicemail_full">>) ->
+    fun kapi_notifications:publish_voicemail_full/1;
+publish_fun(<<"voicemail_to_email">>) ->
+    fun kapi_notifications:publish_voicemail/1;
 publish_fun(<<"webhook_disabled">>) ->
     fun kapi_notifications:publish_webhook_disabled/1;
-publish_fun(<<"denied_emergency_bridge">>) ->
-    fun kapi_notifications:publish_denied_emergency_bridge/1;
-publish_fun(<<"customer_update">>) ->
-    fun kapi_notifications:publish_customer_update/1;
 publish_fun(_Id) ->
     lager:debug("no kapi_notifications:publish_~s/1 defined", [_Id]),
     fun(_Any) -> 'ok' end.
