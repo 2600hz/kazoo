@@ -35,8 +35,8 @@
                              ,{<<"interval">>, 20}
                              ,{<<"energy-level">>, 20}
                              ,{<<"comfort-noise">>, 1000}
-                             ,{<<"moh-sound">>, <<"">>}
-                             ,{<<"enter-sound">>, <<"">>}
+                             ,{<<"moh-sound">>, <<>>}
+                             ,{<<"enter-sound">>, <<>>}
                              ]).
 
 -define(DEFAULT_CONTROLS, [kz_json:from_list([{<<"action">>, <<"mute">>},     {<<"digits">>, <<"*1">>}])

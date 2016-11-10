@@ -15,7 +15,7 @@
 
 -type json_term() :: 'null'
                    | boolean()
-                   | json_string()
+                   | json_string() | <<>>
                    | json_number()
                    | object()
                    | json_array().
