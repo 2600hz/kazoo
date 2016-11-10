@@ -10,8 +10,7 @@
 -type http_verb() :: 'get' | 'post'.
 -type hook_retries() :: 1..5.
 
--record(webhook, {
-          id :: ne_binary() | '_'
+-record(webhook, {id :: ne_binary() | '_'
                  ,uri :: ne_binary() | '_'
                  ,http_verb :: http_verb() | '_'
                  ,hook_event :: ne_binary() | '_' | '$1' | '$2'
@@ -21,7 +20,7 @@
                  ,include_subaccounts = 'false' :: boolean() | '_' | '$3'
                  ,custom_data :: kz_json:object() | '_'
                  ,modifiers :: kz_json:object() | '_'
-         }).
+                 }).
 -type webhook() :: #webhook{}.
 -type webhooks() :: [webhook()].
 

@@ -77,11 +77,11 @@ from_json(Hook) ->
     jobj_to_rec(Hook).
 
 -spec to_json(webhook()) -> kz_json:object().
-to_json(Hook) ->
+to_json(#webhook{}=Hook) ->
     kz_json:from_list(
       [{<<"_id">>, Hook#webhook.id}
       ,{<<"uri">>, Hook#webhook.uri}
-      ,{<<"http_verb">>, Hook#webhook.http_verb}
+      ,{<<"http_verb">>, kz_util:to_binary(Hook#webhook.http_verb)}
       ,{<<"retries">>, Hook#webhook.retries}
       ,{<<"account_id">>, Hook#webhook.account_id}
       ,{<<"include_subaccounts">>, Hook#webhook.include_subaccounts}
