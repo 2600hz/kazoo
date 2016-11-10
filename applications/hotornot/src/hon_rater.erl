@@ -48,7 +48,7 @@ publish_no_rate_found(JObj) ->
     kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
 
 -spec get_rate_data(kz_json:object()) ->
-                           {'ok', kz_proplist()} |
+                           {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = kz_json:get_value(<<"To-DID">>, JObj),
