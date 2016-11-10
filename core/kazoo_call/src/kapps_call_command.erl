@@ -1222,7 +1222,7 @@ park(Call) ->
     Command = park_command(Call),
     send_command(Command, Call).
 
--spec park_command(ne_binary()) -> kz_json:object().
+-spec park_command(kapps_call:call() | ne_binary()) -> kz_json:object().
 park_command(CallId=?NE_BINARY) ->
     kz_json:from_list(
       [{<<"Application-Name">>, <<"park">>}
