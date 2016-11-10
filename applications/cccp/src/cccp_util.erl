@@ -63,7 +63,7 @@ handle_disconnect_cause(JObj, Call) ->
     end.
 
 -spec authorize(ne_binary(), ne_binary()) ->
-                       {'ok', ne_binaries()} |
+                       {'ok', kz_json:object()} |
                        'empty' |
                        'error'.
 authorize(Value, View) ->
@@ -262,7 +262,7 @@ maybe_outbound_call(ToDID, RetainNumber, RetainName, AccountId) ->
             end
     end.
 
--spec maybe_cid_name(ne_binary(), ne_binary()) -> ne_binary().
+-spec maybe_cid_name(api_ne_binary(), api_ne_binary()) -> api_ne_binary().
 maybe_cid_name(<<Name/binary>>, _) -> Name;
 maybe_cid_name(_, Number) -> Number.
 
@@ -279,7 +279,12 @@ current_account_outbound_directions(AccountId) ->
 
 -spec count_user_legs(ne_binary(), ne_binary()) -> integer().
 count_user_legs(UserId, AccountId) ->
-    lists:foldl(fun(Channel, Acc) -> is_user_channel(Channel, UserId) + Acc end, 0, current_account_channels(AccountId)).
+    lists:foldl(fun(Channel, Acc) ->
+                        is_user_channel(Channel, UserId) + Acc
+                end
+               ,0
+               ,current_account_channels(AccountId)
+               ).
 
 -spec is_user_channel(kz_json:object(), ne_binary()) -> integer().
 is_user_channel(Channel, UserId) ->

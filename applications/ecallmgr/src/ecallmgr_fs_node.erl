@@ -192,17 +192,20 @@
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
-start_link(Node, Options) ->
+start_link(Node, Options) when is_atom(Node) ->
     QueueName = <<(kz_util:to_binary(Node))/binary
                   ,"-"
                   ,(kz_util:to_binary(?MODULE))/binary
                 >>,
-    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', ?BINDINGS(Node)}
-                                     ,{'queue_name', QueueName}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Node, Options]).
+    gen_listener:start_link(?SERVER
+                           ,[{'responders', ?RESPONDERS}
+                            ,{'bindings', ?BINDINGS(Node)}
+                            ,{'queue_name', QueueName}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[Node, Options]
+                           ).
 
 -spec sync_channels(fs_node()) -> 'ok'.
 sync_channels(Srv) ->
@@ -468,7 +471,7 @@ run_start_cmds(Node, Options, Parent) ->
     run_start_cmds(Node, Options, Parent, is_restarting(Node)).
 
 -spec is_restarting(atom()) -> boolean().
-is_restarting(Node) ->
+is_restarting(Node) when is_atom(Node) ->
     case freeswitch:api(Node, 'status', <<>>) of
         {'ok', Status} ->
             [UP|_] = binary:split(Status, <<"\n">>),

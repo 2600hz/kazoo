@@ -533,7 +533,7 @@ update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
 update_views(Db, Views, Remove) ->
-    kz_datamgr:db_view_update(Db, Views, Remove).
+    kz_util:is_true(kz_datamgr:db_view_update(Db, Views, Remove)).
 
 %%--------------------------------------------------------------------
 %% @private

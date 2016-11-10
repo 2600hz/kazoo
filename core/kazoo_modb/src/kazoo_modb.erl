@@ -163,7 +163,7 @@ couch_open(AccountMODb, DocId, Options) ->
 -spec save_doc(ne_binary(), kz_json:object()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
--spec save_doc(ne_binary(), kz_json:object(), kz_now() | kz_proplist()) ->
+-spec save_doc(ne_binary(), kz_json:object(), kz_now() | gregorian_seconds() | kz_proplist()) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 -spec save_doc(ne_binary(), kz_json:object(), kz_year() | ne_binary() | kz_now(), kz_month() | ne_binary() | kz_proplist()) ->

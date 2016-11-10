@@ -225,7 +225,7 @@ account_id(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec users(kz_json:object()) -> ne_binaries().
+-spec users(kz_json:object()) -> kz_json:objects().
 users(JObj) ->
     kz_json:get_list_value(?USERS, JObj, []).
 

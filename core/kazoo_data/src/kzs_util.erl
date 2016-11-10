@@ -22,7 +22,7 @@
 -spec db_classification(text()) -> db_classifications().
 db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_util:to_binary(Db));
-db_classification(<<"ts">>) -> 'depreciated';
+db_classification(<<"ts">>) -> 'deprecated';
 db_classification(<<"crossbar_schemas">>) -> 'deprecated';
 db_classification(<<"registrations">>) -> 'deprecated';
 db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';

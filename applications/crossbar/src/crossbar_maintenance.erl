@@ -883,7 +883,7 @@ maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     _ = update_images(AppId, MasterAccountDb, [IconPath], <<"icon">>),
     _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
 
--type image_path() :: {kz_json:object(), file:filename_all()}.
+-type image_path() :: {file:filename_all(), file:filename_all()}.
 -type image_paths() :: [image_path()].
 
 -spec update_images(ne_binary(), ne_binary(), image_paths(), ne_binary()) -> 'ok'.
@@ -911,7 +911,7 @@ add_image(AppId, MasterAccountDb, ImageId, ImageData) ->
         {'error', _E} -> io:format("   failed to save ~s to ~s: ~p~n", [ImageId, AppId, _E])
     end.
 
--spec read_images([{ne_binary(), file:filename_all()}]) ->
+-spec read_images(image_paths()) ->
                          {'ok', [{file:filename_all(), binary()}]}.
 read_images(Images) ->
     {'ok', [{Image, read_image(ImagePath)}

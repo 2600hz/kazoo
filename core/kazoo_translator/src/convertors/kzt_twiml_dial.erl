@@ -435,10 +435,10 @@ conference_member_flags(ConfProps) ->
         'false' -> 'undefined'
     end.
 
-                                                % copy of cf_user:get_endpoints/3
+%% copy of cf_user:get_endpoints/3
 -spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
                            kz_json:objects().
 get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
-    Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
+    Params = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Data),
     kz_endpoints:by_owner_id(UserId, Params, Call).

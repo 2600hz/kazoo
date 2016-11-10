@@ -46,7 +46,9 @@ get_results_descending(Context, View, CouchOptions, Mapper, KeyMap) ->
     EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    Options = [{'mapper', CtxMapper}
+              ,{'couch_options', make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+              ],
     {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
@@ -57,7 +59,9 @@ get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
     EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    Options = [{'mapper', CtxMapper}
+              ,{'couch_options', make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+              ],
     {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
@@ -65,7 +69,7 @@ get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
 is_ascending(Context) ->
     kz_json:is_true(<<"ascending">>, cb_context:query_string(Context)).
 
--spec one_of(cb_context:context(), [ne_binary()], integer()) -> integer().
+-spec one_of(cb_context:context(), ne_binaries(), integer()) -> integer().
 one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
     case cb_context:req_value(Context, Value) of
@@ -118,7 +122,8 @@ add_paging(StartKey, PageSize, NextStartKey, JObj) ->
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
--spec format_response(cb_context:context(), integer(), integer()|'undefined', integer(), kz_json:objects()) -> cb_context:context().
+-spec format_response(cb_context:context(), integer(), api_integer(), integer(), kz_json:objects()) ->
+                             cb_context:context().
 format_response(Context, _, 'undefined', _PageSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));

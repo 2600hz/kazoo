@@ -41,7 +41,8 @@
 call_charges(Ledger, CallId) ->
     call_charges(Ledger, CallId, 'true').
 
--spec call_charges(ne_binary(), ne_binary(), ne_binary() | boolean()) -> integer() | kz_transactions().
+-spec call_charges(ne_binary(), ne_binary(), ne_binary() | boolean()) ->
+                          integer() | kz_transactions().
 call_charges(Ledger, CallId, 'true') ->
     LedgerDb = kz_util:format_account_id(Ledger, 'encoded'),
     ViewOptions = ['reduce'
