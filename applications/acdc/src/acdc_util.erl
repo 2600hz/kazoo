@@ -101,7 +101,7 @@ agent_devices(AcctDb, AgentId) ->
 -spec get_endpoints(kapps_call:call(), ne_binary() | kz_datamgr:get_results_return()) ->
                            kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
-    Params = kz_json:from_list([{<<"source">>, ?MODULE}]),
+    Params = kz_json:from_list([{<<"source">>, kz_util:to_binary(?MODULE)}]),
     kz_endpoints:by_owner_id(AgentId, Params, Call).
 
 %% Handles subscribing/unsubscribing from call events
