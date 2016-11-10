@@ -308,10 +308,12 @@ get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) 
 
 -spec maybe_bind(atom(), atoms()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', any()}.
+                        {'error', any()} |
+                        {'EXIT', any()}.
 -spec maybe_bind(atom(), atoms(), non_neg_integer()) ->
                         {'ok', {text(), inet:port_number()}} |
-                        {'error', any()}.
+                        {'error', any()} |
+                        {'EXIT', any()}.
 maybe_bind(Node, Bindings) ->
     maybe_bind(Node, Bindings, 0).
 
@@ -319,6 +321,7 @@ maybe_bind(Node, Bindings, 2) ->
     case catch gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
         {'EXIT', {'timeout',_}} -> {'error', 'timeout'};
+        {'EXIT', _} = Exit -> Exit; 
         {'error', _Reason}=E -> E
     end;
 maybe_bind(Node, Bindings, Attempts) ->
