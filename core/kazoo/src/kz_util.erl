@@ -839,7 +839,7 @@ startup() ->
 %% Given an object, extract the category and name into a tuple
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(kz_json:object() | kz_proplist()) -> {api_binary(), api_binary()}.
+-spec get_event_type(api_terms()) -> {api_binary(), api_binary()}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
     ,props:get_value(<<"Event-Name">>, Props)

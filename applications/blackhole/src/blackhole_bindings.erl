@@ -44,7 +44,7 @@
 
 -include("blackhole.hrl").
 
--type payload_el() :: bh_context:context() | ne_binary() | map().
+-type payload_el() :: bh_context:context() | ne_binary() | map() | kz_json:object().
 -type payload() :: [payload_el()] | payload_el().
 
 %%%===================================================================
