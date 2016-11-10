@@ -156,7 +156,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:path(), api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), kz_json:path() | 'undefined', api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->

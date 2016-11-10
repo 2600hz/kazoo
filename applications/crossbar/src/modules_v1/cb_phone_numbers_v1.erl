@@ -400,7 +400,7 @@ find_numbers(Context) ->
                                    ])
         end,
     Schema = kz_json:decode(?FIND_NUMBER_SCHEMA),
-    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
+    Context1 = cb_context:set_req_data(Context, knm_carriers:options_to_jobj(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
 -spec get_find_numbers_req(cb_context:context()) -> kz_proplist().

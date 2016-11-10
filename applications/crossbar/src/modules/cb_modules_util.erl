@@ -293,7 +293,7 @@ get_endpoints(Call, Context) ->
 get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
-                                   ,{<<"source">>, 'cb_devices'}
+                                   ,{<<"source">>, <<"cb_devices">>}
                                    ]),
     case kz_endpoint:build(cb_context:doc(Context), Properties, aleg_cid(Number, Call)) of
         {'error', _} -> [];
@@ -302,7 +302,7 @@ get_endpoints(Call, Context, ?DEVICES_QCALL_NOUNS(_DeviceId, Number)) ->
 get_endpoints(Call, _Context, ?USERS_QCALL_NOUNS(_UserId, Number)) ->
     Properties = kz_json:from_list([{<<"can_call_self">>, 'true'}
                                    ,{<<"suppress_clid">>, 'true'}
-                                   ,{<<"source">>, 'cb_users'}
+                                   ,{<<"source">>, <<"cb_users">>}
                                    ]),
     lists:foldr(fun(EndpointId, Acc) ->
                         case kz_endpoint:build(EndpointId, Properties, aleg_cid(Number, Call)) of

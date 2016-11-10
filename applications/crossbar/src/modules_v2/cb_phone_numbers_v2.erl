@@ -564,7 +564,7 @@ normalize_view_results(JObj, Acc) ->
 
 %% @private
 -spec normalize_port_view_result(kz_json:object()) -> kz_json:object().
--spec normalize_port_view_result(kz_json:path(), kz_json:json_term()) -> kz_json:object().
+-spec normalize_port_view_result(kz_json:key(), kz_json:json_term()) -> kz_json:object().
 normalize_port_view_result(JObj) ->
     Number = kz_json:get_value([<<"key">>, ?PORT_NUMBER_KEY_INDEX], JObj),
     Properties = kz_json:get_value(<<"value">>, JObj),

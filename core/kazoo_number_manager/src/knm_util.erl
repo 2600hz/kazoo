@@ -21,7 +21,6 @@
 -type country_iso3166a2() :: <<_:(8*2)>>.
 -export_type([country_iso3166a2/0]).
 
-
 -spec get_all_number_dbs() -> ne_binaries().
 get_all_number_dbs() ->
     ViewOptions = [{'startkey', <<?KNM_DB_PREFIX>>}
