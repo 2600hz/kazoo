@@ -58,6 +58,7 @@ start_link(Node, Options) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Node, Options]) ->
+    process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     gen_server:cast(self(), 'bind_to_record'),
     {'ok', #state{node=Node, options=Options}}.
@@ -110,6 +111,10 @@ handle_cast(_Msg, State) ->
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_event/3, [UUID, Props, Node]),
     {'noreply', State};
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
     {'noreply', State}.

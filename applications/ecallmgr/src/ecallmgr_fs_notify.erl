@@ -265,6 +265,7 @@ ensure_contact_user(OriginalContact, Username, Realm) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
+    process_flag('trap_exit', 'true'),
     put(callid, Node),
     lager:debug("starting new ecallmgr notify process"),
     gproc:reg({'p', 'l', 'fs_notify'}),
@@ -313,6 +314,10 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.

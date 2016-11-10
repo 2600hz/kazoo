@@ -84,6 +84,7 @@ handle_originate_req(JObj, Props) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
+    process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     lager:info("starting new fs resource listener for ~s", [Node]),
     {'ok', #state{node=Node, options=Options}}.
@@ -133,6 +134,10 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'update_options', NewOptions}, State) ->
     {'noreply', State#state{options=NewOptions}, 'hibernate'};
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 

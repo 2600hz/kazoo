@@ -301,6 +301,7 @@ fetch_timeout(_Node) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
+    process_flag('trap_exit', 'true'),
     kz_util:put_callid(Node),
     process_flag('priority', 'high'), %% Living dangerously!
     lager:info("starting new fs node listener for ~s", [Node]),
@@ -394,6 +395,10 @@ handle_info({'bgerror', _Job, _Result}, State) ->
     {'noreply', State};
 handle_info({'DOWN', Ref, 'process', Pid, _Reason}, #state{start_cmds_pid_ref={Pid, Ref}}=State) ->
     {'noreply', State#state{start_cmds_pid_ref='undefined'}};
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Msg, State) ->
     lager:debug("unhandled message: ~p", [_Msg]),
     {'noreply', State}.

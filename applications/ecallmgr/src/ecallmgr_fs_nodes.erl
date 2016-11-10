@@ -640,6 +640,7 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
 
 -spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', any()}.
 maybe_connect_to_node(#node{node=NodeName}=Node) ->
+    timer:sleep(3 * ?MILLISECONDS_IN_SECOND),
     lager:debug("attempting to connect to freeswitch node ~s", [NodeName]),
     case maybe_ping_node(Node) of
         {'error', _R}=E -> E;

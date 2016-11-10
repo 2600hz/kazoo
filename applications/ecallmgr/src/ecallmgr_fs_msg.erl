@@ -81,6 +81,7 @@ start_link(Node, Options) ->
 %% @end
 %%--------------------------------------------------------------------
 init([Node, Options]) ->
+    process_flag('trap_exit', 'true'),
     put(callid, Node),
     lager:debug("starting new ecallmgr msg process"),
     gproc:reg({'p', 'l', 'fs_msg'}),
@@ -138,8 +139,10 @@ handle_cast(_Msg, State) ->
 handle_info({'event', Props}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_fs_event/2, [Node, Props]),
     {'noreply', State, 'hibernate'};
-handle_info({'EXIT', _, _}, State) ->
-    {'noreply', State};
+handle_info({'EXIT', _, 'noconnection'}, State) ->
+    {stop, {'shutdown', 'noconnection'}, State};
+handle_info({'EXIT', _, Reason}, State) ->
+    {stop, Reason, State};
 handle_info(_Info, State) ->
     lager:debug("MSG UN", [_Info]),
     {'noreply', State}.
