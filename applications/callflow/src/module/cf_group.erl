@@ -104,7 +104,7 @@ build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
         andalso MemberId =/= kapps_call:authorizing_id(Call)
     of
         'true' ->
-            M = kz_json:set_value(<<"source">>, ?MODULE, Member),
+            M = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Member),
             E = [{MemberId, kz_endpoint:build(MemberId, M, Call)}|Endpoints],
             build_device_endpoints(E, Members, Call);
         'false' -> build_device_endpoints(Endpoints, Members, Call)
@@ -113,16 +113,18 @@ build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
 -spec build_user_endpoints(endpoints_acc(), kz_proplist(), kapps_call:call()) -> endpoints_acc().
 build_user_endpoints(Endpoints, [], _) -> Endpoints;
 build_user_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
-    case kz_json:get_value(<<"type">>, Member, <<"user">>) =:= <<"user">> of
+    case <<"user">> =:= kz_json:get_value(<<"type">>, Member, <<"user">>) of
+        'false' -> build_user_endpoints(Endpoints, Members, Call);
         'true' ->
             DeviceIds = kz_attributes:owned_by(MemberId, <<"device">>, Call),
-            M = kz_json:set_values([{<<"source">>, ?MODULE}
+            M = kz_json:set_values([{<<"source">>, kz_util:to_binary(?MODULE)}
                                    ,{<<"type">>, <<"device">>}
-                                   ], Member),
+                                   ]
+                                  ,Member
+                                  ),
             E = build_device_endpoints(Endpoints
                                       ,[{DeviceId, M} || DeviceId <- DeviceIds]
                                       ,Call
                                       ),
-            build_user_endpoints(E, Members, Call);
-        'false' -> build_user_endpoints(Endpoints, Members, Call)
+            build_user_endpoints(E, Members, Call)
     end.
