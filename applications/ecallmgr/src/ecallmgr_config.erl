@@ -68,8 +68,10 @@ flush_default(Key) ->
     flush(Key, <<"default">>).
 
 -spec get(kz_json:path()) -> kz_json:api_json_term().
--spec get(kz_json:path(), Default) -> kz_json:json_term() | Default.
--spec get(kz_json:path(), Default, kz_json:path()) -> kz_json:json_term() | Default.
+-spec get(kz_json:path(), Default) ->
+                 kz_json:json_term() | Default.
+-spec get(kz_json:path(), Default, kz_json:path() | atom()) ->
+                 kz_json:json_term() | Default.
 
 get(Key) ->
     get(Key, 'undefined').
@@ -153,9 +155,12 @@ is_true(Key, Default, Node) ->
     end.
 
 -spec fetch(kz_json:path()) -> kz_json:api_json_term().
--spec fetch(kz_json:path(), Default) -> kz_json:json_term() | Default.
--spec fetch(kz_json:path(), Default, kz_json:path()) -> kz_json:json_term() | Default.
--spec fetch(kz_json:path(), Default, kz_json:path(), pos_integer()) -> kz_json:json_term() | Default.
+-spec fetch(kz_json:path(), Default) ->
+                   kz_json:json_term() | Default.
+-spec fetch(kz_json:path(), Default, kz_json:path() | pos_integer() | atom()) ->
+                   kz_json:json_term() | Default.
+-spec fetch(kz_json:path(), Default, kz_json:path() | atom(), pos_integer()) ->
+                   kz_json:json_term() | Default.
 
 fetch(Key) ->
     fetch(Key, 'undefined').
@@ -165,14 +170,14 @@ fetch(Key, Default) ->
 
 fetch(Key, Default, 'undefined') ->
     fetch(Key, Default);
+fetch(Key, Default, Timeout) when is_integer(Timeout) ->
+    fetch(Key, Default, kz_util:to_binary(node()), Timeout);
 fetch(Key, Default, Node) when not is_binary(Key) ->
     fetch(kz_util:to_binary(Key), Default, Node);
 fetch(Key, Default, Node) when not is_binary(Node) ->
     fetch(Key, Default, kz_util:to_binary(Node));
 fetch(Key, Default, <<_/binary>> = Node) ->
-    fetch(Key, Default, Node, ?DEFAULT_FETCH_TIMEOUT);
-fetch(Key, Default, Timeout) when is_integer(Timeout) ->
-    fetch(Key, Default, kz_util:to_binary(node()), Timeout).
+    fetch(Key, Default, Node, ?DEFAULT_FETCH_TIMEOUT).
 
 fetch(Key, Default, Node, RequestTimeout) ->
     Req = [{<<"Category">>, <<"ecallmgr">>}

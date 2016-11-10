@@ -295,8 +295,8 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
                                              kz_network_utils:verify_cidr(FsPath, K)
                                      end, NetworkMap),
     case kz_json:get_values(SIPInterfaceObj) of
-        [] -> 'undefined';
-        [V|_] -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
+        {[], _Keys} -> 'undefined';
+        {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
 conference_channel_vars(Props) ->
