@@ -40,7 +40,7 @@
                ,from :: binary()
                ,to :: binary()
                ,doc :: api_object()
-               ,filename :: api_binary()
+               ,filename :: file:filename_all()
                ,content_type :: binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
@@ -364,8 +364,7 @@ to_proplist(#state{}=State) ->
 faxbox_to_proplist('undefined') -> [];
 faxbox_to_proplist(JObj) ->
     props:filter_undefined(
-      [{<<"FaxBox-ID">>, kz_doc:id(JObj)}
-      ]
+      [{<<"FaxBox-ID">>, kz_doc:id(JObj)}]
      ).
 
 -spec faxdoc_to_proplist(api_object()) -> kz_proplist().
