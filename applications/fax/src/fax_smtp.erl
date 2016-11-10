@@ -36,8 +36,7 @@
 
 -define(ERROR_NO_VALID_ATTACHMENT, <<"no valid attachment">>).
 
--record(state, {
-          options = [] :: list()
+-record(state, {options = [] :: list()
                ,from :: binary()
                ,to :: binary()
                ,doc :: api_object()
@@ -54,7 +53,7 @@
                ,account_id :: api_binary()
                ,session_id :: api_binary()
                ,proxy :: api_binary()
-         }).
+               }).
 
 -type state() :: #state{}.
 -type error_message() :: {'error', string(), #state{}}.
@@ -387,12 +386,13 @@ reset(State) ->
                ,original_number = 'undefined'
                ,number = 'undefined'
                ,account_id = 'undefined'
+               ,doc='undefined'
                }.
 
 -spec check_faxbox(state()) ->
                           {'ok', state()} |
                           {'error', string(), state()}.
-check_faxbox(#state{to=To}= State) ->
+check_faxbox(#state{to=To}=State) ->
     case binary:split(kz_util:to_lower_binary(To), <<"@">>) of
         [FaxNumber, Domain] ->
             Number = fax_util:filter_numbers(FaxNumber),
@@ -682,7 +682,6 @@ add_fax_document(#state{doc='undefined'
 add_fax_document(#state{doc=Doc}=State) ->
     lager:debug("add fax document called but already has a doc : ~p", [Doc]),
     {'ok', State}.
-
 
 %% ====================================================================
 %% Internal functions
