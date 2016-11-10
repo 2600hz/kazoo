@@ -170,7 +170,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), kz_json:path(), api_integer()
+-spec create_response(crossbar_status(), kz_json:path() | 'undefined', api_integer()
                      ,kz_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->

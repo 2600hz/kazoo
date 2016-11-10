@@ -134,7 +134,7 @@ new() -> #cb_context{}.
 is_context(#cb_context{}) -> 'true';
 is_context(_) -> 'false'.
 
--spec req_value(context(), kz_json:path()) -> kz_json:json_term().
+-spec req_value(context(), kz_json:path()) -> kz_json:api_json_term().
 -spec req_value(context(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 req_value(#cb_context{}=Context, Key) ->
     req_value(Context, Key, 'undefined').
