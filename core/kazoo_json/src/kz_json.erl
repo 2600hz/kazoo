@@ -98,7 +98,7 @@
              ,object/0, objects/0
              ,path/0, paths/0
              ,key/0, keys/0
-             ,json_term/0, api_json_term/0
+             ,json_term/0, api_json_term/0, json_terms/0
              ,encode_options/0
              ]).
 
