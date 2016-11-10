@@ -321,7 +321,7 @@ maybe_bind(Node, Bindings, 2) ->
     case catch gen_server:call({'mod_kazoo', Node}, {'event', Bindings}, 2 * ?MILLISECONDS_IN_SECOND) of
         {'ok', {_IP, _Port}}=OK -> OK;
         {'EXIT', {'timeout',_}} -> {'error', 'timeout'};
-        {'EXIT', _} = Exit -> Exit; 
+        {'EXIT', _} = Exit -> Exit;
         {'error', _Reason}=E -> E
     end;
 maybe_bind(Node, Bindings, Attempts) ->
