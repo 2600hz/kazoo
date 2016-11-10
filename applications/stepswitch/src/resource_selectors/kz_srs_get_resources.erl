@@ -22,7 +22,7 @@ handle_req(Resources, _Number, OffnetJObj, _DB, _Params) ->
                    end,
     Resources ++ NewResources.
 
--spec maybe_get_local_resources(ne_binary(), ne_binary()) -> kz_json:objects().
+-spec maybe_get_local_resources(ne_binary(), ne_binary()) -> stepswitch_resources:resources().
 maybe_get_local_resources(HuntAccount, AccountId) ->
     case kz_util:is_in_account_hierarchy(HuntAccount, AccountId, 'true') of
         'false' ->
