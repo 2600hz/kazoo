@@ -211,7 +211,7 @@ callid_update(CallId, Call) ->
     callid_update(CallId, Srv).
 
 -spec callid(kapps_call:call() | pid()) -> ne_binary().
--spec callid(api_binary(), kapps_call:call()) -> ne_binary().
+-spec callid(api_binary(), kapps_call:call() | pid()) -> ne_binary().
 
 callid(Srv) when is_pid(Srv) ->
     CallId = gen_server:call(Srv, 'callid', 1000),
@@ -651,8 +651,15 @@ launch_cf_module(#state{call=Call
                        }=State) ->
     Module = <<"cf_", (kz_json:get_value(<<"module">>, Flow))/binary>>,
     Data = kz_json:get_value(<<"data">>, Flow, kz_json:new()),
-    {PidRef, Action} = maybe_start_cf_module(Module, Data, Call),
-    link(get_pid(PidRef)),
+
+    {PidRef, Action} =
+        case maybe_start_cf_module(Module, Data, Call) of
+            {{Pid, _Ref}=PR, _Action}=Resp ->
+                link(get_pid(PR)),
+                Resp;
+            Resp -> Resp
+        end,
+
     OldAction = kapps_call:kvs_fetch('cf_last_action', Call),
     Routines = [{fun kapps_call:kvs_store/3, 'cf_old_action', OldAction}
                ,{fun kapps_call:kvs_store/3, 'cf_last_action', Action}
@@ -663,7 +670,7 @@ launch_cf_module(#state{call=Call
                }.
 
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
-                                   {{pid(), reference()} | 'undefined', atom()}.
+                                   {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
     CFModule = kz_util:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of

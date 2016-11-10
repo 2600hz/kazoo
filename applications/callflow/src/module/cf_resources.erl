@@ -239,21 +239,8 @@ get_original_request_user(Call) ->
 
 -spec get_sip_headers(kz_json:object(), kapps_call:call()) -> api_object().
 get_sip_headers(Data, Call) ->
-    Routines = [fun(J) ->
-                        Default = kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_emit_account_id">>, 'false'),
-                        case kz_json:is_true(<<"emit_account_id">>, Data, Default) of
-                            'false' -> J;
-                            'true' ->
-                                kz_json:set_value(<<"X-Account-ID">>, kapps_call:account_id(Call), J)
-                        end
-                end
-               ,fun(J) ->
-                        case kapps_call:custom_sip_header(<<"Diversions">>, Call) of
-                            'undefined' -> J;
-                            Diversions ->
-                                kz_json:set_value(<<"Diversions">>, Diversions, J)
-                        end
-                end
+    Routines = [fun(J) -> maybe_emit_account_id(J, Data, Call) end
+               ,fun(J) -> maybe_include_diversions(J, Call) end
                ],
     AuthEndCSH = case kz_endpoint:get(Call) of
                      {'ok', AuthorizingEndpoint} ->
@@ -267,6 +254,25 @@ get_sip_headers(Data, Call) ->
     case kz_util:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
+    end.
+
+-spec maybe_include_diversions(kz_json:object(), kapps_call:call()) ->
+                                      kz_json:object().
+maybe_include_diversions(JObj, Call) ->
+    case kapps_call:custom_sip_header(<<"Diversions">>, Call) of
+        'undefined' -> JObj;
+        Diversions ->
+            kz_json:set_value(<<"Diversions">>, Diversions, JObj)
+    end.
+
+-spec maybe_emit_account_id(kz_json:object(), kz_json:object(), kapps_call:call()) ->
+                                   kz_json:object().
+maybe_emit_account_id(JObj, Data, Call) ->
+    Default = kapps_config:get_is_true(?RES_CONFIG_CAT, <<"default_emit_account_id">>, 'false'),
+    case kz_json:is_true(<<"emit_account_id">>, Data, Default) of
+        'false' -> JObj;
+        'true' ->
+            kz_json:set_value(<<"X-Account-ID">>, kapps_call:account_id(Call), JObj)
     end.
 
 -spec get_ignore_early_media(kz_json:object()) -> api_binary().
