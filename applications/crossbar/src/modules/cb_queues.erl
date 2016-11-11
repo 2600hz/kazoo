@@ -50,7 +50,9 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("acdc/include/acdc_config.hrl").
+
+-define(ACDC_ARCHIVE_WINDOW,
+        kapps_config:get_integer(<<"acdc">>, <<"archive_window_s">>, ?SECONDS_IN_HOUR)).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
