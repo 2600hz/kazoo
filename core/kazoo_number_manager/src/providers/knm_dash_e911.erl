@@ -361,7 +361,7 @@ emergency_provisioning_request(Verb, Props) ->
         {'ok', Code, _, Response} ->
             ?DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from upstream"),
-            try xmerl_scan:string(Response) of
+            try xmerl_scan:string(kz_util:to_list(Response)) of
                 {Xml, _} -> {'ok', Xml}
             catch
                 _:R ->

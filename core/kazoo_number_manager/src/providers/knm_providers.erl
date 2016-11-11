@@ -79,9 +79,16 @@ has_emergency_services(Number) ->
 allowed_features(PhoneNumber) ->
     case knm_phone_number:assigned_to(PhoneNumber) of
         'undefined' -> [];
-        AccountId -> ?ALLOWED_FEATURES(AccountId)
+        AccountId -> maybe_fix_e911(?ALLOWED_FEATURES(AccountId))
     end.
 
+-spec maybe_fix_e911(ne_binaries()) -> ne_binaries().
+maybe_fix_e911(Features) ->
+    E911 = [<<"dash_e911">>, <<"vitelity_e911">>],
+    case lists:any(fun(F) -> lists:member(F, Features) end, E911) of
+        'true' -> Features ++ [<<"e911">>];
+        'false' -> Features
+    end.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
