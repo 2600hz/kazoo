@@ -293,6 +293,7 @@ guess_type('is_true', _Default) -> <<"boolean">>;
 guess_type('get_is_true', _Default) -> <<"boolean">>;
 guess_type('get_boolean', _Default) -> <<"boolean">>;
 guess_type('get', Default) -> guess_type_by_default(Default);
+guess_type('get_current', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
 guess_type('get_node_value', Default) -> guess_type_by_default(Default);
