@@ -169,7 +169,7 @@ migrate_messages(AccountId, ViewResults) ->
 %% @doc Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate(ne_binary(), kz_json:objects(), kz_json:objects(), ne_binaries() | non_neg_integer()) -> 'ok'.
+-spec maybe_migrate(ne_binary(), kz_json:objects(), dict:dict(), ne_binaries() | non_neg_integer()) -> 'ok'.
 maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
@@ -205,7 +205,7 @@ bulk_save_modb(Db, Js, _Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_mailboxes(kz_json:object(), kz_json:objects()) -> 'ok'.
+-spec update_mailboxes(ne_binary(), kz_json:objects()) -> 'ok'.
 update_mailboxes(AccountId, ViewResults) ->
     MODbFailed = dict:from_list(get_stats(?FAILED_MODB)),
     Failed = dict:from_list(get_stats(?FAILED)),
