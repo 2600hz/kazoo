@@ -130,7 +130,7 @@ check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
         'true' -> from_profile(Token);
         'false' -> check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)})
     end;
-check_cache_expiration(#{auth_provider := Prov}=Token, JObj) ->
+check_cache_expiration(#{}=Token, JObj) ->
     check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
 
 -spec check_secret(map()) -> map() | {'error', any()}.
