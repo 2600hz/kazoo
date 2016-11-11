@@ -294,6 +294,7 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
             maybe_sync_reseller(AccountId, ServicesJObj);
         _E:R ->
             lager:info("unable to sync services(~p): ~p", [_E, R]),
+            kz_util:log_stacktrace(),
             {'error', R}
     end.
 
