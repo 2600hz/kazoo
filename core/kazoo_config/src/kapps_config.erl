@@ -372,7 +372,7 @@ get_value(Category, Node, Keys, Default, JObj) ->
 -spec get_zone_value(config_category(), config_key(), config_key(), Default, kz_json:object()) ->
                             Default | any().
 get_zone_value(Category, _Node, Keys, Default, JObj) ->
-    Zone = kz_config:zone(),
+    Zone = kz_util:to_binary(kz_config:zone()),
     case kz_json:get_value([Zone | Keys], JObj) of
         'undefined' -> get_default_value(Category, Keys, Default, JObj);
         Else -> Else
