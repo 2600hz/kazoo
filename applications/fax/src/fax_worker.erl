@@ -450,7 +450,7 @@ handle_cast('move_doc', #state{account_id=AccountId
     kz_notify:detailed_alert(?MAX_MOVE_NOTIFY_MSG, [JobId, AccountId], Props),
     gen_listener:cast(self(), 'notify'),
     {'noreply', State};
-handle_cast('move_doc', #state{job=JObj} = State) ->
+handle_cast('move_doc', #state{job=JObj, move_retry=Tries} = State) ->
     case maybe_move_doc(JObj, kzd_fax:job_status(JObj)) of
         {'ok', Doc} ->
             gen_listener:cast(self(), 'notify'),
@@ -459,7 +459,7 @@ handle_cast('move_doc', #state{job=JObj} = State) ->
             lager:error("error moving fax doc to modb : ~p", [Error]),
             timer:sleep(?MOVE_RETRY_INTERVAL),
             gen_listener:cast(self(), 'move_doc'),
-            {'noreply', State}
+            {'noreply', State#state{move_retry=Tries + 1}}
     end;
 handle_cast('notify', #state{job=JObj, resp=Resp} = State) ->
     maybe_notify(JObj, Resp, kzd_fax:job_status(JObj)),
