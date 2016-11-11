@@ -189,27 +189,30 @@ add_update_remove_views(Server, Db, CurrentViews, NewViews, Remove) ->
         'false' -> 'true'
     end.
 
--spec add_views(map(), ne_binary(), ne_binaries(), kz_proplist()) -> api_binaries().
+-spec add_views(map(), ne_binary(), ne_binaries(), kz_proplist()) ->
+                       api_binaries().
 add_views(Server, Db, Add, NewViews) ->
     Views = [props:get_value(Id, NewViews) || Id <- Add],
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
-    [kz_json:get_value(<<"id">>, JObj)
-     || JObj <- JObjs
-            ,kz_json:get_value(JObj, <<"error">>) =:= <<"conflict">>
+    [kz_doc:id(JObj)
+     || JObj <- JObjs,
+        <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
 
--spec update_views(map(), ne_binary(), ne_binaries(), kz_proplist(), kz_proplist()) -> api_binaries().
+-spec update_views(map(), ne_binary(), ne_binaries(), kz_proplist(), kz_proplist()) ->
+                          api_binaries().
 update_views(Server, Db, Update, CurrentViews, NewViews) ->
     Views = lists:foldl(fun(Id, Acc) ->
                                 update_views_fold(CurrentViews, NewViews, Id, Acc)
                         end, [], Update),
     {'ok', JObjs} = kzs_doc:save_docs(Server, Db, Views, []),
     [kz_json:get_value(<<"id">>, JObj)
-     || JObj <- JObjs
-            ,kz_json:get_value(JObj, <<"error">>) =:= <<"conflict">>
+     || JObj <- JObjs,
+        <<"conflict">> =:= kz_json:get_value(<<"error">>, JObj)
     ].
 
--spec update_views_fold(kz_proplist(), kz_proplist(), ne_binary(), kz_json:objects()) -> kz_json:objects().
+-spec update_views_fold(kz_proplist(), kz_proplist(), ne_binary(), kz_json:objects()) ->
+                               kz_json:objects().
 update_views_fold(CurrentViews, NewViews, Id, Acc) ->
     NewView = props:get_value(Id, NewViews),
     CurrentView = props:get_value(Id, CurrentViews),

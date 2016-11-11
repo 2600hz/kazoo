@@ -136,17 +136,17 @@ verb(Hook, Default) ->
 
 -spec safe_verbs(api_binary(), http_verb() | Default) ->
                         http_verb() | Default.
-safe_verbs(<<"get">>, _Default) -> 'get';
-safe_verbs(<<"post">>, _Default) -> 'post';
+safe_verbs(<<"get">>, _Default) -> <<"get">>;
+safe_verbs(<<"post">>, _Default) -> <<"post">>;
 safe_verbs(_Verb, Default) -> Default.
 
 -spec set_verb(doc(), ne_binary() | http_verb()) -> doc().
 set_verb(Hook, <<_/binary>> = Verb) ->
-    kz_json:set_value(?VERB, safe_verbs(Verb, 'get'), Hook);
+    kz_json:set_value(?VERB, safe_verbs(Verb, <<"get">>), Hook);
 set_verb(Hook, Verb) when Verb =:= 'get'
                           orelse Verb =:= 'post'
                           ->
-    kz_json:set_value(?VERB, Verb, Hook).
+    kz_json:set_value(?VERB, kz_util:to_binary(Verb), Hook).
 
 -type retry_range() :: 1..5.
 

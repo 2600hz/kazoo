@@ -35,8 +35,8 @@ fetch(Numbers) when is_list(Numbers)->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prefix(ne_binary(), ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
-                                                       {'error', kz_json:object()}.
+-spec prefix(text(), text(), text()) -> {'ok', kz_json:object()} |
+                                        {'error', kz_json:object()}.
 prefix(Url, Country, City) ->
     ReqParam = kz_util:uri_encode(City),
     Uri = lists:flatten([Url, "/", Country, "/city?pattern=", ReqParam]),

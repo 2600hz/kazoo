@@ -276,7 +276,7 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 read_ledgers(Context) ->
     case kz_ledgers:get(cb_context:account_id(Context)) of
         {'error', Reason} ->
-            crossbar_util:response('error', Reason, Context);
+            crossbar_util:response('error', kz_util:to_binary(Reason), Context);
         {'ok', Ledgers} ->
             crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
     end.

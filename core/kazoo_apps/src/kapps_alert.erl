@@ -43,11 +43,11 @@ fetch(AlertId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
+-spec create(ne_binary(), ne_binary(), kz_json:objects(), kz_json:objects()) ->
                     {'ok', kzd_alert:doc()} |
                     {'error', any()}.
--spec create(ne_binary(), ne_binary(), kz_json:object()
-            ,kz_json:object(), kz_proplist()
+-spec create(ne_binary(), ne_binary(), kz_json:objects()
+            ,kz_json:objects(), kz_proplist()
             ) ->
                     {'ok', kz_json:object()} |
                     {'required', ne_binary()} |

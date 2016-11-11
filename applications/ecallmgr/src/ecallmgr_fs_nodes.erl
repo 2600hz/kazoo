@@ -111,10 +111,12 @@ start_link() ->
 
 add(Node) -> add(Node, []).
 
-add(Node, Opts) when is_list(Opts) -> add(Node, erlang:get_cookie(), Opts);
-add(Node, Cookie) when is_atom(Cookie) -> add(Node, Cookie, [{'cookie', Cookie}]).
+add(Node, Opts) when is_list(Opts) ->
+    add(Node, erlang:get_cookie(), Opts);
+add(Node, Cookie) when is_atom(Cookie) ->
+    add(Node, Cookie, [{'cookie', Cookie}]).
 
-add(Node, Cookie, Opts) ->
+add(Node, Cookie, Opts) when is_atom(Node) ->
     gen_server:call(?SERVER
                    ,{'add_fs_node'
                     ,Node
@@ -127,11 +129,13 @@ add(Node, Cookie, Opts) ->
                    ).
 
 -spec nodeup(atom()) -> 'ok'.
-nodeup(Node) -> gen_server:cast(?SERVER, {'fs_nodeup', Node}).
+nodeup(Node) when is_atom(Node) ->
+    gen_server:cast(?SERVER, {'fs_nodeup', Node}).
 
 %% returns 'ok' or {'error', some_error_atom_explaining_more}
 -spec remove(atom()) -> 'ok'.
-remove(Node) -> gen_server:cast(?SERVER, {'rm_fs_node', Node}).
+remove(Node) when is_atom(Node) ->
+    gen_server:cast(?SERVER, {'rm_fs_node', Node}).
 
 -spec connected() -> atoms() | kz_proplist_kv(atom(), gregorian_seconds()).
 connected() ->
@@ -162,12 +166,13 @@ do_flush(Args) ->
     'ok'.
 
 -spec is_node_up(atom()) -> boolean().
-is_node_up(Node) -> gen_server:call(?SERVER, {'is_node_up', Node}).
+is_node_up(Node) when is_atom(Node) ->
+    gen_server:call(?SERVER, {'is_node_up', Node}).
 
--spec sip_url(text()) -> api_binary().
+-spec sip_url(atom() | text()) -> api_binary().
 sip_url(Node) when not is_atom(Node) ->
     sip_url(kz_util:to_atom(Node, 'true'));
-sip_url(Node) ->
+sip_url(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                  ,ecallmgr_fs_node:fs_node(Srv) =:= Node
@@ -177,10 +182,10 @@ sip_url(Node) ->
         _Else -> 'undefined'
     end.
 
--spec sip_external_ip(text()) -> api_binary().
+-spec sip_external_ip(atom() | text()) -> api_binary().
 sip_external_ip(Node) when not is_atom(Node) ->
     sip_external_ip(kz_util:to_atom(Node, 'true'));
-sip_external_ip(Node) ->
+sip_external_ip(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_external_ip(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
                  ,ecallmgr_fs_node:fs_node(Srv) =:= Node
@@ -199,14 +204,14 @@ summary() ->
     print_summary(gen_server:call(?SERVER, 'nodes')).
 
 -spec details() -> 'ok'.
--spec details(text()) -> 'ok'.
+-spec details(text() | atom()) -> 'ok'.
 
 details() ->
     print_details(gen_server:call(?SERVER, 'nodes')).
 
 details(NodeName) when not is_atom(NodeName) ->
     details(kz_util:to_atom(NodeName, 'true'));
-details(NodeName) ->
+details(NodeName) when is_atom(NodeName) ->
     case gen_server:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
             io:format("Node ~s not found!~n", [NodeName]);

@@ -326,14 +326,14 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_auth_doc(context(), kz_json:object()) -> context().
 -spec set_auth_account_id(context(), ne_binary()) -> context().
 -spec set_req_verb(context(), http_method()) -> context().
--spec set_req_data(context(), kz_json:object() | ne_binary()) -> context().
+-spec set_req_data(context(), kz_json:json_term()) -> context().
 -spec set_req_files(context(), req_files()) -> context().
 -spec set_req_nouns(context(), req_nouns()) -> context().
 -spec set_req_headers(context(), cowboy:http_headers()) -> context().
 -spec set_req_header(context(), ne_binary(), iodata()) -> context().
 -spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
--spec set_doc(context(), api_object() | kz_json:objects()) -> context().
+-spec set_doc(context(), kz_json:api_json_term() | kz_json:objects()) -> context().
 -spec set_load_merge_bypass(context(), api_binary()) -> context().
 -spec set_start(context(), kz_now()) -> context().
 -spec set_resp_file(context(), api_binary()) -> context().

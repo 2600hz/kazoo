@@ -38,7 +38,7 @@ migrate() ->
 
 i_understand_migrate() ->
     lager:info("migrating trunkstore information from the ts database"),
-    case kz_datamgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, [{<<"include_docs">>, 'true'}]) of
+    case kz_datamgr:get_results(?TS_DB, <<"ts_accounts/crossbar_listing">>, ['include_docs']) of
         {'error', 'not_found'} ->
             lager:info("ts database not found or ts_account/crossbar_listing view missing");
         {'ok', TSAccts} ->
@@ -106,13 +106,14 @@ create_credit_doc(AcctDB, AcctID, TSJObj) ->
     kz_datamgr:save_doc(AcctDB, Transaction).
 
 account_exists_with_realm(Realm) ->
-    ViewOptions = [{<<"key">>, kz_util:to_lower_binary(Realm)}],
+    ViewOptions = [{'key', kz_util:to_lower_binary(Realm)}],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_realm">>, ViewOptions) of
         {'ok', []} -> 'false';
         {'ok', [AcctObj]} ->
             {'true'
             ,kz_json:get_value([<<"value">>, <<"account_db">>], AcctObj)
-            ,kz_json:get_value([<<"value">>, <<"account_id">>], AcctObj)};
+            ,kz_json:get_value([<<"value">>, <<"account_id">>], AcctObj)
+            };
         {'error', _E} ->
             lager:info("failed to lookup account view: ~p", [_E]),
             'ignore'
@@ -194,11 +195,11 @@ set_classifier_action(Action, Classifier, UserR) ->
     case lists:member(Classifier, kz_json:get_keys(Classifiers)) of
         'false' ->
             io:format("\nNo ~p classifier among configured classifiers ~p\n", [Classifier, kz_json:get_keys(Classifiers)]),
-            exit(no_such_classifier);
+            exit('no_such_classifier');
         _ ->
             io:format("  ... found\n")
     end,
-    [User, Realm] = re:split(UserR, <<"@">>, [{return,binary},{parts,2}]),
+    [User, Realm] = re:split(UserR, <<"@">>, [{'return','binary'},{'parts',2}]),
     case account_exists_with_realm(Realm) of
         {'true', AcctDB, AcctID} ->
             {'ok', Opts} = ts_util:lookup_user_flags(User, Realm, AcctID),

@@ -394,12 +394,14 @@ default_from_address(JObj, ConfigCat) ->
 default_reply_to(ConfigCat) ->
     default_reply_to(kz_json:new(), ConfigCat).
 default_reply_to(JObj, ConfigCat) ->
-    default_system_value(JObj, ConfigCat
-                        ,<<"reply_to">>, <<"default_reply_to">>
+    default_system_value(JObj
+                        ,ConfigCat
+                        ,<<"reply_to">>
+                        ,<<"default_reply_to">>
                         ,'undefined'
                         ).
 
--spec default_system_value(kz_json:object(), ne_binary(), kz_json:path(), kz_json:path(), kz_json:json_term()) ->
+-spec default_system_value(kz_json:object(), ne_binary(), kz_json:path(), kz_json:path(), kz_json:api_json_term()) ->
                                   kz_json:json_term().
 default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
     case kz_json:get_ne_value(JSONKey, JObj) of

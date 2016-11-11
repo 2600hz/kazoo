@@ -24,7 +24,7 @@ handle_eavesdrop_req(JObj, _Props) ->
                       )
     of
         {'ok', EPs} -> send_eavesdrop(JObj, EPs, AccountId);
-        {'error', E} -> respond_error(JObj, E)
+        {'error', E} -> respond_error(JObj, kz_util:to_binary(E))
     end.
 
 -spec get_endpoints(ne_binary(), ne_binary()) ->

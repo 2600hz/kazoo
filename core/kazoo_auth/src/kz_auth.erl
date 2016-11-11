@@ -23,11 +23,15 @@
 create_token(Claims) ->
     kz_auth_jwt:encode(include_claims(Claims)).
 
--spec validate_token(ne_binary() | map()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec validate_token(ne_binary() | map()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', any()}.
 validate_token(Token) ->
     validate_token(Token, []).
 
--spec validate_token(ne_binary() | map(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec validate_token(ne_binary() | map(), kz_proplist()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', any()}.
 validate_token(JWToken, Options) ->
     case kz_auth_jwt:token(JWToken) of
         #{verify_result := 'true'} = Token -> validate_claims(Token, Options);
@@ -35,14 +39,18 @@ validate_token(JWToken, Options) ->
         Error -> Error
     end.
 
--spec access_code(kz_json:object()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec access_code(kz_json:object()) ->
+                         {'ok', kz_json:object()} |
+                         {'error', any()}.
 access_code(JObj) ->
     Code = kz_json:get_value(<<"code">>, JObj),
     AppId = kz_json:get_first_defined(?APPID_KEYS, JObj),
     RedirectURI = kz_json:get_first_defined(?REDIRECT_URI_KEYS, JObj, <<"postmessage">>),
     kz_auth_util:fetch_access_code(AppId, Code, RedirectURI).
 
--spec authenticate(map() | ne_binary() | kz_json:object()) -> {'ok', kz_proplist()} | {'error', any()}.
+-spec authenticate(map() | ne_binary() | kz_json:object()) ->
+                          {'ok', kz_proplist()} |
+                          {'error', any()}.
 authenticate(JWTToken)
   when is_binary(JWTToken) ->
     case kz_auth_jwt:token(JWTToken) of

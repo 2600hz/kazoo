@@ -114,18 +114,22 @@ fetch_reply(Node, FetchID, Section, Reply, Timeout) ->
             {'error', 'exception'}
     end.
 
+-spec api(atom(), text(), list(), kz_timeout()) ->
+                 {'ok', binary()} |
+                 {'error', atom()}.
 api(Node, Cmd) ->
     api(Node, Cmd, "").
 api(Node, Cmd, Args) ->
     api(Node, Cmd, Args, ?TIMEOUT).
-api(Node, Cmd, Args, Timeout) ->
+api(Node, Cmd, Args, Timeout) when is_atom(Node) ->
     try gen_server:call({'mod_kazoo', Node}, {'api', Cmd, Args}, Timeout) of
         'timeout' -> {'error', 'timeout'};
         Result -> Result
     catch
         _E:_R ->
             lager:info("failed to execute api command ~s on ~s: ~p ~p"
-                      ,[Cmd, Node, _E, _R]),
+                      ,[Cmd, Node, _E, _R]
+                      ),
             {'error', 'exception'}
     end.
 
