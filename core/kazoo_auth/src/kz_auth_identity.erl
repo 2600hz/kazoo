@@ -114,9 +114,24 @@ get_identity_secret(#{auth_db := Db
                      ,auth_db_id := Key
                      }=Token) ->
     case kz_datamgr:open_cache_doc(Db, Key) of
-        {'ok', JObj} -> check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)});
+        {'ok', JObj} -> check_cache_expiration(Token, JObj);
         {'error', 'not_found'} -> from_profile(Token)
     end.
+
+-spec check_cache_expiration(map(), kz_json:object()) -> map() | {'error', any()}.
+check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
+                                           ,cached_profile_claim_field := Claim
+                                           }
+                        ,payload := Claims
+                        }=Token, JObj) ->
+    ClaimValue = maps:get(Claim, Claims, 'undefined'),
+    ProfileValue = kz_json:get_value([<<"profile">>, ProfileField], JObj),
+    case ClaimValue >= ProfileValue of
+        'true' -> from_profile(Token);
+        'false' -> check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)})
+    end;
+check_cache_expiration(#{}=Token, JObj) ->
+    check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
 
 -spec check_secret(map()) -> map() | {'error', any()}.
 check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
