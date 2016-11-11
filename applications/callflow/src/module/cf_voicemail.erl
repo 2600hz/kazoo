@@ -1663,7 +1663,8 @@ store_recording(AttachmentName, _Length, DocId, Box, Call) ->
             {'error', kapps_call:kvs_store('error_details', {'error', E}, Call1)}
     end.
 
--spec get_new_attachment_url(ne_binary(), ne_binary(), mailbox(), kapps_call:call()) -> ne_binary().
+-spec get_new_attachment_url(ne_binary(), ne_binary(), mailbox(), kapps_call:call()) ->
+                                    ne_binary().
 get_new_attachment_url(AttachmentName, MediaId, #mailbox{owner_id=OwnerId}, Call) ->
     AccountDb = kapps_call:account_db(Call),
     _ = case kz_datamgr:open_doc(AccountDb, MediaId) of

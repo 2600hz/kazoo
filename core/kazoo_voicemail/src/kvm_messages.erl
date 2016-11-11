@@ -246,7 +246,7 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
+                             kz_json:object().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->

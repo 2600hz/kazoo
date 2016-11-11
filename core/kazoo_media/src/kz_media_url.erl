@@ -54,19 +54,22 @@ playback(Doc, JObj) ->
         Media -> kz_media_file:get_uri(Media, JObj)
     end.
 
--spec store(kz_json:object(), ne_binary()) -> build_media_url_ret().
+-spec store(kz_json:object(), ne_binary()) ->
+                   build_media_url_ret().
+-spec store(ne_binary(), kazoo_data:docid(), ne_binary()) ->
+                   build_media_url_ret().
+-spec store(ne_binary(), kazoo_data:docid(), ne_binary(), kz_proplist()) ->
+                   build_media_url_ret().
 store(JObj, AName) ->
     case kz_media_util:store_path_from_doc(JObj, AName) of
         {'error', _} = Error -> Error;
         Media -> kz_media_file:get_uri(Media, ?STREAM_TYPE_STORE)
     end.
 
--spec store(ne_binary(), kazoo_data:docid(), ne_binary()) -> build_media_url_ret().
 store(Db, Id, Attachment) ->
     store(Db, Id, Attachment, []).
 
--spec store(ne_binary(), kazoo_data:docid(), ne_binary(), kz_proplist()) -> build_media_url_ret().
 store(Db, {Type, Id}, Attachment, Options) ->
     store(Db, Id, Attachment, [{'doc_type', Type} | Options]);
-store(Db, Id, Attachment, Options) ->
+store(Db, ?NE_BINARY = Id, Attachment, Options) ->
     kz_media_file:get_uri([Db, Id, Attachment, Options], ?STREAM_TYPE_STORE).

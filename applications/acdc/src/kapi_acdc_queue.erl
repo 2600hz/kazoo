@@ -198,7 +198,7 @@ member_call_result_routing_key(Props) when is_list(Props) ->
 member_call_result_routing_key(JObj) ->
     AcctId = kz_json:get_value(<<"Account-ID">>, JObj),
     QueueId = kz_json:get_value(<<"Queue-ID">>, JObj, <<"*">>),
-    CallId = props:get_value(<<"Call-ID">>, JObj, <<"#">>),
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj, <<"#">>),
     member_call_result_routing_key(AcctId, QueueId, CallId).
 
 member_call_result_routing_key(AcctId, QueueId, CallId) ->

@@ -162,7 +162,7 @@ init([Call, Data]) ->
     CdrId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), CallId),
     RecordingId = kz_util:rand_hex_binary(16),
     DocId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), RecordingId),
-    InteractionId = kapps_call:custom_channel_var(?CALL_INTERACTION_ID, Call),
+    InteractionId = kapps_call:custom_channel_var(<<?CALL_INTERACTION_ID>>, Call),
     DefaultMediaName = get_media_name(kz_util:rand_hex_binary(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_value(<<"url">>, Data),

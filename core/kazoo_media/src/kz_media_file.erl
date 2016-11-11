@@ -99,7 +99,7 @@ proxy_uri(JObj, #media_store_path{db = Db
 
 
 
--spec find_attachment(ne_binaries() | ne_binary()) ->
+-spec find_attachment(ne_binaries() | ne_binary() | kz_proplist()) ->
                              {'ok', media_store_path()} |
                              {'error', 'not_found'}.
 find_attachment(Media) when is_binary(Media) ->

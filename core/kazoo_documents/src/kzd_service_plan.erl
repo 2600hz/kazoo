@@ -147,19 +147,18 @@ item_name(Plan, CategoryId, ItemId) ->
        )
      ).
 
--spec item_exceptions(doc(), ne_binary(), ne_binary()) -> ne_binary().
--spec item_exceptions(doc(), ne_binary(), ne_binary(), ne_binaries()) -> ne_binary().
+-spec item_exceptions(doc(), ne_binary(), ne_binary()) ->
+                             ne_binaries().
+-spec item_exceptions(doc(), ne_binary(), ne_binary(), ne_binaries()) ->
+                             ne_binaries().
 item_exceptions(Plan, CategoryId, ItemId) ->
     item_exceptions(Plan, CategoryId, ItemId, []).
 item_exceptions(Plan, CategoryId, ItemId, Default) ->
-    kzd_item_plan:exceptions(
-      kz_json:get_json_value(
-        [?PLAN, CategoryId, ItemId]
-                            ,Plan
-                            ,kz_json:new()
-       )
-                            ,Default
-     ).
+    Item = kz_json:get_json_value([?PLAN, CategoryId, ItemId]
+                                 ,Plan
+                                 ,kz_json:new()
+                                 ),
+    kzd_item_plan:exceptions(Item, Default).
 
 -spec item_plan(doc(), ne_binary(), ne_binary()) -> kz_json:object().
 -spec item_plan(doc(), ne_binary(), ne_binary(), Default) -> kz_json:object() | Default.

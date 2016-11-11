@@ -376,8 +376,9 @@ dump(_, [NumberDb|NumberDbs]) ->
             ,ne_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary()
-            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()) ->
-                    task_return().
+            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
+            ) ->
+                    {task_return(), sets:set()}.
 import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
@@ -386,7 +387,8 @@ import(Props, AccountIds
       ,E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
       ,CNAMInbound0, CNAMOutbound
-      ,E911PostalCode, E911StreetAddress, E911ExtendedAddress, E911Locality, E911Region) ->
+      ,E911PostalCode, E911StreetAddress, E911ExtendedAddress, E911Locality, E911Region
+      ) ->
     %%TODO: use all the optional fields
     AccountId = case AccountId0 of
                     'undefined' -> props:get_value('account_id', Props);
