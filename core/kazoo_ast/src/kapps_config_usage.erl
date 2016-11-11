@@ -16,7 +16,6 @@
 to_schema_docs() ->
     to_schema_docs(process_project()).
 
--spec to_schema_docs(kz_json:objects()) -> ok.
 to_schema_docs(Schemas) ->
     kz_json:foreach(fun update_schema/1, Schemas).
 
