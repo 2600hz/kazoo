@@ -172,7 +172,9 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
 %%%===================================================================
 
 %% @private
--spec help(ne_binary(), ne_binary()) -> kz_json:object().
+-spec help(ne_binary(), ne_binary()) ->
+                  kz_json:object() |
+                  {'error', 'unknown_category_action'}.
 help(Category, Action) ->
     Req = props:filter_undefined(
             [{<<"Category">>, Category}

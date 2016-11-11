@@ -199,7 +199,7 @@ zone(IP) -> kz_json:get_value(<<"pvt_zone">>, IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec modified(ip()) -> ne_binary().
+-spec modified(ip()) -> api_integer().
 modified(IP) -> kz_doc:modified(IP).
 
 %%--------------------------------------------------------------------
@@ -208,7 +208,7 @@ modified(IP) -> kz_doc:modified(IP).
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec created(ip()) -> ne_binary().
+-spec created(ip()) -> api_integer().
 created(IP) -> kz_doc:created(IP).
 
 %%--------------------------------------------------------------------

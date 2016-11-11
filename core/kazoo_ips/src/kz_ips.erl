@@ -93,7 +93,7 @@ assigned(Account) ->
                    {'ok', ne_binaries()} |
                    {'error', any()}.
 zones() ->
-    ViewOptions = [{'group', 'true'}
+    ViewOptions = ['group'
                   ,{'group_level', 1}
                   ],
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
@@ -122,7 +122,7 @@ zones() ->
                    {'ok', ne_binaries()} |
                    {'error', any()}.
 hosts() ->
-    ViewOptions = [{'group', 'true'}
+    ViewOptions = ['group'
                   ,{'group_level', 1}
                   ],
     case kz_datamgr:get_results(?KZ_DEDICATED_IP_DB
