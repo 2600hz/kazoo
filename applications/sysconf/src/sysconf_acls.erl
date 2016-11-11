@@ -63,7 +63,7 @@ collect(ACLs, PidRefs, Timeout) ->
 
 -spec system_config_acls(ne_binary()) -> acls().
 system_config_acls(Node) ->
-    kapps_config:get(<<"ecallmgr">>, <<"acls">>, kz_json:new(), Node).
+    kapps_config:get_current(<<"ecallmgr">>, <<"acls">>, kz_json:new(), Node).
 
 -spec sip_auth_ips(pid()) -> 'ok'.
 sip_auth_ips(Collector) ->
