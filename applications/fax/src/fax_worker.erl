@@ -446,7 +446,7 @@ handle_cast('move_doc', #state{account_id=AccountId
                               ,job=JObj
                               ,move_retry=?MAX_MOVE_RETRY
                               } = State) ->
-    Props = kz_json:recursive_to_proplist(JObj),
+    Props = kz_json:to_proplist(JObj),
     kz_notify:detailed_alert(?MAX_MOVE_NOTIFY_MSG, [JobId, AccountId], Props),
     gen_listener:cast(self(), 'notify'),
     {'noreply', State};
