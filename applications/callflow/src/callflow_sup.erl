@@ -24,6 +24,7 @@
 
 -define(ORIGIN_BINDINGS, [[{'type', <<"account">>}]
                          ,[{'type', <<"user">>}]
+                         ,[{'type', <<"callflow">>}]
                          ,[{'type', <<"device">>}]
                          ,[{'type', <<"parked_calls">>}]
                          ,[{'doc_id', ?MANUAL_PRESENCE_DOC}]
