@@ -838,7 +838,8 @@ content_type_matched_json(CT, Type, <<"prefix">> = Field) ->
         {_, _} -> <<>>
     end.
 
--spec maybe_process_image(ne_binary(), binary() | mimemail:mimetyple(), state()) -> {'ok', state()}.
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), state()) ->
+                                 {'ok', state()}.
 maybe_process_image(CT, Body, State) ->
     case kapps_config:get_binary(?CONFIG_CAT, <<"image_min_size">>, <<"700x10">>) of
         'undefined' ->
@@ -848,7 +849,8 @@ maybe_process_image(CT, Body, State) ->
             maybe_process_image(CT, Body, Size, State)
     end.
 
--spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) -> {'ok', state()}.
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) ->
+                                 {'ok', state()}.
 maybe_process_image(CT, Body, Size, State) ->
     {MinX, MinY} = case re:split(Size, "x") of
                        [P] -> {kz_util:to_integer(P), kz_util:to_integer(P)};
