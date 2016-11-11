@@ -218,22 +218,22 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
 
 -spec copy_to_vmboxes(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), dict:dict()) ->
                              dict:dict().
-copy_to_vmboxes(_, _, _, [], ResDict) -> ResDict;
-copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], Copied) ->
+copy_to_vmboxes(_, _, _, [], CopiedDict) -> CopiedDict;
+copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], CopiedDict) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
 
     Funs = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
     Id = kz_doc:id(JObj),
-    NewCopied = case do_copy(AccountId, JObj, Funs) of
-                    {'ok', CopiedJObj} ->
-                        NewId = kz_doc:id(CopiedJObj),
-                        dict:append(<<"succeeded">>, NewId, Copied);
-                    {'error', R} ->
-                        Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}]),
-                        dict:append(<<"failed">>, Failed, Copied)
-                end,
-    copy_to_vmboxes(AccountId, JObj, OldBoxId, NBIds, NewCopied).
+    NewCopiedDict = case do_copy(AccountId, JObj, Funs) of
+                        {'ok', CopiedJObj} ->
+                            NewId = kz_doc:id(CopiedJObj),
+                            dict:append(<<"succeeded">>, NewId, CopiedDict);
+                        {'error', R} ->
+                            Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}]),
+                            dict:append(<<"failed">>, Failed, CopiedDict)
+                    end,
+    copy_to_vmboxes(AccountId, JObj, OldBoxId, NBIds, NewCopiedDict).
 
 -spec do_copy(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
 do_copy(AccountId, JObj, Funs) ->

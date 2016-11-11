@@ -244,19 +244,23 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
-                             dict:dict().
+                             kz_json:object().
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
                              dict:dict().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, dict:new()).
+    kz_json:from_list(
+      dict:to_list(
+        copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, dict:new())
+       )
+     ).
 
-copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, Copied) ->
-    lists:foldl(fun(Id, Acc) ->
-                        kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, Acc)
+copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds, CopiedDict) ->
+    lists:foldl(fun(Id, AccDict) ->
+                        kvm_message:copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, AccDict)
                 end
-               ,Copied
+               ,CopiedDict
                ,Ids
                ).
 
