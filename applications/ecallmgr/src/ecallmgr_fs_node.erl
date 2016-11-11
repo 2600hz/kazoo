@@ -460,10 +460,10 @@ code_change(_OldVsn, State, _Extra) ->
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), kz_proplist()) -> pid_ref().
+-spec run_start_cmds(atom(), kz_proplist(), pid()) -> any().
 run_start_cmds(Node, Options) ->
     kz_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
--spec run_start_cmds(atom(), kz_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
     kz_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
@@ -511,8 +511,7 @@ run_start_cmds(Node, Options, Parent, 'false') ->
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
-    case
-        is_list(Res)
+    case is_list(Res)
         andalso [R || R <- Res, was_not_successful_cmd(R)]
     of
         [] -> sync(Parent);
