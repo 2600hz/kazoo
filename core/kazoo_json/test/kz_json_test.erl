@@ -24,7 +24,7 @@ is_json_object_proper_test_() ->
     ,{'timeout'
      ,10000
      ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
-                                                ,{'numtests', 1500}
+                                                ,{'numtests', 500}
                                                 ]
                                       ))
       ]
