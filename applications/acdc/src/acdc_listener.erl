@@ -28,7 +28,7 @@
 -type state() :: #state{}.
 
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
+-define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}]}
                   ,{'self', []}
                   ,{'conf', [{'doc_type', <<"queue">>}
                             ,{'action', <<"created">>}
