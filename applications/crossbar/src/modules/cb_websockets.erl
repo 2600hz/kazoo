@@ -31,6 +31,8 @@
               ,?TO_JSON(<<"call.CHANNEL_ANSWER.*">>, <<"CHANNEL_ANSWER">>)
               ,?TO_JSON(<<"call.CHANNEL_DESTROY.*">>, <<"CHANNEL_DESTROY">>)
               ,?TO_JSON(<<"call.CHANNEL_BRIDGE.*">>, <<"CHANNEL_BRIDGE">>)
+              ,?TO_JSON(<<"call.CHANNEL_HOLD.*">>, <<"CHANNEL_HOLD">>)
+              ,?TO_JSON(<<"call.CHANNEL_UNHOLD.*">>, <<"CHANNEL_UNHOLD">>)
               ]).
 
 -define(OBJECTS,
