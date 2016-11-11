@@ -110,7 +110,6 @@ resource_exists(?TRANSACTIONS_PATH_TOKEN, _) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 %% CUSTOMER API
 validate(Context, ?CUSTOMER_PATH_TOKEN) ->
     validate_customer(Context, cb_context:req_verb(Context));

@@ -101,6 +101,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}

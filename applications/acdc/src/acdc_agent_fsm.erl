@@ -1313,6 +1313,7 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
 handle_event({'agent_logout'}=Event, StateName, #state{agent_state_updates=Queue}=State) ->
     case valid_state_for_logout(StateName) of
         'true' -> handle_agent_logout(State);
