@@ -11,7 +11,7 @@
 -export([new/0
         ,type/0
         ,id/1
-        ,fetch/1
+        ,fetch/1, fetch/2
 
         ,name/1, name/2, set_name/2
         ,realm/1, realm/2, set_realm/2
@@ -111,9 +111,18 @@ id(JObj) ->
 fetch('undefined') ->
     {'error', 'invalid_db_name'};
 fetch(<<_/binary>> = Account) ->
+    fetch(Account, 'account').
+
+-spec fetch(api_binary(), 'account' | 'accounts') -> {'ok', doc()} |
+                                                     {'error', any()}.
+fetch('undefined', _) ->
+    {'error', 'invalid_db_name'};
+fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']).
+    kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']);
+fetch(AccountId, 'accounts') ->
+    kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, ['cache_failures']).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -514,8 +523,8 @@ trial_time_left(JObj, Now) ->
 trial_has_expired(JObj) ->
     trial_has_expired(JObj, kz_util:current_tstamp()).
 trial_has_expired(JObj, Now) ->
-    trial_expiration(JObj) =/= 'undefined' andalso
-        trial_time_left(JObj, Now) =< 0.
+    trial_expiration(JObj) =/= 'undefined'
+        andalso trial_time_left(JObj, Now) =< 0.
 
 %%--------------------------------------------------------------------
 %% @public

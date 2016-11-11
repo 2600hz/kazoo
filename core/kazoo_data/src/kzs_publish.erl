@@ -158,8 +158,8 @@ doc_change_event_name(Action, 'false') ->
 -spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->
     case kz_doc:account_id(Doc) of
-        'undefined' -> maybe_account_id_from_db(kzs_util:db_classification(Db), Db);
-        AccountId -> AccountId
+        ?MATCH_ACCOUNT_RAW(AccountId) -> AccountId;
+        _ -> maybe_account_id_from_db(kzs_util:db_classification(Db), Db)
     end.
 
 -spec maybe_account_id_from_db(atom(), ne_binary()) -> api_binary().
