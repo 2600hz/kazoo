@@ -86,7 +86,7 @@ allowed_features(PhoneNumber) ->
 maybe_fix_e911(Features) ->
     E911 = [<<"dash_e911">>, <<"vitelity_e911">>],
     case lists:any(fun(F) -> lists:member(F, Features) end, E911) of
-        'true' -> Features -- E911 ++ [<<"e911">>];
+        'true' -> Features ++ [<<"e911">>];
         'false' -> Features
     end.
 %%--------------------------------------------------------------------
