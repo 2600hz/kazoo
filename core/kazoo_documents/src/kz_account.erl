@@ -523,8 +523,8 @@ trial_time_left(JObj, Now) ->
 trial_has_expired(JObj) ->
     trial_has_expired(JObj, kz_util:current_tstamp()).
 trial_has_expired(JObj, Now) ->
-    trial_expiration(JObj) =/= 'undefined' andalso
-        trial_time_left(JObj, Now) =< 0.
+    trial_expiration(JObj) =/= 'undefined'
+        andalso trial_time_left(JObj, Now) =< 0.
 
 %%--------------------------------------------------------------------
 %% @public
