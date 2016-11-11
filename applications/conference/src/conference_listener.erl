@@ -25,7 +25,7 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'route', [{'restrict_to', ?RESOURCE_TYPES_HANDLED}]}
+-define(BINDINGS, [{'route', [{'types', ?RESOURCE_TYPES_HANDLED}]}
                   ,{'self', []}
                   ]).
 -define(RESPONDERS, [{'conf_route_req', [{<<"dialplan">>, <<"route_req">>}]}
