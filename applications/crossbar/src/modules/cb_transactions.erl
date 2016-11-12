@@ -411,29 +411,36 @@ validate_debit(Context, 'undefined') ->
      );
 validate_debit(Context, Amount) when Amount =< 0 ->
     Message = <<"Amount must be more than 0">>,
-    cb_context:add_validation_error(
-      <<"amount">>
+    cb_context:add_validation_error(<<"amount">>
                                    ,<<"minimum">>
                                    ,kz_json:from_list([{<<"message">>, Message}])
                                    ,Context
-     );
+                                   );
 validate_debit(Context, Amount) ->
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    AuthAccountId = cb_context:auth_account_id(Context),
     AccountId = cb_context:account_id(Context),
-    FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
-    case FuturAmount < 0 of
-        'false' ->
-            cb_context:set_resp_status(Context, 'success');
+    case AuthAccountId == MasterAccountId
+        orelse AuthAccountId == kz_services:find_reseller_id(AccountId)
+    of
         'true' ->
-            Message = <<"Available credit can not be less than 0">>,
-            cb_context:add_validation_error(
-              <<"amount">>
-                                           ,<<"minimum">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, Message}
-                                              ,{<<"cause">>, FuturAmount}
-                                              ])
-                                           ,Context
-             )
+            cb_context:set_resp_status(Context, 'success');
+        'false' ->
+            FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
+            case FuturAmount < 0 of
+                'false' ->
+                    cb_context:set_resp_status(Context, 'success');
+                'true' ->
+                    Message = <<"Available credit can not be less than 0">>,
+                    cb_context:add_validation_error(<<"amount">>
+                                                   ,<<"minimum">>
+                                                   ,kz_json:from_list(
+                                                      [{<<"message">>, Message}
+                                                      ,{<<"cause">>, FuturAmount}
+                                                      ])
+                                                   ,Context
+                                                   )
+            end
     end.
 
 %%--------------------------------------------------------------------
