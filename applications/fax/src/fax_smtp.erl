@@ -36,12 +36,12 @@
 
 -define(ERROR_NO_VALID_ATTACHMENT, <<"no valid attachment">>).
 
--record(state, {options = [] :: list()
-               ,from :: binary()
-               ,to :: binary()
-               ,doc :: api_object()
+-record(state, {options = [] :: kz_proplist()
+               ,from :: api_ne_binary()
+               ,to :: api_ne_binary()
+               ,doc :: kz_json:object()
                ,filename :: file:filename_all()
-               ,content_type :: binary()
+               ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
                ,owner_email :: api_binary()
@@ -473,9 +473,12 @@ check_permissions(#state{from=From
 -spec check_empty_permissions(state()) ->
                                      {'ok', state()} |
                                      {'error', string(), state()}.
-check_empty_permissions(#state{errors=Errors}=State) ->
+check_empty_permissions(#state{errors=Errors
+                              ,doc=Doc
+                              }=State) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"allow_all_addresses_when_empty">>, 'false') of
-        'true' -> add_fax_document(State);
+        'true' when Doc =:= 'undefined' -> add_fax_document(State);
+        'true' -> State;
         'false' ->
             Error = <<"faxbox permissions is empty and policy doesn't allow it">>,
             lager:debug(Error),
@@ -622,8 +625,8 @@ maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
 -spec add_fax_document(state()) ->
                               {'ok', state()} |
                               {'error', string(), state()}.
-add_fax_document(#state{doc='undefined'
-                       ,from=From
+
+add_fax_document(#state{from=From
                        ,owner_email=OwnerEmail
                        ,number=FaxNumber
                        ,faxbox=FaxBoxDoc
@@ -677,10 +680,7 @@ add_fax_document(#state{doc='undefined'
                             ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
                             ),
     lager:debug("added fax document from smtp : ~p", [Doc]),
-    {'ok', State#state{doc=Doc}};
-add_fax_document(#state{doc=Doc}=State) ->
-    lager:debug("add fax document called but already has a doc : ~p", [Doc]),
-    {'ok', State}.
+    {'ok', State#state{doc=Doc}}.
 
 %% ====================================================================
 %% Internal functions
