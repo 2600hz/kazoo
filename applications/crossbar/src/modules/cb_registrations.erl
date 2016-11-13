@@ -26,6 +26,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_sip/include/kzsip_uri.hrl").
 
 -define(MASK_REG_FIELDS, [<<"Account-DB">>
                          ,<<"Account-ID">>
@@ -198,36 +199,24 @@ merge_response(JObj, Regs) ->
                         end
                 end, Regs, kz_json:get_value(<<"Fields">>, JObj, [])).
 
+-spec maybe_default_port(integer(), nklib:scheme(), api_binary()) -> integer().
+maybe_default_port(0, 'sips', _) -> 5061;
+maybe_default_port(0, 'sip', <<"TLS">>) -> 5061;
+maybe_default_port(0, 'sip', <<"tls">>) -> 5061;
+maybe_default_port(0, 'sip', _) -> 5060;
+maybe_default_port(Port, _, _) -> Port.
+
 -spec normalize_registration(kz_json:object()) -> kz_json:object().
 normalize_registration(JObj) ->
-    Contact = kz_json:get_binary_value(<<"Contact">>, JObj, <<>>),
+    OriginalContact = kz_json:get_binary_value(<<"Original-Contact">>, JObj, <<>>),
+    [#uri{scheme=Scheme,domain=Domain, port=Port, ext_opts=Opts}=_Uri] = kzsip_uri:uris(OriginalContact),
+    Transport = props:get_binary_value(<<"transport">>, Opts),
     Updaters = [fun(J) -> kz_json:delete_keys(?MASK_REG_FIELDS, J) end
                ,fun(J) ->
-                        case re:run(Contact, "sip:[^@]+@(.*?):([0-9]+)", [{'capture', [1, 2], 'binary'}]) of
-                            {'match',[Ip, Port]} ->
-                                kz_json:set_value(<<"Contact-IP">>, Ip
-                                                 ,kz_json:set_value(<<"Contact-Port">>, Port, J)
-                                                 );
-                            _Else -> J
-                        end
-                end
-               ,fun(J) ->
-                        case re:run(Contact, "received=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
-                            {'match',[Ip, Port]} ->
-                                kz_json:set_value(<<"Received-IP">>, Ip
-                                                 ,kz_json:set_value(<<"Received-Port">>, Port, J)
-                                                 );
-                            _Else -> J
-                        end
-                end
-               ,fun(J) ->
-                        case re:run(Contact, "fs_path=sip:([^:;]+):?([0-9]+)?", [{'capture', [1, 2], 'binary'}]) of
-                            {'match',[Ip, Port]} ->
-                                kz_json:set_value(<<"Proxy-IP">>, Ip
-                                                 ,kz_json:set_value(<<"Proxy-Port">>, Port, J)
-                                                 );
-                            _Else -> J
-                        end
+                        Values = [{<<"Contact-IP">>, Domain}
+                                 ,{<<"Contact-Port">>, maybe_default_port(Port, Scheme, Transport)}
+                                 ],
+                        kz_json:set_values(Values, J)
                 end
                ],
     kz_json:normalize(lists:foldr(fun(F, J) -> F(J) end, JObj, Updaters)).
