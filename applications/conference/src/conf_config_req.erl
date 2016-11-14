@@ -7,42 +7,49 @@
 %%%-------------------------------------------------------------------
 -module(conf_config_req).
 
--export([handle_req/2]).
+-export([handle_req/3]).
 
 -include("conference.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_req(JObj, _Options) ->
+-spec handle_req(kz_json:object(), kz_proplist(), gen_listener:basic_deliver()) -> 'ok'.
+handle_req(JObj, _Options, Delivery) ->
     'true' = kapi_conference:config_req_v(JObj),
     Request = kz_json:get_ne_value(<<"Request">>, JObj),
-    handle_request(Request, JObj).
+    handle_request(Request, JObj, Delivery).
 
--spec handle_request(ne_binary(), kz_json:object()) -> 'ok'.
-handle_request(<<"Conference">>, JObj) ->
+-spec handle_request(ne_binary(), kz_json:object(), gen_listener:basic_deliver()) -> 'ok'.
+handle_request(<<"Conference">>, JObj, Delivery) ->
     ConfigName = kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME),
-    fetch_profile_config(JObj, ConfigName);
-handle_request(<<"Controls">>, JObj) ->
+    fetch_profile_config(JObj, ConfigName, Delivery);
+handle_request(<<"Controls">>, JObj, Delivery) ->
     ConferenceName = kz_json:get_ne_value(<<"Profile">>, JObj, ?DEFAULT_PROFILE_NAME),
     ControlsName = kz_json:get_ne_value(<<"Controls">>, JObj),
-    fetch_controls_config(JObj, ConferenceName, ControlsName).
+    fetch_controls_config(JObj, ConferenceName, ControlsName, Delivery).
 
--spec fetch_profile_config(kz_json:object(), ne_binary()) -> 'ok'.
-fetch_profile_config(JObj, ?DEFAULT_PROFILE_NAME = ConfigName) ->
-    fetch_profile_config(JObj, ConfigName, default_profile());
-fetch_profile_config(JObj, ?PAGE_PROFILE_NAME = ConfigName) ->
-    fetch_profile_config(JObj, ConfigName, page_profile());
-fetch_profile_config(JObj, ConfigName) ->
+-spec fetch_profile_config(kz_json:object(), ne_binary(), gen_listener:basic_deliver()) -> 'ok'.
+fetch_profile_config(JObj, ?DEFAULT_PROFILE_NAME = ConfigName, Delivery) ->
+    send_profile_config(JObj, ConfigName, default_profile()),
+    conference_config_shared_listener:ack(Delivery);
+fetch_profile_config(JObj, ?PAGE_PROFILE_NAME = ConfigName, Delivery) ->
+    send_profile_config(JObj, ConfigName, page_profile()),
+    conference_config_shared_listener:ack(Delivery);
+fetch_profile_config(JObj, ConfigName, Delivery) ->
     Conference = get_conference(ConfigName),
-    AccountId = kapps_conference:account_id(Conference),
-    Profile = kapps_conference:profile(Conference),
-    Config = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"profiles">>, Profile], default_profile()),
-    fetch_profile_config(JObj, ConfigName, Config).
+    case kapps_conference:focus(Conference) of
+        'undefined' -> conference_config_shared_listener:nack(Delivery);
+        _ ->
+            AccountId = kapps_conference:account_id(Conference),
+            Profile = kapps_conference:profile(Conference),
+            Config = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"profiles">>, Profile], default_profile()),
+            send_profile_config(JObj, ConfigName, Config),
+            conference_config_shared_listener:ack(Delivery)
+    end.
 
--spec fetch_profile_config(kz_json:object(), ne_binary(), api_object()) -> 'ok'.
-fetch_profile_config(JObj, ConfigName, 'undefined') ->
+-spec send_profile_config(kz_json:object(), ne_binary(), api_object()) -> 'ok'.
+send_profile_config(JObj, ConfigName, 'undefined') ->
     lager:debug("no profile defined for '~s', using default", [ConfigName]),
-    fetch_profile_config(JObj, ConfigName, default_profile());
-fetch_profile_config(JObj, ConfigName, Profile) ->
+    send_profile_config(JObj, ConfigName, default_profile());
+send_profile_config(JObj, ConfigName, Profile) ->
     ServerId = kz_api:server_id(JObj),
     lager:debug("profile '~s' found", [ConfigName]),
     Resp = [{<<"Profiles">>, profiles(ConfigName, Profile)}
@@ -53,19 +60,24 @@ fetch_profile_config(JObj, ConfigName, Profile) ->
            ],
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
--spec fetch_controls_config(kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
-fetch_controls_config(JObj, ConferenceId, ControlsName) ->
+-spec fetch_controls_config(kz_json:object(), ne_binary(), ne_binary(), gen_listener:basic_deliver()) -> 'ok'.
+fetch_controls_config(JObj, ConferenceId, ControlsName, Delivery) ->
     ServerId = kz_api:server_id(JObj),
     Conference = get_conference(ConferenceId),
-    AccountId = kapps_conference:account_id(Conference),
-    ControlCfg = get_conference_controls(ControlsName, Conference),
-    Config = caller_controls(AccountId, ControlCfg),
-    CallerControls = kz_json:from_list([{ControlsName, Config}]),
-    Resp = [{<<"Caller-Controls">>, CallerControls}
-           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-           ],
-    kapi_conference:publish_config_resp(ServerId, Resp).
+    case kapps_conference:focus(Conference) of
+        'undefined' -> conference_config_shared_listener:nack(Delivery);
+        _ ->
+            AccountId = kapps_conference:account_id(Conference),
+            ControlCfg = get_conference_controls(ControlsName, Conference),
+            Config = caller_controls(AccountId, ControlCfg),
+            CallerControls = kz_json:from_list([{ControlsName, Config}]),
+            Resp = [{<<"Caller-Controls">>, CallerControls}
+                   ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+                    | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                   ],
+            kapi_conference:publish_config_resp(ServerId, Resp),
+            conference_config_shared_listener:ack(Delivery)
+    end.
 
 -spec get_conference_controls(ne_binary(), kapps_conference:conference()) -> ne_binary().
 get_conference_controls(<<"caller-controls">>, Conference) ->
