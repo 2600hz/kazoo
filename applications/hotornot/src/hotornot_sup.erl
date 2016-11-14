@@ -61,4 +61,11 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, ?CHILDREN}}.
+    {'ok', {SupFlags, maybe_start_trie(?CHILDREN)}}.
+
+-spec maybe_start_trie(list()) -> list().
+maybe_start_trie(Children) ->
+    case hon_util:use_trie() of
+        'false' -> Children;
+        'true' -> [?WORKER('hon_trie') | Children]
+    end.

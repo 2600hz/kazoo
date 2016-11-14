@@ -11,6 +11,8 @@
 -export([candidate_rates/1, candidate_rates/2
         ,matching_rates/2, matching_rates/4
         ,sort_rates/1
+
+        ,use_trie/0
         ]).
 
 -ifdef(TEST).
@@ -22,6 +24,10 @@
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 -define(BOTH_DIRECTIONS, [<<"inbound">>, <<"outbound">>]).
 
+-spec use_trie() -> boolean().
+use_trie() ->
+    kapps_config:get_is_true(?APP_NAME, <<"use_trie">>, 'false').
+
 -spec candidate_rates(ne_binary()) ->
                              {'ok', kz_json:objects()} |
                              {'error', atom()}.
@@ -32,9 +38,27 @@ candidate_rates(ToDID) ->
     candidate_rates(ToDID, <<>>).
 candidate_rates(ToDID, FromDID) ->
     E164 = knm_converters:normalize(ToDID),
+
+
     find_candidate_rates(E164, FromDID).
 
-find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
+-spec find_candidate_rates(ne_binary()) ->
+                                  {'ok', kz_json:objects()} |
+                                  {'error', atom()}.
+-spec find_candidate_rates(ne_binary(), binary()) ->
+                                  {'ok', kz_json:objects()} |
+                                  {'error', atom()}.
+find_candidate_rates(E164, _FromDID)
+  when byte_size(E164) > ?MIN_PREFIX_LEN ->
+    case use_trie() of
+        'false' -> find_candidate_rates(E164);
+        'true' -> hon_trie:match_did(only_numeric(E164))
+    end;
+find_candidate_rates(DID, _FromDID) ->
+    lager:debug("DID ~s is too short", [DID]),
+    {'error', 'did_too_short'}.
+
+find_candidate_rates(E164) ->
     Keys = build_keys(E164),
 
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
@@ -55,10 +79,7 @@ find_candidate_rates(E164, _FromDID) when byte_size(E164) > ?MIN_PREFIX_LEN ->
               || ViewRow <- ViewRows
              ]
             }
-    end;
-find_candidate_rates(DID, _) ->
-    lager:debug("DID ~s is too short", [DID]),
-    {'error', 'did_too_short'}.
+    end.
 
 -spec build_keys(ne_binary()) -> [integer()].
 build_keys(Number) ->
