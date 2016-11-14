@@ -1,0 +1,8 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.kvs_set",
+    "description": "Validator for the kvs_set callflow's data object",
+    "properties": {},
+    "required": true,
+    "type": "object"
+}

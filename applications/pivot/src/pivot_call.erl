@@ -141,7 +141,7 @@ init([Call, JObj]) ->
     VoiceUri = kz_json:get_value(<<"Voice-URI">>, JObj),
 
     ReqFormat = kz_json:get_value(<<"Request-Format">>, JObj, <<"twiml">>),
-    BaseParams = kz_json:from_list(req_params(ReqFormat, Call)),
+    BaseParams = kz_json:recursive_from_list(req_params(ReqFormat, Call)),
 
     lager:debug("starting pivot req to ~s to ~s", [Method, VoiceUri]),
 
