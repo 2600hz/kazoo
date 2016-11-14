@@ -357,7 +357,7 @@ normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
               end,
     normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, NewDict).
 
--spec is_prior_to_retention(pos_integer(), api_seconds()) -> boolean().
+-spec is_prior_to_retention(non_neg_integer(), api_seconds()) -> boolean().
 is_prior_to_retention(0, _RetenTimestamp) -> 'false';
 is_prior_to_retention(_UtcSeconds, 'undefined') -> 'false';
 is_prior_to_retention(UtcSeconds, RetenTimestamp) when UtcSeconds > RetenTimestamp -> 'false';
