@@ -271,7 +271,7 @@ move_doc(Conn, CopySpec, Options) ->
 maybe_remove_doc(Conn, SourceDbName, SourceDocId, Options) ->
     case open_doc(Conn, SourceDbName, SourceDocId, Options) of
         {'ok', SourceDoc} ->
-            _ = del_doc(Conn, SourceDbName, SourceDoc, []);
+            _ = del_doc(Conn, SourceDbName, SourceDoc, []),
+            'ok';
         _ -> 'ok'
-    end,
-    'ok'.
+    end.
