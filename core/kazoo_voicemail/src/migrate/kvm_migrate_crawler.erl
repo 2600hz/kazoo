@@ -35,8 +35,10 @@
 -define(MAX_PROCESS,
         kapps_config:get_integer(?CF_CONFIG_CAT, [?KEY_VOICEMAIL, <<"migrate_max_worker">>], 10)).
 
+-type worker() :: {pid(), next_account()}.
+-type workers() :: [worker()].
 -record(state, {max_worker = ?MAX_PROCESS :: integer()
-               ,workers = [] :: kz_proplist()
+               ,workers = [] :: workers()
                ,account_ids = [] :: ne_binaries()
                ,retention_passed = 'false' :: boolean()
                ,total_account = 0 :: non_neg_integer()
@@ -232,19 +234,18 @@ handle_info({'timeout', _Ref, _Msg}, #state{account_ids = []
     {'noreply', State};
 handle_info({'timeout', _Ref, _Msg}, #state{max_worker = Limit
                                            ,workers = Workers
-                                           }=State) when length(Workers) < Limit ->
+                                           }=State)
+  when length(Workers) < Limit ->
     NewState = spawn_worker(State),
     {'noreply', NewState#state{timer_ref = cleanup_account_timer()}};
 handle_info({'timeout', _Ref, _Msg}, State) ->
     {'noreply', State#state{timer_ref = cleanup_account_timer()}};
-handle_info({'EXIT', Pid, 'normal'}, #state{workers = Workers
-                                           }=State) ->
+handle_info({'EXIT', Pid, 'normal'}, #state{workers = Workers}=State) ->
     lager:debug("worker ~p terminated normally", [Pid]),
     {'noreply', State#state{workers = props:delete(Pid, Workers)
                            ,timer_ref = cleanup_account_timer()
                            }};
-handle_info({'EXIT', Pid, Reason}, #state{workers = Workers
-                                         }=State) ->
+handle_info({'EXIT', Pid, Reason}, #state{workers = Workers}=State) ->
     lager:error("worker ~p crashed: ~p", [Pid, Reason]),
     {'noreply', State#state{workers = props:delete(Pid, Workers)
                            ,timer_ref = cleanup_account_timer()
@@ -297,7 +298,7 @@ spawn_worker(#state{account_queue = Queue
 
 maybe_spawn_worker(#state{account_ids = AccountIds
                          ,retention_seconds = RetentionSeconds
-                         }=State, retention_passed) ->
+                         }=State, 'retention_passed') ->
     ?WARNING("~n########## all voicemails in retention duration are migrated, beginning a new cycle for migrating older voicemails ##########~n", []),
     State#state{retention_passed = 'true'
                ,account_queue = populate_queue(AccountIds, RetentionSeconds)
@@ -315,7 +316,9 @@ maybe_spawn_worker(State, {'account_hit_retention', NewQ}) ->
 maybe_spawn_worker(#state{workers = Workers
                          ,max_worker = _Limit
                          ,timer_ref = Ref
-                         }=State, {{AccountId, _, _} = NextAccount, NewQ}) ->
+                         }=State
+                  ,{{AccountId, _, _} = NextAccount, NewQ}
+                  ) ->
     CallId = make_callid(Ref, AccountId),
     Self = self(),
     Pid = erlang:spawn_link(fun () ->
@@ -361,11 +364,13 @@ cleanup_account_timer() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_next_account(queue:queue(), kz_proplist(), gregorian_seconds(), boolean()) -> next_account_ret().
+-spec get_next_account(queue:queue(), workers(), gregorian_seconds(), boolean()) ->
+                              next_account_ret().
 get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
     case queue:out(Queue) of
         {{'value', NextAccount}, Q} ->
-            WorkerNextAccount = props:get_value(NextAccount, Workers),
+            %% I think this is the issue
+            {_Pid, WorkerNextAccount} = lists:keyfind(NextAccount, 2, Workers),
             get_next(Queue, WorkerNextAccount, NextAccount, Q, RetentionSeconds, IsRetPassed);
         {'empty', _} when not IsRetPassed ->
             'retention_passed';
@@ -373,7 +378,7 @@ get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
             'empty'
     end.
 
--spec get_next(queue:queue(), next_account_ret(), next_account_ret(), queue:queue(), gregorian_seconds(), boolean()) ->
+-spec get_next(queue:queue(), next_account(), next_account(), queue:queue(), gregorian_seconds(), boolean()) ->
                       next_account_ret().
 get_next(_Queue, NextAccount, NextAccount, _Q, _, _IsRetPassed) ->
     'continue';
@@ -388,7 +393,6 @@ get_next(_, _, {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'fa
     end;
 get_next(_, _, NextAccount, Q, _, 'true') ->
     {NextAccount, queue:in(NextAccount, Q)}.
-
 
 %%--------------------------------------------------------------------
 %% @private

@@ -169,7 +169,7 @@ migrate_messages(AccountId, ViewResults) ->
 %% @doc Check Db existence and process with migration
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_migrate(ne_binary(), kz_json:objects(), kz_json:objects(), ne_binaries() | non_neg_integer()) -> 'ok'.
+-spec maybe_migrate(ne_binary(), kz_json:objects(), dict:dict(), ne_binaries() | non_neg_integer()) -> 'ok'.
 maybe_migrate(AccountId, ViewResults, MsgsDict, Dbs) when is_list(Dbs) ->
     NewMsgsDict = check_dbs_existence(Dbs, MsgsDict),
     maybe_migrate(AccountId, ViewResults, NewMsgsDict, dict:size(NewMsgsDict));
@@ -205,7 +205,7 @@ bulk_save_modb(Db, Js, _Acc) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_mailboxes(kz_json:object(), kz_json:objects()) -> 'ok'.
+-spec update_mailboxes(ne_binary(), kz_json:objects()) -> 'ok'.
 update_mailboxes(AccountId, ViewResults) ->
     MODbFailed = dict:from_list(get_stats(?FAILED_MODB)),
     Failed = dict:from_list(get_stats(?FAILED)),
@@ -284,7 +284,7 @@ get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
                  ]),
     case kz_datamgr:all_docs(Db, ViewOpts) of
         {'ok', JObjs} ->
-            {'ok', lists:flatten(normalize_mailbox_results(JObjs))};
+            {'ok', normalize_mailbox_results(JObjs)};
         {'error', _E} = Error ->
             ?ERROR("    [~s] failed to open mailbox(es)", [AccountId]),
             Error
@@ -292,10 +292,16 @@ get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
 
 -spec normalize_mailbox_results(kz_json:objects()) -> kz_json:objects().
 normalize_mailbox_results(JObjs) ->
-    [generate_lagecy_view_result(kz_json:get_value(<<"doc">>, J))
-     || J <- JObjs,
-        has_messages(J)
-    ].
+    lists:foldl(fun normalize_fold/2, [], JObjs).
+
+-spec normalize_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_fold(JObj, Acc) ->
+    case has_messages(JObj) of
+        'false' -> Acc;
+        'true' ->
+            generate_lagecy_view_result(kz_json:get_value(<<"doc">>, JObj))
+                ++ Acc
+    end.
 
 -spec generate_lagecy_view_result(kz_json:object()) -> kz_json:objects().
 generate_lagecy_view_result(BoxJObj) ->
@@ -328,7 +334,7 @@ generate_lagecy_view_result(BoxJObj) ->
 
 -spec has_messages(kz_json:object()) -> boolean().
 has_messages(JObj) ->
-    length(kz_json:get_value([<<"doc">>, ?VM_KEY_MESSAGES], JObj, [])) > 0.
+    [] =/= kz_json:get_value([<<"doc">>, ?VM_KEY_MESSAGES], JObj, []).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -407,7 +413,8 @@ process_messages(AccountId, JObjs) ->
 -spec create_message(ne_binary(), kz_json:object(), ne_binary()) -> kz_json:object().
 create_message(AccountId, FakeBoxJObj, DefaultExt) ->
     AccountDb = kvm_util:get_db(AccountId),
-    BoxJObj = kz_doc:set_account_db(kz_json:get_value(<<"value">>, FakeBoxJObj), AccountDb),
+    BoxJObj0 = kz_doc:set_account_id(kz_json:get_value(<<"value">>, FakeBoxJObj), AccountId),
+    BoxJObj = kz_doc:set_account_db(BoxJObj0, AccountDb),
 
     BoxNum = kzd_voicemail_box:mailbox_number(BoxJObj),
     TimeZone = kzd_voicemail_box:timezone(BoxJObj),
