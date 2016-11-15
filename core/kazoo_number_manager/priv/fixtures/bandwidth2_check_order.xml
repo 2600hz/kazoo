@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OrderResponse>
+	<Order>
+		<CustomerOrderId>deadbeef1234567901234567890dead</CustomerOrderId>
+		<Name>Kazoo-63628571101</Name>
+		<OrderCreateDate>2016-04-22T19:04:58.001Z</OrderCreateDate>
+		<PeerId>13337</PeerId>
+		<BackOrderRequested>false</BackOrderRequested>
+		<id>dc0008ec-07fc-41bf-a3bd-6c6ebf913f1c</id>
+		<ExistingTelephoneNumberOrderType>
+			<TelephoneNumberList>
+				<TelephoneNumber>9734096113</TelephoneNumber>
+			</TelephoneNumberList>
+		</ExistingTelephoneNumberOrderType>
+		<PartialAllowed>true</PartialAllowed>
+		<SiteId>1337</SiteId>
+	</Order>
+	<OrderStatus>COMPLETE</OrderStatus>
+</OrderResponse>
