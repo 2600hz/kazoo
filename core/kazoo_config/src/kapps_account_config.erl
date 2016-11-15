@@ -28,12 +28,13 @@
 %% Will search the account db first, then system_config for values.
 %% @end
 %%--------------------------------------------------------------------
--spec get_global(account(), ne_binary(), kz_json:key()) ->
+-spec get_global(account(), ne_binary(), kz_json:path()) ->
                         kz_json:json_term().
--spec get_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec get_global(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
+
 get_global(Account, Category, Key, Default) ->
     AccountId = account_id(Account),
     case get_global_from_account(AccountId, Category, Key, Default) of
@@ -48,8 +49,8 @@ get_global(Account, Category, Key, Default) ->
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_reseller(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
-                               kz_json:json_term().
+-spec get_from_reseller(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+                               kz_json:api_json_term().
 -ifdef(TEST).
 get_from_reseller(_, _, _, Default) -> Default.
 -else.
@@ -58,8 +59,8 @@ get_from_reseller(Account, Category, Key, Default) ->
     ResellerId = kz_services:find_reseller_id(AccountId),
     maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
 
--spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
-                                            kz_json:json_term().
+-spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+                                            kz_json:api_json_term().
 maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
     kapps_config:get(Category, Key, Default);
 maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) ->
@@ -69,7 +70,7 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
     end.
 -endif.
 
--spec get_global_from_account(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec get_global_from_account(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
 get_global_from_account(Account, Category, _Key, _Default) ->
@@ -77,7 +78,7 @@ get_global_from_account(Account, Category, _Key, _Default) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
 
--spec get_global_from_doc(ne_binary(), kz_json:key(), kz_json:json_term(), kz_json:object()) ->
+-spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) ->
                                  kz_json:object().
 get_global_from_doc(Category, Key, Default, JObj) ->
     case kz_json:get_value(Key, JObj) of
@@ -105,8 +106,8 @@ flush(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
--spec get(account(), ne_binary(), kz_json:key()) -> kz_json:api_json_term().
--spec get(account(), ne_binary(), kz_json:key(), Default) ->
+-spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
+-spec get(account(), ne_binary(), kz_json:path(), Default) ->
                  kz_json:json_term() | Default.
 -ifdef(TEST).
 get(_, _, _) -> 'undefined'.
@@ -118,7 +119,7 @@ get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
 -endif.
 
--spec set(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                  kz_json:object().
 set(Account, Config, Key, Value) ->
     JObj = kz_json:set_value(Key, Value, get(Account, Config)),
@@ -137,7 +138,7 @@ update_config_for_saving(AccountDb, JObj) ->
                                  ,{'account_id', account_id(AccountDb)}
                                  ]).
 
--spec set_global(account(), ne_binary(), kz_json:key(), kz_json:json_term()) ->
+-spec set_global(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
                         kz_json:object().
 set_global(Account, Category, Key, Value) ->
     AccountId = account_id(Account),
@@ -202,8 +203,8 @@ account_db_from_jobj(_Obj, 'false') ->
     throw({'error', 'unknown_object'}).
 
 %% Migrates config settings
--type migrate_setting() :: {ne_binary(), kz_json:key()}.
--type migrate_value() :: {ne_binary(), ne_binary(), kz_json:key(), _}.
+-type migrate_setting() :: {ne_binary(), kz_json:path()}.
+-type migrate_value() :: {ne_binary(), ne_binary(), kz_json:path(), _}.
 -type migrate_values() :: [migrate_value()].
 
 -define(ACCOUNT_CONFIG_MIGRATIONS

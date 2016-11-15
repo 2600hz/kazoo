@@ -18,7 +18,7 @@
 %% @public
 %% @doc Implement the application start behaviour
 %%--------------------------------------------------------------------
--spec start(application:start_type(), any()) -> startlink_ret().
+-spec start(application:start_type(), any()) -> {'ok', pid()}.
 start(_Type, _Args) ->
     _ = declare_exchanges(),
     frontier_sup:start_link().

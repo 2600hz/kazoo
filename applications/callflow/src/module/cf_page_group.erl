@@ -64,9 +64,10 @@ get_endpoints(Members, Call) ->
                         end
                 end, [], Builders).
 
--spec resolve_endpoint_ids(kz_json:objects(), kapps_call:call()) -> [{ne_binary(), kz_json:object()}].
+-spec resolve_endpoint_ids(kz_json:objects(), kapps_call:call()) ->
+                                  [{ne_binary(), kz_json:object()}].
 resolve_endpoint_ids(Members, Call) ->
-    [{Id, kz_json:set_value(<<"source">>, ?MODULE, Member)}
+    [{Id, kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Member)}
      || {Type, Id, Member} <- resolve_endpoint_ids(Members, [], Call)
             ,Type =:= <<"device">>
             ,Id =/= kapps_call:authorizing_id(Call)

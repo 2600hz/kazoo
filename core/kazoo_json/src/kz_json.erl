@@ -94,11 +94,12 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
--export_type([json_term/0, api_json_term/0, json_terms/0
-             ,json_proplist/0, json_proplist_k/1, json_proplist_kv/2
+-export_type([json_proplist/0
              ,object/0, objects/0
              ,path/0, paths/0
              ,key/0, keys/0
+             ,json_term/0, api_json_term/0, json_terms/0
+             ,encode_options/0
              ]).
 
 -spec new() -> object().
@@ -680,8 +681,8 @@ find_value(Key, Value, [JObj|JObjs], Default) ->
         _Value -> find_value(Key, Value, JObjs, Default)
     end.
 
--spec get_first_defined(paths(), object()) -> api_json_term().
--spec get_first_defined(paths(), object(), Default) -> Default | json_term().
+-spec get_first_defined(paths(), object()) -> json_term() | 'undefined'.
+-spec get_first_defined(paths(), object(), Default) -> json_term() | Default.
 get_first_defined(Keys, JObj) ->
     get_first_defined(Keys, JObj, 'undefined').
 get_first_defined([], _JObj, Default) -> Default;
@@ -691,7 +692,7 @@ get_first_defined([H|T], JObj, Default) ->
         V -> V
     end.
 
--spec get_value(path(), object() | objects()) -> api_json_term().
+-spec get_value(path(), object() | objects()) -> json_term() | 'undefined'.
 -spec get_value(path(), object() | objects(), Default) -> json_term() | Default.
 get_value(Key, JObj) ->
     get_value(Key, JObj, 'undefined').
@@ -750,7 +751,7 @@ get_values(Key, JObj) ->
 -type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
 -type set_value_funs() :: [set_value_fun(),...].
 
--spec set_values(json_proplist() | set_value_funs(), object()) -> object().
+-spec set_values([{path(), json_term()}] | set_value_funs(), object()) -> object().
 set_values(KVs, JObj) when is_list(KVs) ->
     lists:foldr(fun set_value_fold/2, JObj, KVs).
 

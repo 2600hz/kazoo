@@ -337,17 +337,17 @@ get_http_headers() ->
               ],
     maybe_enable_auth(Headers).
 
--spec get_http_options(ne_binary()) -> kz_proplist().
+-spec get_http_options(nonempty_string()) -> kz_proplist().
 get_http_options(Url) ->
     Defaults = [{'connect_timeout', ?HTTP_CONNECT_TIMEOUT_MS}
                ,{'timeout', 1500}
                ],
     maybe_enable_ssl(Url, Defaults).
 
--spec maybe_enable_ssl(ne_binary(), kz_proplist()) -> kz_proplist().
-maybe_enable_ssl(<<"https", _/binary>>, Props) ->
+-spec maybe_enable_ssl(nonempty_string(), kz_proplist()) -> kz_proplist().
+maybe_enable_ssl("https://" ++ _, Props) ->
     [{'ssl', [{'verify', 'verify_none'}]}|Props];
-maybe_enable_ssl(_, Props) -> Props.
+maybe_enable_ssl(_Url, Props) -> Props.
 
 -spec maybe_enable_auth([{nonempty_string(), nonempty_string()}]) ->
                                [{nonempty_string(), nonempty_string()}].

@@ -266,7 +266,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
             maybe_get_assigned_number(Number, Name, Call)
     end.
 
--spec maybe_get_assigned_number(ne_binary(), ne_binary(), ne_binary()|kapps_call:call()) ->
+-spec maybe_get_assigned_number(api_ne_binary(), api_ne_binary(), api_ne_binary()|kapps_call:call()) ->
                                        {api_binary(), api_binary()}.
 maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     case knm_numbers:account_listing(AccountDb) of

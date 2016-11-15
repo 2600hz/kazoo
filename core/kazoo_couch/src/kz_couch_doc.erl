@@ -262,7 +262,16 @@ move_doc(Conn, CopySpec, Options) ->
                 } = CopySpec,
     case copy_doc(Conn, CopySpec, Options) of
         {'ok', _JObj}=Ok ->
-            _ = del_doc(Conn, SourceDbName, SourceDocId, []),
+            maybe_remove_doc(Conn, SourceDbName, SourceDocId, Options),
             Ok;
         Error -> Error
+    end.
+
+-spec maybe_remove_doc(server(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
+maybe_remove_doc(Conn, SourceDbName, SourceDocId, Options) ->
+    case open_doc(Conn, SourceDbName, SourceDocId, Options) of
+        {'ok', SourceDoc} ->
+            _ = del_doc(Conn, SourceDbName, SourceDoc, []),
+            'ok';
+        _ -> 'ok'
     end.

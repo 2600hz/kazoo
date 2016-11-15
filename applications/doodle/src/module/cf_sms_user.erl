@@ -82,7 +82,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
                            {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
-    Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
+    Params = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Data),
     EndpointIds = kz_attributes:owned_by(UserId, <<"device">>, Call),
     {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                                                 case kz_endpoint:build(EndpointId, Params, Call) of
@@ -104,10 +104,9 @@ sort_endpoints_by_type(Endpoints) ->
                        EndpointBValue = endpoint_type_sort_value(kz_json:get_value(<<"Endpoint-Type">>, EndpointB)),
                        (EndpointAValue < EndpointBValue)
                end,
-               Endpoints).
+               Endpoints
+              ).
 
--spec endpoint_type_sort_value(binary()) -> non_neg_integer().
-endpoint_type_sort_value(<<"amqp">>) ->
-    0;
-endpoint_type_sort_value(_Type) ->
-    1.
+-spec endpoint_type_sort_value(binary()) -> 0..1.
+endpoint_type_sort_value(<<"amqp">>) -> 0;
+endpoint_type_sort_value(_Type) -> 1.

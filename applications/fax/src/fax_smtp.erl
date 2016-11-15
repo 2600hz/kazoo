@@ -36,13 +36,12 @@
 
 -define(ERROR_NO_VALID_ATTACHMENT, <<"no valid attachment">>).
 
--record(state, {
-          options = [] :: list()
-               ,from :: binary()
-               ,to :: binary()
-               ,doc :: api_object()
-               ,filename :: api_binary()
-               ,content_type :: binary()
+-record(state, {options = [] :: kz_proplist()
+               ,from :: api_ne_binary()
+               ,to :: api_ne_binary()
+               ,doc :: kz_json:object()
+               ,filename :: file:filename_all()
+               ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
                ,owner_email :: api_binary()
@@ -54,7 +53,7 @@
                ,account_id :: api_binary()
                ,session_id :: api_binary()
                ,proxy :: api_binary()
-         }).
+               }).
 
 -type state() :: #state{}.
 -type error_message() :: {'error', string(), #state{}}.
@@ -365,8 +364,7 @@ to_proplist(#state{}=State) ->
 faxbox_to_proplist('undefined') -> [];
 faxbox_to_proplist(JObj) ->
     props:filter_undefined(
-      [{<<"FaxBox-ID">>, kz_doc:id(JObj)}
-      ]
+      [{<<"FaxBox-ID">>, kz_doc:id(JObj)}]
      ).
 
 -spec faxdoc_to_proplist(api_object()) -> kz_proplist().
@@ -387,12 +385,13 @@ reset(State) ->
                ,original_number = 'undefined'
                ,number = 'undefined'
                ,account_id = 'undefined'
+               ,doc='undefined'
                }.
 
 -spec check_faxbox(state()) ->
                           {'ok', state()} |
                           {'error', string(), state()}.
-check_faxbox(#state{to=To}= State) ->
+check_faxbox(#state{to=To}=State) ->
     case binary:split(kz_util:to_lower_binary(To), <<"@">>) of
         [FaxNumber, Domain] ->
             Number = fax_util:filter_numbers(FaxNumber),
@@ -474,9 +473,12 @@ check_permissions(#state{from=From
 -spec check_empty_permissions(state()) ->
                                      {'ok', state()} |
                                      {'error', string(), state()}.
-check_empty_permissions(#state{errors=Errors}=State) ->
+check_empty_permissions(#state{errors=Errors
+                              ,doc=Doc
+                              }=State) ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"allow_all_addresses_when_empty">>, 'false') of
-        'true' -> add_fax_document(State);
+        'true' when Doc =:= 'undefined' -> add_fax_document(State);
+        'true' -> State;
         'false' ->
             Error = <<"faxbox permissions is empty and policy doesn't allow it">>,
             lager:debug(Error),
@@ -623,8 +625,8 @@ maybe_faxbox_by_rules([JObj | JObjs], #state{from=From}=State) ->
 -spec add_fax_document(state()) ->
                               {'ok', state()} |
                               {'error', string(), state()}.
-add_fax_document(#state{doc='undefined'
-                       ,from=From
+
+add_fax_document(#state{from=From
                        ,owner_email=OwnerEmail
                        ,number=FaxNumber
                        ,faxbox=FaxBoxDoc
@@ -678,11 +680,7 @@ add_fax_document(#state{doc='undefined'
                             ,kz_json_schema:add_defaults(kz_json:from_list(Props), <<"faxes">>)
                             ),
     lager:debug("added fax document from smtp : ~p", [Doc]),
-    {'ok', State#state{doc=Doc}};
-add_fax_document(#state{doc=Doc}=State) ->
-    lager:debug("add fax document called but already has a doc : ~p", [Doc]),
-    {'ok', State}.
-
+    {'ok', State#state{doc=Doc}}.
 
 %% ====================================================================
 %% Internal functions
@@ -840,7 +838,8 @@ content_type_matched_json(CT, Type, <<"prefix">> = Field) ->
         {_, _} -> <<>>
     end.
 
--spec maybe_process_image(ne_binary(), binary() | mimemail:mimetyple(), state()) -> {'ok', state()}.
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), state()) ->
+                                 {'ok', state()}.
 maybe_process_image(CT, Body, State) ->
     case kapps_config:get_binary(?CONFIG_CAT, <<"image_min_size">>, <<"700x10">>) of
         'undefined' ->
@@ -850,7 +849,8 @@ maybe_process_image(CT, Body, State) ->
             maybe_process_image(CT, Body, Size, State)
     end.
 
--spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) -> {'ok', state()}.
+-spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) ->
+                                 {'ok', state()}.
 maybe_process_image(CT, Body, Size, State) ->
     {MinX, MinY} = case re:split(Size, "x") of
                        [P] -> {kz_util:to_integer(P), kz_util:to_integer(P)};

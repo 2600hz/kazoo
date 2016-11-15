@@ -93,8 +93,8 @@ do_demote(AccountId) ->
 cascade_reseller_id(Reseller, Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     ResellerId = kz_util:format_account_id(Reseller, 'raw'),
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                  ,{<<"endkey">>, [AccountId, kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
         {'error', _R}=Error ->
@@ -147,10 +147,12 @@ maybe_update_services(AccountId, Key, Value) ->
 has_reseller_descendants(AccountId) ->
     %% its very important that this check not operate against stale data!
     _ = kz_datamgr:flush_cache_docs(?KZ_SERVICES_DB),
-    ViewOptions = [{<<"startkey">>, [AccountId]}
-                  ,{<<"endkey">>, [AccountId, kz_json:new()]}
+    ViewOptions = [{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions),
-    lists:any(fun(JObj) ->
-                      kz_services:is_reseller(kz_account:id(JObj))
-              end, JObjs).
+    lists:any(fun is_reseller/1, JObjs).
+
+-spec is_reseller(kz_json:object()) -> boolean().
+is_reseller(JObj) ->
+    kz_services:is_reseller(kz_account:id(JObj)).

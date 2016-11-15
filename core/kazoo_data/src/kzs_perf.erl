@@ -32,13 +32,12 @@ profile({Mod, Fun, Arity}=MFA, Args) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
--spec load_profile_config_from_disk() -> map().
+-spec load_profile_config_from_disk() -> kz_json:object().
 load_profile_config_from_disk() ->
     Doc = ?CACHE_PROFILE_FROM_FILE,
-    JObj = kz_json:get_value(<<"performance">>, Doc, kz_json:new()),
-    update_profile_config(JObj).
+    kz_json:get_value(<<"performance">>, Doc, kz_json:new()).
 
--spec load_profile_config() -> map().
+-spec load_profile_config() -> kz_json:object().
 load_profile_config() ->
     case kapps_config:get(?CONFIG_CAT, <<"performance">>) of
         'undefined' -> load_profile_config_from_disk();
@@ -50,7 +49,8 @@ profile_config() ->
     case kz_cache:fetch_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}) of
         {'error', 'not_found'} ->
             kz_util:spawn(fun update_profile_config/0),
-            load_profile_config_from_disk();
+            Config = load_profile_config_from_disk(),
+            update_profile_config(Config);
         {'ok', Map} -> Map
     end.
 

@@ -50,17 +50,7 @@ get_value('service_plans', _Resources, _Number, OffnetJObj, _DB, _Default) ->
     AccountId = kapi_offnet_resource:account_id(OffnetJObj),
     JObj = kz_services:public_json(AccountId),
     PlansJObj = kz_json:get_json_value(<<"plans">>, JObj, kz_json:new()),
-    kz_json:foldl(fun({PlanId, J}, Acc) ->
-                          case kz_json:is_json_object(J) of
-                              'true' ->
-                                  PlanAccountId = kz_json:get_binary_value(<<"account_id">>, J, <<>>),
-                                  [<<PlanId/binary, <<":">>/binary, PlanAccountId/binary>> | Acc];
-                              'false' -> Acc
-                          end
-                  end
-                 ,[]
-                 ,PlansJObj
-                 );
+    kz_json:foldl(fun get_value_fold/3, [], PlansJObj);
 get_value({'request', Field}, _Resources, _Number, OffnetJObj, _DB, Default) ->
     kz_json:get_value(Field, OffnetJObj, Default);
 get_value({'resource', Field}, Resources, _Number, _OffnetJObj, _DB, _Default) ->
@@ -72,9 +62,9 @@ get_value({'database', SelectorName}, Resources, Number, OffnetJObj, DB, Default
     Options = [{'keys', Keys}],
     get_value({'database', View, Options}, Resources, Number, OffnetJObj, DB, Default);
 get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Default) ->
-    Now = kz_util:current_tstamp(),
     case kz_datamgr:get_results(DB, View, Options) of
         {'ok', Rows} ->
+            Now = kz_util:current_tstamp(),
             lists:foldl(fun(Row, Acc) ->
                                 filter_by_start_stop(Now, Row, Acc, Default)
                         end
@@ -82,9 +72,20 @@ get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Def
                        ,Rows
                        );
         {'error', E} ->
-            throw({database_error, E})
+            throw({'database_error', E})
     end;
-get_value(Value, _Resources, _Number, _OffnetJObj, _DB, _Default) -> throw({invalid_filter_value, Value}).
+get_value(Value, _Resources, _Number, _OffnetJObj, _DB, _Default) ->
+    throw({'invalid_filter_value', Value}).
+
+-spec get_value_fold(ne_binary(), kz_json:object(), ne_binaries()) ->
+                            ne_binaries().
+get_value_fold(PlanId, JObj, Acc) ->
+    case kz_json:is_json_object(JObj) of
+        'false' -> Acc;
+        'true' ->
+            PlanAccountId = kz_json:get_binary_value(<<"account_id">>, JObj, <<>>),
+            [<<PlanId/binary, <<":">>/binary, PlanAccountId/binary>> | Acc]
+    end.
 
 get_data_from_resource(ResourceField, Resource) ->
     case props:get_value(ResourceField, ?ALLOWED_RESOURCE_FIELDS) of

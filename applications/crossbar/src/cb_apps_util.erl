@@ -83,7 +83,7 @@ is_authorized(AccountId, UserId, AppId) ->
 -spec get_specific_ids(kz_json:objects()) -> ne_binaries().
 get_specific_ids(Users) ->
     [Id || User <- Users,
-           (Id = kz_json:get_ne_value(<<"id">>, User)) =/= 'undefined'
+           (Id = kz_doc:id(User)) =/= 'undefined'
     ].
 
 %%--------------------------------------------------------------------

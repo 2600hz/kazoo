@@ -166,8 +166,12 @@ post(Context, _Id, Node) ->
 %% If the HTTP verib is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
--spec delete(cb_context:context(), path_token()) -> cb_context:context().
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec delete(cb_context:context(), path_token()) ->
+                    cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token()) ->
+                    cb_context:context().
+-spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
+                    cb_context:context().
 delete(Context, _Id) ->
     Context1 =
         case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
@@ -180,14 +184,14 @@ delete(Context, _Id) ->
     end.
 
 delete(Context, Id, Node) ->
-    Doc = cb_context:doc(Context),
-    case {Doc
-         ,kz_json:get_ne_value(Node, Doc)
-         }
-    of
-        {'undefined', _} -> crossbar_util:response_bad_identifier(Id, Context);
-        {_, 'undefined'} -> crossbar_util:response_bad_identifier(Node, Context);
-        _ ->
+    delete(Context, Id, Node, cb_context:doc(Context)).
+
+delete(Context, Id, _Node, 'undefined') ->
+    crossbar_util:response_bad_identifier(Id, Context);
+delete(Context, _Id, Node, Doc) ->
+    case kz_json:get_ne_value(Node, Doc) of
+        'undefined' -> crossbar_util:response_bad_identifier(Node, Context);
+        _NodeValue ->
             Context1 = cb_context:set_doc(Context, kz_json:delete_key(Node, Doc)),
             save(Context1, Node)
     end.

@@ -68,13 +68,14 @@ build_keys(Number) ->
             build_keys(Rest, D, [kz_util:to_integer(D)])
     end.
 
--spec only_numeric(binary()) -> [integer()].
+-spec only_numeric(binary()) -> binary().
 only_numeric(Number) ->
     << <<N>> || <<N>> <= Number, is_numeric(N)>>.
 
 -spec is_numeric(integer()) -> boolean().
 is_numeric(N) ->
-    N >= $0 andalso N =< $9.
+    N >= $0
+        andalso N =< $9.
 
 -spec build_keys(binary(), ne_binary(), [integer()]) -> [integer()].
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->

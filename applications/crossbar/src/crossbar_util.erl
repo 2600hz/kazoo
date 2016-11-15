@@ -156,7 +156,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:path(), api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), kz_json:path() | 'undefined', api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -170,7 +170,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), kz_json:path(), api_integer()
+-spec create_response(crossbar_status(), kz_json:path() | 'undefined', api_integer()
                      ,kz_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
@@ -246,8 +246,10 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
 %% a softer not found now.
 %% @end
 %%--------------------------------------------------------------------
--spec response_bad_identifier(ne_binary(), cb_context:context()) ->
+-spec response_bad_identifier(atom() | ne_binary(), cb_context:context()) ->
                                      cb_context:context().
+response_bad_identifier(Id, Context) when is_atom(Id) ->
+    response('error', <<"bad identifier">>, 404, [kz_util:to_binary(Id)], Context);
 response_bad_identifier(?NE_BINARY = Id, Context) ->
     response('error', <<"bad identifier">>, 404, [Id], Context).
 

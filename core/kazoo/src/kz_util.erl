@@ -839,7 +839,7 @@ startup() ->
 %% Given an object, extract the category and name into a tuple
 %% @end
 %%--------------------------------------------------------------------
--spec get_event_type(kz_json:object() | kz_proplist()) -> {api_binary(), api_binary()}.
+-spec get_event_type(api_terms()) -> {api_binary(), api_binary()}.
 get_event_type(Props) when is_list(Props) ->
     {props:get_value(<<"Event-Category">>, Props)
     ,props:get_value(<<"Event-Name">>, Props)
@@ -868,7 +868,7 @@ get_xml_value(Paths, Xml) ->
     end.
 
 %% @private
--spec extract_xml_values(xml_els()) -> api_binary().
+-spec extract_xml_values(xml_els()) -> api_ne_binary().
 extract_xml_values([]) -> 'undefined';
 extract_xml_values(Elements) ->
     Values = [case Element of
@@ -876,7 +876,8 @@ extract_xml_values(Elements) ->
                   #xmlAttribute{value = Value} -> Value;
                   _ -> <<>> %% Important as xmerl only handles strings
               end
-              || Element <- Elements],
+              || Element <- Elements
+             ],
     case iolist_to_binary(Values) of
         <<>> ->
             %% Note: here we make sure that Values were all either xmlText

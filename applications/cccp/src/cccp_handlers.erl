@@ -71,7 +71,7 @@ handle_cccp_call(Call) ->
             cccp_platform_sup:new(Call)
     end.
 
--spec handle_callback(kapps_call:call()) -> 'ok'.
+-spec handle_callback(kapps_call:call()) -> any().
 handle_callback(Call) ->
     CallerNumber = knm_converters:normalize(kapps_call:caller_id_number(Call)),
     case cccp_util:authorize(CallerNumber, <<"cccps/cid_listing">>) of
@@ -81,7 +81,7 @@ handle_callback(Call) ->
             lager:info("No caller information found for ~p. Won't call it back. (~p)", [CallerNumber, E])
     end.
 
--spec maybe_call_back(kz_json:object(), kapps_call:call()) -> 'ok'.
+-spec maybe_call_back(kz_json:object(), kapps_call:call()) -> any().
 maybe_call_back(JObj, Call) ->
     AccountId = kz_json:get_value(<<"account_id">>, JObj),
     UserId = kz_json:get_value(<<"user_id">>, JObj),

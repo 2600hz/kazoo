@@ -491,7 +491,7 @@ db_compact(DbName) ->
 %% Delete a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
--spec db_delete(text()) -> boolean().
+-spec db_delete(text()) -> 'ok' | data_error().
 db_delete(DbName) when ?VALID_DBNAME ->
     kzs_db:db_delete(kzs_plan:plan(DbName), DbName);
 db_delete(DbName) ->
@@ -506,8 +506,8 @@ db_delete(DbName) ->
 %% Archive a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
--spec db_archive(ne_binary()) -> 'ok'.
--spec db_archive(ne_binary(), ne_binary()) -> 'ok'.
+-spec db_archive(ne_binary()) -> 'ok' | data_error().
+-spec db_archive(ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(DbName) ->
     Folder = kapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
     db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
@@ -520,7 +520,7 @@ db_archive(DbName, Filename) ->
         {'error', _}=E -> E
     end.
 
--spec db_import(ne_binary(), file:filename_all()) -> 'ok' | {'error', any()}.
+-spec db_import(ne_binary(), file:filename_all()) -> 'ok' | data_error().
 db_import(DbName, ArchiveFile) when ?VALID_DBNAME ->
     kzs_db:db_archive(kzs_plan:plan(DbName), DbName, ArchiveFile);
 db_import(DbName, ArchiveFile) ->

@@ -221,7 +221,7 @@ ref_to_id(Ref) ->
     Id.
 
 
--spec browse_dbs_for_triggers(reference()) -> 'ok'.
+-spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
 browse_dbs_for_triggers(Ref) ->
     kz_util:put_callid(<<"cleanup_pass_", (kz_util:rand_hex_binary(4))/binary>>),
     {'ok', Dbs} = kz_datamgr:db_info(),
@@ -230,6 +230,7 @@ browse_dbs_for_triggers(Ref) ->
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 
+-spec cleanup_pass(ne_binary()) -> boolean().
 cleanup_pass(Db) ->
     tasks_bindings:map(db_to_trigger(Db), Db),
     erlang:garbage_collect(self()).

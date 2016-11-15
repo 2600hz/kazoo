@@ -57,9 +57,11 @@
 -define(VI_PASSWORD, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"password">>, <<>>)).
 -define(VI_ENDPOINT_GROUP, kapps_config:get_string(?KNM_VI_CONFIG_CAT, <<"endpoint_group">>, <<>>)).
 
+-define(API_SUCCESS, <<"100">>).
 
 -type soap_response() :: {'ok', xml_el()} | {'error', any()}.
--type to_json_ret() :: {'ok', kz_json:object()} | {'error', any()}.
+-type to_json_ret() :: {'ok', kz_json:object() | kz_json:objects()} |
+                       {'error', any()}.
 
 %%% API
 
@@ -187,7 +189,7 @@ to_numbers({'ok',JObjs}, AccountId) ->
 maybe_return({'error', Reason}, N) ->
     knm_errors:by_carrier(?MODULE, Reason, N);
 maybe_return({'ok', JObj}, N) ->
-    case <<"100">> == kz_json:get_value(<<"code">>, JObj) of
+    case ?API_SUCCESS == kz_json:get_value(<<"code">>, JObj) of
         'true' -> N;
         'false' ->
             Reason = kz_json:get_value(<<"msg">>, JObj),
@@ -377,12 +379,12 @@ verify_response(Xml) ->
     RespCode = kz_util:get_xml_value("//responseCode/text()", Xml),
     RespMsg = kz_util:get_xml_value("//responseMessage/text()", Xml),
     lager:debug("carrier response: ~s ~s", [RespCode, RespMsg]),
-    case RespCode == <<"100">> of
-        'true' ->
-            lager:debug("request was successful"),
+    case RespCode of
+        ?API_SUCCESS ->
+            lager:debug("api request was successful"),
             {'ok', Xml};
-        'false' ->
-            lager:debug("request failed"),
+        _ErrorResp ->
+            lager:debug("api request failed: ~p", [_ErrorResp]),
             {'error', RespMsg}
     end.
 
@@ -397,7 +399,6 @@ http_code(_Code) -> 'empty_response'.
 xpath(Action, CategoryHierarchy) ->
     ToJoin = ["//" ++ Action ++ "Result" | CategoryHierarchy],
     string:join(ToJoin, "/").
-
 
 %% API status codes
 %% https://github.com/skywiretech/voip_api/blob/3ce46e6a43fa340237017bae4aae41bcc4d80506/lib/voip_api/response/did_response.rb#L109

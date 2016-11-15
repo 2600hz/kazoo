@@ -78,7 +78,7 @@ rate(ItemPlan, Default) ->
     kz_json:get_float_value(?RATE, ItemPlan, Default).
 
 -spec exceptions(doc()) -> ne_binaries().
--spec exceptions(doc(), Default) -> float() | Default.
+-spec exceptions(doc(), Default) -> ne_binaries() | Default.
 exceptions(ItemPlan) ->
     exceptions(ItemPlan, []).
 exceptions(ItemPlan, Default) ->

@@ -34,8 +34,7 @@
                             {'ok', string(), _, _}.
 -type couchbeam_error() :: {'error', couchbeam_errors()}.
 
--record(design_data, {
-          db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
+-record(design_data, {db_name = <<>> :: binary() %% the actual DB name, encoded (/ -> %2f)
                      ,design_name = <<>> :: binary()
                      ,node :: atom()
                      ,shards = [] :: ne_binaries()
@@ -44,16 +43,15 @@
                      ,conn = #server{} :: server()
                      ,admin_conn = #server{} :: server()
                      ,do_compaction = 'false' :: boolean()
-         }).
--record(db_data, {
-          db_name = <<>> :: binary() %% the shard name
+                     }).
+-record(db_data, {db_name = <<>> :: binary() %% the shard name
                  ,node :: atom()
                  ,disk_size = 0 :: non_neg_integer()
                  ,data_size = 0 :: non_neg_integer()
                  ,conn = #server{} :: server()
                  ,admin_conn = #server{} :: server()
                  ,do_compaction = 'false' :: boolean()
-         }).
+                 }).
 
 -record(kz_couch_connection, {id = kz_util:current_tstamp()
                              ,host = "localhost"
@@ -78,8 +76,8 @@
                      }).
 -type copy_doc() :: #kz_copy_doc{}.
 
--define(NO_OPTIONS, [cookie, admin_port, compact_automatically]).
--define(ATOM_OPTIONS, [pool, pool_name]).
+-define(NO_OPTIONS, ['cookie', 'admin_port', 'compact_automatically']).
+-define(ATOM_OPTIONS, ['pool', 'pool_name']).
 
 -type couch_version() :: 'couchdb_1_6' | 'couchdb_2' | 'bigcouch'.
 

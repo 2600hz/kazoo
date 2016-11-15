@@ -53,7 +53,7 @@ maybe_handle_bridge_failure(Reason, Call) ->
                                  cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
     EndpointId = kz_doc:id(Data),
-    Params = kz_json:set_value(<<"source">>, ?MODULE, Data),
+    Params = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Data),
     case kz_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->

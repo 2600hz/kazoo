@@ -26,7 +26,7 @@
 -define(CCV(Key), [<<"Custom-Channel-Vars">>, Key]).
 
 -define(DEFAULT_AMQP_EXCHANGE_OPTIONS
-       ,kz_json:from_list([{'passive', 'true'}])
+       ,kz_json:from_list([{<<"passive">>, 'true'}])
        ).
 
 -define(RULES_HONOR_DIVERSION

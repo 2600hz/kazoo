@@ -361,7 +361,7 @@ can_modify(Context, Id) ->
     AccountId = cb_context:account_id(Context),
     case cb_apps_util:allowed_app(AccountId, Id) of
         'undefined' ->
-            Props = [{'details', Id}],
+            Props = [{<<"details">>, Id}],
             cb_context:add_system_error('forbidden', kz_json:from_list(Props), Context);
         App ->
             cb_context:store(cb_context:set_resp_status(Context, 'success')
@@ -463,11 +463,10 @@ load_app_from_master_account(Context, AppId) ->
 %%--------------------------------------------------------------------
 -spec bad_app_error(cb_context:context(), ne_binary()) -> cb_context:context().
 bad_app_error(Context, AppId) ->
-    cb_context:add_system_error(
-      'bad_identifier'
-                               ,kz_json:from_list([{'details', AppId}])
+    cb_context:add_system_error('bad_identifier'
+                               ,kz_json:from_list([{<<"details">>, AppId}])
                                ,Context
-     ).
+                               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -484,11 +483,10 @@ install(Context, Id) ->
             Data = cb_context:req_data(Context),
             AppName = kz_json:get_value(<<"name">>, cb_context:fetch(Context, Id)),
             UpdatedApps =
-                kz_json:set_value(
-                  Id
+                kz_json:set_value(Id
                                  ,kz_json:set_value(<<"name">>, AppName, Data)
                                  ,Apps
-                 ),
+                                 ),
             UpdatedDoc = kzd_apps_store:set_apps(Doc, UpdatedApps),
             cb_context:set_doc(Context, UpdatedDoc);
         _ ->
@@ -599,16 +597,18 @@ get_screenshot(Context, Number) ->
 -spec load_apps_store(cb_context:context()) -> cb_context:context().
 load_apps_store(Context) ->
     Context1 = crossbar_doc:load(kzd_apps_store:id(), Context, ?TYPE_CHECK_OPTION_ANY),
-    case {cb_context:resp_status(Context1), cb_context:resp_error_code(Context1)} of
+    case {cb_context:resp_status(Context1)
+         ,cb_context:resp_error_code(Context1)
+         }
+    of
         {'error', 404} ->
             AccountId = cb_context:account_id(Context),
-            cb_context:setters(
-              Context
+            cb_context:setters(Context
                               ,[{fun cb_context:set_resp_status/2, 'success'}
                                ,{fun cb_context:set_resp_data/2, kz_json:new()}
                                ,{fun cb_context:set_doc/2, kzd_apps_store:new(AccountId)}
                                ]
-             );
+                              );
         {'success', _} -> Context1;
         {'error', _} -> Context1
     end.
@@ -639,7 +639,7 @@ get_attachment(Context, Id, JObj, Attachment) ->
         {'error', R} ->
             Reason = kz_util:to_binary(R),
             lager:error("failed to fetch attachment, ~s in ~s, (account: ~s)", [Id, AppId, Db]),
-            cb_context:add_system_error('datastore_fault', kz_json:from_list([{'details', Reason}]), Context);
+            cb_context:add_system_error('datastore_fault', kz_json:from_list([{<<"details">>, Reason}]), Context);
         {'ok', AttachBin} ->
             add_attachment(Context, Id, Attachment, AttachBin)
     end.
@@ -652,9 +652,8 @@ add_attachment(Context, Id, Attachment, AttachBin) ->
         ,{<<"Content-Type">>, kz_json:get_value(<<"content_type">>, Attachment)}
         ,{<<"Content-Length">>, kz_json:get_value(<<"length">>, Attachment)}
         ],
-    cb_context:setters(
-      Context
+    cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, AttachBin}
                        ,{fun cb_context:add_resp_headers/2, RespHeaders}
                        ]
-     ).
+                      ).

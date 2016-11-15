@@ -470,7 +470,7 @@ remove_depreciated_databases() ->
 remove_depreciated_databases([]) -> 'ok';
 remove_depreciated_databases([Database|Databases]) ->
     _ = case kz_datamgr:db_classification(Database) of
-            'depreciated' ->
+            'deprecated' ->
                 io:format("    archive and remove depreciated database ~s~n", [Database]),
                 _ = kz_datamgr:db_archive(Database),
                 maybe_delete_db(Database);

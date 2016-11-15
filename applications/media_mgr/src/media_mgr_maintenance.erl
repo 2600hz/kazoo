@@ -22,5 +22,9 @@ prompt_url(PromptId, AccountId) ->
     prompt_url(PromptId, AccountId, Language).
 
 prompt_url(PromptId, AccountId, Language) ->
-    {'ok', URL} = kz_media_url:playback(<<"prompt://", AccountId/binary, "/", PromptId/binary, "/", Language/binary>>, kz_json:new()),
-    io:format(" URL for ~s/~s/~s: ~s~n", [AccountId, PromptId, Language, URL]).
+    case kz_media_url:playback(<<"prompt://", AccountId/binary, "/", PromptId/binary, "/", Language/binary>>, kz_json:new()) of
+        {'error', _E} ->
+            io:format("failed to find URL for ~s/~s/~s: ~p~n", [AccountId, PromptId, Language, _E]);
+        URL ->
+            io:format(" URL for ~s/~s/~s: ~s~n", [AccountId, PromptId, Language, URL])
+    end.

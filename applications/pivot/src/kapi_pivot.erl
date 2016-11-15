@@ -109,7 +109,7 @@ publish_req(Req, ContentType) ->
     amqp_util:callmgr_publish(Payload, ContentType, get_pivot_req_routing(Req)).
 
 
--spec publish_failed(ne_binary(), ne_binary()) -> 'ok'.
+-spec publish_failed(ne_binary(), api_terms()) -> 'ok'.
 publish_failed(Target, JObj) ->
     {'ok', Payload} = kz_api:prepare_api_payload(JObj, ?PIVOT_FAILED_VALUES, fun failed/1),
     amqp_util:targeted_publish(Target, Payload).

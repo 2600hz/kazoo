@@ -13,42 +13,36 @@
 
 -define(EMPTY_JSON_OBJECT, ?JSON_WRAPPER([])).
 
--type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.
--type objects() :: [object()].
+-type json_term() :: 'null'
+                   | boolean()
+                   | json_string() | <<>>
+                   | json_number()
+                   | object()
+                   | json_array().
+-type api_json_term() :: json_term() | 'undefined'.
+-type json_terms() :: [json_term()].
 
--type json_string() :: ne_binary() | atom().
--type json_strings() :: [json_string()].
+-type json_array()  :: json_terms().
+-type json_string() :: ne_binary().
 -type json_number() :: integer() | float().
--type json_array() :: [json_term()].
 
--type key() :: json_string() | pos_integer().
+-type object() :: {json_proplist()} | ?EMPTY_JSON_OBJECT.
+-type objects() :: [object()] | [].
+
+-type key() :: json_string().
 -type keys() :: [key()].
 -type path() :: keys() | key().
 -type paths() :: [path()].
 
--type json_proplist_key() :: path().
--type json_proplist_kv(K, V) :: [{K, V}].
--type json_proplist_k(K) :: json_proplist_kv(K, json_term()).
--type json_proplist() :: json_proplist_kv(json_proplist_key(), json_term()).
--type json_proplists() :: [json_proplist(),...].
-
--type json_iolist() :: {'json', iolist()}.
--type json_term() :: boolean()
-                   | json_string() | <<>>
-                   | json_iolist()
-                   | json_number()
-                   | json_array()
-                   | object()
-                   | kz_date().
--type json_terms() :: [json_term()].
--type api_json_term() :: json_term() | 'undefined'.
+-type json_proplist() :: [{key(), json_term()}] | [].
+-type json_proplists() :: [json_proplist()].
 
 -type encode_option() :: 'uescape'
                        | 'pretty'
                        | 'force_utf8'
                        | 'escape_forward_slashes'
-                       | {bytes_per_iter, non_neg_integer()}
-                       | {bytes_per_red, non_neg_integer()}.
+                       | {'bytes_per_iter', non_neg_integer()}
+                       | {'bytes_per_red', non_neg_integer()}.
 
 -type encode_options() :: [encode_option()].
 

@@ -19,7 +19,7 @@
 
 -define(DEFAULT_EXCHANGE, <<"sms">>).
 -define(DEFAULT_EXCHANGE_TYPE, <<"topic">>).
--define(DEFAULT_EXCHANGE_OPTIONS, [{'passive', 'true'}] ).
+-define(DEFAULT_EXCHANGE_OPTIONS, [{<<"passive">>, 'true'}] ).
 -define(DEFAULT_EXCHANGE_OPTIONS_JOBJ, kz_json:from_list(?DEFAULT_EXCHANGE_OPTIONS) ).
 
 -define(DEFAULT_BROKER, kz_amqp_connections:primary_broker()).
@@ -103,13 +103,13 @@ connections_fold(K, V, Acc) ->
                                  ,exchange = kz_json:get_value(<<"exchange">>, V)
                                  ,type = kz_json:get_value(<<"type">>, V)
                                  ,queue = kz_json:get_value(<<"queue">>, V)
-                                 ,options = connection_options(kz_json:get_value(<<"options">>, V))
+                                 ,options = connection_options(kz_json:get_json_value(<<"options">>, V))
                                  },
     [C | Acc].
 
 -spec connection_options(api_object()) -> kz_proplist().
 connection_options('undefined') ->
-    ?DEFAULT_EXCHANGE_OPTIONS;
+    connection_options(?DEFAULT_EXCHANGE_OPTIONS_JOBJ);
 connection_options(JObj) ->
     [{kz_util:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)

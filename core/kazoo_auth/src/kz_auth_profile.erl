@@ -191,23 +191,32 @@ update_user(DocId, Props, Token) ->
             Token
     end.
 
--spec maybe_update_user(ne_binary(), kz_proplist(), map()) -> map().
+-spec maybe_update_user(ne_binary(), kz_json:object(), map()) -> map().
 maybe_update_user(DocId, JObj, Token) ->
-    Props = format_user_doc(Token),
-    case lists:foldl(fun(K, KVs) ->
-                             case {props:get_value(K, Props)
-                                  ,kz_json:get_value(K, JObj)
-                                  }
-                             of
-                                 {'undefined', _} -> KVs;
-                                 {Value, Value} -> KVs;
-                                 {Value, _} ->[{K, Value} | KVs]
-                             end
-                     end, [], ?UPDATE_CHK_FIELDS)
-    of
-        [] -> Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)};
+    case updates_needed(JObj, Token) of
+        [] ->
+            Token#{user_doc => JObj
+                  ,user_map => kz_json:to_map(JObj)
+                  };
         Updates -> update_user(DocId, Updates, Token)
     end.
+
+-spec updates_needed(kz_json:object(), map()) -> kz_proplist().
+updates_needed(JObj, Token) ->
+    Props = format_user_doc(Token),
+    lists:foldl(fun(K, KVs) ->
+                        case {props:get_value(K, Props)
+                             ,kz_json:get_value(K, JObj)
+                             }
+                        of
+                            {'undefined', _} -> KVs;
+                            {Value, Value} -> KVs;
+                            {Value, _} ->[{K, Value} | KVs]
+                        end
+                end
+               ,[]
+               ,?UPDATE_CHK_FIELDS
+               ).
 
 -spec format_user_doc(map()) -> kz_proplist().
 format_user_doc(#{auth_provider := #{name := ProviderId} = Provider

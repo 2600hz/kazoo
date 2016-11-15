@@ -78,7 +78,7 @@ validate(Context) ->
 -spec maybe_load_docs(cb_context:context()) -> cb_context:context().
 maybe_load_docs(Context) ->
     JObj = cb_context:req_data(Context),
-    Ids = sets:from_list(kz_json:get_value(<<"ids">>, JObj, [])),
+    Ids = sets:from_list(kz_json:get_list_value(<<"ids">>, JObj, [])),
     Context1 = crossbar_doc:load(sets:to_list(Ids), Context, ?TYPE_CHECK_OPTION_ANY),
     case cb_context:resp_status(Context1) of
         'success' -> maybe_follow_groups(Ids, Context1);
@@ -87,9 +87,7 @@ maybe_load_docs(Context) ->
 
 -spec maybe_follow_groups(sets:set(), cb_context:context()) -> cb_context:context().
 maybe_follow_groups(Ids, Context) ->
-    JObjs = cb_context:doc(Context),
-    Context1 = cb_context:set_doc(Context, []),
-    maybe_follow_groups(JObjs, Ids, Context1).
+    maybe_follow_groups(cb_context:doc(Context), Ids, cb_context:set_doc(Context, [])).
 
 -spec maybe_follow_groups(kz_json:objects(), sets:set(), cb_context:context()) ->
                                  cb_context:context().
@@ -166,10 +164,11 @@ revalidate_doc(JObj, Context) ->
 revalidate_doc(Id, JObj, Context) ->
     case get_validate_binding(JObj) of
         'undefined' ->
-            Details = [{'type', kz_doc:type(JObj)}],
+            Details = [{<<"type">>, kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
                                                         ,kz_json:from_list(Details)
-                                                        ,cb_context:new()),
+                                                        ,cb_context:new()
+                                                        ),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_POST}
@@ -223,10 +222,11 @@ maybe_save_doc(JObj, Context) ->
 maybe_save_doc(Id, JObj, DbDoc, Context) ->
     case get_post_binding(JObj) of
         'undefined' ->
-            Details = [{'type', kz_doc:type(JObj)}],
+            Details = [{<<"type">>, kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
                                                         ,kz_json:from_list(Details)
-                                                        ,cb_context:new()),
+                                                        ,cb_context:new()
+                                                        ),
             import_results(Id, InterimContext, Context);
         Binding ->
             Setters = [{fun cb_context:set_req_verb/2, ?HTTP_POST}
@@ -275,7 +275,7 @@ maybe_delete_doc(Id, JObj, DbDoc, Context) ->
     lager:debug("try to delete ~p", [Id]),
     case get_delete_binding(JObj) of
         'undefined' ->
-            Details = [{'type', kz_doc:type(JObj)}],
+            Details = [{<<"type">>, kz_doc:type(JObj)}],
             InterimContext = cb_context:add_system_error('invalid_bulk_type'
                                                         ,kz_json:from_list(Details)
                                                         ,cb_context:new()
@@ -340,7 +340,8 @@ import_results_error(Id, C, Context) ->
     ErrorMsg  = cb_context:resp_error_msg(C),
     Errors    = cb_context:resp_data(C),
     JObj      = cb_context:resp_data(Context),
-    Resp = kz_json:from_list([{<<"status">>, Status}
+
+    Resp = kz_json:from_list([{<<"status">>, kz_util:to_binary(Status)}
                              ,{<<"error">>, ErrorCode}
                              ,{<<"message">>, ErrorMsg}
                              ,{<<"data">>, Errors}

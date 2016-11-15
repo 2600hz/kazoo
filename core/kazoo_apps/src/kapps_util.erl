@@ -533,7 +533,7 @@ update_views(Db, Views) ->
     update_views(Db, Views, 'false').
 
 update_views(Db, Views, Remove) ->
-    kz_datamgr:db_view_update(Db, Views, Remove).
+    kz_util:is_true(kz_datamgr:db_view_update(Db, Views, Remove)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -686,7 +686,7 @@ write_tts_file(Path, Say) ->
     {'ok', _, Wav} = kapps_speech:create(Say),
     file:write_file(Path, Wav).
 
--spec to_magic_hash(ne_binary()) -> ne_binary().
+-spec to_magic_hash(iolist()) -> ne_binary().
 to_magic_hash(Bin) ->
     kz_util:to_hex_binary(zlib:zip(Bin)).
 

@@ -48,7 +48,7 @@ publish_no_rate_found(JObj) ->
     kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
 
 -spec get_rate_data(kz_json:object()) ->
-                           {'ok', kz_proplist()} |
+                           {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj) ->
     ToDID = kz_json:get_value(<<"To-DID">>, JObj),
@@ -137,7 +137,7 @@ rate_resp(Rate, JObj) ->
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     PrivateCost = get_private_cost(Rate),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
-    UpdateCalleeId = maybe_update_callee_id(JObj),
+    ShouldUpdateCalleeId = should_update_callee_id(JObj),
     [{<<"Rate">>, kz_util:to_binary(RateCost)}
     ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
     ,{<<"Rate-Minimum">>, kz_util:to_binary(RateMinimum)}
@@ -152,39 +152,36 @@ rate_resp(Rate, JObj) ->
     ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
     ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
     ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
-    ,{<<"Update-Callee-ID">>, UpdateCalleeId}
+    ,{<<"Update-Callee-ID">>, ShouldUpdateCalleeId}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_surcharge(kz_json:object()) -> ne_binary().
+-spec get_surcharge(kz_json:object()) -> kz_transaction:units().
 get_surcharge(Rate) ->
     Surcharge = kz_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
     wht_util:dollars_to_units(Surcharge).
 
--spec get_rate_cost(kz_json:object()) -> integer().
+-spec get_rate_cost(kz_json:object()) -> kz_transaction:units().
 get_rate_cost(Rate) ->
     Cost = kz_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
     wht_util:dollars_to_units(Cost).
 
--spec get_private_cost(kz_json:object()) -> integer().
+-spec get_private_cost(kz_json:object()) -> kz_transaction:units().
 get_private_cost(Rate) ->
     Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, 0.0),
     wht_util:dollars_to_units(Cost).
 
--spec maybe_update_callee_id(kz_json:object()) -> boolean().
-maybe_update_callee_id(JObj) ->
-    AccountId = kz_json:get_value(<<"Account-ID">>, JObj, 'undefined'),
-    case AccountId of
-        'undefined' -> 'false';
-        Id -> update_callee_id(Id)
-    end.
-
--spec update_callee_id(kz_json:object()) -> boolean().
-update_callee_id(AccountId) ->
+-spec should_update_callee_id(ne_binary() | kz_json:object()) -> boolean().
+should_update_callee_id(?NE_BINARY = AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->
             kz_json:is_true([<<"caller_id_options">>, <<"show_rate">>], AccountDoc, 'false');
         {'error', _R} ->
             lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
             'false'
+    end;
+should_update_callee_id(JObj) ->
+    case kz_json:get_value(<<"Account-ID">>, JObj) of
+        'undefined' -> 'false';
+        Id -> should_update_callee_id(Id)
     end.

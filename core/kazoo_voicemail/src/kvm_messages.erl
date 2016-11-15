@@ -246,7 +246,7 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
+                             kz_json:object().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
@@ -369,10 +369,10 @@ is_prior_to_retention(_UtcSeconds, _RetenTimestamp) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec normalize_count(kz_json:objects()) -> kz_json:object().
--spec normalize_count_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 normalize_count(ViewRes) ->
     lists:foldl(fun normalize_count_fold/2, kz_json:new(), ViewRes).
 
+-spec normalize_count_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 normalize_count_fold(M, Acc) ->
     VMBoxId = kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
     Folder = kz_json:get_value([<<"key">>, ?FOLDER_KEY_INDEX], M),

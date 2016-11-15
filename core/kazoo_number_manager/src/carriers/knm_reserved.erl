@@ -74,8 +74,8 @@ do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId)
 do_find_numbers(_, _, _, _) ->
     {'error', 'not_available'}.
 
--spec find_more(ne_binary(), pos_integer(), non_neg_integer(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
-                       knm_number:knm_numbers().
+-spec find_more(ne_binary(), pos_integer(), non_neg_integer(), ne_binary(), non_neg_integer(), knm_number:knm_numbers()) ->
+                       {'ok', knm_number:knm_numbers()}.
 find_more(Prefix, Quantity, Offset, AccountId, NotEnough, Numbers)
   when NotEnough < Quantity ->
     case do_find_numbers(Prefix, Quantity - NotEnough, Offset + NotEnough, AccountId) of
@@ -88,8 +88,7 @@ find_more(_, _, _, _, _Enough, Numbers) ->
 -spec format_numbers(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
 format_numbers(AuthBy, JObjs) ->
     Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    Options = [{'auth_by', AuthBy}
-              ],
+    Options = [{'auth_by', AuthBy}],
     [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
 
 %%--------------------------------------------------------------------

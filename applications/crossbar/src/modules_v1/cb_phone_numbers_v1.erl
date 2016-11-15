@@ -131,10 +131,12 @@ resource_exists(_, _) -> 'false'.
 %% Ensure we will be able to bill for phone_numbers
 %% @end
 %%--------------------------------------------------------------------
+-spec billing(cb_context:context()) -> cb_context:context().
+-spec billing(cb_context:context(), req_verb(), req_nouns()) -> cb_context:context().
 billing(Context) ->
     billing(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-billing(Context, ?HTTP_GET, [{<<"phone_numbers">>, _}|_]) ->
-    Context;
+
+billing(Context, ?HTTP_GET, [{<<"phone_numbers">>, _}|_]) -> Context;
 billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
     try kz_services:allow_updates(cb_context:account_id(Context)) of
         'true' -> Context
@@ -142,7 +144,7 @@ billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
         'throw':{Error, Reason} ->
             crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
     end;
-billing(Context, _, _) ->
+billing(Context, _Verb, _Nouns) ->
     Context.
 
 %%--------------------------------------------------------------------
@@ -398,10 +400,10 @@ find_numbers(Context) ->
                                    ])
         end,
     Schema = kz_json:decode(?FIND_NUMBER_SCHEMA),
-    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
+    Context1 = cb_context:set_req_data(Context, knm_carriers:options_to_jobj(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
--spec get_find_numbers_req(cb_context:context()) -> kz_json:object().
+-spec get_find_numbers_req(cb_context:context()) -> kz_proplist().
 get_find_numbers_req(Context) ->
     QS = cb_context:query_string(Context),
     [{'quantity', kz_json:get_ne_value(<<"quantity">>, QS, 1)}
@@ -430,10 +432,9 @@ validate_request(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_delete(cb_context:context()) -> cb_context:context().
 validate_delete(Context) ->
-    cb_context:set_doc(
-      cb_context:set_resp_status(Context, 'success')
+    cb_context:set_doc(cb_context:set_resp_status(Context, 'success')
                       ,'undefined'
-     ).
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -442,10 +443,12 @@ validate_delete(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec set_response({'ok', kz_json:object()} |
+                   kz_json:object() |
                    knm_number_return() |
                    {binary(), binary()}
                   ,binary()
-                  ,cb_context:context()) ->
+                  ,cb_context:context()
+                  ) ->
                           cb_context:context().
 set_response({'ok', {'ok', Doc}}, _, Context) ->
     crossbar_util:response(Doc, Context);
@@ -478,6 +481,7 @@ set_response(_Else, _, Context) ->
 
 -spec collection_process(cb_context:context()) -> kz_json:object().
 -spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> kz_json:object().
+-spec collection_process(cb_context:context(), ne_binary() | ne_binaries(), ne_binary()) -> kz_json:object().
 collection_process(Context) ->
     Numbers = kz_json:get_value(<<"numbers">>, cb_context:req_data(Context), []),
     collection_process(Context, Numbers).
@@ -489,39 +493,45 @@ collection_process(Context, Numbers) ->
     Temp = kz_json:from_list([{<<"success">>, kz_json:new()}
                              ,{<<"error">>, kz_json:new()}
                              ]),
-    lists:foldl(
-      fun(Number, Acc) ->
-              case collection_action(Context, cb_context:req_verb(Context), Number) of
-                  {'ok', KNum} ->
-                      JObj = knm_number:to_public_json(KNum),
-                      kz_json:set_value([<<"success">>, Number], JObj, Acc);
-                  {'error', KNMError} ->
-                      JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
-                      kz_json:set_value([<<"error">>, Number], JObj, Acc)
-              end
-      end
+    lists:foldl(fun(Number, Acc) ->
+                        collection_process_fold(Number, Acc, Context)
+                end
                ,Temp
                ,Numbers
-     ).
+               ).
 
 collection_process(Context, Numbers, Action) ->
     Base = kz_json:from_list([{<<"success">>, kz_json:new()}
                              ,{<<"error">>, kz_json:new()}
                              ]
                             ),
-    lists:foldl(
-      fun(Number, Acc) ->
-              case collection_action(Context, cb_context:req_verb(Context), Number, Action) of
-                  {'ok', JObj} ->
-                      kz_json:set_value([<<"success">>, Number], JObj, Acc);
-                  {'error', KNMError} ->
-                      JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
-                      kz_json:set_value([<<"error">>, Number], JObj, Acc)
-              end
-      end
+    lists:foldl(fun(Number, Acc) -> collection_process_action_fold(Number, Acc, Context, Action) end
                ,Base
                ,Numbers
-     ).
+               ).
+
+-spec collection_process_action_fold(ne_binary(), kz_json:object(), cb_context:context(), ne_binary()) ->
+                                            kz_json:object().
+collection_process_action_fold(Number, Acc, Context, Action) ->
+    case collection_action(Context, cb_context:req_verb(Context), Number, Action) of
+        {'ok', JObj} ->
+            kz_json:set_value([<<"success">>, Number], JObj, Acc);
+        {'error', KNMError} ->
+            JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
+            kz_json:set_value([<<"error">>, Number], JObj, Acc)
+    end.
+
+-spec collection_process_fold(ne_binary(), kz_json:object(), cb_context:context()) ->
+                                     kz_json:object().
+collection_process_fold(Number, Acc, Context) ->
+    case collection_action(Context, cb_context:req_verb(Context), Number) of
+        {'ok', KNum} ->
+            JObj = knm_number:to_public_json(KNum),
+            kz_json:set_value([<<"success">>, Number], JObj, Acc);
+        {'error', KNMError} ->
+            JObj = kz_json:set_value(<<"reason">>, knm_errors:cause(KNMError), kz_json:new()),
+            kz_json:set_value([<<"error">>, Number], JObj, Acc)
+    end.
 
 -spec collection_action(cb_context:context(), http_method(), ne_binary()) -> knm_number_return().
 -spec collection_action(cb_context:context(), http_method(), ne_binary(), ne_binary()) ->

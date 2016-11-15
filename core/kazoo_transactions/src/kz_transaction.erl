@@ -79,6 +79,7 @@
 -export_type([transaction/0
              ,transactions/0
              ,units/0
+             ,dollars/0
              ]).
 
 %%--------------------------------------------------------------------
@@ -522,7 +523,9 @@ remove_transaction(#kz_transaction{pvt_account_db=AccountDb}=Transaction) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec save(transaction()) -> {'ok', transaction()} | {'error', any()}.
+-spec save(transaction()) ->
+                  {'ok', transaction()} |
+                  {'error', any()}.
 save(#kz_transaction{}=Transaction) ->
     case prepare_transaction(Transaction) of
         {'error', _}=E -> E;
@@ -530,7 +533,9 @@ save(#kz_transaction{}=Transaction) ->
             save_transaction(T)
     end.
 
--spec save_transaction(transaction()) -> {'ok', transaction()} | {'error', any()}.
+-spec save_transaction(transaction()) ->
+                              {'ok', transaction()} |
+                              {'error', any()}.
 save_transaction(#kz_transaction{pvt_account_id=AccountId
                                 ,pvt_created=Created
                                 }=Transaction) ->

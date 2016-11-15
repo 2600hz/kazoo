@@ -100,7 +100,7 @@
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 
 -type docid() :: ne_binary() | {ne_binary(), ne_binary()}.
--type docids() :: ne_binary() | {ne_binary(), ne_binaries()}.
+-type docids() :: [docid()].
 
 -type get_results_return() :: {'ok', kz_json:objects() | kz_json:path()} |
                               data_error().

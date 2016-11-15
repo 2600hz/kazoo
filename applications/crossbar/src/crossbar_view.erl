@@ -13,19 +13,22 @@
 
 -define(PAGINATION_PAGE_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, View, Options) ->
-    Mapper = props:get_value('mapper', Options, fun id/1),
+    Mapper = props:get_value('mapper', Options, fun kz_util:identity/1),
     CouchOptions = props:get_value('couch_options', Options, []),
-    KeyMap = props:get_value('keymap', Options, fun id/1),
+    KeyMap = props:get_value('keymap', Options, fun kz_util:identity/1),
     load(Context, View, CouchOptions, Mapper, map_keymap(KeyMap)).
 
--spec map_keymap(ne_binary() | [ne_binary()] | fun()) -> fun().
+-type keymap_fun() :: fun((kz_json:path()) -> kz_json:path()).
+
+-spec map_keymap(ne_binary() | ne_binaries() | keymap_fun()) -> keymap_fun().
 map_keymap(K) when is_binary(K) -> fun(Ts) -> [K, Ts] end;
 map_keymap(K) when is_list(K) -> fun(Ts) -> K ++ [Ts] end;
 map_keymap(K) when is_function(K) -> K.
 
--spec load(cb_context:context(), ViewName :: ne_binary(), kz_proplist(), Mapper :: fun(), KeyMap :: fun()) -> cb_context:context().
+-spec load(cb_context:context(), ne_binary(), kz_proplist(), fun(), keymap_fun()) ->
+                  cb_context:context().
 load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
     case is_ascending(Context) of
         'true' ->
@@ -34,30 +37,31 @@ load(Context, View, CouchOptions, Mapper, KeyMap) when is_function(KeyMap) ->
             get_results_descending(Context, View, CouchOptions, Mapper, KeyMap)
     end.
 
-%% impl
-
--spec id(any()) -> any().
-id(X) -> X.
-
--spec get_results_descending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+-spec get_results_descending(cb_context:context(), ne_binary(), kz_datamgr:view_options(), fun(), keymap_fun()) ->
+                                    cb_context:context().
 get_results_descending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(start_key(Context)),
     EndKey = KeyMap(end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    Options = [{'mapper', CtxMapper}
+              ,{'couch_options', make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+              ],
     {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
--spec get_results_ascending(cb_context:context(), ne_binary(), kz_proplist(), fun(), fun()) -> cb_context:context().
+-spec get_results_ascending(cb_context:context(), ne_binary(), kz_datamgr:view_options(), fun(), keymap_fun()) ->
+                                   cb_context:context().
 get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
     PageSize = page_size(Context),
     StartKey = KeyMap(ascending_start_key(Context)),
     EndKey = KeyMap(ascending_end_key(Context, StartKey)),
     AccountId = cb_context:account_id(Context),
     CtxMapper = build_filter_with_qs(Context, Mapper),
-    Options = [{mapper, CtxMapper}, {couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}],
+    Options = [{'mapper', CtxMapper}
+              ,{'couch_options', make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+              ],
     {LastKey, JObjs} = kazoo_modb_view:get_results(AccountId, View, StartKey, EndKey, PageSize, Options),
     format_response(Context, StartKey, LastKey, PageSize, JObjs).
 
@@ -65,7 +69,7 @@ get_results_ascending(Context, View, CouchOptions, Mapper, KeyMap) ->
 is_ascending(Context) ->
     kz_json:is_true(<<"ascending">>, cb_context:query_string(Context)).
 
--spec one_of(cb_context:context(), [ne_binary()], integer()) -> integer().
+-spec one_of(cb_context:context(), ne_binaries(), integer()) -> integer().
 one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
     case cb_context:req_value(Context, Value) of
@@ -107,18 +111,19 @@ page_size(Context, _Version) ->
 
 -spec add_paging(integer(), integer(), integer(), kz_json:object()) -> kz_json:object().
 add_paging(StartKey, PageSize, NextStartKey, JObj) ->
-    kz_json:set_values([
-                        {<<"start_key">>, StartKey},
+    kz_json:set_values([{<<"start_key">>, StartKey},
                         {<<"page_size">>, PageSize},
                         {<<"next_start_key">>, NextStartKey}
-                       ],
-                       JObj).
+                       ]
+                      ,JObj
+                      ).
 
 -spec remove_paging(kz_json:object()) -> kz_json:object().
 remove_paging(JObj) ->
     kz_json:delete_keys([<<"start_key">>, <<"page_size">>, <<"next_start_key">>], JObj).
 
--spec format_response(cb_context:context(), integer(), integer()|'undefined', integer(), kz_json:objects()) -> cb_context:context().
+-spec format_response(cb_context:context(), integer(), api_integer(), integer(), kz_json:objects()) ->
+                             cb_context:context().
 format_response(Context, _, 'undefined', _PageSize, JObjs) ->
     Envelope = remove_paging(cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope));
@@ -126,27 +131,28 @@ format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
     Envelope = add_paging(StartKey, PageSize, NextStartKey, cb_context:resp_envelope(Context)),
     crossbar_doc:handle_datamgr_success(JObjs, cb_context:set_resp_envelope(Context, Envelope)).
 
--spec build_qs_filter_mapper(kz_json:object()) -> fun().
+-spec build_qs_filter_mapper(cb_context:context()) -> fun((kz_json:object()) -> kz_json:json_term()).
 build_qs_filter_mapper(Context) ->
     case crossbar_filter:is_defined(Context) of
         'true' -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
-        'false' -> fun id/1
+        'false' -> fun kz_util:identity/1
     end.
 
--spec build_qs_filter_options(kz_json:object()) -> list().
+-spec build_qs_filter_options(cb_context:context()) -> ['include_docs'] | [].
 build_qs_filter_options(Context) ->
     case crossbar_filter:is_defined(Context) of
         'true' -> ['include_docs'];
         'false' -> []
     end.
 
--spec build_filter_with_qs(cb_context:context(), fun()) -> fun().
+-spec build_filter_with_qs(cb_context:context(), fun()) -> filter_fun().
 build_filter_with_qs(Context, UserMapper) ->
     CtxMapper = crossbar_filter:build(Context),
     Mapper = build_qs_filter_mapper(Context),
     build_filter_with_qs(Mapper, CtxMapper, UserMapper).
 
--spec build_filter_with_qs(fun(), fun(), fun()) -> fun().
+-type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+-spec build_filter_with_qs(fun(), fun(), fun()) -> filter_fun().
 build_filter_with_qs(Mapper, CtxMapper, UserMapper) when is_function(UserMapper, 1) ->
     fun(JObjDoc, Acc) ->
             JObj = Mapper(JObjDoc),

@@ -2,9 +2,9 @@
 
 ## give a module name, grep the codebase for calls to that module
 ## create a list of beam files and feed it to dialyzer
-
+MODULE=$1
 ERL_FILES=$(grep -rl "$1:" {core,applications} --include "*.erl" --exclude="\*pqc.erl" | grep -v "test/")
-MOD_BEAM=$(find {core,applications} -name "$1.beam")
+MOD_BEAM=$(find {core,applications} -name "$MODULE.beam")
 
 BEAM_FILES=()
 BEAM=""
@@ -18,6 +18,8 @@ for ERL in $ERL_FILES; do
     BEAM_FILES+=($BEAM)
 done
 
+shift
+
 ARGS=${BEAM_FILES[@]}
-echo "dialyzing usages of $1"
-dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS
+echo "dialyzing usages of $MODULE"
+dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS $@

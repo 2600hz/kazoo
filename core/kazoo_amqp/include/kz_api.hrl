@@ -3,7 +3,7 @@
 -include_lib("kazoo/include/kz_api_literals.hrl").
 
 -type api_formatter_return() :: {'ok', iolist()} | {'error', string()}.
--type api_headers() :: ne_binaries().
+-type api_headers() :: ne_binaries() | [ne_binaries()].
 
 -type api_types() :: [{ne_binary(), fun()}].
 -type valid_value() :: ne_binary() | integer().

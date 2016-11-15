@@ -91,6 +91,7 @@
              ,collect_until/0
              ,timeout_or_until/0
              ,request_return/0
+             ,cast_return/0
              ]).
 
 -record(state, {current_msg_id :: ne_binary()

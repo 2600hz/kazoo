@@ -350,7 +350,7 @@ set_scope(Context) ->
               ],
     set_scope(cb_context:setters(Context, Setters), cb_context:req_nouns(Context)).
 
--spec set_scope(cb_context:context(), req_nouns()) -> scope().
+-spec set_scope(cb_context:context(), req_nouns()) -> cb_context:context().
 set_scope(Context, [{<<"storage">>, []}]) ->
     cb_context:store(Context, 'scope', 'system');
 set_scope(Context, [{<<"storage">>, [?PLANS_TOKEN]}]) ->
@@ -374,7 +374,7 @@ set_scope(Context, [{<<"storage">>, []}
                    ,{<<"accounts">>, [AccountId]}
                    ]) ->
     cb_context:store(Context, 'scope', {'user', UserId, AccountId});
-set_scope(Context, _) ->
+set_scope(Context, _Nouns) ->
     cb_context:store(Context, 'scope', 'invalid').
 
 -spec doc_id(cb_context:context() | scope()) -> api_binary().

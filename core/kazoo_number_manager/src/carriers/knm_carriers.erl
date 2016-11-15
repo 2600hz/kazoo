@@ -34,6 +34,8 @@
 %%% For knm carriers only
 -export([create_found/4, create_found/5]).
 
+-export([options_to_jobj/1]).
+
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -ifdef(TEST).
@@ -48,7 +50,7 @@
                   {'phonebook_url', ne_binary()} |
                   {'tollfree', boolean()} |
                   {'prefix', ne_binary()} |
-                  {'country', knm_util:country()} |
+                  {'country', knm_util:country_iso3166a2()} |
                   {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
                   {'account_id', ne_binary()} |
@@ -57,7 +59,7 @@
 -type option() :: {'quantity', pos_integer()} |
                   {'prefix', ne_binary()} |
                   {'dialcode', ne_binary()} |
-                  {'country', knm_util:country()} |
+                  {'country', knm_util:country_iso3166a2()} |
                   {'offset', non_neg_integer()} |
                   {'blocks', boolean()} |
                   {'account_id', ne_binary()} |
@@ -65,6 +67,13 @@
 -endif.
 -type options() :: [option()].
 -export_type([option/0, options/0]).
+
+-spec options_to_jobj(options()) -> kz_json:object().
+options_to_jobj(Options) ->
+    lists:foldl(fun option_to_kv/2, kz_json:new(), Options).
+
+option_to_kv({K, V}, JObj) ->
+    kz_json:set_value(kz_util:to_binary(K), V, JObj).
 
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).

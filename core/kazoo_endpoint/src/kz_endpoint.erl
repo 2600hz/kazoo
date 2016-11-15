@@ -24,7 +24,7 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
--define(NON_DIRECT_MODULES, ['cf_ring_group', 'acdc_util']).
+-define(NON_DIRECT_MODULES, [<<"cf_ring_group">>, <<"acdc_util">>]).
 
 -define(MOBILE_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".mobile">>).
 -define(DEFAULT_MOBILE_FORMATER, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>).
@@ -43,7 +43,7 @@
 -define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS
-       ,kz_json:from_list([{'passive', 'true'}])
+       ,kz_json:from_list([{<<"passive">>, 'true'}])
        ).
 -define(DEFAULT_MOBILE_SMS_ROUTE, <<"sprint">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS

@@ -12,12 +12,14 @@
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
 
 -spec to_schema_docs() -> 'ok'.
+-spec to_schema_docs(kz_json:object()) -> 'ok'.
 to_schema_docs() ->
     to_schema_docs(process_project()).
 
 to_schema_docs(Schemas) ->
     kz_json:foreach(fun update_schema/1, Schemas).
 
+-spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
     JObj = static_fields(Name, AutoGenSchema),
@@ -54,7 +56,7 @@ fields_without_defaults(JObj0) ->
                    'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content)
                ]).
 
--spec process_project() -> kz_json:objects().
+-spec process_project() -> kz_json:object().
 process_project() ->
     io:format("processing kapps_config usage: "),
     Apps = kz_ast_util:project_apps(),
@@ -63,6 +65,7 @@ process_project() ->
     Usage.
 
 -spec process_app(atom()) -> kz_json:object().
+-spec process_app(atom(), kz_json:object()) -> kz_json:object().
 process_app(App) ->
     process_app(App, kz_json:new()).
 
@@ -70,6 +73,7 @@ process_app(App, Schemas) ->
     lists:foldl(fun module_to_schema/2, Schemas, kz_ast_util:app_modules(App)).
 
 -spec process_module(module()) -> kz_json:object().
+-spec module_to_schema(module(), kz_json:object()) -> kz_json:object().
 process_module(Module) ->
     module_to_schema(Module, kz_json:new()).
 

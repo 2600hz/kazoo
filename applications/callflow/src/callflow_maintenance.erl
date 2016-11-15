@@ -112,7 +112,7 @@ refresh() ->
     _ = kz_util:spawn(fun blocking_refresh/0),
     'started'.
 
--spec refresh(binary() | string()) -> 'ok'.
+-spec refresh(binary() | string()) -> boolean().
 refresh(<<Account/binary>>) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     Views = kapps_util:get_views_json('callflow', "views"),

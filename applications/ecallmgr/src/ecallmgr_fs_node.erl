@@ -192,17 +192,20 @@
 -spec start_link(atom()) -> startlink_ret().
 -spec start_link(atom(), kz_proplist()) -> startlink_ret().
 start_link(Node) -> start_link(Node, []).
-start_link(Node, Options) ->
+start_link(Node, Options) when is_atom(Node) ->
     QueueName = <<(kz_util:to_binary(Node))/binary
                   ,"-"
                   ,(kz_util:to_binary(?MODULE))/binary
                 >>,
-    gen_listener:start_link(?SERVER, [{'responders', ?RESPONDERS}
-                                     ,{'bindings', ?BINDINGS(Node)}
-                                     ,{'queue_name', QueueName}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], [Node, Options]).
+    gen_listener:start_link(?SERVER
+                           ,[{'responders', ?RESPONDERS}
+                            ,{'bindings', ?BINDINGS(Node)}
+                            ,{'queue_name', QueueName}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ]
+                           ,[Node, Options]
+                           ).
 
 -spec sync_channels(fs_node()) -> 'ok'.
 sync_channels(Srv) ->
@@ -457,10 +460,10 @@ code_change(_OldVsn, State, _Extra) ->
                        {'error', 'retry'}.
 
 -spec run_start_cmds(atom(), kz_proplist()) -> pid_ref().
+-spec run_start_cmds(atom(), kz_proplist(), pid()) -> any().
 run_start_cmds(Node, Options) ->
     kz_util:spawn_monitor(fun run_start_cmds/3, [Node, Options, self()]).
 
--spec run_start_cmds(atom(), kz_proplist(), pid()) -> any().
 run_start_cmds(Node, Options, Parent) ->
     kz_util:put_callid(Node),
     timer:sleep(ecallmgr_config:get_integer(<<"fs_cmds_wait_ms">>, 5 * ?MILLISECONDS_IN_SECOND, Node)),
@@ -468,7 +471,7 @@ run_start_cmds(Node, Options, Parent) ->
     run_start_cmds(Node, Options, Parent, is_restarting(Node)).
 
 -spec is_restarting(atom()) -> boolean().
-is_restarting(Node) ->
+is_restarting(Node) when is_atom(Node) ->
     case freeswitch:api(Node, 'status', <<>>) of
         {'ok', Status} ->
             [UP|_] = binary:split(Status, <<"\n">>),
@@ -508,8 +511,7 @@ run_start_cmds(Node, Options, Parent, 'false') ->
 run_start_cmds(Node, Options, Parent, Cmds) ->
     Res = process_cmds(Node, Options, Cmds),
 
-    case
-        is_list(Res)
+    case is_list(Res)
         andalso [R || R <- Res, was_not_successful_cmd(R)]
     of
         [] -> sync(Parent);

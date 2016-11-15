@@ -20,8 +20,16 @@
 -ifdef(PROPER).
 
 is_json_object_proper_test_() ->
-    {"Runs kz_json PropEr tests for is_json_object/1",
-     {'timeout', 10000, [?_assertEqual([], proper:module(?MODULE))]}}.
+    {"Runs kz_json PropEr tests"
+    ,{'timeout'
+     ,10000
+     ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
+                                                ,{'numtests', 500}
+                                                ]
+                                      ))
+      ]
+     }
+    }.
 
 prop_is_object() ->
     ?FORALL(JObj
@@ -55,8 +63,6 @@ prop_get_value() ->
                       end)
            ).
 
--define(DO_NOT_RUN_QC_SET_VALUE, true).
--ifndef(DO_NOT_RUN_QC_SET_VALUE).
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
            ,{object(), keys(), json_term()}
@@ -66,7 +72,6 @@ prop_set_value() ->
                           Value =:= kz_json:get_value(Key, JObj1)
                       end)
            ).
--endif.
 
 prop_to_proplist() ->
     ?FORALL(Prop, json_proplist(),

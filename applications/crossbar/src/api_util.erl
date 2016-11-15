@@ -444,10 +444,9 @@ decode_base64(Context, CT, Req0, Body) ->
         {'error', E} ->
             lager:debug("error getting request body: ~p", [E]),
             ?MODULE:halt(Req0
-                        ,cb_context:set_resp_status(
-                           cb_context:set_resp_data(Context, E)
+                        ,cb_context:set_resp_status(cb_context:set_resp_data(Context, E)
                                                    ,'fatal'
-                          )
+                                                   )
                         );
         {'more', _, Req1} ->
             handle_max_filesize_exceeded(Context, Req1);

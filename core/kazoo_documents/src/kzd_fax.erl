@@ -147,7 +147,7 @@ folder(FaxDoc, Default) ->
 document(FaxDoc) ->
     kz_json:get_value(?KEY_DOCUMENT, FaxDoc, kz_json:new()).
 
--spec document_url(doc()) -> doc().
+-spec document_url(doc()) -> doc() | 'undefined'.
 document_url(FaxDoc) ->
     kz_json:get_value(?KEY_DOCUMENT_URL, FaxDoc).
 
