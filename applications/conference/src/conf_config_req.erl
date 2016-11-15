@@ -122,16 +122,22 @@ max_members_sound(Conference) ->
 get_conference(?DEFAULT_PROFILE_NAME) -> kapps_conference:new();
 get_conference(?PAGE_PROFILE_NAME) -> kapps_conference:new();
 get_conference(ConferenceID) ->
-    Participants =
-        [Pid ||
-            {_,Pid,'worker',['conf_participant']} <- supervisor:which_children('conf_participant_sup')],
-    Conferences = [conf_participant:conference(Pid) || Pid <- Participants],
-    case [Conference || {'ok',Conference} <- Conferences,
-                        kapps_conference:id(Conference) =:= ConferenceID]
-    of
-        [Conference|_] -> Conference;
-        _Else ->
-            lager:debug("no participant worker found for conference '~s'", [ConferenceID]),
+    Req = [{<<"Conference-ID">>, ConferenceID}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_conference:publish_bootstrap_req/1
+                            ,fun kapi_conference:bootstrap_resp_v/1
+                            ) of
+        {'ok', Resp} ->
+            kapps_conference:from_json(kz_json:get_value(<<"Conference">>, Resp));
+        {'error', 'timeout'} ->
+            lager:error("timed out getting conference data from initial participant for id ~s"
+                       ,[ConferenceID]),
+            kapps_conference:new();
+        Error ->
+            lager:error("error (~p) when getting conference data from initial participant for id ~s"
+                       ,[Error, ConferenceID]),
             kapps_conference:new()
     end.
 
