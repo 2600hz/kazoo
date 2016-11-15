@@ -434,8 +434,9 @@ maybe_convert_to_e164([Regex|Regexs], Converters, Number) ->
     catch
         _E:_R ->
             ST = erlang:get_stacktrace(),
-            lager:debug("failed to convert number ~p to e164: ~p:~p", [Number, _E, _R]),
-            wh_util:log_stacktrace(ST)
+            lager:debug("failed to convert number ~p to e164 using regex '~p': ~p:~p", [Number, Regex, _E, _R]),
+            wh_util:log_stacktrace(ST),
+            maybe_convert_to_e164(Regexs, Converters, Number)
     end.
 
 %% end up with 8001234567 from 1NPAN and E.164
