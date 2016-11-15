@@ -63,13 +63,16 @@
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"sip_peer">>, "")).
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
+-define(BW2_ORDER_POLL_INTERVAL, 2000).
 
 -define(MAX_SEARCH_QUANTITY,
         integer_to_list(kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 120))).
 
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
--define(ORDER_ID_XPATH, "CustomerOrderId/text()").
+-define(CUSTOMER_ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
+-define(BW_ORDER_ID_XPATH, "Order/id/text()").
+-define(BW_ORDER_STATUS_XPATH, "OrderStatus/text()").
 
 -type search_ret() :: {'ok', knm_number:knm_numbers()} | {'error', any()}.
 
@@ -264,11 +267,43 @@ acquire_number(Number) ->
                     knm_errors:by_carrier(?MODULE, Error, Num);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
-                    OrderData = number_order_response_to_json(Response),
-                    PN = knm_phone_number:update_carrier_data(PhoneNumber, OrderData),
-                    knm_number:set_phone_number(Number, PN)
+                    OrderId = kz_util:get_xml_value(?BW_ORDER_ID_XPATH, Xml),
+                    OrderStatus = kz_util:get_xml_value(?BW_ORDER_STATUS_XPATH, Xml),
+                    check_order(OrderId, OrderStatus, Response, PhoneNumber, Number)
             end
     end.
+
+-spec check_order(api_binary(), api_binary(), xml_el(), knm_number:knm_number(), knm_number:knm_number()) -> knm_number:knm_number().
+check_order(OrderId, <<"RECEIVED">>, _Response, PhoneNumber, Number) ->
+    timer:sleep(?BW2_ORDER_POLL_INTERVAL),
+    Url = ["orders/", kz_util:to_list(OrderId)],
+    case api_get(url(Url)) of
+        {'error', Reason} ->
+            Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+            Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
+            knm_errors:by_carrier(?MODULE, Error, Num);
+        {'ok', Xml} ->
+            Response = xmerl_xpath:string("Order", Xml),
+            OrderStatus = kz_util:get_xml_value(?BW_ORDER_STATUS_XPATH, Xml),
+            check_order(OrderId, OrderStatus, Response, PhoneNumber, Number)
+    end;
+
+check_order(_OrderId, <<"COMPLETE">>, Response, PhoneNumber, Number) ->
+    OrderData = number_order_response_to_json(Response),
+    PN = knm_phone_number:update_carrier_data(PhoneNumber, OrderData),
+    knm_number:set_phone_number(Number, PN);
+
+check_order(_OrderId, <<"FAILED">>, _Response, PhoneNumber, _Number) ->
+    Reason = <<"FAILED">>,
+    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+    Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
+    knm_errors:by_carrier(?MODULE, Error, Num);
+
+check_order(_OrderId, OrderStatus, _Response, PhoneNumber, _Number) ->
+    Reason = OrderStatus,
+    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+    Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
+    knm_errors:by_carrier(?MODULE, Error, Num).
 
 -spec to_bandwidth2(ne_binary()) -> ne_binary().
 to_bandwidth2(<<"+1", Number/binary>>) -> Number;
@@ -351,6 +386,9 @@ api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?areaCode="++_)
     handle_response({'ok', 200, [], Resp});
 api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?tollFreeWildCardPattern="++_) ->
     Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
+    handle_response({'ok', 200, [], Resp});
+api_get("https://api.inetwork.com/v1.0/accounts//orders/" ++ _) ->
+    Resp = knm_util:fixture("bandwidth2_check_order.xml"),
     handle_response({'ok', 200, [], Resp}).
 -endif.
 
@@ -360,6 +398,7 @@ api_post(Url, Body) ->
     UnicodeBody = unicode:characters_to_binary(Body),
     Headers = [{"Accept", "*/*"}
               ,{"User-Agent", ?KNM_USER_AGENT}
+              ,{"X-BWC-IN-Control-Processing-Type", "process"}
               ,{"Content-Type", "application/xml"}
               ],
     HTTPOptions = [auth()
@@ -414,8 +453,8 @@ handle_response({'ok', 503, _, _Response}) ->
     lager:debug("bandwidth.com request error: 503"),
     {'error', 'server_error'};
 
-handle_response({'ok', Code, _, "<?xml"++_=Response}) ->
-    ?DEBUG_APPEND("Response:~n~p~n~s~n", [Code, Response]),
+handle_response({'ok', Code, Headers, "<?xml"++_=Response}) ->
+    ?DEBUG_APPEND("Response:~nCode : ~p~nBody : ~s~nHeaders : ~p~n", [Code, Response, Headers]),
     lager:debug("received response from bandwidth.com"),
     try
         {Xml, _} = xmerl_scan:string(Response),
@@ -450,7 +489,7 @@ number_order_response_to_json(Xml) ->
     Num = maybe_add_us_prefix(kz_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
     kz_json:from_list(
       props:filter_empty(
-        [{<<"order_id">>, kz_util:get_xml_value(?ORDER_ID_XPATH, Xml)}
+        [{<<"order_id">>, kz_util:get_xml_value(?CUSTOMER_ORDER_ID_XPATH, Xml)}
         ,{<<"order_name">>, kz_util:get_xml_value(?ORDER_NAME_XPATH, Xml)}
         ,{<<"number">>, Num}
         ]
