@@ -126,7 +126,7 @@ check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
                         }=Token, JObj) ->
     ClaimValue = maps:get(Claim, Claims, 'undefined'),
     ProfileValue = kz_json:get_value([<<"profile">>, ProfileField], JObj),
-    case ClaimValue >= ProfileValue of
+    case ClaimValue > ProfileValue of
         'true' -> from_profile(Token);
         'false' -> check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)})
     end;
