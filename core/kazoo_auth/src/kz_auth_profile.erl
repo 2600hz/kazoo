@@ -18,6 +18,8 @@
                            ,<<"verified_email">>
                            ,<<"access_type">>
                            ,<<"profile">>
+                           ,<<"pvt_account_id">>
+                           ,<<"pvt_owner_id">>
                            ]).
 
 -define(PROFILE_EMAIL_FIELDS, [<<"email">>
@@ -73,10 +75,10 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
             Token#{profile => kz_json:decode(RespXML)};
         {'ok', Code, _RespHeaders, _RespXML} ->
             lager:debug("received code ~b while getting auth profile from ~s", [Code, URL]),
-            Token#{profile => kz_json:new()};
-        _Else ->
-            lager:debug("failed to get auth profile: ~p", [_Else]),
-            Token#{profile => kz_json:new()}
+            Token#{profile_error_code => Code, profile => kz_json:new()};
+        {'error', Error} ->
+            lager:debug("failed to get auth profile: ~p", [Error]),
+            Token#{profile_error => Error, profile => kz_json:new()}
     end;
 maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
                     ,original := Original

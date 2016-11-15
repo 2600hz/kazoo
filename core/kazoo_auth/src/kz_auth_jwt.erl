@@ -122,7 +122,9 @@ verify_identity(Token) ->
     #{identify_verified := Verified} = Token1 = kz_auth_identity:token(Token),
     case Verified of
         'true' -> Token1;
-        'false' -> Token1#{verify_result => 'false', verify_error => <<"identity verifty failed">>}
+        'false' -> Token1#{verify_result => 'false'
+                          ,verify_error => maps:get(identity_error, Token1, <<"identity verify failed">>)
+                          }
     end.
 
 

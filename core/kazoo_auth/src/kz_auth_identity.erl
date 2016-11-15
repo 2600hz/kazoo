@@ -153,6 +153,7 @@ from_profile(#{user_doc := _}) -> {'error', 'profile_checked'};
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
         #{user_doc := _Doc}=Token1 -> check_secret(Token1);
+        #{profile_error_code := Error} -> {'error', Error};
         Error -> Error
     end.
 
@@ -213,9 +214,12 @@ token(#{payload := Payload
             IdentitySignature = kz_base64url:decode(IdentitySig),
             HashMethod = kz_util:to_atom(Hash, 'true'),
             CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
-            Token1#{identify_verified => IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity)};
-        #{} = Token1 -> Token1#{identify_verified => 'false'};
-        {'error', _Err} -> Token#{identify_verified => 'false'}
+            case IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity) of
+                'true' ->  Token1#{identify_verified => 'true'};
+                'false' -> Token1#{identify_verified => 'false', identity_error => <<"signature mismatch">>}
+            end;
+        #{} = Token1 -> Token1#{identify_verified => 'false', identity_error => <<"no_secret">>};
+        {'error', Error} -> Token#{identify_verified => 'false', identity_error => Error}
     end;
 
 token(#{}=Token) -> Token#{identify_verified => 'true'}.
