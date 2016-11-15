@@ -263,7 +263,7 @@ process_realm(Realm, Dir, Module) ->
     wh_util:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Realm/binary,".xml">>]),
 
-    case render(Module, Props) of
+    case kz_template:render(Module, Props) of
         {'ok', Result} ->
             wh_util:write_file(XMLFile, Result),
             lager:debug("wrote file ~s", [XMLFile]);
@@ -487,7 +487,7 @@ render_template(Number, AccountId, Username, Realm, Props, Dir, Module) ->
     OutDir = filename:join([WorkDir, Dir, Realm]),
     wh_util:make_dir(OutDir),
     XMLFile = filename:join([OutDir, <<Username/binary,".xml">>]),
-    case render(Module, Props) of
+    case kz_template:render(Module, Props) of
         {'ok', Result} -> wh_util:write_file(XMLFile, Result);
         {'error', _R} ->
             lager:debug("unable to render template ~s for ~s in account ~s: ~p"
@@ -542,23 +542,8 @@ compile_template(Module, 'undefined') ->
     whapps_config:set(?MOD_CONFIG_CAT, wh_util:to_binary(Module), Contents),
     compile_template(Module, Contents);
 compile_template(Module, Template) ->
-    case erlydtl:compile_template(Template, Module, [{'out_dir', 'false'}]) of
-        {'ok', _T} ->
-            lager:debug("compiled template ~s", [_T]);
-        {'ok', _T, _W} ->
-            lager:debug("compiled template ~s with warnings: ~p", [_T, _W])
-    end.
-
--spec render(atom(), wh_proplist()) -> {'ok', iolist()} | {'error', any()}.
-render(Module, Props) ->
-    try Module:render(props:filter_empty(Props)) of
-        {'ok', _}=OK -> OK
-    catch
-        _E:_R ->
-            lager:debug("failed to render template ~s: ~p"
-                        ,[Module, _R]),
-            {'error', _E}
-    end.
+    _ = kz_template:compile(Template, Module),
+    'ok'.
 
 -spec xml_file(atom()) -> string().
 xml_file(Module) ->

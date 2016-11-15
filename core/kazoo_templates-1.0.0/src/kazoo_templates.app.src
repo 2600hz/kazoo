@@ -1,0 +1,15 @@
+{application, kazoo_templates,
+ [
+  {description, "Blowing pigment over documents like never before"},
+  {vsn, "1.0.0"},
+  {modules, []},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+
+                  whistle,
+                  erlydtl,
+                  lager
+                 ]},
+ ]}.
