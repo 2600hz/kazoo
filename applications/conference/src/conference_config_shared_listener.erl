@@ -5,10 +5,13 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(conference_shared_listener).
+-module(conference_config_shared_listener).
 -behaviour(gen_listener).
 
--export([start_link/0]).
+-export([start_link/0
+        ,ack/1
+        ,nack/1
+        ]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -22,19 +25,20 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {}).
+-record(state, {deliveries = [] :: deliveries()}).
 -type state() :: #state{}.
 
--define(BINDINGS, [{'conference', [{'restrict_to', ['discovery']}]}
-                  ,{'authn', []}
+-define(BINDINGS, [{'conference', [{'restrict_to', ['config']}]}
                   ,{'self', []}
                   ]).
--define(RESPONDERS, [{'conf_discovery_req', [{<<"conference">>, <<"discovery_req">>}]}
-                    ,{'conf_authn_req', [{<<"directory">>, <<"authn_req">>}]}
-                    ]).
--define(QUEUE_NAME, <<"conference_listener">>).
+-define(RESPONDERS, [{'conf_config_req', [{<<"conference">>, <<"config_req">>}]}]).
+-define(QUEUE_NAME, <<"conference_config_listener">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
--define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
+-define(CONSUME_OPTIONS, [{'exclusive', 'false'}
+                         ,{'no_ack', 'false'}
+                         ]).
+
+-type deliveries() :: [gen_listener:basic_deliver()].
 
 %%%===================================================================
 %%% API
@@ -45,12 +49,25 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-                                     ,{'responders', ?RESPONDERS}
-                                     ,{'queue_name', ?QUEUE_NAME}
-                                     ,{'queue_options', ?QUEUE_OPTIONS}
-                                     ,{'consume_options', ?CONSUME_OPTIONS}
-                                     ], []).
+    gen_listener:start_link({'local', ?SERVER}
+                           ,?SERVER
+                           ,[{'bindings', ?BINDINGS}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}
+                            ,{'queue_options', ?QUEUE_OPTIONS}
+                            ,{'consume_options', ?CONSUME_OPTIONS}
+                            ], []).
+
+-spec ack(gen_listener:basic_deliver()) -> 'ok'.
+ack(Delivery) ->
+    gen_listener:ack(?SERVER, Delivery),
+    gen_listener:cast(?SERVER, {'ack', Delivery}).
+
+-spec nack(gen_listener:basic_deliver()) -> 'ok'.
+nack(Delivery) ->
+    lager:debug("nack ~p", [Delivery]),
+    gen_listener:nack(?SERVER, Delivery),
+    gen_listener:cast(?SERVER, {'noack', Delivery}).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -99,6 +116,12 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
+handle_cast({'delivery', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=[Delivery|Ds]}};
+handle_cast({'ack', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=lists:delete(Delivery, Ds)}};
+handle_cast({'noack', Delivery}, #state{deliveries=Ds}=State) ->
+    {'noreply', State#state{deliveries=lists:delete(Delivery, Ds)}};
 handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
     {'noreply', State};
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
@@ -144,7 +167,8 @@ handle_event(_JObj, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec terminate(any(), state()) -> 'ok'.
-terminate(_Reason, _State) ->
+terminate(_Reason, #state{deliveries=Ds}) ->
+    _ = [catch amqp_util:basic_nack(Delivery) || Delivery <- Ds],
     lager:debug("conference listener terminating: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
