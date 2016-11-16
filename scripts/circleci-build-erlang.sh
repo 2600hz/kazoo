@@ -6,8 +6,8 @@ if [[ ! -d ~/.kerl/$OTP_VERSION ]]; then
         mkdir ~/.kerl
         curl -fsSLo ~/.kerl/kerl https://raw.githubusercontent.com/kerl/kerl/master/kerl
         chmod +x ~/.kerl/kerl
-        ~/.kerl/kerl update releases
     fi
+    ~/.kerl/kerl update releases
     ~/.kerl/kerl build $OTP_VERSION $OTP_VERSION
     ~/.kerl/kerl install $OTP_VERSION ~/.kerl/$OTP_VERSION
 fi
