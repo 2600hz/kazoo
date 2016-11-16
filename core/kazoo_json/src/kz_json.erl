@@ -68,6 +68,8 @@
 -export([merge_recursive/1
         ,merge_recursive/2
         ,merge_recursive/3
+        ,merge/2, merge/3
+        ,merge_left/2, merge_right/2
         ]).
 
 -export([from_list/1, merge_jobjs/2]).
@@ -240,6 +242,51 @@ are_identical(JObj1, JObj2) ->
 -spec from_list(json_proplist()) -> object().
 from_list([]) -> new();
 from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
+
+%% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
+-spec merge(object(), object()) -> object().
+merge(JObj1, JObj2) ->
+    merge(fun merge_left/2, JObj1, JObj2).
+
+-type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
+-type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
+-type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()).
+-spec merge(merge_fun(), object(), object()) -> object().
+merge(F, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB)) ->
+    ListA = lists:sort(PropsA),
+    ListB = lists:sort(PropsB),
+    merge(F, ListA, ListB, []).
+
+merge(_F, [], [], Acc) ->
+    from_list(Acc);
+merge(F, [{KX, VX}|Xs], [], Acc) ->
+    merge(F, Xs, [], f(KX, F(KX, {'left', VX}), Acc));
+merge(F, [], [{KY, VY}|Ys], Acc) ->
+    merge(F, Ys, [], f(KY, F(KY, {'right', VY}), Acc));
+merge(F, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc) ->
+    if
+        KX < KY -> merge(F, Xs, Right, f(KX, F(KX, {'left', VX}), Acc));
+        KX > KY -> merge(F, Left, Ys, f(KY, F(KY, {'right', VY}), Acc));
+        KX =:= KY -> merge(F, Xs, Ys, f(KX, F(KX, {'both', VX, VY}), Acc))
+    end.
+
+-spec f(key(), merge_fun_result(), list()) -> list().
+f(_K, 'undefined', Acc) -> Acc;
+f(K, {'ok', R}, Acc) -> [{K, R} | Acc].
+
+-spec merge_left(key(), merge_arg_2()) -> merge_fun_result().
+merge_left(_K, {'left', V}) -> {'ok', V};
+merge_left(_K, {'right', V}) -> {'ok', V};
+merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
+    {'ok', merge(fun merge_left/2, Left, Right)};
+merge_left(_K, {'both', Left, _Right}) -> {'ok', Left}.
+
+-spec merge_right(key(), merge_arg_2()) -> merge_fun_result().
+merge_right(_K, {'left', V}) -> {'ok', V};
+merge_right(_K, {'right', V}) -> {'ok', V};
+merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
+    {'ok', merge(fun merge_right/2, Left, Right)};
+merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 
 %% only a top-level merge
 %% merges JObj1 into JObj2
