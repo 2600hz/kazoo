@@ -257,14 +257,8 @@ category_to_document(Cat) ->
 key_to_key_path(?ATOM(A)) -> [kz_util:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
-key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)) ->
-    [iolist_to_binary([${
-                      ,kz_ast_util:binary_match_to_binary(Doc)
-                      ,$.
-                      ,kz_ast_util:binary_match_to_binary(Field)
-                      ,$}
-                      ]
-                     )
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
+    [kz_ast_util:binary_match_to_binary(Field)
     ,?FIELD_PROPERTIES
      | key_to_key_path(Tail)
     ];
