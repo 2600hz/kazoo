@@ -108,13 +108,25 @@ prop_to_proplist() ->
 -define(SP, kz_json:decode(<<"{\"plan\":{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":1}}}}}}">>)).
 -define(O, kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"discounts\":{\"cumulative\":{\"rate\":20}}}}}">>)).
 
-merge_overrides_test_() ->
+merge_recursive_overrides_test_() ->
     AP = kz_json:merge_recursive(?SP, kz_json:from_list([{<<"plan">>, ?O}])),
 
     Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
 
     [?_assertEqual(1, kz_json:get_value(Key, ?SP))
     ,?_assertEqual(20, kz_json:get_value(Key, AP))
+    ].
+
+merge_overrides_test_() ->
+    %% default merges left onto right
+    Left = kz_json:merge(fun kz_json:merge_left/2, ?SP, kz_json:from_list([{<<"plan">>, ?O}])),
+    Right = kz_json:merge(fun kz_json:merge_right/2, ?SP, kz_json:from_list([{<<"plan">>, ?O}])),
+
+    Key = [<<"plan">>, <<"phone_numbers">>, <<"did_us">>, <<"discounts">>, <<"cumulative">>, <<"rate">>],
+
+    [?_assertEqual(1, kz_json:get_value(Key, ?SP))
+    ,?_assertEqual(20, kz_json:get_value(Key, Right))
+    ,?_assertEqual(1, kz_json:get_value(Key, Left))
     ].
 
 is_empty_test_() ->
