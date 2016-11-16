@@ -294,6 +294,7 @@
     "frontier.rate_limits": "frontier rate limits",
     "hangups.hangups_to_monitor": "hangups hangups to monitor",
     "hangups.ignore_hangup_causes": "hangups ignore hangup causes",
+    "hotornot.use_trie": "Whether to use the trie to store rates in the VM",
     "jonny5.default_inbound_trunks": "jonny5 default inbound trunks",
     "jonny5.default_twoway_trunks": "jonny5 default twoway trunks",
     "jonny5.default_{Key}": "jonny5 default {Key}",

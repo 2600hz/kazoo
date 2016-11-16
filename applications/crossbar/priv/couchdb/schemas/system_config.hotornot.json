@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.hotornot",
+    "description": "Schema for hotornot system_config",
+    "properties": {
+        "use_trie": {
+            "default": false,
+            "description": "Whether to use the trie to store rates in the VM",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

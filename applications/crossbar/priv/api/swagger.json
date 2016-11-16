@@ -9170,6 +9170,17 @@
             },
             "type": "object"
         },
+        "system_config.hotornot": {
+            "description": "Schema for hotornot system_config",
+            "properties": {
+                "use_trie": {
+                    "default": false,
+                    "description": "Whether to use the trie to store rates in the VM",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.jonny5": {
             "description": "Schema for jonny5 system_config",
             "properties": {
