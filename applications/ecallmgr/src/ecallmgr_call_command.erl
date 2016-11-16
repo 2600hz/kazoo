@@ -346,7 +346,9 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                 ,{"application", <<"export sip_auto_answer=true">>}
                                 ,{"application", <<"export alert_info=intercom">>}
                                 ,{"application", <<"set conference_auto_outcall_flags=mute">>}
+                                ,{"application", <<"set conference_auto_outcall_profile=page">>}
                                 ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
+                                ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
                                  |DP
                                 ]
                         end
@@ -363,13 +365,12 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                 [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
                         end
                        ,fun(DP) ->
-                                lists:foldl(fun(Channel, D) ->
-                                                    [{"application", <<"conference_set_auto_outcall "
-                                                                       ,"{alert_info=intercom}[sip_auto_answer=true]"
-                                                                       ,Channel/binary>>}
-                                                     |D
-                                                    ]
-                                            end, DP, ecallmgr_util:build_simple_channels(Endpoints))
+                                Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
+                                         ],
+                                EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
+                                Channels = [<<"{alert_info=intercom}", Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
+                                OutCall = kz_util:join_binary(Channels, <<"|">>),
+                                [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>} | DP]
                         end
                        ,fun(DP) ->
                                 [{"application", <<"conference ", PageId/binary, "@page">>}

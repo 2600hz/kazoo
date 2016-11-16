@@ -238,15 +238,14 @@ config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
     config_to_schema(F, [Cat, K, Default], Schemas);
 config_to_schema(F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
-    Key = key_to_key_path(K),
-    config_key_to_schema(F, Document, Key, Default, Schemas).
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(F, Document, Key, Default, Schemas)
+    end.
 
-config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
-    Schemas;
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
     Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
     kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
 
@@ -257,41 +256,31 @@ category_to_document(Cat) ->
 key_to_key_path(?ATOM(A)) -> [kz_util:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
-key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [Doc, Field | _]), Tail)) ->
-    [iolist_to_binary([${
-                      ,kz_ast_util:binary_match_to_binary(Doc)
-                      ,$.
-                      ,kz_ast_util:binary_match_to_binary(Field)
-                      ,$}
-                      ]
-                     )
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
+    [kz_ast_util:binary_match_to_binary(Field)
     ,?FIELD_PROPERTIES
      | key_to_key_path(Tail)
     ];
-key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)]), Tail)) ->
-    [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-    ,?FIELD_PROPERTIES
-     | key_to_key_path(Tail)
-    ];
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)]), _Tail)) ->
+    'undefined';
 
-key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(Name)])) ->
-    [iolist_to_binary([${, kz_util:to_binary(Name), $}])];
+key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)])) ->
+    'undefined';
 
 key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
     'undefined';
 
-key_to_key_path(?LIST(?VAR(Name), Tail)) ->
-    [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-    ,?FIELD_PROPERTIES
-     | key_to_key_path(Tail)
-    ];
+key_to_key_path(?LIST(?VAR(_Name), _Tail)) ->
+    'undefined';
 key_to_key_path(?LIST(Head, Tail)) ->
-    [kz_ast_util:binary_match_to_binary(Head)
-    ,?FIELD_PROPERTIES
-     | key_to_key_path(Tail)
-    ];
+    case key_to_key_path(Tail) of
+        'undefined' -> 'undefined';
+        TailV -> [kz_ast_util:binary_match_to_binary(Head), ?FIELD_PROPERTIES | TailV]
+    end;
 key_to_key_path(?BINARY_MATCH(K)) ->
-    [kz_ast_util:binary_match_to_binary(K)].
+    try [kz_ast_util:binary_match_to_binary(K)]
+    catch error:function_clause -> undefined
+    end.
 
 guess_type('is_true', _Default) -> <<"boolean">>;
 guess_type('get_is_true', _Default) -> <<"boolean">>;

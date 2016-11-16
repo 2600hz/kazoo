@@ -7327,33 +7327,8 @@
                     "default": 5000,
                     "description": "call_command message timeout",
                     "type": "integer"
-                },
-                "store_file": {
-                    "properties": {
-                        "{App}": {
-                            "properties": {
-                                "retries": {
-                                    "properties": {
-                                        "default": 5,
-                                        "description": "call_command retries",
-                                        "type": "integer"
-                                    }
-                                },
-                                "save_timeout_ms": {
-                                    "properties": {
-                                        "default": 300000,
-                                        "description": "call_command save timeout in milliseconds",
-                                        "type": "integer"
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             },
-            "required": [
-                "store_file"
-            ],
             "type": "object"
         },
         "system_config.callflow": {
@@ -7728,24 +7703,6 @@
         "system_config.conferences": {
             "description": "Schema for conferences system_config",
             "properties": {
-                "advertise": {
-                    "properties": {
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
-                            }
-                        }
-                    }
-                },
-                "chat-permissions": {
-                    "properties": {
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
-                            }
-                        }
-                    }
-                },
                 "profiles": {
                     "properties": {
                         "default": {
@@ -7792,8 +7749,6 @@
                 }
             },
             "required": [
-                "advertise",
-                "chat-permissions",
                 "profiles"
             ],
             "type": "object"
@@ -8159,15 +8114,8 @@
                     "default": "/tmp/",
                     "description": "crossbar.freeswitch work dir",
                     "type": "string"
-                },
-                "{Module}": {
-                    "description": "crossbar.freeswitch {Module}",
-                    "type": "string"
                 }
             },
-            "required": [
-                "{Module}"
-            ],
             "type": "object"
         },
         "system_config.crossbar.local_resources": {
@@ -8384,6 +8332,15 @@
                     "description": "crossbar.ubiquiti salt length",
                     "type": "integer"
                 },
+                "sso_environment": {
+                    "properties": {
+                        "sso_url": {
+                            "properties": {
+                                "description": "crossbar.ubiquiti sso url"
+                            }
+                        }
+                    }
+                },
                 "sso_provider_id": {
                     "description": "crossbar.ubiquiti sso provider id"
                 },
@@ -8402,23 +8359,14 @@
                     "default": 35,
                     "description": "crossbar.ubiquiti tokens per request",
                     "type": "integer"
-                },
-                "{crossbar.ubiquiti.sso_environment}": {
-                    "properties": {
-                        "sso_url": {
-                            "properties": {
-                                "description": "crossbar.ubiquiti sso url"
-                            }
-                        }
-                    }
                 }
             },
             "required": [
                 "api_secret",
                 "production",
+                "sso_environment",
                 "sso_provider_id",
-                "staging",
-                "{crossbar.ubiquiti.sso_environment}"
+                "staging"
             ],
             "type": "object"
         },
@@ -8943,16 +8891,6 @@
                     "default": 3600000,
                     "description": "ecallmgr user cache time in in milliseconds",
                     "type": "integer"
-                },
-                "{Direction}_rate_required": {
-                    "default": false,
-                    "description": "ecallmgr {Direction} rate required",
-                    "type": "boolean"
-                },
-                "{Direction}_rate_resp_timeout": {
-                    "default": 10000,
-                    "description": "ecallmgr {Direction} rate resp timeout",
-                    "type": "integer"
                 }
             },
             "required": [
@@ -9241,10 +9179,6 @@
                 "default_twoway_trunks": {
                     "description": "jonny5 default twoway trunks"
                 },
-                "default_{Key}": {
-                    "description": "jonny5 default {Key}",
-                    "type": "boolean"
-                },
                 "flat_rate_blacklist": {
                     "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
                     "description": "jonny5 flat rate blacklist",
@@ -9258,8 +9192,7 @@
             },
             "required": [
                 "default_inbound_trunks",
-                "default_twoway_trunks",
-                "default_{Key}"
+                "default_twoway_trunks"
             ],
             "type": "object"
         },
@@ -9821,20 +9754,6 @@
                     "description": "notify backoff fudge in milliseconds",
                     "type": "integer"
                 },
-                "mime-encoding": {
-                    "properties": {
-                        "{ContentType}": {
-                            "properties": {
-                                "content_transfer_encoding": {
-                                    "properties": {
-                                        "description": "notify content transfer encoding",
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
                 "notification_app": {
                     "default": "teletype",
                     "description": "notify notification app",
@@ -9851,9 +9770,6 @@
                     "type": "boolean"
                 }
             },
-            "required": [
-                "mime-encoding"
-            ],
             "type": "object"
         },
         "system_config.notify.account_crawler": {
@@ -11435,36 +11351,8 @@
                     "default": 600,
                     "description": "token_buckets inactivity timeout in seconds",
                     "type": "integer"
-                },
-                "{App}": {
-                    "properties": {
-                        "max_bucket_tokens": {
-                            "properties": {
-                                "default": 100,
-                                "description": "token_buckets maximum bucket tokens",
-                                "type": "integer"
-                            }
-                        },
-                        "tokens_fill_rate": {
-                            "properties": {
-                                "default": 10,
-                                "description": "token_buckets tokens fill rate",
-                                "type": "integer"
-                            }
-                        },
-                        "tokens_fill_time": {
-                            "properties": {
-                                "default": "second",
-                                "description": "token_buckets tokens fill time",
-                                "type": "string"
-                            }
-                        }
-                    }
                 }
             },
-            "required": [
-                "{App}"
-            ],
             "type": "object"
         },
         "system_config.topup": {

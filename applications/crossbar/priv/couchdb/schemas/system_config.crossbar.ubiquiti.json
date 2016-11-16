@@ -27,6 +27,15 @@
             "description": "crossbar.ubiquiti salt length",
             "type": "integer"
         },
+        "sso_environment": {
+            "properties": {
+                "sso_url": {
+                    "properties": {
+                        "description": "crossbar.ubiquiti sso url"
+                    }
+                }
+            }
+        },
         "sso_provider_id": {
             "description": "crossbar.ubiquiti sso provider id"
         },
@@ -45,23 +54,14 @@
             "default": 35,
             "description": "crossbar.ubiquiti tokens per request",
             "type": "integer"
-        },
-        "{crossbar.ubiquiti.sso_environment}": {
-            "properties": {
-                "sso_url": {
-                    "properties": {
-                        "description": "crossbar.ubiquiti sso url"
-                    }
-                }
-            }
         }
     },
     "required": [
         "api_secret",
         "production",
+        "sso_environment",
         "sso_provider_id",
-        "staging",
-        "{crossbar.ubiquiti.sso_environment}"
+        "staging"
     ],
     "type": "object"
 }

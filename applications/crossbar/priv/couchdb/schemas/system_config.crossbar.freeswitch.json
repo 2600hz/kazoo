@@ -33,14 +33,7 @@
             "default": "/tmp/",
             "description": "crossbar.freeswitch work dir",
             "type": "string"
-        },
-        "{Module}": {
-            "description": "crossbar.freeswitch {Module}",
-            "type": "string"
         }
     },
-    "required": [
-        "{Module}"
-    ],
     "type": "object"
 }

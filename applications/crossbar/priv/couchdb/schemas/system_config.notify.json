@@ -8,20 +8,6 @@
             "description": "notify backoff fudge in milliseconds",
             "type": "integer"
         },
-        "mime-encoding": {
-            "properties": {
-                "{ContentType}": {
-                    "properties": {
-                        "content_transfer_encoding": {
-                            "properties": {
-                                "description": "notify content transfer encoding",
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "notification_app": {
             "default": "teletype",
             "description": "notify notification app",
@@ -38,8 +24,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "mime-encoding"
-    ],
     "type": "object"
 }
