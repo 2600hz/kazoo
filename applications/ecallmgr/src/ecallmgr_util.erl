@@ -28,7 +28,7 @@
 -export([is_node_up/1, is_node_up/2]).
 -export([build_bridge_string/1, build_bridge_string/2]).
 -export([build_channel/1]).
--export([build_simple_channels/1]).
+-export([build_bridge_channels/1, build_simple_channels/1]).
 -export([create_masquerade_event/2, create_masquerade_event/3]).
 -export([media_path/1, media_path/2, media_path/3, media_path/4
         ,lookup_media/4

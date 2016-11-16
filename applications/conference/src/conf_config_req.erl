@@ -54,6 +54,15 @@ fetch_profile_config(JObj, ConfigName, Profile) ->
     kapi_conference:publish_config_resp(ServerId, props:filter_undefined(Resp)).
 
 -spec fetch_controls_config(kz_json:object(), ne_binary(), ne_binary()) -> 'ok'.
+fetch_controls_config(JObj, <<"page_", _/binary>>, ControlsName) ->
+    ServerId = kz_api:server_id(JObj),
+    Config = caller_controls(ControlsName),
+    CallerControls = kz_json:from_list([{ControlsName, Config}]),
+    Resp = [{<<"Caller-Controls">>, CallerControls}
+           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_conference:publish_config_resp(ServerId, Resp);
 fetch_controls_config(JObj, ConferenceId, ControlsName) ->
     ServerId = kz_api:server_id(JObj),
     Conference = get_conference(ConferenceId),
@@ -134,6 +143,10 @@ get_conference(ConferenceID) ->
             lager:debug("no participant worker found for conference '~s'", [ConferenceID]),
             kapps_conference:new()
     end.
+
+-spec caller_controls(ne_binary()) -> kz_json:object().
+caller_controls(ConfigName) ->
+    kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], ?DEFAULT_CONTROLS).
 
 -spec caller_controls(ne_binary(), ne_binary()) -> kz_json:object().
 caller_controls(AccountId, ConfigName) ->
