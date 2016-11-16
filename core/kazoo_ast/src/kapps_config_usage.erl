@@ -243,8 +243,6 @@ config_to_schema(F, [Cat, K, Default], Schemas) ->
         Key -> config_key_to_schema(F, Document, Key, Default, Schemas)
     end.
 
-config_key_to_schema(_F, _Document, 'undefined', _Default, Schemas) ->
-    Schemas;
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
