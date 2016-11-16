@@ -159,11 +159,8 @@ format_event(JObj, AccountId) ->
 %%--------------------------------------------------------------------
 -spec find_account_id(kz_json:object()) -> ne_binary().
 find_account_id(JObj) ->
-    case kapi_conf:get_account_id(JObj) of
-        ?MATCH_ACCOUNT_RAW(AccountId) -> AccountId;
-        _ -> DB = kapi_conf:get_database(JObj),
-             find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(JObj))
-    end.
+    DB = kapi_conf:get_database(JObj),
+    find_account_id(kzs_util:db_classification(DB), DB, kapi_conf:get_id(JObj)).
 
 -spec find_account_id(atom(), ne_binary(), ne_binary()) -> ne_binary().
 find_account_id(Classification, DB, _Id)
