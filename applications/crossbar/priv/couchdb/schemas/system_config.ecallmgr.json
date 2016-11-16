@@ -410,16 +410,6 @@
             "default": 3600000,
             "description": "ecallmgr user cache time in in milliseconds",
             "type": "integer"
-        },
-        "{Direction}_rate_required": {
-            "default": false,
-            "description": "ecallmgr {Direction} rate required",
-            "type": "boolean"
-        },
-        "{Direction}_rate_resp_timeout": {
-            "default": 10000,
-            "description": "ecallmgr {Direction} rate resp timeout",
-            "type": "integer"
         }
     },
     "required": [

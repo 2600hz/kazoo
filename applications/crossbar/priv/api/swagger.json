@@ -8891,16 +8891,6 @@
                     "default": 3600000,
                     "description": "ecallmgr user cache time in in milliseconds",
                     "type": "integer"
-                },
-                "{Direction}_rate_required": {
-                    "default": false,
-                    "description": "ecallmgr {Direction} rate required",
-                    "type": "boolean"
-                },
-                "{Direction}_rate_resp_timeout": {
-                    "default": 10000,
-                    "description": "ecallmgr {Direction} rate resp timeout",
-                    "type": "integer"
                 }
             },
             "required": [
@@ -9189,10 +9179,6 @@
                 "default_twoway_trunks": {
                     "description": "jonny5 default twoway trunks"
                 },
-                "default_{Key}": {
-                    "description": "jonny5 default {Key}",
-                    "type": "boolean"
-                },
                 "flat_rate_blacklist": {
                     "default": "^\\+?1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|8(?:[0,2,3,4,5,6,7]{2}|8[0-9]))\\d{7}$",
                     "description": "jonny5 flat rate blacklist",
@@ -9206,8 +9192,7 @@
             },
             "required": [
                 "default_inbound_trunks",
-                "default_twoway_trunks",
-                "default_{Key}"
+                "default_twoway_trunks"
             ],
             "type": "object"
         },
