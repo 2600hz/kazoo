@@ -62,10 +62,16 @@ activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
     TotalCharges = Charges + Units,
 
     case kz_services:check_bookkeeper(BillingId, TotalCharges) of
-        'false' ->
+        'false' when TotalCharges > 0 ->
             lager:error("not enough credit to activate feature '~s' for $~p ($~p)"
                        ,[Feature, wht_util:units_to_dollars(Units), wht_util:units_to_dollars(TotalCharges)]),
             knm_errors:not_enough_credit(Number, Units);
+        'false' ->
+            PhoneNumber = knm_number:phone_number(Number),
+            lager:debug("adding feature ~s to ~s"
+                       ,[Feature, knm_phone_number:number(PhoneNumber)]),
+            PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
+            knm_number:set_phone_number(Number, PN);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
             lager:debug("adding feature ~s to ~s"
