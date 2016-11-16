@@ -246,7 +246,6 @@ config_to_schema(F, [Cat, K, Default], Schemas) ->
 config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    %% io:format(user, "\nF ~p ~p\n", [Document, Schemas]),
     Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
     kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
 
@@ -289,7 +288,9 @@ key_to_key_path(?LIST(Head, Tail)) ->
         TailV -> [kz_ast_util:binary_match_to_binary(Head), ?FIELD_PROPERTIES | TailV]
     end;
 key_to_key_path(?BINARY_MATCH(K)) ->
-    [kz_ast_util:binary_match_to_binary(K)].
+    try [kz_ast_util:binary_match_to_binary(K)]
+    catch error:function_clause -> undefined
+    end.
 
 guess_type('is_true', _Default) -> <<"boolean">>;
 guess_type('get_is_true', _Default) -> <<"boolean">>;
