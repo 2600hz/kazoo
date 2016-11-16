@@ -61,30 +61,31 @@ activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
     Charges = knm_number:charges(Number, Feature),
     TotalCharges = Charges + Units,
 
-    case kz_services:check_bookkeeper(BillingId, TotalCharges) of
-        'false' when TotalCharges > 0 ->
+    case TotalCharges =:= 0
+        orelse kz_services:check_bookkeeper(BillingId, TotalCharges) of
+        'false' ->
             lager:error("not enough credit to activate feature '~s' for $~p ($~p)"
                        ,[Feature, wht_util:units_to_dollars(Units), wht_util:units_to_dollars(TotalCharges)]),
             knm_errors:not_enough_credit(Number, Units);
-        'false' ->
-            PhoneNumber = knm_number:phone_number(Number),
-            lager:debug("adding feature ~s to ~s"
-                       ,[Feature, knm_phone_number:number(PhoneNumber)]),
-            PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
-            knm_number:set_phone_number(Number, PN);
         'true' ->
             PhoneNumber = knm_number:phone_number(Number),
             lager:debug("adding feature ~s to ~s"
                        ,[Feature, knm_phone_number:number(PhoneNumber)]),
-            Transaction = create_transaction(Number, Feature, Units),
-            N = knm_number:add_transaction(knm_number:set_charges(Number, Feature, TotalCharges)
-                                          ,Transaction
-                                          ),
-            lager:debug("updating ~s feature to ~s", [Feature, kz_json:encode(FeatureData)]),
+            N = maybe_create_activation_transaction(Number, Feature, Units, TotalCharges),
             PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
             knm_number:set_phone_number(N, PN)
     end.
 -endif.
+
+-spec maybe_create_activation_transaction(knm_number:knm_number(), ne_binary(), integer(), number()) -> knm_number:knm_number().
+maybe_create_activation_transaction(Number, _Feature, _Units, 0) ->
+    lager:debug("no charges for feature ~s activation", [_Feature]),
+    Number;
+maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
+    lager:debug("creating transaction for feature ~s activation : ~p", [Feature, TotalCharges]),
+    Transaction = create_transaction(Number, Feature, Units),
+    N = knm_number:set_charges(Number, Feature, TotalCharges),
+    knm_number:add_transaction(N, Transaction).
 
 %%--------------------------------------------------------------------
 %% @public
