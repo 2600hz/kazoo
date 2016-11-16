@@ -75,7 +75,6 @@ activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
             PN = knm_phone_number:set_feature(PhoneNumber, Feature, FeatureData),
             knm_number:set_phone_number(N, PN)
     end.
--endif.
 
 -spec maybe_create_activation_transaction(knm_number:knm_number(), ne_binary(), integer(), number()) -> knm_number:knm_number().
 maybe_create_activation_transaction(Number, _Feature, _Units, 0) ->
@@ -86,6 +85,8 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
     Transaction = create_transaction(Number, Feature, Units),
     N = knm_number:set_charges(Number, Feature, TotalCharges),
     knm_number:add_transaction(N, Transaction).
+
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
