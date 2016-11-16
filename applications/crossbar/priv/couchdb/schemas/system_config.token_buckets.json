@@ -7,35 +7,7 @@
             "default": 600,
             "description": "token_buckets inactivity timeout in seconds",
             "type": "integer"
-        },
-        "{App}": {
-            "properties": {
-                "max_bucket_tokens": {
-                    "properties": {
-                        "default": 100,
-                        "description": "token_buckets maximum bucket tokens",
-                        "type": "integer"
-                    }
-                },
-                "tokens_fill_rate": {
-                    "properties": {
-                        "default": 10,
-                        "description": "token_buckets tokens fill rate",
-                        "type": "integer"
-                    }
-                },
-                "tokens_fill_time": {
-                    "properties": {
-                        "default": "second",
-                        "description": "token_buckets tokens fill time",
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "required": [
-        "{App}"
-    ],
     "type": "object"
 }

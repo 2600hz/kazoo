@@ -7327,33 +7327,8 @@
                     "default": 5000,
                     "description": "call_command message timeout",
                     "type": "integer"
-                },
-                "store_file": {
-                    "properties": {
-                        "{App}": {
-                            "properties": {
-                                "retries": {
-                                    "properties": {
-                                        "default": 5,
-                                        "description": "call_command retries",
-                                        "type": "integer"
-                                    }
-                                },
-                                "save_timeout_ms": {
-                                    "properties": {
-                                        "default": 300000,
-                                        "description": "call_command save timeout in milliseconds",
-                                        "type": "integer"
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             },
-            "required": [
-                "store_file"
-            ],
             "type": "object"
         },
         "system_config.callflow": {
@@ -7728,24 +7703,6 @@
         "system_config.conferences": {
             "description": "Schema for conferences system_config",
             "properties": {
-                "advertise": {
-                    "properties": {
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
-                            }
-                        }
-                    }
-                },
-                "chat-permissions": {
-                    "properties": {
-                        "{ConfigName}": {
-                            "properties": {
-                                "description": "conferences {ConfigName}"
-                            }
-                        }
-                    }
-                },
                 "profiles": {
                     "properties": {
                         "default": {
@@ -7792,8 +7749,6 @@
                 }
             },
             "required": [
-                "advertise",
-                "chat-permissions",
                 "profiles"
             ],
             "type": "object"
@@ -8159,15 +8114,8 @@
                     "default": "/tmp/",
                     "description": "crossbar.freeswitch work dir",
                     "type": "string"
-                },
-                "{Module}": {
-                    "description": "crossbar.freeswitch {Module}",
-                    "type": "string"
                 }
             },
-            "required": [
-                "{Module}"
-            ],
             "type": "object"
         },
         "system_config.crossbar.local_resources": {
@@ -9821,20 +9769,6 @@
                     "description": "notify backoff fudge in milliseconds",
                     "type": "integer"
                 },
-                "mime-encoding": {
-                    "properties": {
-                        "{ContentType}": {
-                            "properties": {
-                                "content_transfer_encoding": {
-                                    "properties": {
-                                        "description": "notify content transfer encoding",
-                                        "type": "string"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
                 "notification_app": {
                     "default": "teletype",
                     "description": "notify notification app",
@@ -9851,9 +9785,6 @@
                     "type": "boolean"
                 }
             },
-            "required": [
-                "mime-encoding"
-            ],
             "type": "object"
         },
         "system_config.notify.account_crawler": {
@@ -11435,36 +11366,8 @@
                     "default": 600,
                     "description": "token_buckets inactivity timeout in seconds",
                     "type": "integer"
-                },
-                "{App}": {
-                    "properties": {
-                        "max_bucket_tokens": {
-                            "properties": {
-                                "default": 100,
-                                "description": "token_buckets maximum bucket tokens",
-                                "type": "integer"
-                            }
-                        },
-                        "tokens_fill_rate": {
-                            "properties": {
-                                "default": 10,
-                                "description": "token_buckets tokens fill rate",
-                                "type": "integer"
-                            }
-                        },
-                        "tokens_fill_time": {
-                            "properties": {
-                                "default": "second",
-                                "description": "token_buckets tokens fill time",
-                                "type": "string"
-                            }
-                        }
-                    }
                 }
             },
-            "required": [
-                "{App}"
-            ],
             "type": "object"
         },
         "system_config.topup": {

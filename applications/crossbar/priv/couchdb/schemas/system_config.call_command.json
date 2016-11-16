@@ -32,32 +32,7 @@
             "default": 5000,
             "description": "call_command message timeout",
             "type": "integer"
-        },
-        "store_file": {
-            "properties": {
-                "{App}": {
-                    "properties": {
-                        "retries": {
-                            "properties": {
-                                "default": 5,
-                                "description": "call_command retries",
-                                "type": "integer"
-                            }
-                        },
-                        "save_timeout_ms": {
-                            "properties": {
-                                "default": 300000,
-                                "description": "call_command save timeout in milliseconds",
-                                "type": "integer"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
-    "required": [
-        "store_file"
-    ],
     "type": "object"
 }

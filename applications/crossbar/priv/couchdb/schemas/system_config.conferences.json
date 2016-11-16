@@ -3,24 +3,6 @@
     "_id": "system_config.conferences",
     "description": "Schema for conferences system_config",
     "properties": {
-        "advertise": {
-            "properties": {
-                "{ConfigName}": {
-                    "properties": {
-                        "description": "conferences {ConfigName}"
-                    }
-                }
-            }
-        },
-        "chat-permissions": {
-            "properties": {
-                "{ConfigName}": {
-                    "properties": {
-                        "description": "conferences {ConfigName}"
-                    }
-                }
-            }
-        },
         "profiles": {
             "properties": {
                 "default": {
@@ -67,8 +49,6 @@
         }
     },
     "required": [
-        "advertise",
-        "chat-permissions",
         "profiles"
     ],
     "type": "object"
