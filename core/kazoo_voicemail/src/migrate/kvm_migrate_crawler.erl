@@ -368,9 +368,11 @@ cleanup_account_timer() ->
                               next_account_ret().
 get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
     case queue:out(Queue) of
-        {{'value', NextAccount}, Q} ->
-            %% I think this is the issue
-            {_Pid, WorkerNextAccount} = lists:keyfind(NextAccount, 2, Workers),
+        {{'value', {AccountId, _, _} = NextAccount}, Q} ->
+            WorkerNextAccount = [WNA
+                                 || {_Pid, {WorkerAccountId, _, _} = WNA} <- Workers,
+                                    WorkerAccountId == AccountId
+                                ],
             get_next(Queue, WorkerNextAccount, NextAccount, Q, RetentionSeconds, IsRetPassed);
         {'empty', _} when not IsRetPassed ->
             'retention_passed';
@@ -378,11 +380,9 @@ get_next_account(Queue, Workers, RetentionSeconds, IsRetPassed) ->
             'empty'
     end.
 
--spec get_next(queue:queue(), next_account(), next_account(), queue:queue(), gregorian_seconds(), boolean()) ->
+-spec get_next(queue:queue(), [next_account()], next_account(), queue:queue(), gregorian_seconds(), boolean()) ->
                       next_account_ret().
-get_next(_Queue, NextAccount, NextAccount, _Q, _, _IsRetPassed) ->
-    'continue';
-get_next(_, _, {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'false') ->
+get_next(_, [], {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'false') ->
     PrevMonth = previous_month_timestamp(FirstOfMonth),
     case PrevMonth < RetentionSeconds of
         'true' ->
@@ -391,8 +391,10 @@ get_next(_, _, {AccountId, FirstOfMonth, _LastOfMonth}, Q, RetentionSeconds, 'fa
             NextAccount = {AccountId, PrevMonth, FirstOfMonth},
             {NextAccount, queue:in(NextAccount, Q)}
     end;
-get_next(_, _, NextAccount, Q, _, 'true') ->
-    {NextAccount, queue:in(NextAccount, Q)}.
+get_next(_, [], NextAccount, Q, _, 'true') ->
+    {NextAccount, queue:in(NextAccount, Q)};
+get_next(_Queue, _WorkerNextAccount, _NextAccount, _Q, _, _IsRetPassed) ->
+    'continue'.
 
 %%--------------------------------------------------------------------
 %% @private
