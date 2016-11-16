@@ -263,25 +263,15 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail
     ];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)]), _Tail)) ->
     'undefined';
-%%     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-%%     ,?FIELD_PROPERTIES
-%%      | key_to_key_path(Tail)
-%%     ];
 
 key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)])) ->
     'undefined';
-%%    [iolist_to_binary([${, kz_util:to_binary(Name), $}])];
 
 key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
     'undefined';
 
 key_to_key_path(?LIST(?VAR(_Name), _Tail)) ->
     'undefined';
-%% key_to_key_path(?LIST(?VAR(Name), Tail)) ->
-%%     [iolist_to_binary([${, kz_util:to_binary(Name), $}])
-%%     ,?FIELD_PROPERTIES
-%%      | key_to_key_path(Tail)
-%%     ];
 key_to_key_path(?LIST(Head, Tail)) ->
     case key_to_key_path(Tail) of
         'undefined' -> 'undefined';
