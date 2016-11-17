@@ -970,8 +970,7 @@ collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_value(<<"numbers">>, ReqData),
     Context1 = cb_context:set_req_data(Context, kz_json:delete_key(<<"numbers">>, ReqData)),
-    {ServicesList, ResultJObj} =
-        collection_process(Context1, Action, Numbers),
+    {ServicesList, ResultJObj} = collection_process(Context1, Action, Numbers),
     {?COLLECTION, ServicesList, ResultJObj}.
 
 -spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().

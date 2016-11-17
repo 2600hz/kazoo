@@ -237,7 +237,7 @@ curl -v -X GET \
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data":{"id":"service_plan_id"}' \
+    -d '{"data": {"id":"{PLAN_ID}"}}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```
 
