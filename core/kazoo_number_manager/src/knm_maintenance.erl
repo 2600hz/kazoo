@@ -238,13 +238,13 @@ delete(Num) ->
 
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
-    NumberDbs = knm_util:get_all_number_dbs(),
-    _ = [purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) || NumberDb <- NumberDbs],
+    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
+    lists:foreach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
 -spec purge_discovery(ne_binary()) -> 'no_return'.
 purge_discovery(Prefix) ->
-    _ = purge_number_db(<<"numbers%2F%2B", Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
+    purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
     'no_return'.
 
 -spec purge_number_db(ne_binary(), ne_binary()) -> 'ok'.
@@ -257,11 +257,11 @@ purge_number_db(NumberDb, State) ->
     case kz_datamgr:get_results(NumberDb, <<"numbers/status">>, ViewOptions) of
         {'ok', []} -> 'ok';
         {'ok', Numbers} ->
-            io:format("removing ~p numbers in state '~s' from ~s~n"
-                     ,[length(Numbers), State, NumberDb]
-                     ),
-            JObjs = [kz_json:get_value(<<"doc">>, Number) || Number <- Numbers],
-            'true' = lists:all(fun(JObj) -> kz_json:get_value(?PVT_STATE, JObj) =:= State end, JObjs),
+            io:format("removing ~p numbers in state '~s' from ~s~n", [length(Numbers), State, NumberDb]),
+            JObjs = [JObj || Number <- Numbers,
+                             JObj <- [kz_json:get_value(<<"doc">>, Number)],
+                             State =:= kz_json:get_value(?PVT_STATE, JObj)
+                    ],
             kz_datamgr:del_docs(NumberDb, JObjs),
             purge_number_db(NumberDb, State)
     end.
