@@ -382,8 +382,9 @@ finish_record_call(Call, Props, MediaName) ->
               ],
 
     RecordingUrl = props:get_value('recordingUrl', Props, NewUri),
+    AccountId = kapps_call:account_id(Call),
     Setters1 =
-        case should_store_recording(RecordingUrl) of
+        case kz_media_recording:should_store_recording(AccountId, RecordingUrl) of
             'false' ->
                 lager:info("not storing the recording"),
                 Setters;
@@ -407,15 +408,6 @@ finish_record_call(Call, Props, MediaName) ->
                  | Setters]
         end,
     {'request', lists:foldl(fun({F, V}, C) -> F(V, C) end, Call, Setters1)}.
-
--spec should_store_recording(api_binary()) -> {'true', ne_binary() | 'local'} | 'false'.
-should_store_recording(Url) ->
-    case kapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
-        'true' when is_binary(Url) -> {'true', Url};
-        'true' -> {'true', 'local'};
-        'false' when is_binary(Url) -> {'true', Url};
-        'false' -> 'false'
-    end.
 
 play_beep(Call) ->
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
