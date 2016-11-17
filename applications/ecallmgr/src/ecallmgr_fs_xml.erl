@@ -553,8 +553,8 @@ get_channel_vars(_, Vars) -> Vars.
 -spec sip_headers_fold(kz_json:path(), kz_json:json_term(), iolist()) -> iolist().
 sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
     diversion_headers_fold(Vs, Vars0);
-sip_headers_fold(K, <<_/binary>> = V, Vars0) ->
-    [list_to_binary(["sip_h_", K, "=", V]) | Vars0].
+sip_headers_fold(K, V, Vars0) ->
+    [list_to_binary(["sip_h_", K, "=", kz_util:to_binary(V)]) | Vars0].
 
 -spec diversion_headers_fold(ne_binaries(), iolist()) -> iolist().
 diversion_headers_fold(Vs, Vars0) ->
