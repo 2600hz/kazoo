@@ -27,7 +27,7 @@
         ,get_format/1
         ,get_media_name/2
         ,get_response_media/1
-        ,should_store_recording/1
+        ,should_store_recording/2
         ]).
 
 -export([init/1
@@ -166,7 +166,7 @@ init([Call, Data]) ->
     DefaultMediaName = get_media_name(kz_util:rand_hex_binary(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_value(<<"url">>, Data),
-    ShouldStore = should_store_recording(Url),
+    ShouldStore = should_store_recording(AccountId, Url),
 
     {'ok', #state{url=Url
                  ,format=Format
@@ -517,16 +517,21 @@ store_url(#state{doc_db=Db
     Options = [{'plan_override', Handler}],
     kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
 
--spec should_store_recording() -> store_url().
 -spec should_store_recording(api_binary()) -> store_url().
-should_store_recording(Url) ->
+-spec should_store_recording(api_binary(), api_binary()) -> store_url().
+should_store_recording(AccountId, Url) ->
     case kz_util:is_empty(Url) of
-        'true' -> should_store_recording();
+        'true' -> should_store_recording(AccountId);
         'false' -> {'true', 'other', Url}
     end.
 
-should_store_recording() ->
+should_store_recording('undefined') ->
     case kapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+        'true' -> {'true', 'local'};
+        'false' -> 'false'
+    end;
+should_store_recording(AccountId) ->
+    case kz_util:is_true(kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"store_recordings">>, 'false')) of
         'true' -> {'true', 'local'};
         'false' -> 'false'
     end.
