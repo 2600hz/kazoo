@@ -70,7 +70,8 @@ start_participant(Call, Conference) ->
 
 -spec join_local(kapps_call:call(), kapps_conference:conference(), server_ref()) -> 'ok'.
 join_local(Call, Conference, Participant) ->
-    Routines = [{fun kapps_conference:set_moderator/2, 'false'}
+    IsModerator = kz_util:is_true(kapps_call:custom_sip_header(<<"X-Conf-Flags-Moderator">>, Call)),
+    Routines = [{fun kapps_conference:set_moderator/2, IsModerator}
                ,{fun kapps_conference:set_application_version/2, ?APP_VERSION}
                ,{fun kapps_conference:set_application_name/2, ?APP_NAME}
                ],

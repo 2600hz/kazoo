@@ -452,12 +452,15 @@ bridge_to_conference(Route, Conference, Call) ->
                                                  >>
                                   }
                                  ]),
+    SIPHeaders = [{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}
+                 ],
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}
               ,{<<"Timeout">>, 20}
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Ignore-Early-Media">>, <<"false">>}
               ,{<<"Hold-Media">>, <<"silence">>}
+              ,{<<"Custom-SIP-Headers">>, kz_json:from_list(SIPHeaders)}
               ],
     kapps_call_command:send_command(Command, Call).
 
@@ -476,25 +479,27 @@ get_account_realm(Call) ->
 
 -spec send_conference_command(kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
-    {Mute, Deaf} =
-        case kapps_conference:moderator(Conference) of
-            'true' ->
-                {kapps_conference:moderator_join_muted(Conference)
-                ,kapps_conference:moderator_join_deaf(Conference)
-                };
-            'false' ->
-                {kapps_conference:member_join_muted(Conference)
-                ,kapps_conference:member_join_deaf(Conference)
-                }
-        end,
     kapps_call_command:conference(kapps_conference:id(Conference)
-                                 ,Mute
-                                 ,Deaf
+                                 ,is_muted(Conference)
+                                 ,is_deaf(Conference)
                                  ,kapps_conference:moderator(Conference)
                                  ,kapps_conference:id(Conference)
                                  ,Call
                                  ).
 
+-spec is_muted(kapps_conference:conference()) -> boolean().
+is_muted(Conference) ->
+    case kapps_conference:moderator(Conference) of
+        'true' -> kapps_conference:moderator_join_muted(Conference);
+        'false' -> kapps_conference:member_join_muted(Conference)
+    end.
+
+-spec is_deaf(kapps_conference:conference()) -> boolean().
+is_deaf(Conference) ->
+    case kapps_conference:moderator(Conference) of
+        'true' -> kapps_conference:moderator_join_deaf(Conference);
+        'false' -> kapps_conference:member_join_deaf(Conference)
+    end.
 
 -spec handle_conference_event(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_conference_event(JObj, Props) ->
