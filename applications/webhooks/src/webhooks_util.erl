@@ -442,7 +442,7 @@ load_hook(Srv, WebHook) ->
 jobj_to_rec(Hook) ->
     #webhook{id = hook_id(Hook)
             ,uri = kzd_webhook:uri(Hook)
-            ,http_verb = kzd_webhook:verb(Hook)
+            ,http_verb = kz_util:to_atom(kzd_webhook:verb(Hook), 'true')
             ,hook_event = hook_event(kzd_webhook:event(Hook))
             ,hook_id = kz_doc:id(Hook)
             ,retries = kzd_webhook:retries(Hook)
