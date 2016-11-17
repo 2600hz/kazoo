@@ -13,12 +13,12 @@
 
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
-
-        ,migrate/0, migrate/1
-
-        ,generate_numbers/4
-
-        ,delete/1
+        ]).
+-export([migrate/0, migrate/1]).
+-export([generate_numbers/4]).
+-export([delete/1]).
+-export([purge_discovery/0
+        ,purge_discovery/1
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
@@ -235,4 +235,33 @@ delete(Num) ->
     end,
     'no_return'.
 
-%% End of Module
+
+-spec purge_discovery() -> 'no_return'.
+purge_discovery() ->
+    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
+    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    'no_return'.
+
+-spec purge_discovery(ne_binary()) -> 'no_return'.
+purge_discovery(Prefix) ->
+    purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
+    'no_return'.
+
+-spec purge_number_db(ne_binary(), ne_binary()) -> 'ok'.
+purge_number_db(NumberDb, State) ->
+    ViewOptions = [{'startkey', [State]}
+                  ,{'endkey', [State, kz_json:new()]}
+                  ,'include_docs'
+                  ,{'limit', 500}
+                  ],
+    case kz_datamgr:get_results(NumberDb, <<"numbers/status">>, ViewOptions) of
+        {'ok', []} -> 'ok';
+        {'ok', Numbers} ->
+            io:format("removing ~p numbers in state '~s' from ~s~n", [length(Numbers), State, NumberDb]),
+            JObjs = [JObj || Number <- Numbers,
+                             JObj <- [kz_json:get_value(<<"doc">>, Number)],
+                             State =:= kz_json:get_value(?PVT_STATE, JObj)
+                    ],
+            kz_datamgr:del_docs(NumberDb, JObjs),
+            purge_number_db(NumberDb, State)
+    end.
