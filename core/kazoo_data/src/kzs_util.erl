@@ -29,6 +29,7 @@ db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';
 db_classification(<<"sms">>) -> 'deprecated';
 db_classification(<<"signups">>) -> 'system'; %% Soon to be deprecated
 db_classification(?KZ_RATES_DB) -> 'system';
+db_classification(?KZ_ALERTS_DB) -> 'system';
 db_classification(?KZ_OFFNET_DB) -> 'system';
 db_classification(?KZ_ANONYMOUS_CDR_DB) -> 'system';
 db_classification(?KZ_DEDICATED_IP_DB) -> 'system';
