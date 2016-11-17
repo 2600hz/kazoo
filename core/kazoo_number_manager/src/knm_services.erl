@@ -148,7 +148,8 @@ update_services(Number, 'false', _) ->
     _ = kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
     Services = fetch_services(Number),
     Transactions = knm_number:transactions(Number),
-    _ = kz_services:commit_transactions(Services, Transactions),
+    _ = 'undefined' =/= AssignedTo
+        andalso kz_services:commit_transactions(Services, Transactions),
     Number.
 -endif.
 
@@ -212,8 +213,11 @@ fetch_services(_Number) -> kz_services:new().
 fetch_services(Number) ->
     case knm_number:services(Number) of
         'undefined' ->
-            AssignedTo = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-            kz_services:fetch(AssignedTo);
+            case knm_phone_number:assigned_to(knm_number:phone_number(Number)) of
+                'undefined' -> kz_services:new();
+                AssignedTo ->
+                    kz_services:fetch(AssignedTo)
+            end;
         Services ->
             Services
     end.

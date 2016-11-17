@@ -14,7 +14,9 @@
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
         ]).
--export([migrate/0, migrate/1]).
+-export([migrate/0, migrate/1
+        ,migrate_unassigned_numbers/0, migrate_unassigned_numbers/1
+        ]).
 -export([generate_numbers/4]).
 -export([delete/1]).
 -export([purge_discovery/0
@@ -89,13 +91,61 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 -spec migrate() -> 'ok'.
 migrate() ->
     AccountDbs = kapps_util:get_all_accounts(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs).
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs),
+    erase(callflow_DIDs),
+    erase(trunkstore_DIDs),
+    migrate_unassigned_numbers().
 
 -spec migrate(ne_binary()) -> 'ok'.
-migrate(AccountDb) ->
+migrate(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
     fix_account_numbers(AccountDb),
     _ = kz_datamgr:del_doc(AccountDb, <<"phone_numbers">>),
     'ok'.
+
+-spec migrate_unassigned_numbers() -> 'ok'.
+-spec migrate_unassigned_numbers(ne_binary(), integer()) -> 'ok'.
+migrate_unassigned_numbers() ->
+    ?LOG("********** fixing unassigned numbers **********", []),
+    NumberDbs = knm_util:get_all_number_dbs(),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS
+                            ,fun migrate_unassigned_numbers/1
+                            ,NumberDbs
+                            ),
+    ?LOG("********** finished fixing unassigned numbers **********", []).
+
+-spec migrate_unassigned_numbers(ne_binary()) -> ok.
+migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
+    ?LOG("########## start fixing ~s ##########", [NumberDb]),
+    migrate_unassigned_numbers(NumberDb, 0),
+    _ = knm_phone_number:push_stored(), %% Bulk doc writes
+    ?LOG("########## done fixing ~s ##########", [NumberDb]);
+migrate_unassigned_numbers(<<?KNM_DB_PREFIX_encoded, Suffix/binary>>) ->
+    migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>);
+migrate_unassigned_numbers(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
+    migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>);
+migrate_unassigned_numbers(Number) ->
+    migrate_unassigned_numbers(knm_converters:to_db(Number)).
+
+migrate_unassigned_numbers(NumberDb, Offset) ->
+    ViewOptions = [{limit, kz_datamgr:max_bulk_insert()}
+                  ,{skip, Offset}
+                  ],
+    ?LOG("[~s] checking for unassigned numbers with offset ~b", [NumberDb, Offset]),
+    case kz_datamgr:get_results(NumberDb, <<"numbers/unassigned">>, ViewOptions) of
+        {ok, []} -> 'ok';
+        {ok, JObjs} ->
+            Length = length(JObjs),
+            ?LOG("[~s] fixing ~b docs", [NumberDb, Length]),
+            foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS
+                                    ,fun fix_unassign_doc/1
+                                    ,lists:map(fun kz_doc:id/1, JObjs)
+                                    ),
+            timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
+            migrate_unassigned_numbers(NumberDb, Offset + Length);
+        {error, _R} ->
+            ?LOG("failed to get unassign DIDs from ~s: ~p", [NumberDb, _R])
+    end.
 
 %%%===================================================================
 %%% Internal functions
@@ -135,12 +185,12 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
         andalso have_same_pvt_values(NumDoc, Doc)
         andalso are_features_available_synced(NumDoc)
     of
-        true -> ?LOG("~s already sync-ed", [DID]);
+        true -> ?LOG("~s already synced", [DID]);
         false ->
             JObj = kz_json:merge_jobjs(kz_json:public_fields(NumDoc)
                                       ,kz_json:public_fields(Doc)
                                       ),
-            ?LOG("syn-ing ~s", [DID]),
+            ?LOG("syncing ~s", [DID]),
             Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
@@ -151,6 +201,16 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
             ok
     end.
 
+-spec fix_unassign_doc(ne_binary()) -> 'ok'.
+fix_unassign_doc(DID) ->
+    Routines = [{fun knm_phone_number:set_used_by/2, undefined}
+               ],
+    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+               %% bulk doc writes
+              ,{batch_run, true}
+              ],
+    _ = knm_number:update(DID, Routines, Options),
+    ok.
 
 -type dids() :: gb_sets:set(ne_binary()).
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
