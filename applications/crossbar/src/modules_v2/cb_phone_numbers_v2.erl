@@ -1021,7 +1021,7 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
     Releaser = pick_release_or_delete(Context, Options),
     knm_numbers:Releaser(Numbers, Options).
 
--spec fold_dry_runs([kz_services:services(), ...]) -> kz_json:object().
+-spec fold_dry_runs([kz_services:services(),...]) -> kz_json:object().
 fold_dry_runs(ServicesList) ->
     F = fun(Services, _Acc) -> kz_services:dry_run(Services) end,
     lists:foldl(F, [], ServicesList).

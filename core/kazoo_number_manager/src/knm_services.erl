@@ -180,16 +180,14 @@ activate_phone_number(Number, _BillingId, 0) ->
 activate_phone_number(Number, BillingId, Units) ->
     Charges = knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES),
     TotalCharges = Charges + Units,
-
     case kz_services:check_bookkeeper(BillingId, TotalCharges) of
         'false' ->
             Message = io_lib:format("not enough credit to activate number for $~p"
                                    ,[wht_util:units_to_dollars(Units)]),
             lager:error(Message),
-            knm_errors:service_restriction(iolist_to_binary(Message));
+            knm_errors:service_restriction(Number, iolist_to_binary(Message));
         'true' ->
             Transaction = create_transaction(Number, Units),
-
             knm_number:set_charges(knm_number:add_transaction(Number, Transaction)
                                   ,?KEY_NUMBER_ACTIVATION_CHARGES
                                   ,TotalCharges
