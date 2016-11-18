@@ -28,7 +28,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Url = kz_json:get_value(<<"url">>, Data),
-    case kz_media_recording:should_store_recording(Url) of
+    case kz_media_recording:should_store_recording(kapps_call:account_id(Call), Url) of
         'false' ->
             lager:debug("cannot store the recording, bad or no URL"),
             cf_exe:continue(Call);
