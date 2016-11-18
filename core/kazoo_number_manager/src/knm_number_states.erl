@@ -74,6 +74,14 @@ to_aging(Number, ?NUMBER_STATE_AGING) ->
     Routines = [fun move_to_aging_state/1
                ],
     apply_transitions(Number, Routines);
+to_aging(Number, ?NUMBER_STATE_RELEASED) ->
+    Routines = [fun move_to_aging_state/1
+               ],
+    apply_transitions(Number, Routines);
+to_aging(Number, ?NUMBER_STATE_AVAILABLE) ->
+    Routines = [fun move_to_aging_state/1
+               ],
+    apply_transitions(Number, Routines);
 to_aging(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_AGING).
 
