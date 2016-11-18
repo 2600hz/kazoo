@@ -196,6 +196,16 @@ activate_phone_number(Number, BillingId, Units) ->
                                   )
     end.
 
+%% @public
+-spec phone_number_activation_charges(knm_number:knm_number()) -> number().
+phone_number_activation_charges(Number) ->
+    knm_number:charges(Number, ?KEY_NUMBER_ACTIVATION_CHARGES).
+
+%% @public
+-spec activation_charges(knm_number:knm_number()) -> number().
+activation_charges(Number) ->
+    knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -305,11 +315,3 @@ set_activation_reason(Transaction, _LedgetId, AccountId, Key) ->
     kz_transaction:set_reason(<<"sub_account_", Key/binary, "_activation">>
                              ,kz_transaction:set_sub_account_info(AccountId, Transaction)
                              ).
-
--spec phone_number_activation_charges(knm_number:knm_number()) -> number().
-phone_number_activation_charges(Number) ->
-    knm_number:charges(Number, ?KEY_NUMBER_ACTIVATION_CHARGES).
-
--spec activation_charges(knm_number:knm_number()) -> number().
-activation_charges(Number) ->
-    knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES).
