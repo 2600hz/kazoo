@@ -3,11 +3,6 @@
     "_id": "system_config.pivot",
     "description": "Schema for pivot system_config",
     "properties": {
-        "store_recordings": {
-            "default": false,
-            "description": "pivot store recordings",
-            "type": "boolean"
-        },
         "tts_texts_size": {
             "default": 4000,
             "description": "pivot tts texts size",
