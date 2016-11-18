@@ -79,7 +79,7 @@ delete_account_webhooks(AccountId) ->
             lager:debug("deleted ~p hooks from account ~s", [length(ViewJObjs), AccountId])
     end.
 
--spec fetch_account_hooks(ne_binary()) -> kz_datamgr:get_results_return().
+-spec fetch_account_hooks(ne_binary()) -> kazoo_data:get_results_return().
 fetch_account_hooks(AccountId) ->
     kz_datamgr:get_results(?KZ_WEBHOOKS_DB
                           ,<<"webhooks/accounts_listing">>

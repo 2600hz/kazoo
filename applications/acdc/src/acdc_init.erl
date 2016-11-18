@@ -87,7 +87,7 @@ init_acct_agents(AccountDb, AccountId) ->
                ,kz_datamgr:get_results(AccountDb, <<"queues/agents_listing">>, [])
                ).
 
--spec init_queues(ne_binary(), kz_datamgr:get_results_return()) -> any().
+-spec init_queues(ne_binary(), kazoo_data:get_results_return()) -> any().
 init_queues(_, {'ok', []}) -> 'ok';
 init_queues(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading queues in account ~s, trying again in a moment", [AccountId]),
@@ -105,7 +105,7 @@ init_queues(AccountId, {'ok', Qs}) ->
     acdc_stats:init_db(AccountId),
     [acdc_queues_sup:new(AccountId, kz_doc:id(Q)) || Q <- Qs].
 
--spec init_agents(ne_binary(), kz_datamgr:get_results_return()) -> any().
+-spec init_agents(ne_binary(), kazoo_data:get_results_return()) -> any().
 init_agents(_, {'ok', []}) -> 'ok';
 init_agents(AccountId, {'error', 'gateway_timeout'}) ->
     lager:debug("gateway timed out loading agents in account ~s, trying again in a moment", [AccountId]),

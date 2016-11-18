@@ -686,7 +686,7 @@ write_tts_file(Path, Say) ->
     {'ok', _, Wav} = kapps_speech:create(Say),
     file:write_file(Path, Wav).
 
--spec to_magic_hash(iolist()) -> ne_binary().
+-spec to_magic_hash(iodata()) -> ne_binary().
 to_magic_hash(Bin) ->
     kz_util:to_hex_binary(zlib:zip(Bin)).
 

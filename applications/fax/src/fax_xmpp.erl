@@ -252,7 +252,7 @@ auth_xoauth2(Conn, Props) ->
     Password = get_property(password, Props),
     Payload = <<0:8,Username/binary,0:8,Password/binary>>,
     Stanza = escalus_stanza:auth(<<"X-OAUTH2">>, [base64_cdata(Payload)]),
-    ok = escalus_connection:send(Conn, Stanza),
+    'ok' = escalus_connection:send(Conn, Stanza),
     wait_for_success(Username, Conn).
 
 base64_cdata(Payload) ->
@@ -261,16 +261,16 @@ base64_cdata(Payload) ->
 get_property(PropName, Proplist) ->
     case lists:keyfind(PropName, 1, Proplist) of
         {PropName, Value} -> Value;
-        false -> throw({missing_property, PropName})
+        'false' -> throw({'missing_property', PropName})
     end.
 
 wait_for_success(Username, Conn) ->
-    AuthReply = escalus_connection:get_stanza(Conn, auth_reply),
+    AuthReply = escalus_connection:get_stanza(Conn, 'auth_reply'),
     case AuthReply#xmlel.name of
-        <<"success">> -> ok;
-        R when R =:= <<"failure">>;
-               R =:= <<"stream:error">> ->
-            throw({auth_failed, Username, AuthReply})
+        <<"success">> -> 'ok';
+        R when R =:= <<"failure">>
+               orelse R =:= <<"stream:error">> ->
+            throw({'auth_failed', Username, AuthReply})
     end.
 
 -spec start_all_printers() -> 'ok'.

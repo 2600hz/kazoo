@@ -841,13 +841,8 @@ content_type_matched_json(CT, Type, <<"prefix">> = Field) ->
 -spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), state()) ->
                                  {'ok', state()}.
 maybe_process_image(CT, Body, State) ->
-    case kapps_config:get_binary(?CONFIG_CAT, <<"image_min_size">>, <<"700x10">>) of
-        'undefined' ->
-            lager:debug("ignoring part ~s", [CT]),
-            {'ok', State};
-        Size ->
-            maybe_process_image(CT, Body, Size, State)
-    end.
+    Size = kapps_config:get_binary(?CONFIG_CAT, <<"image_min_size">>, <<"700x10">>),
+    maybe_process_image(CT, Body, Size, State).
 
 -spec maybe_process_image(ne_binary(), binary() | mimemail:mimetuple(), ne_binary(), state()) ->
                                  {'ok', state()}.

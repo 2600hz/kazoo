@@ -142,12 +142,10 @@ is_number_billable(PN) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec update_feature_quantities(ne_binaries() | kz_json:object(), kz_services:services()) -> kz_services:services().
+-spec update_feature_quantities(ne_binaries(), kz_services:services()) -> kz_services:services().
 update_feature_quantities([], Services) -> Services;
 update_feature_quantities([Feature|Features], Services) ->
     Name = knm_providers:service_name(Feature, kz_services:account_id(Services)),
     Quantity = kz_services:updated_quantity(?NUMBER_SERVICES, Name, Services),
     UpdatedServices = kz_services:update(?NUMBER_SERVICES, Name, Quantity + 1, Services),
-    update_feature_quantities(Features, UpdatedServices);
-update_feature_quantities(JObj, Services) ->
-    update_feature_quantities(kz_json:get_keys(JObj), Services).
+    update_feature_quantities(Features, UpdatedServices).

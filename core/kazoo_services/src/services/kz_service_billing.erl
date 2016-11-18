@@ -33,12 +33,17 @@ reconcile(Services) ->
             Services;
         {'ok', []} -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
         {'ok', JObjs} ->
-            lists:foldl(fun(JObj, S) ->
-                                Item = kz_json:get_value(<<"key">>, JObj),
-                                Quantity = kz_json:get_integer_value(<<"value">>, JObj, 0),
-                                kz_services:update(?SERVICE_CATEGORY, Item, Quantity, S)
-                        end, kz_services:reset_category(?SERVICE_CATEGORY, Services), JObjs)
+            lists:foldl(fun reconcile_fold/2
+                       ,kz_services:reset_category(?SERVICE_CATEGORY, Services)
+                       ,JObjs
+                       )
     end.
+
+-spec reconcile_fold(kz_json:object(), kz_servers:services()) -> kz_services:services().
+reconcile_fold(JObj, S) ->
+    Item = kz_json:get_value(<<"key">>, JObj),
+    Quantity = kz_json:get_integer_value(<<"value">>, JObj, 0),
+    kz_services:update(?SERVICE_CATEGORY, Item, Quantity, S).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -46,7 +51,7 @@ reconcile(Services) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(kz_services:services(), kz_json:object()) -> kz_services:services().
+-spec reconcile(kz_services:services(), api_binary()) -> kz_services:services().
 reconcile(Services, 'undefined') -> Services;
 reconcile(Services0, Item) ->
     Services1 = reconcile(Services0),

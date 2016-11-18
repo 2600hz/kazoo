@@ -180,7 +180,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec req_files(context()) -> req_files().
 -spec req_nouns(context()) -> req_nouns().
 -spec req_headers(context()) -> cowboy:http_headers().
--spec req_header(context(), ne_binary()) -> api_ne_binary().
+-spec req_header(context(), binary()) -> iodata() | 'undefined'.
 -spec query_string(context()) -> kz_json:object().
 -spec req_param(context(), ne_binary()) -> kz_json:api_json_term().
 -spec req_param(context(), ne_binary(), Default) -> kz_json:json_term() | Default.
@@ -189,7 +189,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec auth_account_doc(context()) -> api_object().
 -spec doc(context()) -> api_object() | kz_json:objects().
 -spec load_merge_bypass(context()) -> api_object().
--spec start(context()) -> os:timestamp().
+-spec start(context()) -> kz_now().
 -spec resp_file(context()) -> binary().
 -spec resp_data(context()) -> resp_data().
 -spec resp_status(context()) -> crossbar_status().

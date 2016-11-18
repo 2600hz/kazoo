@@ -10,8 +10,16 @@
 -export([get_results/6]).
 -include_lib("kazoo/include/kz_types.hrl").
 
--spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), kz_proplists()) ->
-                         {integer(), kz_json:objects()}.
+-type mapper_fun() :: fun((kz_json:object()) -> kz_json:object()) |
+                      fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+
+-type option() :: {'couch_options', kz_datamgr:view_options()} |
+                  {'ascending', boolean()} |
+                  {'mapper', mapper_fun()}.
+-type options() :: [option()].
+
+-spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), options()) ->
+                         {api_integer(), kz_json:objects()}.
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, Start, End, Limit, Options) ->
     CouchOptions = props:get_value('couch_options', Options, []),
     Mapper = props:get_value('mapper', Options, fun kz_util:identity/1),
@@ -22,8 +30,8 @@ get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, Start, End, Limit, Option
             get_results_descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
     end.
 
--spec get_results_descending(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), fun(), kz_datamgr:view_options()) ->
-                                    {integer(), kz_json:objects()}.
+-spec get_results_descending(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
+                                    {api_integer(), kz_json:objects()}.
 get_results_descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
   when is_binary(AccountId),
        is_binary(View),
@@ -44,7 +52,7 @@ get_results_descending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
                    ),
     {LastKey, JObjs}.
 
--spec get_results_ascending(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), fun(), kz_datamgr:view_options()) ->
+-spec get_results_ascending(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
                                    {api_integer(), kz_json:objects()}.
 get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
   when is_binary(AccountId),
@@ -62,10 +70,10 @@ get_results_ascending(AccountId, View, Start, End, Limit, Mapper, CouchOptions)
                    ),
     {LastKey, JObjs}.
 
--spec fold_query({ne_binary(), ne_binary(), kz_datamgr:view_options(), fun()}
-                ,{pos_integer(), integer(), kz_json:objects()}
+-spec fold_query({ne_binary(), ne_binary(), kz_datamgr:view_options(), mapper_fun()}
+                ,{pos_integer(), api_integer(), kz_json:objects()}
                 ) ->
-                        {integer(), api_integer(), kz_json:objects()}.
+                        {pos_integer(), api_integer(), kz_json:objects()}.
 fold_query(_, {Limit, LastKey, Res} = Re)
   when is_integer(Limit),
        Limit > 0,
@@ -91,9 +99,9 @@ limited_query(Limit, Db, View, CouchOpts) ->
         {'error', Error} -> throw(Error)
     end.
 
--spec apply_filter(fun(), kz_json:objects()) -> kz_json:objects().
+-spec apply_filter(mapper_fun(), kz_json:objects()) -> kz_json:objects().
 apply_filter(Map, Objects) when is_function(Map, 1) ->
-    [ Map(Obj) || Obj <- Objects ];
+    [Map(Obj) || Obj <- Objects];
 apply_filter(Mapper, Objects) when is_function(Mapper, 2) ->
     lists:foldl(Mapper, [], Objects).
 

@@ -22,8 +22,12 @@
 
 %% Connection operations
 -callback get_db(connection(), ne_binary()) -> any().
--callback server_url(connection()) -> ne_binary().
--callback db_url(connection(), ne_binary()) -> ne_binary().
+-callback server_url(connection()) ->
+    ne_binary() |
+    {'error', 'resource_not_available'}.
+-callback db_url(connection(), ne_binary()) ->
+    ne_binary() |
+    {'error', 'resource_not_available'}.
 -callback server_info(connection()) -> any().
 
 %% DB operations
@@ -32,7 +36,9 @@
 -callback db_view_cleanup(connection(), ne_binary()) -> any().
 -callback db_info(connection()) -> any().
 -callback db_info(connection(), ne_binary()) -> any().
--callback db_exists(connection(), ne_binary()) -> boolean().
+-callback db_exists(connection(), ne_binary()) ->
+    boolean() |
+    {'error', 'resource_not_available'}.
 -callback db_archive(connection(), ne_binary(), ne_binary()) -> any().
 -callback db_list(connection(), options()) -> any().
 

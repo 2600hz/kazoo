@@ -28,6 +28,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
@@ -1042,8 +1043,8 @@ load_attachment(AttachmentId, Context) ->
                               cb_context:context().
 maybe_move_state(Context, Id, PortState) ->
     Context1 = load_port_request(Context, Id),
-    case cb_context:resp_status(Context1) =:= 'success'
-        andalso knm_port_request:maybe_transition(cb_context:doc(Context1), PortState)
+    try cb_context:resp_status(Context1) =:= 'success'
+             andalso knm_port_request:maybe_transition(cb_context:doc(Context1), PortState)
     of
         'false' -> Context1;
         {'ok', PortRequest} ->
@@ -1055,11 +1056,12 @@ maybe_move_state(Context, Id, PortState) ->
                     ,{<<"cause">>, PortState}
                     ]),
             cb_context:add_validation_error(<<"port_state">>, <<"enum">>, Msg, Context);
-        {'error', 'failed_to_charge'} ->
-            cb_context:add_system_error('no_credit', Context);
-        {'errors', Errors} ->
-            JObj = kz_json:from_list([{<<"message">>, kz_json:from_list(Errors)}]),
+        {'error', Error} ->
+            JObj = kz_json:from_list([{<<"message">>, Error}]),
             cb_context:add_system_error('transition_errors', JObj, Context)
+    catch
+        'throw':{'error', 'failed_to_charge'} ->
+            cb_context:add_system_error('no_credit', Context)
     end.
 
 %%--------------------------------------------------------------------
