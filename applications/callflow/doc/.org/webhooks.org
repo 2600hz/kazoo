@@ -19,6 +19,7 @@ Webhooks can be triggered from a callflow without needing them to be predefined 
 ** The Webhook action
 See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.webhook.json][schema]] for details of what can go in the action's data object.
 | Field       | Description                                                    | Type                | Default | Required |
+|-------------+----------------------------------------------------------------+---------------------+---------+----------|
 | uri         | The HTTP URI to send the webhook data to                       | string()            |         | true     |
 | http_verb   | The HTTP verb to use                                           | enum("post", "get") | "post"  | false    |
 | retries     | How many times to retry the server                             | integer(0..4)       | 2       | false    |
