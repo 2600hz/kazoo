@@ -105,7 +105,7 @@ collect_items([{Domain, Items} | Rest], Db) ->
 send(Payload) when is_list(Payload) -> send(kz_json:encode(Payload));
 send(Payload) -> amqp_util:targeted_publish(<<"statistics">>, Payload).
 
--spec get_next(ne_binary(), list(), list()) -> {list(), list()}.
+-spec get_next(ne_binary(), list(), list()) -> ['endOfTable' | {list(), list()}].
 get_next(Table, Row, Col)
   when is_list(Col), is_list(Row), is_binary(Table) ->
     get_next2(Row, Col, get_db(Table), table_order(Table)).

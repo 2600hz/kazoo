@@ -50,7 +50,7 @@
                ,b_endpoint_id :: api_binary()
                ,b_leg_armed = 'false' :: boolean()
 
-               ,call_id :: ne_binary()
+               ,call_id :: api_ne_binary()
                ,other_leg :: api_binary()
                }).
 -type state() :: #state{}.
@@ -138,7 +138,7 @@ init({Call, JObj}) ->
                             }}.
 
 -spec unarmed(any(), state()) -> handle_fsm_ret(state()).
--spec unarmed(any(), any(), state()) -> handle_fsm_ret(state()).
+-spec unarmed(any(), atom(), state()) -> handle_sync_event_ret(state()).
 unarmed({'dtmf', CallId, BindingDigit}, #state{call_id=CallId
                                               ,listen_on='a'
                                               ,binding_digit=BindingDigit
@@ -189,7 +189,7 @@ unarmed(_Event, _From, State) ->
     {'reply', {'error', 'not_implemented'}, 'unarmed', State}.
 
 -spec armed(any(), state()) -> handle_fsm_ret(state()).
--spec armed(any(), any(), state()) -> handle_fsm_ret(state()).
+-spec armed(any(), atom(), state()) -> handle_sync_event_ret(state()).
 armed({'dtmf', CallId, DTMF}, #state{call_id=CallId
                                     ,a_leg_armed='true'
                                     }=State) ->

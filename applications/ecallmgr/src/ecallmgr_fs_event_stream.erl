@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_event_stream).
-
 -behaviour(gen_server).
 
 -export([start_link/3]).
@@ -63,7 +62,7 @@ start_link(Node, Bindings, Subclasses) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init([]) -> {'ok', state()}.
+-spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
     kz_util:put_callid(list_to_binary([kz_util:to_binary(Node), <<"-eventstream">>])),
@@ -248,7 +247,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec request_event_stream(state()) -> {'ok', state()} | {'stop', any(), state()}.
+
+-spec request_event_stream(state()) -> {'ok', state()} | {'stop', any()}.
 request_event_stream(#state{node=Node}=State) ->
     Bindings = get_event_bindings(State),
     case maybe_bind(Node, Bindings) of
@@ -261,10 +261,10 @@ request_event_stream(#state{node=Node}=State) ->
                                               ])),
             {'ok', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
         {'EXIT', ExitReason} ->
-            {'stop', {'shutdown', ExitReason}, State};
+            {'stop', {'shutdown', ExitReason}};
         {'error', ErrorReason} ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, ErrorReason]),
-            {'stop', ErrorReason, State}
+            {'stop', ErrorReason}
     end.
 
 -spec get_event_bindings(state()) -> atoms().
@@ -478,7 +478,7 @@ maybe_start_event_listener(Node, UUID) ->
         _E -> 'ok'
     end.
 
--spec idle_alert_timeout() -> non_neg_integer() | 'infinity'.
+-spec idle_alert_timeout() -> kz_timeout().
 idle_alert_timeout() ->
     case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
         Timeout when Timeout =< 30 -> 'infinity';
