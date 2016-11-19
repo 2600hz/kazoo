@@ -433,7 +433,7 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec wait(any(), state()) -> handle_fsm_ret(state()).
--spec wait(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec wait(any(), atom(), state()) -> handle_sync_event_ret(state()).
 wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
                                                             ,agent_id=AgentId
                                                             }=State) ->
@@ -462,7 +462,7 @@ wait('current_call', _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec sync(any(), state()) -> handle_fsm_ret(state()).
--spec sync(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec sync(any(), atom(), state()) -> handle_sync_event_ret(state()).
 sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                      ,agent_listener=AgentListener
                                                      }=State) when is_reference(Ref) ->
@@ -539,7 +539,7 @@ sync('current_call', _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ready(any(), state()) -> handle_fsm_ret(state()).
--spec ready(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec ready(any(), atom(), state()) -> handle_sync_event_ret(state()).
 ready({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Server-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ready', JObj),
@@ -683,7 +683,7 @@ ready('current_call', _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ringing(any(), state()) -> handle_fsm_ret(state()).
--spec ringing(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec ringing(any(), atom(), state()) -> handle_sync_event_ret(state()).
 ringing({'member_connect_req', _}, State) ->
     {'next_state', 'ringing', State};
 ringing({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -940,7 +940,7 @@ ringing('current_call', _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 -spec answered(any(), state()) -> handle_fsm_ret(state()).
--spec answered(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec answered(any(), atom(), state()) -> handle_sync_event_ret(state()).
 answered({'member_connect_req', _}, State) ->
     {'next_state', 'answered', State};
 answered({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -1107,7 +1107,7 @@ answered('current_call', _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 -spec wrapup(any(), state()) -> handle_fsm_ret(state()).
--spec wrapup(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec wrapup(any(), atom(), state()) -> handle_sync_event_ret(state()).
 wrapup({'pause', Timeout}, #state{account_id=AccountId
                                  ,agent_id=AgentId
                                  ,agent_listener=AgentListener
@@ -1173,7 +1173,7 @@ wrapup('current_call', _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 -spec paused(any(), state()) -> handle_fsm_ret(state()).
--spec paused(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec paused(any(), atom(), state()) -> handle_sync_event_ret(state()).
 paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
                                                ,agent_listener=AgentListener
                                                }=State) when is_reference(Ref) ->
@@ -1225,7 +1225,7 @@ paused('current_call', _, State) ->
     {'reply', 'undefined', 'paused', State}.
 
 -spec outbound(any(), state()) -> handle_fsm_ret(state()).
--spec outbound(any(), atom(), state()) -> handle_fsm_ret(state()).
+-spec outbound(any(), atom(), state()) -> handle_sync_event_ret(state()).
 outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
                                                   ,outbound_call_ids=OutboundCallIds
                                                   }=State) ->
