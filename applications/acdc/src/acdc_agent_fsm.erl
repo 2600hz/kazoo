@@ -100,19 +100,19 @@
                ,account_db :: ne_binary()
                ,agent_id :: ne_binary()
                ,agent_listener :: server_ref()
-               ,agent_listener_id :: ne_binary()
+               ,agent_listener_id :: api_ne_binary()
                ,agent_name :: api_binary()
 
                ,wrapup_timeout = 0 :: integer() % optionally set on win
-               ,wrapup_ref :: reference()
+               ,wrapup_ref :: api_reference()
 
-               ,sync_ref :: reference()
-               ,pause_ref :: reference()
+               ,sync_ref :: api_reference()
+               ,pause_ref :: api_reference()
 
                ,member_call :: kapps_call:call()
                ,member_call_id :: api_binary()
                ,member_call_queue_id :: api_binary()
-               ,member_call_start :: kz_now()
+               ,member_call_start :: kz_now() | undefined
                ,caller_exit_key = <<"#">> :: ne_binary()
                ,queue_notifications :: api_object()
 
