@@ -380,7 +380,7 @@ amqp_uri = "amqp://guest:guest@192.168.1.100:5672"
 
 [zone]
 name = "c1_zone2"
-amqp_uri = "amqp://guest:guest@192.168.1.101:5672"
+amqp_uri = "amqp://guest:guest@192.168.1.102:5672"
 
 [kazoo_apps]
 host = "test1.cluster1.2600hz.com"
