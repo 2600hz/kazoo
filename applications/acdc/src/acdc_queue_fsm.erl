@@ -61,17 +61,17 @@
 -record(state, {queue_proc :: pid()
                ,manager_proc :: pid()
                ,connect_resps = [] :: kz_json:objects()
-               ,collect_ref :: reference()
+               ,collect_ref :: api_reference()
                ,account_id :: ne_binary()
                ,account_db :: ne_binary()
                ,queue_id :: ne_binary()
 
-               ,timer_ref :: reference() % for tracking timers
-               ,connection_timer_ref :: reference() % how long can a caller wait in the queue
-               ,agent_ring_timer_ref :: reference() % how long to ring an agent before moving to the next
+               ,timer_ref :: api_reference() % for tracking timers
+               ,connection_timer_ref :: api_reference() % how long can a caller wait in the queue
+               ,agent_ring_timer_ref :: api_reference() % how long to ring an agent before moving to the next
 
                ,member_call :: kapps_call:call()
-               ,member_call_start :: non_neg_integer()
+               ,member_call_start :: api_non_neg_integer()
                ,member_call_winner :: api_object() %% who won the call
 
                                       %% Config options
@@ -239,7 +239,7 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec ready(any(), state()) -> handle_fsm_ret(state()).
--spec ready(any(), any(), state()) -> handle_fsm_ret(state()).
+-spec ready(any(), any(), state()) -> handle_sync_event_ret(state()).
 ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                  ,manager_proc=MgrSrv
                                                  ,connection_timeout=ConnTimeout
@@ -310,7 +310,7 @@ ready('current_call', _, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec connect_req(any(), state()) -> handle_fsm_ret(state()).
--spec connect_req(any(), any(), state()) -> handle_fsm_ret(state()).
+-spec connect_req(any(), any(), state()) -> handle_sync_event_ret(state()).
 connect_req({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
     CallId = kz_json:get_value(<<"Call-ID">>, CallJObj),
@@ -458,7 +458,7 @@ connect_req('current_call', _, #state{member_call=Call
 %% @end
 %%--------------------------------------------------------------------
 -spec connecting(any(), state()) -> handle_fsm_ret(state()).
--spec connecting(any(), any(), state()) -> handle_fsm_ret(state()).
+-spec connecting(any(), any(), state()) -> handle_sync_event_ret(state()).
 connecting({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
