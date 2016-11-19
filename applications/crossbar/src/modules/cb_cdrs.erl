@@ -347,18 +347,18 @@ load_cdr_summary(Context, _, []) ->
 load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
     Context1 = cb_context:set_account_db(Context, Db),
     Context2 = crossbar_doc:load_view(
-                   ?CB_SUMMARY_VIEW
-                   ,ViewOptions
-                   ,Context1
-                   ,fun normalize_summary_results/2
-               ),
+                 ?CB_SUMMARY_VIEW
+                                     ,ViewOptions
+                                     ,Context1
+                                     ,fun normalize_summary_results/2
+                ),
     case cb_context:resp_status(Context2) of
         'success' ->
             load_cdr_summary(
-                combine_cdr_summary(Context, Context2)
-                ,ViewOptions
-                ,Dbs
-            );
+              combine_cdr_summary(Context, Context2)
+                            ,ViewOptions
+                            ,Dbs
+             );
         _Else -> Context2
     end.
 
@@ -373,14 +373,14 @@ merge_cdr_summary('undefined', JObj2) ->
     merge_cdr_summary(kz_json:new(), JObj2);
 merge_cdr_summary(JObj1, JObj2) ->
     kz_json:foldl(fun(Key2, Value2, JObj) ->
-                      case kz_json:get_value(Key2, JObj1) of
-                          'undefined' -> kz_json:set_value(Key2, Value2, JObj);
-                          Value1 when is_integer(Value1) ->
-                              kz_json:set_value(Key2, Value1 + Value2, JObj);
-                          Value1 ->
-                              Value = merge_cdr_summary(Value1, Value2),
-                              kz_json:set_value(Key2, Value, JObj)
-                       end
+                          case kz_json:get_value(Key2, JObj1) of
+                              'undefined' -> kz_json:set_value(Key2, Value2, JObj);
+                              Value1 when is_integer(Value1) ->
+                                  kz_json:set_value(Key2, Value1 + Value2, JObj);
+                              Value1 ->
+                                  Value = merge_cdr_summary(Value1, Value2),
+                                  kz_json:set_value(Key2, Value, JObj)
+                          end
                   end, JObj1, JObj2).
 
 -spec normalize_summary_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
