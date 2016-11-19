@@ -74,6 +74,8 @@ ratelimits_resp(Prop) when is_list(Prop) ->
     end;
 ratelimits_resp(JObj) -> ratelimits_resp(kz_json:to_proplist(JObj)).
 
+-spec publish_ratelimits_resp(ne_binary(), kz_json:object()) -> ok.
+-spec publish_ratelimits_resp(ne_binary(), api_terms(), ne_binary()) -> ok.
 publish_ratelimits_resp(Srv, JObj) -> publish_ratelimits_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_ratelimits_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?RATELIMITS_RESP_VALUES, fun ratelimits_resp/1),
@@ -97,6 +99,8 @@ acls_resp(Prop) when is_list(Prop) ->
     end;
 acls_resp(JObj) -> acls_resp(kz_json:to_proplist(JObj)).
 
+-spec publish_acls_resp(ne_binary(), kz_json:object()) -> ok.
+-spec publish_acls_resp(ne_binary(), api_terms(), ne_binary()) -> ok.
 publish_acls_resp(Srv, JObj) -> publish_acls_resp(Srv, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_acls_resp(Srv, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?ACL_RESP_VALUES, fun acls_resp/1),

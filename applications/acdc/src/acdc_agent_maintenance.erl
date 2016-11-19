@@ -17,8 +17,12 @@
         ]).
 
 -include("acdc.hrl").
+
+
+-spec status() -> 'ok'.
 status() -> acdc_agents_sup:status().
 
+-spec acct_status(text()) -> 'ok'.
 acct_status(AcctId) when not is_binary(AcctId) ->
     acct_status(kz_util:to_binary(AcctId));
 acct_status(AcctId) ->
@@ -29,15 +33,17 @@ acct_status(AcctId) ->
             lists:foreach(fun acdc_agent_sup:status/1, As)
     end.
 
-agent_status(AcctId, AgentId) when (not is_binary(AcctId))
-                                   orelse (not is_binary(AgentId)) ->
+-spec agent_status(text(), text()) -> 'ok'.
+agent_status(AcctId, AgentId) when not is_binary(AcctId);
+                                   not is_binary(AgentId) ->
     agent_status(kz_util:to_binary(AcctId), kz_util:to_binary(AgentId));
 agent_status(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of
         'undefined' -> lager:info("no agent ~s in account ~s available", [AgentId, AcctId]);
-        S -> acdc_agent_sup:status(S), 'ok'
+        S -> acdc_agent_sup:status(S)
     end.
 
+-spec acct_restart(text()) -> 'ok'.
 acct_restart(AcctId) when not is_binary(AcctId) ->
     acct_restart(kz_util:to_binary(AcctId));
 acct_restart(AcctId) ->
@@ -51,8 +57,9 @@ acct_restart(AcctId) ->
             'ok'
     end.
 
-agent_restart(AcctId, AgentId) when (not is_binary(AcctId))
-                                    orelse (not is_binary(AgentId)) ->
+-spec agent_restart(text(), text()) -> 'ok'.
+agent_restart(AcctId, AgentId) when not is_binary(AcctId);
+                                    not is_binary(AgentId) ->
     agent_restart(kz_util:to_binary(AcctId), kz_util:to_binary(AgentId));
 agent_restart(AcctId, AgentId) ->
     case acdc_agents_sup:find_agent_supervisor(AcctId, AgentId) of

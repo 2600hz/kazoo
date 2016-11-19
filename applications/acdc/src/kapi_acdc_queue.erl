@@ -508,6 +508,9 @@ agent_change_routing_key(AcctId, QueueId) ->
                        ,?AGENT_CHANGE_UNAVAILABLE
                        ]).
 
+-spec agent_change_available() -> ne_binary().
+-spec agent_change_ringing() -> ne_binary().
+-spec agent_change_unavailable() -> ne_binary().
 agent_change_available() -> ?AGENT_CHANGE_AVAILABLE.
 agent_change_ringing() -> ?AGENT_CHANGE_RINGING.
 agent_change_unavailable() -> ?AGENT_CHANGE_UNAVAILABLE.

@@ -102,9 +102,9 @@
 response(JTerm, Context) ->
     create_response('success', 'undefined', 'undefined', JTerm, Context).
 
--spec response_202(kz_json:json_term(), cb_context:context()) ->
+-spec response_202(api_ne_binary(), cb_context:context()) ->
                           cb_context:context().
--spec response_202(kz_json:json_term(), kz_json:json_term(), cb_context:context()) ->
+-spec response_202(api_ne_binary(), kz_json:json_term(), cb_context:context()) ->
                           cb_context:context().
 response_202(Msg, Context) ->
     response_202(Msg, Msg, Context).
@@ -128,7 +128,7 @@ response_402(Data, Context) ->
 %% fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:path(), cb_context:context()) ->
+-spec response(fails(), api_ne_binary(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Context) ->
     create_response('error', Msg, 500, kz_json:new(), Context);
@@ -142,7 +142,7 @@ response('fatal', Msg, Context) ->
 %% of type fatal or error.
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:path(), api_integer(), cb_context:context()) ->
+-spec response(fails(), api_ne_binary(), api_integer(), cb_context:context()) ->
                       cb_context:context().
 response('error', Msg, Code, Context) ->
     create_response('error', Msg, Code, kz_json:new(), Context);
@@ -156,7 +156,7 @@ response('fatal', Msg, Code, Context) ->
 %% of type fatal or error with additional data
 %% @end
 %%--------------------------------------------------------------------
--spec response(fails(), kz_json:path() | 'undefined', api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
+-spec response(fails(), api_ne_binary(), api_integer(), kz_json:json_term(), cb_context:context()) -> cb_context:context().
 response('error', Msg, Code, JTerm, Context) ->
     create_response('error', Msg, Code, JTerm, Context);
 response('fatal', Msg, Code, JTerm, Context) ->
@@ -170,7 +170,7 @@ response('fatal', Msg, Code, JTerm, Context) ->
 %% other parameters.
 %% @end
 %%--------------------------------------------------------------------
--spec create_response(crossbar_status(), kz_json:path() | 'undefined', api_integer()
+-spec create_response(crossbar_status(), api_ne_binary(), api_integer()
                      ,kz_json:json_term(), cb_context:context()
                      ) -> cb_context:context().
 create_response(Status, Msg, Code, JTerm, Context) ->
@@ -210,8 +210,7 @@ response_faulty_request(Context) ->
 %% ../module2
 %% @end
 %%--------------------------------------------------------------------
--spec response_deprecated(cb_context:context()) ->
-                                 cb_context:context().
+-spec response_deprecated(cb_context:context()) -> cb_context:context().
 response_deprecated(Context) ->
     create_response('error', <<"deprecated">>, 410, kz_json:new(), Context).
 
@@ -789,18 +788,23 @@ format_app(Lang, AppJObj) ->
 %% Update all descendants of the account id pvt_enabled flag with State
 %% @end
 %%--------------------------------------------------------------------
+-spec change_pvt_enabled(boolean(), api_ne_binary()) -> ok | {error, any()}.
 change_pvt_enabled(_, 'undefined') -> 'ok';
 change_pvt_enabled(State, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     try
         {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, AccountId),
         lager:debug("set pvt_enabled to ~s on account ~s", [State, AccountId]),
-        {'ok', JObj2} = kz_datamgr:ensure_saved(AccountDb, kz_json:set_value(<<"pvt_enabled">>, State, JObj1)),
+        JObj2 = case State of
+                    true -> kz_account:enable(JObj1);
+                    false -> kz_account:disable(JObj1)
+                end,
+        {'ok', JObj3} = kz_datamgr:ensure_saved(AccountDb, JObj2),
         case kz_datamgr:lookup_doc_rev(?KZ_ACCOUNTS_DB, AccountId) of
             {'ok', Rev} ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj2, Rev));
+                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:set_revision(JObj3, Rev));
             _Else ->
-                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj2))
+                kz_datamgr:ensure_saved(?KZ_ACCOUNTS_DB, kz_doc:delete_revision(JObj3))
         end
     catch
         _:R ->

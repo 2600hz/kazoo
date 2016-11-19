@@ -34,6 +34,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = kz_datamgr:db_create(?KZ_OFFNET_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_SIP_DB, 'crossbar', "views/resources.json"),
@@ -41,32 +43,30 @@ init() ->
 
     _Pid = maybe_start_jobs_listener(),
     lager:debug("started jobs listener: ~p", [_Pid]),
+    Binder = fun ({Binding, F}) -> crossbar_bindings:bind(Binding, ?MODULE, F) end,
+    lists:foreach(Binder, [{<<"*.allowed_methods.resources">>, 'allowed_methods'}
+                          ,{<<"*.resource_exists.resources">>, 'resource_exists'}
+                          ,{<<"*.validate.resources">>, 'validate'}
+                          ,{<<"*.execute.put.resources">>, 'put'}
+                          ,{<<"*.execute.post.resources">>, 'post'}
+                          ,{<<"*.execute.delete.resources">>, 'delete'}
 
-    [crossbar_bindings:bind(Binding, ?MODULE, F)
-     || {Binding, F} <- [{<<"*.allowed_methods.resources">>, 'allowed_methods'}
-                        ,{<<"*.resource_exists.resources">>, 'resource_exists'}
-                        ,{<<"*.validate.resources">>, 'validate'}
-                        ,{<<"*.execute.put.resources">>, 'put'}
-                        ,{<<"*.execute.post.resources">>, 'post'}
-                        ,{<<"*.execute.delete.resources">>, 'delete'}
+                          ,{<<"*.allowed_methods.global_resources">>, 'allowed_methods'}
+                          ,{<<"*.resource_exists.global_resources">>, 'resource_exists'}
+                          ,{<<"*.validate.global_resources">>, 'validate'}
+                          ,{<<"*.execute.put.global_resources">>, 'put'}
+                          ,{<<"*.execute.post.global_resources">>, 'post'}
+                          ,{<<"*.execute.delete.global_resources">>, 'delete'}
 
-                        ,{<<"*.allowed_methods.global_resources">>, 'allowed_methods'}
-                        ,{<<"*.resource_exists.global_resources">>, 'resource_exists'}
-                        ,{<<"*.validate.global_resources">>, 'validate'}
-                        ,{<<"*.execute.put.global_resources">>, 'put'}
-                        ,{<<"*.execute.post.global_resources">>, 'post'}
-                        ,{<<"*.execute.delete.global_resources">>, 'delete'}
+                          ,{<<"*.allowed_methods.local_resources">>, 'allowed_methods'}
+                          ,{<<"*.resource_exists.local_resources">>, 'resource_exists'}
+                          ,{<<"*.validate.local_resources">>, 'validate'}
+                          ,{<<"*.execute.put.local_resources">>, 'put'}
+                          ,{<<"*.execute.post.local_resources">>, 'post'}
+                          ,{<<"*.execute.delete.local_resources">>, 'delete'}
 
-                        ,{<<"*.allowed_methods.local_resources">>, 'allowed_methods'}
-                        ,{<<"*.resource_exists.local_resources">>, 'resource_exists'}
-                        ,{<<"*.validate.local_resources">>, 'validate'}
-                        ,{<<"*.execute.put.local_resources">>, 'put'}
-                        ,{<<"*.execute.post.local_resources">>, 'post'}
-                        ,{<<"*.execute.delete.local_resources">>, 'delete'}
-
-                        ,{<<"*.authorize">>, 'authorize'}
-                        ]
-    ].
+                          ,{<<"*.authorize">>, 'authorize'}
+                          ]).
 
 -spec maybe_start_jobs_listener() -> pid().
 maybe_start_jobs_listener() ->

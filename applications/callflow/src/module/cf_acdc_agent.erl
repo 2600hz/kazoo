@@ -16,7 +16,6 @@
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(cf_acdc_agent).
-
 -behaviour(gen_cf_action).
 
 -export([handle/2
@@ -122,6 +121,8 @@ maybe_pause_agent(Call, _AgentId, FromStatus, _Data) ->
     lager:info("unable to go from ~s to paused", [FromStatus]),
     play_agent_invalid(Call).
 
+-spec login_agent(kapps_call:call(), ne_binary()) -> api_ne_binary().
+-spec login_agent(kapps_call:call(), ne_binary(), kz_json:object()) -> api_ne_binary().
 login_agent(Call, AgentId) ->
     login_agent(Call, AgentId, kz_json:new()).
 login_agent(Call, AgentId, Data) ->
@@ -144,6 +145,8 @@ login_agent(Call, AgentId, Data) ->
             <<"failed">>
     end.
 
+-spec logout_agent(kapps_call:call(), ne_binary()) -> 'ok'.
+-spec logout_agent(kapps_call:call(), ne_binary(), kz_json:object()) -> 'ok'.
 logout_agent(Call, AgentId) ->
     logout_agent(Call, AgentId, kz_json:new()).
 logout_agent(Call, AgentId, Data) ->
@@ -216,6 +219,9 @@ find_agent(Call, Endpoint, Owners) ->
 
 find_agent_owner(Call, 'undefined') -> {'ok', kapps_call:owner_id(Call)};
 find_agent_owner(_Call, EPOwnerId) -> {'ok', EPOwnerId}.
+
+-spec play_not_an_agent(kapps_call:call()) -> kapps_call:kapps_api_std_return().
+-spec play_agent_invalid(kapps_call:call()) -> kapps_call:kapps_api_std_return().
 
 play_not_an_agent(Call) -> kapps_call_command:b_prompt(<<"agent-not_call_center_agent">>, Call).
 play_agent_logged_in_already(Call) -> kapps_call_command:b_prompt(<<"agent-already_logged_in">>, Call).

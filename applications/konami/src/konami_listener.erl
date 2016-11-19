@@ -76,6 +76,7 @@ handle_metaflow(JObj, Props) ->
          ),
     'ok'.
 
+-spec handle_route_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_route_req(JObj, _Props) ->
     'true' = kapi_route:req_v(JObj),
     kz_util:put_callid(JObj),
@@ -151,6 +152,7 @@ maybe_start_metaflows(_AccountId, _Call, Metaflows) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     {'ok', #state{}}.
 

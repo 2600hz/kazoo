@@ -37,6 +37,7 @@
 start_link() ->
     supervisor:start_link(?SERVER, []).
 
+-spec new_worker(pid(), ne_binary(), ne_binary()) -> 'ok'.
 new_worker(WorkersSup, AcctId, QueueId) ->
     new_workers(WorkersSup, AcctId, QueueId, 1).
 
@@ -53,9 +54,10 @@ workers(Super) ->
 -spec worker_count(pid()) -> non_neg_integer().
 worker_count(Super) -> length(supervisor:which_children(Super)).
 
+-spec status(pid()) -> 'ok'.
 status(Super) ->
     lager:info("  Workers Supervisor: ~p", [Super]),
-    [acdc_queue_worker_sup:status(WorkerSup) || WorkerSup <- workers(Super)].
+    lists:foreach(fun acdc_queue_worker_sup:status/1, workers(Super)).
 
 %%%===================================================================
 %%% Supervisor callbacks

@@ -40,6 +40,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     Bindings = [{<<"*.allowed_methods.presence">>, 'allowed_methods'}
                ,{<<"*.authenticate">>, 'authenticate'}
@@ -49,7 +51,8 @@ init() ->
                ,{<<"*.validate.presence">>, 'validate'}
                ,{<<"*.execute.post.presence">>, 'post'}
                ],
-    cb_modules_util:bind(?MODULE, Bindings).
+    _ = cb_modules_util:bind(?MODULE, Bindings),
+    ok.
 
 -spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->

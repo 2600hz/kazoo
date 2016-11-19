@@ -50,12 +50,11 @@
                ,jid :: ne_binary()
                ,monitor :: reference()
                }).
-
 -type state() :: #state{}.
 
 -define(NAME(P), kz_util:to_atom(P, 'true')).
 
-                                                %-define(SERVER(P), {{'via', 'kz_globals', {'xmpp', P}}).
+%%-define(SERVER(P), {{'via', 'kz_globals', {'xmpp', P}}).
 -define(SERVER(P), {'via', 'kz_globals', ?NAME(P)}).
 
 -spec start_link(ne_binary()) -> startlink_ret().
@@ -68,20 +67,24 @@ start_link(PrinterId) ->
         Other -> Other
     end.
 
+-spec stop(ne_binary()) -> 'ok'.
 stop(PrinterId) ->
     case kz_globals:whereis_name(?NAME(PrinterId)) of
         'undefined' -> 'ok';
         Pid -> gen_server:cast(Pid, 'stop')
     end.
 
+-spec init(ne_binaries()) -> {'ok', state(), pos_integer()}.
 init([PrinterId]) ->
     process_flag('trap_exit', 'true'),
     gen_server:cast(self(), 'start'),
     {'ok', #state{faxbox_id=PrinterId}, ?POLLING_INTERVAL}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', 'ok', State}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('start', #state{faxbox_id=FaxBoxId} = State) ->
     case kz_datamgr:open_doc(?KZ_FAXES_DB, FaxBoxId) of
         {'ok', JObj} ->
@@ -124,6 +127,7 @@ handle_cast('subscribe', #state{jid=MyJID
 handle_cast('stop', State) -> {'stop', 'normal', State};
 handle_cast(_Msg, State) -> {'noreply', State}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'stanza', _Client, #xmlel{}=Packet}, State) ->
     process_received_packet(Packet, State),
     {'noreply', State, ?POLLING_INTERVAL};
@@ -139,6 +143,7 @@ handle_info(_Info, State) ->
     lager:debug("xmpp handle_info ~p",[_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
 
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{jid=JID
                          ,session=MySession
                          ,monitor=MonitorRef
@@ -150,6 +155,7 @@ terminate(_Reason, #state{jid=JID
 terminate(_Reason, _State) ->
     lager:debug("terminate xmpp module with reason ~p",[_Reason]).
 
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) -> {'ok', State}.
 
 -spec get_sub_msg(ne_binary()) -> ne_binary().
@@ -240,6 +246,7 @@ handle_start(JObj, State) ->
                ,refresh_token=RefreshToken
                }.
 
+-spec auth_xoauth2(escalus_connection:client(), kz_proplist()) -> 'ok'.
 auth_xoauth2(Conn, Props) ->
     Username = get_property(username, Props),
     Password = get_property(password, Props),
@@ -253,18 +260,16 @@ base64_cdata(Payload) ->
 
 get_property(PropName, Proplist) ->
     case lists:keyfind(PropName, 1, Proplist) of
-        {PropName, Value} ->
-            Value;
-        false ->
-            throw({missing_property, PropName})
+        {PropName, Value} -> Value;
+        false -> throw({missing_property, PropName})
     end.
 
 wait_for_success(Username, Conn) ->
     AuthReply = escalus_connection:get_stanza(Conn, auth_reply),
     case AuthReply#xmlel.name of
-        <<"success">> ->
-            ok;
-        R when R =:= <<"failure">> orelse R =:= <<"stream:error">> ->
+        <<"success">> -> ok;
+        R when R =:= <<"failure">>;
+               R =:= <<"stream:error">> ->
             throw({auth_failed, Username, AuthReply})
     end.
 
@@ -281,11 +286,11 @@ start_all_printers() ->
                           || Result <- Results
                          ]
              ]),
-    [ begin
-          send_start_printer(Id, Jid),
-          timer:sleep(Pause)
-      end
-      || {Pause, Id, Jid} <- List],
+    [begin
+         send_start_printer(Id, Jid),
+         timer:sleep(Pause)
+     end
+     || {Pause, Id, Jid} <- List],
     'ok'.
 
 

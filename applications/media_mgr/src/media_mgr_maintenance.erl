@@ -12,6 +12,10 @@
 
 -include("media.hrl").
 
+-spec prompt_url(ne_binary()) -> 'ok'.
+-spec prompt_url(ne_binary(), ne_binary()) -> 'ok'.
+-spec prompt_url(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+
 prompt_url(PromptId) ->
     AccountId = ?KZ_MEDIA_DB,
     Language = kz_media_util:default_prompt_language(),

@@ -36,6 +36,7 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_proc(sup_child_spec()) -> sup_startchild_ret().
 start_proc(Args) ->
     supervisor:start_child(?SERVER, Args).
 

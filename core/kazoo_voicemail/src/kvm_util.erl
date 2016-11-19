@@ -131,8 +131,8 @@ check_msg_belonging(_BoxId, _JObj, _SourceId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec retention_seconds() -> integer().
--spec retention_seconds(pos_integer()) -> integer().
+-spec retention_seconds() -> pos_integer().
+-spec retention_seconds(pos_integer()) -> pos_integer().
 retention_seconds() ->
     retention_seconds(?RETENTION_DAYS).
 
@@ -145,6 +145,8 @@ retention_seconds(Days) ->
 %% if message is older than retention duration, set folder to deleted
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_set_deleted_by_retention(kz_json:object()) -> kz_json:object().
+-spec maybe_set_deleted_by_retention(kz_json:object(), pos_integer()) -> kz_json:object().
 maybe_set_deleted_by_retention(JObj) ->
     maybe_set_deleted_by_retention(JObj, retention_seconds()).
 

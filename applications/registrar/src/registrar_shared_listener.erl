@@ -78,6 +78,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:debug("starting new registrar shared queue server"),
     {'ok', #state{}}.

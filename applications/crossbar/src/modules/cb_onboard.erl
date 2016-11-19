@@ -28,6 +28,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
@@ -35,14 +37,16 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.onboard">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.onboard">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.get.onboard">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.onboard">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.execute.put.onboard">>, ?MODULE, 'put'),
+    ok.
 
-
+-spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 authorize(?HTTP_PUT, [{<<"onboard">>,[]}]) -> 'true';
 authorize(_, _) -> 'false'.
 
+-spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 authenticate(?HTTP_PUT, [{<<"onboard">>,[]}]) -> 'true';
@@ -103,6 +107,7 @@ validate(Context, ?HTTP_PUT) ->
             crossbar_util:response_invalid_data(Failures, Context)
     end.
 
+-spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
     Data = cb_context:doc(Context),
     Context1 = populate_new_account(Data, Context),

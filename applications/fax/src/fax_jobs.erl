@@ -100,11 +100,13 @@ start_link(AccountId) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([ne_binary()]) -> {'ok', state(), kz_timeout()}.
 init([AccountId]) ->
-    {'ok', #state{account_id=AccountId
-                 ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }
-                 ,jobs = ?INIT_JOBS
-                 }, ?POLLING_INTERVAL}.
+    State = #state{account_id=AccountId
+                  ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }
+                  ,jobs = ?INIT_JOBS
+                  },
+    {'ok', State, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private

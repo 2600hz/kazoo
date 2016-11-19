@@ -44,6 +44,7 @@
 start_link() ->
     gen_server:start_link(?MODULE, [], []).
 
+-spec stop() -> 'ok'.
 stop() ->
     gen_server:cast(?MODULE, 'stop').
 
@@ -65,6 +66,7 @@ cleanup_timer() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?MODULE),
     knm_port_request:init(),

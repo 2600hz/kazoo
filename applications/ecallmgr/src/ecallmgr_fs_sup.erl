@@ -43,6 +43,7 @@ add_node(Node, Options) ->
     ChildSpec = ?SUPER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_node_sup', Args, 'transient'),
     supervisor:start_child(?SERVER, ChildSpec).
 
+-spec find_node(atom()) -> api_pid().
 find_node(Node) ->
     find_node(supervisor:which_children(?SERVER), Node).
 

@@ -21,9 +21,13 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-init() ->
-    crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate').
 
+-spec init() -> ok.
+init() ->
+    _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    ok.
+
+-spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     lager:debug("noauthn authenticating request"),
     cb_context:is_context(Context).

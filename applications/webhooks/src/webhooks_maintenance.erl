@@ -108,9 +108,11 @@ print_failure_footer() ->
 print_failure_count(AccountId, HookId, Count) ->
     io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_util:to_binary(Count)]).
 
+-spec enable_account_hooks(ne_binary()) -> 'ok'.
 enable_account_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"account">>).
 
+-spec enable_descendant_hooks(ne_binary()) -> 'ok'.
 enable_descendant_hooks(AccountId) ->
     webhooks_util:reenable(AccountId, <<"descendants">>).
 

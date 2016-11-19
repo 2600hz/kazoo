@@ -35,7 +35,11 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
-init() -> crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize').
+
+-spec init() -> ok.
+init() ->
+    crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    ok.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->

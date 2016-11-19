@@ -71,6 +71,7 @@ start_link() ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     gen_listener:cast(self(), 'blacklist_refresh'),
 

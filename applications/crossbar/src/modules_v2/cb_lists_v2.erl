@@ -78,6 +78,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token(), path_token(), path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
 allowed_methods(_ListId) ->
@@ -109,6 +110,8 @@ resource_exists(_ListId, ?ENTRIES, _EntryId, ?VCARD) -> 'true'.
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) ->
                                     cb_context:context().
 -spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token()) ->
+                                    cb_context:context().
+-spec content_types_provided(cb_context:context(), path_token(), path_token(), path_token(), path_token()) ->
                                     cb_context:context().
 content_types_provided(Context) ->
     Context.
@@ -215,7 +218,10 @@ delete(Context, _ListId, ?ENTRIES, _EntryId) ->
     crossbar_doc:delete(Context).
 
 -spec save(cb_context:context()) -> cb_context:context().
+-spec save(cb_context:context(), path_token()) -> cb_context:context().
 -spec save(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+-spec save(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+-spec save(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
 save(Context) ->
     crossbar_doc:save(Context).
 save(Context, _) ->

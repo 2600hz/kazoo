@@ -14,6 +14,7 @@
 
 -include("ts.hrl").
 
+-spec init() -> 'ok'.
 init() -> 'ok'.
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().

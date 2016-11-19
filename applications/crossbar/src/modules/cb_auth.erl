@@ -30,13 +30,16 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate.auth">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize.auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.auth">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.auth">>, ?MODULE, 'put').
+    _ = crossbar_bindings:bind(<<"*.execute.put.auth">>, ?MODULE, 'put'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -132,6 +135,7 @@ send_token_info(Context, Token, Claims) ->
     crossbar_util:response(Resp, cb_context:setters(Context, Setters)).
 
 
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ?AUTHORIZE_PATH) ->
     crossbar_auth:create_auth_token(Context, ?MODULE);
 put(Context, ?CALLBACK_PATH) ->

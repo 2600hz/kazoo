@@ -27,12 +27,12 @@
 -record(state, {node :: atom()
                ,bindings :: bindings()
                ,subclasses :: bindings()
-               ,ip :: inet:ip_address()
-               ,port :: inet:port_number()
-               ,socket :: inet:socket()
+               ,ip :: inet:ip_address() | 'undefined'
+               ,port :: inet:port_number() | 'undefined'
+               ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: kz_timeout()
-               ,switch_url :: api_binary()
-               ,switch_uri :: api_binary()
+               ,switch_url :: api_ne_binary()
+               ,switch_uri :: api_ne_binary()
                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -63,11 +63,10 @@ start_link(Node, Bindings, Subclasses) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
-                                      ,<<"-eventstream">>
-                                      ])),
+    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node), <<"-eventstream">>])),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
                                ,subclasses=Subclasses
@@ -102,6 +101,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}

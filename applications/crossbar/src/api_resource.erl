@@ -213,17 +213,19 @@ find_path(Req, Opts) ->
             {Magic, Req}
     end.
 
+-spec terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
 terminate(_Req, _Context) ->
     lager:debug("session finished").
 
+-spec rest_terminate(cowboy_req:req(), cb_context:context()) -> 'ok'.
 rest_terminate(Req, Context) ->
     rest_terminate(Req, Context, cb_context:method(Context)).
 
 rest_terminate(Req, Context, ?HTTP_OPTIONS) ->
     lager:info("OPTIONS request fulfilled in ~p ms"
-              ,[kz_util:elapsed_ms(cb_context:start(Context))]
-              ),
-    _ = api_util:finish_request(Req, Context);
+              ,[kz_util:elapsed_ms(cb_context:start(Context))]),
+    _ = api_util:finish_request(Req, Context),
+    'ok';
 rest_terminate(Req, Context, Verb) ->
     {ABin, AMem} = metrics(),
     {BBin, BMem} = cb_context:fetch(Context, 'metrics'),
@@ -231,9 +233,9 @@ rest_terminate(Req, Context, Verb) ->
               ,[Verb, kz_util:elapsed_ms(cb_context:start(Context))
                ,pretty_metric(AMem - BMem)
                ,pretty_metric(ABin - BBin)
-               ]
-              ),
-    _ = api_util:finish_request(Req, Context).
+               ]),
+    _ = api_util:finish_request(Req, Context),
+    'ok'.
 
 -spec pretty_metric(integer()) -> ne_binary().
 -spec pretty_metric(integer(), boolean()) -> ne_binary().
@@ -579,6 +581,7 @@ languages_provided(Req0, Context0) ->
             {cb_context:languages_provided(Context1) ++ [A], Req1, Context1}
     end.
 
+-spec charsets_provided(cowboy_req:req(), cb_context:context()) -> 'no_call'.
 charsets_provided(_Req, _Context) ->
     'no_call'.
 

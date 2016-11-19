@@ -61,6 +61,7 @@ unbind(App, Module, Function)
 routing_key(App) ->
     <<"kz_nodes.request.", (kz_util:to_binary(App))/binary>>.
 
+-spec request(atom()) -> kazoo_bindings:fold_results().
 request(App) when is_atom(App) ->
     case ets:info(kazoo_bindings:table_id()) of
         'undefined' ->

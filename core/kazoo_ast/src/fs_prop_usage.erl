@@ -12,6 +12,7 @@
 -define(DEBUG(_Fmt, _Args), 'ok').
 %% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
+-spec to_header_file() -> ok.
 to_header_file() ->
     Usage = process(),
     write_usage_to_header(Usage).

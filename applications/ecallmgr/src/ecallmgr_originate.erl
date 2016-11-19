@@ -8,7 +8,6 @@
 %%%    James Aimonetti
 %%%-------------------------------------------------------------------
 -module(ecallmgr_originate).
-
 -behaviour(gen_listener).
 
 -export([start_link/2]).
@@ -128,13 +127,9 @@ handle_originate_execute(JObj, Props) ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
-%% @end
 %%--------------------------------------------------------------------
+-spec init([node() | kz_json:object()]) -> {'stop', 'normal'} |
+                                           {'ok', state()}.
 init([Node, JObj]) ->
     _ = kz_util:put_callid(JObj),
     ServerId = kz_api:server_id(JObj),

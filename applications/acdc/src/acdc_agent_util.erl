@@ -226,10 +226,15 @@ async_most_recent_db_statuses(AccountId, AgentId, Options, Pid) ->
             'ok'
     end.
 
--spec most_recent_ets_statuses(ne_binary()) -> statuses_return() |
-                                               {'error', any()}.
--spec most_recent_ets_statuses(ne_binary(), api_binary(), kz_proplist()) -> statuses_return() |
-                                                                            {'error', any()}.
+-spec most_recent_ets_statuses(ne_binary()) ->
+                                      statuses_return() |
+                                      {'error', any()}.
+-spec most_recent_ets_statuses(ne_binary(), api_binary()) ->
+                                      statuses_return() |
+                                      {'error', any()}.
+-spec most_recent_ets_statuses(ne_binary(), api_binary(), kz_proplist()) ->
+                                      statuses_return() |
+                                      {'error', any()}.
 most_recent_ets_statuses(AccountId) ->
     most_recent_ets_statuses(AccountId, 'undefined', []).
 
@@ -255,6 +260,9 @@ most_recent_ets_statuses(AccountId, AgentId, Options) ->
     end.
 
 -spec most_recent_db_statuses(ne_binary()) ->
+                                     statuses_return() |
+                                     {'error', any()}.
+-spec most_recent_db_statuses(ne_binary(), api_binary()) ->
                                      statuses_return() |
                                      {'error', any()}.
 -spec most_recent_db_statuses(ne_binary(), api_binary(), kz_proplist()) ->
@@ -407,6 +415,7 @@ cleanup_db_statuses(Stats, ReqOpts) ->
 
 always_true(_) -> 'true'.
 
+-spec changed(list(), list()) -> {list(), list()}.
 changed([], To) -> {To, []};
 changed(From, []) -> {[], From};
 changed(From, To) -> changed(From, To, [], []).
