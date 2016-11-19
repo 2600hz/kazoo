@@ -74,6 +74,7 @@ get_dataplan(DBName) ->
         Else -> system_dataplan(DBName, Else)
     end.
 
+-spec get_dataplan(ne_binary(), api_ne_binary()) -> map().
 get_dataplan(DBName, 'undefined') ->
     get_dataplan(DBName);
 get_dataplan(DBName, DocType) ->
