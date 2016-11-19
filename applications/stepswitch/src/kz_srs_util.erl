@@ -37,7 +37,9 @@ do_select_filter_mode(Mode, ModesList) ->
                   'cid_number' |
                   {'request', ne_binary()} |
                   {'resource', ne_binary()} |
-                  {'database', ne_binary()}.
+                  {'database', ne_binary()} |
+                  {'database', ne_binary(), kz_proplist()}.
+
 -spec get_source(ne_binary()) -> source().
 get_source(<<"number">>) -> 'number';
 get_source(<<"cid_number">>) -> 'cid_number';
