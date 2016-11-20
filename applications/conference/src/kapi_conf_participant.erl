@@ -24,10 +24,11 @@
                              ]).
 -define(DIALPLAN_REQ_TYPES, []).
 
+-spec dialplan_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 dialplan_req(Prop) when is_list(Prop) ->
     case dialplan_req_v(Prop) of
-        true -> kz_api:build_message(Prop, ?DIALPLAN_REQ_HEADERS, ?OPTIONAL_DIALPLAN_REQ_HEADERS);
-        false -> {error, "Proplist failed validation for dialplan req"}
+        'true' -> kz_api:build_message(Prop, ?DIALPLAN_REQ_HEADERS, ?OPTIONAL_DIALPLAN_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for dialplan req"}
     end;
 dialplan_req(JObj) ->
     dialplan_req(kz_json:to_proplist(JObj)).
@@ -37,8 +38,10 @@ dialplan_req_v(Prop) when is_list(Prop) ->
 dialplan_req_v(JObj) ->
     dialplan_req_v(kz_json:to_proplist(JObj)).
 
+-spec bind_q(any(), any()) -> 'ok'.
 bind_q(_, _) -> 'ok'.
 
+-spec unbind_q(any(), any()) -> 'ok'.
 unbind_q(_, _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -60,5 +63,5 @@ declare_exchanges() ->
 publish_dialplan_req(Queue, JObj) ->
     publish_dialplan_req(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_dialplan_req(Queue, Req, ContentType) ->
-    {ok, Payload} = kz_api:prepare_api_payload(Req, ?DIALPLAN_REQ_VALUES, fun dialplan_req/1),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?DIALPLAN_REQ_VALUES, fun dialplan_req/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).

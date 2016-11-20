@@ -19,8 +19,11 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> 'ok'.
 init() ->
-    _ = blackhole_bindings:bind(<<"blackhole.events.authorize.*">>, ?MODULE, 'authorize_account').
+    _ = blackhole_bindings:bind(<<"blackhole.events.authorize.*">>, ?MODULE, 'authorize_account'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

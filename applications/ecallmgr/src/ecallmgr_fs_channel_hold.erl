@@ -7,7 +7,6 @@
 %%%   Hesaam Farhang
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_channel_hold).
-
 -behaviour(gen_server).
 
 -export([start_link/1, start_link/2]).
@@ -59,7 +58,7 @@ start_link(Node, Options) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', state()}.
+-spec init([atom() | kz_proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     kz_util:put_callid(Node),
     gen_server:cast(self(), 'bind_to_record'),
@@ -79,6 +78,7 @@ init([Node, Options]) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
@@ -92,6 +92,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_record', #state{node=Node}=State) ->
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_HOLD">>)}),
     gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"CHANNEL_UNHOLD">>)}),
@@ -110,6 +111,7 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
     _ = kz_util:spawn(fun process_event/3, [UUID, Props, Node]),
     {'noreply', State};
@@ -128,6 +130,7 @@ handle_info(_Other, State) ->
 %% @spec terminate(Reason, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
+-spec terminate(any(), state()) -> ok.
 terminate(_Reason, #state{node=Node}) ->
     lager:info("channel hold listener for ~s terminating: ~p", [Node, _Reason]).
 
@@ -139,6 +142,7 @@ terminate(_Reason, #state{node=Node}) ->
 %% @spec code_change(OldVsn, State, Extra) -> {ok, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec code_change(any(), state(), any()) -> {ok, state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 

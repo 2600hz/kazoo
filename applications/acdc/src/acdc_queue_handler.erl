@@ -72,7 +72,6 @@ handle_member_retry(JObj, Props) ->
 -spec handle_config_change(kz_json:object(), kz_proplist()) -> any().
 handle_config_change(JObj, _Props) ->
     'true' = kapi_conf:doc_update_v(JObj),
-
     handle_queue_change(kz_json:get_value(<<"Database">>, JObj)
                        ,kz_json:get_value(<<"Account-ID">>, JObj)
                        ,kz_json:get_value(<<"ID">>, JObj)
@@ -93,9 +92,9 @@ handle_queue_change(AccountDb, AccountId, QueueId, ?DOC_EDITED) ->
         QueueSup when is_pid(QueueSup) ->
             {'ok', JObj} = kz_datamgr:open_doc(AccountDb, QueueId),
             WorkersSup = acdc_queue_sup:workers_sup(QueueSup),
-            _ = [acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(WorkerSup), JObj)
-                 || WorkerSup <- acdc_queue_workers_sup:workers(WorkersSup)
-                ],
+            WorkersSups = acdc_queue_workers_sup:workers(WorkersSup),
+            Refresher = fun (Sup) -> acdc_queue_fsm:refresh(acdc_queue_worker_sup:fsm(Sup), JObj) end,
+            lists:foreach(Refresher, WorkersSups),
             Mgr = acdc_queue_sup:manager(QueueSup),
             acdc_queue_manager:refresh(Mgr, JObj)
     end;
@@ -108,12 +107,14 @@ handle_queue_change(_, AccountId, QueueId, ?DOC_DELETED) ->
             acdc_queue_sup:stop(P)
     end.
 
+-spec handle_presence_probe(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_presence_probe(JObj, _Props) ->
     'true' = kapi_presence:probe_v(JObj),
-
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     case kapps_util:get_account_by_realm(Realm) of
-        {'ok', AcctDb} -> maybe_respond_to_presence_probe(JObj, kz_util:format_account_id(AcctDb, raw));
+        {'ok', AcctDb} ->
+            AccountId = kz_util:format_account_id(AcctDb, 'raw'),
+            maybe_respond_to_presence_probe(JObj, AccountId);
         _ -> 'ok'
     end.
 

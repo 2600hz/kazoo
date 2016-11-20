@@ -33,6 +33,9 @@
 -include("acdc.hrl").
 -include("acdc_stats.hrl").
 
+-spec status_table_id() -> atom().
+-spec status_key_pos() -> pos_integer().
+-spec status_table_opts() -> kz_proplist().
 status_table_id() -> 'acdc_stats_status'.
 status_key_pos() -> #status_stat.id.
 status_table_opts() ->
@@ -397,9 +400,9 @@ status_stat_to_doc(#status_stat{id=Id
                                  ,{'type', <<"status_stat">>}
                                  ]).
 
+-spec archive_status_data(pid(), boolean()) -> 'ok'.
 archive_status_data(Srv, 'true') ->
     kz_util:put_callid(<<"acdc_stats.force_status_archiver">>),
-
     Match = [{#status_stat{is_archived='$1'
                           ,_='_'
                           }
@@ -407,9 +410,9 @@ archive_status_data(Srv, 'true') ->
              ,['$_']
              }],
     maybe_archive_status_data(Srv, Match);
+
 archive_status_data(Srv, 'false') ->
     kz_util:put_callid(<<"acdc_stats.status_archiver">>),
-
     Past = kz_util:current_tstamp() - ?ARCHIVE_WINDOW,
     Match = [{#status_stat{timestamp='$1'
                           ,is_archived='$2'
@@ -431,9 +434,10 @@ maybe_archive_status_data(Srv, Match) ->
             _ = [kz_datamgr:save_docs(acdc_stats_util:db_name(Acct), Docs)
                  || {Acct, Docs} <- dict:to_list(ToSave)
                 ],
-            [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})
-             || #status_stat{id=Id} <- Stats
-            ]
+            _ = [gen_listener:cast(Srv, {'update_status', Id, [{#status_stat.is_archived, 'true'}]})
+                 || #status_stat{id=Id} <- Stats
+                ],
+            'ok'
     end.
 
 -spec archive_status_fold(status_stat(), dict:dict()) -> dict:dict().

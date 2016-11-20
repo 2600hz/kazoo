@@ -100,19 +100,19 @@
                ,account_db :: ne_binary()
                ,agent_id :: ne_binary()
                ,agent_listener :: server_ref()
-               ,agent_listener_id :: ne_binary()
+               ,agent_listener_id :: api_ne_binary()
                ,agent_name :: api_binary()
 
                ,wrapup_timeout = 0 :: integer() % optionally set on win
-               ,wrapup_ref :: reference()
+               ,wrapup_ref :: api_reference()
 
-               ,sync_ref :: reference()
-               ,pause_ref :: reference()
+               ,sync_ref :: api_reference()
+               ,pause_ref :: api_reference()
 
                ,member_call :: kapps_call:call()
                ,member_call_id :: api_binary()
                ,member_call_queue_id :: api_binary()
-               ,member_call_start :: kz_now()
+               ,member_call_start :: kz_now() | undefined
                ,caller_exit_key = <<"#">> :: ne_binary()
                ,queue_notifications :: api_object()
 
@@ -125,7 +125,7 @@
                ,connect_failures = 0 :: non_neg_integer()
                ,agent_state_updates = [] :: list()
                }).
--type fsm_state() :: #state{}.
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -223,8 +223,12 @@ originate_ready(FSM, JObj) ->
 -spec originate_resp(server_ref(), kz_json:object()) -> 'ok'.
 originate_resp(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_resp', kz_json:get_value(<<"Call-ID">>, JObj)}).
+
+-spec originate_started(server_ref(), kz_json:object()) -> 'ok'.
 originate_started(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_started', kz_json:get_value(<<"Call-ID">>, JObj)}).
+
+-spec originate_uuid(server_ref(), kz_json:object()) -> 'ok'.
 originate_uuid(FSM, JObj) ->
     gen_fsm:send_event(FSM, {'originate_uuid'
                             ,kz_json:get_value(<<"Outbound-Call-ID">>, JObj)
@@ -328,6 +332,7 @@ start_link(Supervisor, ThiefCall, _QueueId) ->
 start_link(AccountId, AgentId, Supervisor, Props) ->
     pvt_start_link(AccountId, AgentId, Supervisor, Props, 'false').
 
+-spec start_link(pid(), any(), ne_binary(), ne_binary(), any()) -> startlink_ret().
 start_link(Supervisor, _AgentJObj, AccountId, AgentId, _Queues) ->
     pvt_start_link(AccountId, AgentId, Supervisor, [], 'false').
 
@@ -342,12 +347,16 @@ pvt_start_link(_AccountId, 'undefined', Supervisor, _, _) ->
 pvt_start_link(AccountId, AgentId, Supervisor, Props, IsThief) ->
     gen_fsm:start_link(?SERVER, [AccountId, AgentId, Supervisor, Props, IsThief], []).
 
+-spec new_endpoint(pid(), kz_json:object()) -> 'ok'.
+-spec edited_endpoint(pid(), kz_json:object()) -> 'ok'.
+-spec deleted_endpoint(pid(), kz_json:object()) -> 'ok'.
 new_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 edited_endpoint(FSM, EP) ->
     lager:debug("sending EP to ~p: ~p", [FSM, EP]),
     gen_fsm:send_all_state_event(FSM, {'edited_endpoint', kz_doc:id(EP), EP}).
-deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
+deleted_endpoint(FSM, EP) ->
+    lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 
 %%%===================================================================
 %%% gen_fsm callbacks
@@ -366,7 +375,7 @@ deleted_endpoint(FSM, EP) -> lager:debug("sending EP to ~p: ~p", [FSM, EP]).
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', atom(), fsm_state()}.
+-spec init(list()) -> {'ok', atom(), state()}.
 init([AccountId, AgentId, Supervisor, Props, IsThief]) ->
     FSMCallId = <<"fsm_", AccountId/binary, "_", AgentId/binary>>,
     kz_util:put_callid(FSMCallId),
@@ -419,10 +428,12 @@ wait_for_listener(Supervisor, FSM, Props, IsThief) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec wait(any(), state()) -> handle_fsm_ret(state()).
+-spec wait(any(), atom(), state()) -> handle_sync_event_ret(state()).
 wait({'listener', AgentListener, NextState, SyncRef}, #state{account_id=AccountId
                                                             ,agent_id=AgentId
                                                             }=State) ->
@@ -450,6 +461,8 @@ wait('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec sync(any(), state()) -> handle_fsm_ret(state()).
+-spec sync(any(), atom(), state()) -> handle_sync_event_ret(state()).
 sync({'timeout', Ref, ?SYNC_RESPONSE_MESSAGE}, #state{sync_ref=Ref
                                                      ,agent_listener=AgentListener
                                                      }=State) when is_reference(Ref) ->
@@ -525,6 +538,8 @@ sync('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ready(any(), state()) -> handle_fsm_ret(state()).
+-spec ready(any(), atom(), state()) -> handle_sync_event_ret(state()).
 ready({'sync_req', JObj}, #state{agent_listener=AgentListener}=State) ->
     lager:debug("recv sync_req from ~s", [kz_json:get_value(<<"Server-ID">>, JObj)]),
     acdc_agent_listener:send_sync_resp(AgentListener, 'ready', JObj),
@@ -667,6 +682,8 @@ ready('current_call', _, State) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ringing(any(), state()) -> handle_fsm_ret(state()).
+-spec ringing(any(), atom(), state()) -> handle_sync_event_ret(state()).
 ringing({'member_connect_req', _}, State) ->
     {'next_state', 'ringing', State};
 ringing({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -922,6 +939,8 @@ ringing('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec answered(any(), state()) -> handle_fsm_ret(state()).
+-spec answered(any(), atom(), state()) -> handle_sync_event_ret(state()).
 answered({'member_connect_req', _}, State) ->
     {'next_state', 'answered', State};
 answered({'member_connect_win', JObj}, #state{agent_listener=AgentListener}=State) ->
@@ -1087,6 +1106,8 @@ answered('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec wrapup(any(), state()) -> handle_fsm_ret(state()).
+-spec wrapup(any(), atom(), state()) -> handle_sync_event_ret(state()).
 wrapup({'pause', Timeout}, #state{account_id=AccountId
                                  ,agent_id=AgentId
                                  ,agent_listener=AgentListener
@@ -1151,6 +1172,8 @@ wrapup('current_call', _, #state{member_call=Call
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec paused(any(), state()) -> handle_fsm_ret(state()).
+-spec paused(any(), atom(), state()) -> handle_sync_event_ret(state()).
 paused({'timeout', Ref, ?PAUSE_MESSAGE}, #state{pause_ref=Ref
                                                ,agent_listener=AgentListener
                                                }=State) when is_reference(Ref) ->
@@ -1201,6 +1224,8 @@ paused('status', _, #state{pause_ref=Ref}=State) ->
 paused('current_call', _, State) ->
     {'reply', 'undefined', 'paused', State}.
 
+-spec outbound(any(), state()) -> handle_fsm_ret(state()).
+-spec outbound(any(), atom(), state()) -> handle_sync_event_ret(state()).
 outbound({'channel_hungup', CallId, Cause}, #state{agent_listener=AgentListener
                                                   ,outbound_call_ids=OutboundCallIds
                                                   }=State) ->
@@ -1288,6 +1313,7 @@ outbound('current_call', _, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event({'agent_logout'}=Event, StateName, #state{agent_state_updates=Queue}=State) ->
     case valid_state_for_logout(StateName) of
         'true' -> handle_agent_logout(State);
@@ -1368,7 +1394,7 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_sync_event(any(), {pid(),any()}, atom(), fsm_state()) -> handle_sync_event_ret(fsm_state()).
+-spec handle_sync_event(any(), {pid(),any()}, atom(), state()) -> handle_sync_event_ret(state()).
 handle_sync_event(_Event, _From, StateName, State) ->
     lager:debug("unhandled sync event in state ~s: ~p", [StateName, _Event]),
     {'reply', 'ok', StateName, State}.
@@ -1386,7 +1412,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), atom(), fsm_state()) -> handle_fsm_ret(fsm_state()).
+-spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info({'timeout', _Ref, ?SYNC_RESPONSE_MESSAGE}=Msg, StateName, State) ->
     gen_fsm:send_event(self(), Msg),
     {'next_state', StateName, State};
@@ -1452,7 +1478,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), atom(), fsm_state()) -> 'ok'.
+-spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
     lager:debug("acdc agent fsm terminating while in ~s: ~p", [_StateName, _Reason]),
     acdc_agent_listener:stop(AgentListener),
@@ -1467,7 +1493,7 @@ terminate(_Reason, _StateName, #state{agent_listener=AgentListener}) ->
 %%                   {'ok', StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), atom(), fsm_state(), any()) -> {'ok', atom(), fsm_state()}.
+-spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
@@ -1490,7 +1516,7 @@ start_sync_timer(P) ->
 start_resync_timer() ->
     gen_fsm:start_timer(?RESYNC_RESPONSE_TIMEOUT, ?RESYNC_RESPONSE_MESSAGE).
 
--spec start_pause_timer(pos_integer()) -> reference() | 'undefined'.
+-spec start_pause_timer(pos_integer()) -> api_reference().
 start_pause_timer('undefined') -> start_pause_timer(1);
 start_pause_timer(0) -> 'undefined';
 start_pause_timer(Timeout) ->
@@ -1518,7 +1544,7 @@ time_left('false') -> 'undefined';
 time_left('undefined') -> 'undefined';
 time_left(Ms) when is_integer(Ms) -> Ms div 1000.
 
--spec clear_call(fsm_state(), atom()) -> fsm_state().
+-spec clear_call(state(), atom()) -> state().
 clear_call(#state{connect_failures=Fails
                  ,max_connect_failures=Max
                  ,account_id=AccountId
@@ -1575,7 +1601,7 @@ current_call(Call, AgentState, QueueId, Start) ->
 elapsed('undefined') -> 'undefined';
 elapsed(Start) -> kz_util:elapsed_s(Start).
 
--spec wrapup_timer(fsm_state()) -> reference().
+-spec wrapup_timer(state()) -> reference().
 wrapup_timer(#state{agent_listener=AgentListener
                    ,wrapup_timeout = WrapupTimeout
                    ,account_id = AccountId
@@ -1589,7 +1615,7 @@ wrapup_timer(#state{agent_listener=AgentListener
     acdc_agent_stats:agent_wrapup(AccountId, AgentId, WrapupTimeout),
     start_wrapup_timer(WrapupTimeout).
 
--spec hangup_call(fsm_state(), 'member' | 'agent') -> reference().
+-spec hangup_call(state(), 'member' | 'agent') -> reference().
 hangup_call(#state{agent_listener=AgentListener
                   ,member_call_id=CallId
                   ,member_call_queue_id=QueueId
@@ -1603,8 +1629,8 @@ hangup_call(#state{agent_listener=AgentListener
     maybe_notify(Ns, ?NOTIFY_HANGUP, State),
     wrapup_timer(State).
 
--spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
--spec maybe_stop_timer(reference() | 'undefined', boolean()) -> 'ok'.
+-spec maybe_stop_timer(api_reference()) -> 'ok'.
+-spec maybe_stop_timer(api_reference(), boolean()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
@@ -1613,7 +1639,7 @@ maybe_stop_timer(ConnRef) when is_reference(ConnRef) ->
 maybe_stop_timer(TimerRef, 'true') -> maybe_stop_timer(TimerRef);
 maybe_stop_timer(_, 'false') -> 'ok'.
 
--spec start_outbound_call_handling(ne_binary() | kapps_call:call(), fsm_state()) -> fsm_state().
+-spec start_outbound_call_handling(ne_binary() | kapps_call:call(), state()) -> state().
 start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
                                            ,account_id=AccountId
                                            ,agent_id=AgentId
@@ -1623,14 +1649,11 @@ start_outbound_call_handling(CallId, #state{agent_listener=AgentListener
     lager:debug("agent making outbound call, not receiving ACDc calls"),
     acdc_agent_listener:outbound_call(AgentListener, CallId),
     acdc_agent_stats:agent_outbound(AccountId, AgentId, CallId),
-
     State#state{outbound_call_ids=[CallId | lists:delete(CallId, OutboundCallIds)]};
 start_outbound_call_handling(Call, State) ->
     start_outbound_call_handling(kapps_call:call_id(Call), State).
 
--spec outbound_hungup(fsm_state()) ->
-                             {'next_state', atom(), fsm_state()}
-                                 | {'stop', 'normal', fsm_state()}.
+-spec outbound_hungup(state()) -> handle_fsm_ret(state()).
 outbound_hungup(#state{agent_listener=AgentListener
                       ,wrapup_ref=WRef
                       ,pause_ref=PRef
@@ -1797,7 +1820,7 @@ get_method(Ns) ->
 standardize_method(<<"post">>) -> 'post';
 standardize_method(_) -> 'get'.
 
--spec notify(ne_binary(), 'get' | 'post', ne_binary(), fsm_state()) -> 'ok'.
+-spec notify(ne_binary(), 'get' | 'post', ne_binary(), state()) -> 'ok'.
 notify(Url, Method, Key, #state{account_id=AccountId
                                ,agent_id=AgentId
                                ,member_call=MemberCall
@@ -1866,9 +1889,7 @@ uri(URI, QueryString) ->
             kz_http_util:urlunsplit({Scheme, Host, Path, <<QS/binary, "&", (kz_util:to_binary(QueryString))/binary>>, Fragment})
     end.
 
--spec apply_state_updates(fsm_state()) ->
-                                 {'next_state', atom(), fsm_state()}
-                                     | {'stop', 'normal', fsm_state()}.
+-spec apply_state_updates(state()) -> handle_fsm_ret(state()).
 apply_state_updates(#state{agent_state_updates=Q
                           ,wrapup_ref=WRef
                           ,pause_ref=PRef
@@ -1884,9 +1905,7 @@ apply_state_updates(#state{agent_state_updates=Q
     lager:debug("default state for applying state updates ~s", [FoldDefaultState]),
     apply_state_updates_fold({'next_state', FoldDefaultState, State#state{agent_state_updates=[]}}, lists:reverse(Q)).
 
--spec apply_state_updates_fold({'next_state', atom(), fsm_state()}, list()) ->
-                                      {'next_state', atom(), fsm_state()}
-                                          | {'stop', 'normal', fsm_state()}.
+-spec apply_state_updates_fold({'next_state', atom(), state()}, list()) -> handle_fsm_ret(state()).
 apply_state_updates_fold({_, StateName, #state{account_id=AccountId
                                               ,agent_id=AgentId
                                               ,agent_listener=AgentListener
@@ -1921,14 +1940,14 @@ valid_state_for_logout('wrapup') -> 'true';
 valid_state_for_logout('paused') -> 'true';
 valid_state_for_logout(_) -> 'false'.
 
--spec handle_agent_logout(fsm_state()) -> {'stop', 'normal', fsm_state()}.
+-spec handle_agent_logout(state()) -> handle_fsm_ret(state()).
 handle_agent_logout(#state{account_id = AccountId
                           ,agent_id = AgentId
                           }=State) ->
     acdc_agent_stats:agent_logged_out(AccountId, AgentId),
     {'stop', 'normal', State}.
 
--spec handle_presence_update(ne_binary(), ne_binary(), fsm_state()) -> 'ok'.
+-spec handle_presence_update(ne_binary(), ne_binary(), state()) -> 'ok'.
 handle_presence_update(PresenceId, PresenceState, #state{agent_id = AgentId
                                                         ,account_id = AccountId
                                                         }) ->
@@ -1937,7 +1956,7 @@ handle_presence_update(PresenceId, PresenceState, #state{agent_id = AgentId
     acdc_agent_listener:maybe_update_presence_id(Listener, PresenceId),
     acdc_agent_listener:presence_update(Listener, PresenceState).
 
--spec handle_resume(fsm_state()) -> {'next_state', 'ready', fsm_state()}.
+-spec handle_resume(state()) -> handle_fsm_ret(state()).
 handle_resume(#state{agent_listener=AgentListener
                     ,pause_ref=Ref
                     }=State) ->
@@ -1950,7 +1969,7 @@ handle_resume(#state{agent_listener=AgentListener
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_GREEN),
     {'next_state', 'ready', State#state{pause_ref='undefined'}}.
 
--spec handle_pause(integer(), fsm_state()) -> {'next_state', 'paused', fsm_state()}.
+-spec handle_pause(integer(), state()) -> handle_fsm_ret(state()).
 handle_pause(Timeout, #state{agent_listener=AgentListener}=State) ->
     acdc_agent_listener:presence_update(AgentListener, ?PRESENCE_RED_FLASH),
     Ref = start_pause_timer(Timeout),

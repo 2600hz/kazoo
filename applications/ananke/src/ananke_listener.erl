@@ -292,6 +292,7 @@ time_tokens_to_binary(Tokens) when is_list(Tokens) ->
 unknown_type(Type) ->
     lager:warning("no function for type ~p", [Type]).
 
+-spec load_schedules() -> normal.
 load_schedules() ->
     timer:sleep(60 * ?MILLISECONDS_IN_SECOND),
     amqp_cron:schedule_task('load_schedules'

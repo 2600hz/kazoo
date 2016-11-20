@@ -40,6 +40,7 @@
 %%% API
 %%%===================================================================
 
+-spec init() -> ok.
 init() ->
     _ = kz_datamgr:db_create(?KZ_WEBHOOKS_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_WEBHOOKS_DB, 'crossbar', <<"views/webhooks.json">>),
@@ -56,7 +57,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.webhooks">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.webhooks">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.webhooks">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.accounts">>, ?MODULE, 'delete_account'),
+    ok.
 
 -spec init_master_account_db() -> 'ok'.
 init_master_account_db() ->
@@ -117,6 +119,7 @@ authorize(?HTTP_GET, [{<<"webhooks">>, []}]) ->
     'true';
 authorize(_Verb, _Nouns) -> 'false'.
 
+-spec authenticate(cb_context:context()) -> boolean().
 authenticate(Context) ->
     authenticate(Context, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 

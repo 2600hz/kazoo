@@ -43,6 +43,12 @@
 -spec range_view_options(cb_context:context(), pos_integer()) ->
                                 {gregorian_seconds(), gregorian_seconds()} |
                                 cb_context:context().
+-spec range_view_options(cb_context:context(), pos_integer(), ne_binary()) ->
+                                {gregorian_seconds(), gregorian_seconds()} |
+                                cb_context:context().
+-spec range_view_options(cb_context:context(), pos_integer(), ne_binary(), pos_integer(), pos_integer()) ->
+                                {gregorian_seconds(), gregorian_seconds()} |
+                                cb_context:context().
 range_view_options(Context) ->
     range_view_options(Context, ?MAX_RANGE).
 range_view_options(Context, MaxRange) ->

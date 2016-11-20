@@ -94,6 +94,7 @@ handle_camper_req(JObj, _Props, #'basic.deliver'{'routing_key' = Key}) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     lager:info("started request listener"),
     {'ok', #state{}}.

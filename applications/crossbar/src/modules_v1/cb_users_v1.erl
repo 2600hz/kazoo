@@ -49,6 +49,7 @@ create_user(Context) ->
         _Status -> Context1
     end.
 
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v1_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
@@ -62,7 +63,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v1_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.delete.users">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v1_resource.execute.patch.users">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"v1_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile').
+    _ = crossbar_bindings:bind(<<"v1_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,6 +77,7 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
 
 allowed_methods() ->
@@ -122,6 +125,7 @@ content_types_provided(Context, _, _, _) ->
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
+-spec resource_exists(path_token(), path_token()) -> 'true'.
 -spec resource_exists(path_token(), path_token(), path_token()) -> 'true'.
 
 resource_exists() -> 'true'.
@@ -185,6 +189,7 @@ validate_user_id(UserId, Context, Doc) ->
 %% Ensure we will be able to bill for users
 %% @end
 %%--------------------------------------------------------------------
+-spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
     process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 

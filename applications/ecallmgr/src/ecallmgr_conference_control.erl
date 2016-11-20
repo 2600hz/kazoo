@@ -103,6 +103,7 @@ handle_conference_event(_Node, _Server, ConferenceId, Event, _JObj) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
+-spec init([atom() | ne_binary()]) -> {'ok', state()}.
 init([Node, ConferenceId, InstanceId]) ->
     kz_util:put_callid(ConferenceId),
     lager:info("starting new conference control for ~s", [ConferenceId]),

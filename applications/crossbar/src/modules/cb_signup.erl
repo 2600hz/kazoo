@@ -52,6 +52,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -68,11 +70,14 @@ init() ->
             {'ok', _} -> 'ok'
         end,
 
-    supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)).
+    _ = supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)),
+    ok.
 
+-spec start_link() -> {ok, pid()}.
 start_link() ->
     {'ok', proc_lib:spawn_link(?MODULE, 'init_it', [])}.
 
+-spec init_it() -> no_return().
 init_it() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     State = init_state(),

@@ -200,6 +200,7 @@ handle_job_status_query(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kz_json:object() | ne_binary()]) -> {'ok', state()}.
 init([FaxJob, CallId]) ->
     CtrlQ = kz_api:server_id(FaxJob),
     JobId = kapi_fax:job_id(FaxJob),

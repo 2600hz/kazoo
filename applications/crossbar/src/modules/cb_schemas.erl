@@ -23,12 +23,15 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.schemas">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.schemas">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
-    _ = crossbar_bindings:bind(<<"*.validate.schemas">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.schemas">>, ?MODULE, 'validate'),
+    ok.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->

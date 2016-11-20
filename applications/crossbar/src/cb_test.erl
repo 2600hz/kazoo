@@ -2,6 +2,9 @@
 
 -export([start/0, start/1]).
 
+-spec start() -> tuple().
+-spec start(pos_integer()) -> tuple().
+
 start() ->
     start(100).
 

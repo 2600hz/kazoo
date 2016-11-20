@@ -53,6 +53,7 @@ create_user(Context) ->
         _Status -> Context1
     end.
 
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.allowed_methods.users">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"v2_resource.content_types_provided.users">>, ?MODULE, 'content_types_provided'),
@@ -66,7 +67,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"v2_resource.execute.post.users">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.delete.users">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"v2_resource.execute.patch.users">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"v2_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile').
+    _ = crossbar_bindings:bind(<<"v2_resource.finish_request.*.users">>, 'crossbar_services', 'reconcile'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -79,19 +81,16 @@ init() ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 -spec allowed_methods(path_token()) -> http_methods().
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
 -spec allowed_methods(path_token(), path_token(), path_token()) -> http_methods().
-
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-
 allowed_methods(_UserId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
-
 allowed_methods(_UserId, ?PHOTO) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE];
 allowed_methods(_UserId, ?VCARD) ->
     [?HTTP_GET].
-
 allowed_methods(_UserId, ?QUICKCALL_PATH_TOKEN, _PhoneNumber) ->
     [?HTTP_GET].
 
@@ -170,6 +169,7 @@ authorize_users(_Nouns, _Verb) -> 'false'.
 %% Ensure we will be able to bill for users
 %% @end
 %%--------------------------------------------------------------------
+-spec billing(cb_context:context()) -> cb_context:context().
 billing(Context) ->
     process_billing(Context, cb_context:req_nouns(Context), cb_context:req_verb(Context)).
 

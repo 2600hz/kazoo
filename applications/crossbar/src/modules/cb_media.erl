@@ -52,6 +52,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     {'ok', _} = application:ensure_all_started('kazoo_media'),
 
@@ -65,7 +67,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.get.media">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.media">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.media">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.media">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -206,6 +209,8 @@ content_types_accepted_for_upload(Context, _Verb) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec languages_provided(cb_context:context()) -> cb_context:context().
+-spec languages_provided(cb_context:context(), path_token()) -> cb_context:context().
+-spec languages_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 languages_provided(Context) ->
     Context.
 languages_provided(Context, _Id) ->

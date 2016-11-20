@@ -27,13 +27,16 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.templates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.templates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.templates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.post.templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.templates">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created').
+    _ = crossbar_bindings:bind(<<"account.created">>, ?MODULE, 'account_created'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -101,6 +104,7 @@ validate_request(Context, _, _, TemplateName) ->
 put(Context, TemplateName) ->
     create_template_db(TemplateName, Context).
 
+-spec delete(cb_context:context(), ne_binary()) -> cb_context:context().
 delete(Context, TemplateName) ->
     DbName = format_template_name(TemplateName, 'encoded'),
     case kz_datamgr:db_delete(DbName) of
@@ -108,6 +112,7 @@ delete(Context, TemplateName) ->
         'false' -> cb_context:add_system_error('datastore_fault', Context)
     end.
 
+-spec account_created(cb_context:context()) -> ok.
 account_created(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
@@ -210,7 +215,7 @@ create_template_db(TemplateName, Context) ->
 -spec import_template(api_binary(), ne_binary(), ne_binary()) -> 'ok'.
 import_template('undefined', _, _) -> 'ok';
 import_template(TemplateName, AccountId, AccountDb) ->
-    %% TODO: use couch replication...
+    %%TODO: use couch replication...
     TemplateDb = format_template_name(TemplateName, 'encoded'),
     case kz_datamgr:all_docs(TemplateDb) of
         {'ok', Docs} ->

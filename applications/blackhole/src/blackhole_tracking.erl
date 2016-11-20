@@ -149,6 +149,7 @@ get_socket(Id) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     process_flag('trap_exit', 'true'),
     lager:debug("starting new ~s server", [?SERVER]),

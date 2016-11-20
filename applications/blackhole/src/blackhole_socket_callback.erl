@@ -5,7 +5,6 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
-
 -module(blackhole_socket_callback).
 
 -include("blackhole.hrl").

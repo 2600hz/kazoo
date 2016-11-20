@@ -45,6 +45,7 @@
 %% Initializes the bindings this module will respond to.
 %% @end
 %%--------------------------------------------------------------------
+-spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -55,7 +56,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.validate.tasks">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.tasks">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.tasks">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.tasks">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.tasks">>, ?MODULE, 'delete'),
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

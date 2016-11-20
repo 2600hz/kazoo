@@ -166,10 +166,7 @@ terminate(_Reason, _State) ->
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
+-spec handle_answer(kz_json:object(), kz_proplist()) -> ok.
 handle_answer(JObj, Props) ->
     Srv = props:get_value('server', Props),
     case kz_util:get_event_type(JObj) of
@@ -181,6 +178,10 @@ handle_answer(JObj, Props) ->
             gen_listener:cast(Srv, 'stop_platform_listener');
         _ -> 'ok'
     end.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 -spec process_call(kapps_call:call()) -> 'ok'.
 process_call(Call) ->

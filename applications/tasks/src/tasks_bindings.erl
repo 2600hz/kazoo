@@ -191,6 +191,7 @@ flush() ->
 -spec flush(ne_binary()) -> 'ok'.
 flush(Binding) -> kazoo_bindings:flush(Binding).
 
+-spec filter(kazoo_bindings:filter_fun()) -> 'ok'.
 filter(Predicate) ->
     kazoo_bindings:filter(Predicate).
 

@@ -48,6 +48,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     Bindings = [{<<"*.authenticate">>, 'authenticate'}
                ,{<<"*.authorize">>, 'authorize'}
@@ -60,7 +62,8 @@ init() ->
                ,{<<"*.execute.post.whitelabel">>, 'post'}
                ,{<<"*.execute.delete.whitelabel">>, 'delete'}
                ],
-    cb_modules_util:bind(?MODULE, Bindings).
+    _ = cb_modules_util:bind(?MODULE, Bindings),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

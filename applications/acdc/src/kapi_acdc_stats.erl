@@ -537,6 +537,7 @@ status_outbound_v(Prop) when is_list(Prop) ->
 status_outbound_v(JObj) ->
     status_outbound_v(kz_json:to_proplist(JObj)).
 
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AID = props:get_value('agent_id', Props, <<"*">>),
@@ -564,6 +565,7 @@ bind_q(Q, AcctId, QID, AID, [_|L]) ->
     bind_q(Q, AcctId, QID, AID, L);
 bind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
 
+-spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Q, Props) ->
     QID = props:get_value('queue_id', Props, <<"*">>),
     AID = props:get_value('agent_id', Props, <<"*">>),
@@ -601,36 +603,48 @@ unbind_q(_Q, _AcctId, _QID, _AID, []) -> 'ok'.
 declare_exchanges() ->
     amqp_util:kapps_exchange().
 
+-spec publish_call_waiting(api_terms()) -> 'ok'.
+-spec publish_call_waiting(api_terms(), binary()) -> 'ok'.
 publish_call_waiting(JObj) ->
     publish_call_waiting(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_waiting(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?WAITING_VALUES, fun call_waiting/1),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_call_missed(api_terms()) -> 'ok'.
+-spec publish_call_missed(api_terms(), binary()) -> 'ok'.
 publish_call_missed(JObj) ->
     publish_call_missed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_missed(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?MISS_VALUES, fun call_missed/1),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_call_abandoned(api_terms()) -> 'ok'.
+-spec publish_call_abandoned(api_terms(), binary()) -> 'ok'.
 publish_call_abandoned(JObj) ->
     publish_call_abandoned(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_abandoned(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?ABANDON_VALUES, fun call_abandoned/1),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_call_handled(api_terms()) -> 'ok'.
+-spec publish_call_handled(api_terms(), binary()) -> 'ok'.
 publish_call_handled(JObj) ->
     publish_call_handled(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_handled(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?HANDLED_VALUES, fun call_handled/1),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_call_processed(api_terms()) -> 'ok'.
+-spec publish_call_processed(api_terms(), binary()) -> 'ok'.
 publish_call_processed(JObj) ->
     publish_call_processed(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_processed(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?PROCESS_VALUES, fun call_processed/1),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_call_flush(api_terms()) -> 'ok'.
+-spec publish_call_flush(api_terms(), binary()) -> 'ok'.
 publish_call_flush(JObj) ->
     publish_call_flush(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_call_flush(API, ContentType) ->
@@ -638,6 +652,8 @@ publish_call_flush(API, ContentType) ->
     lager:debug("flush payload ~s: ~s", [call_stat_routing_key(API), Payload]),
     amqp_util:kapps_publish(call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_update(api_terms()) -> 'ok'.
+-spec publish_status_update(api_terms(), binary()) -> 'ok'.
 publish_status_update(JObj) ->
     publish_status_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_update(API, ContentType) ->
@@ -645,18 +661,24 @@ publish_status_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(EvtName), fun status_update/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_ready(api_terms()) -> 'ok'.
+-spec publish_status_ready(api_terms(), binary()) -> 'ok'.
 publish_status_ready(JObj) ->
     publish_status_ready(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_ready(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"ready">>), fun status_ready/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_logged_in(api_terms()) -> 'ok'.
+-spec publish_status_logged_in(api_terms(), binary()) -> 'ok'.
 publish_status_logged_in(JObj) ->
     publish_status_logged_in(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_logged_in(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"logged_in">>), fun status_logged_in/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_logged_out(api_terms()) -> 'ok'.
+-spec publish_status_logged_out(api_terms(), binary()) -> 'ok'.
 publish_status_logged_out(JObj) ->
     publish_status_logged_out(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_logged_out(API, ContentType) ->
@@ -671,66 +693,88 @@ publish_status_pending_logged_out(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"pending_logged_out">>), fun status_pending_logged_out/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_connecting(api_terms()) -> 'ok'.
+-spec publish_status_connecting(api_terms(), binary()) -> 'ok'.
 publish_status_connecting(JObj) ->
     publish_status_connecting(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_connecting(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"connecting">>), fun status_connecting/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_connected(api_terms()) -> 'ok'.
+-spec publish_status_connected(api_terms(), binary()) -> 'ok'.
 publish_status_connected(JObj) ->
     publish_status_connected(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_connected(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"connected">>), fun status_connected/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_wrapup(api_terms()) -> 'ok'.
+-spec publish_status_wrapup(api_terms(), binary()) -> 'ok'.
 publish_status_wrapup(JObj) ->
     publish_status_wrapup(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_wrapup(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"wrapup">>), fun status_wrapup/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_paused(api_terms()) -> 'ok'.
+-spec publish_status_paused(api_terms(), binary()) -> 'ok'.
 publish_status_paused(JObj) ->
     publish_status_paused(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_paused(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"paused">>), fun status_paused/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_outbound(api_terms()) -> 'ok'.
+-spec publish_status_outbound(api_terms(), binary()) -> 'ok'.
 publish_status_outbound(JObj) ->
     publish_status_outbound(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_outbound(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_VALUES(<<"outbound">>), fun status_outbound/1),
     amqp_util:kapps_publish(status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_current_calls_req(api_terms()) -> 'ok'.
+-spec publish_current_calls_req(api_terms(), binary()) -> 'ok'.
 publish_current_calls_req(JObj) ->
     publish_current_calls_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_current_calls_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_REQ_VALUES, fun current_calls_req/1),
     amqp_util:kapps_publish(query_call_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_current_calls_err(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_current_calls_err(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_current_calls_err(RespQ, JObj) ->
     publish_current_calls_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_current_calls_err(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_ERR_VALUES, fun current_calls_err/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
+-spec publish_current_calls_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_current_calls_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_current_calls_resp(RespQ, JObj) ->
     publish_current_calls_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_current_calls_resp(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CURRENT_CALLS_RESP_VALUES, fun current_calls_resp/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
+-spec publish_status_req(api_terms()) -> 'ok'.
+-spec publish_status_req(api_terms(), binary()) -> 'ok'.
 publish_status_req(JObj) ->
     publish_status_req(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_req(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_REQ_VALUES, fun status_req/1),
     amqp_util:kapps_publish(query_status_stat_routing_key(API), Payload, ContentType).
 
+-spec publish_status_err(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_status_err(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_status_err(RespQ, JObj) ->
     publish_status_err(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_err(RespQ, API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?STATUS_ERR_VALUES, fun status_err/1),
     amqp_util:targeted_publish(RespQ, Payload, ContentType).
 
+-spec publish_status_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_status_resp(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_status_resp(RespQ, JObj) ->
     publish_status_resp(RespQ, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_status_resp(RespQ, API, ContentType) ->

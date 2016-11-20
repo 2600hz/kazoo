@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(teletype_renderer).
-
 -behaviour(gen_server).
 
 -include("teletype.hrl").
@@ -24,6 +23,8 @@
         ,terminate/2
         ,code_change/3
         ]).
+
+-type state() :: module().
 
 -spec start_link(any()) -> startlink_ret().
 start_link(Args) ->
@@ -95,6 +96,7 @@ init(_) ->
 
     {'ok', Module}.
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModule) ->
     lager:debug("trying to compile template ~s as ~s for ~p", [_TemplateId, TemplateModule, _From]),
     {'reply'
@@ -105,14 +107,18 @@ handle_call({'render', _TemplateId, Template, TemplateData}, _From, TemplateModu
 handle_call(_Req, _From, TemplateModule) ->
     {'noreply', TemplateModule}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast(_Req, TemplateModule) ->
     {'noreply', TemplateModule}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(_Msg, TemplateModule) ->
     {'noreply', TemplateModule}.
 
+-spec terminate(any(), state()) -> ok.
 terminate(_Reason, _TemplateModule) ->
     lager:debug("terminating: ~p", [_Reason]).
 
+-spec code_change(any(), state(), any()) -> {ok, state()}.
 code_change(_Old, TemplateModule, _Extra) ->
     {'ok', TemplateModule}.

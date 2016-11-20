@@ -131,7 +131,10 @@ subscribe_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?SUBSCRIBE_HEADERS, ?SUBSCRIBE_VALUES, ?SUBSCRIBE_TYPES);
 subscribe_v(JObj) -> subscribe_v(kz_json:to_proplist(JObj)).
 
-publish_subscribe(JObj) -> publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
+-spec publish_subscribe(api_terms()) -> 'ok'.
+-spec publish_subscribe(api_terms(), binary()) -> 'ok'.
+publish_subscribe(JObj) ->
+    publish_subscribe(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_subscribe(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?SUBSCRIBE_VALUES, fun subscribe/1),
     amqp_util:basic_publish(?DIALOGINFO_SUBS_EXCHANGE, <<>>, Payload, ContentType).
@@ -155,6 +158,7 @@ update_v(Prop) when is_list(Prop) ->
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
 
 -spec publish_update(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_update(ne_binary(), api_terms(), binary()) -> 'ok'.
 publish_update(Q, JObj) -> publish_update(Q, JObj, ?DEFAULT_CONTENT_TYPE).
 publish_update(Q, Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun update/1),
@@ -178,6 +182,8 @@ notify_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NOTIFY_HEADERS, ?NOTIFY_VALUES, ?NOTIFY_TYPES);
 notify_v(JObj) -> notify_v(kz_json:to_proplist(JObj)).
 
+-spec publish_notify(api_terms()) -> 'ok'.
+-spec publish_notify(api_terms(), binary()) -> 'ok'.
 publish_notify(JObj) -> publish_notify(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_notify(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?NOTIFY_VALUES, fun notify/1),
@@ -278,6 +284,7 @@ publish_search_resp(Queue, Resp, ContentType) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_q(Queue, props:get_value('restrict_to', Props), Props).
 

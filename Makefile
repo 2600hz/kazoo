@@ -29,6 +29,7 @@ clean-kazoo: ACTION = clean
 clean-kazoo: $(KAZOODIRS)
 
 compile-test: ACTION = compile-test
+compile-test: ERLC_OPTS += +nowarn_missing_spec
 compile-test: deps $(KAZOODIRS)
 
 eunit: ACTION = eunit
@@ -40,6 +41,7 @@ proper: $(KAZOODIRS)
 
 test: ACTION = test
 test: ERLC_OPTS += -DPROPER
+test: ERLC_OPTS += +nowarn_missing_spec
 test: $(KAZOODIRS)
 
 coverage-report:

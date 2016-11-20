@@ -43,7 +43,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, []). %% FIXME: why is this not a supervisor?
+-define(CHILDREN, []). %%FIXME: why is this not a supervisor?
 
 %%%===================================================================
 %%% API
@@ -52,6 +52,7 @@
 start_link() ->
     proc_lib:start_link(?SERVER, 'init_io', [self()]).
 
+-spec init_io(pid()) -> any().
 init_io(Parent) ->
     kz_util:put_callid(<<"cb_sup_io_server">>),
     register(?SERVER, self()),
@@ -61,6 +62,7 @@ init_io(Parent) ->
     lager:debug("started io server for cb_sup"),
     io_loop(Parent, Debug).
 
+-spec io_loop(pid(), any()) -> any().
 io_loop(Parent, Debug) ->
     receive
         {'EXIT', Parent, Reason} ->
@@ -93,15 +95,19 @@ handle_io_request(From, ReplyAs, {'put_chars', _Encoding, M, F, A}) ->
 io_reply(From, ReplyAs, Msg) ->
     From ! {'io_reply', ReplyAs, Msg}.
 
+-spec system_continue(pid(), any(), any()) -> any().
 system_continue(Parent, Debug, _State) ->
     io_loop(Parent, Debug).
 
+-spec system_terminate(any(), pid(), any(), any()) -> no_return().
 system_terminate(Reason, _Parent, _Debug, _State) ->
     exit(Reason).
 
+-spec system_get_state(any()) -> {ok, ok}.
 system_get_state(_State) ->
     {'ok', 'ok'}.
 
+-spec system_replace_state(any(), any()) -> {ok, ok, ok}.
 system_replace_state(_StateFun, _State) ->
     {'ok', 'ok', 'ok'}.
 

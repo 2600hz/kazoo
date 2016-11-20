@@ -85,6 +85,7 @@
 %%--------------------------------------------------------------------
 %% @doc Starts the server
 %%--------------------------------------------------------------------
+-spec start_link(kapps_call:call()) -> startlink_ret().
 start_link(Call) ->
     CallId = kapps_call:call_id(Call),
     Bindings = [{'call', [{'callid', CallId}]}
@@ -191,6 +192,7 @@ handle_conference_error(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kapps_call:call()]) -> {'ok', participant()}.
 init([Call]) ->
     process_flag('trap_exit', 'true'),
     kapps_call:put_callid(Call),

@@ -299,6 +299,7 @@ map_fs_path_to_sip_profile(FsPath, NetworkMap) ->
         {[V|_], _Keys} -> kz_json:get_ne_value(<<"custom_sip_interface">>, V)
     end.
 
+-spec conference_channel_vars(kz_proplist()) -> kz_proplist().
 conference_channel_vars(Props) ->
     [conference_channel_var_map(KV) || KV <- conference_channel_vars(Props, [])].
 
@@ -977,11 +978,12 @@ append_channel_vars(Contact, #bridge_endpoint{channel_vars=ChannelVars}) ->
     list_to_binary([ChannelVars, Contact]).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec create_masquerade_event(ne_binary(), ne_binary()) -> ne_binary().
+-spec create_masquerade_event(ne_binary(), ne_binary(), boolean()) -> ne_binary().
 create_masquerade_event(Application, EventName) ->
     create_masquerade_event(Application, EventName, 'true').
 

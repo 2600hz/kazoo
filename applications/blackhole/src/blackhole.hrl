@@ -39,7 +39,7 @@
                     ,errors = [] :: ne_binaries() | '_'
                     ,result = 'ok' :: 'ok' | 'error' | 'shutdown' | '_'
                     ,listeners = [] :: list() | '_'
-                    ,resp_status = <<"success">> :: binary() | '_'
+                    ,resp_status = <<"success">> :: ne_binary() | '_'
                     ,resp_data = kz_json:new() :: kz_json:object() | '_'
                     }).
 

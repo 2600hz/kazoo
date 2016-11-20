@@ -293,13 +293,9 @@ is_moderator(#participant{conference_channel_vars=Vars}) ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {ok, State} |
-%%                     {ok, State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),

@@ -16,12 +16,15 @@
 -define(MIN_START, 0).
 -define(MAX_STOP, 99999999999).
 
+
+-spec select_filter_action(kz_json:object()) -> 'keep' | 'drop'.
 select_filter_action(Params) ->
     do_select_filter_action(kz_json:get_ne_binary_value(<<"action">>, Params)).
 do_select_filter_action(<<"keep">>) -> 'keep';
 do_select_filter_action(<<"drop">>) -> 'drop';
 do_select_filter_action(Data) -> throw({invalid_filter_action, Data}).
 
+-spec select_filter_mode(kz_json:object(), ne_binaries(), ne_binary()) -> ne_binary().
 select_filter_mode(Params, ModesList, Default) ->
     do_select_filter_mode(kz_json:get_ne_binary_value(<<"mode">>, Params, Default), ModesList).
 do_select_filter_mode(Mode, ModesList) ->
@@ -30,6 +33,14 @@ do_select_filter_mode(Mode, ModesList) ->
         'false' -> throw({invalid_filter_mode, Mode})
     end.
 
+-type source() :: 'number' |
+                  'cid_number' |
+                  {'request', ne_binary()} |
+                  {'resource', ne_binary()} |
+                  {'database', ne_binary()} |
+                  {'database', ne_binary(), kz_proplist()}.
+
+-spec get_source(ne_binary()) -> source().
 get_source(<<"number">>) -> 'number';
 get_source(<<"cid_number">>) -> 'cid_number';
 get_source(<<"service_plans">>) -> 'service_plans';
@@ -38,9 +49,12 @@ get_source(<<"resource:", Field/binary>>) -> {'resource', Field};
 get_source(<<"database:", Selector/binary>>) -> {'database', Selector};
 get_source(Type) -> throw({invalid_filter_type, Type}).
 
+-spec get_value(source(), any(), ne_binary(), kz_json:object(), ne_binary()) -> any().
+-spec get_value(source(), any(), ne_binary(), kz_json:object(), ne_binary(), any()) -> any().
 get_value(Type, Resources, Number, OffnetJObj, DB) ->
     get_value(Type, Resources, Number, OffnetJObj, DB, 'undefined').
-get_value('number', _Resources, Number, _OffnetJObj, _DB, _Default) -> Number;
+get_value('number', _Resources, Number, _OffnetJObj, _DB, _Default) ->
+    Number;
 get_value('cid_number', _Resources, _Number, OffnetJObj, _DB, _Default) ->
     case ?RULES_HONOR_DIVERSION of
         'false' -> kapi_offnet_resource:outbound_caller_id_number(OffnetJObj);
@@ -77,8 +91,7 @@ get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Def
 get_value(Value, _Resources, _Number, _OffnetJObj, _DB, _Default) ->
     throw({'invalid_filter_value', Value}).
 
--spec get_value_fold(ne_binary(), kz_json:object(), ne_binaries()) ->
-                            ne_binaries().
+-spec get_value_fold(ne_binary(), kz_json:object(), ne_binaries()) -> ne_binaries().
 get_value_fold(PlanId, JObj, Acc) ->
     case kz_json:is_json_object(JObj) of
         'false' -> Acc;
@@ -93,6 +106,7 @@ get_data_from_resource(ResourceField, Resource) ->
         Field -> stepswitch_resources:Field(Resource)
     end.
 
+-spec check_value(fun((A) -> boolean()), A) -> 'ok'.
 check_value(Fun, Value) ->
     case Fun(Value) of
         'true' -> 'ok';

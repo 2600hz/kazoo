@@ -35,6 +35,7 @@
 %%% API
 %%%===================================================================
 
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -42,8 +43,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_auth">>, ?MODULE, 'delete'),
-
-    crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request').
+    _ = crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request'),
+    ok.
 
 -spec allowed_methods() -> http_methods().
 allowed_methods() -> [?HTTP_DELETE, ?HTTP_GET].

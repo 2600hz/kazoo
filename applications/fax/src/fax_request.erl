@@ -114,6 +114,7 @@ handle_fax_event(JObj, Props) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state()}.
 init([Call, JObj]) ->
     kapps_call:put_callid(Call),
     gen_listener:cast(self(), 'start_action'),

@@ -6,7 +6,6 @@
 %%% @contributors
 %%%-------------------------------------------------------------------
 -module(ecallmgr_fs_event_stream).
-
 -behaviour(gen_server).
 
 -export([start_link/3]).
@@ -27,12 +26,12 @@
 -record(state, {node :: atom()
                ,bindings :: bindings()
                ,subclasses :: bindings()
-               ,ip :: inet:ip_address()
-               ,port :: inet:port_number()
-               ,socket :: inet:socket()
+               ,ip :: inet:ip_address() | 'undefined'
+               ,port :: inet:port_number() | 'undefined'
+               ,socket :: inet:socket() | 'undefined'
                ,idle_alert = 'infinity' :: kz_timeout()
-               ,switch_url :: api_binary()
-               ,switch_uri :: api_binary()
+               ,switch_url :: api_ne_binary()
+               ,switch_uri :: api_ne_binary()
                ,switch_info = 'false' :: boolean()
                }).
 -type state() :: #state{}.
@@ -63,11 +62,10 @@ start_link(Node, Bindings, Subclasses) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
-                                      ,<<"-eventstream">>
-                                      ])),
+    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node), <<"-eventstream">>])),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
                                ,subclasses=Subclasses
@@ -102,6 +100,7 @@ handle_call(_Request, _From, State) ->
 %%                                  {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('connect', #state{ip=IP, port=Port, idle_alert=Timeout}=State) ->
     PacketType = ecallmgr_config:get_integer(<<"tcp_packet_type">>, 2),
     case gen_tcp:connect(IP, Port, [{'mode', 'binary'}
@@ -248,7 +247,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec request_event_stream(state()) -> {'ok', state()} | {'stop', any(), state()}.
+
+-spec request_event_stream(state()) -> {'ok', state()} | {'stop', any()}.
 request_event_stream(#state{node=Node}=State) ->
     Bindings = get_event_bindings(State),
     case maybe_bind(Node, Bindings) of
@@ -261,10 +261,10 @@ request_event_stream(#state{node=Node}=State) ->
                                               ])),
             {'ok', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
         {'EXIT', ExitReason} ->
-            {'stop', {'shutdown', ExitReason}, State};
+            {'stop', {'shutdown', ExitReason}};
         {'error', ErrorReason} ->
             lager:warning("unable to establish event stream to ~p for ~p: ~p", [Node, Bindings, ErrorReason]),
-            {'stop', ErrorReason, State}
+            {'stop', ErrorReason}
     end.
 
 -spec get_event_bindings(state()) -> atoms().
@@ -478,7 +478,7 @@ maybe_start_event_listener(Node, UUID) ->
         _E -> 'ok'
     end.
 
--spec idle_alert_timeout() -> non_neg_integer() | 'infinity'.
+-spec idle_alert_timeout() -> kz_timeout().
 idle_alert_timeout() ->
     case ecallmgr_config:get_integer(<<"event_stream_idle_alert">>, 0) of
         Timeout when Timeout =< 30 -> 'infinity';

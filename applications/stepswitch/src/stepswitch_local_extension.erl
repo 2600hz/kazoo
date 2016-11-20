@@ -85,6 +85,7 @@ start_link(NumberProps, OffnetReq) ->
 %%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([knm_number_options:extra_options() | kapi_offnet_resource:req()]) -> {'ok', state()}.
 init([NumberProps, OffnetReq]) ->
     kz_util:put_callid(OffnetReq),
     case kapi_offnet_resource:control_queue(OffnetReq) of

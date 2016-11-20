@@ -342,13 +342,9 @@ handle_fs_xml_flush(JObj, _Props) ->
 %% @private
 %% @doc
 %% Initializes the server
-%%
-%% @spec init(Args) -> {'ok', State} |
-%%                     {'ok', State, Timeout} |
-%%                     ignore |
-%%                     {stop, Reason}
 %% @end
 %%--------------------------------------------------------------------
+-spec init([]) -> {'ok', state()}.
 init([]) ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     process_flag('trap_exit', 'true'),
@@ -378,8 +374,7 @@ init([]) ->
 handle_call({'is_node_up', Node}, _From, #state{nodes=Nodes}=State) ->
     Resp = case dict:find(Node, Nodes) of
                'error' -> 'false';
-               {'ok', #node{connected=Connected}} ->
-                   Connected
+               {'ok', #node{connected=Connected}} -> Connected
            end,
     {'reply', Resp, State};
 handle_call({'connected_nodes', 'false'}, _From, #state{nodes=Nodes}=State) ->

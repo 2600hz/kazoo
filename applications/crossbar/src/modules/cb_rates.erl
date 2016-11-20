@@ -41,6 +41,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = init_db(),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
@@ -51,12 +53,14 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.rates">>, ?MODULE, 'delete'),
+    ok.
 
 init_db() ->
     _ = kz_datamgr:db_create(?KZ_RATES_DB),
     kz_datamgr:revise_doc_from_file(?KZ_RATES_DB, 'crossbar', "views/rates.json").
 
+-spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->
     authorize(Context, cb_context:req_nouns(Context)).
 
@@ -158,6 +162,7 @@ post(Context) ->
 post(Context, _RateId) ->
     crossbar_doc:save(Context).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, _RateId) ->
     crossbar_doc:save(Context).
 

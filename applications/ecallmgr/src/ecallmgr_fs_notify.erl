@@ -264,9 +264,10 @@ ensure_contact_user(OriginalContact, Username, Realm) ->
 %% Initializes the server
 %% @end
 %%--------------------------------------------------------------------
+-spec init([atom() | kz_proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     process_flag('trap_exit', 'true'),
-    put(callid, Node),
+    kz_util:put_callid(Node),
     lager:debug("starting new ecallmgr notify process"),
     gproc:reg({'p', 'l', 'fs_notify'}),
     {'ok', #state{node=Node, options=Options}}.

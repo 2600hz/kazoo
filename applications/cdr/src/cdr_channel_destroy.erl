@@ -11,22 +11,23 @@
 %%%-------------------------------------------------------------------
 -module(cdr_channel_destroy).
 
+-export([handle_req/2]).
+
 -include("cdr.hrl").
 
 -define(IGNORED_APP, kapps_config:get(?CONFIG_CAT, <<"ignore_apps">>, [<<"milliwatt">>])).
 
 -define(LOOPBACK_KEY, <<"ignore_loopback_bowout">>).
--define(IGNORE_LOOPBACK(AccountId), case AccountId of
-                                        'undefined' -> kapps_config:get(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
-                                        _ -> kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')
-                                    end
-       ).
+-define(IGNORE_LOOPBACK(AccountId),
+        case AccountId of
+            'undefined' -> kapps_config:get(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
+            _ -> kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')
+        end).
 
 -define(CHANNEL_VARS, <<"Custom-Channel-Vars">>).
 -define(CCV(Key), [?CHANNEL_VARS, Key]).
 
--export([handle_req/2]).
-
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_call:event_v(JObj),
     _ = kz_util:put_callid(JObj),
@@ -36,7 +37,8 @@ handle_req(JObj, _Props) ->
                ],
     case lists:foldl(fun maybe_ignore_cdr/2, {JObj, []}, Routines) of
         {_, []} -> handle_req(JObj);
-        {_, List} -> [lager:debug("~s", [M]) || M <- List]
+        {_, List} ->
+            lists:foreach(fun (M) -> lager:debug("~s", [M]) end, List)
     end.
 
 -spec maybe_ignore_cdr(fun(), {kz_json:object(), list()}) -> {kz_json:object(), list()}.
@@ -88,13 +90,10 @@ prepare_and_save(AccountId, Timestamp, JObj) ->
                ,fun set_interaction/3
                ,fun save_cdr/3
                ],
-
-    lists:foldl(fun(F, J) ->
-                        F(AccountId, Timestamp, J)
-                end
-               ,JObj
-               ,Routines
-               ),
+    _ = lists:foldl(fun(F, J) -> F(AccountId, Timestamp, J) end
+                   ,JObj
+                   ,Routines
+                   ),
     'ok'.
 
 -spec update_pvt_parameters(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().

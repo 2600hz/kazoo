@@ -51,7 +51,7 @@
 -define(COLLECT_RESP_MESSAGE, 'collect_timer_expired').
 
 %% How long will the caller wait in the call queue before being bounced out
--define(CONNECTION_TIMEOUT, 3600000).
+-define(CONNECTION_TIMEOUT, 1000 * ?SECONDS_IN_HOUR).
 -define(CONNECTION_TIMEOUT_MESSAGE, 'connection_timer_expired').
 
 %% How long to ring the agent before trying the next agent
@@ -61,17 +61,17 @@
 -record(state, {queue_proc :: pid()
                ,manager_proc :: pid()
                ,connect_resps = [] :: kz_json:objects()
-               ,collect_ref :: reference()
+               ,collect_ref :: api_reference()
                ,account_id :: ne_binary()
                ,account_db :: ne_binary()
                ,queue_id :: ne_binary()
 
-               ,timer_ref :: reference() % for tracking timers
-               ,connection_timer_ref :: reference() % how long can a caller wait in the queue
-               ,agent_ring_timer_ref :: reference() % how long to ring an agent before moving to the next
+               ,timer_ref :: api_reference() % for tracking timers
+               ,connection_timer_ref :: api_reference() % how long can a caller wait in the queue
+               ,agent_ring_timer_ref :: api_reference() % how long to ring an agent before moving to the next
 
                ,member_call :: kapps_call:call()
-               ,member_call_start :: non_neg_integer()
+               ,member_call_start :: api_non_neg_integer()
                ,member_call_winner :: api_object() %% who won the call
 
                                       %% Config options
@@ -92,7 +92,7 @@
 
                ,notifications :: api_object()
                }).
--type queue_fsm_state() :: #state{}.
+-type state() :: #state{}.
 
 -define(WSD_ID, {'file', <<(get('callid'))/binary, "_queue_fsm">>}).
 
@@ -111,6 +111,7 @@
 start_link(MgrPid, ListenerPid, QueueJObj) ->
     gen_fsm:start_link(?SERVER, [MgrPid, ListenerPid, QueueJObj], []).
 
+-spec refresh(pid(), kz_json:object()) -> 'ok'.
 refresh(FSM, QueueJObj) ->
     gen_fsm:send_all_state_event(FSM, {'refresh', QueueJObj}).
 
@@ -198,7 +199,7 @@ cdr_url(FSM) ->
 %%                     {stop, StopReason}
 %% @end
 %%--------------------------------------------------------------------
--spec init(list()) -> {'ok', atom(), queue_fsm_state()}.
+-spec init(list()) -> {'ok', atom(), state()}.
 init([MgrPid, ListenerPid, QueueJObj]) ->
     QueueId = kz_doc:id(QueueJObj),
     kz_util:put_callid(<<"fsm_", QueueId/binary, "_", (kz_util:to_binary(self()))/binary>>),
@@ -233,10 +234,12 @@ init([MgrPid, ListenerPid, QueueJObj]) ->
     }.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec ready(any(), state()) -> handle_fsm_ret(state()).
+-spec ready(any(), any(), state()) -> handle_sync_event_ret(state()).
 ready({'member_call', CallJObj, Delivery}, #state{queue_proc=QueueSrv
                                                  ,manager_proc=MgrSrv
                                                  ,connection_timeout=ConnTimeout
@@ -302,10 +305,12 @@ ready('current_call', _, State) ->
     {'reply', 'undefined', 'ready', State}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec connect_req(any(), state()) -> handle_fsm_ret(state()).
+-spec connect_req(any(), any(), state()) -> handle_sync_event_ret(state()).
 connect_req({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while processing a different member"),
     CallId = kz_json:get_value(<<"Call-ID">>, CallJObj),
@@ -448,10 +453,12 @@ connect_req('current_call', _, #state{member_call=Call
     {'reply', current_call(Call, ConnRef, Start), 'connect_req', State}.
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
+-spec connecting(any(), state()) -> handle_fsm_ret(state()).
+-spec connecting(any(), any(), state()) -> handle_sync_event_ret(state()).
 connecting({'member_call', CallJObj, Delivery}, #state{queue_proc=Srv}=State) ->
     lager:debug("recv a member_call while connecting"),
     acdc_queue_listener:cancel_member_call(Srv, CallJObj, Delivery),
@@ -628,7 +635,7 @@ connecting('current_call', _, #state{member_call=Call
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_event(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
+-spec handle_event(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_event({'refresh', QueueJObj}, StateName, State) ->
     lager:debug("refreshing queue configs"),
     {'next_state', StateName, update_properties(QueueJObj, State), 'hibernate'};
@@ -652,8 +659,8 @@ handle_event(_Event, StateName, State) ->
 %%                   {stop, Reason, Reply, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_sync_event(any(), {pid(),any()}, atom(), queue_fsm_state()) ->
-                               handle_sync_event_ret(queue_fsm_state()).
+-spec handle_sync_event(any(), {pid(),any()}, atom(), state()) ->
+                               handle_sync_event_ret(state()).
 handle_sync_event('cdr_url', _, StateName, #state{cdr_url=Url}=State) ->
     {'reply', Url, StateName, State};
 handle_sync_event(_Event, _From, StateName, State) ->
@@ -674,7 +681,7 @@ handle_sync_event(_Event, _From, StateName, State) ->
 %%                   {stop, Reason, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_info(any(), atom(), queue_fsm_state()) -> handle_fsm_ret(queue_fsm_state()).
+-spec handle_info(any(), atom(), state()) -> handle_fsm_ret(state()).
 handle_info(_Info, StateName, State) ->
     lager:debug("unhandled message in state ~s: ~p", [StateName, _Info]),
     {'next_state', StateName, State}.
@@ -690,7 +697,7 @@ handle_info(_Info, StateName, State) ->
 %% @spec terminate(Reason, StateName, State) -> void()
 %% @end
 %%--------------------------------------------------------------------
--spec terminate(any(), atom(), queue_fsm_state()) -> 'ok'.
+-spec terminate(any(), atom(), state()) -> 'ok'.
 terminate(_Reason, _StateName, _State) ->
     lager:debug("acdc queue fsm terminating: ~p", [_Reason]).
 
@@ -703,8 +710,7 @@ terminate(_Reason, _StateName, _State) ->
 %%                   {ok, StateName, NewState}
 %% @end
 %%--------------------------------------------------------------------
--spec code_change(any(), atom(), queue_fsm_state(), any()) ->
-                         {'ok', atom(), queue_fsm_state()}.
+-spec code_change(any(), atom(), state(), any()) -> {'ok', atom(), state()}.
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
@@ -714,7 +720,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 start_collect_timer() ->
     gen_fsm:start_timer(?COLLECT_RESP_TIMEOUT, ?COLLECT_RESP_MESSAGE).
 
--spec connection_timeout(integer() | 'undefined') -> pos_integer().
+-spec connection_timeout(api_integer()) -> pos_integer().
 connection_timeout(N) when is_integer(N), N > 0 -> N * 1000;
 connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 
@@ -722,7 +728,7 @@ connection_timeout(_) -> ?CONNECTION_TIMEOUT.
 start_connection_timer(ConnTimeout) ->
     gen_fsm:start_timer(ConnTimeout, ?CONNECTION_TIMEOUT_MESSAGE).
 
--spec agent_ring_timeout(integer() | 'undefined') -> pos_integer().
+-spec agent_ring_timeout(api_integer()) -> pos_integer().
 agent_ring_timeout(N) when is_integer(N), N > 0 -> N;
 agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 
@@ -730,7 +736,7 @@ agent_ring_timeout(_) -> ?AGENT_RING_TIMEOUT.
 start_agent_ring_timer(AgentTimeout) ->
     gen_fsm:start_timer(AgentTimeout * 1600, ?AGENT_RING_TIMEOUT_MESSAGE).
 
--spec maybe_stop_timer(reference() | 'undefined') -> 'ok'.
+-spec maybe_stop_timer(api_reference()) -> 'ok'.
 maybe_stop_timer('undefined') -> 'ok';
 maybe_stop_timer(ConnRef) ->
     _ = gen_fsm:cancel_timer(ConnRef),
@@ -742,7 +748,7 @@ maybe_timeout_winner(Srv, 'undefined') ->
 maybe_timeout_winner(Srv, Winner) ->
     acdc_queue_listener:timeout_member_call(Srv, Winner).
 
--spec clear_member_call(queue_fsm_state()) -> queue_fsm_state().
+-spec clear_member_call(state()) -> state().
 clear_member_call(#state{connection_timer_ref=ConnRef
                         ,agent_ring_timer_ref=AgentRef
                         ,collect_ref=CollectRef
@@ -781,8 +787,7 @@ update_properties(QueueJObj, State) ->
       %%,strategy = get_strategy(kz_json:get_value(<<"strategy">>, QueueJObj))
      }.
 
--spec current_call('undefined' | kapps_call:call(), reference() | kz_timeout() | 'undefined', kz_timeout()) ->
-                          kz_json:object().
+-spec current_call('undefined' | kapps_call:call(), api_reference() | kz_timeout(), kz_timeout()) -> api_object().
 current_call('undefined', _, _) -> 'undefined';
 current_call(Call, QueueTimeLeft, Start) ->
     kz_json:from_list([{<<"call_id">>, kapps_call:call_id(Call)}
@@ -809,13 +814,11 @@ elapsed(Time) -> kz_util:elapsed_s(Time).
 %% Abort a queue call between connect_reqs if agents have left the
 %% building
 %%
-%% @spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) ->
-%%                   queue_fsm_state()
+%% @spec maybe_connect_re_req(pid(), pid(), state()) ->
+%%                   state()
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_connect_re_req(pid(), pid(), queue_fsm_state()) ->
-                                  {'next_state', atom(), queue_fsm_state()}
-                                      | {'next_state', atom(), queue_fsm_state(), 'hibernate'}.
+-spec maybe_connect_re_req(pid(), pid(), state()) -> handle_fsm_ret(state()).
 maybe_connect_re_req(MgrSrv, ListenerSrv, #state{account_id=AccountId
                                                 ,queue_id=QueueId
                                                 ,member_call=Call
@@ -842,7 +845,7 @@ accept_is_for_call(AcceptJObj, Call) ->
 update_agent(Agent, Winner) ->
     kz_json:set_value(<<"Agent-Process-ID">>, kz_json:get_value(<<"Process-ID">>, Winner), Agent).
 
--spec handle_agent_responses(queue_fsm_state()) -> {atom(), queue_fsm_state()}.
+-spec handle_agent_responses(state()) -> {atom(), state()}.
 handle_agent_responses(#state{collect_ref=Ref
                              ,manager_proc=MgrSrv
                              ,queue_proc=Srv
@@ -861,7 +864,7 @@ handle_agent_responses(#state{collect_ref=Ref
             maybe_pick_winner(State)
     end.
 
--spec maybe_pick_winner(queue_fsm_state()) -> {atom(), queue_fsm_state()}.
+-spec maybe_pick_winner(state()) -> {atom(), state()}.
 maybe_pick_winner(#state{connect_resps=CRs
                         ,queue_proc=Srv
                         ,manager_proc=Mgr

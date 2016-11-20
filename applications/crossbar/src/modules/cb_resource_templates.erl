@@ -29,6 +29,8 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.resource_templates">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.resource_templates">>, ?MODULE, 'resource_exists'),
@@ -36,7 +38,8 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.resource_templates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.resource_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.resource_templates">>, ?MODULE, 'patch'),
-    crossbar_bindings:bind(<<"*.execute.delete.resource_templates">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.execute.delete.resource_templates">>, ?MODULE, 'delete'),
+    ok.
 
 %%--------------------------------------------------------------------
 %% @public

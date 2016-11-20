@@ -38,6 +38,7 @@ add_node(Node, Options) ->
     ChildSpec = ?WORKER_NAME_ARGS_TYPE(Node, 'ecallmgr_fs_pinger', [Node, Options], 'transient'),
     supervisor:start_child(?SERVER, ChildSpec).
 
+-spec find_pinger(atom()) -> api_pid().
 find_pinger(Node) ->
     Workers = supervisor:which_children(?MODULE),
     find_pinger(Workers, Node).

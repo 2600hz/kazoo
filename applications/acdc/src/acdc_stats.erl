@@ -83,6 +83,7 @@ call_waiting(AccountId, QueueId, CallId, CallerIdName, CallerIdNumber, CallerPri
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_waiting/1).
 
+-spec call_abandoned(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_abandoned(AccountId, QueueId, CallId, Reason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -94,6 +95,7 @@ call_abandoned(AccountId, QueueId, CallId, Reason) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_abandoned/1).
 
+-spec call_handled(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_handled(AccountId, QueueId, CallId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -105,6 +107,7 @@ call_handled(AccountId, QueueId, CallId, AgentId) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_handled/1).
 
+-spec call_missed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -117,6 +120,7 @@ call_missed(AccountId, QueueId, AgentId, CallId, ErrReason) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_missed/1).
 
+-spec call_processed(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AccountId}
@@ -129,6 +133,7 @@ call_processed(AccountId, QueueId, AgentId, CallId, Initiator) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_call_processed/1).
 
+-spec agent_ready(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 agent_ready(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -139,6 +144,7 @@ agent_ready(AcctId, AgentId) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_ready/1).
 
+-spec agent_logged_in(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 agent_logged_in(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -149,6 +155,7 @@ agent_logged_in(AcctId, AgentId) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_in/1).
 
+-spec agent_logged_out(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 agent_logged_out(AcctId, AgentId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -159,6 +166,8 @@ agent_logged_out(AcctId, AgentId) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_logged_out/1).
 
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_connecting(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok' | {'error', any()}.
 agent_connecting(AcctId, AgentId, CallId) ->
     agent_connecting(AcctId, AgentId, CallId, 'undefined', 'undefined').
 agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
@@ -174,6 +183,8 @@ agent_connecting(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connecting/1).
 
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+-spec agent_connected(ne_binary(), ne_binary(), ne_binary(), api_ne_binary(), api_ne_binary()) -> 'ok' | {'error', any()}.
 agent_connected(AcctId, AgentId, CallId) ->
     agent_connected(AcctId, AgentId, CallId, 'undefined', 'undefined').
 agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
@@ -189,6 +200,7 @@ agent_connected(AcctId, AgentId, CallId, CallerIDName, CallerIDNumber) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_connected/1).
 
+-spec agent_wrapup(ne_binary(), ne_binary(), pos_integer()) -> 'ok' | {'error', any()}.
 agent_wrapup(AcctId, AgentId, WaitTime) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -200,6 +212,7 @@ agent_wrapup(AcctId, AgentId, WaitTime) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_wrapup/1).
 
+-spec agent_paused(ne_binary(), ne_binary(), api_pos_integer()) -> 'ok' | {'error', any()}.
 agent_paused(AcctId, AgentId, 'undefined') ->
     lager:debug("undefined pause time for ~s(~s)", [AgentId, AcctId]);
 agent_paused(AcctId, AgentId, PauseTime) ->
@@ -213,6 +226,7 @@ agent_paused(AcctId, AgentId, PauseTime) ->
              ]),
     kapps_util:amqp_pool_send(Prop, fun kapi_acdc_stats:publish_status_paused/1).
 
+-spec agent_outbound(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 agent_outbound(AcctId, AgentId, CallId) ->
     Prop = props:filter_undefined(
              [{<<"Account-ID">>, AcctId}
@@ -229,6 +243,9 @@ agent_statuses() ->
     ?STATUS_STATUSES.
 
 %% ETS config
+-spec call_table_id() -> atom().
+-spec call_key_pos() -> pos_integer().
+-spec call_table_opts() -> kz_proplist().
 call_table_id() -> 'acdc_stats_call'.
 call_key_pos() -> #call_stat.id.
 call_table_opts() ->
@@ -303,6 +320,7 @@ handle_call_query(JObj, _Prop) ->
         {'error', Errors} -> publish_query_errors(RespQ, MsgId, Errors)
     end.
 
+-spec find_call(ne_binary()) -> api_object().
 find_call(CallId) ->
     MS = [{#call_stat{call_id=CallId
                      ,_ = '_'
@@ -340,9 +358,11 @@ start_archive_timer() ->
 start_cleanup_timer() ->
     erlang:send_after(?CLEANUP_PERIOD, self(), ?CLEANUP_MSG).
 
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call(_Req, _From, State) ->
     {'reply', 'ok', State}.
 
+-spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'create_call', #call_stat{id=_Id}=Stat}, State) ->
     lager:debug("creating new call stat ~s", [_Id]),
     ets:insert_new(call_table_id(), Stat),
@@ -390,6 +410,7 @@ handle_cast(_Req, State) ->
     lager:debug("unhandled cast: ~p", [_Req]),
     {'noreply', State}.
 
+-spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'ETS-TRANSFER', _TblId, _From, _Data}, State) ->
     lager:debug("ETS control for ~p transferred to me for writing", [_TblId]),
     {'noreply', State};
@@ -407,10 +428,12 @@ handle_info(_Msg, State) ->
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
+-spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, _) ->
     force_archive_data(),
     lager:debug("acdc stats terminating: ~p", [_Reason]).
 
+-spec code_change(any(), state(), any()) -> {'ok', state()}.
 code_change(_OldVsn, State, _Extra) ->
     {'ok', State}.
 
@@ -595,6 +618,7 @@ cleanup_data(Srv) ->
 cleanup_unfinished(Unfinished) ->
     lager:debug("unfinished stats: ~p", [Unfinished]).
 
+-spec archive_call_data(pid(), boolean()) -> 'ok'.
 archive_call_data(Srv, 'true') ->
     kz_util:put_callid(<<"acdc_stats.force_call_archiver">>),
 
@@ -636,9 +660,10 @@ maybe_archive_call_data(Srv, Match) ->
             _ = [kz_datamgr:save_docs(acdc_stats_util:db_name(Account), Docs)
                  || {Account, Docs} <- dict:to_list(ToSave)
                 ],
-            [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
-             || #call_stat{id=Id} <- Stats
-            ]
+            _ = [gen_listener:cast(Srv, {'update_call', Id, [{#call_stat.is_archived, 'true'}]})
+                 || #call_stat{id=Id} <- Stats
+                ],
+            'ok'
     end.
 
 -spec query_call_fold(call_stat(), dict:dict()) -> dict:dict().
