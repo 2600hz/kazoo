@@ -1023,8 +1023,8 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
 
 -spec fold_dry_runs([kz_services:services(),...]) -> kz_json:object().
 fold_dry_runs(ServicesList) ->
-    F = fun(Services, _Acc) -> kz_services:dry_run(Services) end,
-    lists:foldl(F, [], ServicesList).
+    F = fun (Services, JObj) -> kz_json:sum(kz_services:dry_run(Services), JObj) end,
+    lists:foldl(F, kz_json:new(), ServicesList).
 
 %% @private
 -spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
