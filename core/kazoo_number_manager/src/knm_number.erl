@@ -912,14 +912,11 @@ attempt(Fun, Args) ->
             {'error', knm_errors:to_json(Reason, num_to_did(Number), Cause)}
     end.
 
--spec num_to_did(api_binary() | knm_number() | knm_phone_number:knm_phone_number()) ->
-                        api_binary().
+-spec num_to_did(api_binary() | knm_number() | knm_phone_number:knm_phone_number()) -> api_ne_binary().
 num_to_did('undefined') -> 'undefined';
 num_to_did(?NE_BINARY = DID) -> DID;
-num_to_did(#knm_number{}=Number) ->
-    num_to_did(phone_number(Number));
-num_to_did(PhoneNumber) ->
-    knm_phone_number:number(PhoneNumber).
+num_to_did(#knm_number{}=Number) -> num_to_did(phone_number(Number));
+num_to_did(PhoneNumber) -> knm_phone_number:number(PhoneNumber).
 
 -type number_routine() :: fun((knm_number()) -> dry_run_or_number_return()).
 -type number_routines() :: [number_routine()].
