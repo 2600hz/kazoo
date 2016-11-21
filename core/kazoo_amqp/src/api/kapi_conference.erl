@@ -37,6 +37,8 @@
 -export([participant_volume_out/1, participant_volume_out_v/1]).
 -export([participant_event/1, participant_event_v/1]).
 -export([conference_error/1, conference_error_v/1]).
+-export([bootstrap_req/1, bootstrap_req_v/1
+        ,bootstrap_resp/1, bootstrap_resp_v/1]).
 -export([config_req/1, config_req_v/1
         ,config_resp/1, config_resp_v/1
         ]).
@@ -72,6 +74,8 @@
 -export([publish_command/2, publish_command/3]).
 -export([publish_event/1, publish_event/2]).
 -export([publish_targeted_command/2, publish_targeted_command/3]).
+-export([publish_bootstrap_req/1, publish_bootstrap_req/2
+        ,publish_bootstrap_resp/2, publish_bootstrap_resp/3]).
 -export([publish_config_req/1, publish_config_req/2
         ,publish_config_resp/2, publish_config_resp/3
         ]).
@@ -362,6 +366,20 @@
                                  ,{<<"Event-Name">>, <<"error">>}
                                  ]).
 -define(CONFERENCE_ERROR_TYPES, []).
+
+-define(BOOTSTRAP_REQ_HEADERS, [<<"Conference-ID">>]).
+-define(OPTIONAL_BOOTSTRAP_REQ_HEADERS, []).
+-define(BOOTSTRAP_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                              ,{<<"Event-Name">>, <<"bootstrap_req">>}
+                              ]).
+-define(BOOTSTRAP_REQ_TYPES, []).
+
+-define(BOOTSTRAP_RESP_HEADERS, [<<"Conference">>]).
+-define(OPTIONAL_BOOTSTRAP_RESP_HEADERS, []).
+-define(BOOTSTRAP_RESP_VALUES, [{<<"Event-Category">>, <<"conference">>}
+                               ,{<<"Event-Name">>, <<"bootstrap_resp">>}
+                               ]).
+-define(BOOTSTRAP_RESP_TYPES, []).
 
 -define(CONFIG_REQ_HEADERS, [<<"Request">>, <<"Profile">>]).
 -define(OPTIONAL_CONFIG_REQ_HEADERS, [<<"Controls">>]).
@@ -941,6 +959,42 @@ conference_error_v(JObj) -> conference_error_v(kz_json:to_proplist(JObj)).
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
+-spec bootstrap_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+bootstrap_req(Prop) when is_list(Prop) ->
+    case bootstrap_req_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?BOOTSTRAP_REQ_HEADERS, ?OPTIONAL_BOOTSTRAP_REQ_HEADERS);
+        'false' -> {'error', "Proplist failed validation for bootstrap req"}
+    end;
+bootstrap_req(JObj) -> bootstrap_req(kz_json:to_proplist(JObj)).
+
+-spec bootstrap_req_v(api_terms()) -> boolean().
+bootstrap_req_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?BOOTSTRAP_REQ_HEADERS, ?BOOTSTRAP_REQ_VALUES, ?BOOTSTRAP_REQ_TYPES);
+bootstrap_req_v(JObj) -> bootstrap_req_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec bootstrap_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
+bootstrap_resp(Prop) when is_list(Prop) ->
+    case bootstrap_resp_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?BOOTSTRAP_RESP_HEADERS, ?OPTIONAL_BOOTSTRAP_RESP_HEADERS);
+        'false' -> {'error', "Proplist failed validation for bootstrap resp"}
+    end;
+bootstrap_resp(JObj) -> bootstrap_resp(kz_json:to_proplist(JObj)).
+
+-spec bootstrap_resp_v(api_terms()) -> boolean().
+bootstrap_resp_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?BOOTSTRAP_RESP_HEADERS, ?BOOTSTRAP_RESP_VALUES, ?BOOTSTRAP_RESP_TYPES);
+bootstrap_resp_v(JObj) -> bootstrap_resp_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
 -spec config_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 config_req(Prop) when is_list(Prop) ->
     case config_req_v(Prop) of
@@ -994,6 +1048,9 @@ bind_to_q(Q, ['command'|T], Props) ->
 bind_to_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:bind_q_to_conference(Q, 'event'),
     bind_to_q(Q, T, Props);
+bind_to_q(Q, [{'bootstrap', ConfId}|T], Props) ->
+    'ok' = amqp_util:bind_q_to_conference(Q, 'bootstrap', ConfId),
+    bind_to_q(Q, T, Props);
 bind_to_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:bind_q_to_conference(Q, 'config', Profile),
@@ -1034,6 +1091,9 @@ unbind_from_q(Q, ['command'|T], Props) ->
 unbind_from_q(Q, ['event'|T], Props) ->
     'ok' = amqp_util:unbind_q_from_conference(Q, 'event'),
     unbind_from_q(Q, T, Props);
+unbind_from_q(Q, [{'bootstrap', ConfId}|T], Props) ->
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'bootstrap', ConfId),
+    unbind_from_q(Q, T, Props);
 unbind_from_q(Q, ['config'|T], Props) ->
     Profile = props:get_value('profile', Props, <<"*">>),
     'ok' = amqp_util:unbind_q_from_conference(Q, 'config', Profile),
@@ -1047,8 +1107,8 @@ unbind_from_q(Q, [{'event', ConfIdOrProps}|T], Props) ->
     unbind_from_q(Q, T, Props);
 
 unbind_from_q(Q, [{'command', ConfId}|T], Props) ->
-    'ok' = amqp_util:bind_q_to_conference(Q, 'command', ConfId),
-    bind_to_q(Q, T, Props);
+    'ok' = amqp_util:unbind_q_from_conference(Q, 'command', ConfId),
+    unbind_from_q(Q, T, Props);
 unbind_from_q(_Q, [], _) -> 'ok'.
 
 %%--------------------------------------------------------------------
@@ -1445,6 +1505,36 @@ publish_targeted_command(Focus, Req, ContentType) ->
             Queue = focus_queue_name(Focus),
             amqp_util:targeted_publish(Queue, Payload, ContentType)
     end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_bootstrap_req(api_terms()) -> 'ok'.
+-spec publish_bootstrap_req(api_terms(), ne_binary()) -> 'ok'.
+publish_bootstrap_req(JObj) ->
+    publish_bootstrap_req(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_bootstrap_req(Req, ContentType) ->
+    ConfId = conference_id(Req),
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BOOTSTRAP_REQ_VALUES, fun bootstrap_req/1),
+    amqp_util:conference_publish(Payload, 'bootstrap', ConfId, [], ContentType).
+
+conference_id(Props) when is_list(Props) -> props:get_value(<<"Conference-ID">>, Props);
+conference_id(JObj) -> kz_json:get_value(<<"Conference-ID">>, JObj).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Publish to the conference exchange
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_bootstrap_resp(ne_binary(), api_terms()) -> 'ok'.
+-spec publish_bootstrap_resp(ne_binary(), api_terms(), ne_binary()) -> 'ok'.
+publish_bootstrap_resp(Queue, JObj) ->
+    publish_bootstrap_resp(Queue, JObj, ?DEFAULT_CONTENT_TYPE).
+publish_bootstrap_resp(Queue, Req, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?BOOTSTRAP_RESP_VALUES, fun bootstrap_resp/1),
+    amqp_util:targeted_publish(Queue, Payload, ContentType).
 
 %%--------------------------------------------------------------------
 %% @doc

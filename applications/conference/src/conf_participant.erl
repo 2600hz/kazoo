@@ -13,6 +13,7 @@
 %% API
 -export([start_link/1]).
 -export([relay_amqp/2]).
+-export([handle_conference_bootstrap_req/2]).
 -export([handle_conference_error/2]).
 
 -export([consume_call_events/1]).
@@ -48,8 +49,11 @@
 
 -define(RESPONDERS, [{{?MODULE, 'relay_amqp'}
                      ,[{<<"call_event">>, <<"*">>}]
-                     },
-                     {{?MODULE, 'handle_conference_event'}
+                     }
+                    ,{{?MODULE, 'handle_conference_bootstrap_req'}
+                     ,[{<<"conference">>, <<"bootstrap_req">>}]
+                     }
+                    ,{{?MODULE, 'handle_conference_event'}
                      ,[{<<"conference">>, <<"event">>}]
                      }
                     ,{{?MODULE, 'handle_conference_error'}
@@ -166,6 +170,12 @@ relay_amqp(JObj, Props) ->
             dtmf(Srv, Digit)
     end.
 
+-spec handle_conference_bootstrap_req(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_conference_bootstrap_req(JObj, Props) ->
+    'true' = kapi_conference:bootstrap_req_v(JObj),
+    Srv = props:get_value('server', Props),
+    gen_listener:cast(Srv, {'handle_bootstrap_req', JObj}).
+
 -spec handle_conference_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_conference_error(JObj, Props) ->
     'true' = kapi_conference:conference_error_v(JObj),
@@ -237,6 +247,14 @@ handle_call(_Request, _, P) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), participant()) -> handle_cast_ret_state(participant()).
+handle_cast({'handle_bootstrap_req', JObj}, #participant{conference=Conference}=P) ->
+    ServerId = kz_api:server_id(JObj),
+    Resp = [{<<"Conference">>, kapps_conference:to_json(Conference)}
+           ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    kapi_conference:publish_bootstrap_resp(ServerId, Resp),
+    {'noreply', P};
 handle_cast('hungup', Participant) ->
     {'stop', {'shutdown', 'hungup'}, Participant};
 handle_cast({'gen_listener', {'created_queue', Q}}, #participant{conference='undefined'
@@ -264,7 +282,9 @@ handle_cast({'set_conference', Conference}, Participant=#participant{call=Call})
     ConferenceId = kapps_conference:id(Conference),
     CallId = kapps_call:call_id(Call),
     lager:debug("received conference data for conference ~s", [ConferenceId]),
-    gen_listener:add_binding(self(), 'conference', [{ 'restrict_to', [{'event', {ConferenceId,CallId}}] }]),
+    gen_listener:add_binding(self(), 'conference', [{ 'restrict_to', [{'event', {ConferenceId,CallId}}
+                                                                     ,{'bootstrap', ConferenceId}
+                                                                     ] }]),
     {'noreply', Participant#participant{conference=Conference}};
 handle_cast({'set_discovery_event', DE}, #participant{}=Participant) ->
     {'noreply', Participant#participant{discovery_event=DE}};
