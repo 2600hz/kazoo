@@ -481,11 +481,15 @@ get_account_realm(Call) ->
 
 -spec send_conference_command(kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
+    Profile = list_to_binary([kapps_conference:account_id(Conference)
+                             ,"_"
+                             ,kapps_conference:id(Conference)
+                             ]),
     kapps_call_command:conference(kapps_conference:id(Conference)
                                  ,is_muted(Conference)
                                  ,is_deaf(Conference)
                                  ,kapps_conference:moderator(Conference)
-                                 ,kapps_conference:id(Conference)
+                                 ,Profile
                                  ,Call
                                  ).
 

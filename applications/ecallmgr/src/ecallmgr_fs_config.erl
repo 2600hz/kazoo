@@ -397,11 +397,12 @@ fix_conference_profile(Resp) ->
 
 -spec fix_conference_profile(kz_json:path(), kz_json:object()) -> {kz_json:path(), kz_json:object()}.
 fix_conference_profile(Name, Profile) ->
+    [AccountId | _] = binary:split(Name, <<"_">>),
     Routines = [fun maybe_fix_profile_tts/1
                ,fun conference_sounds/1
                ,fun set_verbose_events/1
-               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<"caller-controls">>}
-               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<"moderator-controls">>}
+               ,{fun kz_json:set_value/3, <<"caller-controls">>, <<AccountId/binary, "_caller-controls">>}
+               ,{fun kz_json:set_value/3, <<"moderator-controls">>, <<AccountId/binary, "_moderator-controls">>}
                ],
     {Name, kz_json:exec(Routines, Profile)}.
 
