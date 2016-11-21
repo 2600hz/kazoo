@@ -980,9 +980,9 @@ collection_process(Context, Action, Numbers) ->
                         {ServicesAcc
                         ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
                         };
-                    ({Number, {'dry_run', Services, ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
+                    ({_Number, {'dry_run', Services, _ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
                         {[Services | ServicesAcc]
-                        ,kz_json:set_value([<<"charges">>, Number], ActivationCharges, JObjAcc)
+                        ,JObjAcc
                         };
                     ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
                         {ServicesAcc

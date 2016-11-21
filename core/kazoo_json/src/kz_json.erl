@@ -226,13 +226,18 @@ are_equal(_, 'undefined') -> 'false';
 are_equal(JObj1, JObj2) ->
     to_map(JObj1) =:= to_map(JObj2).
 
-%% converts top-level proplist to json object, but only if sub-proplists have been converted
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
 %% For example:
 %% [{a, b}, {c, [{d, e}]}]
 %% would be converted to json by
 %% kz_json:from_list([{a,b}, {c, kz_json:from_list([{d, e}])}]).
 %% the sub-proplist [{d,e}] needs converting before being passed to the next level
+%% @end
+%%--------------------------------------------------------------------
 -spec from_list(json_proplist()) -> object().
 from_list([]) -> new();
 from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
@@ -282,8 +287,11 @@ merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_right/2, Left, Right)};
 merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 
-%% only a top-level merge
-%% merges JObj1 into JObj2
+%% @public
+%% @doc
+%% Only a top-level merge.
+%% Merges JObj1 into JObj2
+%% @end
 -spec merge_jobjs(object(), object()) -> object().
 merge_jobjs(?JSON_WRAPPER(Props1), ?JSON_WRAPPER(_)=JObj2) ->
     lists:foldr(fun({K, V}, JObj2Acc) ->
