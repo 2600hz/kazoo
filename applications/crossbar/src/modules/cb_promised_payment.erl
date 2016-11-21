@@ -32,6 +32,7 @@
 %%%===================================================================
 %%% API
 %%%===================================================================
+-spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.promised_payment">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.promised_payment">>, ?MODULE, 'resource_exists'),

@@ -9261,8 +9261,7 @@
                 "default_allotments",
                 "default_inbound_trunks",
                 "default_promised_payment",
-                "default_twoway_trunks",
-                "default_{Key}"
+                "default_twoway_trunks"
             ],
             "type": "object"
         },
