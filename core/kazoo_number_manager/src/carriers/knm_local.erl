@@ -71,7 +71,7 @@ do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
     ViewOptions = [{'startkey', [?NUMBER_STATE_AVAILABLE, Local, Prefix]}
                   ,{'endkey', [?NUMBER_STATE_AVAILABLE, Local, <<"\ufff0">>]}
                   ,{'limit', Quantity}
-                  ,{skip, Offset+1}
+                  ,{skip, Offset}
                   ],
     case
         'undefined' /= (DB = knm_converters:to_db(Prefix))

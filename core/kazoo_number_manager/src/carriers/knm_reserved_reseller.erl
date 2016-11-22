@@ -69,7 +69,7 @@ do_find_numbers(<<"+",_/binary>>=Prefix, Quantity, Offset, AccountId, QID)
     ViewOptions = [{'startkey', Prefix}
                   ,{'endkey', <<Prefix/binary, "\ufff0">>}
                   ,{'limit', Quantity}
-                  ,{skip, Offset+1}
+                  ,{skip, Offset}
                   ],
     case kz_datamgr:get_results(AccountDb, <<"numbers/list_reserved">>, ViewOptions) of
         {'ok', []} ->
