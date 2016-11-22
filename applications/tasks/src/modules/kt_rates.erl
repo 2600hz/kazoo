@@ -278,10 +278,10 @@ generate_row([?VARS], Props) ->
              ,{<<"rate_name">>, maybe_generate_name(Name, Prefix, ISO, Direction)}
              ,{<<"weight">>, maybe_generate_weight(Weight, Prefix, Cost, IntCost)}
              ,{<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>]}
-             %% override account-ID from task props
+              %% override account-ID from task props
              ,{<<"account_id">>, props:get_value('account_id', Props)}
-                                ,{<<"pvt_auth_account_id">>, props:get_value('auth_account_id', Props)}
-                                ],
+             ,{<<"pvt_auth_account_id">>, props:get_value('auth_account_id', Props)}
+             ],
     kz_json:from_list(props:filter_undefined(props:set_values(Update, List))).
 
 -spec save_rates(ne_binary(), kz_json:objects()) -> 'ok'.
@@ -312,7 +312,7 @@ delete_rates(Db, Keys, Dict) ->
 do_delete_rates(_Db, []) -> 'ok';
 do_delete_rates(Db, Docs) ->
     {Head, Rest} = case length(Docs) > ?BULK_LIMIT
-                        andalso lists:split(?BULK_LIMIT, Docs)
+                       andalso lists:split(?BULK_LIMIT, Docs)
                    of
                        'false' -> {Docs, []};
                        {H, T} -> {H, T}
@@ -347,10 +347,10 @@ maybe_delete_rate(JObj, Dict) ->
                            lists:all(fun({ReqKey, ReqValue}) ->
                                              kz_json:get_value(ReqKey, Doc) =:= ReqValue
                                      end
-                                     ,ReqRate
+                                    ,ReqRate
                                     )
                    end
-                   ,ReqRates
+                  ,ReqRates
                   )
     of
         'true' -> {'true', Doc};
