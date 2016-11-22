@@ -1387,6 +1387,7 @@ load_initial_views(Context)->
     [{FirstId, _}|_] = Views = kapps_maintenance:get_all_account_views(),
     {LastId, _} = lists:last(Views),
     kapps_util:update_views(cb_context:account_db(Context), Views, 'true'),
+    _ = knm_maintenance:update_number_services_view(cb_context:account_db(Context)),
     ensure_views(Context, [FirstId, LastId]).
 
 -spec ensure_views(cb_context:context(), ne_binaries()) -> 'ok'.
