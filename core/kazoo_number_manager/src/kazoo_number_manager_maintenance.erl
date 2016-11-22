@@ -25,7 +25,7 @@
 -export([purge_discovery/0
         ,purge_discovery/1
         ]).
--export([maybe_update_number_services_view/1]).
+-export([update_number_services_view/1]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
@@ -80,8 +80,10 @@ refresh_numbers_db(Suffix) ->
     refresh_numbers_db(NumberDb).
 
 %% @public
--spec maybe_update_number_services_view(ne_binary()) -> ok.
-maybe_update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
+-spec update_number_services_view(ne_binary()) -> ok.
+update_number_services_view(?MATCH_ACCOUNT_RAW(A, B, Rest)) ->
+    update_number_services_view(?MATCH_ACCOUNT_ENCODED(A, B, Rest));
+update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     Classifiers = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
     Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], JObj)}
              || JObj <- [Classifiers],
@@ -152,7 +154,7 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
            ],
     _ = kz_datamgr:del_docs(AccountDb, ToRm),
     ?LOG("########## updating view [~s] ##########", [AccountDb]),
-    maybe_update_number_services_view(AccountDb),
+    update_number_services_view(AccountDb),
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
