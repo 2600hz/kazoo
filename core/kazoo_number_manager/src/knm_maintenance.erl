@@ -195,10 +195,15 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
             Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
-            _ = knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+            try
+                knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
                                                   %% No caching + bulk doc writes
                                                  ,{batch_run, true}
-                                                 ]),
+                                                 ])
+            catch error:function_clause ->
+                    kz_util:log_stacktrace(),
+                    ?LOG("failed to sync ~s", [DID])
+            end,
             ok
     end.
 
