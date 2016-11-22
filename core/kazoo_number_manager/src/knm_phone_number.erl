@@ -312,19 +312,19 @@ to_public_json(Number) ->
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(#knm_phone_number{doc=JObj}=N) ->
     kz_json:from_list(
-        [{<<"_id">>, number(N)}
-        ,{?PVT_DB_NAME, number_db(N)}
-        ,{?PVT_STATE, state(N)}
-        ,{?PVT_PORTED_IN, ported_in(N)}
-        ,{?PVT_MODULE_NAME, module_name(N)}
-        ,{?PVT_MODIFIED, modified(N)}
-        ,{?PVT_CREATED, created(N)}
-        ,{?PVT_IS_BILLABLE, is_billable(N)}
-        ,{?PVT_TYPE, <<"number">>}
-         | kz_json:to_proplist(
-             kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
-            )
-        ]
+      [{<<"_id">>, number(N)}
+      ,{?PVT_DB_NAME, number_db(N)}
+      ,{?PVT_STATE, state(N)}
+      ,{?PVT_PORTED_IN, ported_in(N)}
+      ,{?PVT_MODULE_NAME, module_name(N)}
+      ,{?PVT_MODIFIED, modified(N)}
+      ,{?PVT_CREATED, created(N)}
+      ,{?PVT_IS_BILLABLE, is_billable(N)}
+      ,{?PVT_TYPE, <<"number">>}
+       | kz_json:to_proplist(
+           kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
+          )
+      ]
       ++
           props:filter_empty(
             [{?PVT_ASSIGNED_TO, assigned_to(N)}
