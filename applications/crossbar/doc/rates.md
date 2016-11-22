@@ -29,6 +29,8 @@ Key | Description | Type | Default | Required
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
+`ratedeck` | Virtual ratedeck ID | `string` |   | `false`
+`account_id` | Reseller's account ID | `string` |   | `false`
 
 
 

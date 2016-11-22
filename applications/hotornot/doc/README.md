@@ -5,7 +5,6 @@ This application serves `rate_req` AMQP requests.
 Rates are stored in a system-wide "ratedeck" database.
 
 Each rate is separate document:
-
 ```JSON
 {
     "_id": "f36cac061205f7a0f7fde6b4d3370bf9",

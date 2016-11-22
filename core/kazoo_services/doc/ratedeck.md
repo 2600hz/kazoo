@@ -21,5 +21,5 @@ Example service plan:
 }
 ```
 
-**Note: each account should have only one service plan with only one `ratedeck_name` item in it**.  
+**Note: each account should have only one service plan with only one `ratedeck_name` item in it**.
 When you will try add another service plan with `ratedeck_name` item, on reconcilation there will be generated system alert notification (and error message in log) about this situation. `ratedeck_name` item will stay unchanged until you remove one of conflicting service plans.
