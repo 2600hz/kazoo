@@ -74,7 +74,7 @@ test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
