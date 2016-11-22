@@ -27,7 +27,13 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'rate', []}]).
+-define(TRIE_BINDINGS, [{'conf', [{'db', ?KZ_RATES_DB}
+                                 ,{'action', <<"db_edited">>}
+                                 ]}]).
 -define(RESPONDERS, [{'hon_rater', [{<<"rate">>, <<"req">>}]}]).
+-define(TRIE_RESPONDERS, [{{'hon_trie', 'handle_db_update'}
+                          ,[{<<"configuration">>, <<"*">>}]
+                          }]).
 -define(QUEUE_NAME, <<"hotornot_listerner">>).
 -define(QUEUE_OPTIONS, [{'exclusive', 'false'}]).
 -define(CONSUME_OPTIONS, [{'exclusive', 'false'}]).
@@ -41,8 +47,16 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS}
-                                     ,{'responders', ?RESPONDERS}
+    case hon_util:use_trie() of
+        'false' ->
+            Bindings = ?BINDINGS,
+            Responders = ?RESPONDERS;
+        'true' ->
+            Bindings = ?BINDINGS ++ ?TRIE_BINDINGS,
+            Responders = ?RESPONDERS ++ ?TRIE_RESPONDERS
+    end,
+    gen_listener:start_link(?SERVER, [{'bindings', Bindings}
+                                     ,{'responders', Responders}
                                      ,{'queue_name', ?QUEUE_NAME}
                                      ,{'queue_options', ?QUEUE_OPTIONS}
                                      ,{'consume_options', ?CONSUME_OPTIONS}

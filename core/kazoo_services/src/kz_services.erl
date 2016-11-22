@@ -1247,6 +1247,7 @@ default_service_modules() ->
     ,'kz_service_users'
     ,'kz_service_whitelabel'
     ,'kz_service_billing'
+    ,'kz_service_ratedeck_name'
     ].
 
 %%--------------------------------------------------------------------

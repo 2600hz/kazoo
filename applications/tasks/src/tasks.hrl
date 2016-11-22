@@ -19,6 +19,7 @@
                ,kt_token_auth
                ,kt_webhooks
                ,kt_resource_selectors
+               ,kt_rates
                 %% ,'kt_skel'
                ]).
 

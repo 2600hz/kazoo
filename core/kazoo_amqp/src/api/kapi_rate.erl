@@ -45,6 +45,7 @@
                                     ,<<"Prefix">>, <<"Rate-Name">>
                                     ,<<"Rate-Description">>, <<"Discount-Percentage">>
                                     ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
+                                    ,<<"Rate-Version">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"resp">>}
