@@ -45,7 +45,6 @@ endpoint_data(State) ->
 -spec proceed_with_endpoint(ts_callflow:state(), wh_json:object(), wh_json:object()) -> 'ok'.
 proceed_with_endpoint(State, Endpoint, JObj) ->
     CallID = ts_callflow:get_aleg_id(State),
-    Q = ts_callflow:get_my_queue(State),
     'true' = wapi_dialplan:bridge_endpoint_v(Endpoint),
 
     MediaHandling = case wh_json:is_true([<<"Custom-Channel-Vars">>, <<"Executing-Extension">>], JObj)
@@ -61,18 +60,17 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Trunkstore-ID">>, Id}])}
-               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | wh_api:default_headers(ts_callflow:get_worker_queue(State)
+                                       ,<<"call">>, <<"command">>
+                                       ,?APP_NAME, ?APP_VERSION
+                                       )
               ],
     State1 = ts_callflow:set_failover(State, wh_json:get_value(<<"Failover">>, Endpoint, wh_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
     send_park(State2, Command).
 
 send_park(State, Command) ->
-    State1 = ts_callflow:send_park(State),
-    wait_for_win(State1, Command).
-
-wait_for_win(State, Command) ->
-    case ts_callflow:wait_for_win(State) of
+    case ts_callflow:send_park(State) of
         {'lost', _} -> 'normal';
         {'won', State1} ->
             lager:info("route won, sending command"),
@@ -82,12 +80,17 @@ wait_for_win(State, Command) ->
 send_onnet(State, Command) ->
     lager:info("sending onnet command: ~p", [Command]),
     CtlQ = ts_callflow:get_control_queue(State),
-    _ = wapi_dialplan:publish_command(CtlQ, Command),
-    _ = wait_for_bridge(State),
+
+    ts_callflow:send_command(State
+                            ,Command
+                            ,fun(API) -> wapi_dialplan:publish_command(CtlQ, API) end
+                            ),
+    Timeout = wh_json:get_integer_value([<<"Endpoints">>, 1, <<"Timeout">>], wh_json:from_list(Command)),
+    _ = wait_for_bridge(State, Timeout),
     ts_callflow:send_hangup(State).
 
-wait_for_bridge(State) ->
-    case ts_callflow:wait_for_bridge(State) of
+wait_for_bridge(State, Timeout) ->
+    case ts_callflow:wait_for_bridge(State, Timeout) of
         {'hangup', _} -> 'ok';
         {'error', State1} ->
             lager:info("error waiting for bridge, try failover"),
@@ -96,7 +99,7 @@ wait_for_bridge(State) ->
 
 try_failover(State) ->
     case {ts_callflow:get_control_queue(State)
-          ,ts_callflow:get_failover(State)
+         ,ts_callflow:get_failover(State)
          }
     of
         {<<>>, _} ->
@@ -126,19 +129,25 @@ try_failover_sip(_, 'undefined') ->
 try_failover_sip(State, SIPUri) ->
     CallID = ts_callflow:get_aleg_id(State),
     CtlQ = ts_callflow:get_control_queue(State),
-    Q = ts_callflow:get_my_queue(State),
+
     lager:info("routing to failover sip uri: ~s", [SIPUri]),
     EndPoint = wh_json:from_list([{<<"Invite-Format">>, <<"route">>}
-                                  ,{<<"Route">>, SIPUri}
+                                 ,{<<"Route">>, SIPUri}
                                  ]),
     %% since we only route to one endpoint, we specify most options on the endpoint's leg
     Command = [{<<"Call-ID">>, CallID}
-               ,{<<"Application-Name">>, <<"bridge">>}
-               ,{<<"Endpoints">>, [EndPoint]}
-               | wh_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+              ,{<<"Application-Name">>, <<"bridge">>}
+              ,{<<"Endpoints">>, [EndPoint]}
+               | wh_api:default_headers(ts_callflow:get_worker_queue(State)
+                                       ,<<"call">>, <<"command">>
+                                       ,?APP_NAME, ?APP_VERSION
+                                       )
               ],
-    wapi_dialplan:publish_command(CtlQ, Command),
-    wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
+    ts_callflow:send_command(State
+                            ,Command
+                            ,fun(API) -> wapi_dialplan:publish_command(CtlQ, API) end
+                            ),
+    wait_for_bridge(ts_callflow:set_failover(State, wh_json:new()), 20).
 
 try_failover_e164(State, ToDID) ->
     RouteReq = ts_callflow:get_request_data(State),
@@ -150,30 +159,36 @@ try_failover_e164(State, ToDID) ->
     Endpoint = ts_callflow:get_endpoint_data(State),
 
     CtlQ = ts_callflow:get_control_queue(State),
-    Q = ts_callflow:get_my_queue(State),
     CCVs = ts_callflow:get_custom_channel_vars(State),
 
+    Timeout = wh_json:get_integer_value(<<"timeout">>, Endpoint),
+
     Req = [{<<"Call-ID">>, CallID}
-           ,{<<"Resource-Type">>, <<"audio">>}
-           ,{<<"To-DID">>, ToDID}
-           ,{<<"Account-ID">>, AccountId}
-           ,{<<"Control-Queue">>, CtlQ}
-           ,{<<"Application-Name">>, <<"bridge">>}
-           ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Endpoint)}
-           ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, Endpoint)}
-           ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Endpoint)}
-           ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
-           ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
-           ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Endpoint)}
-           ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"Hunt-Account-ID">>, Endpoint)}
-           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
-           ,{<<"Inception">>,  wh_json:get_value(<<"Inception">>, CCVs)}
-           ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
-           | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+          ,{<<"Resource-Type">>, <<"audio">>}
+          ,{<<"To-DID">>, ToDID}
+          ,{<<"Account-ID">>, AccountId}
+          ,{<<"Control-Queue">>, CtlQ}
+          ,{<<"Application-Name">>, <<"bridge">>}
+          ,{<<"Flags">>, wh_json:get_value(<<"flags">>, Endpoint)}
+          ,{<<"Timeout">>, Timeout}
+          ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, Endpoint)}
+          ,{<<"Outbound-Caller-ID-Name">>, wh_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
+          ,{<<"Outbound-Caller-ID-Number">>, wh_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
+          ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, Endpoint)}
+          ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"Hunt-Account-ID">>, Endpoint)}
+          ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
+          ,{<<"Inception">>,  wh_json:get_value(<<"Inception">>, CCVs)}
+          ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
+           | wh_api:default_headers(ts_callflow:get_worker_queue(State)
+                                   ,?APP_NAME, ?APP_VERSION
+                                   )
           ],
     lager:info("sending offnet request for DID ~s", [ToDID]),
-    wapi_offnet_resource:publish_req(props:filter_undefined(Req)),
-    wait_for_bridge(ts_callflow:set_failover(State, wh_json:new())).
+    ts_callflow:send_command(State
+                            ,props:filter_undefined(Req)
+                            ,fun wapi_offnet_resource:publish_req/1
+                            ),
+    wait_for_bridge(ts_callflow:set_failover(State, wh_json:new()), Timeout).
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
@@ -209,11 +224,11 @@ get_endpoint_data(JObj, ToDID, AccountId, NumberProps) ->
     Invite = ts_util:invite_format(wh_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
     {'endpoint', wh_json:from_list(
                    [{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Auth-User">>, AuthUser}
-                                                                   ,{<<"Auth-Realm">>, AuthRealm}
-                                                                   ,{<<"Direction">>, <<"inbound">>}
-                                                                   ,{<<"Account-ID">>, AccountId}
-                                                                   ,{<<"Authorizing-ID">>, AuthzId}
-                                                                   ,{<<"Authorizing-Type">>, <<"sys_info">>}
+                                                                  ,{<<"Auth-Realm">>, AuthRealm}
+                                                                  ,{<<"Direction">>, <<"inbound">>}
+                                                                  ,{<<"Account-ID">>, AccountId}
+                                                                  ,{<<"Authorizing-ID">>, AuthzId}
+                                                                  ,{<<"Authorizing-Type">>, <<"sys_info">>}
                                                                   ])
                     }
                     | Invite
@@ -250,7 +265,7 @@ routing_data(ToDID, AccountId, Settings) ->
             {'ok', AccountSettings} ->
                 lager:info("got account settings"),
                 {wh_json:get_value(<<"server">>, AccountSettings, wh_json:new())
-                 ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
+                ,wh_json:get_value(<<"account">>, AccountSettings, wh_json:new())
                 }
         catch
             _E:_R ->
@@ -272,62 +287,62 @@ routing_data(ToDID, AccountId, Settings) ->
 
     InboundFormat = wh_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
-                                            ,wh_json:get_value(<<"callerid_account">>, Settings)
-                                            ,wh_json:get_value(<<"callerid_server">>, Settings)
+                                           ,wh_json:get_value(<<"callerid_account">>, Settings)
+                                           ,wh_json:get_value(<<"callerid_server">>, Settings)
                                            ]),
     ProgressTimeout = ts_util:progress_timeout([wh_json:get_value(<<"progress_timeout">>, DIDOptions)
-                                                ,wh_json:get_value(<<"progress_timeout">>, SrvOptions)
-                                                ,wh_json:get_value(<<"progress_timeout">>, AcctStuff)
+                                               ,wh_json:get_value(<<"progress_timeout">>, SrvOptions)
+                                               ,wh_json:get_value(<<"progress_timeout">>, AcctStuff)
                                                ]),
     BypassMedia = ts_util:bypass_media([wh_json:get_value(<<"media_handling">>, DIDOptions)
-                                        ,wh_json:get_value(<<"media_handling">>, SrvOptions)
-                                        ,wh_json:get_value(<<"media_handling">>, AcctStuff)
+                                       ,wh_json:get_value(<<"media_handling">>, SrvOptions)
+                                       ,wh_json:get_value(<<"media_handling">>, AcctStuff)
                                        ]),
     FailoverLocations = [wh_json:get_value(<<"failover">>, NumConfig)
-                         ,wh_json:get_value(<<"failover">>, DIDOptions)
-                         ,wh_json:get_value(<<"failover">>, SrvOptions)
-                         ,wh_json:get_value(<<"failover">>, AcctStuff)
+                        ,wh_json:get_value(<<"failover">>, DIDOptions)
+                        ,wh_json:get_value(<<"failover">>, SrvOptions)
+                        ,wh_json:get_value(<<"failover">>, AcctStuff)
                         ],
 
     Failover = ts_util:failover(FailoverLocations),
     lager:info("failover found: ~p", [Failover]),
 
     Delay = ts_util:delay([wh_json:get_value(<<"delay">>, DIDOptions)
-                           ,wh_json:get_value(<<"delay">>, SrvOptions)
-                           ,wh_json:get_value(<<"delay">>, AcctStuff)
+                          ,wh_json:get_value(<<"delay">>, SrvOptions)
+                          ,wh_json:get_value(<<"delay">>, AcctStuff)
                           ]),
     SIPHeaders = ts_util:sip_headers([wh_json:get_value(<<"sip_headers">>, DIDOptions)
-                                      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
-                                      ,wh_json:get_value(<<"sip_headers">>, AcctStuff)
+                                     ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+                                     ,wh_json:get_value(<<"sip_headers">>, AcctStuff)
                                      ]),
     IgnoreEarlyMedia = ts_util:ignore_early_media([wh_json:get_value(<<"ignore_early_media">>, DIDOptions)
-                                                   ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
-                                                   ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
+                                                  ,wh_json:get_value(<<"ignore_early_media">>, SrvOptions)
+                                                  ,wh_json:get_value(<<"ignore_early_media">>, AcctStuff)
                                                   ]),
     Timeout = ts_util:ep_timeout([wh_json:get_value(<<"timeout">>, DIDOptions)
-                                  ,wh_json:get_value(<<"timeout">>, SrvOptions)
-                                  ,wh_json:get_value(<<"timeout">>, AcctStuff)
+                                 ,wh_json:get_value(<<"timeout">>, SrvOptions)
+                                 ,wh_json:get_value(<<"timeout">>, AcctStuff)
                                  ]),
 
     [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
-                         ,{<<"Codecs">>, wh_json:find(<<"codecs">>, [SrvOptions, Srv])}
-                         ,{<<"Bypass-Media">>, BypassMedia}
-                         ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
-                         ,{<<"Failover">>, Failover}
-                         ,{<<"Endpoint-Delay">>, Delay}
-                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                         ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-                         ,{<<"Endpoint-Timeout">>, Timeout}
-                         ,{<<"Callee-ID-Name">>, CalleeName}
-                         ,{<<"Callee-ID-Number">>, CalleeNumber}
-                         ,{<<"To-User">>, AuthU}
-                         ,{<<"To-Realm">>, AuthR}
-                         ,{<<"Caller-ID-Options">>, CidOptions}
-                         ,{<<"To-DID">>, ToDID}
-                         ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
-                         ,{<<"Route-Options">>, RouteOpts}
-                         ,{<<"Hunt-Account-ID">>, HuntAccountId}
-                         ,{<<"Authorizing-ID">>, wh_doc:id(Settings)} % connectivity doc id
+                       ,{<<"Codecs">>, wh_json:find(<<"codecs">>, [SrvOptions, Srv])}
+                       ,{<<"Bypass-Media">>, BypassMedia}
+                       ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}
+                       ,{<<"Failover">>, Failover}
+                       ,{<<"Endpoint-Delay">>, Delay}
+                       ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+                       ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
+                       ,{<<"Endpoint-Timeout">>, Timeout}
+                       ,{<<"Callee-ID-Name">>, CalleeName}
+                       ,{<<"Callee-ID-Number">>, CalleeNumber}
+                       ,{<<"To-User">>, AuthU}
+                       ,{<<"To-Realm">>, AuthR}
+                       ,{<<"Caller-ID-Options">>, CidOptions}
+                       ,{<<"To-DID">>, ToDID}
+                       ,{<<"To-IP">>, build_ip(ToIP, ToPort)}
+                       ,{<<"Route-Options">>, RouteOpts}
+                       ,{<<"Hunt-Account-ID">>, HuntAccountId}
+                       ,{<<"Authorizing-ID">>, wh_doc:id(Settings)} % connectivity doc id
                        ],
            V =/= 'undefined',
            V =/= <<>>
@@ -348,7 +363,7 @@ callee_id([JObj | T]) ->
         'false' -> callee_id(T);
         'true' ->
             case {wh_json:get_value(<<"cid_name">>, JObj)
-                  ,wh_json:get_value(<<"cid_number">>, JObj)}
+                 ,wh_json:get_value(<<"cid_number">>, JObj)}
             of
                 {'undefined', 'undefined'} -> callee_id(T);
                 CalleeID -> CalleeID

@@ -70,25 +70,25 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     AccountOptions = wh_json:get_value(<<"account">>, Options, wh_json:new()),
     SrvOptions = wh_json:get_value([<<"server">>, <<"options">>], Options, wh_json:new()),
     MediaHandling = ts_util:get_media_handling([wh_json:get_value(<<"media_handling">>, DIDOptions)
-                                                ,wh_json:get_value(<<"media_handling">>, SrvOptions)
-                                                ,wh_json:get_value(<<"media_handling">>, AccountOptions)
+                                               ,wh_json:get_value(<<"media_handling">>, SrvOptions)
+                                               ,wh_json:get_value(<<"media_handling">>, AccountOptions)
                                                ]),
     SIPHeaders = ts_util:sip_headers([wh_json:get_value(<<"sip_headers">>, DIDOptions)
-                                      ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
-                                      ,wh_json:get_value(<<"sip_headers">>, AccountOptions)
+                                     ,wh_json:get_value(<<"sip_headers">>, SrvOptions)
+                                     ,wh_json:get_value(<<"sip_headers">>, AccountOptions)
                                      ]),
 
     EmergencyCallerID =
         case ts_util:caller_id([wh_json:get_value(<<"emergency_caller_id">>, DIDOptions)
-                                ,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
-                                ,wh_json:get_value(<<"emergency_caller_id">>, AccountOptions)
+                               ,wh_json:get_value(<<"emergency_caller_id">>, SrvOptions)
+                               ,wh_json:get_value(<<"emergency_caller_id">>, AccountOptions)
                                ])
         of
             {'undefined', 'undefined'} -> [];
             {ECIDName, ECIDNum} ->
                 [{<<"Emergency-Caller-ID-Name">>, ECIDName}
-                 ,{<<"Emergency-Caller-ID-Number">>
-                   ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId)}
+                ,{<<"Emergency-Caller-ID-Number">>
+                 ,ts_util:maybe_ensure_cid_valid('emergency', ECIDNum, FromUser, AccountId)}
                 ]
         end,
     RouteReq = ts_callflow:get_request_data(State),
@@ -96,8 +96,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     OriginalCIdName = wh_json:get_value(<<"Caller-ID-Name">>, RouteReq),
     CallerID =
         case ts_util:caller_id([wh_json:get_value(<<"caller_id">>, DIDOptions)
-                                ,wh_json:get_value(<<"caller_id">>, SrvOptions)
-                                ,wh_json:get_value(<<"caller_id">>, AccountOptions)
+                               ,wh_json:get_value(<<"caller_id">>, SrvOptions)
+                               ,wh_json:get_value(<<"caller_id">>, AccountOptions)
                                ])
         of
             {'undefined', 'undefined'} ->
@@ -105,46 +105,49 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                     'true' ->
                         ValidCID = ts_util:maybe_ensure_cid_valid('external', OriginalCIdNumber, FromUser, AccountId),
                         [{<<"Outbound-Caller-ID-Number">>, ValidCID}
-                         ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
+                        ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
                          | EmergencyCallerID
                         ];
                     'false' ->
                         [{<<"Outbound-Caller-ID-Number">>, OriginalCIdNumber}
-                         ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
+                        ,{<<"Outbound-Caller-ID-Name">>, OriginalCIdName}
                          | EmergencyCallerID
                         ]
                 end;
             {CIDName, CIDNum} ->
                 [{<<"Outbound-Caller-ID-Name">>, CIDName}
-                 ,{<<"Outbound-Caller-ID-Number">>
-                   ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId)}
+                ,{<<"Outbound-Caller-ID-Number">>
+                 ,ts_util:maybe_ensure_cid_valid('external', CIDNum, FromUser, AccountId)}
                  | EmergencyCallerID
                 ]
-               end,
+        end,
     DIDFlags = ts_util:offnet_flags([wh_json:get_value(<<"DID_Opts">>, DIDOptions)
-                                     ,wh_json:get_value(<<"flags">>, SrvOptions)
-                                     ,wh_json:get_value(<<"flags">>, AccountOptions)
+                                    ,wh_json:get_value(<<"flags">>, SrvOptions)
+                                    ,wh_json:get_value(<<"flags">>, AccountOptions)
                                     ]),
-    Q = ts_callflow:get_my_queue(State),
-    Command = [ KV
-                || {_,V}=KV <- CallerID ++ EmergencyCallerID ++
-                       [{<<"Call-ID">>, CallID}
-                        ,{<<"Resource-Type">>, <<"audio">>}
-                        ,{<<"To-DID">>, ToDID}
-                        ,{<<"Account-ID">>, AccountId}
-                        ,{<<"Application-Name">>, <<"bridge">>}
-                        ,{<<"Flags">>, DIDFlags}
-                        ,{<<"Media">>, MediaHandling}
-                        ,{<<"Timeout">>, wh_json:get_value(<<"timeout">>, DIDOptions)}
-                        ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-                        ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
-                        ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                        ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"hunt_account_id">>, SrvOptions)}
-                        ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
-                        | wh_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                       ],
-                   V =/= 'undefined',
-                   V =/= <<>>
+
+    Command = [KV
+               || {_,V}=KV <- CallerID
+                      ++ EmergencyCallerID
+                      ++ [{<<"Call-ID">>, CallID}
+                         ,{<<"Resource-Type">>, <<"audio">>}
+                         ,{<<"To-DID">>, ToDID}
+                         ,{<<"Account-ID">>, AccountId}
+                         ,{<<"Application-Name">>, <<"bridge">>}
+                         ,{<<"Flags">>, DIDFlags}
+                         ,{<<"Media">>, MediaHandling}
+                         ,{<<"Timeout">>, wh_json:get_integer_value(<<"timeout">>, DIDOptions)}
+                         ,{<<"Ignore-Early-Media">>, wh_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                         ,{<<"Ringback">>, wh_json:get_value(<<"ringback">>, DIDOptions)}
+                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+                         ,{<<"Hunt-Account-ID">>, wh_json:get_value(<<"hunt_account_id">>, SrvOptions)}
+                         ,{<<"Custom-Channel-Vars">>, wh_json:from_list([{<<"Account-ID">>, AccountId}])}
+                          | wh_api:default_headers(ts_callflow:get_worker_queue(State)
+                                                  ,?APP_NAME, ?APP_VERSION
+                                                  )
+                         ],
+                  V =/= 'undefined',
+                  V =/= <<>>
               ],
     try
         lager:debug("we know how to route this call, sending park route response"),
@@ -158,30 +161,31 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     end.
 
 send_park(State, Command) ->
-    wait_for_win(ts_callflow:send_park(State), Command).
-
-wait_for_win(State, Command) ->
-    case ts_callflow:wait_for_win(State) of
+    case ts_callflow:send_park(State) of
         {'lost', _} -> 'normal';
         {'won', State1} ->
             case ts_util:maybe_restrict_call(State1, Command) of
                 'true' ->
-                      lager:debug("Trunkstore call to ~p restricted", [props:get_value(<<"To-DID">>, Command)]),
-                      ts_callflow:send_hangup(State1, <<"403">>);
-                 _ ->
-                      send_offnet(State1, Command)
+                    lager:debug("Trunkstore call to ~p restricted", [props:get_value(<<"To-DID">>, Command)]),
+                    ts_callflow:send_hangup(State1, <<"403">>);
+                _ ->
+                    send_offnet(State1, Command)
             end
     end.
 
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
-    _ = wapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ}
-                                          |Command
-                                         ]),
-    wait_for_bridge(CtlQ, State).
+    ts_callflow:send_command(State
+                            ,[{<<"Control-Queue">>, CtlQ}
+                              |Command
+                             ]
+                            ,fun wapi_offnet_resource:publish_req/1
+                            ),
+    Timeout = props:get_integer_value(<<"Timeout">>, Command),
+    wait_for_bridge(CtlQ, State, Timeout).
 
-wait_for_bridge(CtlQ, State1) ->
-    case ts_callflow:wait_for_bridge(State1) of
+wait_for_bridge(CtlQ, State1, Timeout) ->
+    case ts_callflow:wait_for_bridge(State1, Timeout) of
         {'hangup', _} -> ts_callflow:send_hangup(State1);
         {'error', #ts_callflow_state{aleg_callid='undefined'}} -> 'ok';
         {'error', #ts_callflow_state{aleg_callid=CallId}=State2} ->
@@ -210,8 +214,8 @@ maybe_fix_request({Username, Realm}, JObj) ->
 -spec fix_request_values(binary(), binary()) -> wh_proplist().
 fix_request_values(Username, Realm) ->
     [{[<<"Custom-Channel-Vars">>, <<"Username">>], Username}
-     ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
-     ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
+    ,{[<<"Custom-Channel-Vars">>, <<"Realm">>], Realm}
+    ,{[<<"Custom-Channel-Vars">>, <<"Authorizing-Type">>], <<"sys_info">>}
     ].
 
 -spec get_referred_by(wh_json:object()) -> api_binary().
