@@ -790,21 +790,21 @@ find_callid(APITerm, GetFun) ->
 %% @public
 %% @doc
 %% Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
-%% If time is elapsed, the sub-process is killed & function returns `false'.
+%% If time is elapsed, the sub-process is killed & function returns `timeout'.
 %% @end
--spec runs_in(number(), fun(), list()) -> {true, any()} | false.
+-spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
 runs_in(MaxTime, Fun, Arguments)
   when is_integer(MaxTime), MaxTime > 0 ->
     {Parent, Ref} = {self(), erlang:make_ref()},
     Child = ?MODULE:spawn(fun () -> Parent ! {Ref, erlang:apply(Fun, Arguments)} end),
-    receive {Ref, Result} -> {true, Result}
+    receive {Ref, Result} -> {ok, Result}
     after MaxTime ->
             exit(Child, kill),
-            false
+            timeout
     end;
 runs_in(MaxTime, Fun, Arguments)
   when is_number(MaxTime), MaxTime > 0 ->
-    runs_in(kz_util:to_integer(MaxTime), Fun, Arguments).
+    runs_in(to_integer(MaxTime), Fun, Arguments).
 
 -spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().

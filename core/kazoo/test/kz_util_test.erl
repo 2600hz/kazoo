@@ -436,6 +436,6 @@ pretty_print_bytes_test_() ->
     ].
 
 runs_in_test_() ->
-    [?_assertEqual(false, kz_util:runs_in(1, fun timer:sleep/1, [10]))
-    ,?_assertEqual({true,ok}, kz_util:runs_in(10, fun timer:sleep/1, [1]))
+    [?_assertEqual(timeout, kz_util:runs_in(1, fun timer:sleep/1, [10]))
+    ,?_assertEqual({ok,ok}, kz_util:runs_in(10, fun timer:sleep/1, [1]))
     ].

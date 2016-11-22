@@ -283,8 +283,8 @@ fetch_cnam(Number, JObj) ->
 make_request(Number, JObj) ->
     Timeout = 2.99 * ?MILLISECONDS_IN_SECOND,
     case kz_util:runs_in(Timeout, fun request/2, [Number, JObj]) of
-        {true, CNAM} -> CNAM;
-        false -> undefined
+        {ok, CNAM} -> CNAM;
+        timeout -> undefined
     end.
 
 -spec request(ne_binary(), kz_json:object()) -> api_binary().
