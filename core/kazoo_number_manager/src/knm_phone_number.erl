@@ -312,29 +312,31 @@ to_public_json(Number) ->
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(#knm_phone_number{doc=JObj}=N) ->
     kz_json:from_list(
-      props:filter_empty(
-        [{<<"_id">>, number(N)}
-        ,{?PVT_DB_NAME, number_db(N)}
-        ,{?PVT_ASSIGNED_TO, assigned_to(N)}
-        ,{?PVT_AUTH_BY, auth_by(N)}
-        ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
-        ,{?PVT_USED_BY, used_by(N)}
-        ,{?PVT_FEATURES, features(N)}
-        ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
-        ,{?PVT_STATE, state(N)}
-        ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
-        ,{?PVT_PORTED_IN, ported_in(N)}
-        ,{?PVT_MODULE_NAME, module_name(N)}
-        ,{?PVT_CARRIER_DATA, carrier_data(N)}
-        ,{?PVT_REGION, region(N)}
-        ,{?PVT_MODIFIED, modified(N)}
-        ,{?PVT_CREATED, created(N)}
-        ,{?PVT_IS_BILLABLE, is_billable(N)}
-        ,{?PVT_TYPE, <<"number">>}
-         | kz_json:to_proplist(
-             kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
-            )
-        ])
+      [{<<"_id">>, number(N)}
+      ,{?PVT_DB_NAME, number_db(N)}
+      ,{?PVT_STATE, state(N)}
+      ,{?PVT_PORTED_IN, ported_in(N)}
+      ,{?PVT_MODULE_NAME, module_name(N)}
+      ,{?PVT_MODIFIED, modified(N)}
+      ,{?PVT_CREATED, created(N)}
+      ,{?PVT_IS_BILLABLE, is_billable(N)}
+      ,{?PVT_TYPE, <<"number">>}
+       | kz_json:to_proplist(
+           kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
+          )
+      ]
+      ++
+          props:filter_empty(
+            [{?PVT_ASSIGNED_TO, assigned_to(N)}
+            ,{?PVT_AUTH_BY, auth_by(N)}
+            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
+            ,{?PVT_USED_BY, used_by(N)}
+            ,{?PVT_FEATURES, features(N)}
+            ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
+            ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
+            ,{?PVT_CARRIER_DATA, carrier_data(N)}
+            ,{?PVT_REGION, region(N)}
+            ])
      ).
 
 %%--------------------------------------------------------------------
