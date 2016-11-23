@@ -167,7 +167,5 @@ find_account_id(Classification, DB, _Id)
   when Classification =:= 'account';
        Classification =:= 'modb' ->
     kz_util:format_account_id(DB, 'raw');
-find_account_id(Classification, _DB, Id)
-  when Classification =:= 'accounts' ->
-    Id;
+find_account_id('aggregate', <<"accounts">>, Id) -> Id;
 find_account_id(_, _, _) -> 'undefined'.
