@@ -56,6 +56,9 @@
 
 -define(CACHE_KEY(Number), {'cnam', Number}).
 
+-define(CNAM_EXPIRES,
+        kapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -271,13 +274,21 @@ fetch_cnam(Number, JObj) ->
     case make_request(Number, JObj) of
         'undefined' -> 'undefined';
         CNAM ->
-            CacheProps = [{'expires', kapps_config:get_integer(?CONFIG_CAT, <<"cnam_expires">>, ?DEFAULT_EXPIRES)}],
+            CacheProps = [{'expires', ?CNAM_EXPIRES}],
             kz_cache:store_local(?CACHE_NAME, cache_key(Number), CNAM, CacheProps),
             CNAM
     end.
 
 -spec make_request(ne_binary(), kz_json:object()) -> api_binary().
 make_request(Number, JObj) ->
+    Timeout = 2.99 * ?MILLISECONDS_IN_SECOND,
+    case kz_util:runs_in(Timeout, fun request/2, [Number, JObj]) of
+        {ok, CNAM} -> CNAM;
+        timeout -> undefined
+    end.
+
+-spec request(ne_binary(), kz_json:object()) -> api_binary().
+request(Number, JObj) ->
     Url = kz_util:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()
                     ,Url

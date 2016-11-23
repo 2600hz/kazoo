@@ -103,6 +103,7 @@
         ,now_s/1, now_ms/1, now_us/1
         ]).
 
+-export([runs_in/3]).
 -export([put_callid/1, get_callid/0
         ,spawn/1, spawn/2
         ,spawn_link/1, spawn_link/2
@@ -785,6 +786,25 @@ find_callid(APITerm, GetFun) ->
           ,APITerm
           ,?LOG_SYSTEM_ID
           ).
+
+%% @public
+%% @doc
+%% Gives `MaxTime' milliseconds to `Fun' of `Arguments' to apply.
+%% If time is elapsed, the sub-process is killed & function returns `timeout'.
+%% @end
+-spec runs_in(number(), fun(), list()) -> {ok, any()} | timeout.
+runs_in(MaxTime, Fun, Arguments)
+  when is_integer(MaxTime), MaxTime > 0 ->
+    {Parent, Ref} = {self(), erlang:make_ref()},
+    Child = ?MODULE:spawn(fun () -> Parent ! {Ref, erlang:apply(Fun, Arguments)} end),
+    receive {Ref, Result} -> {ok, Result}
+    after MaxTime ->
+            exit(Child, kill),
+            timeout
+    end;
+runs_in(MaxTime, Fun, Arguments)
+  when is_number(MaxTime), MaxTime > 0 ->
+    runs_in(to_integer(MaxTime), Fun, Arguments).
 
 -spec spawn(fun(() -> any())) -> pid().
 -spec spawn(fun(), list()) -> pid().

@@ -434,3 +434,8 @@ pretty_print_bytes_test_() ->
     [?_assertEqual({Bytes, Formatted}, {Bytes, kz_util:pretty_print_bytes(Bytes)})
      || {Bytes, Formatted} <- Tests
     ].
+
+runs_in_test_() ->
+    [?_assertEqual(timeout, kz_util:runs_in(1, fun timer:sleep/1, [10]))
+    ,?_assertEqual({ok,ok}, kz_util:runs_in(10, fun timer:sleep/1, [1]))
+    ].
