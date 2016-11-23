@@ -432,6 +432,7 @@ from_json_with_options(JObj, Options)
 from_json_with_options(JObj, PhoneNumber) ->
     Options = [{'dry_run', dry_run(PhoneNumber)}
               ,{'batch_run', batch_run(PhoneNumber)}
+              ,{'auth_by', auth_by(PhoneNumber)}
               ],
     from_json_with_options(JObj, Options).
 
