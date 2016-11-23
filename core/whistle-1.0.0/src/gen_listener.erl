@@ -31,66 +31,66 @@
 -behaviour(gen_server).
 
 -export([start_link/3
-         ,start_link/4
-         ,start_link/5
+        ,start_link/4
+        ,start_link/5
         ]).
 
 -export([start_listener/2]).
 
 -export([queue_name/1
-         ,bindings/1
-         ,responders/1
-         ,is_consuming/1
+        ,bindings/1
+        ,responders/1
+        ,is_consuming/1
         ]).
 
 -export([add_queue/4
-         ,other_queues/1
-         ,rm_queue/2
+        ,other_queues/1
+        ,rm_queue/2
         ]).
 
 %% gen_server callbacks
 -export([init/1
-         ,handle_call/3
-         ,handle_cast/2
-         ,handle_info/2
-         ,terminate/2
-         ,code_change/3
-         ,format_status/2
+        ,handle_call/3
+        ,handle_cast/2
+        ,handle_info/2
+        ,terminate/2
+        ,code_change/3
+        ,format_status/2
         ]).
 
 %% gen_server API
 -export([call/2
-         ,call/3
-         ,cast/2
-         ,reply/2
+        ,call/3
+        ,cast/2
+        ,reply/2
 
-         ,enter_loop/3, enter_loop/4, enter_loop/5
+        ,enter_loop/3, enter_loop/4, enter_loop/5
         ]).
 
 %% gen_listener API
 -export([add_responder/3
-         ,rm_responder/2
-         ,rm_responder/3
+        ,rm_responder/2
+        ,rm_responder/3
         ]).
 
 -export([add_binding/2, add_binding/3
-         ,b_add_binding/2, b_add_binding/3
-         ,rm_binding/2, rm_binding/3
+        ,b_add_binding/2, b_add_binding/3
+        ,rm_binding/2, rm_binding/3
         ]).
 
 -export([ack/2
-         ,nack/2
+        ,nack/2
         ]).
 
 -export([execute/4
-         ,execute/3
-         ,execute/2
+        ,execute/3
+        ,execute/2
         ]).
 
 -export([federated_event/3]).
 -export([handle_event/4
-         ,handle_return/4
-         ,client_handle_event/6
+        ,handle_return/4
+        ,client_handle_event/6
         ]).
 -export([distribute_event/3]).
 
@@ -110,18 +110,18 @@
 -type federator_listeners() :: [federator_listener()].
 -record(state, {
           queue :: api_binary()
-         ,is_consuming = 'false' :: boolean()
-         ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
-         ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
-         ,params = [] :: wh_proplist()
-         ,module :: atom()
-         ,module_state :: module_state()
-         ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
-         ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}}] %% {QueueName, {proplist(), wh_proplist()}}
-         ,federators = [] :: federator_listeners()
-         ,self = self() :: pid()
-         ,consumer_key = wh_amqp_channel:consumer_pid()
-         ,consumer_tags = [] :: binaries()
+               ,is_consuming = 'false' :: boolean()
+               ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
+               ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
+               ,params = [] :: wh_proplist()
+               ,module :: atom()
+               ,module_state :: module_state()
+               ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
+               ,other_queues = [] :: [{ne_binary(), {wh_proplist(), wh_proplist()}}] %% {QueueName, {proplist(), wh_proplist()}}
+               ,federators = [] :: federator_listeners()
+               ,self = self() :: pid()
+               ,consumer_key = wh_amqp_channel:consumer_pid()
+               ,consumer_tags = [] :: binaries()
          }).
 
 -type state() :: #state{}.
@@ -154,10 +154,10 @@
                         ].
 
 -export_type([handle_event_return/0
-              ,binding/0
-              ,bindings/0
-              ,responders/0
-              ,basic_deliver/0
+             ,binding/0
+             ,bindings/0
+             ,responders/0
+             ,basic_deliver/0
              ]).
 
 %%%===================================================================
@@ -305,14 +305,13 @@ add_binding(Srv, {Binding, Props}) when is_list(Props)
 add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', Binding, []}).
 
-
 -spec add_binding(server_ref(), ne_binary() | atom(), wh_proplist()) -> 'ok'.
 add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:cast(Srv, {'add_binding', Binding, Props}).
 
 -spec b_add_binding(server_ref(), binding() | ne_binary() | atom()) -> 'ok'.
 b_add_binding(Srv, {Binding, Props}) when is_list(Props)
-                                        ,(is_atom(Binding) orelse is_binary(Binding)) ->
+                                          ,(is_atom(Binding) orelse is_binary(Binding)) ->
     gen_server:call(Srv, {'add_binding', Binding, Props});
 b_add_binding(Srv, Binding) when is_binary(Binding) orelse is_atom(Binding) ->
     gen_server:call(Srv, {'add_binding', Binding, []}).
@@ -323,8 +322,8 @@ b_add_binding(Srv, Binding, Props) when is_binary(Binding) orelse is_atom(Bindin
 
 %% It is expected that responders have been set up already, prior to binding the new queue
 -spec add_queue(server_ref(), binary(), wh_proplist(), binding() | bindings()) ->
-                             {'ok', ne_binary()} |
-                             {'error', any()}.
+                       {'ok', ne_binary()} |
+                       {'error', any()}.
 add_queue(Srv, QueueName, QueueProps, {_Type, _Props}=Binding) ->
     add_queue(Srv, QueueName, QueueProps, [Binding]);
 add_queue(Srv, QueueName, QueueProps, [{_,_}|_]=Bindings) ->
@@ -401,9 +400,9 @@ init(Module, Params, ModuleState, TimeoutRef) ->
          || {Mod, Events} <- props:get_value('responders', Params, [])
         ],
     {'ok', #state{module=Module
-                  ,module_state=ModuleState
-                  ,module_timeout_ref=TimeoutRef
-                  ,params=Params
+                 ,module_state=ModuleState
+                 ,module_timeout_ref=TimeoutRef
+                 ,params=Params
                  }}.
 
 %%--------------------------------------------------------------------
@@ -472,11 +471,11 @@ handle_cast({'rm_queue', QueueName}, #state{other_queues=OtherQueues}=State) ->
     {'noreply', State#state{other_queues=props:delete(QueueName, OtherQueues)}};
 handle_cast({'add_responder', Responder, Keys}, #state{responders=Responders}=State) ->
     {'noreply'
-     ,State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}
+    ,State#state{responders=listener_utils:add_responder(Responders, Responder, Keys)}
     };
 handle_cast({'rm_responder', Responder, Keys}, #state{responders=Responders}=State) ->
     {'noreply'
-     ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
+    ,State#state{responders=listener_utils:rm_responder(Responders, Responder, Keys)}
     };
 handle_cast({'add_binding', _, _}=AddBinding, #state{is_consuming='false'}=State) ->
     Time = ?BIND_WAIT + (crypto:rand_uniform(100, 200)), % wait 100 + [100,200) ms before replaying the binding request
@@ -496,33 +495,33 @@ handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
     _ = wh_util:spawn(?MODULE, 'distribute_event', [JObj, BasicDeliver, State]),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}
-            ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State) ->
     erlang:apply(Module, Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function, Args}
-            ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State) ->
     erlang:apply(Function, Args),
     {'noreply', State};
 handle_cast({'$execute', Function}
-            ,#state{federators=[]}=State) ->
+           ,#state{federators=[]}=State) ->
     Function(),
     {'noreply', State};
 handle_cast({'$execute', Module, Function, Args}=Msg
-            ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State) ->
     erlang:apply(Module, Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function, Args}=Msg
-            ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State) ->
     erlang:apply(Function, Args),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
         ],
     {'noreply', State};
 handle_cast({'$execute', Function}=Msg
-            ,#state{federators=Federators}=State) ->
+           ,#state{federators=Federators}=State) ->
     Function(),
     _ = [?MODULE:cast(Federator, Msg)
          || {_Broker, Federator} <- Federators
@@ -531,14 +530,14 @@ handle_cast({'$execute', Function}=Msg
 handle_cast({'$client_cast', Message}, State) ->
     handle_module_cast(Message, State);
 handle_cast({'start_listener', Params}, #state{queue='undefined'
-                                               ,is_consuming='false'
-                                               ,responders=[]
-                                               ,bindings=[]
-                                               ,params=[]
+                                              ,is_consuming='false'
+                                              ,responders=[]
+                                              ,bindings=[]
+                                              ,params=[]
                                               }=State) ->
     #state{module=Module
-           ,module_state=ModuleState
-           ,module_timeout_ref=TimeoutRef
+          ,module_state=ModuleState
+          ,module_timeout_ref=TimeoutRef
           } = State,
     {'ok', #state{}=N} = init(Module, Params, ModuleState, TimeoutRef),
     {'noreply', N};
@@ -547,7 +546,7 @@ handle_cast({'start_listener', _Params}, State) ->
     {'noreply', State};
 
 handle_cast({'pause_consumers'}, #state{is_consuming='true'
-                                        ,consumer_tags=Tags
+                                       ,consumer_tags=Tags
                                        }=State) ->
     _ = [amqp_util:basic_cancel(Tag) || Tag <- Tags],
     {'noreply', State};
@@ -555,9 +554,9 @@ handle_cast({'pause_consumers'}, #state{is_consuming='true'
 handle_cast({'resume_consumers'}, #state{queue='undefined'}=State) ->
     {'noreply', State};
 handle_cast({'resume_consumers'}, #state{is_consuming='false'
-                                         ,params=Params
-                                         ,queue=Q
-                                         ,other_queues=OtherQueues
+                                        ,params=Params
+                                        ,queue=Q
+                                        ,other_queues=OtherQueues
                                         }=State) ->
     start_consumer(Q, props:get_value('consume_options', Params)),
     _ = [start_consumer(Q1, props:get_value('consume_options', P))
@@ -586,16 +585,16 @@ maybe_remove_binding(_BP, _B, _P, _Q) -> 'true'.
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret().
 handle_info({#'basic.deliver'{}=BD, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                              ,payload=Payload
+                                             ,payload=Payload
                                              }}
-            ,#state{params=Params}=State) ->
+           ,#state{params=Params}=State) ->
     _ = case props:is_true('spawn_handle_event', Params, 'false') of
             'true' -> wh_util:spawn(?MODULE, 'handle_event', [Payload, CT, BD, State]);
             'false' -> ?MODULE:handle_event(Payload, CT, BD, State)
         end,
     {'noreply', State};
 handle_info({#'basic.return'{}=BR, #amqp_msg{props=#'P_basic'{content_type=CT}
-                                             ,payload=Payload
+                                            ,payload=Payload
                                             }}, State) ->
     handle_return(Payload, CT, BR, State);
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=State) ->
@@ -604,13 +603,13 @@ handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{queue='undefined'}=St
 handle_info(#'basic.consume_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'true'}}),
     {'noreply', State#state{is_consuming='true'
-                            ,consumer_tags=[CTag | CTags]
+                           ,consumer_tags=[CTag | CTags]
                            }};
 handle_info(#'basic.cancel_ok'{consumer_tag=CTag}, #state{consumer_tags=CTags}=State) ->
     lager:debug("recv a basic.cancel_ok for tag ~s", [CTag]),
     gen_server:cast(self(), {'gen_listener', {'is_consuming', 'false'}}),
     {'noreply', State#state{is_consuming='false'
-                            ,consumer_tags=lists:delete(CTag, CTags)
+                           ,consumer_tags=lists:delete(CTag, CTags)
                            }};
 handle_info(#'basic.ack'{}=Ack, #state{}=State) ->
     lager:debug("recv a basic.ack ~p", [Ack]),
@@ -624,16 +623,16 @@ handle_info(#'channel.flow'{active=Active}, State) ->
     gen_server:cast(self(), {'gen_listener',{'channel_flow_control', Active}}),
     {'noreply', State};
 handle_info('$is_gen_listener_consuming'
-            ,#state{is_consuming='false'
-                    ,bindings=ExistingBindings
-                    ,params=Params
-                   }=State) ->
+           ,#state{is_consuming='false'
+                  ,bindings=ExistingBindings
+                  ,params=Params
+                  }=State) ->
     _Release = (catch wh_amqp_channel:release()),
     _Req = channel_requisition(Params),
 
     {'noreply', State#state{queue='undefined'
-                            ,bindings=[]
-                            ,params=props:set_value('bindings', ExistingBindings, Params)
+                           ,bindings=[]
+                           ,params=props:set_value('bindings', ExistingBindings, Params)
                            }};
 handle_info('$is_gen_listener_consuming', State) ->
     {'noreply', State};
@@ -697,14 +696,14 @@ handle_return(JObj, BR, State) ->
 
 -spec basic_return_to_jobj(#'basic.return'{}) -> wh_json:object().
 basic_return_to_jobj(#'basic.return'{reply_code=Code
-                                     ,reply_text=Msg
-                                     ,exchange=Exchange
-                                     ,routing_key=RoutingKey
+                                    ,reply_text=Msg
+                                    ,exchange=Exchange
+                                    ,routing_key=RoutingKey
                                     }) ->
     wh_json:from_list([{<<"code">>, Code}
-                       ,{<<"message">>, wh_util:to_binary(Msg)}
-                       ,{<<"exchange">>, wh_util:to_binary(Exchange)}
-                       ,{<<"routing_key">>, wh_util:to_binary(RoutingKey)}
+                      ,{<<"message">>, wh_util:to_binary(Msg)}
+                      ,{<<"exchange">>, wh_util:to_binary(Exchange)}
+                      ,{<<"routing_key">>, wh_util:to_binary(RoutingKey)}
                       ]).
 
 -spec handle_confirm(#'basic.ack'{} | #'basic.nack'{}, state()) -> handle_cast_return().
@@ -721,8 +720,8 @@ handle_confirm(Confirm, State) ->
 %% @end
 %%--------------------------------------------------------------------
 terminate(Reason, #state{module=Module
-                         ,module_state=ModuleState
-                         ,federators=Fs
+                        ,module_state=ModuleState
+                        ,federators=Fs
                         }) ->
     _ = (catch Module:terminate(Reason, ModuleState)),
     _ = (catch wh_amqp_channel:release()),
@@ -745,8 +744,8 @@ code_change(_OldVersion, State, _Extra) ->
 %%%===================================================================
 -spec handle_callback_info(any(), state()) -> handle_info_return().
 handle_callback_info(Message, #state{module=Module
-                                     ,module_state=ModuleState
-                                     ,module_timeout_ref=OldRef
+                                    ,module_state=ModuleState
+                                    ,module_timeout_ref=OldRef
                                     }=State) ->
     _ = stop_timer(OldRef),
     try Module:handle_info(Message, ModuleState) of
@@ -755,7 +754,7 @@ handle_callback_info(Message, #state{module=Module
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
-                                    ,module_timeout_ref=Ref
+                                   ,module_timeout_ref=Ref
                                    }
             };
         {'stop', Reason, ModuleState1} ->
@@ -769,13 +768,13 @@ handle_callback_info(Message, #state{module=Module
     end.
 
 format_status(_Opt, [_PDict, #state{module=Module
-                                    ,module_state=ModuleState
+                                   ,module_state=ModuleState
                                    }=State]) ->
     case erlang:function_exported(Module, format_status, 2) of
         'true' -> Module:format_status(_Opt, [_PDict, ModuleState]);
         'false' -> [{'data', [{"Module State", ModuleState}
-                              ,{"Module", Module}
-                              ,{"Listener State", State}
+                             ,{"Module", Module}
+                             ,{"Listener State", State}
                              ]
                     }]
     end.
@@ -790,14 +789,14 @@ distribute_event(JObj, BasicDeliver, State) ->
 
 -spec distribute_event(wh_proplist(), wh_json:object(), basic_deliver(), state()) -> 'ok'.
 distribute_event(Props, JObj, BasicDeliver, #state{responders=Responders
-                                                   ,consumer_key=ConsumerKey
+                                                  ,consumer_key=ConsumerKey
                                                   }) ->
     Key = wh_util:get_event_type(JObj),
     _ = [proc_lib:spawn(?MODULE, 'client_handle_event', [JObj
-                                                         ,ConsumerKey
-                                                         ,Module, Fun
-                                                         ,Props
-                                                         ,BasicDeliver
+                                                        ,ConsumerKey
+                                                        ,Module, Fun
+                                                        ,Props
+                                                        ,BasicDeliver
                                                         ])
          || {Evt, {Module, Fun}} <- Responders,
             maybe_event_matches_key(Key, Evt)
@@ -818,13 +817,13 @@ client_handle_event(JObj, ConsumerKey, Module, Fun, Props, BasicDeliver) ->
                                    'ignore' |
                                    wh_proplist().
 callback_handle_event(JObj
-                      ,BasicDeliver
-                      ,#state{module=Module
-                              ,module_state=ModuleState
-                              ,queue=Queue
-                              ,other_queues=OtherQueues
-                              ,self=Self
-                             }) ->
+                     ,BasicDeliver
+                     ,#state{module=Module
+                            ,module_state=ModuleState
+                            ,queue=Queue
+                            ,other_queues=OtherQueues
+                            ,self=Self
+                            }) ->
     case
         case erlang:function_exported(Module, 'handle_event', 3) of
             'true' -> catch Module:handle_event(JObj, BasicDeliver, ModuleState);
@@ -834,14 +833,14 @@ callback_handle_event(JObj
         'ignore' -> 'ignore';
         {'reply', Props} when is_list(Props) ->
             [{'server', Self}
-             ,{'queue', Queue}
-             ,{'other_queues', props:get_keys(OtherQueues)}
+            ,{'queue', Queue}
+            ,{'other_queues', props:get_keys(OtherQueues)}
              | Props
             ];
         {'EXIT', _Why} ->
             [{'server', Self}
-             ,{'queue', Queue}
-             ,{'other_queues', props:get_keys(OtherQueues)}
+            ,{'queue', Queue}
+            ,{'other_queues', props:get_keys(OtherQueues)}
             ]
     end.
 
@@ -935,26 +934,26 @@ add_other_queue(QueueName, QueueProps, Bindings, #state{other_queues=OtherQueues
 
 -spec handle_module_call(any(), pid_ref(), state()) -> handle_call_return().
 handle_module_call(Request, From, #state{module=Module
-                                         ,module_state=ModuleState
-                                         ,module_timeout_ref=OldRef
+                                        ,module_state=ModuleState
+                                        ,module_timeout_ref=OldRef
                                         }=State) ->
     _ = stop_timer(OldRef),
     try Module:handle_call(Request, From, ModuleState) of
         {'reply', Reply, ModuleState1} ->
             {'reply', Reply, State#state{module_state=ModuleState1
-                                         ,module_timeout_ref='undefined'
+                                        ,module_timeout_ref='undefined'
                                         }
             };
         {'reply', Reply, ModuleState1, Timeout} ->
             {'reply', Reply, State#state{module_state=ModuleState1
-                                         ,module_timeout_ref=start_timer(Timeout)
+                                        ,module_timeout_ref=start_timer(Timeout)
                                         }
             };
         {'noreply', ModuleState1} ->
             {'noreply', State#state{module_state=ModuleState1}};
         {'noreply', ModuleState1, Timeout} ->
             {'noreply', State#state{module_state=ModuleState1
-                                    ,module_timeout_ref=start_timer(Timeout)
+                                   ,module_timeout_ref=start_timer(Timeout)
                                    }
             };
         {'stop', Reason, ModuleState1} ->
@@ -972,8 +971,8 @@ handle_module_call(Request, From, #state{module=Module
 
 -spec handle_module_cast(any(), state()) -> handle_cast_return().
 handle_module_cast(Msg, #state{module=Module
-                               ,module_state=ModuleState
-                               ,module_timeout_ref=OldRef
+                              ,module_state=ModuleState
+                              ,module_timeout_ref=OldRef
                               }=State) ->
     _ = stop_timer(OldRef),
     try Module:handle_cast(Msg, ModuleState) of
@@ -982,7 +981,7 @@ handle_module_cast(Msg, #state{module=Module
         {'noreply', ModuleState1, Timeout} ->
             Ref = start_timer(Timeout),
             {'noreply', State#state{module_state=ModuleState1
-                                    ,module_timeout_ref=Ref
+                                   ,module_timeout_ref=Ref
                                    }
             };
         {'stop', Reason, ModuleState1} ->
@@ -997,7 +996,7 @@ handle_module_cast(Msg, #state{module=Module
 
 -spec handle_add_binding(binding_module(), wh_proplist(), state()) -> state().
 handle_add_binding(B, Props, #state{queue=Q
-                                    ,bindings=Bs
+                                   ,bindings=Bs
                                    }=State) ->
     Binding = wh_util:to_binary(B),
     case lists:keyfind(Binding, 1, Bs) of
@@ -1017,7 +1016,7 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
                       (K) ->
                            props:get_value(K, ExistingProps) =:= 'true'
                    end
-                   ,Props
+                  ,Props
                   )
     of
         'true' ->
@@ -1031,16 +1030,16 @@ handle_existing_binding(Binding, Props, State, Q, ExistingProps, Bs) ->
 
 -spec handle_rm_binding(binding(), wh_proplist(), state()) -> state().
 handle_rm_binding(Binding, Props, #state{queue=Q
-                                         ,bindings=Bs
+                                        ,bindings=Bs
                                         }=State) ->
     KeepBs = lists:filter(fun(BP) ->
                                   maybe_remove_binding(BP
-                                                       ,wh_util:to_binary(Binding)
-                                                       ,Props
-                                                       ,Q
+                                                      ,wh_util:to_binary(Binding)
+                                                      ,Props
+                                                      ,Q
                                                       )
                           end
-                          ,Bs
+                         ,Bs
                          ),
     State#state{bindings=KeepBs}.
 
@@ -1057,7 +1056,7 @@ is_federated_binding(Props) ->
 
 -spec update_federated_bindings(state()) -> state().
 update_federated_bindings(#state{bindings=[{Binding, Props}|_]
-                                 ,federators=Fs
+                                ,federators=Fs
                                 }=State) ->
     case wh_amqp_connections:federated_brokers() of
         [] ->
@@ -1108,10 +1107,10 @@ update_existing_listener_bindings({_Broker, Pid}, Binding, Props) ->
                                      wh_proplist().
 create_federated_params(FederateBindings, Params) ->
     [{'responders', []}
-     ,{'bindings', [FederateBindings]}
-     ,{'queue_name', federated_queue_name(Params)}
-     ,{'queue_options', props:get_value('queue_options', Params, [])}
-     ,{'consume_options', props:get_value('consume_options', Params, [])}
+    ,{'bindings', [FederateBindings]}
+    ,{'queue_name', federated_queue_name(Params)}
+    ,{'queue_options', props:get_value('queue_options', Params, [])}
+    ,{'consume_options', props:get_value('consume_options', Params, [])}
     ].
 
 -spec federated_queue_name(wh_proplist()) -> api_binary().
@@ -1213,8 +1212,8 @@ start_initial_bindings(State, Params) ->
     lists:foldl(fun({Binding, Props}, StateAcc) ->
                         handle_add_binding(Binding, Props, StateAcc)
                 end
-                ,State
-                ,props:get_value('bindings', Params, [])
+               ,State
+               ,props:get_value('bindings', Params, [])
                ).
 
 -spec channel_requisition(wh_proplist()) -> boolean().
