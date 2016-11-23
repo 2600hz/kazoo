@@ -321,9 +321,7 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
       ,{?PVT_CREATED, created(N)}
       ,{?PVT_IS_BILLABLE, is_billable(N)}
       ,{?PVT_TYPE, <<"number">>}
-       | kz_json:to_proplist(
-           kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))
-          )
+       | kz_json:to_proplist(sanitize_public_fields(JObj))
       ]
       ++
           props:filter_empty(
@@ -369,7 +367,7 @@ from_json(JObj) ->
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
-                ,{fun set_doc/2, kz_json:delete_key(<<"id">>, kz_json:public_fields(JObj))}
+                ,{fun set_doc/2, sanitize_public_fields(JObj)}
                 ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
                 ]),
@@ -690,6 +688,9 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
     N#knm_phone_number{module_name = Name};
+%% knm_bandwidth is deprecated, updating to the new module
+set_module_name(N, <<"wnm_bandwidth">>) ->
+    set_module_name(N, <<"knm_bandwidth2">>);
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
@@ -704,8 +705,7 @@ set_module_name(N0, Name, IsBillable)
     N = set_module_name(N0, Name),
     N#knm_phone_number{is_billable = IsBillable};
 set_module_name(N0, Name, 'undefined') ->
-    N = set_module_name(N0, Name),
-    N#knm_phone_number{is_billable = knm_carriers:is_number_billable(N)}.
+    set_module_name(N0, Name).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -875,6 +875,18 @@ list_attachments(PhoneNumber, AuthBy) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Sanitize phone number docs fields and remove deprecated fields
+%% @end
+%%--------------------------------------------------------------------
+-spec sanitize_public_fields(kz_json:object()) -> kz_json:object().
+sanitize_public_fields(JObj) ->
+    Keys = [<<"id">>
+           ,<<"used_by">>
+           ],
+    kz_json:delete_keys(Keys, kz_json:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private
