@@ -17,6 +17,7 @@
         ,sip_channel_xml/1
         ,escape/2
         ,conference_resp_xml/1
+        ,event_filters_resp_xml/1
         ]).
 
 -export([config_el/2, config_el/3]).
@@ -1103,3 +1104,25 @@ sofia_gateway_vars_xml_to_json([Var|Vars], JObj) ->
     Key = kz_util:get_xml_value("/variable/@name", Var),
     Value = kz_util:get_xml_value("/variable/@value", Var),
     sofia_gateway_vars_xml_to_json(Vars, kz_json:set_value(Key, Value, JObj)).
+
+-spec event_filters_resp_xml(ne_binaries()) -> {'ok', iolist()}.
+event_filters_resp_xml(Headers) ->
+    EventFiltersEl = event_filters_xml(Headers),
+    ConfigurationEl = config_el(<<"kazoo.conf">>, <<"Built by Kazoo">>, [EventFiltersEl]),
+    SectionEl = section_el(<<"configuration">>, ConfigurationEl),
+    {'ok', xmerl:export([SectionEl], 'fs_xml')}.
+
+event_filters_xml(Headers) ->
+    EventFiltersEls = [event_filter_el(Header) || Header <- Headers],
+    event_filters_el(EventFiltersEls).
+
+event_filter_el(Header) ->
+    #xmlElement{name='header'
+               ,attributes=[xml_attrib('name', Header)]
+               }.
+
+event_filters_el(Filters) ->
+    #xmlElement{name='event-filter'
+               ,content=Filters
+               ,attributes=[xml_attrib('type', <<"whitelist">>)]
+               }.
