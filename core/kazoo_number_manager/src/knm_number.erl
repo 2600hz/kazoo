@@ -531,11 +531,10 @@ maybe_age(Number) ->
 %% @public
 %% @doc
 %% Remove a number from the system without doing any checking.
-%% Sounds too harsh for you? you are looking for release/1,2.
+%% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binary(), knm_number_options:options()) ->
-                    knm_number_return().
+-spec delete(ne_binary(), knm_number_options:options()) -> knm_number_return().
 delete(Num, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
