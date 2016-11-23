@@ -84,10 +84,9 @@ refresh_numbers_db(Suffix) ->
 update_number_services_view(?MATCH_ACCOUNT_RAW(A, B, Rest)) ->
     update_number_services_view(?MATCH_ACCOUNT_ENCODED(A, B, Rest));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
-    Classifiers = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
+    JObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
     Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], JObj)}
-             || JObj <- [Classifiers],
-                Classification <- kz_json:get_keys(JObj)
+             || Classification <- kz_json:get_keys(JObj)
             ],
     {Classifications, Regexs} = lists:unzip(Pairs),
     MapView = number_services_map(Classifications, Regexs),
