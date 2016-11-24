@@ -134,7 +134,7 @@ maybe_update_e911(Number, 'true') ->
             lager:debug("dry run: information has been removed, updating upstream"),
             knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            Number;
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
             knm_services:activate_feature(Number, {?FEATURE_E911, E911})
@@ -150,7 +150,7 @@ maybe_update_e911(Number, 'false') ->
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            Number;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
             case update_e911(Number, E911) of

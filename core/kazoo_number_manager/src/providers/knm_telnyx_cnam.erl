@@ -108,13 +108,11 @@ handle_inbound_cnam(Number) ->
                                  ,knm_phone_number:doc(PN)),
     NotChanged = CurrentInboundCNAM =:= InboundCNAM,
     case InboundCNAM of
-        false when NotChanged ->
-            knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
+        false when NotChanged -> Number;
         false ->
             _ = disable_inbound(Number),
             knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
-        true when NotChanged ->
-            Number;
+        true when NotChanged -> Number;
         true ->
             _ = enable_inbound(Number),
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),

@@ -83,8 +83,7 @@ handle_outbound_cnam(Number) ->
             Number1 = knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
             handle_inbound_cnam(Number1);
         CurrentCNAM ->
-            Number1 = knm_services:deactivate_feature(Number, ?FEATURE_CNAM_OUTBOUND),
-            handle_inbound_cnam(Number1);
+            handle_inbound_cnam(Number);
         NewCNAM when IsDryRun ->
             lager:debug("dry run: cnam display name changed to ~s", [NewCNAM]),
             Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, NewCNAM}),

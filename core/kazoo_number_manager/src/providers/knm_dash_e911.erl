@@ -113,7 +113,7 @@ maybe_update_e911(Number) ->
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            Number;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
             _NewFeature = maybe_update_e911(Number, E911),

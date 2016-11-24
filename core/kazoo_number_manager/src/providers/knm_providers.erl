@@ -150,9 +150,10 @@ service_name(Feature) -> Feature.
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    Possible0 = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    Possible = lists:usort(Possible0 ++ knm_phone_number:features_list(PhoneNumber)),
     AllowedBase = allowed_features(PhoneNumber),
-    Allowed = case lists:member(?FEATURE_E911, Possible) of
+    Allowed = case lists:member(?FEATURE_E911, Possible0) of
                   true -> AllowedBase;
                   false ->
                       %% For backward compatibility
@@ -219,11 +220,10 @@ fix_old_fields_names(Number) ->
     Doc = knm_phone_number:doc(PN),
     Values = props:filter_undefined(
                [{?FEATURE_E911, kz_json:get_ne_value(<<"dash_e911">>, Doc)}
-               ,{<<"dash_e911">>, null}
                ,{?FEATURE_E911, kz_json:get_ne_value(<<"vitelity_e911">>, Doc)}
-               ,{<<"vitelity_e911">>, null}
                ]),
-    NewDoc = kz_json:set_values(Values, Doc),
+    ToDelete = [<<"dash_e911">>, <<"vitelity_e911">>],
+    NewDoc = kz_json:set_values(Values, kz_json:delete_keys(ToDelete, Doc)),
     NewPN = knm_phone_number:update_doc(PN, NewDoc),
     knm_number:set_phone_number(Number, NewPN).
 

@@ -244,9 +244,8 @@ post(Context, ?COLLECTION) ->
 post(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    Updaters = [{fun knm_phone_number:reset_doc/2, cb_context:doc(Context)}
-               ],
-    Result = knm_number:update(Number, Updaters, Options),
+    JObj = cb_context:doc(Context),
+    Result = knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
     set_response(Result, Number, Context).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -550,8 +549,8 @@ collection_action(Context, ?HTTP_POST, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'auth_by', cb_context:auth_account_id(Context)}
               ],
-    ToMerge = kz_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
-    knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, ToMerge}], Options);
+    JObj = kz_json:delete_key(<<"numbers">>, cb_context:doc(Context)),
+    knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
 collection_action(Context, ?HTTP_DELETE, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],

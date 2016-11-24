@@ -97,7 +97,7 @@ maybe_update_e911(Number, 'true') ->
             lager:debug("dry run: information has been removed, updating upstream"),
             knm_services:deactivate_feature(Number, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            Number;
         'false' ->
             lager:debug("dry run: information has been changed: ~s", [kz_json:encode(E911)]),
             knm_services:activate_feature(Number, {?FEATURE_E911, E911})
@@ -113,7 +113,7 @@ maybe_update_e911(Number, 'false') ->
             {'ok', NewNumber} = remove_number(Number),
             knm_services:deactivate_feature(NewNumber, ?FEATURE_E911);
         'false' when NotChanged  ->
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            Number;
         'false' ->
             case update_e911(Number, E911) of
                 {'ok', NewNumber} ->
@@ -213,7 +213,7 @@ remove_number_address(Number) ->
         'undefined' -> 'ok';
         AddrId ->
             Path = ["e911_addresses", binary_to_list(AddrId)],
-            _ = kz_util:spawn(fun knm_telnyx_util:req/2, ['delete', Path]),
+            _ = kz_util:spawn(fun() -> catch knm_telnyx_util:req(delete, Path) end),
             'ok'
     end.
 

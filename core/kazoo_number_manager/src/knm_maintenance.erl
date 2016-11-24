@@ -171,7 +171,8 @@ fix_docs({error, timeout}, _AccountDb, _, _DID) ->
 fix_docs({error, _R}, _AccountDb, _, DID) ->
     ?LOG("failed to get ~s from ~s (~p), creating it", [DID, _AccountDb, _R]),
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]);
+    _ = knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]),
+    ok;
 fix_docs({ok, Doc}, AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(NumberDb, DID),
     fix_docs(Res, Doc, AccountDb, NumberDb, DID).
@@ -194,10 +195,10 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
             Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
-            knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-                                              %% No caching + bulk doc writes
-                                             ,{batch_run, true}
-                                             ]),
+            _ = knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+                                                  %% No caching + bulk doc writes
+                                                 ,{batch_run, true}
+                                                 ]),
             ok
     end.
 

@@ -41,6 +41,7 @@
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
 -export([create_or_load/3]).
+-export([update_phone_number/2]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -349,7 +350,7 @@ update_phone_number(Number, Routines) ->
     case knm_phone_number:setters(PhoneNumber, Routines) of
         {'error', _R}=Error -> Error;
         {'ok', NewPN} ->
-            save_number(set_phone_number(Number, NewPN))
+            {'ok', save_number(set_phone_number(Number, NewPN))}
     end.
 
 %%--------------------------------------------------------------------
