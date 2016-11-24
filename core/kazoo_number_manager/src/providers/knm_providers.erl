@@ -125,9 +125,10 @@ service_name(Feature) -> Feature.
 provider_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    Possible = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    Possible0 = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    Possible = lists:usort(Possible0 ++ knm_phone_number:features_list(PhoneNumber)),
     AllowedBase = allowed_features(PhoneNumber),
-    Allowed = case lists:member(?FEATURE_E911, Possible) of
+    Allowed = case lists:member(?FEATURE_E911, Possible0) of
                   true -> AllowedBase;
                   false ->
                       %% For backward compatibility
