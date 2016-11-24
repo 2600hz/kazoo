@@ -76,19 +76,30 @@ e911_test_() ->
              ,{?E911_STATE, <<"CA">>}
              ,{?E911_ZIP, <<"94123">>}
              ]),
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
-            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{<<"auth_by_account">>, kz_json:new()}
-            ,{'public_fields', kz_json:from_list([{?FEATURE_E911, E911}])}
-            ],
-    {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
-    PN = knm_number:phone_number(N),
+    JObj = kz_json:from_list([{?FEATURE_E911, E911}]),
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+              ,{<<"auth_by_account">>, kz_json:new()}
+              ,{'public_fields', JObj}
+              ],
+    {'ok', N1} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
+    {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
+    PN1 = knm_number:phone_number(N1),
+    PN2 = knm_number:phone_number(N2),
     [{"Verify feature is properly set"
-     ,?_assertEqual(E911, knm_phone_number:feature(PN, ?FEATURE_E911))
+     ,?_assertEqual(E911, knm_phone_number:feature(PN1, ?FEATURE_E911))
      }
     ,{"Verify we are keeping track of intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>
-                   ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN))
+                   ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN1))
+                   )
+     }
+    ,{"Verify feature is still properly set"
+     ,?_assertEqual(E911, knm_phone_number:feature(PN2, ?FEATURE_E911))
+     }
+    ,{"Verify we are keeping track of same intermediary address_id"
+     ,?_assertEqual(<<"421564943280637078">>
+                   ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN2))
                    )
      }
     ].
@@ -98,21 +109,35 @@ cnam_test_() ->
              [{?CNAM_INBOUND_LOOKUP, true}
              ,{?CNAM_DISPLAY_NAME, <<"my CNAM">>}
              ]),
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
-            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{<<"auth_by_account">>, kz_json:new()}
-            ,{'public_fields', kz_json:from_list([{?FEATURE_CNAM, CNAM}])}
-            ],
-    {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
-    PN = knm_number:phone_number(N),
+    JObj = kz_json:from_list([{?FEATURE_CNAM, CNAM}]),
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+              ,{<<"auth_by_account">>, kz_json:new()}
+              ,{'public_fields', JObj}
+              ],
+    {'ok', N1} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
+    {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
+    PN1 = knm_number:phone_number(N1),
+    PN2 = knm_number:phone_number(N2),
     [{"Verify inbound CNAM is properly activated"
      ,?_assertEqual(true, kz_json:is_true(?CNAM_INBOUND_LOOKUP
-                                         ,knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND)))
+                                         ,knm_phone_number:feature(PN1, ?FEATURE_CNAM_INBOUND)))
      }
     ,{"Verify outbound CNAM is properly set"
      ,?_assertEqual(<<"my CNAM">>
                    ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME
-                                               ,knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND)
+                                               ,knm_phone_number:feature(PN1, ?FEATURE_CNAM_OUTBOUND)
+                                               )
+                   )
+     }
+    ,{"Verify inbound CNAM is still properly activated"
+     ,?_assertEqual(true, kz_json:is_true(?CNAM_INBOUND_LOOKUP
+                                         ,knm_phone_number:feature(PN2, ?FEATURE_CNAM_INBOUND)))
+     }
+    ,{"Verify outbound CNAM is still properly set"
+     ,?_assertEqual(<<"my CNAM">>
+                   ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME
+                                               ,knm_phone_number:feature(PN2, ?FEATURE_CNAM_OUTBOUND)
                                                )
                    )
      }
