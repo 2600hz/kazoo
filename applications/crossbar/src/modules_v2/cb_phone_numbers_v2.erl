@@ -908,8 +908,8 @@ set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
                         'false' -> crossbar_util:response_402(RespJObj, Context)
                     end
             end;
-        Errors ->
-            crossbar_util:response_400(<<"client error">>, Errors, Context)
+        _Errors ->
+            crossbar_util:response_400(<<"client error">>, ResultJObj, Context)
     end;
 
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
