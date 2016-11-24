@@ -349,12 +349,12 @@ from_json(JObj) ->
         end,
     Now = kz_util:current_tstamp(),
     IsBillable = kz_json:is_true(?PVT_IS_BILLABLE, JObj, 'undefined'),
+    UsedBy = kz_json:get_value(?PVT_USED_BY, JObj),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
-                ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+                ,{fun set_assigned_to/3, kz_json:get_value(?PVT_ASSIGNED_TO, JObj), UsedBy}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
                 ,{fun set_features/2, Features}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
@@ -539,9 +539,21 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(N, AssignedTo='undefined') ->
-    N#knm_phone_number{assigned_to=AssignedTo};
+    N#knm_phone_number{assigned_to = AssignedTo
+                      ,used_by = 'undefined'
+                      };
 set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
-    N#knm_phone_number{assigned_to=AssignedTo}.
+    N#knm_phone_number{assigned_to = AssignedTo
+                      ,used_by = 'undefined'
+                      }.
+
+-spec set_assigned_to(knm_phone_number(), api_ne_binary(), api_ne_binary()) -> knm_phone_number().
+set_assigned_to(N0, AssignedTo='undefined', UsedBy) ->
+    N = set_used_by(N0, UsedBy),
+    N#knm_phone_number{assigned_to = AssignedTo};
+set_assigned_to(N0, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy) ->
+    N = set_used_by(N0, UsedBy),
+    N#knm_phone_number{assigned_to = AssignedTo}.
 
 %%--------------------------------------------------------------------
 %% @public
