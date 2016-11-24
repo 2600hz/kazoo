@@ -460,6 +460,7 @@
     "number_manager.force_port_in_outbound": "number_manager force port in outbound",
     "number_manager.force_port_out_outbound": "number_manager force port out outbound",
     "number_manager.locality.url": "number_manager.locality url",
+    "number_manager.maximum_search_quantity": "maximum number of returned DIDs in search query",
     "number_manager.other.default_country": "number_manager.other default country",
     "number_manager.other.endpoints": "number_manager.other endpoints",
     "number_manager.other.phonebook_url": "number_manager.other phonebook url",
