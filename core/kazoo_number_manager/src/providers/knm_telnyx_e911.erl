@@ -232,7 +232,8 @@ reason(RepJObj) ->
 
 -spec e911_address(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
 e911_address(Number, JObj) ->
-    CallerName = caller_name(Number, kz_json:get_ne_binary_value(?E911_NAME, JObj)),
+    E911Name = kz_json:get_ne_binary_value(?E911_NAME, JObj),
+    CallerName = knm_providers:e911_caller_name(Number, E911Name),
     kz_json:from_list(
       props:filter_empty(
         [{<<"business_name">>, CallerName}
@@ -253,14 +254,3 @@ cleanse(NEBin) ->
 is_ALnum_or_space(C) when $0 =< C, C =< $9 -> 'true';
 is_ALnum_or_space(C) when $A =< C, C =< $Z -> 'true';
 is_ALnum_or_space(C) -> $\s =:= C.
-
--spec caller_name(knm_number:knm_number(), api_ne_binary()) -> ne_binary().
-caller_name(_Number, ?NE_BINARY=Name) -> Name;
-caller_name(Number, 'undefined') ->
-    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
-        {'error', _Error} ->
-            lager:error('error opening account doc ~p', [AccountId]),
-            ?E911_NAME_DEFAULT
-    end.
