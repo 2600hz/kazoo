@@ -82,6 +82,8 @@ option_to_kv({K, V}, JObj) ->
 -define(CARRIER_MODULES(AccountId)
        ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
 
+-define(MAX_QUANTITY, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 50)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -374,7 +376,8 @@ create_found(DID=?NE_BINARY, Carrier, Auth, Data, State=?NE_BINARY)
 
 -spec quantity(options()) -> pos_integer().
 quantity(Options) ->
-    props:get_integer_value('quantity', Options, 1).
+    Quantity = props:get_integer_value('quantity', Options, 1),
+    min(Quantity, ?MAX_QUANTITY).
 
 -spec prefix(options()) -> ne_binary().
 -spec prefix(options(), ne_binary()) -> ne_binary().

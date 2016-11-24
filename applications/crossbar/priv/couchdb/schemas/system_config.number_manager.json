@@ -89,6 +89,11 @@
             "description": "number_manager force port out outbound",
             "type": "boolean"
         },
+        "maximum_search_quantity": {
+            "default": 50,
+            "description": "maximum number of returned DIDs in search query",
+            "type": "integer"
+        },
         "porting_module_name": {
             "default": "knm_local",
             "description": "number manager porting module name",

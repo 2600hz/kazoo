@@ -391,10 +391,9 @@ find_numbers(Context) ->
         fun(C) ->
                 lager:debug("carriers find: ~p", [Options]),
                 Prefix = knm_carriers:prefix(Options),
-                Quantity = knm_carriers:quantity(Options),
                 Found =
                     [kz_json:get_value(<<"number">>, JObj)
-                     || JObj <- knm_carriers:find(Prefix, Quantity, Options)
+                     || JObj <- knm_carriers:find(Prefix, knm_carriers:quantity(Options), Options)
                     ],
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
