@@ -350,7 +350,7 @@ update_phone_number(Number, Routines) ->
     case knm_phone_number:setters(PhoneNumber, Routines) of
         {'error', _R}=Error -> Error;
         {'ok', NewPN} ->
-            save_number(set_phone_number(Number, NewPN))
+            {'ok', save_number(set_phone_number(Number, NewPN))}
     end.
 
 %%--------------------------------------------------------------------
