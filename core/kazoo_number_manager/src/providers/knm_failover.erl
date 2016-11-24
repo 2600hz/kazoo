@@ -81,7 +81,7 @@ update_failover(Number) ->
         'true' ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' when NotChanged ->
-            knm_services:deactivate_feature(Number, ?KEY);
+            Number;
         'false' ->
             knm_services:activate_feature(Number, {?KEY, Failover})
     end.
