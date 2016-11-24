@@ -57,10 +57,10 @@
 
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()
-                          ,assign_to :: api_binary()
-                          ,assigned_to :: api_binary()
-                          ,prev_assigned_to :: api_binary()
-                          ,used_by :: api_binary()
+                          ,assign_to :: api_ne_binary()
+                          ,assigned_to :: api_ne_binary()
+                          ,prev_assigned_to :: api_ne_binary()
+                          ,used_by :: api_ne_binary()
                           ,features = kz_json:new() :: kz_json:object()
                           ,state :: ne_binary()
                           ,reserve_history = [] :: ne_binaries()
@@ -68,7 +68,7 @@
                           ,module_name = knm_carriers:default_carrier() :: ne_binary()
                           ,carrier_data = kz_json:new() :: kz_json:object()
                           ,region :: ne_binary()
-                          ,auth_by :: api_binary()
+                          ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
                           ,locality :: kz_json:object()
@@ -144,11 +144,10 @@ fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     case fetch(NumberDb, NormalizedNum, Options) of
+        {'ok', JObj} -> handle_fetched_result(JObj, Options);
         {'error', _R}=Error ->
             lager:debug("failed to open ~s in ~s: ~p", [NormalizedNum, NumberDb, _R]),
-            Error;
-        {'ok', JObj} ->
-            handle_fetched_result(JObj, Options)
+            Error
     end.
 
 fetch(NumberDb, NormalizedNum, Options) ->
@@ -194,28 +193,28 @@ delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 delete(PhoneNumber) ->
-    Routines = [fun (PN) ->
-                        case delete_number_doc(PN) of
-                            {'ok', _}=Ok -> Ok;
-                            {'error', _R} ->
-                                lager:debug("number doc for ~s not removed: ~p"
-                                           ,[number(PN), _R]),
-                                {'ok', PN}
-                        end
-                end
-               ,fun (PN) ->
-                        case maybe_remove_number_from_account(PN) of
-                            {'ok', _}=Ok -> Ok;
-                            {'error', _R} ->
-                                lager:debug("account doc for ~s not removed: ~p"
-                                           ,[number(PN), _R]),
-                                {'ok', PN}
-                        end
-                end
+    Routines = [fun try_delete_number_doc/1
+               ,fun try_maybe_remove_number_from_account/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
+
+try_delete_number_doc(PN) ->
+    case delete_number_doc(PN) of
+        {'ok', _}=Ok -> Ok;
+        {'error', _R} ->
+            lager:debug("number doc for ~s not removed: ~p", [number(PN), _R]),
+            {'ok', PN}
+    end.
+
+try_maybe_remove_number_from_account(PN) ->
+    case maybe_remove_number_from_account(PN) of
+        {'ok', _}=Ok -> Ok;
+        {'error', _R} ->
+            lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
+            {'ok', PN}
+    end.
 
 -spec release(knm_phone_number()) -> knm_phone_number().
 -spec release(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -232,11 +231,9 @@ release(PhoneNumber, ?NUMBER_STATE_PORT_IN) ->
     authorize_release(PhoneNumber);
 release(PhoneNumber, ?NUMBER_STATE_IN_SERVICE) ->
     authorize_release(PhoneNumber);
-release(PhoneNumber, FromState) ->
-    knm_errors:invalid_state_transition(PhoneNumber
-                                       ,FromState
-                                       ,?NUMBER_STATE_RELEASED
-                                       ).
+release(PN, FromState) ->
+    To = ?NUMBER_STATE_RELEASED,
+    knm_errors:invalid_state_transition(PN, FromState, To).
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 -spec authorize_release(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -265,13 +262,12 @@ authorize_release(PhoneNumber, AuthBy) ->
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
-    Routines =
-        [{fun set_features/2, kz_json:new()}
-        ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
-        ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-        ,{fun set_assigned_to/2, 'undefined'}
-        ,{fun set_state/2, ReleasedState}
-        ],
+    Routines = [{fun set_features/2, kz_json:new()}
+               ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
+               ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
+               ,{fun set_assigned_to/2, 'undefined'}
+               ,{fun set_state/2, ReleasedState}
+               ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
     NewPhoneNumber.
 
@@ -353,12 +349,12 @@ from_json(JObj) ->
         end,
     Now = kz_util:current_tstamp(),
     IsBillable = kz_json:is_true(?PVT_IS_BILLABLE, JObj, 'undefined'),
+    UsedBy = kz_json:get_value(?PVT_USED_BY, JObj),
     {'ok', PhoneNumber} =
         setters(new(),
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
-                ,{fun set_assigned_to/2, kz_json:get_value(?PVT_ASSIGNED_TO, JObj)}
+                ,{fun set_assigned_to/3, kz_json:get_value(?PVT_ASSIGNED_TO, JObj), UsedBy}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_used_by/2, kz_json:get_value(?PVT_USED_BY, JObj)}
                 ,{fun set_features/2, Features}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
@@ -543,9 +539,21 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(N, AssignedTo='undefined') ->
-    N#knm_phone_number{assigned_to=AssignedTo};
+    N#knm_phone_number{assigned_to = AssignedTo
+                      ,used_by = 'undefined'
+                      };
 set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
-    N#knm_phone_number{assigned_to=AssignedTo}.
+    N#knm_phone_number{assigned_to = AssignedTo
+                      ,used_by = 'undefined'
+                      }.
+
+-spec set_assigned_to(knm_phone_number(), api_ne_binary(), api_ne_binary()) -> knm_phone_number().
+set_assigned_to(N0, AssignedTo='undefined', UsedBy) ->
+    N = set_used_by(N0, UsedBy),
+    N#knm_phone_number{assigned_to = AssignedTo};
+set_assigned_to(N0, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy) ->
+    N = set_used_by(N0, UsedBy),
+    N#knm_phone_number{assigned_to = AssignedTo}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1003,12 +1011,10 @@ assign(PhoneNumber, AssignedTo) ->
     AccountDb = kz_util:format_account_db(AssignedTo),
     case datamgr_save(PhoneNumber, AccountDb, to_json(PhoneNumber)) of
         {'error', E} ->
-            lager:error("failed to assign number ~s to ~s"
-                       ,[number(PhoneNumber), AccountDb]),
+            lager:error("failed to assign number ~s to ~s", [number(PhoneNumber), AccountDb]),
             knm_errors:assign_failure(PhoneNumber, E);
         {'ok', JObj} ->
-            lager:debug("assigned number ~s to ~s"
-                       ,[number(PhoneNumber), AccountDb]),
+            lager:debug("assigned number ~s to ~s", [number(PhoneNumber), AccountDb]),
             from_json_with_options(JObj, PhoneNumber)
     end.
 -endif.
