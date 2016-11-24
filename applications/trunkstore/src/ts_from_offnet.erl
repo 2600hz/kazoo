@@ -58,7 +58,6 @@ endpoint_data(State) ->
 -spec proceed_with_endpoint(ts_callflow:state(), kz_json:object(), kz_json:object()) -> 'ok'.
 proceed_with_endpoint(State, Endpoint, JObj) ->
     CallID = ts_callflow:get_aleg_id(State),
-    Q = ts_callflow:get_my_queue(State),
     'true' = kapi_dialplan:bridge_endpoint_v(Endpoint),
 
     MediaHandling = case kz_json:is_true([<<"Custom-Channel-Vars">>, <<"Executing-Extension">>], JObj)
@@ -67,25 +66,27 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
                         'true' -> <<"process">>; %% bypass media is false, process media
                         'false' -> <<"bypass">>
                     end,
+
     Id = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Authorizing-ID">>], Endpoint),
+
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}
               ,{<<"Media">>, MediaHandling}
               ,{<<"Dial-Endpoint-Method">>, <<"single">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Trunkstore-ID">>, Id}])}
-               | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                       ,<<"call">>, <<"command">>
+                                       ,?APP_NAME, ?APP_VERSION
+                                       )
               ],
     State1 = ts_callflow:set_failover(State, kz_json:get_value(<<"Failover">>, Endpoint, kz_json:new())),
     State2 = ts_callflow:set_endpoint_data(State1, Endpoint),
     send_park(State2, Command).
 
+-spec send_park(ts_callflow:state(), kz_proplist()) -> 'ok'.
 send_park(State, Command) ->
-    State1 = ts_callflow:send_park(State),
-    wait_for_win(State1, Command).
-
-wait_for_win(State, Command) ->
-    case ts_callflow:wait_for_win(State) of
+    case ts_callflow:send_park(State) of
         {'lost', _} -> 'normal';
         {'won', State1} ->
             lager:info("route won, sending command"),
@@ -96,29 +97,39 @@ send_onnet(State, Command) ->
     lager:info("sending onnet command: ~p", [Command]),
     CtlQ = ts_callflow:get_control_queue(State),
     _ = maybe_send_privacy(State),
-    _ = kapi_dialplan:publish_command(CtlQ, Command),
-    _ = wait_for_bridge(State),
+
+    ts_callflow:send_command(State
+                            ,Command
+                            ,fun(API) -> kapi_dialplan:publish_command(CtlQ, API) end
+                            ),
+    Timeout = kz_json:get_integer_value([<<"Endpoints">>, 1, <<"Timeout">>], kz_json:from_list(Command)),
+    _ = wait_for_bridge(State, Timeout),
     ts_callflow:send_hangup(State).
 
 -spec maybe_send_privacy(ts_callflow:state()) -> 'ok'.
 maybe_send_privacy(State) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     case ?CALLER_PRIVACY(CCVs) of
+        'false' -> 'ok';
         'true' ->
-            Q = ts_callflow:get_my_queue(State),
             CtlQ = ts_callflow:get_control_queue(State),
             CallID = ts_callflow:get_aleg_id(State),
             Command = [{<<"Application-Name">>, <<"privacy">>}
                       ,{<<"Privacy-Mode">>, <<"full">>}
                       ,{<<"Call-ID">>, CallID}
-                       | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+                       | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                               ,<<"call">>, <<"command">>
+                                               ,?APP_NAME, ?APP_VERSION
+                                               )
                       ],
-            kapi_dialplan:publish_command(CtlQ, Command);
-        'false' -> 'ok'
+            ts_callflow:send_command(State
+                                    ,Command
+                                    ,fun(API) ->  kapi_dialplan:publish_command(CtlQ, API) end
+                                    )
     end.
 
-wait_for_bridge(State) ->
-    case ts_callflow:wait_for_bridge(State) of
+wait_for_bridge(State, Timeout) ->
+    case ts_callflow:wait_for_bridge(State, Timeout) of
         {'hangup', _} -> 'ok';
         {'error', State1} ->
             lager:info("error waiting for bridge, try failover"),
@@ -157,7 +168,7 @@ try_failover_sip(_, 'undefined') ->
 try_failover_sip(State, SIPUri) ->
     CallID = ts_callflow:get_aleg_id(State),
     CtlQ = ts_callflow:get_control_queue(State),
-    Q = ts_callflow:get_my_queue(State),
+
     lager:info("routing to failover sip uri: ~s", [SIPUri]),
     EndPoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                  ,{<<"Route">>, SIPUri}
@@ -166,10 +177,16 @@ try_failover_sip(State, SIPUri) ->
     Command = [{<<"Call-ID">>, CallID}
               ,{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [EndPoint]}
-               | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                       ,<<"call">>, <<"command">>
+                                       ,?APP_NAME, ?APP_VERSION
+                                       )
               ],
-    kapi_dialplan:publish_command(CtlQ, Command),
-    wait_for_bridge(ts_callflow:set_failover(State, kz_json:new())).
+    ts_callflow:send_command(State
+                            ,Command
+                            ,fun(API) -> kapi_dialplan:publish_command(CtlQ, API) end
+                            ),
+    wait_for_bridge(ts_callflow:set_failover(State, kz_json:new()), 20).
 
 try_failover_e164(State, ToDID) ->
     RouteReq = ts_callflow:get_request_data(State),
@@ -180,8 +197,10 @@ try_failover_e164(State, ToDID) ->
 
     Endpoint = ts_callflow:get_endpoint_data(State),
 
+    Timeout = kz_json:get_integer_value(<<"timeout">>, Endpoint),
+
     CtlQ = ts_callflow:get_control_queue(State),
-    Q = ts_callflow:get_my_queue(State),
+
     CCVs = ts_callflow:get_custom_channel_vars(State),
 
     Req = [{<<"Call-ID">>, CallID}
@@ -191,7 +210,7 @@ try_failover_e164(State, ToDID) ->
           ,{<<"Control-Queue">>, CtlQ}
           ,{<<"Application-Name">>, <<"bridge">>}
           ,{<<"Flags">>, kz_json:get_value(<<"flags">>, Endpoint)}
-          ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, Endpoint)}
+          ,{<<"Timeout">>, Timeout}
           ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, Endpoint)}
           ,{<<"Outbound-Caller-ID-Name">>, kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, OriginalCIdName)}
           ,{<<"Outbound-Caller-ID-Number">>, kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, OriginalCIdNumber)}
@@ -200,11 +219,16 @@ try_failover_e164(State, ToDID) ->
           ,{<<"Custom-SIP-Headers">>, ts_callflow:get_custom_sip_headers(State)}
           ,{<<"Inception">>,  kz_json:get_value(<<"Inception">>, CCVs)}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
-           | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+           | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                   ,?APP_NAME, ?APP_VERSION
+                                   )
           ],
     lager:info("sending offnet request for DID ~s", [ToDID]),
-    kapi_offnet_resource:publish_req(props:filter_undefined(Req)),
-    wait_for_bridge(ts_callflow:set_failover(State, kz_json:new())).
+    ts_callflow:send_command(State
+                            ,props:filter_undefined(Req)
+                            ,fun kapi_offnet_resource:publish_req/1
+                            ),
+    wait_for_bridge(ts_callflow:set_failover(State, kz_json:new()), Timeout).
 
 %%--------------------------------------------------------------------
 %% Out-of-band functions
@@ -345,7 +369,7 @@ routing_data(ToDID, AccountId, Settings) ->
                                  ,kz_json:get_value(<<"timeout">>, AcctStuff)
                                  ]),
 
-    [KV || {_,V}=KV <- [ {<<"Invite-Format">>, InboundFormat}
+    [KV || {_,V}=KV <- [{<<"Invite-Format">>, InboundFormat}
                        ,{<<"Codecs">>, kz_json:find(<<"codecs">>, [SrvOptions, Srv])}
                        ,{<<"Bypass-Media">>, BypassMedia}
                        ,{<<"Endpoint-Progress-Timeout">>, ProgressTimeout}

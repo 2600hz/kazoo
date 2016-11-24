@@ -11,16 +11,15 @@
 -export([init/2
         ,start_amqp/1
         ,send_park/1
-        ,wait_for_win/1
-        ,wait_for_bridge/1
-        ,send_hangup/1
-        ,send_hangup/2
+        ,wait_for_bridge/2
+        ,send_hangup/1, send_hangup/2
+        ,send_command/3
         ]).
 
 %% data access functions
 -export([get_request_data/1
-        ,get_my_queue/1
         ,get_control_queue/1
+        ,get_worker_queue/1
         ,get_custom_channel_vars/1
         ,get_custom_sip_headers/1
         ,set_endpoint_data/2
@@ -55,28 +54,23 @@ init(RouteReqJObj, Type) ->
             {'error', 'not_ts_account'};
         'true' ->
             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], RouteReqJObj),
-            #ts_callflow_state{
-               aleg_callid=CallID
+            #ts_callflow_state{aleg_callid=CallID
                               ,route_req_jobj=RouteReqJObj
                               ,acctid=AccountId
                               ,acctdb=kz_util:format_account_id(AccountId, 'encoded')
-              }
+                              }
     end.
 
 -spec start_amqp(state()) -> state().
 start_amqp(#ts_callflow_state{}=State) ->
-    %% Trunkstore is pre-gen_listener so do it
-    %% manually till it can be refactored
-    Q = amqp_util:new_queue(),
-    _ = kapi_self:bind_q(Q, []),
-    _ = amqp_util:basic_consume(Q, [{'exclusive', 'false'}]),
-    lager:info("started AMQP with queue ~s", [Q]),
-    State#ts_callflow_state{my_q=Q}.
+    {'ok', Worker} = kz_amqp_worker:checkout_worker(),
+    lager:debug("using worker ~p", [Worker]),
+    State#ts_callflow_state{amqp_worker=Worker}.
 
--spec send_park(state()) -> state().
-send_park(#ts_callflow_state{my_q=Q
-                            ,route_req_jobj=JObj
+-spec send_park(state()) -> {'won' | 'lost', state()}.
+send_park(#ts_callflow_state{route_req_jobj=JObj
                             ,acctid=AccountId
+                            ,amqp_worker=Worker
                             }=State) ->
     Resp = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
            ,{<<"Routes">>, []}
@@ -84,49 +78,62 @@ send_park(#ts_callflow_state{my_q=Q
            ,{<<"Method">>, <<"park">>}
            ,{<<"From-Realm">>, kz_util:get_account_realm(AccountId)}
            ,{<<"Custom-Channel-Vars">>, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())}
-            | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
+            | kz_api:default_headers(get_worker_queue(State)
+                                    ,?APP_NAME, ?APP_VERSION
+                                    )
            ],
     lager:info("trunkstore knows how to route this call, sending park route response"),
-    kapi_route:publish_resp(kz_api:server_id(JObj), Resp),
-    State.
+    kz_amqp_worker:relay_to(Worker, self()),
+    kz_amqp_worker:cast(Resp
+                       ,fun(API) -> kapi_route:publish_resp(kz_api:server_id(JObj), API) end
+                       ,Worker
+                       ),
+    wait_for_win(State, ?WAIT_FOR_WIN_TIMEOUT).
 
--spec wait_for_win(state()) -> {'won' | 'lost', state()}.
-wait_for_win(#ts_callflow_state{aleg_callid=CallID
-                               ,my_q=Q
-                               }=State) ->
-    receive
-        #'basic.consume_ok'{} -> wait_for_win(State);
-        %% call events come from callevt exchange, ignore for now
-        {#'basic.deliver'{exchange = <<"targeted">>}, #amqp_msg{payload=Payload}} ->
-            WinJObj = kz_json:decode(Payload),
-            'true' = kapi_route:win_v(WinJObj),
-            CallID = kapi_route:call_id(WinJObj),
-            CallctlQ = kapi_route:control_queue(WinJObj),
-            lager:info("callflow has received a route win, taking control of the call"),
-            kapi_call:bind_q(Q, [{'callid', CallID}]),
-            {'won', State#ts_callflow_state{callctl_q=CallctlQ}}
-    after ?WAIT_FOR_WIN_TIMEOUT ->
-            lager:info("timed out(~b) waiting for route_win, going down", [?WAIT_FOR_WIN_TIMEOUT]),
-            {'lost', State}
-    end.
+-spec wait_for_win(state(), pos_integer()) -> {'won' | 'lost', state()}.
+-spec wait_for_win(state(), pos_integer(), kapps_call_command:request_return()) ->
+                          {'won' | 'lost', state()}.
+wait_for_win(State, Timeout) ->
+    wait_for_win(State, Timeout, kapps_call_command:receive_event(Timeout)).
 
--spec wait_for_bridge(state()) -> {'hangup' | 'error', state()}.
-wait_for_bridge(State) ->
-    receive
-        #'basic.consume_ok'{} -> wait_for_bridge(State);
-        {_, #amqp_msg{payload=Payload}} ->
-            JObj = kz_json:decode(Payload),
-            case process_event_for_bridge(State, JObj) of
-                'ignore' -> wait_for_bridge(State);
-                {'error', _}=Error -> Error;
-                {'hangup', _}=Hangup -> Hangup
-            end;
-        {'$gen_cast',{'kz_amqp_assignment',_}} ->
-            wait_for_bridge(State);
-        _E ->
-            lager:info("unexpected msg: ~p", [_E]),
-            wait_for_bridge(State)
-    end.
+wait_for_win(State, Timeout, {'ok', JObj}) ->
+    case kapi_route:win_v(JObj) of
+        'true' -> route_won(State, JObj);
+        'false' -> wait_for_win(State, Timeout)
+    end;
+wait_for_win(State, _Timeout, {'error', 'timeout'}) ->
+    lager:info("failed to receive route_win"),
+    {'lost', State}.
+
+-spec route_won(state(), kz_json:object()) -> {'won', state()}.
+route_won(#ts_callflow_state{amqp_worker=Worker}=State, RouteWin) ->
+    gen_listener:add_binding(Worker
+                            ,'call'
+                            ,[{'callid', kapi_route:call_id(RouteWin)}]
+                            ),
+
+    lager:info("callflow has received a route win, taking control of the call"),
+
+    {'won', State#ts_callflow_state{callctl_q=kapi_route:control_queue(RouteWin)}}.
+
+-spec wait_for_bridge(state(), api_integer()) ->
+                             {'hangup' | 'error', state()}.
+-spec wait_for_bridge(state(), api_integer(), kapps_call_command:request_return()) ->
+                             {'hangup' | 'error', state()}.
+wait_for_bridge(State, 'undefined') ->
+    wait_for_bridge(State, 20);
+wait_for_bridge(State, Timeout) ->
+    wait_for_bridge(State, Timeout, kapps_call_command:receive_event(Timeout * 1000)).
+
+wait_for_bridge(State, Timeout, {'ok', EventJObj}) ->
+    case process_event_for_bridge(State, EventJObj) of
+        'ignore' -> wait_for_bridge(State, Timeout);
+        {'error', _}=Error -> Error;
+        {'hangup', _}=Hangup -> Hangup
+    end;
+wait_for_bridge(State, Timeout, {'error', 'timeout'}) ->
+    lager:info("timed out waiting for bridge, waiting again"),
+    wait_for_bridge(State, Timeout).
 
 -spec process_event_for_bridge(state(), kz_json:object()) ->
                                       'ignore' | {'hangup' | 'error', state()}.
@@ -234,23 +241,37 @@ get_app(JObj) ->
 send_hangup(#ts_callflow_state{callctl_q = <<>>}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
-                              ,my_q=Q
-                              ,aleg_callid=CallID}) ->
+                              ,aleg_callid=CallID
+                              ,amqp_worker=Worker
+                              }=State) ->
     Command = [{<<"Application-Name">>, <<"hangup">>}
               ,{<<"Call-ID">>, CallID}
               ,{<<"Insert-At">>, <<"now">>}
-               | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
+               | kz_api:default_headers(get_worker_queue(State)
+                                       ,<<"call">>, <<"command">>
+                                       ,?APP_NAME, ?APP_VERSION
+                                       )
               ],
-    lager:info("Sending hangup to ~s: ~p", [CtlQ, Command]),
-    kz_amqp_worker:cast(Command, fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end).
+    lager:info("sending hangup to ~s: ~p", [CtlQ, Command]),
+    kz_amqp_worker:cast(Command
+                       ,fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end
+                       ,Worker
+                       ).
 
 -spec send_hangup(state(), api_binary()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q = 'undefined'}, _) -> 'ok';
 send_hangup(#ts_callflow_state{callctl_q=CtlQ
-                              ,aleg_callid=CallId}, Code) ->
+                              ,aleg_callid=CallId
+                              }
+           ,Code
+           ) ->
     lager:debug("responding to aleg with ~p", [Code]),
     kz_call_response:send(CallId, CtlQ, Code).
+
+-spec send_command(state(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
+send_command(#ts_callflow_state{amqp_worker=Worker}, Command, PubFun) ->
+    kz_amqp_worker:cast(Command, PubFun, Worker).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
@@ -278,10 +299,12 @@ set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 -spec get_account_id(state()) -> ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_my_queue(state()) -> ne_binary().
 -spec get_control_queue(state()) -> ne_binary().
-get_my_queue(#ts_callflow_state{my_q=Q}) -> Q.
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
+
+-spec get_worker_queue(state()) -> ne_binary().
+get_worker_queue(#ts_callflow_state{amqp_worker=Worker}) ->
+    gen_listener:queue_name(Worker).
 
 -spec get_aleg_id(state()) -> api_binary().
 -spec get_bleg_id(state()) -> api_binary().
