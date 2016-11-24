@@ -171,7 +171,7 @@ update_e911(_Number, Address, 'true') -> Address;
 update_e911(Number, Address, 'false') ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     Location = json_address_to_xml_location(Address),
-    CallerName = kz_json:get_ne_value(<<"caller_name">>, Address, <<"Valued Customer">>),
+    CallerName = caller_name(Number, kz_json:get_ne_binary_value(?E911_NAME, Address)),
     case add_location(Num, Location, CallerName) of
         {'provisioned', E911} ->
             lager:debug("provisioned address"),
@@ -193,6 +193,17 @@ provision_geocoded(E911) ->
         Status ->
             lager:debug("provisioning attempt moved location to status: ~s", [Status]),
             kz_json:set_value(<<"status">>, Status, E911)
+    end.
+
+-spec caller_name(knm_number:knm_number(), api_ne_binary()) -> ne_binary().
+caller_name(_Number, ?NE_BINARY=Name) -> Name;
+caller_name(Number, 'undefined') ->
+    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
+        {'error', _Error} ->
+            lager:error('error opening account doc ~p', [AccountId]),
+            ?E911_NAME_DEFAULT
     end.
 
 %%--------------------------------------------------------------------
@@ -416,7 +427,7 @@ location_xml_to_json_address(Xml) ->
         [{?E911_STREET1, kz_util:get_xml_value("address1/text()", Xml)}
         ,{?E911_STREET2, kz_util:get_xml_value("address2/text()", Xml)}
         ,{<<"activated_time">>, kz_util:get_xml_value("activated_time/text()", Xml)}
-        ,{<<"caller_name">>, kz_util:get_xml_value("callername/text()", Xml)}
+        ,{?E911_NAME, kz_util:get_xml_value("callername/text()", Xml)}
         ,{<<"comments">>, kz_util:get_xml_value("comments/text()", Xml)}
         ,{?E911_CITY, kz_util:get_xml_value("community/text()", Xml)}
         ,{<<"order_id">>, kz_util:get_xml_value("customerorderid/text()", Xml)}

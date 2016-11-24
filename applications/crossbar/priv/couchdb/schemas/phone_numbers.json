@@ -24,6 +24,7 @@
                 },
                 "caller_name": {
                     "description": "The name that will show to emergency services",
+                    "minLength": 3,
                     "type": "string"
                 },
                 "extended_address": {

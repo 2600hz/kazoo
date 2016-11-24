@@ -234,14 +234,12 @@ update_e911(Number, Address) ->
 -spec e911_options(knm_number:knm_number(), kz_json:object()) ->
                           knm_vitelity_util:query_options().
 e911_options(Number, AddressJObj) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    DID = knm_phone_number:number(PhoneNumber),
+    DID = knm_phone_number:number(knm_number:phone_number(Number)),
     State = knm_vitelity_util:get_short_state(kz_json:get_value(?E911_STATE, AddressJObj)),
     {UnitType, UnitNumber} = get_unit(kz_json:get_value(?E911_STREET2, AddressJObj)),
     [{'qs', props:filter_undefined(
               [{'did', knm_converters:to_npan(DID)}
-              ,{'name', kz_json:get_value(<<"customer_name">>, AddressJObj, get_account_name(AccountId))}
+              ,{'name', get_caller_name(Number, AddressJObj)}
               ,{'address', kz_json:get_value(?E911_STREET1, AddressJObj)}
               ,{'unittype', UnitType}
               ,{'unitnumber', UnitNumber}
@@ -270,19 +268,23 @@ get_unit(ExtendedAddress) ->
         _ -> {'undefined', 'undefined'}
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_account_name(ne_binary()) -> api_binary().
-get_account_name(AccountId) ->
+-spec get_caller_name(knm_number:knm_number(), kz_json:object()) -> ne_binary().
+get_caller_name(Number, AddressJObj) ->
+    case kz_json:get_ne_binary_value(<<"customer_name">>, AddressJObj) of
+        ?NE_BINARY=Name -> Name;
+        'undefined' ->
+            caller_name(Number, kz_json:get_ne_binary_value(?E911_NAME, AddressJObj))
+    end.
+
+-spec caller_name(knm_number:knm_number(), api_ne_binary()) -> ne_binary().
+caller_name(_Number, ?NE_BINARY=Name) -> Name;
+caller_name(Number, 'undefined') ->
+    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
     case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj);
+        {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
         {'error', _Error} ->
             lager:error('error opening account doc ~p', [AccountId]),
-            'undefined'
+            ?E911_NAME_DEFAULT
     end.
 
 %%--------------------------------------------------------------------
@@ -294,7 +296,12 @@ get_account_name(AccountId) ->
 -spec location_options(kz_json:object()) -> knm_vitelity_util:query_options().
 location_options(AddressJObj) ->
     State = knm_vitelity_util:get_short_state(kz_json:get_value(?E911_STATE, AddressJObj)),
-    [{'qs', [{'name', kz_json:get_value(<<"customer_name">>, AddressJObj)}
+    CallerName = case kz_json:get_ne_binary_value(<<"customer_name">>, AddressJObj) of
+                     ?NE_BINARY=Name -> Name;
+                     'undefined' ->
+                         kz_json:get_ne_binary_value(?E911_NAME, AddressJObj, ?E911_NAME_DEFAULT)
+                 end,
+    [{'qs', [{'name', CallerName}
             ,{'address', kz_json:get_value(?E911_STREET1, AddressJObj)}
             ,{'city', kz_json:get_value(?E911_CITY, AddressJObj)}
             ,{'state', State}

@@ -78,10 +78,12 @@
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).
 
+-define(E911_CITY, <<"locality">>).
+-define(E911_NAME, <<"caller_name">>).
+-define(E911_NAME_DEFAULT, <<"Valued Customer">>).
+-define(E911_STATE, <<"region">>).
 -define(E911_STREET1, <<"street_address">>).
 -define(E911_STREET2, <<"extended_address">>).
--define(E911_CITY, <<"locality">>).
--define(E911_STATE, <<"region">>).
 -define(E911_ZIP, <<"postal_code">>).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
