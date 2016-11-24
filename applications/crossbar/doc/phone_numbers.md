@@ -1355,6 +1355,7 @@ curl -v -X PUT \
         "used_by": "callflow",
         "id": "{{NUMBER}}",
         "e911": {
+            "caller_name": "{{NAME}}",
             "postal_code": "{{ZIP_CODE}}",
             "street_address": "{{ADDRESS}}",
             "extended_address": "{{EXTENDED}}",
@@ -1375,6 +1376,7 @@ curl -v -X PUT \
         "address": {
             "invalid": {
                 "cause": {
+                    "caller_name": "{{NAME}}",
                     "postal_code": "{{ZIP_CODE}}",
                     "street_address": "{{ADDRESS}}",
                     "extended_address": "{{EXTENDED}}",
@@ -1437,7 +1439,7 @@ curl -v -X PUT \
         "e911": {
             "street_address": "116 NATOMA ST",
             "extended_address": "APT 116",
-            "caller_name": "Valued Customer",
+            "caller_name": "Michel Mabel",
             "locality": "SAN FRANCISCO",
             "latitude": "37.786861",
             "longitude": "-122.399484",

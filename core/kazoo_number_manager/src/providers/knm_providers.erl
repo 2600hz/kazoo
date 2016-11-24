@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_providers).
 
@@ -16,6 +17,7 @@
 -export([allowed_features/1
         ,service_name/2
         ]).
+-export([e911_caller_name/2]).
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
@@ -89,6 +91,7 @@ maybe_fix_e911(Features) ->
         'true' -> Features ++ [<<"e911">>];
         'false' -> Features
     end.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -102,6 +105,28 @@ service_name(?FEATURE_CNAM, AccountId) ->
     service_name(?CNAM_PROVIDER(AccountId));
 service_name(Feature, _) ->
     service_name(Feature).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Util function to get E911 caller name defaults.
+%% @end
+%%--------------------------------------------------------------------
+-spec e911_caller_name(knm_number:knm_number(), api_ne_binary()) -> ne_binary().
+-ifdef(TEST).
+e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
+e911_caller_name(_Number, 'undefined') -> ?E911_NAME_DEFAULT.
+-else.
+e911_caller_name(_Number, ?NE_BINARY=Name) -> Name;
+e911_caller_name(Number, 'undefined') ->
+    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:name(JObj, ?E911_NAME_DEFAULT);
+        {'error', _Error} ->
+            lager:error('error opening account doc ~p', [AccountId]),
+            ?E911_NAME_DEFAULT
+    end.
+-endif.
 
 %%%===================================================================
 %%% Internal functions

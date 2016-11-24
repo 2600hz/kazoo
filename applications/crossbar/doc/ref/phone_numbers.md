@@ -11,7 +11,7 @@ Key | Description | Type | Default | Required
 `cnam.inbound_lookup` |   | `boolean` |   | `false`
 `e911` |   | `object` |   | `false`
 `e911.activated_time` | The time stamp e911 was provisioned | `string` |   | `false`
-`e911.caller_name` | The name that will show to emergency services | `string` |   | `false`
+`e911.caller_name` | The name that will show to emergency services | `string(3..)` |   | `false`
 `e911.extended_address` | The suit/floor/apt. address where the number is in service | `string` |   | `false`
 `e911.latitude` | The e911 provisioning system calculated service address latitude | `string` |   | `false`
 `e911.legacy_data` | Legacy E911 information | `object` |   | `false`

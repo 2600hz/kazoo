@@ -131,17 +131,16 @@ maybe_update_e911(Number, 'false') ->
                          {'error', ne_binary()}.
 update_e911(Number, AddressJObj) ->
     remove_number_address(Number),
-    AccountId = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
-    case create_address(AccountId, AddressJObj) of
+    case create_address(Number, AddressJObj) of
         {'error', _}=E -> E;
         {'ok', AddressId} -> assign_address(Number, AddressId)
     end.
 
--spec create_address(ne_binary(), kz_json:object()) ->
+-spec create_address(knm_number:knm_number(), kz_json:object()) ->
                             {'ok', ne_binary()} |
                             {'error', ne_binary() | any()}.
-create_address(AccountId, AddressJObj) ->
-    Body = e911_address(AccountId, AddressJObj),
+create_address(Number, AddressJObj) ->
+    Body = e911_address(Number, AddressJObj),
     try knm_telnyx_util:req('post', ["e911_addresses"], Body) of
         Rep ->
             %% Telnyx has at least 2 different ways of returning errors:
@@ -231,11 +230,13 @@ reason(RepJObj) ->
     lager:error("~s", [Reason]),
     Reason.
 
--spec e911_address(ne_binary(), kz_json:object()) -> kz_json:object().
-e911_address(AccountId, JObj) ->
+-spec e911_address(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
+e911_address(Number, JObj) ->
+    E911Name = kz_json:get_ne_binary_value(?E911_NAME, JObj),
+    CallerName = knm_providers:e911_caller_name(Number, E911Name),
     kz_json:from_list(
       props:filter_empty(
-        [{<<"business_name">>, account_name(AccountId)}
+        [{<<"business_name">>, CallerName}
         ,{<<"city">>, cleanse(kz_json:get_ne_binary_value(?E911_CITY, JObj))}
         ,{<<"state">>, cleanse(kz_json:get_ne_binary_value(?E911_STATE, JObj))}
         ,{<<"postal_code">>, kz_json:get_ne_binary_value(?E911_ZIP, JObj)}
@@ -253,23 +254,3 @@ cleanse(NEBin) ->
 is_ALnum_or_space(C) when $0 =< C, C =< $9 -> 'true';
 is_ALnum_or_space(C) when $A =< C, C =< $Z -> 'true';
 is_ALnum_or_space(C) -> $\s =:= C.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec account_name(ne_binary()) -> ne_binary().
-default_account_name() -> <<"Valued customer">>.
--ifdef(TEST).
-account_name(_) -> default_account_name().
--else.
-account_name(AccountId) ->
-    case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> kz_account:name(JObj, default_account_name());
-        {'error', _Error} ->
-            lager:error('error opening account doc ~p', [AccountId]),
-            default_account_name()
-    end.
--endif.
