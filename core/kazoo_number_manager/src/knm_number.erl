@@ -420,6 +420,10 @@ reconcile_number(Number, Options) ->
                 ,knm_phone_number:doc(PhoneNumber)
                 ,fun knm_phone_number:update_doc/2
                 }
+               ,{knm_number_options:module_name(Options)
+                ,knm_phone_number:module_name(PhoneNumber)
+                ,fun knm_phone_number:set_module_name/2
+                }
                ,{?NUMBER_STATE_IN_SERVICE
                 ,knm_phone_number:state(PhoneNumber)
                 ,fun knm_phone_number:set_state/2
@@ -431,13 +435,10 @@ reconcile_number(Number, Options) ->
             save_wrap_phone_number(UpdatedPhoneNumber, Number)
     end.
 
--spec updates_require_save(knm_phone_number:knm_phone_number(), up_req_els()) ->
-                                  up_req_acc().
+-spec updates_require_save(knm_phone_number:knm_phone_number(), up_req_els()) -> up_req_acc().
 updates_require_save(PhoneNumber, Updaters) ->
-    lists:foldl(fun update_requires_save/2
-               ,{'false', PhoneNumber}
-               ,Updaters
-               ).
+    Acc0 = {'false', PhoneNumber},
+    lists:foldl(fun update_requires_save/2, Acc0, Updaters).
 
 -type set_fun() :: fun((knm_phone_number:knm_phone_number(), any()) -> knm_phone_number:knm_phone_number()).
 
