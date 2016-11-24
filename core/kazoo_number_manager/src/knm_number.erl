@@ -387,8 +387,7 @@ is_carrier_search_result(Number) ->
 %% Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(ne_binary(), knm_number_options:options()) ->
-                       knm_number_return().
+-spec reconcile(ne_binary(), knm_number_options:options()) -> knm_number_return().
 reconcile(DID, Options) ->
     knm_number_options:assign_to(Options) == 'undefined'
         andalso knm_errors:assign_failure(Options, 'field_undefined'),
@@ -405,8 +404,7 @@ reconcile(DID, Options) ->
         {'error', _}=E -> E
     end.
 
--spec reconcile_number(knm_number(), knm_number_options:options()) ->
-                              knm_number_return().
+-spec reconcile_number(knm_number(), knm_number_options:options()) -> knm_number_return().
 reconcile_number(Number, Options) ->
     PhoneNumber = phone_number(Number),
     Updaters = [{knm_number_options:assign_to(Options)
