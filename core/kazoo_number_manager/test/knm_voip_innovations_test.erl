@@ -31,7 +31,7 @@ find_numbers(Options) ->
      || {Prefix, Limit} <- [{<<"435">>, 2}
                            ,{<<"877">>, 1}
                            ],
-        Results <- [knm_carriers:find(Prefix, Limit, Options)]
+        Results <- [knm_carriers:find(Prefix, [{'quantity',Limit}|Options])]
     ].
 
 matcher(Prefix) ->

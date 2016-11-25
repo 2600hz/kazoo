@@ -12,7 +12,7 @@
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
--export([find/1, find/2, find/3
+-export([find/1, find/2
         ,check/1, check/2
         ,available_carriers/1
         ,default_carriers/0, default_carrier/0
@@ -90,19 +90,16 @@ option_to_kv({K, V}, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec find(ne_binary()) -> kz_json:objects().
--spec find(ne_binary(), integer()) -> kz_json:objects().
--spec find(ne_binary(), integer(), options()) -> kz_json:objects().
+-spec find(ne_binary(), options()) -> kz_json:objects().
 
 find(Prefix) ->
-    find(Prefix, 1).
+    find(Prefix, []).
 
-find(Prefix, Quantity) ->
-    find(Prefix, Quantity, []).
-
-find(Prefix, Quantity, Options0) ->
+find(Prefix, Options0) ->
     Dialcode = knm_util:prefix_for_country(country(Options0)),
     Options = [{'dialcode', Dialcode} | Options0],
     NormalizedPrefix = <<Dialcode/binary, (prefix(Options, Prefix))/binary>>,
+    Quantity = quantity(Options),
     Carriers = available_carriers(Options),
     lager:debug("contacting, in order: ~p", [Carriers]),
     Acc0 = #{found => []

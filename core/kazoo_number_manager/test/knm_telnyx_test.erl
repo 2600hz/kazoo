@@ -31,7 +31,7 @@ find_numbers(Options) ->
      || {Prefix, Limit} <- [{<<"301359">>, 5}
                            ,{<<"800">>, 2}
                            ],
-        Results <- [knm_carriers:find(Prefix, Limit, Options)]
+        Results <- [knm_carriers:find(Prefix, [{'quantity',Limit}|Options])]
     ].
 
 find_international_numbers(Options0) ->
@@ -46,7 +46,7 @@ find_international_numbers(Options0) ->
      ]
      || {Prefix, Limit} <- [{<<"1">>, 2}
                            ],
-        Results <- [knm_carriers:find(Prefix, Limit, Options)]
+        Results <- [knm_carriers:find(Prefix, [{'quantity',Limit}|Options])]
     ].
 
 matcher(Dialcode, Prefix) ->

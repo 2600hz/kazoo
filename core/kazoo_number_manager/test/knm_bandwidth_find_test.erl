@@ -20,8 +20,8 @@ npan_tests() ->
               ,{'carriers', [<<"knm_bandwidth">>]}
               ],
     Limit = 1,
-    Results = knm_carriers:find(<<"+14158867900">>, Limit, Options),
-
+    Prefix = <<"+14158867900">>,
+    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
     [{"Verify area code result size"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -32,8 +32,8 @@ area_code_tests() ->
               ,{'carriers', [<<"knm_bandwidth">>]}
               ],
     Limit = 15,
-    Results = knm_carriers:find(<<"412">>, Limit, Options),
-
+    Prefix = <<"412">>,
+    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
     [{"Verify area code result size"
      ,?_assertEqual(Limit, length(Results))
      }

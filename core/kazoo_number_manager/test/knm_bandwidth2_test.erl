@@ -32,7 +32,7 @@ find_numbers(Options) ->
                     _Else -> 'false'
                 end
         end,
-    Results = knm_carriers:find(Prefix, Limit, Options),
+    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -53,7 +53,7 @@ find_tollfree_numbers(Options) ->
                     _Else -> 'false'
                 end
         end,
-    Results = knm_carriers:find(Prefix, Limit, Options),
+    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }

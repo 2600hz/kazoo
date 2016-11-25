@@ -19,11 +19,11 @@ find_test_() ->
 tollfree_tests() ->
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_vitelity">>]}
+              ,{'quantity', 1}
               ],
-    Limit = 1,
     <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,
-    [Result] = knm_carriers:find(Num, Limit, Options),
-    [Result] = knm_carriers:find(Num, Limit, [{'tollfree', 'true'} | Options]),
+    [Result] = knm_carriers:find(Num, Options),
+    [Result] = knm_carriers:find(Num, [{'tollfree','true'}|Options]),
 
     [{"Verify found number"
      ,?_assertEqual(?TEST_CREATE_TOLL, kz_json:get_value(<<"number">>, Result))
@@ -34,24 +34,24 @@ tollfree_tests() ->
     ].
 
 local_number_tests() ->
+    Limit = 1,
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_vitelity">>]}
+              ,{'quantity', Limit}
               ],
-    Limit = 1,
-    Results = knm_carriers:find(<<"9875559876">>, Limit, Options),
-
+    Results = knm_carriers:find(<<"9875559876">>, Options),
     [{"Verify local number search result size"
      ,?_assertEqual(Limit, length(Results))
      }
     ].
 
 local_prefix_tests() ->
+    Limit = 2,
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_vitelity">>]}
+              ,{'quantity', Limit}
               ],
-    Limit = 2,
-    Results = knm_carriers:find(<<"987">>, Limit, Options),
-
+    Results = knm_carriers:find(<<"987">>, Options),
     [{"Verify local prefix search result size"
      ,?_assertEqual(Limit, length(Results))
      }
