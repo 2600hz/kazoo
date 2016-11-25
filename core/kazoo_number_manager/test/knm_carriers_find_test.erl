@@ -28,25 +28,28 @@ find_other_test_() ->
     ].
 
 find_no_phonebook() ->
-    Options = [{'carriers', [?CARRIER_OTHER]}],
-
+    Options = [{'carriers', [?CARRIER_OTHER]}
+              ,{'quantity', 1}
+              ],
+    Prefix = <<"415">>,
     [{"Verify no phonebook url yields no results"
-     ,?_assertEqual([], knm_carriers:find(<<"415">>, 1, Options))
+     ,?_assertEqual([], knm_carriers:find(Prefix, Options))
      }
     ].
 
 find_blocks() ->
+    Prefix = <<"415">>,
+    Limit = 10,
     Options = [{'phonebook_url', ?BLOCK_PHONEBOOK_URL}
               ,{'blocks', 'true'}
               ,{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [?CARRIER_OTHER]}
+              ,{'quantity', Limit}
               ],
-    Limit = 10,
 
     {'bulk', [StartNumber, EndNumber]=Numbers} =
-        knm_other:find_numbers(<<"415">>, Limit, Options),
-    [StartJObj, EndJObj]=Results =
-        knm_carriers:find(<<"415">>, Limit, Options),
+        knm_other:find_numbers(Prefix, Limit, Options),
+    [StartJObj, EndJObj]=Results = knm_carriers:find(Prefix, Options),
 
     [{"Verify the same amount of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
@@ -89,13 +92,14 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
     ].
 
 find_numbers() ->
+    Prefix = <<"415">>,
+    Limit = 10,
     Options = [{'phonebook_url', ?NUMBER_PHONEBOOK_URL}
               ,{'account_id', ?MASTER_ACCOUNT_ID}
               ,{'carriers', [?CARRIER_OTHER]}
+              ,{'quantity', 10}
               ],
-    Limit = 10,
-    Results = knm_carriers:find(<<"415">>, Limit, Options),
-
+    Results = knm_carriers:find(Prefix, Options),
     [{"Verify results returned is the expected amount"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -103,11 +107,7 @@ find_numbers() ->
     ].
 
 verify_number_results(Results) ->
-    {Tests, _} =
-        lists:foldl(fun verify_number_result/2
-                   ,{[], 0}
-                   ,Results
-                   ),
+    {Tests, _} = lists:foldl(fun verify_number_result/2, {[], 0}, Results),
     Tests.
 
 verify_number_result(Result, {Tests, N}) ->

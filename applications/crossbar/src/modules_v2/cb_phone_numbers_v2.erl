@@ -608,8 +608,7 @@ find_numbers(Context, AccountId, ResellerId) ->
     OnSuccess =
         fun(C) ->
                 lager:debug("carriers find: ~p", [Options]),
-                Prefix = knm_carriers:prefix(Options),
-                Found = knm_carriers:find(Prefix, knm_carriers:quantity(Options), Options),
+                Found = knm_carriers:find(knm_carriers:prefix(Options), Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
                                    ,{fun cb_context:set_resp_status/2, 'success'}
