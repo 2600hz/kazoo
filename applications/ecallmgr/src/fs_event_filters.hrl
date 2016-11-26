@@ -188,4 +188,5 @@
         ]).
 
 -define(FS_GENERATED_EVENT_FILTERS_HRL, 'true').
+
 -endif.
