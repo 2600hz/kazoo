@@ -517,13 +517,13 @@ send_conference_profile_xml(Node, Id, XmlResp) ->
 fetch_mod_kazoo_config(Node, Id, <<"COMMAND">>, _Data) ->
     config_req_not_handled(Node, Id, <<"kazoo.conf">>);
 fetch_mod_kazoo_config(Node, Id, <<"REQUEST_PARAMS">>, Data) ->
-    Action = props:get_value(<<"Action">>, Data),
+    Action = props:get_ne_binary_value(<<"Action">>, Data),
     fetch_mod_kazoo_config_action(Node, Id, Action, Data);
 fetch_mod_kazoo_config(Node, Id, Event, _Data) ->
     lager:debug("unhandled mod kazoo config event : ~p : ~p", [Node, Event]),
     config_req_not_handled(Node, Id, <<"kazoo.conf">>).
 
--spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_binary(), kz_proplist()) -> fs_sendmsg_ret().
+-spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
 fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
     {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
     lager:debug("replying with xml response for request-filter params request"),
