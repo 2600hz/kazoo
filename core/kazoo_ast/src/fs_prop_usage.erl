@@ -36,7 +36,9 @@ write_usage_to_header(Usage, IO) ->
                   end
                  ,Sorted
                  ),
-    'ok' = file:write(IO, "        ]).\n\n-define(FS_GENERATED_EVENT_FILTERS_HRL, 'true').\n-endif.\n"),
+    'ok' = file:write(IO, "        ]).\n\n"),
+    'ok' = file:write(IO, "-define(FS_GENERATED_EVENT_FILTERS_HRL, 'true').\n\n"),
+    'ok' = file:write(IO, "-endif.\n"),
     'ok' = file:close(IO).
 
 ignored_headers(<<"variable_ecallmgr", _/binary>>) -> 'false';

@@ -523,7 +523,7 @@ fetch_mod_kazoo_config(Node, Id, Event, _Data) ->
     lager:debug("unhandled mod kazoo config event : ~p : ~p", [Node, Event]),
     config_req_not_handled(Node, Id, <<"kazoo.conf">>).
 
--spec fetch_mod_kazoo_config_action(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
+-spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_binary(), kz_proplist()) -> fs_sendmsg_ret().
 fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
     {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
     lager:debug("replying with xml response for request-filter params request"),
