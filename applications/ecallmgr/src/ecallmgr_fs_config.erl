@@ -207,10 +207,10 @@ handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
 handle_config_req(Node, Id, <<"conference.conf">>, Data) ->
     kz_util:put_callid(Id),
     fetch_conference_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
-handle_config_req(Node, Id, <<"kazoo.conf">> = Conf, _Data) ->
+handle_config_req(Node, Id, <<"kazoo.conf">>, Data) ->
     kz_util:put_callid(Id),
     lager:debug("received configuration request for kazoo configuration ~p , ~p", [Node, Id]),
-    config_req_not_handled(Node, Id, Conf);
+    fetch_mod_kazoo_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
 handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
     handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
@@ -511,3 +511,25 @@ maybe_fetch_conference_profile(Node, Id, Profile) ->
 send_conference_profile_xml(Node, Id, XmlResp) ->
     lager:debug("sending conference profile XML to ~s: ~s", [Node, XmlResp]),
     freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(XmlResp)).
+
+
+-spec fetch_mod_kazoo_config(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
+fetch_mod_kazoo_config(Node, Id, <<"COMMAND">>, _Data) ->
+    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
+fetch_mod_kazoo_config(Node, Id, <<"REQUEST_PARAMS">>, Data) ->
+    Action = props:get_ne_binary_value(<<"Action">>, Data),
+    fetch_mod_kazoo_config_action(Node, Id, Action, Data);
+fetch_mod_kazoo_config(Node, Id, Event, _Data) ->
+    lager:debug("unhandled mod kazoo config event : ~p : ~p", [Node, Event]),
+    config_req_not_handled(Node, Id, <<"kazoo.conf">>).
+
+-spec fetch_mod_kazoo_config_action(atom(), ne_binary(), api_ne_binary(), kz_proplist()) -> fs_sendmsg_ret().
+fetch_mod_kazoo_config_action(Node, Id, <<"request-filter">>, _Data) ->
+    {'ok', Xml} = ecallmgr_fs_xml:event_filters_resp_xml(?FS_EVENT_FILTERS),
+    lager:debug("replying with xml response for request-filter params request"),
+    freeswitch:fetch_reply(Node, Id, 'configuration', iolist_to_binary(Xml));
+fetch_mod_kazoo_config_action(Node, Id, 'undefined', _Data) ->
+    config_req_not_handled(Node, Id, <<"kazoo.conf">>);
+fetch_mod_kazoo_config_action(Node, Id, Action, _Data) ->
+    lager:debug("unhandled mod kazoo config action : ~p : ~p", [Node, Action]),
+    config_req_not_handled(Node, Id, <<"kazoo.conf">>).

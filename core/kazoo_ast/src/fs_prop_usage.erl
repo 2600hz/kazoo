@@ -28,17 +28,17 @@ write_usage_to_header(Usage, IO) ->
     EventFilters = lists:foldl(fun write_mod_usage/2, sets:new(), Usage),
     [First|Sorted] = lists:usort(lists:filter(fun ignored_headers/1, sets:to_list(EventFilters))),
 
-    'ok' = file:write(IO, "-ifndef(FS_EVENT_FILTERS_HRL).\n"),
-    'ok' = file:write(IO, "-include(\"fs_manual_event_filters.hrl\").\n"),
+    'ok' = file:write(IO, "-ifndef(FS_GENERATED_EVENT_FILTERS_HRL).\n\n"),
 
-    'ok' = file:write(IO, io_lib:format("-define(FS_EVENT_FITLERS~n       ,[~p~n", [First])),
+    'ok' = file:write(IO, io_lib:format("-define(FS_GENERATED_EVENT_FILTERS~n       ,[~p~n", [First])),
     lists:foreach(fun(Filter) ->
                           file:write(IO, io_lib:format("        ,~p~n", [Filter]))
                   end
                  ,Sorted
                  ),
-    'ok' = file:write(IO, "        | ?FS_MANUAL_HEADERS\n        ]).\n"),
-    'ok' = file:write(IO, "-define(FS_EVENT_FILTERS_HRL, 'true').\n-endif.\n"),
+    'ok' = file:write(IO, "        ]).\n\n"),
+    'ok' = file:write(IO, "-define(FS_GENERATED_EVENT_FILTERS_HRL, 'true').\n\n"),
+    'ok' = file:write(IO, "-endif.\n"),
     'ok' = file:close(IO).
 
 ignored_headers(<<"variable_ecallmgr", _/binary>>) -> 'false';
@@ -61,6 +61,8 @@ usage_keys({'props', 'get_value', Key, _VarName, _Default}, Acc) ->
 usage_keys({'props', 'get_integer_value', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'get_binary_value', Key, _VarName, _Default}, Acc) ->
+    [Key |Acc];
+usage_keys({'props', 'get_ne_binary_value', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'get_is_true', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];

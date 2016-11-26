@@ -4,6 +4,8 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
+-include("fs_event_filters.hrl").
+
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
 -define(ECALLMGR_CALL_CACHE, 'ecallmgr_call_cache').
@@ -504,6 +506,11 @@
                             ,{<<"Member-ID">>, fun kz_util:to_integer/1}
                             ,{<<"Member-Ghost">>, fun kz_util:to_boolean/1}
                             ]).
+
+-define(FS_EVENT_FILTERS,
+        ?FS_GENERATED_EVENT_FILTERS
+        ++ ?CONFERENCE_VARS
+       ).
 
 -define(ECALLMGR_HRL, 'true').
 -endif.
