@@ -62,6 +62,8 @@ usage_keys({'props', 'get_integer_value', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'get_binary_value', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
+usage_keys({'props', 'get_ne_binary_value', Key, _VarName, _Default}, Acc) ->
+    [Key |Acc];
 usage_keys({'props', 'get_is_true', Key, _VarName, _Default}, Acc) ->
     [Key |Acc];
 usage_keys({'props', 'is_true', Key, _VarName, _Default}, Acc) ->
