@@ -292,8 +292,8 @@ build_renderer(ContentType, Template) ->
 renderer_name(ContentType) ->
     wh_util:to_atom(<<(?TEMPLATE_ID)/binary, ContentType/binary>>, 'true').
 
--spec render(ne_binary(), wh_proplist()) -> {'ok', iolist()} |
-                                            {'error', any()}.
+-spec render(ne_binary(), wh_proplist()) -> binary().
 render(ContentType, Macros) ->
     ModuleName = renderer_name(ContentType),
-    kz_template:render(ModuleName, Macros).
+    {'ok', IOData} = kz_template:render(ModuleName, Macros),
+    iolist_to_binary(IOData).
