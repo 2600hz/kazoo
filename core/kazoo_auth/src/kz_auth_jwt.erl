@@ -12,7 +12,8 @@
 -export([verify/1
         ,decode/1, decode/2
         ,encode/1, encode/2, encode/3
-        ,token/1
+        ,token/1, token/2
+        ,parse/1
         ]).
 
 -type jwt() :: map().
@@ -195,10 +196,14 @@ parse(JWTToken) when is_binary(JWTToken) ->
     end.
 
 -spec token(ne_binary() | map()) -> map().
-token(JWTToken) when is_binary(JWTToken) ->
+token(JWTToken) ->
+    token(JWTToken, []).
+
+-spec token(ne_binary() | map(), kz_proplist()) -> map().
+token(JWTToken, Options) when is_binary(JWTToken) ->
     case parse(JWTToken) of
-        {'ok', Token} -> token(Token);
+        {'ok', Token} -> token(Token, Options);
         Error -> Error
     end;
-token(#{} = Token) ->
-    do_verify(Token).
+token(#{} = Token, Options) ->
+    do_verify(Token#{options => maps:from_list(Options)}).

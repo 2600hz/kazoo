@@ -110,9 +110,22 @@ get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
         {'error', 'not_found'}=Error -> Error
     end;
 
-get_identity_secret(#{auth_db := Db
+get_identity_secret(#{options := #{force_profile_update := 'true'}}=Token) ->
+    from_profile(Token);
+get_identity_secret(#{auth_provider := #{profile_cache_timer := _Timer}
                      ,auth_db_id := Key
                      }=Token) ->
+    case kz_cache:fetch_local(?PROFILE_CACHE, Key) of
+        {'ok', _} -> get_identity(Token);
+        {'error', 'not_found'} -> from_profile(Token)
+    end;
+get_identity_secret(Token) ->
+    get_identity(Token).
+
+-spec get_identity(map()) -> map() | {'error', any()}.
+get_identity(#{auth_db := Db
+              ,auth_db_id := Key
+              }=Token) ->
     case kz_datamgr:open_cache_doc(Db, Key) of
         {'ok', JObj} -> check_cache_expiration(Token, JObj);
         {'error', 'not_found'} -> from_profile(Token)
@@ -140,7 +153,7 @@ check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
     case kz_json:get_value([<<"profile">>, Field], JObj) of
         'undefined' ->
             lager:debug("secret field '~s' not found in ~p", [Field, JObj]),
-            from_profile(Token);
+            {'error', {404, <<"no profile secret">>}};
         Secret -> Token#{identity_secret => Secret}
     end;
 check_secret(#{auth_provider := #{name := Name}}) ->
@@ -149,7 +162,6 @@ check_secret(#{auth_provider := #{name := Name}}) ->
 
 
 -spec from_profile(map()) -> map() | {'error', any()}.
-from_profile(#{user_doc := _}) -> {'error', 'profile_checked'};
 from_profile(Token) ->
     case kz_auth_profile:token(Token) of
         #{user_doc := _Doc}=Token1 -> check_secret(Token1);
@@ -196,7 +208,7 @@ token(#{auth_provider := #{name := <<"kazoo">>
             CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
             Token1#{identify_verified => IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity)};
         #{} = Token1 -> Token1#{identify_verified => 'false'};
-        {'error', _Err} -> Token#{identify_verified => 'false'}
+        {'error', Error} -> Token#{identify_verified => 'false', identity_error => Error}
     end;
 
 token(#{payload := Payload
