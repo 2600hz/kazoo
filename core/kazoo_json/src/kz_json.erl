@@ -824,6 +824,8 @@ insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
 -spec set_value(path(), json_term(), object() | objects()) -> object() | objects().
+set_value(Keys, undefined, JObj) -> delete_key(Keys, JObj);
+set_value(Keys, null, JObj) -> delete_key(Keys, JObj);
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 

@@ -15,6 +15,8 @@
         ,authorize_token/1
         ,access_code/1
         ,authenticate/1
+        ,link/3
+        ,unlink/1
         ]).
 
 -include("kazoo_auth.hrl").
@@ -175,4 +177,24 @@ authenticate_fold(Token, [Fun | Routines]) ->
             lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
             kz_util:log_stacktrace(),
             authenticate_fold(Token, Routines)
+    end.
+
+-spec link(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+link(AccountId, OwnerId, AuthId) ->
+    Props = [{<<"pvt_account_id">>, AccountId}
+            ,{<<"pvt_owner_id">>, OwnerId}
+            ],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+        {'ok', _JObj} -> 'ok';
+        Error -> Error
+    end.
+
+-spec unlink(ne_binary()) -> 'ok' | {'error', any()}.
+unlink(AuthId) ->
+    Props = [{<<"pvt_account_id">>, null}
+            ,{<<"pvt_owner_id">>, null}
+            ],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+        {'ok', _JObj} -> 'ok';
+        Error -> Error
     end.
