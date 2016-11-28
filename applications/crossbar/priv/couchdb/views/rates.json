@@ -7,10 +7,6 @@
         },
         "lookup": {
             "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(parseInt(doc.prefix), null); }"
-        },
-        "ratedecks": {
-            "map": "function(doc) { if (doc.deleted || doc.pvt_type !== 'rate') return; emit(doc.ratedeck_id, null); }",
-            "reduce": "_count"
         }
     }
 }
