@@ -29,7 +29,6 @@
         ,billing_id/1, set_billing_id/2
         ,transactions/1
         ,add_transaction/2
-        ,errors/1
         ,charges/2, set_charges/3
         ,to_public_json/1
         ,is_number/1
@@ -52,7 +51,6 @@
                     ,services :: kz_services:services()
                     ,billing_id :: api_binary()
                     ,transactions = [] :: kz_transaction:transactions()
-                    ,errors = [] :: []
                     ,charges = [] :: [{ne_binary(), integer()}]
                     }).
 -opaque knm_number() :: #knm_number{}.
@@ -881,9 +879,6 @@ transactions(#knm_number{transactions=Transactions}) -> Transactions.
 -spec add_transaction(knm_number(), kz_transaction:transaction()) -> knm_number().
 add_transaction(#knm_number{transactions=Transactions}=Number, Transaction) ->
     Number#knm_number{transactions=[Transaction|Transactions]}.
-
--spec errors(knm_number()) -> list().
-errors(#knm_number{errors=Errors}) -> Errors.
 
 -spec charges(knm_number(), ne_binary()) -> number().
 -spec set_charges(knm_number(), ne_binary(), number()) -> knm_number().
