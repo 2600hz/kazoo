@@ -146,8 +146,8 @@ add_ko(Num, Reason, T) ->
 %% Note: each number in `Nums' has to be normalized.
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binaries()) -> t().
--spec get(ne_binaries(), knm_number_options:options()) -> t().
+-spec get(ne_binaries()) -> ret().
+-spec get(ne_binaries(), knm_number_options:options()) -> ret().
 get(Nums) -> get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
