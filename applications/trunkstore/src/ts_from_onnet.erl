@@ -132,26 +132,28 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
                                     ,kz_json:get_value(<<"flags">>, SrvOptions)
                                     ,kz_json:get_value(<<"flags">>, AccountOptions)
                                     ]),
-    Q = ts_callflow:get_my_queue(State),
-    Command = [ KV
-                || {_,V}=KV <- CallerID ++ EmergencyCallerID ++
-                       [{<<"Call-ID">>, CallID}
-                       ,{<<"Resource-Type">>, <<"audio">>}
-                       ,{<<"To-DID">>, ToDID}
-                       ,{<<"Account-ID">>, AccountId}
-                       ,{<<"Application-Name">>, <<"bridge">>}
-                       ,{<<"Flags">>, DIDFlags}
-                       ,{<<"Media">>, MediaHandling}
-                       ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
-                       ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
-                       ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, DIDOptions)}
-                       ,{<<"Custom-SIP-Headers">>, SIPHeaders}
-                       ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, SrvOptions)}
-                       ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
-                        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
-                       ],
-                   V =/= 'undefined',
-                   V =/= <<>>
+    Command = [KV
+               || {_,V}=KV <- CallerID
+                      ++ EmergencyCallerID
+                      ++ [{<<"Call-ID">>, CallID}
+                         ,{<<"Resource-Type">>, <<"audio">>}
+                         ,{<<"To-DID">>, ToDID}
+                         ,{<<"Account-ID">>, AccountId}
+                         ,{<<"Application-Name">>, <<"bridge">>}
+                         ,{<<"Flags">>, DIDFlags}
+                         ,{<<"Media">>, MediaHandling}
+                         ,{<<"Timeout">>, kz_json:get_value(<<"timeout">>, DIDOptions)}
+                         ,{<<"Ignore-Early-Media">>, kz_json:get_value(<<"ignore_early_media">>, DIDOptions)}
+                         ,{<<"Ringback">>, kz_json:get_value(<<"ringback">>, DIDOptions)}
+                         ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+                         ,{<<"Hunt-Account-ID">>, kz_json:get_value(<<"hunt_account_id">>, SrvOptions)}
+                         ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Account-ID">>, AccountId}])}
+                          | kz_api:default_headers(ts_callflow:get_worker_queue(State)
+                                                  ,?APP_NAME, ?APP_VERSION
+                                                  )
+                         ],
+                  V =/= 'undefined',
+                  V =/= <<>>
               ],
     try
         lager:debug("we know how to route this call, sending park route response"),
@@ -165,10 +167,7 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
     end.
 
 send_park(State, Command) ->
-    wait_for_win(ts_callflow:send_park(State), Command).
-
-wait_for_win(State, Command) ->
-    case ts_callflow:wait_for_win(State) of
+    case ts_callflow:send_park(State) of
         {'lost', _} -> 'normal';
         {'won', State1} ->
             case ts_util:maybe_restrict_call(State1, Command) of
@@ -182,19 +181,23 @@ wait_for_win(State, Command) ->
 
 send_offnet(State, Command) ->
     CtlQ = ts_callflow:get_control_queue(State),
-    _ = kapi_offnet_resource:publish_req([{<<"Control-Queue">>, CtlQ}
-                                          |Command
-                                         ]),
-    wait_for_bridge(CtlQ, State).
+    ts_callflow:send_command(State
+                            ,[{<<"Control-Queue">>, CtlQ}
+                              |Command
+                             ]
+                            ,fun kapi_offnet_resource:publish_req/1
+                            ),
+    Timeout = props:get_integer_value(<<"Timeout">>, Command),
+    wait_for_bridge(State, CtlQ, Timeout).
 
-wait_for_bridge(CtlQ, State1) ->
-    case ts_callflow:wait_for_bridge(State1) of
-        {'hangup', _} -> ts_callflow:send_hangup(State1);
+wait_for_bridge(State, CtlQ, Timeout) ->
+    case ts_callflow:wait_for_bridge(State, Timeout) of
+        {'hangup', _} -> ts_callflow:send_hangup(State);
         {'error', #ts_callflow_state{aleg_callid='undefined'}} -> 'ok';
-        {'error', #ts_callflow_state{aleg_callid=CallId}=State2} ->
+        {'error', #ts_callflow_state{aleg_callid=CallId}=State1} ->
             lager:info("responding to aleg ~s with 686", [CallId]),
             kz_call_response:send(CallId, CtlQ, <<"686">>),
-            ts_callflow:send_hangup(State2, <<"686">>)
+            ts_callflow:send_hangup(State1, <<"686">>)
     end.
 
 -spec maybe_referred_call(kz_json:object()) -> kz_json:object().

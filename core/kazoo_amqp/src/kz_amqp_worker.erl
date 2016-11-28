@@ -28,6 +28,8 @@
 
         ,cast/2, cast/3
 
+        ,relay_to/2, stop_relay/2
+
         ,default_timeout/0
         ,collect_until_timeout/0
         ,collect_from_whapp/1
@@ -97,7 +99,7 @@
 -record(state, {current_msg_id :: ne_binary()
                ,client_pid :: pid()
                ,client_ref :: reference()
-               ,client_from :: {pid(), reference()}
+               ,client_from :: {pid(), reference()} | 'relay'
                ,client_vfun :: validate_fun()
                ,client_cfun = collect_until_timeout() :: collect_until_fun()
                ,responses :: kz_json:objects()
@@ -408,6 +410,14 @@ cast(Req, PubFun, Worker) when is_pid(Worker) ->
             {'error', R}
     end.
 
+-spec relay_to(pid() | atom(), pid()) -> 'ok'.
+relay_to(Worker, RelayPid) ->
+    gen_listener:call(Worker, {'relay_to', RelayPid}).
+
+-spec stop_relay(pid() | atom(), pid()) -> 'ok'.
+stop_relay(Worker, RelayPid) ->
+    gen_listener:call(Worker, {'stop_relay', RelayPid}).
+
 -spec collect_until_timeout() -> collect_until_fun().
 collect_until_timeout() -> fun kz_util:always_false/1.
 
@@ -477,13 +487,12 @@ send_request(CallId, Self, PublishFun, ReqProps)
   when is_function(PublishFun, 1) ->
     kz_util:put_callid(CallId),
     FilteredProps = request_filter(ReqProps),
-    Props = request_filter(props:set_values(
-                             [{?KEY_SERVER_ID, Self}
-                             ,{?KEY_QUEUE_ID, props:get_value(?KEY_SERVER_ID, FilteredProps)}
-                             ,{?KEY_LOG_ID, CallId}
-                             ]
+    Props = request_filter(props:set_values([{?KEY_SERVER_ID, Self}
+                                            ,{?KEY_QUEUE_ID, props:get_value(?KEY_SERVER_ID, FilteredProps)}
+                                            ,{?KEY_LOG_ID, CallId}
+                                            ]
                                            ,FilteredProps
-                            )),
+                                           )),
     try PublishFun(Props) of
         'ok' -> 'ok'
     catch
@@ -551,6 +560,19 @@ handle_call(Call, From, #state{queue='undefined'}=State)
 handle_call(_, _, #state{flow='false'}=State) ->
     lager:debug("flow control is active and server put us in waiting"),
     {'reply', {'error', 'flow_control'}, reset(State)};
+handle_call({'relay_to', RelayPid}, _From, State) ->
+    {'reply', 'ok', State#state{client_pid=RelayPid
+                               ,client_ref=erlang:monitor('process', RelayPid)
+                               ,client_from='relay'
+                               }
+    };
+handle_call({'stop_relay', RelayPid}, _From, #state{client_pid=RelayPid
+                                                   ,client_ref=Ref
+                                                   ,client_from='relay'
+                                                   }=State) ->
+    erlang:demonitor(Ref, ['flush']),
+    lager:debug("stopping relay to ~p", [RelayPid]),
+    {'reply', 'ok', reset(State)};
 handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
            ,{ClientPid, _}=From
            ,#state{queue=Q}=State
@@ -563,8 +585,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
         'ok' ->
             lager:debug("published request with msg id ~s for ~p", [MsgId, ClientPid]),
             {'noreply'
-            ,State#state{
-               client_pid = ClientPid
+            ,State#state{client_pid = ClientPid
                         ,client_ref = erlang:monitor('process', ClientPid)
                         ,client_from = From
                         ,client_vfun = VFun
@@ -574,7 +595,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                         ,req_timeout_ref = start_req_timeout(Timeout)
                         ,req_start_time = os:timestamp()
                         ,callid = CallId
-              }
+                        }
             };
         {'error', Err}=Error ->
             lager:debug("failed to send request: ~p", [Err]),
@@ -609,42 +630,41 @@ handle_call({'call_collect', ReqProp, PublishFun, UntilFun, Timeout, Acc}
             lager:debug("failed to send request: ~p", [Err]),
             {'reply', Error, reset(State)}
     end;
-handle_call({'publish', ReqProp, PublishFun}, {Pid, _}=From, #state{confirms=C}=State) ->
+
+handle_call({'publish', ReqProp, PublishFun}
+           ,{_Pid, _}
+           ,#state{client_from='relay'}=State
+           ) ->
+    case publish_api(PublishFun, ReqProp) of
+        'ok' ->
+            lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), _Pid]),
+            {'reply', 'ok', State};
+        {'error', _E}=Err ->
+            lager:error("failed to publish message ~s for ~p: ~p", [kz_api:msg_id(ReqProp), _Pid, _E]),
+            {'reply', Err, State}
+    end;
+handle_call({'publish', ReqProp, PublishFun}
+           ,{Pid, _}=From
+           ,#state{confirms=C}=State
+           ) ->
     _ = kz_util:put_callid(ReqProp),
-    try PublishFun(ReqProp) of
+    case publish_api(PublishFun, ReqProp) of
         'ok' when C =:= 'true' ->
             lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), Pid]),
-            {'noreply', State#state{client_pid = Pid
-                                   ,client_ref = erlang:monitor('process', Pid)
-                                   ,client_from = From
-                                   ,req_timeout_ref = start_req_timeout(default_timeout())
-                                   ,req_start_time = os:timestamp()
-                                   }
+            {'noreply'
+            ,State#state{client_pid = Pid
+                        ,client_ref = erlang:monitor('process', Pid)
+                        ,client_from = From
+                        ,req_timeout_ref = start_req_timeout(default_timeout())
+                        ,req_start_time = os:timestamp()
+                        }
             };
         'ok' ->
             lager:debug("published message ~s for ~p", [kz_api:msg_id(ReqProp), Pid]),
             {'reply', 'ok', reset(State)};
         {'error', _E}=Err ->
             lager:error("failed to publish message ~s for ~p: ~p", [kz_api:msg_id(ReqProp), Pid, _E]),
-            {'reply', Err, reset(State)};
-        Other ->
-            lager:error("publisher fun returned ~p instead of 'ok'", [Other]),
-            {'reply', {'error', Other}, reset(State)}
-    catch
-        'error':'badarg' ->
-            ST = erlang:get_stacktrace(),
-            lager:error("badarg error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            {'reply', {'error', 'badarg'}, reset(State)};
-        'error':'function_clause' ->
-            ST = erlang:get_stacktrace(),
-            lager:error("function clause error when publishing:"),
-            kz_util:log_stacktrace(ST),
-            lager:error("pub fun: ~p", [PublishFun]),
-            {'reply', {'error', 'function_clause'}, reset(State)};
-        _E:R ->
-            lager:error("error when publishing: ~s:~p", [_E, R]),
-            {'reply', {'error', R}, reset(State)}
+            {'reply', Err, reset(State)}
     end;
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
@@ -707,14 +727,15 @@ handle_cast({'gen_listener', {'confirm', #'basic.nack'{}}}, #state{client_from=F
     lager:debug("nack message was returned from the broker"),
     gen_server:reply(From, {'error', <<"server nack">>}),
     {'noreply', reset(State), 'hibernate'};
-handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
-                                          ,client_from = From
-                                          ,client_vfun = VFun
-                                          ,responses = 'undefined'
-                                          ,req_start_time = StartTime
-                                          ,neg_resp_count = NegCount
-                                          ,neg_resp_threshold = NegThreshold
-                                          }=State) when NegCount < NegThreshold ->
+handle_cast({'event', MsgId, JObj}
+           ,#state{current_msg_id = MsgId
+                  ,client_from = From
+                  ,client_vfun = VFun
+                  ,responses = 'undefined'
+                  ,req_start_time = StartTime
+                  ,neg_resp_count = NegCount
+                  ,neg_resp_threshold = NegThreshold
+                  }=State) when NegCount < NegThreshold ->
     _ = kz_util:put_callid(JObj),
 
     case VFun(JObj) of
@@ -740,13 +761,14 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
                                            }, 0}
             end
     end;
-handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
-                                          ,client_from = From
-                                          ,client_cfun = UntilFun
-                                          ,responses = Resps
-                                          ,acc = Acc
-                                          ,req_start_time = StartTime
-                                          }=State)
+handle_cast({'event', MsgId, JObj}
+           ,#state{current_msg_id = MsgId
+                  ,client_from = From
+                  ,client_cfun = UntilFun
+                  ,responses = Resps
+                  ,acc = Acc
+                  ,req_start_time = StartTime
+                  }=State)
   when is_list(Resps)
        andalso is_function(UntilFun, 2) ->
     _ = kz_util:put_callid(JObj),
@@ -765,12 +787,13 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         {'false', Acc0} ->
             {'noreply', State#state{responses=Responses, acc=Acc0}, 'hibernate'}
     end;
-handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
-                                          ,client_from = From
-                                          ,client_cfun = UntilFun
-                                          ,responses = Resps
-                                          ,req_start_time = StartTime
-                                          }=State) when is_list(Resps) ->
+handle_cast({'event', MsgId, JObj}
+           ,#state{current_msg_id = MsgId
+                  ,client_from = From
+                  ,client_cfun = UntilFun
+                  ,responses = Resps
+                  ,req_start_time = StartTime
+                  }=State) when is_list(Resps) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("recv message ~s", [MsgId]),
     Responses = [JObj | Resps],
@@ -785,7 +808,8 @@ handle_cast({'event', MsgId, JObj}, #state{current_msg_id = MsgId
         'false' ->
             {'noreply', State#state{responses=Responses}, 'hibernate'}
     end;
-handle_cast({'event', _MsgId, JObj}, #state{current_msg_id=_CurrMsgId}=State) ->
+handle_cast({'event', _MsgId, JObj}
+           ,#state{current_msg_id=_CurrMsgId}=State) ->
     _ = kz_util:put_callid(JObj),
     lager:debug("received unexpected message with old/expired message id: ~s, waiting for ~s", [_MsgId, _CurrMsgId]),
     {'noreply', State};
@@ -818,20 +842,22 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}, #state{current_msg_id = _MsgId
-                                                                 ,client_ref = ClientRef
-                                                                 ,callid = CallId
-                                                                 }=State) ->
+handle_info({'DOWN', ClientRef, 'process', _Pid, _Reason}
+           ,#state{current_msg_id = _MsgId
+                  ,client_ref = ClientRef
+                  ,callid = CallId
+                  }=State) ->
     kz_util:put_callid(CallId),
     lager:debug("requestor processes ~p  died while waiting for msg id ~s", [_Pid, _MsgId]),
     {'noreply', reset(State), 'hibernate'};
-handle_info('timeout', #state{neg_resp=ErrorJObj
-                             ,neg_resp_count=Thresh
-                             ,neg_resp_threshold=Thresh
-                             ,client_from={_Pid, _}=From
-                             ,responses='undefined'
-                             ,defer_response=ReservedJObj
-                             }=State) ->
+handle_info('timeout'
+           ,#state{neg_resp=ErrorJObj
+                  ,neg_resp_count=Thresh
+                  ,neg_resp_threshold=Thresh
+                  ,client_from={_Pid, _}=From
+                  ,responses='undefined'
+                  ,defer_response=ReservedJObj
+                  }=State) ->
     case kz_util:is_empty(ReservedJObj) of
         'true' ->
             lager:debug("negative response threshold reached, returning last negative message to ~p", [_Pid]),
@@ -841,21 +867,23 @@ handle_info('timeout', #state{neg_resp=ErrorJObj
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};
-handle_info('timeout', #state{responses=Resps
-                             ,client_from=From
-                             }=State) when is_list(Resps) ->
+handle_info('timeout'
+           ,#state{responses=Resps
+                  ,client_from=From
+                  }=State) when is_list(Resps) ->
     lager:debug("timeout reached, returning responses"),
     gen_server:reply(From, {'error', Resps}),
     {'noreply', reset(State), 'hibernate'};
 handle_info('timeout', State) ->
     {'noreply', State};
-handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgId
-                                                      ,req_timeout_ref=ReqRef
-                                                      ,callid=CallId
-                                                      ,responses='undefined'
-                                                      ,client_from={_Pid, _}=From
-                                                      ,defer_response=ReservedJObj
-                                                      }=State) ->
+handle_info({'timeout', ReqRef, 'req_timeout'}
+           ,#state{current_msg_id= _MsgId
+                  ,req_timeout_ref=ReqRef
+                  ,callid=CallId
+                  ,responses='undefined'
+                  ,client_from={_Pid, _}=From
+                  ,defer_response=ReservedJObj
+                  }=State) ->
     kz_util:put_callid(CallId),
     case kz_util:is_empty(ReservedJObj) of
         'true' ->
@@ -866,11 +894,12 @@ handle_info({'timeout', ReqRef, 'req_timeout'}, #state{current_msg_id= _MsgId
             gen_server:reply(From, {'ok', ReservedJObj})
     end,
     {'noreply', reset(State), 'hibernate'};
-handle_info({'timeout', ReqRef, 'req_timeout'}, #state{responses=Resps
-                                                      ,req_timeout_ref=ReqRef
-                                                      ,client_from=From
-                                                      ,callid=CallId
-                                                      }=State) ->
+handle_info({'timeout', ReqRef, 'req_timeout'}
+           ,#state{responses=Resps
+                  ,req_timeout_ref=ReqRef
+                  ,client_from=From
+                  ,callid=CallId
+                  }=State) ->
     kz_util:put_callid(CallId),
     lager:debug("req timeout for call_collect"),
     gen_server:reply(From, {'timeout', Resps}),
@@ -888,6 +917,12 @@ handle_info(_Info, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
+handle_event(JObj, #state{client_from='relay'
+                         ,client_pid=Pid
+                         }) ->
+    kapps_call_command:relay_event(Pid, JObj),
+    lager:debug("relayed event to ~p", [Pid]),
+    'ignore';
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -972,4 +1007,29 @@ maybe_set_msg_id(Props) ->
             props:set_value(<<"Msg-ID">>, kz_util:rand_hex_binary(8), Props);
         _MsgId ->
             Props
+    end.
+
+-spec publish_api(fun(), api_terms()) -> 'ok' | {'error', any()}.
+publish_api(PublishFun, ReqProps) ->
+    try PublishFun(ReqProps) of
+        'ok' -> 'ok';
+        {'error', _E}=Err -> Err;
+        Other ->
+            lager:error("publisher fun returned ~p instead of 'ok'", [Other]),
+            {'error', Other}
+    catch
+        'error':'badarg' ->
+            ST = erlang:get_stacktrace(),
+            lager:error("badarg error when publishing:"),
+            kz_util:log_stacktrace(ST),
+            {'error', 'badarg'};
+        'error':'function_clause' ->
+            ST = erlang:get_stacktrace(),
+            lager:error("function clause error when publishing:"),
+            kz_util:log_stacktrace(ST),
+            lager:error("pub fun: ~p", [PublishFun]),
+            {'error', 'function_clause'};
+        _E:R ->
+            lager:error("error when publishing: ~s:~p", [_E, R]),
+            {'error', R}
     end.
