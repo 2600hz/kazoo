@@ -128,11 +128,20 @@ new(DID, Options0) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> knm_phone_number_return().
--spec fetch(ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
+-spec fetch(ne_binary() | knm_numbers:t()) -> knm_phone_number_return() | knm_numbers:t().
+-spec fetch(ne_binary() | ne_binaries(), knm_number_options:options()) -> knm_phone_number_return().
 
-fetch(Num) ->
-    fetch(Num, knm_number_options:default()).
+fetch(?NE_BINARY=Num) ->
+    fetch(Num, knm_number_options:default());
+fetch(T) ->
+    Options = knm_numbers:options(T),
+    Fetch = fun (Num, Acc) ->
+                    case knm_number:attempt(fun fetch/2, [Num, Options]) of
+                        {ok, PN} -> knm_numbers:add_ok(knm_number:new(PN), Acc);
+                        {error, R} -> knm_numbers:add_ko(Num, R, Acc)
+                    end
+            end,
+    lists:foldl(Fetch, T, knm_numbers:todo(T)).
 
 -ifdef(TEST).
 fetch(?TEST_CREATE_NUM, _Options) ->

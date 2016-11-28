@@ -1,13 +1,25 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2015-2017, 2600Hz INC
 %%% @doc
-%%%   Bulk operations on numbers. Follows knm_number's API.
+%%%   Bulk operations on numbers.
+%%%   Note: functions should not `throw`, instead return `ret()`.
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_numbers).
+
+-export([todo/1
+        ,options/1, options/2
+        ,plan/1, plan/2
+        ,services/1, services/2
+        ,transactions/1, transactions/2
+        ,charges/1, charges/2
+        ]).
+-export([add_ok/2
+        ,add_ko/2
+        ]).
 
 -export([get/1, get/2
         ,create/2
@@ -29,23 +41,116 @@
 
 -include("knm.hrl").
 
+-type num() :: ne_binary().  %%TODO: support ranges?
+-type nums() :: [num()].
+-type ret(T) :: {num(), T}.
+-type ok() :: knm_number:knm_number().
+-type oks() :: [ok()].
+-type ko() :: ret(knm_errors:error() | atom()).
+-type kos() :: [ko()].
+-type ret() :: #{ok => oks()
+                ,ko => kz_json:object() | atom()
+                ,dry_run => kz_json:object()
+                }.
+
+-export_type([ret/0, ret/1
+             ,ok/0, oks/0
+             ,ko/0, kos/0
+             ,num/0, nums/0
+             ]).
+
+-type t() :: #{todo => nums() | oks()
+              ,ok => oks()
+              ,ko => kos()
+              ,dry_run => kz_json:object()
+
+              ,options => options()
+              ,plan => plan()
+              ,services => services()
+              ,transactions => transactions()
+              ,charges => charges()
+              }.
+
+-opaque collection() :: t().
+-export_type([collection/0]).
+
+-type options() :: knm_number_options:options().
+-type plan() :: kz_service_plans:plan() | undefined.
+-type services() :: kz_services:services() | undefined.
+-type transactions() :: kz_transaction:transactions().
+-type charges() :: [{ne_binary(), non_neg_integer()}].
+
+-export_type([options/0
+             ,plan/0
+             ,services/0
+             ,transactions/0
+             ,charges/0
+             ]).
+
 -type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
 -type numbers_return() :: [number_return()].
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Either `nums()' xor `oks()'.
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binaries()) ->
-                 numbers_return().
--spec get(ne_binaries(), knm_number_options:options()) ->
-                 numbers_return().
-get(Nums) ->
-    get(Nums, knm_number_options:default()).
+-spec todo(t()) -> nums() | oks().
+todo(#{todo := ToDo}) -> ToDo.
+
+%% @public
+-spec options(t()) -> options().
+-spec options(options(), t()) -> t().
+options(#{options := V}) -> V.
+options(V, T) -> T#{options => V}.
+
+%% @public
+-spec plan(t()) -> plan().
+-spec plan(plan(), t()) -> t().
+plan(#{plan := V}) -> V.
+plan(V, T) -> T#{plan => V}.
+
+%% @public
+-spec services(t()) -> services().
+-spec services(services(), t()) -> t().
+services(#{services := V}) -> V.
+services(V, T) -> T#{services => V}.
+
+%% @public
+-spec transactions(t()) -> transactions().
+-spec transactions(transactions(), t()) -> t().
+transactions(#{transactions := V}) -> V.
+transactions(V, T) -> T#{transactions => V}.
+
+%% @public
+-spec charges(t()) -> charges().
+-spec charges(charges(), t()) -> t().
+charges(#{charges := V}) -> V.
+charges(V, T) -> T#{charges => V}.
+
+%% @public
+-spec add_ok(ok(), t()) -> t().
+add_ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
+
+%% @public
+-spec add_ko(ko(), t()) -> t().
+add_ko(Reason, T) -> T#{ko => [Reason | maps:get(ko, T)]}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Attempts to get numbers from DB.
+%% Note: each number in `Nums' has to be normalized.
+%% @end
+%%--------------------------------------------------------------------
+-spec get(ne_binaries()) -> t().
+-spec get(ne_binaries(), knm_number_options:options()) -> t().
+get(Nums) -> get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
-    [{Num, knm_number:get(Num, Options)} || Num <- Nums].
+    {Yes, No} = knm_converters:are_reconcilable(Nums),
+    ret(do(fun knm_phone_number:fetch/1, new(Options, Yes, No))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -222,3 +327,46 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
         {'error', _R} ->
             lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])
     end.
+
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+%% @private
+-spec new(knm_number_options:options(), nums(), nums()) -> t().
+new(Options, ToDos, KOs) ->
+    #{todo => ToDos
+     ,ok => []
+     ,ko => maps:from_list([{KO, not_reconcilable} || KO <- KOs])
+     ,dry_run => kz_json:new()
+
+     ,options => Options
+     ,plan => undefined
+     ,services => undefined
+     ,transactions => []
+     ,charges => []
+     }.
+
+%% @doc
+%% Apply something to "todo" if not empty,
+%% if empty use "ok" as the new "todo".
+%% If "ok" is empty, return.
+%% @end
+-spec do(fun(), t()) -> t().
+do(_, T = #{todo := [], ok := []}) -> T;
+do(F, T = #{todo := [], ok := OK}) ->
+    do(F, T#{todo => OK, ok => []});
+do(F, T) ->
+    NewT = F(T),
+    NewT#{todo => []}.
+
+-spec ret(t()) -> ret().
+ret(#{ok := OKs
+     ,ko := KOs
+     ,dry_run := DryRun
+     }) ->
+    #{ok => OKs
+     ,ko => KOs %%FIXME Convert to error format
+     ,dry_run => DryRun
+     }.
