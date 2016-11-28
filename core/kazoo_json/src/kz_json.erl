@@ -817,7 +817,6 @@ insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
 -spec set_value(path(), json_term(), object() | objects()) -> object() | objects().
-set_value(Keys, null, JObj) -> delete_key(Keys, JObj);
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
 
@@ -850,6 +849,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     end;
 
 %% Figure out how to set the current key in an existing object
+set_value1([_|_]=Keys, null, JObj) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->

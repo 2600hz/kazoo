@@ -57,7 +57,7 @@ prop_get_value() ->
                               andalso hd(Prop)
                           of
                               {K,V} ->
-                                  V =:= kz_json:get_value([K], JObj);
+                                  V =:= kz_json:get_value([K], JObj, V);
                               'false' -> kz_json:new() =:= JObj
                           end
                       end)
@@ -69,7 +69,7 @@ prop_set_value() ->
            ,?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
                       begin
                           JObj1 = kz_json:set_value(Key, Value, JObj),
-                          Value =:= kz_json:get_value(Key, JObj1)
+                          Value =:= kz_json:get_value(Key, JObj1, Value)
                       end)
            ).
 
