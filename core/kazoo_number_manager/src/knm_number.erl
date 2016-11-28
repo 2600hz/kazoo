@@ -49,7 +49,7 @@
 -record(knm_number, {knm_phone_number :: knm_phone_number:knm_phone_number()
                     ,services :: kz_services:services()
                     ,transactions = [] :: kz_transaction:transactions()
-                    ,charges = [] :: [{ne_binary(), integer()}]
+                    ,charges = [] :: [{ne_binary(), non_neg_integer()}]
                     }).
 -opaque knm_number() :: #knm_number{}.
 -type knm_numbers() :: [knm_number()].
@@ -870,8 +870,8 @@ transactions(#knm_number{transactions=Transactions}) -> Transactions.
 add_transaction(#knm_number{transactions=Transactions}=Number, Transaction) ->
     Number#knm_number{transactions=[Transaction|Transactions]}.
 
--spec charges(knm_number(), ne_binary()) -> number().
--spec set_charges(knm_number(), ne_binary(), number()) -> knm_number().
+-spec charges(knm_number(), ne_binary()) -> non_neg_integer().
+-spec set_charges(knm_number(), ne_binary(), non_neg_integer()) -> knm_number().
 charges(#knm_number{charges=Charges}, Key) ->
     props:get_value(Key, Charges, 0).
 
