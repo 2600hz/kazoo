@@ -330,18 +330,11 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when
          ,JObj1
          ,JObj2
          );
-merge_recursive(?JSON_WRAPPER(_)=JObj1, 'null', Pred, Keys) when is_function(Pred, 2) ->
-    delete_key(lists:reverse(Keys), JObj1);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
-    V = get_value(Syek, JObj1),
-    case 'null' =:= V of
-        'true' -> delete_key(Syek, JObj1);
-        'false' ->
-            case Pred(V, Value) of
-                'false' -> JObj1;
-                'true' -> set_value(Syek, Value, JObj1)
-            end
+    case Pred(get_value(Syek, JObj1), Value) of
+        'false' -> JObj1;
+        'true' -> set_value(Syek, Value, JObj1)
     end.
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
@@ -824,7 +817,6 @@ insert_value_fold({Key, Value}, JObj) ->
     insert_value(Key, Value, JObj).
 
 -spec set_value(path(), json_term(), object() | objects()) -> object() | objects().
-set_value(Keys, undefined, JObj) -> delete_key(Keys, JObj);
 set_value(Keys, null, JObj) -> delete_key(Keys, JObj);
 set_value(Keys, Value, JObj) when is_list(Keys) -> set_value1(Keys, Value, JObj);
 set_value(Key, Value, JObj) -> set_value1([Key], Value, JObj).
