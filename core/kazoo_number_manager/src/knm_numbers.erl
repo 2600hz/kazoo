@@ -190,14 +190,16 @@ free(Account=?NE_BINARY) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Find an account's phone numbers that have emergency services enabled
+%% @doc
+%% Find an account's phone numbers that have emergency services enabled
+%% @end
 %%--------------------------------------------------------------------
 -spec emergency_enabled(ne_binary()) -> ne_binaries().
 emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     AccountDb = kz_util:format_account_db(AccountId),
-    {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
-    [Num || {Num, {'ok', KNMNumber}} <- ?MODULE:get(Numbers),
-            knm_providers:has_emergency_services(KNMNumber)
+    [Num || {Num, JObj} <- account_listing(AccountDb),
+            Features <- [kz_json:get_list_value(<<"features">>, JObj, [])],
+            lists:member(?FEATURE_E911, Features)
     ].
 
 %%--------------------------------------------------------------------
