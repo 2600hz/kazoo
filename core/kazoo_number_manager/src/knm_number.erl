@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_number).
 
--export([new/0
+-export([new/0, new/1
         ,get/1, get/2
         ,create/2
         ,move/2, move/3
@@ -77,7 +77,9 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_number().
+-spec new(knm_phone_number:knm_phone_number()) -> knm_number().
 new() -> #knm_number{}.
+new(PhoneNumber) -> set_phone_number(#knm_number{}, PhoneNumber).
 
 -spec is_number(any()) -> boolean().
 is_number(#knm_number{}) -> 'true';
