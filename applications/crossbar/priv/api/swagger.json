@@ -21037,6 +21037,11 @@
         "/auth/callback": {
             "put": {}
         },
+        "/auth/links": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
         "/auth/tokeninfo": {
             "get": {}
         },
