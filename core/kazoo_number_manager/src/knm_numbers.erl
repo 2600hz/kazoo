@@ -149,7 +149,7 @@ add_ko(Reason, T) -> T#{ko => [Reason | maps:get(ko, T)]}.
 get(Nums) -> get(Nums, knm_number_options:default()).
 
 get(Nums, Options) ->
-    {Yes, No} = knm_converters:are_reconcilable(Nums),
+    {Yes, No} = knm_converters:are_reconcilable(lists:usort(Nums)),
     ret(do(fun knm_phone_number:fetch/1, new(Options, Yes, No))).
 
 %%--------------------------------------------------------------------
