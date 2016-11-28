@@ -597,13 +597,21 @@ maybe_find_numbers(Context) ->
 -spec find_numbers(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 find_numbers(Context, AccountId, ResellerId) ->
     QS = cb_context:query_string(Context),
+    Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
+    Prefix = kz_json:get_ne_value(?PREFIX, QS),
+    Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
+    Token = cb_context:auth_token(Context),
+    HashKey = <<AccountId/binary, "-", Token/binary>>,
+    Hash = kz_base64url:encode(crypto:hash(sha, HashKey)),
+    QueryId = list_to_binary([Country, "-", Prefix, "-", Hash]),
     Options = props:filter_undefined(
                 [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
-                ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-                ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
-                ,{'offset', kz_json:get_integer_value(?OFFSET, QS, 0)}
+                ,{'prefix', Prefix}
+                ,{'country', Country}
+                ,{'offset', Offset}
                 ,{'account_id', AccountId}
                 ,{'reseller_id', ResellerId}
+                ,{'query_id', QueryId}
                 ]),
     OnSuccess =
         fun(C) ->
