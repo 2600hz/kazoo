@@ -95,16 +95,19 @@
 %%--------------------------------------------------------------------
 -spec normalize(ne_binary()) ->
                        ne_binary().
+normalize(<<"+", _/binary>> = Num) -> Num;
 normalize(?NE_BINARY = Num) ->
     (?CONVERTER_MOD):normalize(Num).
 
 -spec normalize(ne_binary(), api_binary()) ->
                        ne_binary().
+normalize(<<"+", _/binary>> = Num, _AccountId) -> Num;
 normalize(?NE_BINARY = Num, AccountId) ->
     (?CONVERTER_MOD):normalize(Num, AccountId).
 
 -spec normalize(ne_binary(), api_binary(), kz_json:object()) ->
                        ne_binary().
+normalize(<<"+", _/binary>> = Num, _AccountId, _DialPlan) -> Num;
 normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
     (?CONVERTER_MOD):normalize(Num, AccountId, DialPlan).
 
@@ -169,12 +172,14 @@ to_db(_) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_reconcilable(ne_binary()) -> boolean().
+is_reconcilable(<<"+", _/binary>> = _Number) -> 'true';
 is_reconcilable(Number) ->
     Regex = ?RECONCILE_REGEX,
     Num = normalize(Number),
     is_reconcilable_by_regex(Num, Regex).
 
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
+is_reconcilable(<<"+", _/binary>> = _Number, _AccountId) -> 'true';
 is_reconcilable(Number, AccountId) ->
     Regex = kapps_account_config:get_global(
               AccountId
