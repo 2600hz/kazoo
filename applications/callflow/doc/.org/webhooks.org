@@ -26,7 +26,7 @@ See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv
 | custom_data | A JSON object of custom data to include on the webhook payload | object()            | {}      | false    |
 
 An example JSON action
-#+BEGIN_SRC js2
+#+BEGIN_SRC json
 {"module":"webhook"
  ,"data":{
      "uri":"http://my.ser.ver/path/to/webhook/destination"
@@ -41,7 +41,7 @@ An example JSON action
 ** Using the webhook action in a callflow
 To receive a webhook anytime the main company number goes to voicemail instead of being answered, for instannce:
 
-#+BEGIN_SRC js2
+#+BEGIN_SRC json
 {"numbers":["+10005559999"]
  ,"flow":{
      "module":"device"

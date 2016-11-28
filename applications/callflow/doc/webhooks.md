@@ -1,17 +1,17 @@
-- [The Webhook Callflow Action](#org13c878a)
-  - [The Webhook action](#org7427f13)
-  - [Using the webhook action in a callflow](#orgd417a9b)
+- [The Webhook Callflow Action](#orgec83ef6)
+  - [The Webhook action](#orga648329)
+  - [Using the webhook action in a callflow](#orged8a935)
 
 
 
-<a id="org13c878a"></a>
+<a id="orgec83ef6"></a>
 
 # The Webhook Callflow Action
 
 Webhooks can be triggered from a callflow without needing them to be predefined by an API call. They are useful in tracking the state of a caller in a phone tree, triggering actions on the receiver's end, or whatever imagination can come up with.
 
 
-<a id="org7427f13"></a>
+<a id="orga648329"></a>
 
 ## The Webhook action
 
@@ -26,7 +26,7 @@ See the [schema](https://github.com/2600hz/kazoo/blob/master/applications/crossb
 
 An example JSON action
 
-```js2
+```json
 {"module":"webhook"
  ,"data":{
      "uri":"http://my.ser.ver/path/to/webhook/destination"
@@ -40,13 +40,13 @@ An example JSON action
 ```
 
 
-<a id="orgd417a9b"></a>
+<a id="orged8a935"></a>
 
 ## Using the webhook action in a callflow
 
 To receive a webhook anytime the main company number goes to voicemail instead of being answered, for instannce:
 
-```js2
+```json
 {"numbers":["+10005559999"]
  ,"flow":{
      "module":"device"
