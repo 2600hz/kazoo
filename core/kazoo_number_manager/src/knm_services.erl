@@ -149,7 +149,6 @@ update_services(Number, 'false', _) ->
     Transactions = knm_number:transactions(Number),
     _ = 'undefined' =/= AssignedTo
         andalso kz_services:commit_transactions(Services, Transactions),
-    Number.
     knm_number:set_services(Number, Services).
 -endif.
 
