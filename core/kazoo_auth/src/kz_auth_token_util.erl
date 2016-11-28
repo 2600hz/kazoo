@@ -83,7 +83,7 @@ build_claims([], _JObjs, Claims) -> Claims;
 build_claims([{K1, K2} | KVs], JObjs, Claims) ->
     case kz_json:find(K1, JObjs) of
         'undefined' -> build_claims(KVs, JObjs, Claims);
-        V -> build_claims(KVs, JObjs, [{K2, V} | Claims]) 
+        V -> build_claims(KVs, JObjs, [{K2, V} | Claims])
     end.
 
 -spec id_token(map()) -> map().

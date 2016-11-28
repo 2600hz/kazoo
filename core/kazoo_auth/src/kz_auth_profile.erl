@@ -206,7 +206,7 @@ ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
                     lager:debug("missing properties when updating user : ~p", [kz_util:join_binary(StillMissing)]),
                     Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
             end;
-        _ ->                            
+        _ ->
             lager:debug("missing properties when updating user : ~p", [kz_util:join_binary(Missing)]),
             Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
     end.
@@ -267,7 +267,7 @@ maybe_required_properties_missing(Token, _Props, JObj) ->
     Token#{user_doc => JObj
           ,user_map => kz_json:to_map(JObj)
           }.
-            
+
 
 
 -spec updates_needed(kz_json:object(), kz_proplist()) -> kz_proplist().
