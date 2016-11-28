@@ -13,6 +13,7 @@
 get_test_() ->
     Ret = knm_numbers:get([?TEST_AVAILABLE_NUM]),
     NotNum = <<"NOT a number">>,
+    UnknownNum = ?TEST_CREATE_NUM,
     [?_assertMatches(#{ko := #{}
                       ,ok := [_]
                       }, Ret)
@@ -21,6 +22,9 @@ get_test_() ->
                   )
     ,?_assertMatches(#{ko := #{NotNum => not_reconcilable}}
                     ,km_numbers:get([NotNum], [])
+                    )
+    ,?_assertMatches(#{ko := #{UnknownNum => not_found}}
+                    ,km_numbers:get([UnknownNum], [])
                     )
     ,?_assertMatches(#{ko := #{NotNum => not_reconcilable}
                       ,ok := [_]

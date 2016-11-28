@@ -18,7 +18,7 @@
         ,charges/1, charges/2
         ]).
 -export([add_ok/2
-        ,add_ko/2
+        ,add_ko/3
         ]).
 
 -export([get/1, get/2
@@ -134,8 +134,10 @@ charges(V, T) -> T#{charges => V}.
 add_ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 
 %% @public
--spec add_ko(ko(), t()) -> t().
-add_ko(Reason, T) -> T#{ko => [Reason | maps:get(ko, T)]}.
+-spec add_ko(num(), ko(), t()) -> t().
+add_ko(Num, Reason, T) ->
+    KOs = maps:get(ko, T),
+    T#{ko => KOs#{Num => Reason}}.
 
 %%--------------------------------------------------------------------
 %% @public
