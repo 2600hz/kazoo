@@ -13,7 +13,6 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([has_emergency_services/1]).
 
 -include("knm.hrl").
 
@@ -77,15 +76,6 @@ delete(Number) ->
             _ = remove_number(Number),
             knm_services:deactivate_feature(Number, ?FEATURE_E911)
     end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec has_emergency_services(knm_number:knm_number()) -> boolean().
-has_emergency_services(Number) ->
-    feature(Number) =/= 'undefined'.
 
 %%%===================================================================
 %%% Internal functions
