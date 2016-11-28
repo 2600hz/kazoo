@@ -51,3 +51,4 @@ compile_commands.json
 /doc/kazoocon/*.pdf
 /doc/kazoocon/*.tex
 *.coverdata
+
