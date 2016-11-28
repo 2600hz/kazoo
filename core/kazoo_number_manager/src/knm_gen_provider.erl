@@ -17,6 +17,3 @@
 
 -callback delete(knm_number:knm_number()) ->
     knm_number:knm_number().
-
--callback has_emergency_services(knm_number:knm_number()) ->
-    boolean().

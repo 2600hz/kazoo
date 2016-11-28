@@ -13,7 +13,6 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([has_emergency_services/1]).
 -export([allowed_features/1
         ,service_name/2
         ]).
@@ -55,21 +54,6 @@ save(Number) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     exec(Number, 'delete').
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Return whether a number has emergency services enabled
-%% @end
-%%--------------------------------------------------------------------
--spec has_emergency_services(knm_number:number()) -> boolean().
-has_emergency_services(Number) ->
-    Providers = provider_modules(Number),
-    F = fun (Provider) -> apply_action(Number, 'has_emergency_services', Provider) end,
-    lists:foldl(fun erlang:'or'/2
-               ,'false'
-               ,lists:filtermap(F, Providers)
-               ).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -204,7 +188,7 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type exec_action() :: 'save' | 'delete' | 'has_emergency_services'.
+-type exec_action() :: 'save' | 'delete'.
 -spec exec(knm_number:knm_number(), exec_action()) ->
                   knm_number:knm_number().
 -spec exec(knm_number:knm_number(), exec_action(), ne_binaries()) ->

@@ -13,7 +13,6 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([has_emergency_services/1]).
 
 -include("knm.hrl").
 
@@ -56,14 +55,6 @@ save(Number, _CurrentState, _State) ->
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
     knm_services:deactivate_feature(Number, ?KEY).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec has_emergency_services(knm_number:knm_number()) -> boolean().
-has_emergency_services(_Number) -> 'false'.
 
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
 feature(Number) ->
