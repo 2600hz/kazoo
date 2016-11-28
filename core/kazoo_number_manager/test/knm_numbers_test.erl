@@ -20,10 +20,10 @@ get_test_() ->
                   ,knm_phone_number:number(knm_number:phone_number(hd(maps:get(ok, Ret))))
                   )
     ,?_assertMatch(#{ko := #{NotNum := not_reconcilable}}
-                  ,km_numbers:get([NotNum], [])
+                  ,knm_numbers:get([NotNum], [])
                   )
     ,?_assertMatch(#{ko := #{?TEST_CREATE_NUM := not_found}}
-                  ,km_numbers:get([?TEST_CREATE_NUM], [])
+                  ,knm_numbers:get([?TEST_CREATE_NUM], [])
                   )
     ,?_assertMatch(#{ko := #{NotNum := not_reconcilable}
                     ,ok := [_]
