@@ -407,9 +407,12 @@ migrate_outbound_fax(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
+
     kazoo_modb:maybe_create(AccountMODb),
+
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month),FromId),
+
     case kz_datamgr:move_doc(FromDB, FromId, ToDB, ToId, ['override_existing_document']) of
         {'ok', _} -> io:format("document ~s/~s moved to ~s/~s~n", [FromDB, FromId, ToDB, ToId]);
         {'error', _E} -> io:format("error ~p moving document ~s/~s to ~s/~s~n", [_E, FromDB, FromId, ToDB, ToId])
@@ -422,18 +425,22 @@ next_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
 -spec load_smtp_attachment(ne_binary(), ne_binary()) -> 'ok'.
+-spec load_smtp_attachment(ne_binary(), ne_binary(), binary()) -> 'ok'.
 load_smtp_attachment(DocId, Filename) ->
     case file:read_file(Filename) of
         {'ok', FileContents} ->
-            CT = kz_mime:from_filename(Filename),
-            case kz_datamgr:open_doc(?KZ_FAXES_DB, DocId) of
-                {'ok', JObj} ->
-                    case fax_util:save_fax_attachment(JObj, FileContents, CT) of
-                        {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
-                        {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
-                    end;
-                {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
-            end;
+            load_smtp_attachment(DocId, Filename, FileContents);
         Error ->
             io:format("error obtaining file ~s contents for docid ~s : ~p~n", [Filename, DocId, Error])
+    end.
+
+load_smtp_attachment(DocId, Filename, FileContents) ->
+    CT = kz_mime:from_filename(Filename),
+    case kz_datamgr:open_cache_doc(?KZ_FAXES_DB, DocId) of
+        {'ok', JObj} ->
+            case fax_util:save_fax_attachment(JObj, FileContents, CT) of
+                {'ok', _Doc} -> io:format("attachment ~s for docid ~s recovered~n", [Filename, DocId]);
+                {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
+            end;
+        {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
     end.

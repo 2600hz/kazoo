@@ -155,7 +155,7 @@ ensure_saved(_Server, _DbName, _Doc, _Options) ->
 fetch_attachment(_Server, _DbName, _DocId, _AName) ->
     {'error', 'resource_not_available'}.
 
--spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+-spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) -> error().
 stream_attachment(_Server, _DbName, _DocId, _AName, _Caller) ->
     {'error', 'resource_not_available'}.
 

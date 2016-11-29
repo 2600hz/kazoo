@@ -823,7 +823,9 @@ maybe_notify(JObj, Resp, <<"failed">>) ->
 maybe_notify(_JObj, _Resp, Status) ->
     lager:debug("notify Status ~p not handled",[Status]).
 
--spec maybe_move_doc(kz_json:object(), ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.
+-spec maybe_move_doc(kz_json:object(), ne_binary()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', any()}.
 maybe_move_doc(JObj, <<"completed">>) ->
     move_doc(JObj);
 maybe_move_doc(JObj, <<"failed">>) ->
@@ -831,6 +833,9 @@ maybe_move_doc(JObj, <<"failed">>) ->
 maybe_move_doc(JObj, _) ->
     {'ok', JObj}.
 
+-spec move_doc(kz_json:object()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', any()}.
 move_doc(JObj) ->
     FromId = kz_doc:id(JObj),
     {Year, Month, _D} = kz_util:to_date(kz_doc:created(JObj)),

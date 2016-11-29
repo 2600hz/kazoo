@@ -196,17 +196,18 @@ construct_records(Method, Entity, RPM, RPS) ->
                        [User, _] -> {User, <<"device">>};
                        [Realm] -> {Realm, <<"realm">>}
                    end,
+
     RPMObject = kz_json:from_list([{<<"type">>, Type}
                                   ,{?MINUTE, RPM}
                                   ]),
     RPSObject = kz_json:from_list([{<<"type">>, Type}
                                   ,{?SECOND, RPS}
                                   ]),
-    Record = kz_json:from_list([{<<"id">>, 'undefined'}
-                               ,{<<"key">>, [Name, Method]}
-                               ]),
+    Record = kz_json:from_list([{<<"key">>, [Name, Method]}]),
+
     [kz_json:set_value(<<"value">>, JObj, Record)
-     || JObj <- [RPMObject, RPSObject]].
+     || JObj <- [RPMObject, RPSObject]
+    ].
 
 -spec section_type(ne_binary()) -> ne_binary().
 section_type(<<"realm">>) -> <<"account">>;
@@ -275,7 +276,8 @@ check_fallbacks(Tree, MethodList, Realm) ->
         _ -> Result
     end.
 
--spec check_fallback(ne_binary(), atom() | kz_json:objects(), ne_binaries(), ne_binary()) -> atom() | kz_json:objects().
+-spec check_fallback(ne_binary(), atom() | kz_json:objects(), ne_binaries(), ne_binary()) ->
+                            atom() | kz_json:objects().
 check_fallback(AccountId, 'empty', MethodList, Realm) ->
     AccountDB = kz_util:format_account_id(AccountId, 'encoded'),
     ViewOpts = [{'key', AccountId}],

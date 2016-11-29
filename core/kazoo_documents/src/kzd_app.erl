@@ -99,7 +99,7 @@ unpublish(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec name(kz_json:object()) -> ne_binary().
+-spec name(kz_json:object()) -> api_binary().
 name(JObj) ->
     kz_json:get_ne_binary_value(?NAME, JObj).
 
@@ -108,7 +108,7 @@ name(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec i18n(kz_json:object()) -> kz_json:object().
+-spec i18n(kz_json:object()) -> api_object().
 i18n(JObj) ->
     kz_json:get_json_value(?I18N, JObj).
 
@@ -119,14 +119,14 @@ i18n(JObj) ->
 %%--------------------------------------------------------------------
 -spec tags(kz_json:object()) -> ne_binaries().
 tags(JObj) ->
-    kz_json:get_list_value(?TAGS, JObj).
+    kz_json:get_list_value(?TAGS, JObj, []).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec icon(kz_json:object()) -> ne_binary().
+-spec icon(kz_json:object()) -> api_binary().
 icon(JObj) ->
     kz_json:get_ne_binary_value(?ICON, JObj).
 
@@ -135,7 +135,7 @@ icon(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec api_url(kz_json:object()) -> ne_binary().
+-spec api_url(kz_json:object()) -> api_binary().
 api_url(JObj) ->
     kz_json:get_ne_binary_value(?API_URL, JObj).
 
@@ -144,7 +144,7 @@ api_url(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec source_url(kz_json:object()) -> ne_binary().
+-spec source_url(kz_json:object()) -> api_binary().
 source_url(JObj) ->
     kz_json:get_ne_binary_value(?SOURCE_URL, JObj).
 
@@ -153,7 +153,7 @@ source_url(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec author(kz_json:object()) -> ne_binary().
+-spec author(kz_json:object()) -> api_binary().
 author(JObj) ->
     kz_json:get_ne_binary_value(?AUTHOR, JObj).
 

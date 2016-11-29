@@ -138,18 +138,15 @@ generate_test_account_cdrs(AccountDb, CdrJObjFixture, Date, NumCdrs) ->
 
 -spec delete_test_accounts() -> 'ok' | kz_std_return().
 delete_test_accounts() ->
-    case kapps_util:get_all_accounts() of
-        {'error', _E} -> lager:debug("error retrieving accounts: ~p", [_E]);
-        [] -> 'ok';
-        Accounts ->
-            lists:foreach(fun maybe_delete_test_account/1, Accounts)
-    end.
+    lists:foreach(fun maybe_delete_test_account/1
+                 ,kapps_util:get_all_accounts()
+                 ).
 
--spec maybe_get_migrate_account(account_db()) -> 'false' | kz_json:object().
+-spec maybe_get_migrate_account(account_db()) -> 'false' | kz_json:objects().
 maybe_get_migrate_account(AccountDb) ->
     case kz_datamgr:get_results(AccountDb, <<"account/listing_by_realm">>, ['include_docs']) of
         {'error', _} -> 'false';
-        [] -> 'false';
+        {'ok', []} -> 'false';
         {'ok', Results} ->
             [kz_json:get_value(<<"doc">>, Result)
              || Result <- Results,

@@ -98,7 +98,7 @@ agent_devices(AcctDb, AgentId) ->
         {'error', _} -> []
     end.
 
--spec get_endpoints(kapps_call:call(), ne_binary() | kz_datamgr:get_results_return()) ->
+-spec get_endpoints(kapps_call:call(), ne_binary() | kazoo_data:get_results_return()) ->
                            kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
     Params = kz_json:from_list([{<<"source">>, kz_util:to_binary(?MODULE)}]),

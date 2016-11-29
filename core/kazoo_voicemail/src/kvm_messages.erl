@@ -246,7 +246,7 @@ move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
 -spec copy_to_vmboxes(ne_binary(), ne_binaries(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             kz_json:object().
+                             dict:dict().
 copy_to_vmboxes(AccountId, Ids, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Ids, OldBoxId, [NewBoxId]);
 copy_to_vmboxes(AccountId, Ids, OldBoxId, NewBoxIds) ->
@@ -374,8 +374,8 @@ normalize_count(ViewRes) ->
 
 -spec normalize_count_fold(kz_json:object(), kz_json:object()) -> kz_json:object().
 normalize_count_fold(M, Acc) ->
-    VMBoxId = kz_json:get_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
-    Folder = kz_json:get_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
+    VMBoxId = kz_json:get_binary_value([<<"key">>, ?BOX_ID_KEY_INDEX], M),
+    Folder = kz_json:get_binary_value([<<"key">>, ?FOLDER_KEY_INDEX], M),
     Value = kz_json:get_integer_value(<<"value">>, M),
 
     Total = kz_json:get_integer_value([VMBoxId, <<"total">>], Acc, 0),

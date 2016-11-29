@@ -115,7 +115,7 @@ build_trie(Server, Database) ->
 
 -define(LIMIT, 5000).
 
--spec build_trie(pid(), ne_binary(), trie:trie(), kz_datamgr:get_results_return()) ->
+-spec build_trie(pid(), ne_binary(), trie:trie(), kazoo_data:get_results_return()) ->
                         'ok'.
 build_trie(Server, _Database, Trie, {'ok', []}) ->
     gen_server:cast(Server, {'trie', self(), Trie});
@@ -145,7 +145,7 @@ add_result(Result, Trie) ->
     trie:append(Prefix, Id, Trie).
 
 -spec fetch_rates(ne_binary(), non_neg_integer()) ->
-                         kz_datamgr:get_results_return().
+                         kazoo_data:get_results_return().
 fetch_rates(Database, StartKey) ->
     Options = props:filter_undefined([{'startkey', StartKey}
                                      ,{'limit', ?LIMIT+1}

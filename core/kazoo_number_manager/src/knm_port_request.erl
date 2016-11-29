@@ -34,7 +34,7 @@
 -define(ACTIVE_PORT_IN_NUMBERS, <<"port_requests/port_in_numbers">>).
 
 -type transition_response() :: {'ok', kz_json:object()} |
-                               {'error', 'invalid_state_transition'}.
+                               {'error', 'invalid_state_transition' | kz_json:object()}.
 
 -define(NAME_KEY, <<"name">>).
 -define(NUMBERS_KEY, <<"numbers">>).
@@ -47,7 +47,6 @@
 - define(PVT_TREE, <<"pvt_tree">>).
 -endif.
 -define(PVT_VSN, <<"pvt_vsn">>).
-
 
 %%% API
 
@@ -227,6 +226,7 @@ maybe_transition(PortReq, ?PORT_CANCELED) ->
                         transition_response().
 transition(JObj, FromStates, ToState) ->
     transition(JObj, FromStates, ToState, current_state(JObj)).
+
 transition(_JObj, [], _ToState, _CurrentState) ->
     lager:debug("cant go from ~s to ~s", [_CurrentState, _ToState]),
     {'error', 'invalid_state_transition'};

@@ -83,7 +83,9 @@
 -define(BASE_BACKOFF, 50).
 
 -type services() :: #kz_services{}.
--type bookkeeper() :: 'kz_bookkeeper_braintree' | 'kz_bookkeeper_local'.
+-type bookkeeper() :: 'kz_bookkeeper_braintree' |
+                      'kz_bookkeeper_local' |
+                      'kz_bookkeeper_http'.
 -export_type([services/0
              ,bookkeeper/0
              ]).

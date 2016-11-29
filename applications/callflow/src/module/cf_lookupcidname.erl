@@ -107,19 +107,24 @@ build_keys(<<>>, _, Acc) -> Acc.
 -spec match_regexp_in_list(ne_binary(), ne_binary(), ne_binary()) ->
                                   'continue' | {'stop', api_binary()}.
 match_regexp_in_list(AccountDb, Number, ListId) when is_binary(ListId) ->
-    case kz_datamgr:get_results(AccountDb
-                               ,<<"lists/regexps_in_list">>
-                               ,[{'keys', [ListId]}
-                                ,{'include_docs', 'true'}
-                                ]
-                               )
-    of
+    case fetch_regexes(AccountDb, ListId) of
         {'ok', Regexps} ->
             match_regexp(Regexps, Number);
         Error ->
             lager:warning("getting regexps error: ~p", [Error]),
             'continue'
     end.
+
+-spec fetch_regexes(ne_binary(), ne_binary()) ->
+                           {'ok', kz_json:objects()} |
+                           {'error', any()}.
+fetch_regexes(AccountDb, ListId) ->
+    kz_datamgr:get_results(AccountDb
+                          ,<<"lists/regexps_in_list">>
+                          ,[{'keys', [ListId]}
+                           ,'include_docs'
+                           ]
+                          ).
 
 -spec match_regexp_in_lists(ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
                                    api_ne_binary().

@@ -366,6 +366,7 @@ remove_media_doc(AccountDb, MediaJObj) ->
 filter_media_names(JObj) ->
     kz_doc:id(JObj) =/= kz_http_util:urldecode(kz_doc:id(JObj)).
 
+-spec fix_media_name(kz_json:object()) -> 'ok'.
 fix_media_name(JObj) ->
     FromId = kz_doc:id(JObj),
     ToId = kz_http_util:urldecode(kz_doc:id(JObj)),

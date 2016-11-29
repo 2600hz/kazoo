@@ -66,6 +66,8 @@
 
 -type key_range() :: integer() | binary() | [integer() | binary() | kz_json:object()].
 
+-type transform_fun() :: fun((kz_json:object(), kz_json:object()) -> kz_json:object()).
+
 -type view_option() :: 'conflicts' |
                        'descending' |
                        'first_when_multiple' |
@@ -73,6 +75,8 @@
                        'include_docs' |
                        'inclusive_end' |
                        'reduce' |
+                       'override_existing_document' |
+                       {'transform',transform_fun()} |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
                        {'group_level', 'exact' | integer()} |

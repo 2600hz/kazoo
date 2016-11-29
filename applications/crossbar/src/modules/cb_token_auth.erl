@@ -171,7 +171,7 @@ authenticate(_Context, _TokenType) -> 'false'.
 check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
 check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
-    Options = [{<<"account_id">>, cb_context:req_header(Context, 'x-auth-account-id')}],
+    Options = [{<<"account_id">>, cb_context:req_header(Context, <<"x-auth-account-id">>)}],
     lager:debug("checking auth token"),
     case crossbar_auth:validate_auth_token(AuthToken, props:filter_undefined(Options)) of
         {'ok', JObj} -> is_expired(Context, JObj);

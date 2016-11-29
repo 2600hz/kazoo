@@ -31,7 +31,7 @@
 
 -type key() :: json_string().
 -type keys() :: [key()].
--type path() :: keys() | key().
+-type path() :: keys() | key() | pos_integer() | [pos_integer()].
 -type paths() :: [path()].
 
 -type json_proplist() :: [{key(), json_term()}] | [].

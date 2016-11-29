@@ -232,9 +232,11 @@ copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
         Error -> Error
     end.
 
--spec copy_transform('undefined' | fun(), kz_json:object(), kz_json:object()) -> kz_json:object().
-copy_transform('undefined', _SourceDoc, DestinationDoc) -> DestinationDoc;
-copy_transform(Fun, SourceDoc, DestinationDoc) -> Fun(SourceDoc, DestinationDoc).
+-spec copy_transform('undefined' | transform_fun(), kz_json:object(), kz_json:object()) -> kz_json:object().
+copy_transform('undefined', _SourceDoc, DestinationDoc) ->
+    DestinationDoc;
+copy_transform(Fun, SourceDoc, DestinationDoc) ->
+    Fun(SourceDoc, DestinationDoc).
 
 -spec copy_attachments(map(), map(), copy_doc(), {kz_json:json_terms(), kz_json:path()}, ne_binary()) ->
                               {'ok', kz_json:object()} |
