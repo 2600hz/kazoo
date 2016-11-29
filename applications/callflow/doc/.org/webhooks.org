@@ -1,0 +1,66 @@
+#+TITLE: webhooks
+#+DATE: <2016-11-18 Fri>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil stat:t tags:t
+#+OPTIONS: tasks:t tex:t timestamp:t toc:t todo:t |:t
+#+CREATOR: Emacs 26.0.50.1 (Org mode 8.3.6)
+#+DESCRIPTION:
+#+EXCLUDE_TAGS: noexport
+#+KEYWORDS:
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+* The Webhook Callflow Action
+
+Webhooks can be triggered from a callflow without needing them to be predefined by an API call. They are useful in tracking the state of a caller in a phone tree, triggering actions on the receiver's end, or whatever imagination can come up with.
+
+** The Webhook action
+See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.webhook.json][schema]] for details of what can go in the action's data object.
+| Field       | Description                                                    | Type                | Default | Required |
+|-------------+----------------------------------------------------------------+---------------------+---------+----------|
+| uri         | The HTTP URI to send the webhook data to                       | string()            |         | true     |
+| http_verb   | The HTTP verb to use                                           | enum("post", "get") | "post"  | false    |
+| retries     | How many times to retry the server                             | integer(0..4)       | 2       | false    |
+| custom_data | A JSON object of custom data to include on the webhook payload | object()            | {}      | false    |
+
+An example JSON action
+#+BEGIN_SRC json
+{"module":"webhook"
+ ,"data":{
+     "uri":"http://my.ser.ver/path/to/webhook/destination"
+     ,"http_verb":"post"
+     ,"custom_data":{
+         "some_id":"123abc"
+         ,"app":"my_cool_app"
+     }
+ }
+}
+#+END_SRC
+** Using the webhook action in a callflow
+To receive a webhook anytime the main company number goes to voicemail instead of being answered, for instannce:
+
+#+BEGIN_SRC json
+{"numbers":["+10005559999"]
+ ,"flow":{
+     "module":"device"
+     ,"data":{"id":"front_desk_device_id"}
+     ,"children":{
+         "_":{
+             "module":"webhook"
+             ,"data":{
+                 "uri":"http://my.ser.ver/frontdesk/missed_call"
+             }
+             ,"children":{
+                 "_":{
+                     "module":"voicemail"
+                     ,"data":{"id":"front_desk_voicemail_box_id"}
+                 }
+             }
+         }
+     }
+ }
+}
+#+END_SRC
+Now your webserver will receive a webhook payload anytime the caller is sent to voicemail instead of talking to the front desk.
