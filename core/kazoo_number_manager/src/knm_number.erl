@@ -77,9 +77,15 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_number().
--spec new(knm_phone_number:knm_phone_number()) -> knm_number().
 new() -> #knm_number{}.
-new(PhoneNumber) -> set_phone_number(#knm_number{}, PhoneNumber).
+
+-spec new(knm_numbers:collection()) -> knm_numbers:collection();
+         (knm_phone_number:knm_phone_number()) -> knm_number().
+new(T=#{todo := PNs}) ->
+    Numbers = [new(PN) || PN <- PNs],
+    knm_numbers:ok(Numbers, T);
+new(PN) ->
+    set_phone_number(new(), PN).
 
 -spec is_number(any()) -> boolean().
 is_number(#knm_number{}) -> 'true';

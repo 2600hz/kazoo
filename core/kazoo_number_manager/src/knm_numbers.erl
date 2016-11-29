@@ -131,14 +131,19 @@ charges(#{charges := V}) -> V.
 charges(V, T) -> T#{charges => V}.
 
 %% @public
--spec ok(ok(), t()) -> t().
+-spec ok(ok() | oks(), t()) -> t().
+ok(Numbers, T) when is_list(Numbers) ->
+    T#{ok => Numbers};
 ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 
 %% @public
--spec ko(num(), ko(), t()) -> t().
-ko(Num, Reason, T) ->
+-spec ko(num() | knm_number:knm_number(), ko(), t()) -> t().
+ko(?NE_BINARY=Num, Reason, T) ->
     KOs = maps:get(ko, T),
-    T#{ko => KOs#{Num => Reason}}.
+    T#{ko => KOs#{Num => Reason}};
+ko(N, Reason, T) ->
+    Num = knm_phone_number:number(knm_number:phone_number(N)),
+    ko(Num, Reason, T).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -154,8 +159,11 @@ get(Nums, Options) -> ret(do_get(Nums, Options)).
 
 -spec do_get(ne_binaries(), knm_number_options:options()) -> t().
 do_get(Nums, Options) ->
-    {Yes, No} = knm_converters:are_reconcilable(lists:usort(Nums)),
-    pipe(new(Options, Yes, No), [fun knm_phone_number:fetch/1]).
+    {Yes, No} = are_reconcilable(Nums),
+    pipe(new(Options, Yes, No), [%% fetch/1 puts PNs in "ok"!
+                                 fun knm_phone_number:fetch/1
+                                ,fun knm_number:new/1
+                                ]).
 
 %%--------------------------------------------------------------------
 %% @public
