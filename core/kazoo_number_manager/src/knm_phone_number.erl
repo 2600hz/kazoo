@@ -137,8 +137,8 @@ fetch(T) ->
     Options = knm_numbers:options(T),
     Fetch = fun (Num, Acc) ->
                     case knm_number:attempt(fun fetch/2, [Num, Options]) of
-                        {ok, PN} -> knm_numbers:add_ok(knm_number:new(PN), Acc);
-                        {error, R} -> knm_numbers:add_ko(Num, R, Acc)
+                        {ok, PN} -> knm_numbers:ok(knm_number:new(PN), Acc);
+                        {error, R} -> knm_numbers:ko(Num, R, Acc)
                     end
             end,
     lists:foldl(Fetch, T, knm_numbers:todo(T)).

@@ -17,9 +17,7 @@
         ,transactions/1, transactions/2
         ,charges/1, charges/2
         ]).
--export([add_ok/2
-        ,add_ko/3
-        ]).
+-export([ok/2, ko/3]).
 
 -export([get/1, get/2
         ,create/2
@@ -130,12 +128,12 @@ charges(#{charges := V}) -> V.
 charges(V, T) -> T#{charges => V}.
 
 %% @public
--spec add_ok(ok(), t()) -> t().
-add_ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
+-spec ok(ok(), t()) -> t().
+ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 
 %% @public
--spec add_ko(num(), ko(), t()) -> t().
-add_ko(Num, Reason, T) ->
+-spec ko(num(), ko(), t()) -> t().
+ko(Num, Reason, T) ->
     KOs = maps:get(ko, T),
     T#{ko => KOs#{Num => Reason}}.
 
@@ -352,6 +350,7 @@ new(Options, ToDos, KOs) ->
      ,charges => []
      }.
 
+%% @private
 %% @doc
 %% Apply something to "todo" if not empty,
 %% if empty use "ok" as the new "todo".
@@ -365,6 +364,7 @@ do(F, T) ->
     NewT = F(T),
     NewT#{todo => []}.
 
+%% @private
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
