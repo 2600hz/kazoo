@@ -221,12 +221,17 @@ save_number(Number) ->
     apply_number_routines(Number, Routines).
 
 -spec save_phone_number(knm_number()) -> knm_number().
+-spec save_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number().
 save_phone_number(Number) ->
-    set_phone_number(Number, knm_phone_number:save(phone_number(Number))).
+    save_phone_number(phone_number(Number), Number).
+save_phone_number(PhoneNumber, Number) ->
+    set_phone_number(Number, knm_phone_number:save(PhoneNumber)).
 
+-spec save_wrap_phone_number(knm_number()) -> knm_number_return().
 -spec save_wrap_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number_return().
+save_wrap_phone_number(Number) -> {ok, save_phone_number(Number)}.
 save_wrap_phone_number(PhoneNumber, Number) ->
-    wrap_phone_number_return(knm_phone_number:save(PhoneNumber), Number).
+    {ok, save_phone_number(PhoneNumber, Number)}.
 
 -spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
 dry_run_or_number(Number) ->
@@ -372,7 +377,7 @@ save(Number) ->
                 %%  thus has no services associated with it
                 Number
         end,
-    save_wrap_phone_number(phone_number(N), N).
+    save_wrap_phone_number(N).
 
 %% @private
 -spec is_carrier_search_result(knm_number()) -> boolean().
@@ -485,7 +490,7 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    save_wrap_phone_number(phone_number(N), N).
+    save_wrap_phone_number(N).
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
