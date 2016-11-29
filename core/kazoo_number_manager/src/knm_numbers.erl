@@ -85,6 +85,9 @@
              ,charges/0
              ]).
 
+-type applier() :: fun((t()) -> t()).
+-type appliers() :: [applier()].
+
 -type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
 -type numbers_return() :: [number_return()].
 
@@ -152,7 +155,7 @@ get(Nums, Options) -> ret(do_get(Nums, Options)).
 -spec do_get(ne_binaries(), knm_number_options:options()) -> t().
 do_get(Nums, Options) ->
     {Yes, No} = knm_converters:are_reconcilable(lists:usort(Nums)),
-    do(fun knm_phone_number:fetch/1, new(Options, Yes, No)).
+    pipe(new(Options, Yes, No), [fun knm_phone_number:fetch/1]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -356,10 +359,20 @@ new(Options, ToDos, KOs) ->
 %% if empty use "ok" as the new "todo".
 %% If "ok" is empty, return.
 %% @end
--spec do(fun(), t()) -> t().
-do(_, T = #{todo := [], ok := []}) -> T;
-do(F, T = #{todo := [], ok := OK}) ->
-    do(F, T#{todo => OK, ok => []});
+-spec pipe(t(), appliers()) -> t().
+pipe(T, []) -> T;
+pipe(T=#{todo := [], ok := []}, _) -> T;
+pipe(T=#{todo := [], ok := OK}, Fs) ->
+    NewT = T#{todo => OK, ok => []},
+    pipe(NewT, Fs);
+pipe(T, [F|Fs]) ->
+    case do(F, T) of
+        NewT=#{ok := []} -> NewT;
+        NewT -> pipe(NewT, Fs)
+    end.
+
+%% @private
+-spec do(applier(), t()) -> t().
 do(F, T) ->
     NewT = F(T),
     NewT#{todo => []}.
