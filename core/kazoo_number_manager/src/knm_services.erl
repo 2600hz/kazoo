@@ -119,10 +119,15 @@ deactivate_features(Number, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_services(knm_number:knm_number()) -> knm_number:knm_number().
+-spec update_services(knm_number:knm_number()) -> knm_number:knm_number();
+                     (knm_numbers:collection()) -> knm_numbers:collection().
 -ifdef(TEST).
+update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T);
 update_services(Number) -> Number.
 -else.
+update_services(T=#{todo := Ns}) ->
+    NewNs = [update_services(N) || N <- Ns],
+    knm_numbers:ok(NewNs, T);
 update_services(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     update_services(Number

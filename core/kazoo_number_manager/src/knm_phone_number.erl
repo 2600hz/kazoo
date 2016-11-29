@@ -211,7 +211,20 @@ handle_fetched_result(JObj, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number()) -> knm_phone_number().
+-spec save(knm_phone_number()) -> knm_phone_number();
+          (knm_numbers:collection()) -> knm_numbers:collection().
+save(T0=#{todo := Ns}) ->
+    %%FIXME: move knm_number() handling back to knm_number.
+    F = fun (N, T) ->
+                PN = knm_number:phone_number(N),
+                case knm_number:attempt(fun save/1, [PN]) of
+                    {error, R} -> knm_numbers:ko(number(PN), R, T);
+                    NewPN ->
+                        NewN = knm_number:set_phone_number(N, NewPN),
+                        knm_numbers:ok(NewN, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns);
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
@@ -529,9 +542,18 @@ is_phone_number(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return().
-setters(Number, Routines) ->
-    try lists:foldl(fun setters_fold/2, Number, Routines) of
+-spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return();
+             (knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
+setters(T0=#{todo := PNs}, Routines) ->
+    F = fun (PN, T) ->
+                case setters(PN, Routines) of
+                    {ok, NewPN} -> knm_numbers:ok(NewPN, T);
+                    {error, R} -> knm_numbers:ko(number(PN), R, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs);
+setters(PN, Routines) ->
+    try lists:foldl(fun setters_fold/2, PN, Routines) of
         {'ok', _N}=Ok -> Ok;
         {'error', _R}=Error -> Error;
         Result -> {'ok', Result}

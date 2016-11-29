@@ -14,6 +14,7 @@
         ,to_aging/1
         ,to_port_in/1
         ,to_state/2, to_state/3
+        ,to_options_state/1
         ]).
 
 -include("knm.hrl").
@@ -23,6 +24,17 @@
 -endif.
 
 -type kn() :: knm_number:knm_number().
+
+-spec to_options_state(knm_numbers:collection()) -> knm_numbers:collection().
+to_options_state(T0=#{todo := Ns, options := Options}) ->
+    TargetState = knm_number_options:state(Options),
+    F = fun (N, T) ->
+                case knm_number:attempt(fun change_state/2, [N, TargetState]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} -> knm_numbers:ko(N, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns).
 
 -spec to_state(ne_binary() | kn(), ne_binary()) -> kn().
 -spec to_state(ne_binary() | kn(), ne_binary(), kz_proplist()) -> kn().

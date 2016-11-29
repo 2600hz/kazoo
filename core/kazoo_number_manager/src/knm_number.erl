@@ -33,7 +33,11 @@
         ,is_number/1
         ]).
 
--export([attempt/2]).
+-export([attempt/2
+        ,ensure_can_create/1
+        ,ensure_can_load_to_create/1
+        ,state_for_create/2
+        ]).
 
 -ifdef(TEST).
 -export([ensure_can_load_to_create/1]).
@@ -174,7 +178,18 @@ create_or_load(Num, Options, {'error', 'not_found'}) ->
     PhoneNumber = knm_phone_number:new(Num, Options),
     create_phone_number(Options, set_phone_number(new(), PhoneNumber)).
 
--spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
+-spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
+                               (knm_numbers:collection()) -> knm_numbers:collection().
+ensure_can_load_to_create(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
+                case attempt(fun ensure_can_load_to_create/1, [PN]) of
+                    true -> knm_numbers:ok(PN, T);
+                    {error, R} ->
+                        Num = knm_phone_number:number(PN),
+                        knm_numbers:ko(Num, R, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs);
 ensure_can_load_to_create(PhoneNumber) ->
     ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
 
@@ -247,6 +262,16 @@ dry_run_or_number(Number) ->
             Charges = knm_services:phone_number_activation_charges(Number),
             {'dry_run', services(Number), Charges}
     end.
+
+-spec ensure_can_create(knm_numbers:collection()) -> knm_numbers:collection().
+ensure_can_create(T0=#{todo := Nums, options := Options}) ->
+    F = fun (Num, T) ->
+                case attempt(fun ensure_can_create/2, [Num, Options]) of
+                    {error, R} -> knm_numbers:ko(Num, R, T);
+                    true -> knm_numbers:ok(knm_phone_number:new(Num, Options), T)
+                end
+        end,
+    lists:foldl(F, T0, Nums).
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Options) ->

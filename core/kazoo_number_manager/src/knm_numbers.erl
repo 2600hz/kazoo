@@ -60,7 +60,6 @@
 -type t() :: #{todo => nums() | oks()
               ,ok => oks()
               ,ko => kos()
-              ,dry_run => kz_json:object()
 
               ,options => options()
               ,plan => plan()
@@ -168,11 +167,28 @@ do_get(Nums, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Attempts to create new numbers in DB or modify existing ones.
+%% Note: `assign_to' number option MUST be set.
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binaries(), knm_number_options:options()) -> numbers_return().
+-spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
-    [{Num, knm_number:create(Num, Options)} || Num <- Nums].
+    ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
+    {Yes, No} = are_reconcilable(Nums),
+    FIXME = fun (Num) -> knm_errors:to_json('not_reconcilable', Num) end,
+    T0 = do(fun knm_phone_number:fetch/1, new(Options, Yes, No, FIXME)),
+    case take_not_founds(T0) of
+        {#{ok := []}, []} -> T0;
+        {T1, NotFounds} ->
+            ToState = knm_number:state_for_create(AccountId, Options),
+            lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
+            NewOptions = [{'state', ToState} | Options],
+            ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
+                    ,[fun knm_number:new/1
+                     ,fun knm_number_states:to_options_state/1
+                     ,fun save_numbers/1
+                     ]))
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -347,12 +363,18 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%%===================================================================
 
 %% @private
+-spec new(knm_number_options:options(), nums()) -> t().
 -spec new(knm_number_options:options(), nums(), nums()) -> t().
-new(Options, ToDos, KOs) ->
+-spec new(knm_number_options:options(), nums(), nums(), atom() | fun((num())->kz_json:object())) -> t().
+new(Options, ToDos) -> new(Options, ToDos, []).
+new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, not_reconcilable).
+new(Options, ToDos, KOs, Reason) ->
     #{todo => ToDos
      ,ok => []
-     ,ko => maps:from_list([{KO, not_reconcilable} || KO <- KOs])
-     ,dry_run => kz_json:new()
+     ,ko => case is_atom(Reason) of
+                true -> maps:from_list([{KO, Reason} || KO <- KOs]);
+                false -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
+            end
 
      ,options => Options
      ,plan => undefined
@@ -381,17 +403,68 @@ pipe(T, [F|Fs]) ->
 
 %% @private
 -spec do(applier(), t()) -> t().
+do(_, T=#{todo := [], ok := []}) -> T;
+do(F, T=#{todo := [], ok := OK}) ->
+    %% For calls to do/1 not from pipe/2
+    do(F, T#{todo => OK, ok => []});
 do(F, T) ->
+    lager:debug("applying ~p", [F]),
     NewT = F(T),
     NewT#{todo => []}.
+
+%% @private
+-spec merge_okkos(t(), t()) -> t().
+merge_okkos(#{ok := OKa, ko := KOa}
+           ,#{ok := OKb, ko := KOb} = B) ->
+    B#{ok => OKa ++ OKb
+      ,ko => maps:merge(KOa, KOb)
+      }.
 
 %% @private
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
-     ,dry_run := DryRun
      }) ->
+    %%FIXME: use the collection()'s services.
+    ServicesList = [Services || N <- OKs,
+                                Services <- [knm_number:services(N)],
+                                Services =/= undefined
+                   ],
+    F = fun (Services, JObj) -> kz_json:sum(kz_services:dry_run(Services), JObj) end,
+    DryRun = lists:foldl(F, kz_json:new(), ServicesList),
     #{ok => OKs
      ,ko => KOs %%FIXME Convert to error format
      ,dry_run => DryRun
      }.
+
+
+are_reconcilable(Nums) ->
+    knm_converters:are_reconcilable(lists:usort(Nums)).
+
+take_not_founds(T=#{ko := KOs}) ->
+    F = fun ({_Num, Reason}) -> not_found =:= Reason end,
+    {NumsNotFound, NewKOs} = lists:partition(F, maps:to_list(KOs)),
+    Nums = [Num || {Num,_NotFound} <- NumsNotFound],
+    {T#{ko := maps:from_list(NewKOs)}, Nums}.
+
+maybe_create(NotFounds, T) ->
+    Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
+    Tb = pipe(T, [fun knm_number:ensure_can_load_to_create/1
+                 ,fun update_for_create/1
+                 ]),
+    merge_okkos(Ta, Tb).
+
+update_for_create(T=#{todo := _PNs, options := Options}) ->
+    Updates = knm_number_options:to_phone_number_setters(
+                props:delete('state', Options)
+               ),
+    knm_phone_number:setters(T, Updates).
+
+save_numbers(T) ->
+    pipe(T, [fun knm_providers:save/1
+            ,fun save_phone_numbers/1
+            ,fun knm_services:update_services/1
+            ]).
+
+save_phone_numbers(T) ->
+    do(fun knm_phone_number:save/1, T).

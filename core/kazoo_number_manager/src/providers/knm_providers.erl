@@ -59,7 +59,11 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_number:knm_number()) -> knm_number:knm_number();
+          (knm_numbers:collection()) -> knm_numbers:collection().
+save(T=#{todo := Ns}) ->
+    NewNs = [save(N) || N <- Ns],
+    knm_numbers:ok(NewNs, T);
 save(Number) ->
     exec(Number, 'save').
 
