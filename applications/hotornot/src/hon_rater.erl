@@ -12,13 +12,6 @@
 
 -include("hotornot.hrl").
 
--define(DEFAULT_MINIMUM, kapps_config:get_integer(?APP_NAME, <<"default_minimum">>, 60)).
--define(DEFAULT_INCREMENT, kapps_config:get_integer(?APP_NAME, <<"default_increment">>, 60)).
--define(DEFAULT_NOCHARGE, kapps_config:get_integer(?APP_NAME, <<"default_nocharge_time">>, 0)).
--define(DEFAULT_SURCHARGE, kapps_config:get_float(?APP_NAME, <<"default_surcharge">>, 0.0)).
--define(DEFAULT_COST, kapps_config:get_float(?APP_NAME, <<"default_cost">>, 0.0)).
--define(DEFAULT_INT_COST, kapps_config:get_float(?APP_NAME, <<"default_internal_cost">>, 0.0)).
-
 -spec init() -> ok.
 init() -> kapps_maintenance:refresh(?KZ_RATES_DB).
 
