@@ -149,10 +149,12 @@ add_ko(Num, Reason, T) ->
 -spec get(ne_binaries()) -> ret().
 -spec get(ne_binaries(), knm_number_options:options()) -> ret().
 get(Nums) -> get(Nums, knm_number_options:default()).
+get(Nums, Options) -> ret(do_get(Nums, Options)).
 
-get(Nums, Options) ->
+-spec do_get(ne_binaries(), knm_number_options:options()) -> t().
+do_get(Nums, Options) ->
     {Yes, No} = knm_converters:are_reconcilable(lists:usort(Nums)),
-    ret(do(fun knm_phone_number:fetch/1, new(Options, Yes, No))).
+    do(fun knm_phone_number:fetch/1, new(Options, Yes, No)).
 
 %%--------------------------------------------------------------------
 %% @public
