@@ -127,7 +127,7 @@ ensure_states(Options0, Numbers) ->
     DB = knm_converters:to_db(Prefix),
     Options = [{'keys', QKeys}],
     case kz_datamgr:get_result_keys(DB, <<"numbers/status">>, Options) of
-        {'error', Error} -> lager:critical("error querying number keys : ~p", [Error]); 
+        {'error', Error} -> lager:critical("error querying number keys : ~p", [Error]);
         {'ok', []} -> create_discovery(DB, Numbers);
         {'ok', DBKeys} ->
             Filter = [Num ||[_, _, Num] <- DBKeys],

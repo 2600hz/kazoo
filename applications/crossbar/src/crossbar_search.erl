@@ -195,7 +195,7 @@ handle_expire({'search', QID}, Node, 'expire') ->
 handle_search(JObj) ->
     'true' = kapi_search:req_v(JObj),
     handle_search(JObj, is_local(kapi_search:query_id(JObj))).
-    
+
 handle_search(JObj, 'false') ->
     lager:debug("query id ~s not handled locally", [kapi_search:query_id(JObj)]);
 handle_search(JObj, 'true') ->
@@ -214,7 +214,7 @@ handle_search(JObj, 'true') ->
               ,{'query_id', QID}
               ,{'ets', table_id()}
               ],
-    Results = erlang:apply(Module, Method, [Options]),    
+    Results = erlang:apply(Module, Method, [Options]),
     Payload = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
               ,{<<"Query-ID">>, QID}
               ,{<<"Results">>, Results}
