@@ -829,13 +829,8 @@ fetch_account_from_ports(NormalizedNum, Error) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec wrap_phone_number_return(knm_phone_number_return() | knm_phone_number:knm_phone_number()) ->
-                                      knm_number_return().
 -spec wrap_phone_number_return(knm_phone_number_return() | knm_phone_number:knm_phone_number(), knm_number()) ->
                                       knm_number_return().
-wrap_phone_number_return(Result) ->
-    wrap_phone_number_return(Result, new()).
-
 wrap_phone_number_return({'error', _R}=E, #knm_number{knm_phone_number = _PhoneNumber})
   when _PhoneNumber /= 'undefined' ->
     lager:debug("number ~s (~s) error: ~p"
