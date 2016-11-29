@@ -593,8 +593,9 @@ maybe_add_node(NodeName, Cookie, Options, #state{self=Srv, nodes=Nodes}) ->
                     _ = maybe_start_node_pinger(Node),
                     E;
                 'ok' ->
-                    gen_server:cast(Srv, {'update_node', Node#node{connected='true'}}),
-                    'ok'
+                    gen_server:cast(Srv, {'update_node', Node#node{started=kz_util:current_tstamp()
+                                                                  ,connected='true'
+                                                                  }})
             end
     end.
 
@@ -621,7 +622,9 @@ handle_nodeup(#node{}=Node, #state{self=Srv}) ->
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', NewNode#node{connected='true'}})
+            gen_server:cast(Srv, {'update_node', NewNode#node{started=kz_util:current_tstamp()
+                                                             ,connected='true'
+                                                             }})
     end.
 
 -spec handle_nodedown(fs_node(), state()) -> 'ok'.
@@ -635,7 +638,9 @@ handle_nodedown(#node{node=NodeName}=Node, #state{self=Srv}) ->
             _ = maybe_start_node_pinger(Node),
             'ok';
         'ok' ->
-            gen_server:cast(Srv, {'update_node', Node#node{connected='true'}})
+            gen_server:cast(Srv, {'update_node', Node#node{started=kz_util:current_tstamp()
+                                                          ,connected='true'
+                                                          }})
     end.
 
 -spec maybe_connect_to_node(fs_node()) -> 'ok' | {'error', any()}.
