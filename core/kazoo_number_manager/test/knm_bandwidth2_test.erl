@@ -38,7 +38,7 @@ find_numbers(Options) ->
         end,
     Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
-                              |Options]),
+                               |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -61,7 +61,7 @@ find_tollfree_numbers(Options) ->
         end,
     Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
-                              |Options]),
+                               |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
