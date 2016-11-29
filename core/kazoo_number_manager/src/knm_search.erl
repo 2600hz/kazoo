@@ -71,6 +71,7 @@ find(Options) ->
     Self = self(),
     Opts = [{'quantity', ?MAX_SEARCH}
            ,{'offset', 0}
+           ,{'normalized_prefix', normalized_prefix(Options)}
             | Options
            ],
     lists:foreach(fun(Carrier) -> search_spawn(Self, Carrier, Opts) end, Carriers),
@@ -121,6 +122,10 @@ next(Options) ->
     lager:debug("returning ~B results", [length(Results)]),
     [kz_json:from_list([{<<"number">>, Num}]) || {Num, _, _, _} <- Results].
 
+-spec ensure_states(options(), kz_json:objects()) -> 'ok'.
+-ifdef(TEST).
+ensure_states(_Options0, _Numbers) -> 'ok'.
+-else.
 ensure_states(Options0, Numbers) ->
     Prefix = normalized_prefix(Options0),
     QKeys = [ [State, kz_util:to_binary(Mod), Num] || {Num, Mod, State, _} <- Numbers],
@@ -157,7 +162,7 @@ create_discovery(DID=?NE_BINARY, Carrier, Data) ->
                                 ,[{fun knm_phone_number:set_carrier_data/2, Data}
                                  ]),
     knm_phone_number:to_json(PhoneNumber).
-
+-endif.
 
 -spec quantity(options()) -> pos_integer().
 quantity(Options) ->
@@ -181,14 +186,17 @@ query_options(Options, Default) ->
 -spec normalized_prefix(options(), ne_binary()) -> ne_binary().
 normalized_prefix(Options) ->
     JObj = query_options(Options, kz_json:new()),
-    Default = kz_json:get_ne_binary_value(<<"Prefix">>, JObj, prefix(Options)),
-    normalized_prefix(Options, Default).
+    Dialcode = dialcode(Options),
+    Prefix = kz_json:get_ne_binary_value(<<"Prefix">>, JObj, prefix(Options)),
+    normalized_prefix(Options, <<Dialcode/binary, Prefix/binary>>).
+
 normalized_prefix(Options, Default) ->
     props:get_ne_binary_value('normalized_prefix', Options, Default).
 
 -spec dialcode(options()) -> ne_binary().
 dialcode(Options) ->
-    props:get_ne_binary_value('dialcode', Options).
+    Default = knm_util:prefix_for_country(country(Options)),
+    props:get_ne_binary_value('dialcode', Options, Default).
 
 -spec country(options()) -> knm_util:country_iso3166a2().
 country(Options) ->
@@ -233,7 +241,19 @@ keep_only_reachable(ModuleNames) ->
 %% @doc Create a list of all available carrier modules
 %%--------------------------------------------------------------------
 -spec available_carriers(options()) -> atoms().
+-ifdef(TEST).
 available_carriers(Options) ->
+    case props:get_value('carriers', Options) of
+        Cs=[_|_] -> keep_only_reachable(Cs);
+        _ -> get_available_carriers(Options)
+    end.
+-else.
+available_carriers(Options) ->
+    get_available_carriers(Options).
+-endif.
+
+-spec get_available_carriers(options()) -> atoms().
+get_available_carriers(Options) ->
     case account_id(Options) of
         'undefined' ->
             keep_only_reachable(?CARRIER_MODULES);

@@ -11,8 +11,12 @@
 -include("knm.hrl").
 
 api_test_() ->
+    ETSOptions = [bag, public],
+    ETS = ets:new(?MODULE, ETSOptions),
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_bandwidth2">>]}
+              ,{'ets', ETS}
+              ,{'query_id', <<"QID">>}
               ],
     [find_numbers(Options)
     ,find_tollfree_numbers(Options)
@@ -24,15 +28,17 @@ find_numbers(Options) ->
     Limit = 2,
     Prefix = <<"973">>,
     MatchPrefix =
-        fun (Result) ->
+        fun (JObj) ->
                 Size = byte_size(Prefix),
-                Number = kz_json:get_value(<<"number">>, Result),
+                Number = kz_json:get_value(<<"number">>, JObj),
                 case Number of
                     <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
                     _Else -> 'false'
                 end
         end,
-    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
+    Results = knm_search:find([{'quantity',Limit}
+                              ,{'prefix', Prefix}
+                              |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -45,15 +51,17 @@ find_tollfree_numbers(Options) ->
     Limit = 15,
     Prefix = <<"855">>,
     MatchPrefix =
-        fun (Result) ->
+        fun (JObj) ->
                 Size = byte_size(Prefix),
-                Number = kz_json:get_value(<<"number">>, Result),
+                Number = kz_json:get_value(<<"number">>, JObj),
                 case Number of
                     <<"+1", Prefix:Size/binary, _/binary>> -> 'true';
                     _Else -> 'false'
                 end
         end,
-    Results = knm_carriers:find(Prefix, [{'quantity',Limit}|Options]),
+    Results = knm_search:find([{'quantity',Limit}
+                              ,{'prefix', Prefix}
+                              |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
      }

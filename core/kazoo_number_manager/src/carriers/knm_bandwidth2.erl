@@ -108,6 +108,14 @@ find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
 
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+    <<_:1/binary, Wildcard/binary>> = Prefix,
+    Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
+               "&enableTNDetail=true&quantity=", ?SEARCH_QUANTITY(Quantity)
+             ],
+    Result = search(Num, Params),
+    process_tollfree_search_response(Result, Options);
+
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
                "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
@@ -304,7 +312,7 @@ api_get(Url) ->
     handle_response(Response).
 -else.
 api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?areaCode="++_) ->
-    Resp = knm_util:fixture("bandwidth2_find_by_npa.xml"),
+    Resp = knm_util:fixture("bandwidth2_find_by_npa_no_detail.xml"),
     handle_response({'ok', 200, [], Resp});
 api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?tollFreeWildCardPattern="++_) ->
     Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
