@@ -36,7 +36,7 @@ reconcile(Services) ->
             Services
     end.
 
-reconcile(Services, 'undefined') -> kz_services:reset_category(?SERVICE_CATEGORY, Services); 
+reconcile(Services, 'undefined') -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
 reconcile(Services, RatedeckId) -> kz_services:update(?SERVICE_CATEGORY, RatedeckId, 1, Services).
 
 -spec get_ratedeck(api_binary() | kz_services:services()) -> api_binary().
