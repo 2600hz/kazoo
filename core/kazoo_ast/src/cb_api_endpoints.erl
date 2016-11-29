@@ -28,7 +28,6 @@
 
 -define(X_AUTH_TOKEN, "auth_token_header").
 
-
 -spec to_ref_doc() -> 'ok'.
 -spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc() ->
@@ -714,12 +713,16 @@ path_name(Module) ->
 -type methods() :: ne_binaries().
 -spec get() -> config().
 get() ->
-    process_application('crossbar').
+    Apps = ['crossbar', 'acdc'],
+    lists:foldl(fun get_app/2, [], Apps).
 
-process_application(App) ->
+get_app(App, Acc) ->
+    process_application(App, Acc).
+
+process_application(App, Acc) ->
     EBinDir = code:lib_dir(App, 'ebin'),
-    io:format("processing crossbar modules: "),
-    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, []),
+    io:format("processing ~s modules: ", [App]),
+    Processed = filelib:fold_files(EBinDir, "^cb_.*.beam\$", 'false', fun process_module/2, Acc),
     io:format(" done~n"),
     Processed.
 

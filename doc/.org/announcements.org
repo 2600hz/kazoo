@@ -1,7 +1,7 @@
 #+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline ^:{}
 #+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
 #+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
-#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:nil todo:t |:t
 #+TITLE: announcements
 #+DATE: <2016-10-06 Thu>
 #+LANGUAGE: en
@@ -20,6 +20,11 @@ This final refactor has been contentious as we discussed the value a consistent 
 
 We hope that you agree and and are not inconvienced by this change. As always we are here to help or answer any questions! Thank you for your understaning.
 ** Versions
+*** 4.1
+**** kz_util refactoring
+We are starting to break kz_util up into more appropriately-named modules. There is a script that will take care of migrating existing code, `scripts/kz_util_diaspora.bash`. This is run as part of CircleCI (under the `make code_checks` target) as well.
+**** ACDc Crossbar endpoints moved
+cb_queues and cb_agents have been moved to be part of ACDc's modules. Please know that you will need acdc present if you wish to use ACDc's Crossbar endpoints in a particular Erlang VM.
 *** 4.0
 **** Erlang Version Support
 Starting with Kazoo 4.0 Erlang support will target 18+ and will not be backward compatible with prior Erlang versions.

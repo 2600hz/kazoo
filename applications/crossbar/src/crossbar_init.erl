@@ -158,7 +158,6 @@ stop_mod_version(Version, Mod) ->
             'false'
     end.
 
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc Functions for onrequest and onresponse callbacks

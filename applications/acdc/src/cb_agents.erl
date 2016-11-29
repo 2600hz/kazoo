@@ -33,8 +33,8 @@
         ,post/3
         ]).
 
--include("crossbar.hrl").
--include_lib("acdc/include/acdc_config.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+-include("acdc_config.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
@@ -58,6 +58,9 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
+    _ = kapi_acdc_agent:declare_exchanges(),
+    _ = kapi_acdc_stats:declare_exchanges(),
+
     _ = crossbar_bindings:bind(<<"*.allowed_methods.agents">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.agents">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),

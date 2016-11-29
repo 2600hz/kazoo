@@ -46,8 +46,6 @@ stop(_State) ->
 %%--------------------------------------------------------------------
 -spec declare_exchanges() -> 'ok'.
 declare_exchanges() ->
-    _ = kapi_acdc_agent:declare_exchanges(),
-    _ = kapi_acdc_stats:declare_exchanges(),
     _ = kapi_money:declare_exchanges(),
     _ = kapi_conference:declare_exchanges(),
     _ = kapi_notifications:declare_exchanges(),

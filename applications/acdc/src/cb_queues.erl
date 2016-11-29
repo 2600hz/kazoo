@@ -49,8 +49,8 @@
         ,delete_account/2
         ]).
 
--include("crossbar.hrl").
--include_lib("acdc/include/acdc_config.hrl").
+-include_lib("crossbar/src/crossbar.hrl").
+-include("acdc_config.hrl").
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".queues">>).
 
@@ -95,6 +95,9 @@
 init() ->
     _ = kz_datamgr:db_create(?KZ_ACDC_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_ACDC_DB, 'crossbar', <<"views/acdc.json">>),
+
+    _ = kapi_acdc_agent:declare_exchanges(),
+    _ = kapi_acdc_stats:declare_exchanges(),
 
     _ = crossbar_bindings:bind(<<"*.allowed_methods.queues">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.queues">>, ?MODULE, 'resource_exists'),
