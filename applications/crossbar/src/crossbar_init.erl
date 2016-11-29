@@ -177,7 +177,8 @@ declare_exchanges() ->
     _ = kapi_sysconf:declare_exchanges(),
     _ = kapi_call:declare_exchanges(),
     _ = kapi_dialplan:declare_exchanges(),
-    kapi_self:declare_exchanges().
+    _ = kapi_self:declare_exchanges(),
+    kapi_search:declare_exchanges().
 
 %%--------------------------------------------------------------------
 %% @private

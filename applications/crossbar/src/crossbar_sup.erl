@@ -30,6 +30,14 @@
                   ,?SUPER('crossbar_module_sup')
                   ,?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
                   ,?WORKER('crossbar_bindings')
+                  ,?WORKER('crossbar_search')
+                  ,?WORKER_ARGS('kazoo_etsmgr_srv'
+                               ,[
+                                 [{'table_id', crossbar_search:table_id()}
+                                 ,{'table_options', crossbar_search:table_options()}
+                                 ,{'local', 'true'}
+                                 ]
+                                ])
                   ]
        ).
 

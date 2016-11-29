@@ -598,25 +598,29 @@ maybe_find_numbers(Context) ->
 find_numbers(Context, AccountId, ResellerId) ->
     QS = cb_context:query_string(Context),
     Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
-    Prefix = kz_json:get_ne_value(?PREFIX, QS),
+    Prefix = kz_util:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
     Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
     Token = cb_context:auth_token(Context),
     HashKey = <<AccountId/binary, "-", Token/binary>>,
     Hash = kz_base64url:encode(crypto:hash(sha, HashKey)),
     QueryId = list_to_binary([Country, "-", Prefix, "-", Hash]),
+    Dialcode = knm_util:prefix_for_country(Country),
+    NormalizedPrefix = <<Dialcode/binary, Prefix/binary>>,
     Options = props:filter_undefined(
                 [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
                 ,{'prefix', Prefix}
+                ,{'normalized_prefix', NormalizedPrefix}
                 ,{'country', Country}
+                ,{'dialcode', Dialcode}
                 ,{'offset', Offset}
                 ,{'account_id', AccountId}
                 ,{'reseller_id', ResellerId}
                 ,{'query_id', QueryId}
+                ,{'ets', crossbar_search:table_id()}
                 ]),
     OnSuccess =
         fun(C) ->
-                lager:debug("carriers find: ~p", [Options]),
-                Found = knm_carriers:find(knm_carriers:prefix(Options), Options),
+                Found = find(Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
                                    ,{fun cb_context:set_resp_status/2, 'success'}
@@ -624,6 +628,45 @@ find_numbers(Context, AccountId, ResellerId) ->
         end,
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
+
+find(Options) ->
+    find(Options, knm_search:offset(Options)).
+
+find(Options, 0) ->
+    QueryId = knm_search:query_id(Options),
+    Payload = [{<<"Query-ID">>, QueryId}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    kz_amqp_worker:cast(Payload, fun kapi_search:publish_register/1),
+    knm_search:find(Options);
+find(Options, _) ->
+    do_find(Options, crossbar_search:is_local(knm_search:query_id(Options))).
+
+do_find(Options, 'true') ->
+    knm_search:next(Options);
+do_find(Options, 'false') ->
+    QueryId = knm_search:query_id(Options),
+    Quantity = knm_search:quantity(Options),
+    Offset = knm_search:offset(Options),
+    Payload = [{<<"Query-ID">>, QueryId}
+              ,{<<"Options">>, kz_json:from_list([{<<"Prefix">>, knm_search:normalized_prefix(Options)}])}
+              ,{<<"Quantity">>, Quantity}
+              ,{<<"Offset">>, Offset}
+              ,{<<"Module">>, knm_search}
+              ,{<<"Method">>, next}
+              ,{<<"Account-ID">>, knm_search:account_id(Options)}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    case kz_amqp_worker:call(Payload
+                            ,fun kapi_search:publish_req/1
+                            ,fun kapi_search:resp_v/1
+                            )
+    of
+        {'ok', JObj} -> kapi_search:results(JObj);
+        {'error', Error} ->
+            lager:debug("error requesting search from amqp : ~p", [Error]),
+            []
+    end.
 
 -spec maybe_reseller_id_lookup(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_reseller_id_lookup(Context, ReqResellerId) ->
