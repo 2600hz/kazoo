@@ -99,12 +99,9 @@ get(Num) ->
     get(Num, knm_number_options:default()).
 
 get(Num, Options) ->
-    case knm_converters:is_reconcilable(Num) of
-        'false' -> {'error', 'not_reconcilable'};
-        'true' ->
-            wrap_phone_number_return(
-              attempt(fun knm_phone_number:fetch/2, [Num, Options])
-             )
+    case knm_numbers:get([Num], Options) of
+        #{ok := [Number]} -> {ok, Number};
+        #{ko := #{Num := Reason}} -> {error, Reason}
     end.
 
 %%--------------------------------------------------------------------
