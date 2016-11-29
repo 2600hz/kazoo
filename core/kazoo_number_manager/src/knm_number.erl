@@ -137,30 +137,25 @@ create_or_load(Num, Options0) ->
 
 -spec state_for_create(ne_binary(), knm_number_options:options()) -> ne_binary().
 -ifdef(TEST).
-state_for_create(?MASTER_ACCOUNT_ID, Options) ->
-    case knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN of
-        'true' -> ?NUMBER_STATE_PORT_IN;
-        'false' -> ?NUMBER_STATE_AVAILABLE
-    end;
-state_for_create(?RESELLER_ACCOUNT_ID, Options) ->
-    case knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN of
-        'true' -> ?NUMBER_STATE_PORT_IN;
-        'false' -> ?NUMBER_STATE_RESERVED
-    end;
-state_for_create(_AccountId, _) -> ?NUMBER_STATE_IN_SERVICE.
+state_for_create(AccountId, Options) ->
+    case {knm_number_options:state(Options), AccountId} of
+        {?NUMBER_STATE_PORT_IN=PortIn, _} -> PortIn;
+        {_, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
+        {_, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
+        _ -> ?NUMBER_STATE_IN_SERVICE
+    end.
 -else.
 state_for_create(AccountId, Options) ->
-    case kz_services:is_reseller(AccountId) of
-        'false' -> ?NUMBER_STATE_IN_SERVICE;
-        'true' ->
-            state_for_create_reseller(AccountId, knm_number_options:state(Options))
-    end.
-
-state_for_create_reseller(_, ?NUMBER_STATE_PORT_IN) -> ?NUMBER_STATE_PORT_IN;
-state_for_create_reseller(AccountId, _) ->
-    case kapps_util:get_master_account_id() of
-        {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-        {'ok', _} -> ?NUMBER_STATE_RESERVED
+    case knm_number_options:state(Options) of
+        ?NUMBER_STATE_PORT_IN=PortIn -> PortIn;
+        _ ->
+            case kz_services:is_reseller(AccountId)
+                andalso kapps_util:get_master_account_id()
+            of
+                'false' -> ?NUMBER_STATE_IN_SERVICE;
+                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                {'ok', _} -> ?NUMBER_STATE_RESERVED
+            end
     end.
 -endif.
 
