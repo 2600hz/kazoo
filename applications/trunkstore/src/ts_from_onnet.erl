@@ -164,6 +164,8 @@ onnet_data(CallID, AccountId, FromUser, ToDID, Options, State) ->
             lager:info("exception ~p:~p", [_A, _B]),
             kz_util:log_stacktrace(ST),
             ts_callflow:send_hangup(State)
+    after
+        ts_callflow:cleanup_amqp(State)
     end.
 
 send_park(State, Command) ->

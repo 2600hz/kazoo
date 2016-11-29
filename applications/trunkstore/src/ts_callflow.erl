@@ -10,6 +10,7 @@
 
 -export([init/2
         ,start_amqp/1
+        ,cleanup_amqp/1
         ,send_park/1
         ,wait_for_bridge/2
         ,send_hangup/1, send_hangup/2
@@ -66,6 +67,12 @@ start_amqp(#ts_callflow_state{}=State) ->
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     lager:debug("using worker ~p", [Worker]),
     State#ts_callflow_state{amqp_worker=Worker}.
+
+-spec cleanup_amqp(state()) -> 'ok'.
+cleanup_amqp(#ts_callflow_state{amqp_worker=Worker
+                               ,aleg_callid=CallId
+                               }) ->
+    gen_listener:rm_binding(Worker, 'call', [{'callid', CallId}]).
 
 -spec send_park(state()) -> {'won' | 'lost', state()}.
 send_park(#ts_callflow_state{route_req_jobj=JObj
@@ -253,10 +260,10 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
                                        )
               ],
     lager:info("sending hangup to ~s: ~p", [CtlQ, Command]),
-    kz_amqp_worker:cast(Command
-                       ,fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end
-                       ,Worker
-                       ).
+    'ok' = kz_amqp_worker:cast(Command
+                              ,fun(P)-> kapi_dialplan:publish_command(CtlQ, P) end
+                              ,Worker
+                              ).
 
 -spec send_hangup(state(), api_binary()) -> 'ok'.
 send_hangup(#ts_callflow_state{callctl_q = <<>>}, _) -> 'ok';
@@ -267,11 +274,12 @@ send_hangup(#ts_callflow_state{callctl_q=CtlQ
            ,Code
            ) ->
     lager:debug("responding to aleg with ~p", [Code]),
-    kz_call_response:send(CallId, CtlQ, Code).
+    {'ok', _} = kz_call_response:send(CallId, CtlQ, Code),
+    'ok'.
 
 -spec send_command(state(), api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 send_command(#ts_callflow_state{amqp_worker=Worker}, Command, PubFun) ->
-    kz_amqp_worker:cast(Command, PubFun, Worker).
+    'ok' = kz_amqp_worker:cast(Command, PubFun, Worker).
 
 %%%-----------------------------------------------------------------------------
 %%% Data access functions
@@ -299,7 +307,7 @@ set_account_id(State, ID) -> State#ts_callflow_state{acctid=ID}.
 -spec get_account_id(state()) -> ne_binary().
 get_account_id(#ts_callflow_state{acctid=ID}) -> ID.
 
--spec get_control_queue(state()) -> ne_binary().
+-spec get_control_queue(state()) -> api_binary().
 get_control_queue(#ts_callflow_state{callctl_q=CtlQ}) -> CtlQ.
 
 -spec get_worker_queue(state()) -> ne_binary().
