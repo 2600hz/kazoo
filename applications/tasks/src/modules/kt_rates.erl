@@ -327,7 +327,7 @@ do_delete_rates(Db, Docs) ->
 
 -spec refresh_selectors_index(ne_binary()) -> 'ok'.
 refresh_selectors_index(Db) ->
-    {'ok', _} = kz_datamgr:all_docs(Db, [{limit, 1}]),
+    {'ok', _} = kz_datamgr:all_docs(Db, [{'limit', 1}]),
     {'ok', _} = kz_datamgr:get_results(Db, <<"rates/lookup">>, [{'limit', 1}]),
     'ok'.
 
