@@ -368,16 +368,14 @@ update_phone_number(Number, Routines) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
-    Num =
-        case is_carrier_search_result(Number) of
+    N = case is_carrier_search_result(Number) of
             'false' -> knm_services:update_services(Number);
             'true' ->
                 %% Number was created as a result of carrier search
                 %%  thus has no services associated with it
                 Number
         end,
-    PhoneNumber = knm_phone_number:save(phone_number(Num)),
-    wrap_phone_number_return(PhoneNumber, Num).
+    save_wrap_phone_number(phone_number(N), N).
 
 %% @private
 -spec is_carrier_search_result(knm_number()) -> boolean().
