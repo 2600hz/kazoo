@@ -69,7 +69,7 @@
         kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
 
 -define(SEARCH_QUANTITY(Q),integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY))).
-       
+
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(CUSTOMER_ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
