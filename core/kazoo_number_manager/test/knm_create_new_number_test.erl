@@ -228,9 +228,7 @@ create_checks_test_() ->
 
 load_existing_checks() ->
     PN = knm_phone_number:from_json(?AVAILABLE_NUMBER),
-    [existing_in_state(knm_phone_number:set_state(PN, State)
-                      ,IsAllowed
-                      )
+    [existing_in_state(knm_phone_number:set_state(PN, State), IsAllowed)
      || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
                               ,{?NUMBER_STATE_DELETED, 'false'}
                               ,{?NUMBER_STATE_DISCONNECTED, 'false'}
@@ -245,9 +243,7 @@ load_existing_checks() ->
 
 existing_in_state(PN, 'false') ->
     State = kz_util:to_list(knm_phone_number:state(PN)),
-    Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1
-                             ,[PN]
-                             ),
+    Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1, [PN]),
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
      ,?_assertMatch({'error', _}, Resp)
      }
