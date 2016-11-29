@@ -10,6 +10,7 @@
 
 -export([init/2
         ,start_amqp/1
+        ,cleanup_amqp/1
         ,send_park/1
         ,wait_for_bridge/2
         ,send_hangup/1
@@ -69,6 +70,12 @@ start_amqp(#ts_callflow_state{}=State) ->
     {'ok', Worker} = wh_amqp_worker:checkout_worker(),
     lager:info("using AMQP worker ~p", [Worker]),
     State#ts_callflow_state{amqp_worker=Worker}.
+
+-spec cleanup_amqp(state()) -> 'ok'.
+cleanup_amqp(#ts_callflow_state{amqp_worker=Worker
+                               ,aleg_callid=CallId
+                               }) ->
+    gen_listener:rm_binding(Worker, 'call', [{'callid', CallId}]).
 
 -spec send_park(state()) -> {'won' | 'lost', state()}.
 send_park(#ts_callflow_state{route_req_jobj=JObj

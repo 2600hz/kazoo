@@ -40,6 +40,8 @@ endpoint_data(State) ->
         'throw':'unknown_account' -> 'ok';
         'throw':_E ->
             lager:info("thrown exception caught, not continuing: ~p", [_E])
+    after
+        ts_callflow:cleanup_amqp(State)
     end.
 
 -spec proceed_with_endpoint(ts_callflow:state(), wh_json:object(), wh_json:object()) -> 'ok'.
