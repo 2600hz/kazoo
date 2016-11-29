@@ -330,18 +330,11 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when
          ,JObj1
          ,JObj2
          );
-merge_recursive(?JSON_WRAPPER(_)=JObj1, 'null', Pred, Keys) when is_function(Pred, 2) ->
-    delete_key(lists:reverse(Keys), JObj1);
 merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred, 2) ->
     Syek = lists:reverse(Keys),
-    V = get_value(Syek, JObj1),
-    case 'null' =:= V of
-        'true' -> delete_key(Syek, JObj1);
-        'false' ->
-            case Pred(V, Value) of
-                'false' -> JObj1;
-                'true' -> set_value(Syek, Value, JObj1)
-            end
+    case Pred(get_value(Syek, JObj1), Value) of
+        'false' -> JObj1;
+        'true' -> set_value(Syek, Value, JObj1)
     end.
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
@@ -856,6 +849,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     end;
 
 %% Figure out how to set the current key in an existing object
+set_value1([_|_]=Keys, null, JObj) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->

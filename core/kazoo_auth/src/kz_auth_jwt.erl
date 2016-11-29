@@ -12,7 +12,8 @@
 -export([verify/1
         ,decode/1, decode/2
         ,encode/1, encode/2, encode/3
-        ,token/1
+        ,token/1, token/2
+        ,parse/1
         ]).
 
 -type jwt() :: map().
@@ -137,16 +138,21 @@ alg_2_digest_type(_)           -> 'undefined'.
 -spec epoch() -> integer().
 epoch() -> erlang:system_time('seconds').
 
--spec encode(kz_proplist()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec encode(kz_proplist()) ->
+                    {'ok', ne_binary()} |
+                    {'error', 'algorithm_not_supported'}.
 encode(Claims) ->
     encode(Claims, ?SYSTEM_KEY_ID).
 
--spec encode(kz_proplist(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
+-spec encode(kz_proplist(), ne_binary()) ->
+                    {'ok', ne_binary()} |
+                    {'error', 'algorithm_not_supported'}.
 encode(Claims, Key) ->
     encode(?DEFAULT_ALGORITHM, Claims, Key).
 
 -spec encode(ne_binary(), kz_proplist(), ne_binary() | {ne_binary(), public_key:rsa_private_key()}) ->
-                    {'ok', ne_binary()} | {'error', any()}.
+                    {'ok', ne_binary()} |
+                    {'error', 'algorithm_not_supported'}.
 encode(Alg, InClaimsSet, KeyId = ?NE_BINARY) ->
     {'ok', Key} = kz_auth_keys:kazoo_private_key(KeyId),
     encode(Alg, InClaimsSet, {KeyId, Key});
@@ -162,8 +168,8 @@ encode(Alg, InClaimsSet, {KeyId, Key}) ->
     Claims = kz_base64url:encode(kz_json:encode(kz_json:from_list(ClaimsSet))),
     Payload = <<Header/binary, ".", Claims/binary>>,
     case sign(Alg, Payload, Key) of
-        undefined -> {error, algorithm_not_supported};
-        Signature -> {ok, <<Payload/binary, ".", Signature/binary>>}
+        'undefined' -> {'error', 'algorithm_not_supported'};
+        Signature -> {'ok', <<Payload/binary, ".", Signature/binary>>}
     end.
 
 -spec sign(ne_binary(), ne_binary(),  public_key:rsa_private_key()) -> api_binary().
@@ -195,10 +201,14 @@ parse(JWTToken) when is_binary(JWTToken) ->
     end.
 
 -spec token(ne_binary() | map()) -> map().
-token(JWTToken) when is_binary(JWTToken) ->
+token(JWTToken) ->
+    token(JWTToken, []).
+
+-spec token(ne_binary() | map(), kz_proplist()) -> map().
+token(JWTToken, Options) when is_binary(JWTToken) ->
     case parse(JWTToken) of
-        {'ok', Token} -> token(Token);
+        {'ok', Token} -> token(Token, Options);
         Error -> Error
     end;
-token(#{} = Token) ->
-    do_verify(Token).
+token(#{} = Token, Options) ->
+    do_verify(Token#{options => maps:from_list(Options)}).

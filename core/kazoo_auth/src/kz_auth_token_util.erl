@@ -58,8 +58,8 @@ verify(#{auth_provider := #{token_info_url := TokenInfoUrl}
         }=Token) ->
     URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
     case kz_http:get(kz_util:to_list(URL)) of
-        {'ok', 200, _RespHeaders, RespXML} ->
-            Token#{verified_token => kz_json:decode(RespXML)};
+        {'ok', 200, _RespHeaders, RespJObj} ->
+            Token#{verified_token => kz_json:decode(RespJObj)};
         Else ->
             lager:info("unable to verify oauth token: ~p", [Else]),
             Token#{verified_token => kz_json:new()}
@@ -68,23 +68,30 @@ verify(#{}=Token) -> Token#{verified_token => kz_json:new()}.
 
 -spec create_claims(map()) -> map().
 create_claims(#{user_doc := Doc, profile := Profile}=Token) ->
-    case lists:foldl(fun({K1, K2}, Acc) ->
-                             case kz_json:find(K1, [Doc, Profile]) of
-                                 'undefined' -> Acc;
-                                 V -> [{K2, V} | Acc]
-                             end
-                     end, [], ?JWT_CLAIMS)
-    of
+    case build_claims([Doc, Profile]) of
         [] -> Token;
         Claims -> Token#{claims => Claims}
     end;
 create_claims(#{}=Token) -> Token.
 
+-spec build_claims(kz_json:objects()) -> kz_proplist().
+build_claims(JObjs) ->
+    build_claims(?JWT_CLAIMS, JObjs, []).
+
+-spec build_claims(kz_proplist(), kz_json:objects(), kz_proplist()) -> kz_proplist().
+build_claims([], _JObjs, Claims) -> Claims;
+build_claims([{K1, K2} | KVs], JObjs, Claims) ->
+    case kz_json:find(K1, JObjs) of
+        'undefined' -> build_claims(KVs, JObjs, Claims);
+        V -> build_claims(KVs, JObjs, [{K2, V} | Claims])
+    end.
+
 -spec id_token(map()) -> map().
 id_token(#{claims := _Claims}=Token) -> Token;
 id_token(#{id_token := IdToken}=Token) ->
     case kz_auth_jwt:decode(IdToken) of
-        {'ok', _Header, Claims} -> Token#{claims => Claims};
+        {'ok', _Header, Claims} ->
+            Token#{claims => Claims};
         _ -> Token
     end;
 id_token(#{}=Token) -> Token#{claims => kz_json:new()}.
@@ -92,5 +99,3 @@ id_token(#{}=Token) -> Token#{claims => kz_json:new()}.
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-

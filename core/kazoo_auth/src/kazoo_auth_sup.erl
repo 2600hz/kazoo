@@ -17,7 +17,7 @@
 -define(SERVER, ?MODULE).
 
 
--define(ORIGIN_BINDINGS, [[]
+-define(ORIGIN_BINDINGS, [[{'db', ?KZ_AUTH_DB}]
                          ]).
 
 -define(CACHE_PROPS, [{'origin_bindings', ?ORIGIN_BINDINGS}
@@ -26,6 +26,7 @@
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE_ARGS(?PK_CACHE, ?CACHE_PROPS)
                   ,?CACHE_ARGS(?TOKENS_CACHE, ?CACHE_PROPS)
+                  ,?CACHE_ARGS(?PROFILE_CACHE, ?CACHE_PROPS)
                   ,?WORKER('kz_auth_rsa')
                   ,?WORKER('kz_auth_init')
                   ]).

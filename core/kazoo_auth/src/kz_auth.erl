@@ -15,11 +15,14 @@
         ,authorize_token/1
         ,access_code/1
         ,authenticate/1
+        ,link/3
+        ,unlink/1
         ]).
 
 -include("kazoo_auth.hrl").
 
--spec create_token(kz_proplist()) -> ne_binary().
+-spec create_token(kz_proplist()) -> {'ok', ne_binary()} |
+                                     {'error', 'algorithm_not_supported'}.
 create_token(Claims) ->
     kz_auth_jwt:encode(include_claims(Claims)).
 
@@ -33,7 +36,7 @@ validate_token(Token) ->
                             {'ok', kz_json:object()} |
                             {'error', any()}.
 validate_token(JWToken, Options) ->
-    case kz_auth_jwt:token(JWToken) of
+    case kz_auth_jwt:token(JWToken, Options) of
         #{verify_result := 'true'} = Token -> validate_claims(Token, Options);
         #{verify_result := 'false', verify_error := Error} -> {'error', Error};
         Error -> Error
@@ -99,7 +102,7 @@ validate_claims(#{payload := #{<<"account_id">> := AccountId} = Payload}, Option
             Claims = kz_json:from_map(Payload),
             {'ok', Claims};
         _OtherAccountId ->
-            {'error', 'account_header_mismatch'}
+            {'error', {401, <<"account header mismatch">>}}
     end;
 validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
                                ,<<"pvt_owner_id">> := OwnerId
@@ -111,9 +114,12 @@ validate_claims(#{user_map := #{<<"pvt_account_id">> := AccountId
             Props = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, OwnerId}
                     ],
-            {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
+            case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), OwnerId) of
+                {'ok', _Doc} -> {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
+                _ -> {'error', {404, <<"mapped account does not exist">>}}
+            end;
         _OtherAccountId ->
-            {'error', 'account_header_mismatch'}
+            {'error', {401, <<"account_header_mismatch">>}}
     end;
 validate_claims(#{user_map := #{<<"pvt_accounts">> := Accounts}, payload := Payload}, Options) ->
     Keys = maps:keys(Accounts),
@@ -140,12 +146,12 @@ validate_claims(#{user_map := #{<<"pvt_accounts">> := Accounts}, payload := Payl
                             ,{<<"owner_id">>, OwnerId}
                             ],
                     {'ok', kz_json:set_values(Props, kz_json:from_map(Payload))};
-                'false' -> {'error', 'account_header_mismatch'}
+                'false' -> {'error', {401, <<"account header mismatch">>}}
             end;
-        _OtherAccountId -> {'error', 'no_associated_accounts'}
+        _OtherAccountId -> {'error', {404, <<"no associated account_id">>}}
     end;
 
-validate_claims(#{}, _Options) -> {'error', 'no associated account_id'}.
+validate_claims(#{}, _Options) -> {'error', {404, <<"no associated account_id">>}}.
 
 -spec ensure_claims(map()) -> {'ok', kz_json:object()} | {'error', any()}.
 ensure_claims(#{payload := Payload}) ->
@@ -172,4 +178,24 @@ authenticate_fold(Token, [Fun | Routines]) ->
             lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
             kz_util:log_stacktrace(),
             authenticate_fold(Token, Routines)
+    end.
+
+-spec link(ne_binary(), ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
+link(AccountId, OwnerId, AuthId) ->
+    Props = [{<<"pvt_account_id">>, AccountId}
+            ,{<<"pvt_owner_id">>, OwnerId}
+            ],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+        {'ok', _JObj} -> 'ok';
+        Error -> Error
+    end.
+
+-spec unlink(ne_binary()) -> 'ok' | {'error', any()}.
+unlink(AuthId) ->
+    Props = [{<<"pvt_account_id">>, null}
+            ,{<<"pvt_owner_id">>, null}
+            ],
+    case kz_datamgr:update_doc(?KZ_AUTH_DB, AuthId, Props) of
+        {'ok', _JObj} -> 'ok';
+        Error -> Error
     end.

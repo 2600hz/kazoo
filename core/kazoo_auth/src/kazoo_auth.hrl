@@ -17,6 +17,7 @@
 
 -define(PK_CACHE, 'kazoo_auth_public_keys_cache').
 -define(TOKENS_CACHE, 'kazoo_auth_tokens_cache').
+-define(PROFILE_CACHE, 'kazoo_auth_profile_cache').
 
 -define(APPID_KEYS, [<<"app_id">>
                     ,<<"clientId">>
@@ -44,6 +45,7 @@
                     ,{<<"pvt_app_provider_id">>, <<"auth_provider">>}
                     ,{<<"email">>, <<"email">>}
                     ,{<<"pvt_accounts">>, <<"as">>}
+                    ,{<<"scope">>, <<"scope">>}
                     ]).
 
 -define(KAZOO_AUTH_HRL, 'true').

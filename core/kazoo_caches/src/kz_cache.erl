@@ -220,7 +220,9 @@ erase_local(Srv, K) ->
         {'ok', _} -> gen_server:call(Srv, {'erase', K})
     end.
 
--spec flush_local(atom()) -> 'ok'.
+-spec flush_local(text() | atom()) -> 'ok'.
+flush_local(Srv) when not is_atom(Srv) ->
+    flush_local(kz_util:to_atom(Srv));
 flush_local(Srv) ->
     gen_server:cast(Srv, {'flush'}).
 
