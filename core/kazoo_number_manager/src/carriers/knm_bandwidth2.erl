@@ -66,8 +66,10 @@
 -define(BW2_ORDER_POLL_INTERVAL, 2000).
 
 -define(MAX_SEARCH_QUANTITY,
-        integer_to_list(kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 120))).
+        kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
 
+-define(SEARCH_QUANTITY(Q),integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY))).
+       
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(CUSTOMER_ORDER_ID_XPATH, "CustomerOrderId/text()").
 -define(ORDER_NAME_XPATH, "Name/text()").
@@ -108,14 +110,14 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=false&quantity=", integer_to_list(Quantity)
+               "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
              ],
     Result = search(Num, Params),
     process_tollfree_search_response(Result, Options);
 
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=false&quantity=", integer_to_list(Quantity)
+             , "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
              ],
     Result = search(NPA, Params),
     process_search_response(Result, Options);
@@ -123,7 +125,7 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=false&quantity=", integer_to_list(Quantity)
+             , "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
              ],
     Result = search(Search, Params),
     process_search_response(Result, Options).
