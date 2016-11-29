@@ -137,6 +137,7 @@ validate_path(Context, ?LINKS_PATH, ?HTTP_POST) ->
 validate_path(Context, ?LINKS_PATH, ?HTTP_DELETE) ->
     cb_context:validate_request_data(<<"auth.callback">>, Context, fun maybe_unlink/1).
 
+-spec validate_token_info(cb_context:context(), ne_binary()) -> cb_context:context().
 validate_token_info(Context, Token) ->
     Options = [{'force_profile_update', 'true'}],
     case crossbar_auth:validate_auth_token(Token, Options) of

@@ -253,6 +253,7 @@ maybe_update_user(DocId, JObj, Token) ->
         Updates -> update_user(DocId, Updates, Token)
     end.
 
+-spec maybe_required_properties_missing(map(), kz_proplist(), kz_json:object()) -> map().
 maybe_required_properties_missing(#{auth_provider := #{profile_required_props := RequiredProps}
                                    } = Token, Props, JObj) ->
     case RequiredProps -- props:get_keys(Props) of
