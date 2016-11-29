@@ -78,7 +78,7 @@ create_claims(#{}=Token) -> Token.
 build_claims(JObjs) ->
     build_claims(?JWT_CLAIMS, JObjs, []).
 
--spec build_claims(kz_proplist(), kz_proplist(), kz_json:objects()) -> kz_proplist().
+-spec build_claims(kz_proplist(), kz_json:objects(), kz_proplist()) -> kz_proplist().
 build_claims([], _JObjs, Claims) -> Claims;
 build_claims([{K1, K2} | KVs], JObjs, Claims) ->
     case kz_json:find(K1, JObjs) of
@@ -99,5 +99,3 @@ id_token(#{}=Token) -> Token#{claims => kz_json:new()}.
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-
