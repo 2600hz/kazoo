@@ -449,7 +449,7 @@ are_reconcilable(Nums) ->
 take_not_founds(T=#{ko := KOs}) ->
     F = fun ({_Num, Reason}) -> not_found =:= Reason end,
     {NumsNotFound, NewKOs} = lists:partition(F, maps:to_list(KOs)),
-    Nums = [Num || {Num,_NotFound} <- NumsNotFound],
+    Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
