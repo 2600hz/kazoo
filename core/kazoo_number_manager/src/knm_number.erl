@@ -349,22 +349,17 @@ move(Num, MoveTo, Options) ->
 %% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binary(), knm_phone_number:set_functions()) ->
-                    knm_number_return().
+-spec update(ne_binary(), knm_phone_number:set_functions()) -> knm_number_return().
 -spec update(ne_binary(), knm_phone_number:set_functions(), knm_number_options:options()) ->
                     knm_number_return().
 update(Num, Routines) ->
     update(Num, Routines, knm_number_options:default()).
 
 update(Num, Routines, Options) ->
-    case get(Num, Options) of
-        {'error', _R}=E -> E;
-        {'ok', Number} ->
-            attempt(fun update_phone_number/2, [Number, Routines])
-    end.
+    ?TRY3(update, Num, Routines, Options).
 
--spec update_phone_number(knm_number(), knm_phone_number:set_functions()) ->
-                                 knm_number_return().
+-ifdef(TEST).
+-spec update_phone_number(knm_number(), knm_phone_number:set_functions()) -> knm_number_return().
 update_phone_number(Number, Routines) ->
     PhoneNumber = phone_number(Number),
     case knm_phone_number:setters(PhoneNumber, Routines) of
@@ -372,6 +367,7 @@ update_phone_number(Number, Routines) ->
         {'ok', NewPN} ->
             {'ok', save_number(set_phone_number(Number, NewPN))}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
