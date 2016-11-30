@@ -206,14 +206,12 @@ move(Nums, MoveTo) ->
 
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     Options = [{'assign_to', MoveTo} | Options0],
-    T = case take_not_founds(do_get(Nums, Options)) of
-            {Tb=#{ok := []}, []} -> Tb;
-            {Tb, NotFounds} ->
-                Ta = pipe(new(Options, NotFounds), [fun knm_phone_number:new/1
-                                                   ,fun knm_number:new/1
-                                                   ]),
-                merge_okkos(Ta, Tb)
-        end,
+    {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
+    {TDiscovered, NotExisting} = take_not_founds(do(fun discover/1, new(Options, NotFounds))),
+    TNew = pipe(new(Options, NotExisting), [fun knm_phone_number:new/1
+                                           ,fun knm_number:new/1
+                                           ]),
+    T = merge_okkos([TFound, TDiscovered, TNew]),
     ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
@@ -481,6 +479,15 @@ save_numbers(T) ->
 
 save_phone_numbers(T) ->
     do(fun knm_phone_number:save/1, T).
+
+discover(T0=#{todo := Nums, options := Options}) ->
+    F = fun (Num, T) ->
+                case knm_search:discovery(Num, Options) of
+                    {ok, N} -> ok(N, T);
+                    {error, R} -> ko(Num, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Nums).
 
 move_to(T) ->
     NewOptions = [{state, ?NUMBER_STATE_IN_SERVICE} | options(T)],

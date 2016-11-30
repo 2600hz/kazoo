@@ -73,6 +73,32 @@
 -type lookup_account_return() :: {'ok', ne_binary(), knm_number_options:extra_options()} |
                                  {'error', lookup_error()}.
 
+
+-define(TRY2(F, Num, Options),
+        case {knm_number_options:dry_run(Options)
+             ,knm_numbers:F([Num], Options)
+             }
+        of
+            {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
+            {false, #{ok := [Number]}}         -> {ok, Number};
+            {true,  #{ok := [Number], services := Services}} ->
+                Charges = knm_services:phone_number_activation_charges(Number),
+                {dry_run, Services, Charges}
+        end).
+
+-define(TRY3(F, Num, Arg2, Options),
+        case {knm_number_options:dry_run(Options)
+             ,knm_numbers:F([Num], Arg2, Options)
+             }
+        of
+            {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
+            {false, #{ok := [Number]}}         -> {ok, Number};
+            {true,  #{ok := [Number], services := Services}} ->
+                Charges = knm_services:phone_number_activation_charges(Number),
+                {dry_run, Services, Charges}
+        end).
+
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -121,16 +147,7 @@ get(Num, Options) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), knm_number_options:options()) -> knm_number_return().
 create(Num, Options) ->
-    case {knm_number_options:dry_run(Options)
-         ,knm_numbers:create([Num], Options)
-         }
-    of
-        {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
-        {false, #{ok := [Number]}}         -> {ok, Number};
-        {true,  #{ok := [Number], services := Services}} ->
-            Charges = knm_services:phone_number_activation_charges(Number),
-            {dry_run, Services, Charges}
-    end.
+    ?TRY2(create, Num, Options).
 
 -spec state_for_create(ne_binary(), knm_number_options:options()) -> ne_binary().
 -ifdef(TEST).
@@ -325,35 +342,8 @@ ensure_number_is_not_porting(Num, Options) ->
 move(Num, MoveTo) ->
     move(Num, MoveTo, knm_number_options:default()).
 
-move(Num, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = [{'assign_to', MoveTo} | Options0],
-    case get(Num, Options) of
-        {'ok', Number} -> attempt(fun move_to/1, [Number]);
-        {'error', 'not_found'} -> maybe_from_discovery(Num, Options);
-        {'error', _R}=E -> E
-    end.
-
-
--spec maybe_from_discovery(ne_binary(), knm_number_options:options()) -> knm_number_return().
-maybe_from_discovery(Num, Options) ->
-    case knm_search:discovery(Num, Options) of
-        {'ok', Number} -> attempt(fun move_to/1, [Number]);
-        {'error', 'not_found'} -> from_not_found(Num, Options);
-        {'error', _R}=E -> E
-    end.
-
--spec from_not_found(ne_binary(), knm_number_options:options()) -> knm_number_return().
-from_not_found(Num, Options) ->
-    PN = knm_phone_number:new(Num, Options),
-    Number = set_phone_number(new(), PN),
-    attempt(fun move_to/1, [Number]).
-
--spec move_to(knm_number()) -> knm_number_return().
-move_to(Number) ->
-    Routines = [fun knm_number_states:to_in_service/1
-               ,fun save_number/1
-               ],
-    apply_number_routines(Number, Routines).
+move(Num, MoveTo, Options) ->
+    ?TRY3(move, Num, MoveTo, Options).
 
 %%--------------------------------------------------------------------
 %% @public
