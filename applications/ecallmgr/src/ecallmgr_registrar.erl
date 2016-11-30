@@ -106,8 +106,8 @@
                       ,account_name :: api_binary() | '_'
                       ,proxy :: api_binary() | '_'
                       ,bridge_uri :: api_binary() | '_'
-                      ,source_ip :: api_binary()
-                      ,source_port :: api_binary()
+                      ,source_ip :: api_binary() | '_'
+                      ,source_port :: api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
