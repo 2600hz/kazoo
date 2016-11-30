@@ -24,9 +24,7 @@ get_test_() ->
     Ret = knm_numbers:get([?TEST_AVAILABLE_NUM]),
     [?_assertEqual(#{}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
-    ,?_assertEqual(?TEST_AVAILABLE_NUM
-                  ,knm_phone_number:number(knm_number:phone_number(hd(maps:get(ok, Ret))))
-                  )
+    ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(pn_x(1, Ret)))
     ,?_assertMatch(#{ko := #{?NOT_NUM := not_reconcilable}}
                   ,knm_numbers:get([?NOT_NUM], [])
                   )
