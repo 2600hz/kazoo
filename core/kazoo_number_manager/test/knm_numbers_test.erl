@@ -104,3 +104,14 @@ move_test_() ->
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret)))
      }
     ].
+
+
+update_test_() ->
+    Ret = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable
+                    ,?TEST_AVAILABLE_NUM => not_found
+                    }
+                  ,maps:get(ko, Ret)
+                  )
+    ,?_assertEqual([], maps:get(ok, Ret))
+    ].
