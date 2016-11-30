@@ -106,7 +106,12 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary()) -> knm_phone_number().
+-spec new(ne_binary()) -> knm_phone_number();
+         (knm_numbers:collection()) -> knm_numbers:collection().
+new(T=#{todo := Nums, options := Options}) ->
+    Setters = new_setters(Options),
+    PNs = [do_new(DID, Setters) || DID <- Nums],
+    knm_numbers:ok(PNs, T);
 new(DID) ->
     new(DID, knm_number_options:default()).
 

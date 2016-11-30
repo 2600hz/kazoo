@@ -199,15 +199,22 @@ create(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec move(ne_binaries(), ne_binary()) ->
-                  numbers_return().
--spec move(ne_binaries(), ne_binary(), knm_number_options:options()) ->
-                  numbers_return().
+-spec move(ne_binaries(), ne_binary()) -> ret().
+-spec move(ne_binaries(), ne_binary(), knm_number_options:options()) -> ret().
 move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
-move(Nums, MoveTo, Options) ->
-    [{Num, knm_number:move(Num, MoveTo, Options)} || Num <- Nums].
+move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
+    Options = [{'assign_to', MoveTo} | Options0],
+    T = case take_not_founds(do_get(Nums, Options)) of
+            {Tb=#{ok := []}, []} -> Tb;
+            {Tb, NotFounds} ->
+                Ta = pipe(new(Options, NotFounds), [fun knm_phone_number:new/1
+                                                   ,fun knm_number:new/1
+                                                   ]),
+                merge_okkos(Ta, Tb)
+        end,
+    ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -474,3 +481,9 @@ save_numbers(T) ->
 
 save_phone_numbers(T) ->
     do(fun knm_phone_number:save/1, T).
+
+move_to(T) ->
+    NewOptions = [{state, ?NUMBER_STATE_IN_SERVICE} | options(T)],
+    pipe(options(NewOptions, T), [fun knm_number_states:to_options_state/1
+                                 ,fun save_numbers/1
+                                 ]).
