@@ -630,7 +630,6 @@ create_node(Heartbeat, #state{zone=Zone
                            ,zone=Zone
                            ,globals=kz_globals:stats()
                            ,node_info=node_info()
-
                            }).
 
 -spec normalize_amqp_uri(ne_binary()) -> ne_binary().
