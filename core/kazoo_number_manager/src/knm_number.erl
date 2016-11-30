@@ -37,11 +37,11 @@
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
         ,state_for_create/2
+        ,create_or_load/3
         ]).
 
 -ifdef(TEST).
 -export([ensure_can_create/2]).
--export([create_or_load/3]).
 -export([update_phone_number/2]).
 -endif.
 
@@ -119,24 +119,18 @@ get(Num, Options) ->
 %% Note: `assign_to' number option MUST be set.
 %% @end
 %%--------------------------------------------------------------------
--spec create(ne_binary(), knm_number_options:options()) ->
-                    knm_number_return().
+-spec create(ne_binary(), knm_number_options:options()) -> knm_number_return().
 create(Num, Options) ->
-    ?MATCH_ACCOUNT_RAW(_) = knm_number_options:assign_to(Options),
-    case knm_converters:is_reconcilable(Num) of
-        'false' -> {'error', knm_errors:to_json('not_reconcilable', Num)};
-        'true' ->
-            attempt(fun create_or_load/2, [Num, Options])
+    case {knm_number_options:dry_run(Options)
+         ,knm_numbers:create([Num], Options)
+         }
+    of
+        {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
+        {false, #{ok := [Number]}}         -> {ok, Number};
+        {true,  #{ok := [Number], services := Services}} ->
+            Charges = knm_services:phone_number_activation_charges(Number),
+            {dry_run, Services, Charges}
     end.
-
--spec create_or_load(ne_binary(), knm_number_options:options()) ->
-                            dry_run_or_number_return().
-create_or_load(Num, Options0) ->
-    AccountId = knm_number_options:assign_to(Options0),
-    ToState = state_for_create(AccountId, Options0),
-    lager:debug("picked ~s state ~s for ~s", [Num, ToState, AccountId]),
-    Options = [{'state', ToState} | Options0],
-    create_or_load(Num, Options, knm_phone_number:fetch(Num)).
 
 -spec state_for_create(ne_binary(), knm_number_options:options()) -> ne_binary().
 -ifdef(TEST).

@@ -439,6 +439,7 @@ ret(#{ok := OKs
     #{ok => OKs
      ,ko => KOs %%FIXME Convert to error format
      ,dry_run => DryRun
+     ,services => case ServicesList of [] -> undefined; [S|_] -> S end
      }.
 
 
