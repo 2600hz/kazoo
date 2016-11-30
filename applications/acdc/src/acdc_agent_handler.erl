@@ -70,7 +70,7 @@ maybe_agent_queue_change(AccountId, AgentId, <<"login_queue">>, QueueId, JObj) -
     lager:debug("queue login for agent ~s into ~s", [AgentId, QueueId]),
     case maybe_start_agent(AccountId, AgentId, JObj) of
         'fail' -> lager:error("could not start agent process for ~s", [AgentId]);
-        Sup -> acdc_agent_listener:add_acdc_queue(acdc_agent_sup:listener(Sup), QueueId)
+        Sup -> acdc_agent_fsm:add_acdc_queue(acdc_agent_sup:fsm(Sup), QueueId)
     end;
 maybe_agent_queue_change(AccountId, AgentId, <<"logout_queue">>, QueueId, JObj) ->
     lager:debug("queue logout for agent ~s into ~s", [AgentId, QueueId]),
@@ -78,7 +78,7 @@ maybe_agent_queue_change(AccountId, AgentId, <<"logout_queue">>, QueueId, JObj) 
         'undefined' -> lager:debug("agent process for ~s already stopped");
         Sup ->
             maybe_update_presence(Sup, JObj),
-            acdc_agent_listener:rm_acdc_queue(acdc_agent_sup:listener(Sup), QueueId)
+            acdc_agent_fsm:rm_acdc_queue(acdc_agent_sup:fsm(Sup), QueueId)
     end.
 
 -spec maybe_start_agent(ne_binary(), ne_binary(), kz_json:object()) -> pid() | 'fail'.
