@@ -909,7 +909,8 @@ to_public_json(#knm_number{}=Number) ->
     knm_phone_number:to_public_json(phone_number(Number)).
 
 -spec attempt(fun(), list()) -> knm_number_return() |
-                                knm_phone_number_return().
+                                knm_phone_number_return() |
+                                true.
 attempt(Fun, Args) ->
     try apply(Fun, Args) of
         #knm_number{}=N -> {'ok', N};

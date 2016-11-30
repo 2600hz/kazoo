@@ -57,16 +57,20 @@
              ,num/0, nums/0
              ]).
 
--type t() :: #{todo => nums() | oks()
-              ,ok => oks()
-              ,ko => kos()
+-type t() :: t(oks()).
+-type t(OKs) :: t(OKs, OKs).
+-type t(OKs, TODOs) :: #{todo => nums() | TODOs
+                        ,ok => OKs
+                        ,ko => kos()
 
-              ,options => options()
-              ,plan => plan()
-              ,services => services()
-              ,transactions => transactions()
-              ,charges => charges()
-              }.
+                        ,options => options()
+                        ,plan => plan()
+                        ,services => services()
+                        ,transactions => transactions()
+                        ,charges => charges()
+                        }.
+
+-type t_pn() :: t(knm_phone_number:knm_phone_number()).
 
 -opaque collection() :: t().
 -export_type([collection/0]).
@@ -447,6 +451,7 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,_NotFound} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
+-spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
     Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
     Tb = pipe(T, [fun knm_number:ensure_can_load_to_create/1
