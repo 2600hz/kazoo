@@ -151,6 +151,7 @@ send_privacy(State) ->
 -spec wait_for_bridge(ts_callflow:state(), api_integer()) -> 'ok'.
 wait_for_bridge(State, Timeout) ->
     case ts_callflow:wait_for_bridge(State, Timeout) of
+        {'bridged', _} -> lager:info("channel bridged, we're done");
         {'hangup', _} -> 'ok';
         {'error', State1} ->
             lager:info("error waiting for bridge, try failover"),
