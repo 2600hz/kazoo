@@ -422,6 +422,13 @@ do(F, T) ->
     NewT#{todo => []}.
 
 %% @private
+-spec do_in_wrap(applier(), t()) -> t().
+do_in_wrap(F, T0=#{todo := Ns}) ->
+    {NumsMap, PNs} = unwrap_phone_numbers(Ns),
+    T1 = do(F, T0#{todo => PNs}),
+    rewrap_phone_numbers(NumsMap, T1).
+
+%% @private
 -spec merge_okkos(t(), t()) -> t().
 merge_okkos(#{ok := OKa, ko := KOa}
            ,#{ok := OKb, ko := KOb} = B) ->
@@ -447,6 +454,28 @@ ret(#{ok := OKs
      ,services => case ServicesList of [] -> undefined; [S|_] -> S end
      }.
 
+%% @private
+-spec unwrap_phone_numbers(knm_number:knm_numbers()) ->
+                                  {#{num() => knm_number:knm_number()}
+                                  ,knm_phone_number:knm_phone_numbers()
+                                  }.
+unwrap_phone_numbers(Ns) ->
+    F = fun (N, {M, PNs}) ->
+                PN = knm_number:phone_number(N),
+                Num = knm_phone_number:number(PN),
+                {M#{Num => N}, [PN|PNs]}
+        end,
+    lists:foldl(F, {#{}, []}, Ns).
+
+%% @private
+-spec rewrap_phone_numbers(#{num() => knm_number:knm_number()}, t()) -> t().
+rewrap_phone_numbers(NumsMap, T=#{ok := PNs}) ->
+    F = fun (PN, Ns) ->
+                N = maps:get(knm_phone_number:number(PN), NumsMap),
+                [knm_number:set_phone_number(N, PN) | Ns]
+        end,
+    T#{ok => lists:foldl(F, [], PNs)}.
+
 
 are_reconcilable(Nums) ->
     knm_converters:are_reconcilable(lists:usort(Nums)).
@@ -471,14 +500,17 @@ update_for_create(T=#{todo := _PNs, options := Options}) ->
                ),
     knm_phone_number:setters(T, Updates).
 
+update_existing(T0, Setters) ->
+    do_in_wrap(fun (T) -> knm_phone_number:setters(T, Setters) end, T0).
+
+save_phone_numbers(T) ->
+    do_in_wrap(fun knm_phone_number:save/1, T).
+
 save_numbers(T) ->
     pipe(T, [fun knm_providers:save/1
             ,fun save_phone_numbers/1
             ,fun knm_services:update_services/1
             ]).
-
-save_phone_numbers(T) ->
-    do(fun knm_phone_number:save/1, T).
 
 discover(T0=#{todo := Nums, options := Options}) ->
     F = fun (Num, T) ->

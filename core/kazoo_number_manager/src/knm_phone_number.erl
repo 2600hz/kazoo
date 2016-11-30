@@ -224,18 +224,14 @@ handle_fetched_result(JObj, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_phone_number()) -> knm_phone_number();
           (knm_numbers:collection()) -> knm_numbers:collection().
-save(T0=#{todo := Ns}) ->
-    %%FIXME: move knm_number() handling back to knm_number.
-    F = fun (N, T) ->
-                PN = knm_number:phone_number(N),
+save(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
                 case knm_number:attempt(fun save/1, [PN]) of
                     {error, R} -> knm_numbers:ko(number(PN), R, T);
-                    NewPN ->
-                        NewN = knm_number:set_phone_number(N, NewPN),
-                        knm_numbers:ok(NewN, T)
+                    NewPN -> knm_numbers:ok(NewPN, T)
                 end
         end,
-    lists:foldl(F, T0, Ns);
+    lists:foldl(F, T0, PNs);
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
