@@ -90,3 +90,17 @@ create_test_() ->
                   ,knm_numbers:create([?TEST_AVAILABLE_NUM, ?NOT_NUM, ?TEST_CREATE_NUM], Options)
                   )
     ].
+
+
+move_test_() ->
+    Ret = knm_numbers:move([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    ,?_assertMatch([_], maps:get(ok, Ret))
+    ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(pn_x(1, Ret)))
+    ,{"verify assigned_to is child account"
+     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
+     }
+    ,{"verify number is in service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret)))
+     }
+    ].
