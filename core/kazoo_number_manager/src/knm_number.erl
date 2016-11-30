@@ -548,7 +548,7 @@ maybe_age(Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Remove a number from the system without doing any checking.
+%% Remove a number from the system without doing any state checking.
 %% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
