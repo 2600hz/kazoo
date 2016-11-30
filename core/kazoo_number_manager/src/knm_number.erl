@@ -74,29 +74,26 @@
                                  {'error', lookup_error()}.
 
 
+-define(TRY_CLAUSES(Num),
+        {_, #{ko := #{Num := Reason}}} ->
+               {error, Reason};
+            {false, #{ok := [Number]}} ->
+               {ok, Number};
+            {true, #{ok := [Number], services := Services}} ->
+               Charges = knm_services:phone_number_activation_charges(Number),
+               {dry_run, Services, Charges}).
+
 -define(TRY2(F, Num, Options),
         case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Options)
              }
-        of
-            {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
-            {false, #{ok := [Number]}}         -> {ok, Number};
-            {true,  #{ok := [Number], services := Services}} ->
-                Charges = knm_services:phone_number_activation_charges(Number),
-                {dry_run, Services, Charges}
-        end).
+        of ?TRY_CLAUSES(Num) end).
 
 -define(TRY3(F, Num, Arg2, Options),
         case {knm_number_options:dry_run(Options)
              ,knm_numbers:F([Num], Arg2, Options)
              }
-        of
-            {_,     #{ko := #{Num := Reason}}} -> {error, Reason};
-            {false, #{ok := [Number]}}         -> {ok, Number};
-            {true,  #{ok := [Number], services := Services}} ->
-                Charges = knm_services:phone_number_activation_charges(Number),
-                {dry_run, Services, Charges}
-        end).
+        of ?TRY_CLAUSES(Num) end).
 
 
 %%--------------------------------------------------------------------
