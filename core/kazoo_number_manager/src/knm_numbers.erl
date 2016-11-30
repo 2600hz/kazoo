@@ -217,17 +217,19 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Attempts to update some phone_number fields.
+%% Note: will always result in a phone_number save.
 %% @end
 %%--------------------------------------------------------------------
--spec update(ne_binaries(), knm_phone_number:set_functions()) ->
-                    numbers_return().
--spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) ->
-                    numbers_return().
+-spec update(ne_binaries(), knm_phone_number:set_functions()) -> ret().
+-spec update(ne_binaries(), knm_phone_number:set_functions(), knm_number_options:options()) -> ret().
 update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
 update(Nums, Routines, Options) ->
-    [{Num, knm_number:update(Num, Routines, Options)} || Num <- Nums].
+    ret(pipe(do_get(Nums, Options), [fun (T) -> update_existing(T, Routines) end
+                                    ,fun save_numbers/1
+                                    ])).
 
 %%--------------------------------------------------------------------
 %% @public
