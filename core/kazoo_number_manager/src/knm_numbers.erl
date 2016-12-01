@@ -180,8 +180,8 @@ do_get(Nums, Options) ->
 create(Nums, Options) ->
     ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
     {Yes, No} = are_reconcilable(Nums),
-    FIXME = fun (Num) -> knm_errors:to_json('not_reconcilable', Num) end,
-    T0 = do(fun knm_phone_number:fetch/1, new(Options, Yes, No, FIXME)),
+    Error = knm_errors:to_json(not_reconcilable),
+    T0 = do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
@@ -259,8 +259,8 @@ delete(Nums, Options) ->
         orelse kz_util:is_system_admin(AuthBy)
     of
         false ->
-            {error, Reason} = (catch knm_errors:unauthorized()),
-            ret(new(Options, [], Nums, knm_errors:to_json(Reason)));
+            Error = knm_errors:to_json(unauthorized),
+            ret(new(Options, [], Nums, Error));
         true ->
             T0 = do_get(Nums, Options),
             F1 = fun knm_providers:delete/1,
@@ -370,9 +370,9 @@ new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, not_reconcilable).
 new(Options, ToDos, KOs, Reason) ->
     #{todo => ToDos
      ,ok => []
-     ,ko => case is_atom(Reason) of
-                true -> maps:from_list([{KO, Reason} || KO <- KOs]);
-                false -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
+     ,ko => case is_function(Reason, 1) of %%FIXME: find something better than Reason/1.
+                false -> maps:from_list([{KO, Reason} || KO <- KOs]);
+                true -> maps:from_list([{KO, Reason(KO)} || KO <- KOs])
             end
 
      ,options => Options
