@@ -131,7 +131,7 @@ delete_test_() ->
 reconcile_test_() ->
     Ret0 = knm_numbers:reconcile([?NOT_NUM], []),
     Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
-    Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], Options),
+    Ret = knm_numbers:reconcile([?NOT_NUM, ?TEST_AVAILABLE_NUM], Options),
     [?_assertEqual(<<"assign_failure">>
                   ,knm_errors:error(maps:get(?NOT_NUM, maps:get(ko, Ret0)))
                   )
