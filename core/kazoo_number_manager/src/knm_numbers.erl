@@ -141,10 +141,13 @@ ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 %% @public
 -spec ko(num() | knm_number:knm_number(), ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
+    lager:debug("number ~s error: ~p", [Num, Reason]),
     KOs = maps:get(ko, T),
     T#{ko => KOs#{Num => Reason}};
 ko(N, Reason, T) ->
-    Num = knm_phone_number:number(knm_number:phone_number(N)),
+    PN = knm_number:phone_number(N),
+    Num = knm_phone_number:number(PN),
+    lager:debug("number ~s state: ~s", [knm_phone_number:state(PN)]),
     ko(Num, Reason, T).
 
 %%--------------------------------------------------------------------

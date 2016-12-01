@@ -554,24 +554,7 @@ maybe_age(Number) ->
 %%--------------------------------------------------------------------
 -spec delete(ne_binary(), knm_number_options:options()) -> knm_number_return().
 delete(Num, Options) ->
-    case get(Num, Options) of
-        {'error', _R}=E -> E;
-        {'ok', Number} ->
-            AuthBy = knm_number_options:auth_by(Options),
-            attempt(fun delete_number/2, [Number, AuthBy])
-    end.
-
--spec delete_number(knm_number(), ne_binary()) -> knm_number_return().
-delete_number(Number, AuthBy) ->
-    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
-        orelse kz_util:is_system_admin(AuthBy)
-    of
-        'false' -> knm_errors:unauthorized();
-        'true' ->
-            N = knm_providers:delete(Number),
-            PN = knm_phone_number:delete(phone_number(N)),
-            wrap_phone_number_return(PN, N)
-    end.
+    ?TRY2(delete, Num, Options).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -831,26 +814,6 @@ fetch_account_from_ports(NormalizedNum, Error) ->
                     ],
             {'ok', AccountId, Props}
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec wrap_phone_number_return(knm_phone_number_return() | knm_phone_number:knm_phone_number(), knm_number()) ->
-                                      knm_number_return().
-wrap_phone_number_return({'error', _R}=E, #knm_number{knm_phone_number = _PhoneNumber})
-  when _PhoneNumber /= 'undefined' ->
-    lager:debug("number ~s (~s) error: ~p"
-               ,[knm_phone_number:number(_PhoneNumber), knm_phone_number:state(_PhoneNumber), _R]),
-    E;
-wrap_phone_number_return({'error', _R}=E, _) ->
-    lager:debug("number error: ~p", [_R]),
-    E;
-wrap_phone_number_return({'ok', PhoneNumber}, Number) ->
-    {'ok', set_phone_number(Number, PhoneNumber)};
-wrap_phone_number_return(PhoneNumber, Number) ->
-    {'ok', set_phone_number(Number, PhoneNumber)}.
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_phone_number().
 -spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
