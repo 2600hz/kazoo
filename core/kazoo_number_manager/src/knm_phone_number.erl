@@ -587,9 +587,14 @@ setters(PN, Routines) ->
     catch
         'throw':{'stop', Error} -> Error;
         'error':'function_clause' ->
-            {_M, FName, [_PhoneNumber,Arg|_], _Info} = hd(erlang:get_stacktrace()),
+            ST = erlang:get_stacktrace(),
+            {FName, Arg} =
+                case ST of
+                    [{lists, foldl, [Name|_PhoneNumber], Arg2}|_] -> {Name, Arg2};
+                    [{_M, Name, [_PhoneNumber,Arg2|_], _Info}|_] -> {Name, Arg2}
+                end,
             lager:error("~s failed, argument: ~p", [FName, Arg]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             {'error', FName};
         'error':Reason -> {'error', Reason}
     end.
