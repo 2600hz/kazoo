@@ -176,6 +176,9 @@ handle_fetched_result(JObj, Options) ->
 save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
+save(#knm_phone_number{is_dirty = false}=PhoneNumber) ->
+    lager:debug("not dirty: skipping save"),
+    PhoneNumber;
 save(PhoneNumber) ->
     Routines = [fun save_to_number_db/1
                ,fun handle_assignment/1
