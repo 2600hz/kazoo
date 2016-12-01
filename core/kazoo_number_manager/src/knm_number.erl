@@ -405,7 +405,7 @@ is_carrier_search_result(Number) ->
 -spec reconcile(ne_binary(), knm_number_options:options()) -> knm_number_return().
 reconcile(DID, Options) ->
     knm_number_options:assign_to(Options) == 'undefined'
-        andalso knm_errors:assign_failure(Options, 'field_undefined'),
+        andalso knm_errors:assign_failure(DID, 'field_undefined'),
     NewOptions = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
                   | Options
                  ],
