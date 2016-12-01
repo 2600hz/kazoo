@@ -224,19 +224,22 @@ handle_fetched_result(JObj, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_phone_number()) -> knm_phone_number();
           (knm_numbers:collection()) -> knm_numbers:collection().
-save(T0=#{todo := PNs}) ->
-    F = fun (PN, T) ->
-                case knm_number:attempt(fun save/1, [PN]) of
-                    {error, R} -> knm_numbers:ko(number(PN), R, T);
-                    NewPN -> knm_numbers:ok(NewPN, T)
-                end
-        end,
-    lists:foldl(F, T0, PNs);
-save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
-    lager:debug("dry_run-ing btw"),
-    PhoneNumber;
+save(T0=#{todo := PNs, options := Options}) ->
+    case knm_number_options:dry_run(Options) of
+        true ->
+            lager:debug("dry_run-ing btw"),
+            knm_numbers:ok(PNs, T0);
+        false ->
+            F = fun (PN, T) ->
+                        case knm_number:attempt(fun save/1, [PN]) of
+                            {error, R} -> knm_numbers:ko(number(PN), R, T);
+                            NewPN -> knm_numbers:ok(NewPN, T)
+                        end
+                end,
+            lists:foldl(F, T0, PNs)
+    end;
 save(#knm_phone_number{is_dirty = false}=PhoneNumber) ->
-    lager:debug("not dirty: skipping save"),
+    lager:debug("not dirty: skip saving ~s", [number(PhoneNumber)]),
     PhoneNumber;
 save(PhoneNumber) ->
     Routines = [fun save_to_number_db/1
