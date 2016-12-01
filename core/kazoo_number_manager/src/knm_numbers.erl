@@ -271,12 +271,23 @@ delete(Nums, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Note: option 'assign_to' needs to be set.
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile(ne_binaries(), knm_number_options:options()) ->
-                       numbers_return().
-reconcile(Nums, Options) ->
-    [{Num, knm_number:reconcile(Num, Options)} || Num <- Nums].
+-spec reconcile(ne_binaries(), knm_number_options:options()) -> ret().
+reconcile(Nums, Options0) ->
+    case knm_number_options:assign_to(Options0) =:= undefined of
+        true ->
+            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
+            ret(new(Options0, [], Nums, Error));
+        false ->
+            Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
+            {T0, NotFounds} = take_not_founds(do_get(Nums, Options)),
+            %% Ensures state to be IN_SERVICE
+            Ta = do_move_not_founds(NotFounds, Options),
+            Tb = do(fun (T) -> reconcile_number(T, Options) end, T0),
+            ret(merge_okkos(Ta, Tb))
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -497,6 +508,15 @@ update_for_create(T=#{todo := _PNs, options := Options}) ->
 update_existing(T0, Setters) ->
     do_in_wrap(fun (T) -> knm_phone_number:setters(T, Setters) end, T0).
 
+update_for_reconcile(T, Options) ->
+    S = [{fun knm_phone_number:set_assigned_to/2, knm_number_options:assign_to(Options)}
+        ,{fun knm_phone_number:set_auth_by/2,     knm_number_options:auth_by(Options)}
+        ,{fun knm_phone_number:update_doc/2,      knm_number_options:public_fields(Options)}
+        ,{fun knm_phone_number:set_module_name/2, knm_number_options:module_name(Options)}
+        ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+        ],
+    knm_phone_number:setters(T, S).
+
 save_phone_numbers(T) ->
     do_in_wrap(fun knm_phone_number:save/1, T).
 
@@ -506,6 +526,16 @@ save_numbers(T) ->
             ,fun knm_services:update_services/1
             ]).
 
+reconcile_number(T0, Options) ->
+    F1 = fun (T) -> update_for_reconcile(T, Options) end,
+    %%FIXME: create a pipe_in_wrap that does not create the superfluous Numbers.
+    pipe(do_in_wrap(F1, T0), [fun save_phone_numbers/1]).
+
+do_move_not_founds(Nums, Options) ->
+    pipe(new(Options, Nums), [fun knm_phone_number:new/1
+                             ,fun knm_number:new/1
+                             ]).
+
 discover(T0=#{todo := Nums, options := Options}) ->
     F = fun (Num, T) ->
                 case knm_search:discovery(Num, Options) of
@@ -514,11 +544,6 @@ discover(T0=#{todo := Nums, options := Options}) ->
                 end
         end,
     lists:foldl(F, T0, Nums).
-
-do_move_not_founds(Nums, Options) ->
-    pipe(new(Options, Nums), [fun knm_phone_number:new/1
-                             ,fun knm_number:new/1
-                             ]).
 
 move_to(T) ->
     NewOptions = [{state, ?NUMBER_STATE_IN_SERVICE} | options(T)],
