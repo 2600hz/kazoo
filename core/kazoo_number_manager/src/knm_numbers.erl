@@ -416,7 +416,7 @@ pipe(T, [F|Fs]) ->
 -spec do(applier(), t()) -> t().
 do(_, T=#{todo := [], ok := []}) -> T;
 do(F, T=#{todo := [], ok := OK}) ->
-    %% For calls to do/1 not from pipe/2
+    %% For calls not from pipe/2
     do(F, T#{todo => OK, ok => []});
 do(F, T) ->
     lager:debug("applying ~p", [F]),
@@ -425,6 +425,10 @@ do(F, T) ->
 
 %% @private
 -spec do_in_wrap(applier(), t()) -> t().
+do_in_wrap(_, T=#{todo := [], ok := []}) -> T;
+do_in_wrap(F, T=#{todo := [], ok := OK}) ->
+    %% For calls not from pipe/2
+    do_in_wrap(F, T#{todo => OK, ok => []});
 do_in_wrap(F, T0=#{todo := Ns}) ->
     {NumsMap, PNs} = unwrap_phone_numbers(Ns),
     T1 = do(F, T0#{todo => PNs}),
