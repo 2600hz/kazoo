@@ -114,23 +114,16 @@ teardown_ss_size_session(_) ->
     meck:unload('acdc_queue_manager').
 
 start_deps() ->
-    _ = [application:ensure_all_started(App) || App <- ['kernel'
-                                                       ,'stdlib'
-                                                       ,'crypto'
-                                                       ,'inets'
-
-                                                       ,'kazoo'
-                                                       ,'kazoo_amqp'
-                                                       ,'kazoo_data'
-                                                       ,'kazoo_modb'
-                                                       ,'kazoo_apps'
-                                                       ,'webseq'
-                                                       ,'kazoo_web'
-
-                                                       ,'lager'
-                                                       ,'gproc'
-                                                       ]],
-    'ok'.
+    application:load('acdc'),
+    {'ok', Deps} = application:get_key('acdc', 'applications'),
+    lists:foreach(fun(Dep) ->
+                          case application:ensure_all_started(Dep) of
+                              {'error', {'already_started', Dep}} -> 'ok';
+                              {'error', _}=E -> throw(E);
+                              _ -> 'ok'
+                          end
+                  end
+                 ,Deps).
 
 %%% Actual test functions
 t_init(Pid) ->
