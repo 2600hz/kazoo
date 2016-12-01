@@ -114,12 +114,15 @@ teardown_ss_size_session(_) ->
     meck:unload('acdc_queue_manager').
 
 start_deps() ->
-    application:load('acdc'),
+    case application:load('acdc') of
+        {'error', _}=E -> throw(E);
+        _ -> 'ok'
+    end,
     {'ok', Deps} = application:get_key('acdc', 'applications'),
     lists:foreach(fun(Dep) ->
                           case application:ensure_all_started(Dep) of
                               {'error', {'already_started', Dep}} -> 'ok';
-                              {'error', _}=E -> throw(E);
+                              {'error', _}=E1 -> throw(E1);
                               _ -> 'ok'
                           end
                   end
