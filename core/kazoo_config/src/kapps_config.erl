@@ -31,8 +31,6 @@
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 
--export([get_inherited/4, get_inherited/5]).
-
 -export([set_string/3, set_integer/3, set_float/3, set_boolean/3, set_json/3]).
 -export([set/3, set/4, set_default/3, set_node/4
         ,update_default/3, update_default/4
@@ -54,53 +52,6 @@
                      {'error', any()}.
 
 -define(KEY_DEFAULT, <<"default">>).
-
--spec get_inherited(kz_account:account_id(), fun(), binary(), binary()) -> any().
-get_inherited(Account, ValueFun, ConfigCat, ConfigKey) ->
-    get_inherited(Account, ValueFun, ConfigCat, ConfigKey, 'undefined').
-
--spec get_inherited(kz_account:account_id(), fun(), binary(), binary(), any()) -> any().
-get_inherited(Account, ValueFun, ConfigCat, ConfigKey, Default) ->
-    lager:debug("get_inherited(~p, ~p, ~p)", [ConfigCat, ConfigKey, Default]),
-    check_inherited(Account, ValueFun, get(ConfigCat, ConfigKey, Default)).
-
--spec check_inherited(kz_account:account_id(), fun(), any()) -> any().
-check_inherited('undefined', _ValueFun, Default) ->
-    Default;
-
-check_inherited(Account, ValueFun, Default) ->
-    case check_account(Account, ValueFun) of
-        'undefined' ->
-            check_reseller(Account, ValueFun, Default);
-
-        Value ->
-            lager:debug("using value from account ~p", [Account]),
-            Value
-    end.
-
--spec check_account(kz_account:account_id(), fun()) -> any().
-check_account(Account, ValueFun) ->
-    case kz_account:fetch(Account) of
-        {'error', _Err} ->
-            'undefined';
-
-        {'ok', JObj} ->
-            ValueFun(JObj)
-    end.
-
--spec check_reseller(kz_account:account_id(), fun(), any()) -> any().
-check_reseller(Account, ValueFun, Default) ->
-    Reseller = kz_services:find_reseller_id(Account),
-
-    case check_account(Reseller, ValueFun) of
-        'undefined' ->
-            lager:debug("using system_config / default value"),
-            Default;
-
-        Value ->
-            lager:debug("using value from reseller account ~p", [Reseller]),
-            Value
-    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
