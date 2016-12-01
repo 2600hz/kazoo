@@ -114,11 +114,22 @@ teardown_ss_size_session(_) ->
     meck:unload('acdc_queue_manager').
 
 start_deps() ->
-    _ = [application:start(App) || App <- ['crypto'
-                                          ,'inets'
-                                          ,'lager'
-                                          ,'kazoo_amqp'
-                                          ]],
+    _ = [application:ensure_all_started(App) || App <- ['kernel'
+                                                       ,'stdlib'
+                                                       ,'crypto'
+                                                       ,'inets'
+
+                                                       ,'kazoo'
+                                                       ,'kazoo_amqp'
+                                                       ,'kazoo_data'
+                                                       ,'kazoo_modb'
+                                                       ,'kazoo_apps'
+                                                       ,'webseq'
+                                                       ,'kazoo_web'
+
+                                                       ,'lager'
+                                                       ,'gproc'
+                                                       ]],
     'ok'.
 
 %%% Actual test functions

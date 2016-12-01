@@ -1,7 +1,8 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy reloader syslog lager_syslog eflame hep ecsv \
-       proper recon getopt fs_event fs_sync eunit inet_cidr trie
+       proper recon getopt fs_event fs_sync eunit inet_cidr trie \
+       meck
 
 BUILD_DEPS = parse_trans
 IGNORE_DEPS = hamcrest

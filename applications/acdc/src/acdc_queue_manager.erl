@@ -45,6 +45,10 @@
         ,code_change/3
         ]).
 
+-ifdef(TEST).
+-compile('export_all').
+-endif.
+
 -include("acdc.hrl").
 -include("acdc_queue_manager.hrl").
 
