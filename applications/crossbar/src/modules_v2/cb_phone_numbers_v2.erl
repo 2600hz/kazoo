@@ -620,7 +620,7 @@ find_numbers(Context, AccountId, ResellerId) ->
                 ]),
     OnSuccess =
         fun(C) ->
-                Found = find(Options),
+                Found = knm_search:find(Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
                                    ,{fun cb_context:set_resp_status/2, 'success'}
@@ -628,45 +628,6 @@ find_numbers(Context, AccountId, ResellerId) ->
         end,
     Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(?SCHEMA_FIND_NUMBERS, Context1, OnSuccess).
-
-find(Options) ->
-    find(Options, knm_search:offset(Options)).
-
-find(Options, 0) ->
-    QueryId = knm_search:query_id(Options),
-    Payload = [{<<"Query-ID">>, QueryId}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    kz_amqp_worker:cast(Payload, fun kapi_search:publish_register/1),
-    knm_search:find(Options);
-find(Options, _) ->
-    do_find(Options, crossbar_search:is_local(knm_search:query_id(Options))).
-
-do_find(Options, 'true') ->
-    knm_search:next(Options);
-do_find(Options, 'false') ->
-    QueryId = knm_search:query_id(Options),
-    Quantity = knm_search:quantity(Options),
-    Offset = knm_search:offset(Options),
-    Payload = [{<<"Query-ID">>, QueryId}
-              ,{<<"Options">>, kz_json:from_list([{<<"Prefix">>, knm_search:normalized_prefix(Options)}])}
-              ,{<<"Quantity">>, Quantity}
-              ,{<<"Offset">>, Offset}
-              ,{<<"Module">>, knm_search}
-              ,{<<"Method">>, next}
-              ,{<<"Account-ID">>, knm_search:account_id(Options)}
-               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-              ],
-    case kz_amqp_worker:call(Payload
-                            ,fun kapi_search:publish_req/1
-                            ,fun kapi_search:resp_v/1
-                            )
-    of
-        {'ok', JObj} -> kapi_search:results(JObj);
-        {'error', Error} ->
-            lager:debug("error requesting search from amqp : ~p", [Error]),
-            []
-    end.
 
 -spec maybe_reseller_id_lookup(cb_context:context(), ne_binary()) -> cb_context:context().
 maybe_reseller_id_lookup(Context, ReqResellerId) ->
