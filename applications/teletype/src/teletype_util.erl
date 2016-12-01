@@ -602,11 +602,11 @@ should_handle_notification(_JObj, 'true') ->
 should_handle_notification(JObj, 'false') ->
     Account = find_account_id(JObj),
 
-    Config = kapps_config:get_inherited(Account
+    Config = kz_account:get_inherited_value(Account
         ,fun kz_account:notification_preference/1
-        ,?NOTIFY_CONFIG_CAT
-        ,<<"notification_app">>
-        ,?APP_NAME
+        ,kapps_config:get(?NOTIFY_CONFIG_CAT
+            ,<<"notification_app">>
+            ,?APP_NAME)
     ),
 
     lager:debug("notification configuration is: ~p", [Config]),

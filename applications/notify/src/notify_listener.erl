@@ -217,11 +217,11 @@ should_handle_port(JObj) ->
 should_handle(JObj) ->
     Account = kz_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj),
 
-    Config = kapps_config:get_inherited(Account
+    Config = kz_account:get_inherited_value(Account
         ,fun kz_account:notification_preference/1
-        ,?NOTIFY_CONFIG_CAT
-        ,<<"notification_app">>
-        ,<<"teletype">>
+        ,kapps_config:get(?NOTIFY_CONFIG_CAT
+            ,<<"notification_app">>
+            ,<<"teletype">>)
     ),
 
     lager:debug("notification configuration is: ~p", [Config]),
