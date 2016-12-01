@@ -251,11 +251,28 @@ save(PhoneNumber) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% To call only from knm_number:delete/2 (only for sysadmins).
+%% To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> knm_phone_number().
+-spec delete(knm_phone_number()) -> knm_phone_number();
+            (knm_numbers:collection()) -> knm_numbers:collection().
+delete(T0=#{todo := PNs, options := Options}) ->
+    case knm_number_options:dry_run(Options) of
+        true ->
+            lager:debug("dry_run-ing btw"),
+            knm_numbers:ok(PNs, T0);
+        false ->
+            F = fun (PN, T) ->
+                        lager:warning("~s is PN: ~p", [number(PN), is_phone_number(PN)]),
+                        case knm_number:attempt(fun delete/1, [PN]) of
+                            {error, R} -> knm_numbers:ko(number(PN), R, T);
+                            NewPN -> knm_numbers:ok(NewPN, T)
+                        end
+                end,
+            lists:foldl(F, T0, PNs)
+    end;
 delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
+    %%FIXME: remove this clause when knm_number:delete/2 uses knm_numbers.
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 delete(PhoneNumber) ->

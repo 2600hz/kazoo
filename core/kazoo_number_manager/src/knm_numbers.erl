@@ -249,12 +249,25 @@ release(Nums, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Remove numbers from the system without doing any state checking.
+%% Sounds too harsh for you? You are looking for release/1,2.
 %% @end
 %%--------------------------------------------------------------------
--spec delete(ne_binaries(), knm_number_options:options()) ->
-                    numbers_return().
+-spec delete(ne_binaries(), knm_number_options:options()) -> ret().
 delete(Nums, Options) ->
-    [{Num, knm_number:delete(Num, Options)} || Num <- Nums].
+    AuthBy = knm_number_options:auth_by(Options),
+    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
+        orelse kz_util:is_system_admin(AuthBy)
+    of
+        false ->
+            {error, Reason} = (catch knm_errors:unauthorized()),
+            ret(new(Options, [], Nums, knm_errors:to_json(Reason)));
+        true ->
+            T0 = do_get(Nums, Options),
+            F1 = fun knm_providers:delete/1,
+            F2 = fun knm_phone_number:delete/1,
+            ret(do_in_wrap(F2, do(F1, T0)))
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

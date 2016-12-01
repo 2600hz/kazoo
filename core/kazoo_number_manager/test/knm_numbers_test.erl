@@ -115,3 +115,14 @@ update_test_() ->
                   )
     ,?_assertEqual([], maps:get(ok, Ret))
     ].
+
+
+delete_test_() ->
+    Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable
+                    ,?TEST_AVAILABLE_NUM => not_found
+                    }
+                  ,maps:get(ko, Ret)
+                  )
+    ,?_assertEqual([], maps:get(ok, Ret))
+    ].
