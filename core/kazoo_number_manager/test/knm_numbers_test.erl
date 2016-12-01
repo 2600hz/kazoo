@@ -126,3 +126,21 @@ delete_test_() ->
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret)))
      }
     ].
+
+
+reconcile_test_() ->
+    Ret0 = knm_numbers:reconcile([?NOT_NUM], []),
+    Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
+    Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], Options),
+    [?_assertEqual(<<"assign_failure">>
+                  ,knm_errors:error(maps:get(?NOT_NUM, maps:get(ko, Ret0)))
+                  )
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    ,?_assertMatch([_], maps:get(ok, Ret))
+    ,{"verify number is now in service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret)))
+     }
+    ,{"verify number is indeed owned by account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
+     }
+    ].
