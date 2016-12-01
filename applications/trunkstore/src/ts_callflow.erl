@@ -72,7 +72,8 @@ start_amqp(#ts_callflow_state{}=State) ->
 cleanup_amqp(#ts_callflow_state{amqp_worker=Worker
                                ,aleg_callid=CallId
                                }) ->
-    gen_listener:rm_binding(Worker, 'call', [{'callid', CallId}]).
+    gen_listener:rm_binding(Worker, 'call', [{'callid', CallId}]),
+    kz_amqp_worker:stop_relay(Worker, self()).
 
 -spec send_park(state()) -> {'won' | 'lost', state()}.
 send_park(#ts_callflow_state{route_req_jobj=JObj
@@ -124,9 +125,9 @@ route_won(#ts_callflow_state{amqp_worker=Worker}=State, RouteWin) ->
     {'won', State#ts_callflow_state{callctl_q=kapi_route:control_queue(RouteWin)}}.
 
 -spec wait_for_bridge(state(), api_integer()) ->
-                             {'hangup' | 'error', state()}.
+                             {'hangup' | 'error' | 'bridged', state()}.
 -spec wait_for_bridge(state(), api_integer(), kapps_call_command:request_return()) ->
-                             {'hangup' | 'error', state()}.
+                             {'hangup' | 'error' | 'bridged', state()}.
 wait_for_bridge(State, 'undefined') ->
     wait_for_bridge(State, 20);
 wait_for_bridge(State, Timeout) ->
@@ -136,16 +137,17 @@ wait_for_bridge(State, Timeout, {'ok', EventJObj}) ->
     case process_event_for_bridge(State, EventJObj) of
         'ignore' -> wait_for_bridge(State, Timeout);
         {'error', _}=Error -> Error;
-        {'hangup', _}=Hangup -> Hangup
+        {'hangup', _}=Hangup -> Hangup;
+        {'bridged', _}=Done -> Done
     end;
 wait_for_bridge(State, Timeout, {'error', 'timeout'}) ->
     lager:info("timed out waiting for bridge, waiting again"),
     wait_for_bridge(State, Timeout).
 
 -spec process_event_for_bridge(state(), kz_json:object()) ->
-                                      'ignore' | {'hangup' | 'error', state()}.
+                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 -spec process_event_for_bridge(state(), kz_json:object(), event_type()) ->
-                                      'ignore' | {'hangup' | 'error', state()}.
+                                      'ignore' | {'hangup' | 'error' | 'bridged', state()}.
 process_event_for_bridge(State, JObj) ->
     process_event_for_bridge(State, JObj, get_event_type(JObj)).
 
@@ -208,13 +210,13 @@ process_event_for_bridge(_State, _JObj, {<<"call_event">>, <<"CHANNEL_EXECUTE_CO
     %% support one legged bridges such as on-net conference
     lager:info("channel was answered"),
     'ignore';
-process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg}
+process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg}=State
                         ,JObj
                         ,{<<"call_event">>, <<"CHANNEL_BRIDGE">>, _}
                         ) ->
     BLeg = kz_call_event:other_leg_call_id(JObj),
     lager:debug("channel ~s bridged to ~s", [ALeg, BLeg]),
-    'ignore';
+    {'bridged', State};
 process_event_for_bridge(_State, _JObj, _Unhandled) ->
     lager:debug("ignoring ~p", [_Unhandled]),
     'ignore'.
