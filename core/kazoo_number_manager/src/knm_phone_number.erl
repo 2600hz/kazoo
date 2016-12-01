@@ -263,7 +263,6 @@ delete(T0=#{todo := PNs, options := Options}) ->
             knm_numbers:ok(PNs, T0);
         false ->
             F = fun (PN, T) ->
-                        lager:warning("~s is PN: ~p", [number(PN), is_phone_number(PN)]),
                         case knm_number:attempt(fun delete/1, [PN]) of
                             {error, R} -> knm_numbers:ko(number(PN), R, T);
                             NewPN -> knm_numbers:ok(NewPN, T)
@@ -271,10 +270,6 @@ delete(T0=#{todo := PNs, options := Options}) ->
                 end,
             lists:foldl(F, T0, PNs)
     end;
-delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
-    %%FIXME: remove this clause when knm_number:delete/2 uses knm_numbers.
-    lager:debug("dry_run-ing btw"),
-    PhoneNumber;
 delete(PhoneNumber) ->
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
@@ -596,7 +591,9 @@ setters(PN, Routines) ->
             lager:error("~s failed, argument: ~p", [FName, Arg]),
             kz_util:log_stacktrace(ST),
             {'error', FName};
-        'error':Reason -> {'error', Reason}
+        'error':Reason ->
+            kz_util:log_stacktrace(),
+            {'error', Reason}
     end.
 
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
@@ -1381,6 +1378,9 @@ get_number_in_account(AccountId, Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+delete_number_doc(Number) -> {ok, Number}.
+-else.
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -1388,6 +1388,7 @@ delete_number_doc(Number) ->
         {'error', _R}=E -> E;
         {'ok', _} -> {'ok', Number}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1395,6 +1396,9 @@ delete_number_doc(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+maybe_remove_number_from_account(Number) -> {ok, Number}.
+-else.
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case kz_util:is_empty(AssignedTo) of
@@ -1407,6 +1411,7 @@ maybe_remove_number_from_account(Number) ->
                 {'ok', _} -> {'ok', Number}
             end
     end.
+-endif.
 
 -ifndef(TEST).
 %%--------------------------------------------------------------------

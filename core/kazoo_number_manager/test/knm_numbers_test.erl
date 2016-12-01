@@ -119,11 +119,10 @@ update_test_() ->
 
 
 delete_test_() ->
-    Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
-    [?_assertEqual(#{?NOT_NUM => not_reconcilable
-                    ,?TEST_AVAILABLE_NUM => not_found
-                    }
-                  ,maps:get(ko, Ret)
-                  )
-    ,?_assertEqual([], maps:get(ok, Ret))
+    Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    ,?_assertMatch([_], maps:get(ok, Ret))
+    ,{"verify number was indeed deleted"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret)))
+     }
     ].
