@@ -41,17 +41,16 @@
 
 -type num() :: ne_binary().  %%TODO: support ranges?
 -type nums() :: [num()].
--type ret(T) :: {num(), T}.
 -type ok() :: knm_number:knm_number().
 -type oks() :: [ok()].
--type ko() :: ret(knm_errors:error() | atom()).
--type kos() :: [ko()].
+-type ko() :: knm_errors:error() | atom().
+-type kos() :: #{num() => ko()}.
 -type ret() :: #{ok => oks()
-                ,ko => kz_json:object() | atom()
+                ,ko => kos()
                 ,dry_run => kz_json:object()
                 }.
 
--export_type([ret/0, ret/1
+-export_type([ret/0
              ,ok/0, oks/0
              ,ko/0, kos/0
              ,num/0, nums/0
@@ -387,9 +386,10 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
 %%%===================================================================
 
 %% @private
+-type reason_t() :: atom() | fun((num())-> knm_errors:error()).
 -spec new(knm_number_options:options(), nums()) -> t().
 -spec new(knm_number_options:options(), nums(), nums()) -> t().
--spec new(knm_number_options:options(), nums(), nums(), atom() | fun((num())->kz_json:object())) -> t().
+-spec new(knm_number_options:options(), nums(), nums(), reason_t()) -> t().
 new(Options, ToDos) -> new(Options, ToDos, []).
 new(Options, ToDos, KOs) -> new(Options, ToDos, KOs, not_reconcilable).
 new(Options, ToDos, KOs, Reason) ->
