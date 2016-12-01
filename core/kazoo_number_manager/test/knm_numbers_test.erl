@@ -107,13 +107,14 @@ move_test_() ->
 
 
 update_test_() ->
-    Ret = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
-    [?_assertEqual(#{?NOT_NUM => not_reconcilable
-                    ,?TEST_AVAILABLE_NUM => not_found
-                    }
-                  ,maps:get(ko, Ret)
-                  )
-    ,?_assertEqual([], maps:get(ok, Ret))
+    NotDefault = true,
+    Setters = [{fun knm_phone_number:set_ported_in/2, NotDefault}],
+    Ret = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], Setters),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    ,?_assertMatch([_], maps:get(ok, Ret))
+    ,{"verify number was indeed updated"
+     ,?_assertEqual(NotDefault, knm_phone_number:ported_in(pn_x(1, Ret)))
+     }
     ].
 
 
