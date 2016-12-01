@@ -101,11 +101,7 @@ assign_failure(PhoneNumber, E) ->
 
 -spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) -> no_return().
 database_error(E, PhoneNumber) ->
-    throw({'error'
-          ,'database_error'
-          ,PhoneNumber
-          ,E
-          }).
+    throw({'error', 'database_error', PhoneNumber, E}).
 
 -spec number_is_porting(ne_binary()) -> no_return().
 number_is_porting(Num) ->
