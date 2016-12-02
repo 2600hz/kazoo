@@ -406,29 +406,7 @@ release(Num) ->
     release(Num, knm_number_options:default()).
 
 release(Num, Options) ->
-    case get(Num, Options) of
-        {'error', _R}=E -> E;
-        {'ok', Number} ->
-            attempt(fun release_number/2, [Number, Options])
-    end.
-
--spec release_number(knm_number(), knm_number_options:options()) -> knm_number_return().
-release_number(Number, Options) ->
-    Routines = [fun knm_phone_number:release/1
-               ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
-    N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
-    N = unwind_or_disconnect(N1, Options),
-    save_wrap_phone_number(N).
-
--spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
-unwind_or_disconnect(Number, Options) ->
-    PhoneNumber = knm_phone_number:unwind_reserve_history(phone_number(Number)),
-    N = set_phone_number(Number, PhoneNumber),
-    case knm_phone_number:reserve_history(PhoneNumber) of
-        [] -> disconnect(N, Options);
-        History -> unwind(N, History)
-    end.
+    ?TRY2(release, Num, Options).
 
 -spec unwind_or_disconnect(knm_numbers:collection()) -> knm_numbers:collection().
 unwind_or_disconnect(T=#{todo := Ns, options := Options}) ->
