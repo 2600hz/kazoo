@@ -89,6 +89,11 @@
 -type applier() :: fun((t()) -> t()).
 -type appliers() :: [applier()].
 
+%% @private
+-spec num(knm_number:knm_number()) -> num().
+num(N) ->
+    knm_phone_number:number(knm_number:phone_number(N)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -143,7 +148,7 @@ ko(?NE_BINARY=Num, Reason, T) ->
 ko(N, Reason, T) ->
     PN = knm_number:phone_number(N),
     Num = knm_phone_number:number(PN),
-    lager:debug("number ~s state: ~s", [knm_phone_number:state(PN)]),
+    lager:debug("number ~s state: ~s", [Num, knm_phone_number:state(PN)]),
     ko(Num, Reason, T).
 
 %%--------------------------------------------------------------------
@@ -337,12 +342,12 @@ assign_to_app(Nums, App, Options) ->
 free(Account=?NE_BINARY) ->
     AccountDb = kz_util:format_account_db(Account),
     {Numbers, _NumbersData} = lists:unzip(account_listing(AccountDb)),
-    lists:foreach(fun ({Num, {'ok', _PhoneNumber}}) ->
-                          lager:debug("successfully released ~s from ~s", [Num, Account]);
-                      ({Num, {'error', _R}}) ->
-                          lager:error("error when releasing ~s from ~s: ~p", [Num, Account, _R])
+    #{ok := Ns, ko := KOs} = release(Numbers),
+    lager:debug("successfully released ~p from ~s", [[num(N) || N <- Ns], Account]),
+    lists:foreach(fun ({Num, R}) ->
+                          lager:error("error when releasing ~s from ~s: ~p", [Num, Account, R])
                   end
-                 ,release(Numbers)
+                 ,maps:to_list(KOs)
                  ).
 
 %%--------------------------------------------------------------------
