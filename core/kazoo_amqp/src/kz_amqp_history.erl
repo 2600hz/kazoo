@@ -207,7 +207,7 @@ handle_call({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
     case dict:find(Name, Exchanges) of
         'error' ->
             _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
-                    || Connection <- sets:to_list(Connections)
+                 || Connection <- sets:to_list(Connections)
                 ],
             {'reply', 'ok', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
         {'ok', _Exits} -> {'reply', 'ok', State}
