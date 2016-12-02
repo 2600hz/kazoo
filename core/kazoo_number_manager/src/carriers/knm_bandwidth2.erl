@@ -32,9 +32,12 @@
 - export([auth/0]).  %% Only to pass compilation
 -endif.
 
+-ifdef(TEST).
+-define(BW2_DEBUG, 'false').
+-define(DEBUG_WRITE(Format, Args), lager:debug(Format, Args)).
+-define(DEBUG_APPEND(Format, Args), lager:debug(Format, Args)).
+-else.
 -define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
--define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
-
 -define(DEBUG_WRITE(Format, Args),
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args))
@@ -43,9 +46,26 @@
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
+-endif.
 
+-define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
 
+-ifdef(TEST).
+
+-define(IS_SANDBOX_PROVISIONING_TRUE, 'true').
+-define(IS_PROVISIONING_ENABLED, 'true').
+-define(BW2_ORDER_NAME_PREFIX, "Kazoo").
+-define(BW2_ACCOUNT_ID, "eunit_testing_account").
+
+-define(BW2_API_USERNAME, <<>>).
+-define(BW2_API_PASSWORD, <<>>).
+-define(BW2_SIP_PEER, "").
+-define(BW2_SITE_ID, "").
+
+-define(MAX_SEARCH_QUANTITY, 500).
+
+-else.
 -define(IS_SANDBOX_PROVISIONING_TRUE,
         kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
 -define(IS_PROVISIONING_ENABLED,
@@ -55,6 +75,7 @@
 
 -define(BW2_ACCOUNT_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
+
 -define(BW2_API_USERNAME,
         kapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_username">>, <<>>)).
 -define(BW2_API_PASSWORD,
@@ -63,12 +84,15 @@
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"sip_peer">>, "")).
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
--define(BW2_ORDER_POLL_INTERVAL, 2000).
 
 -define(MAX_SEARCH_QUANTITY,
         kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
 
--define(SEARCH_QUANTITY(Q),integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY))).
+-endif.
+
+-define(BW2_ORDER_POLL_INTERVAL, 2000).
+
+
 
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(CUSTOMER_ORDER_ID_XPATH, "CustomerOrderId/text()").
@@ -111,21 +135,21 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
-               "&enableTNDetail=true&quantity=", ?SEARCH_QUANTITY(Quantity)
+               "&enableTNDetail=true&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
     process_tollfree_search_response(Result, Options);
 
 find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
+               "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
     process_tollfree_search_response(Result, Options);
 
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
+             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(NPA, Params),
     process_search_response(Result, Options);
@@ -133,7 +157,7 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
 find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=false&quantity=", ?SEARCH_QUANTITY(Quantity)
+             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Search, Params),
     process_search_response(Result, Options).
@@ -172,6 +196,8 @@ acquire_number(Number) ->
         'false' ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
+            io:format(user, "ACQUIRE NUMBER ~p~n", [Number]),
+
             PhoneNumber = knm_number:phone_number(Number),
             Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
             ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
@@ -294,8 +320,7 @@ url(RelativePath) ->
 search(Num, Params) ->
     case api_get(url(["availableNumbers?" | Params])) of
         {'ok', Results} -> Results;
-        {'error', Reason} ->
-            knm_errors:by_carrier(?MODULE, Reason, Num)
+        {'error', Reason} -> knm_errors:by_carrier(?MODULE, Reason, Num)
     end.
 
 -spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
@@ -311,14 +336,16 @@ api_get(Url) ->
     Response = kz_http:get(Url, [], HTTPOptions),
     handle_response(Response).
 -else.
-api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?areaCode="++_) ->
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?areaCode="++_) ->
     Resp = knm_util:fixture("bandwidth2_find_by_npa_no_detail.xml"),
     handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?tollFreeWildCardPattern="++_) ->
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?tollFreeWildCardPattern="++_) ->
     Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
     handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts//orders/" ++ _) ->
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders/" ++ _) ->
+    io:format(user, "GETTING ORDER~n", []),
     Resp = knm_util:fixture("bandwidth2_check_order.xml"),
+    io:format(user, "GOT ORDER ~p~n", [Resp]),
     handle_response({'ok', 200, [], Resp}).
 -endif.
 
@@ -341,7 +368,7 @@ api_post(Url, Body) ->
     Response = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
     handle_response(Response).
 -else.
-api_post("https://api.inetwork.com/v1.0/accounts//orders", Body) ->
+api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", Body) ->
     _UnicodeBody = unicode:characters_to_binary(Body),
     Resp = knm_util:fixture("bandwidth2_buy_a_number.xml"),
     handle_response({'ok', 200, [], Resp}).
@@ -503,3 +530,10 @@ validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
+
+-spec quantity_uri_param(integer()) -> string().
+-ifdef(TEST).
+quantity_uri_param(Q) -> integer_to_list(Q).
+-else.
+quantity_uri_param(Q) -> integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY)).
+-endif.

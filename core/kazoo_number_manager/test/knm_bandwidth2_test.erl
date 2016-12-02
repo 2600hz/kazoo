@@ -11,17 +11,17 @@
 -include("knm.hrl").
 
 api_test_() ->
-    ETSOptions = [bag, public],
-    ETS = ets:new(?MODULE, ETSOptions),
+    {'ok', Pid} = knm_search:start_link(),
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_bandwidth2">>]}
-              ,{'ets', ETS}
               ,{'query_id', <<"QID">>}
               ],
-    [find_numbers(Options)
-    ,find_tollfree_numbers(Options)
-    ,acquire_number()
-    ].
+    X = [find_numbers(Options)
+        ,find_tollfree_numbers(Options)
+        ,acquire_number()
+    ],
+    _ = gen_server:stop(Pid),
+    X.
 
 
 find_numbers(Options) ->
@@ -38,6 +38,7 @@ find_numbers(Options) ->
         end,
     Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
+                              ,{'query_id', <<"QID-", Prefix/binary>>}
                                |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
@@ -61,6 +62,7 @@ find_tollfree_numbers(Options) ->
         end,
     Results = knm_search:find([{'quantity',Limit}
                               ,{'prefix', Prefix}
+                              ,{'query_id', <<"QID-", Prefix/binary>>}
                                |Options]),
     [{"Verify found numbers"
      ,?_assertEqual(Limit, length(Results))
@@ -74,6 +76,7 @@ acquire_number() ->
     N = <<"+19734096113">>,
     Number = knm_number(N),
     Result = knm_bandwidth2:acquire_number(Number),
+    io:format(user, "ACQUIRE ~p~n", [Result]),
     [{"Verify number is still one inputed"
      ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
      }

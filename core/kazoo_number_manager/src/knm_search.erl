@@ -41,8 +41,6 @@
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
--define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
-
 -type option() :: {'quantity', pos_integer()} |
                   {'prefix', ne_binary()} |
                   {'dialcode', ne_binary()} |
@@ -51,20 +49,9 @@
                   {'blocks', boolean()} |
                   {'account_id', ne_binary()} |
                   {'query_id', ne_binary()} |
-                  {'ets', ets:tid()} |
                   {'reseller_id', ne_binary()}.
 -type options() :: [option()].
 -export_type([option/0, options/0]).
-
-
--define(DEFAULT_CARRIER_MODULE
-       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
--define(CARRIER_MODULES
-       ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
--define(CARRIER_MODULES(AccountId)
-       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
-
--define(MAX_QUANTITY, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 50)).
 
 -define(MAX_SEARCH, 500).
 
@@ -89,6 +76,13 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
+-ifdef(TEST).
+start_link() ->
+    gen_listener:start_link({'local', ?MODULE}
+                           ,?MODULE
+                           ,[]
+                           ,[]).
+-else.
 start_link() ->
     gen_listener:start_link({'local', ?MODULE}
                            ,?MODULE
@@ -99,7 +93,7 @@ start_link() ->
                             ,{'consume_options', ?CONSUME_OPTIONS}
                             ]
                            ,[]).
-
+-endif.
 %%%===================================================================
 %%% gen_server callbacks
 %%%===================================================================
@@ -227,11 +221,15 @@ code_change(_OldVsn, State, _Extra) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec flush(ne_binary()) -> 'ok'.
+-ifdef(TEST).
+flush(_QID) -> 'ok'.
+-else.
 flush(QID) ->
     Payload = [{<<"Query-ID">>, QID}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, fun kapi_discovery:publish_flush/1).
+-endif.
 
 -spec find(options()) -> kz_json:objects().
 find(Options) ->
@@ -299,7 +297,9 @@ wait_for_search(N, Options) ->
         {'ok', Numbers} ->
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
             wait_for_search(N - 1, Options);
-        _ -> wait_for_search(N - 1, Options)
+        _Other ->
+            lager:debug("unexpected search result ~p~n", [_Other]),
+            wait_for_search(N - 1, Options)
     after 5000 ->
             lager:debug("timeout (~B) collecting responses from search providers", [5000]),
             wait_for_search(N - 1, Options)
