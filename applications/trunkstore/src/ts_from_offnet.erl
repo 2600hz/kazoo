@@ -454,12 +454,8 @@ maybe_anonymize_caller_id(State, OldCNum, OldCNam, CidFormat) ->
             ,{<<"Outbound-Caller-ID-Number">>, kz_util:anonymous_caller_id_number()}
             ];
         'false' ->
-            [{<<"Outbound-Caller-ID-Name">>
-             ,kapps_call:maybe_format_caller_id_str(OldCNam, CidFormat)
-             }
-            ,{<<"Outbound-Caller-ID-Num">>
-             ,kapps_call:maybe_format_caller_id_str(OldCNum, CidFormat)
-             }
+            [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(OldCNum, CidFormat)}
+            ,{<<"Outbound-Caller-ID-Name">>, OldCNam}
             ]
     end.
 
