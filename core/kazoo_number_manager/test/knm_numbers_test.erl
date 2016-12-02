@@ -144,3 +144,19 @@ reconcile_test_() ->
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
      }
     ].
+
+
+reserve_test_() ->
+    Ret1 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
+    Ret2 = knm_numbers:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], knm_number_options:default()),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
+    ,?_assertMatch([_], maps:get(ok, Ret1))
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
+    ,?_assertMatch([_], maps:get(ok, Ret2))
+    ,{"verify number was indeed reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
+     }
+    ,{"verify number is still in service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
+     }
+    ].
