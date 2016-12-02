@@ -21,6 +21,7 @@
         ,etop/0
 
         ,ets_info/0
+        ,mem_info/0
         ]).
 
 -include("include/kz_types.hrl").
@@ -113,8 +114,21 @@ sort_tables(Ts) ->
 
 -spec table_size(ets:tid()) -> integer().
 table_size(T) ->
-    ets:info(T, 'memory') * erlang:system_info('wordsize').
+    words_to_bytes(ets:info(T, 'memory')).
+
+words_to_bytes(Words) ->
+    Words * erlang:system_info('wordsize').
 
 -spec print_table({ets:tid(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->
-    io:format("  ~-25s: ~-10s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+    io:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+
+-spec mem_info() -> 'ok'.
+mem_info() ->
+    io:format(" VM Memory Info:~n"),
+    [print_memory_type(Info) || Info <- erlang:memory()],
+    'ok'.
+
+-spec print_memory_type({erlang:memory_type(), integer()}) -> 'ok'.
+print_memory_type({Type, Size}) ->
+    io:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]).
