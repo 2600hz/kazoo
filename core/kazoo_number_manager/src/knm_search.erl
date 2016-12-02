@@ -137,7 +137,7 @@ init([]) ->
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
 handle_call({'first', Options}, _From, State) ->
-    QueryId = knm_search:query_id(Options),
+    QueryId = query_id(Options),
     flush(QueryId),
     {'reply', next(Options), State, ?POLLING_INTERVAL};
 handle_call(_Request, _From, State) ->
@@ -235,7 +235,7 @@ flush(QID) ->
 
 -spec find(options()) -> kz_json:objects().
 find(Options) ->
-    find(Options, knm_search:offset(Options)).
+    find(Options, offset(Options)).
 
 find(Options, 0) ->
     first(Options);
