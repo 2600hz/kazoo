@@ -165,8 +165,8 @@ archive_docs(File, [Doc|Docs]) ->
     archive_docs(File, Docs).
 
 -spec db_import(server(), ne_binary(), ne_binary()) ->
-                        'ok' |
-                        couchbeam_error().
+                       'ok' |
+                       couchbeam_error().
 db_import(#server{}=Conn, DbName, Filename) ->
     case file:read_file(Filename) of
         {'ok', Text} -> do_db_import(Conn, DbName, kz_json:decode(Text));
@@ -174,8 +174,8 @@ db_import(#server{}=Conn, DbName, Filename) ->
     end.
 
 -spec do_db_import(server(), ne_binary(), kz_json:objects()) ->
-                        'ok' |
-                        couchbeam_error().
+                          'ok' |
+                          couchbeam_error().
 do_db_import(#server{}=Conn, DbName, Docs) ->
     JObjs0 = [kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
     JObjs = [JObj || JObj <- JObjs0, filter_views(kz_json:get_value(<<"_id">>, JObj))],
