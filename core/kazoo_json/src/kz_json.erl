@@ -80,7 +80,7 @@
         ,normalize_jobj/3
         ,normalize/1
         ,normalize_key/1
-        ,are_identical/2
+        ,are_identical/2, are_equal/2
         ]).
 -export([public_fields/1
         ,private_fields/1
@@ -232,6 +232,19 @@ are_identical(JObj1, JObj2) ->
                not kz_util:is_empty(V)
         ].
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Finds out wether 2 JSON objects are recursively identical.
+%% @end
+%%--------------------------------------------------------------------
+-spec are_equal(api_object(), api_object()) -> boolean().
+are_equal('undefined', 'undefined') -> 'true';
+are_equal('undefined', _) -> 'false';
+are_equal(_, 'undefined') -> 'false';
+are_equal(JObj1, JObj2) ->
+    to_map(JObj1) =:= to_map(JObj2).
+
 %% converts top-level proplist to json object, but only if sub-proplists have been converted
 %% first.
 %% For example:
@@ -354,9 +367,14 @@ recursive_to_proplist(Props) when is_list(Props) ->
     [recursive_to_proplist(V) || V <- Props];
 recursive_to_proplist(Else) -> Else.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Convert a json object to a map
+%% @end
+%%--------------------------------------------------------------------
 -spec to_map(object() | objects()) -> map().
 -spec to_map(path(), object() | objects()) -> map().
-%% Convert a json object to a map
 to_map(JObjs) when is_list(JObjs) ->
     lists:foldl(fun to_map_fold/2, #{}, JObjs);
 to_map(JObj) ->
@@ -372,22 +390,26 @@ to_map_fold(JObj, #{}=Map) ->
 -spec recursive_to_map(object() | objects() | kz_proplist()) -> map().
 recursive_to_map(?JSON_WRAPPER(Props)) ->
     maps:from_list([{K, recursive_to_map(V)} || {K, V} <- Props]);
+recursive_to_map(List) when is_list(List) ->
+    [recursive_to_map(Item) || Item <- List];
 recursive_to_map(Else) -> Else.
 
--spec from_map(map()) -> object().
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Convert a map to a json object
+%% @end
+%%--------------------------------------------------------------------
+-spec from_map(map()) -> object().
 from_map(Map) when is_map(Map) ->
     recursive_from_map(Map).
 
 -spec recursive_from_map(map()) -> object().
 recursive_from_map(Map) when is_map(Map) ->
     from_list([{K, recursive_from_map(V)} || {K, V} <- maps:to_list(Map)]);
+recursive_from_map(List) when is_list(List) ->
+    [recursive_from_map(Item) || Item <- List];
 recursive_from_map(Else) -> Else.
-
-
-
-
-
 
 
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>

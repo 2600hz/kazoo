@@ -496,3 +496,38 @@ get_ne_json_object_test_() ->
                   ,kz_json:get_ne_json_value(<<"o2">>, JObj)
                   )
     ].
+
+-define(MAP_JSON,
+        kz_json:from_list([{a, <<"zero">>}
+                          ,{<<"B">>, true}
+                          ,{<<"c">>, [1
+                                     ,2
+                                     ,kz_json:from_list([{42, 24}
+                                                        ,{<<"42">>, 24}
+                                                        ])
+                                     ]}
+                          ])).
+
+-define(JSON_MAP, #{a => <<"zero">>
+                   ,<<"B">> => true
+                   ,<<"c">> => [1
+                               ,2
+                               ,#{<<"42">> => 24
+                                 ,42 => 24
+                                 }
+                               ]
+                   }).
+
+to_map_test_() ->
+    io:format(user, "\n>1> ~p\n", [kz_json:to_map(?MAP_JSON)]),
+    io:format(user, "\n>2> ~p\n", [kz_json:from_map(?JSON_MAP)]),
+    [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
+    ,?_assertEqual(?MAP_JSON, kz_json:from_map(?JSON_MAP))
+    ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
+    ,?_assertEqual(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON)))
+    ].
+
+are_equal_test_() ->
+    JObj = kz_json:from_map(kz_json:to_map(?MAP_JSON)),
+    [?_assertEqual(true, kz_json:are_equal(?MAP_JSON, JObj))
+    ].
