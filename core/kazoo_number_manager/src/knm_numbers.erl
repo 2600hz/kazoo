@@ -164,10 +164,10 @@ get(Nums, Options) -> ret(do_get(Nums, Options)).
 -spec do_get(ne_binaries(), knm_number_options:options()) -> t().
 do_get(Nums, Options) ->
     {Yes, No} = are_reconcilable(Nums),
-    pipe(new(Options, Yes, No), [%% fetch/1 puts PNs in "ok"!
-                                 fun knm_phone_number:fetch/1
-                                ,fun knm_number:new/1
-                                ]).
+    pipe(new(Options, Yes, No)
+        ,[fun knm_phone_number:fetch/1  %% fetch/1 puts PNs in "ok"!
+         ,fun knm_number:new/1
+         ]).
 
 -spec do_get_pn(ne_binaries(), knm_number_options:options()) -> t_pn().
 do_get_pn(Nums, Options) ->
@@ -303,7 +303,7 @@ reconcile(Nums, Options0) ->
 %%--------------------------------------------------------------------
 -spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
-    ret(pipe(do_get(Nums, Options), [fun to_reserved/1])).
+    ret(do(fun to_reserved/1, do_get(Nums, Options))).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -541,9 +541,10 @@ reconcile_number(T0, Options) ->
     pipe(do_in_wrap(F1, T0), [fun save_phone_numbers/1]).
 
 do_move_not_founds(Nums, Options) ->
-    pipe(new(Options, Nums), [fun knm_phone_number:new/1
-                             ,fun knm_number:new/1
-                             ]).
+    pipe(new(Options, Nums)
+        ,[fun knm_phone_number:new/1
+         ,fun knm_number:new/1
+         ]).
 
 discover(T0=#{todo := Nums, options := Options}) ->
     F = fun (Num, T) ->
@@ -556,12 +557,14 @@ discover(T0=#{todo := Nums, options := Options}) ->
 
 move_to(T) ->
     NewOptions = [{state, ?NUMBER_STATE_IN_SERVICE} | options(T)],
-    pipe(options(NewOptions, T), [fun knm_number_states:to_options_state/1
-                                 ,fun save_numbers/1
-                                 ]).
+    pipe(options(NewOptions, T)
+        ,[fun knm_number_states:to_options_state/1
+         ,fun save_numbers/1
+         ]).
 
 to_reserved(T) ->
     NewOptions = [{state, ?NUMBER_STATE_RESERVED} | options(T)],
-    pipe(options(NewOptions, T), [fun knm_number_states:to_options_state/1
-                                 ,fun save_numbers/1
-                                 ]).
+    pipe(options(NewOptions, T)
+        ,[fun knm_number_states:to_options_state/1
+         ,fun save_numbers/1
+         ]).
