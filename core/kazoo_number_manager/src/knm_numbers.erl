@@ -310,15 +310,18 @@ reserve(Nums, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to_app(ne_binaries(), api_binary()) ->
-                           numbers_return().
--spec assign_to_app(ne_binaries(), api_binary(), knm_number_options:options()) ->
-                           numbers_return().
+-spec assign_to_app(ne_binaries(), api_ne_binary()) -> ret().
+-spec assign_to_app(ne_binaries(), api_ne_binary(), knm_number_options:options()) -> ret().
 assign_to_app(Nums, App) ->
     assign_to_app(Nums, App, knm_number_options:default()).
 
 assign_to_app(Nums, App, Options) ->
-    [{Num, knm_number:assign_to_app(Num, App, Options)} || Num <- Nums].
+    Setters = [{fun knm_phone_number:set_used_by/2, App}],
+    ret(pipe(do_get_pn(Nums, Options)
+            ,[fun (T) -> knm_phone_number:setters(T, Setters) end
+             ,fun knm_phone_number:save/1
+             ,fun knm_number:new/1
+             ])).
 
 %%--------------------------------------------------------------------
 %% @public

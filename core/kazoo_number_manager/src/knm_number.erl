@@ -486,8 +486,8 @@ delete(Num, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec assign_to_app(ne_binary(), api_binary()) -> knm_number_return().
--spec assign_to_app(ne_binary(), api_binary(), knm_number_options:options()) -> knm_number_return().
+-spec assign_to_app(ne_binary(), api_ne_binary()) -> knm_number_return().
+-spec assign_to_app(ne_binary(), api_ne_binary(), knm_number_options:options()) -> knm_number_return().
 assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
 
