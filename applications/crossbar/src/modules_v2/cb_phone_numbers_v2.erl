@@ -616,7 +616,6 @@ find_numbers(Context, AccountId, ResellerId) ->
                 ,{'account_id', AccountId}
                 ,{'reseller_id', ResellerId}
                 ,{'query_id', QueryId}
-                ,{'ets', crossbar_search:table_id()}
                 ]),
     OnSuccess =
         fun(C) ->

@@ -20,8 +20,14 @@
 %% ===================================================================
 -spec start(application:start_type(), any()) -> startapp_ret().
 start(_StartType, _StartArgs) ->
+    declare_exchanges(),
     kazoo_number_manager_sup:start_link().
 
 -spec stop(any()) -> any().
 stop(_State) ->
     'ok'.
+
+-spec declare_exchanges() -> 'ok'.
+declare_exchanges() ->
+    _ = kapi_discovery:declare_exchanges(),
+    kapi_self:declare_exchanges().

@@ -29,6 +29,7 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?CACHE_ARGS(?CACHE_NAME, ?CACHE_PROPS)
+                  ,?WORKER('knm_search')
                   ]).
 
 %% ===================================================================
