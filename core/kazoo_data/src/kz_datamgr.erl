@@ -522,10 +522,10 @@ db_archive(DbName, Filename) ->
 
 -spec db_import(ne_binary(), file:filename_all()) -> 'ok' | data_error().
 db_import(DbName, ArchiveFile) when ?VALID_DBNAME ->
-    kzs_db:db_archive(kzs_plan:plan(DbName), DbName, ArchiveFile);
+    kzs_db:db_import(kzs_plan:plan(DbName), DbName, ArchiveFile);
 db_import(DbName, ArchiveFile) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> db_archive(Db, ArchiveFile);
+        {'ok', Db} -> db_import(Db, ArchiveFile);
         {'error', _}=E -> E
     end.
 
