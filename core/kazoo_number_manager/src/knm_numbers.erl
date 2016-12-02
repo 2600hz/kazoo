@@ -292,12 +292,12 @@ reconcile(Nums, Options0) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Fetches then transitions existing numbers to the reserved state.
 %% @end
 %%--------------------------------------------------------------------
--spec reserve(ne_binaries(), knm_number_options:options()) ->
-                     numbers_return().
+-spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
-    [{Num, knm_number:reserve(Num, Options)} || Num <- Nums].
+    ret(pipe(do_get(Nums, Options), [fun to_reserved/1])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -547,6 +547,12 @@ discover(T0=#{todo := Nums, options := Options}) ->
 
 move_to(T) ->
     NewOptions = [{state, ?NUMBER_STATE_IN_SERVICE} | options(T)],
+    pipe(options(NewOptions, T), [fun knm_number_states:to_options_state/1
+                                 ,fun save_numbers/1
+                                 ]).
+
+to_reserved(T) ->
+    NewOptions = [{state, ?NUMBER_STATE_RESERVED} | options(T)],
     pipe(options(NewOptions, T), [fun knm_number_states:to_options_state/1
                                  ,fun save_numbers/1
                                  ]).

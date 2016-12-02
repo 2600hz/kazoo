@@ -1,10 +1,11 @@
-                                                %-------------------------------------------------------------------
+%%%-------------------------------------------------------------------
 %%% @copyright (C) 2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number_states).
 
@@ -18,10 +19,6 @@
         ]).
 
 -include("knm.hrl").
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
 
 -type kn() :: knm_number:knm_number().
 

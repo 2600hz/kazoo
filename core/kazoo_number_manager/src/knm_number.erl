@@ -220,7 +220,7 @@ create_phone_number(Options, Number) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Fetches then transition an existing number to the reserved state.
+%% Fetches then transitions an existing number to the reserved state.
 %% @end
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
