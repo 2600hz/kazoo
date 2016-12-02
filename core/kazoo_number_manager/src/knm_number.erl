@@ -38,6 +38,7 @@
         ,ensure_can_load_to_create/1
         ,state_for_create/2
         ,create_or_load/3
+        ,unwind_or_disconnect/1
         ]).
 
 -ifdef(TEST).
@@ -428,6 +429,16 @@ unwind_or_disconnect(Number, Options) ->
         [] -> disconnect(N, Options);
         History -> unwind(N, History)
     end.
+
+-spec unwind_or_disconnect(knm_numbers:collection()) -> knm_numbers:collection().
+unwind_or_disconnect(T=#{todo := Ns, options := Options}) ->
+    NewNs = [case knm_phone_number:reserve_history(phone_number(N)) of
+                 [] -> disconnect(N, Options);
+                 History -> unwind(N, History)
+             end
+             || N <- Ns
+            ],
+    knm_numbers:ok(NewNs, T).
 
 -spec unwind(knm_phone_number:phone_number(), ne_binaries()) -> knm_number().
 unwind(Number, [NewAssignedTo|_]) ->

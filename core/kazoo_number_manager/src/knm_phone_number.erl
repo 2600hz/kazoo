@@ -294,8 +294,17 @@ try_maybe_remove_number_from_account(PN) ->
             {'ok', PN}
     end.
 
--spec release(knm_phone_number()) -> knm_phone_number().
+-spec release(knm_phone_number()) -> knm_phone_number();
+             (knm_numbers:collection()) -> knm_numbers:collection().
 -spec release(knm_phone_number(), ne_binary()) -> knm_phone_number().
+release(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
+                case knm_number:attempt(fun release/1, [PN]) of
+                    {error, Reason} -> knm_numbers:ko(number(PN), Reason, T);
+                    NewPN -> knm_numbers:ok(NewPN, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs);
 release(PhoneNumber) ->
     release(PhoneNumber, state(PhoneNumber)).
 
@@ -872,7 +881,11 @@ add_reserve_history(#knm_phone_number{reserve_history=ReserveHistory}=N
                       ,reserve_history=[AccountId | ReserveHistory]
                       }.
 
--spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number().
+-spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
+                            (knm_numbers:collection()) -> knm_numbers:collection().
+unwind_reserve_history(T=#{todo := PNs}) ->
+    NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
+    knm_numbers:ok(NewPNs, T);
 unwind_reserve_history(PN) ->
     ReserveHistory = PN#knm_phone_number.reserve_history,
     case lists:delete(prev_assigned_to(PN), reserve_history(PN)) of

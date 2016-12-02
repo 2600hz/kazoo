@@ -89,9 +89,6 @@
 -type applier() :: fun((t()) -> t()).
 -type appliers() :: [applier()].
 
--type number_return() :: {ne_binary(), knm_number:knm_number_return()}.
--type numbers_return() :: [number_return()].
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -245,15 +242,19 @@ update(Nums, Routines, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec release(ne_binaries()) ->
-                     numbers_return().
--spec release(ne_binaries(), knm_number_options:options()) ->
-                     numbers_return().
+-spec release(ne_binaries()) -> ret().
+-spec release(ne_binaries(), knm_number_options:options()) -> ret().
 release(Nums) ->
     release(Nums, knm_number_options:default()).
 
 release(Nums, Options) ->
-    [{Num, knm_number:release(Num, Options)} || Num <- Nums].
+    ret(pipe(do_get_pn(Nums, Options)
+            ,[fun knm_phone_number:release/1
+             ,fun knm_number:new/1
+             ,fun knm_providers:delete/1
+             ,fun unwind_or_disconnect/1
+             ,fun save_phone_numbers/1
+             ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -572,3 +573,7 @@ to_reserved(T) ->
         ,[fun knm_number_states:to_options_state/1
          ,fun save_numbers/1
          ]).
+
+unwind_or_disconnect(T) ->
+    T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
+    do(fun knm_number:unwind_or_disconnect/1, T0).
