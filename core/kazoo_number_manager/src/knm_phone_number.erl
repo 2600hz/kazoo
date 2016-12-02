@@ -858,7 +858,8 @@ set_reserve_history(N, History) when is_list(History) ->
     Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
     lists:foldr(Cons, N#knm_phone_number{reserve_history=[]}, History).
 
--spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
+-spec add_reserve_history(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
+add_reserve_history(N, undefined) -> N;
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
                    ,?MATCH_ACCOUNT_RAW(AccountId)
                    ) ->
