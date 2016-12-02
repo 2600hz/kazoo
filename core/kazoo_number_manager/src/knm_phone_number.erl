@@ -738,6 +738,7 @@ set_used_by(N, UsedBy='undefined') ->
                       ,used_by = UsedBy
                       };
 set_used_by(N, UsedBy=?NE_BINARY) ->
+    lager:debug("assigning ~s to ~s", [number(N), UsedBy]),
     N#knm_phone_number{is_dirty = true
                       ,used_by = UsedBy
                       }.
