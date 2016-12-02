@@ -225,18 +225,7 @@ create_phone_number(Options, Number) ->
 %%--------------------------------------------------------------------
 -spec reserve(ne_binary(), knm_number_options:options()) -> knm_number_return().
 reserve(Num, Options) ->
-    case get(Num, Options) of
-        {'ok', Number} ->
-            attempt(fun do_reserve/1, [Number]);
-        {'error', _R}=E -> E
-    end.
-
--spec do_reserve(knm_number()) -> knm_number_return().
-do_reserve(Number) ->
-    Routines = [fun knm_number_states:to_reserved/1
-               ,fun save_number/1
-               ],
-    apply_number_routines(Number, Routines).
+    ?TRY2(reserve, Num, Options).
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
