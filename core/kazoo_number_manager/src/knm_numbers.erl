@@ -170,9 +170,12 @@ do_get(Nums, Options) ->
          ]).
 
 -spec do_get_pn(ne_binaries(), knm_number_options:options()) -> t_pn().
+-spec do_get_pn(ne_binaries(), knm_number_options:options(), reason_t()) -> t_pn().
 do_get_pn(Nums, Options) ->
     {Yes, No} = are_reconcilable(Nums),
-    Error = knm_errors:to_json(not_reconcilable),
+    do(fun knm_phone_number:fetch/1, new(Options, Yes, No)).
+do_get_pn(Nums, Options, Error) ->
+    {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
 
 %%--------------------------------------------------------------------
@@ -185,7 +188,7 @@ do_get_pn(Nums, Options) ->
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
     ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
-    T0 = do_get_pn(Nums, Options),
+    T0 = do_get_pn(Nums, Options, knm_errors:to_json(not_reconcilable)),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
@@ -230,7 +233,8 @@ update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
 update(Nums, Routines, Options) ->
-    ret(pipe(do_get_pn(Nums, Options)
+    Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
+    ret(pipe(do_get_pn(Nums, Options, Reason)
             ,[fun (T) -> knm_phone_number:setters(T, Routines) end
              ,fun knm_number:new/1
              ,fun save_numbers/1
