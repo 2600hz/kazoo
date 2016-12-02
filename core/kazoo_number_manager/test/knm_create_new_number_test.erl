@@ -181,27 +181,12 @@ create_new_port_in_test_() ->
     ].
 
 create_existing_in_service_test_() ->
-    InServicePN =
-        knm_phone_number:set_state(knm_phone_number:from_json(?AVAILABLE_NUMBER)
-                                  ,?NUMBER_STATE_IN_SERVICE
-                                  ),
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
-            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{'dry_run', 'false'}
-            ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
-            ],
-    Resp = knm_number:attempt(fun knm_number:create_or_load/3
-                             ,[?TEST_AVAILABLE_NUM
-                              ,Props
-                              ,{'ok', InServicePN}
-                              ]
-                             ),
+    Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
+    Resp = knm_number:create(?TEST_IN_SERVICE_NUM, Options),
     [{"Verifying that IN SERVICE numbers can't be created"
      ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
+     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
     ].
 
 create_dry_run_test_() ->
