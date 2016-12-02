@@ -42,42 +42,39 @@ is_local() -> 'true'.
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
+-spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
 find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
-    AccountId = knm_carriers:account_id(Options),
+    AccountId = knm_search:account_id(Options),
     find_numbers_in_account(Prefix, Quantity, AccountId, Options);
 find_numbers(Prefix, Quantity, Options) ->
     find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
--spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_carriers:options()) ->
+-spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_search:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
-    Offset = knm_carriers:offset(Options),
-    case do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId) of
+    case do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) of
         {'error', 'not_available'}=Error ->
-            ResellerId = knm_carriers:reseller_id(Options),
+            ResellerId = knm_search:reseller_id(Options),
             case AccountId =:= 'undefined'
                 orelse AccountId =:= ResellerId
             of
                 'true' -> Error;
                 'false' ->
-                    NewOptions = [{offset, 0} | Options],
-                    find_numbers_in_account(Prefix, Quantity, ResellerId, NewOptions)
+                    find_numbers_in_account(Prefix, Quantity, ResellerId, Options)
             end;
         Result -> Result
     end.
 
--spec do_find_numbers_in_account(ne_binary(), pos_integer(), non_neg_integer(), api_binary()) ->
-                                        {'ok', knm_number:knm_numbers()} |
+-spec do_find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_search:options()) ->
+                                        {'ok', list()} |
                                         {'error', any()}.
-do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId) ->
+do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
     ViewOptions = [{'startkey', [AccountId, ?NUMBER_STATE_AVAILABLE, Prefix]}
                   ,{'endkey', [AccountId, ?NUMBER_STATE_AVAILABLE, <<Prefix/binary,"\ufff0">>]}
                   ,{'limit', Quantity}
-                  ,{skip, Offset}
                   ,'include_docs'
                   ],
     case kz_datamgr:get_results(?KZ_MANAGED, <<"numbers_managed/status">>, ViewOptions) of
@@ -85,23 +82,25 @@ do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId) ->
             lager:debug("found no available managed numbers for account ~s", [AccountId]),
             {'error', 'not_available'};
         {'ok', JObjs} ->
-            lager:debug("found available managed numbers for account ~s", [AccountId]),
-            {'ok', format_numbers_resp(AccountId, JObjs)};
+            lager:debug("found ~B available managed numbers for account ~s", [length(JObjs), AccountId]),
+            format_numbers_resp(JObjs, Options);
         {'error', _R}=E ->
             lager:debug("failed to lookup available managed numbers: ~p", [_R]),
             E
     end.
 
--spec format_numbers_resp(ne_binary(), kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers_resp(AccountId, JObjs) ->
-    [N || JObj <- JObjs,
-          {'ok', N} <- [format_number_resp(AccountId, JObj)]
-    ].
+-spec format_numbers_resp(kz_json:objects(), knm_search:options()) -> {'ok', list()}.
+format_numbers_resp(JObjs, Options) ->
+    QID = knm_search:query_id(Options),
+    Numbers = [N || JObj <- JObjs,
+                    N <- [format_number_resp(QID, JObj)]
+              ],
+    {'ok', Numbers}.
 
--spec format_number_resp(ne_binary(), kz_json:object()) -> knm_number:knm_number_return().
-format_number_resp(AccountId, JObj) ->
+-spec format_number_resp(ne_binary(), kz_json:object()) -> tuple().
+format_number_resp(QID, JObj) ->
     Num = kz_doc:id(kz_json:get_value(<<"doc">>, JObj)),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new(), ?NUMBER_STATE_AVAILABLE).
+    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,7 +108,7 @@ format_number_resp(AccountId, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
-is_number_billable(_Number) -> 'false'.
+is_number_billable(_Number) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -138,8 +137,9 @@ acquire_number(Number) ->
 disconnect_number(Number) ->
     lager:debug("disconnecting number ~s"
                ,[knm_phone_number:number(knm_number:phone_number(Number))]),
-    update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_RELEASED}
-                       ,{?PVT_ASSIGNED_TO, <<>>}
+    update_doc(Number, [{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+                       ,{?PVT_ASSIGNED_TO, null}
+                        %%                       ,{?PVT_ASSIGNED_TO, <<>>}
                        ]).
 
 -spec generate_numbers(ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.

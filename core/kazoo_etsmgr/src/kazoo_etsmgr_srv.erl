@@ -76,7 +76,8 @@ start_link(Name, Opts) ->
 valid_options(Opts) ->
     (TID = props:get_value('table_id', Opts)) =/= 'undefined'
         andalso is_atom(TID)
-        andalso is_function(props:get_value('find_me_function', Opts), 0).
+        andalso is_function(props:get_value('find_me_function', Opts), 0)
+        orelse props:is_defined('local', Opts).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -189,6 +190,12 @@ handle_info({'ETS-TRANSFER', Tbl, Pid, _Data}, #state{table_id=Tbl
     lager:debug("ets table ~p transferred back to ourselves", [Tbl]),
     send_give_away_retry(Tbl),
     {'noreply', State#state{give_away_pid='undefined'}};
+handle_info({'give_away', Tbl}, #state{table_id=Tbl
+                                      ,give_away_pid='undefined'
+                                      ,find_me_fun='undefined'
+                                      }=State) ->
+    lager:debug("no find_me_fun, ets table ~p will live here", [Tbl]),
+    {'noreply', State};
 handle_info({'give_away', Tbl}, #state{table_id=Tbl
                                       ,give_away_pid='undefined'
                                       ,find_me_fun=F

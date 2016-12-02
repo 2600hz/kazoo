@@ -49,7 +49,7 @@ get_connection(Srv) ->
 
 -spec new_exchange(pid(), kz_amqp_exchange()) -> 'ok'.
 new_exchange(Srv, Exchange) ->
-    gen_server:cast(Srv, {'new_exchange', Exchange}).
+    gen_server:call(Srv, {'new_exchange', Exchange}).
 
 -spec create_prechannel(pid()) -> 'ok'.
 create_prechannel(Srv) ->
@@ -99,6 +99,15 @@ handle_call('get_connection', _, Connection) ->
     {'reply', Connection, Connection};
 handle_call('stop', _, Connection) ->
     {'stop', 'normal', 'ok', disconnected(Connection)};
+handle_call({'new_exchange', _}
+           ,_From
+           ,#kz_amqp_connection{available='false'}=Connection) ->
+    {'reply', 'ok', Connection};
+handle_call({'new_exchange', Exchange}
+           ,_From
+           ,#kz_amqp_connection{available='true'}=Connection) ->
+    _ = declare_exchanges(Connection, [Exchange]),
+    {'reply', 'ok', Connection};
 handle_call(_Msg, _From, Connection) ->
     {'reply', {'error', 'not_implemented'}, Connection}.
 

@@ -32,9 +32,12 @@
 - export([auth/0]).  %% Only to pass compilation
 -endif.
 
+-ifdef(TEST).
+-define(BW2_DEBUG, 'false').
+-define(DEBUG_WRITE(Format, Args), lager:debug(Format, Args)).
+-define(DEBUG_APPEND(Format, Args), lager:debug(Format, Args)).
+-else.
 -define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
--define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
-
 -define(DEBUG_WRITE(Format, Args),
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args))
@@ -43,9 +46,26 @@
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
+-endif.
 
+-define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
 
+-ifdef(TEST).
+
+-define(IS_SANDBOX_PROVISIONING_TRUE, 'true').
+-define(IS_PROVISIONING_ENABLED, 'true').
+-define(BW2_ORDER_NAME_PREFIX, "Kazoo").
+-define(BW2_ACCOUNT_ID, "eunit_testing_account").
+
+-define(BW2_API_USERNAME, <<>>).
+-define(BW2_API_PASSWORD, <<>>).
+-define(BW2_SIP_PEER, "").
+-define(BW2_SITE_ID, "").
+
+-define(MAX_SEARCH_QUANTITY, 500).
+
+-else.
 -define(IS_SANDBOX_PROVISIONING_TRUE,
         kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
 -define(IS_PROVISIONING_ENABLED,
@@ -55,6 +75,7 @@
 
 -define(BW2_ACCOUNT_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
+
 -define(BW2_API_USERNAME,
         kapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_username">>, <<>>)).
 -define(BW2_API_PASSWORD,
@@ -63,10 +84,15 @@
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"sip_peer">>, "")).
 -define(BW2_SITE_ID,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
--define(BW2_ORDER_POLL_INTERVAL, 2000).
 
 -define(MAX_SEARCH_QUANTITY,
-        integer_to_list(kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 120))).
+        kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
+
+-endif.
+
+-define(BW2_ORDER_POLL_INTERVAL, 2000).
+
+
 
 -define(ORDER_NUMBER_XPATH, "ExistingTelephoneNumberOrderType/TelephoneNumberList/TelephoneNumber/text()").
 -define(CUSTOMER_ORDER_ID_XPATH, "CustomerOrderId/text()").
@@ -95,140 +121,64 @@ is_number_billable(_Number) -> 'true'.
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Try search for locally numbers in discovery state first, if it's not enough
-%% or there's no such a numbers query BW for a big quantity of numbers
-%% @end
-%%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
-find_numbers(Number, Quantity, Options) ->
-    case knm_carriers:account_id(Options) of
-        'undefined' -> {'error', 'not_available'};
-        AccountId ->
-            query_local_bw_numbers(Number, Quantity, Options, AccountId)
-    end.
-
--spec query_local_bw_numbers(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary()) -> search_ret().
--ifndef(TEST).
-query_local_bw_numbers(Number, Quantity, Options, AccountId)
-  when is_integer(Quantity), Quantity > 0 ->
-    Offset = knm_carriers:offset(Options),
-    BW2Module = erlang:atom_to_binary(?MODULE, 'utf8'),
-    ViewOptions = [{'startkey', [?NUMBER_STATE_DISCOVERY, BW2Module, Number]}
-                  ,{'endkey', [?NUMBER_STATE_DISCOVERY, BW2Module, <<"\ufff0">>]}
-                  ,{'limit', Quantity}
-                  ,{skip, Offset}
-                  ],
-    case
-        'undefined' /= (DB = knm_converters:to_db(Number))
-        andalso kz_datamgr:get_results(DB, <<"numbers/status">>, ViewOptions)
-    of
-        'false' -> query_bw_numbers(Number, Quantity, Options);
-        {'ok', []} ->
-            lager:debug("found no available discoverable bandwidth numbers for account ~s, finding by their API...", [AccountId]),
-            query_bw_numbers(Number, Quantity, Options);
-        {'ok', JObjs} ->
-            lager:debug("found discoverable bandwidth numbers for account ~s", [AccountId]),
-            Numbers = format_numbers(JObjs),
-            find_more(Number, Quantity, Options, AccountId, length(Numbers), Numbers);
-        {'error', _R} ->
-            lager:debug("failed to lookup discoverable bandwidth numbers: ~p , finding by their API...", [_R]),
-            query_bw_numbers(Number, Quantity, Options)
-    end;
-query_local_bw_numbers(_Number, _Quantity, _Options, _AccountId) ->
-    {'error', 'not_available'}.
-
--spec find_more(ne_binary(), pos_integer(), knm_carriers:options(), ne_binary(), pos_integer(), knm_number:knm_numbers()) ->
-                       {'ok', knm_number:knm_numbers()}.
-find_more(Number, Quantity, Options, AccountId, NotEnough, Numbers)
-  when NotEnough < Quantity ->
-    NewOffset = knm_carriers:offset(Options) + NotEnough,
-    NewOptions = props:set_value('offset', NewOffset, Options),
-    case query_local_bw_numbers(Number, Quantity - NotEnough, NewOptions, AccountId) of
-        {'ok', MoreNumbers} -> {'ok', Numbers ++ MoreNumbers};
-        _Error -> {'ok', Numbers}
-    end;
-find_more(_, _, _, _, _Enough, Numbers) ->
-    {'ok', Numbers}.
-
--spec format_numbers(kz_json:objects()) -> knm_number:knm_numbers().
-format_numbers(JObjs) ->
-    Nums = [kz_doc:id(JObj) || JObj <- JObjs],
-    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-              ],
-    [Number || {_Num,{'ok',Number}} <- knm_numbers:get(Nums, Options)].
--else.
-query_local_bw_numbers(Number, Quantity, Options, _AccountId) ->
-    query_bw_numbers(Number, Quantity, Options).
--endif.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% Query the Bandwidth.com system for a quantity of available numbers
 %% in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec query_bw_numbers(ne_binary(), pos_integer(), knm_carriers:options()) -> search_ret().
-query_bw_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
-    query_bw_numbers(Rest, Quantity, Options);
+-spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) -> search_ret().
+find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
 
-query_bw_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
-    query_bw_numbers(Rest, Quantity, Options);
+find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
+    find_numbers(Rest, Quantity, Options);
 
-query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE(Prefix) ->
     <<_:1/binary, Wildcard/binary>> = Prefix,
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Wildcard), "*"
-               "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
+               "&enableTNDetail=true&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
-    {'ok', process_tollfree_search_response(Result, Quantity, Options)};
+    process_tollfree_search_response(Result, Options);
 
-query_bw_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
+find_numbers(<<Prefix:3/binary, _/binary>>=Num, Quantity, Options) when ?IS_US_TOLLFREE_WILDCARD(Prefix) ->
     Params = [ "tollFreeWildCardPattern=", binary_to_list(Prefix),
-               "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
+               "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
     Result = search(Num, Params),
-    {'ok', process_tollfree_search_response(Result, Quantity, Options)};
+    process_tollfree_search_response(Result, Options);
 
-query_bw_numbers(<<NPA:3/binary>>, Quantity, Options) ->
+find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Params = [ "areaCode=", binary_to_list(NPA)
-             , "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
+             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
-    {'ok', process_search_response(search(NPA, Params), Quantity, Options)};
+    Result = search(NPA, Params),
+    process_search_response(Result, Options);
 
-query_bw_numbers(Search, Quantity, Options) ->
+find_numbers(Search, Quantity, Options) ->
     NpaNxx = kz_util:truncate_right_binary(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
-             , "&enableTNDetail=true&quantity=", ?MAX_SEARCH_QUANTITY
+             , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
-    {'ok', process_search_response(search(Search, Params), Quantity, Options)}.
+    Result = search(Search, Params),
+    process_search_response(Result, Options).
 
--spec process_tollfree_search_response(xml_el(), pos_integer(), knm_carriers:options()) -> knm_number:knm_numbers().
-process_tollfree_search_response(Result, Quantity, Options) ->
-    AccountId = knm_carriers:account_id(Options),
+-spec process_tollfree_search_response(xml_el(), knm_search:options()) -> {'ok', list()}.
+process_tollfree_search_response(Result, Options) ->
+    QID = knm_search:query_id(Options),
     Found = [N
              || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
-                {'ok', N} <- [tollfree_search_response_to_KNM(X, AccountId)]
+                N <- [tollfree_search_response_to_KNM(X, QID)]
             ],
-    return_requested_quantity(Found, Quantity).
+    {'ok', Found}.
 
--spec process_search_response(xml_el(), pos_integer(), knm_carriers:options()) -> knm_number:knm_numbers().
-process_search_response(Result, Quantity, Options) ->
-    AccountId = knm_carriers:account_id(Options),
+-spec process_search_response(xml_el(), knm_search:options()) -> {'ok', list()}.
+process_search_response(Result, Options) ->
+    QID = knm_search:query_id(Options),
     Found = [N
-             || X <- xmerl_xpath:string("TelephoneNumberDetailList/TelephoneNumberDetail", Result),
-                {'ok', N} <- [search_response_to_KNM(X, AccountId)]
+             || X <- xmerl_xpath:string("TelephoneNumberList/TelephoneNumber", Result),
+                N <- [search_response_to_KNM(X, QID)]
             ],
-    return_requested_quantity(Found, Quantity).
-
--spec return_requested_quantity(knm_number:knm_numbers(), pos_integer()) -> knm_number:knm_numbers().
-return_requested_quantity(Numbers, Quantity) ->
-    try lists:split(Quantity, Numbers) of
-        {Found, _Rest} -> Found
-    catch
-        'error':'badarg' ->
-            Numbers
-    end.
+    {'ok', Found}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -309,6 +259,10 @@ check_order(_OrderId, OrderStatus, _Response, PhoneNumber, _Number) ->
 to_bandwidth2(<<"+1", Number/binary>>) -> Number;
 to_bandwidth2(Number) -> Number.
 
+-spec from_bandwidth2(ne_binary()) -> ne_binary().
+from_bandwidth2(<<"+", _/binary>> = Number) -> Number;
+from_bandwidth2(Number) -> <<"+1", Number/binary>>.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -364,8 +318,7 @@ url(RelativePath) ->
 search(Num, Params) ->
     case api_get(url(["availableNumbers?" | Params])) of
         {'ok', Results} -> Results;
-        {'error', Reason} ->
-            knm_errors:by_carrier(?MODULE, Reason, Num)
+        {'error', Reason} -> knm_errors:by_carrier(?MODULE, Reason, Num)
     end.
 
 -spec auth() -> {'basic_auth', {ne_binary(), ne_binary()}}.
@@ -381,13 +334,13 @@ api_get(Url) ->
     Response = kz_http:get(Url, [], HTTPOptions),
     handle_response(Response).
 -else.
-api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?areaCode="++_) ->
-    Resp = knm_util:fixture("bandwidth2_find_by_npa.xml"),
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?areaCode="++_) ->
+    Resp = knm_util:fixture("bandwidth2_find_by_npa_no_detail.xml"),
     handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts//availableNumbers?tollFreeWildCardPattern="++_) ->
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableNumbers?tollFreeWildCardPattern="++_) ->
     Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
     handle_response({'ok', 200, [], Resp});
-api_get("https://api.inetwork.com/v1.0/accounts//orders/" ++ _) ->
+api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders/" ++ _) ->
     Resp = knm_util:fixture("bandwidth2_check_order.xml"),
     handle_response({'ok', 200, [], Resp}).
 -endif.
@@ -411,7 +364,7 @@ api_post(Url, Body) ->
     Response = kz_http:post(Url, Headers, UnicodeBody, HTTPOptions),
     handle_response(Response).
 -else.
-api_post("https://api.inetwork.com/v1.0/accounts//orders", Body) ->
+api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", Body) ->
     _UnicodeBody = unicode:characters_to_binary(Body),
     Resp = knm_util:fixture("bandwidth2_buy_a_number.xml"),
     handle_response({'ok', 200, [], Resp}).
@@ -486,7 +439,7 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    Num = maybe_add_us_prefix(kz_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
+    Num = from_bandwidth2(kz_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
     kz_json:from_list(
       props:filter_empty(
         [{<<"order_id">>, kz_util:get_xml_value(?CUSTOMER_ORDER_ID_XPATH, Xml)}
@@ -497,30 +450,23 @@ number_order_response_to_json(Xml) ->
      ).
 
 %% @private
--spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) ->
-                                    knm_number:knm_number_return().
-search_response_to_KNM([Xml], AccountId) ->
-    search_response_to_KNM(Xml, AccountId);
-search_response_to_KNM(Xml, AccountId) ->
-    Num = maybe_add_us_prefix(kz_util:get_xml_value("//FullNumber/text()", Xml)),
+-spec search_response_to_KNM(xml_els() | xml_el(), ne_binary()) -> tuple().
+search_response_to_KNM([Xml], QID) ->
+    search_response_to_KNM(Xml, QID);
+search_response_to_KNM(Xml, QID) ->
+    Num = from_bandwidth2(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
     JObj = kz_json:from_list(
              props:filter_empty(
-               [{<<"number">>, Num}
-               ,{<<"rate_center">>, rate_center_to_json(Xml)}
+               [{<<"rate_center">>, rate_center_to_json(Xml)}
                ])
             ),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
-
--spec maybe_add_us_prefix(binary()) -> binary().
-maybe_add_us_prefix(<<"+1", _/binary>>=Num) -> Num;
-maybe_add_us_prefix(Num) -> <<"+1", Num/binary>>.
+    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
 %% @private
--spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) ->
-                                             knm_number:knm_number_return().
-tollfree_search_response_to_KNM(Xml, AccountId) ->
-    Num = maybe_add_us_prefix(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, kz_json:new()).
+-spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> tuple().
+tollfree_search_response_to_KNM(Xml, QID) ->
+    Num = from_bandwidth2(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
+    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -580,3 +526,10 @@ validate_xpath_value(_) -> 'true'.
 
 -spec should_lookup_cnam() -> 'true'.
 should_lookup_cnam() -> 'true'.
+
+-spec quantity_uri_param(integer()) -> string().
+-ifdef(TEST).
+quantity_uri_param(Q) -> integer_to_list(Q).
+-else.
+quantity_uri_param(Q) -> integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY)).
+-endif.

@@ -51,7 +51,6 @@ api_version_constraint(NotVersion) ->
 -spec start_link() -> startlink_ret().
 start_link() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
-    _ = declare_exchanges(),
 
     Dispatch = cowboy_router:compile(crossbar_routes()),
 
@@ -159,25 +158,6 @@ stop_mod_version(Version, Mod) ->
             'false'
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Ensures that all exchanges used are declared
-%%--------------------------------------------------------------------
--spec declare_exchanges() -> 'ok'.
-declare_exchanges() ->
-    _ = kapi_acdc_agent:declare_exchanges(),
-    _ = kapi_acdc_stats:declare_exchanges(),
-    _ = kapi_money:declare_exchanges(),
-    _ = kapi_conference:declare_exchanges(),
-    _ = kapi_notifications:declare_exchanges(),
-    _ = kapi_presence:declare_exchanges(),
-    _ = kapi_registration:declare_exchanges(),
-    _ = kapi_resource:declare_exchanges(),
-    _ = kapi_switch:declare_exchanges(),
-    _ = kapi_sysconf:declare_exchanges(),
-    _ = kapi_call:declare_exchanges(),
-    _ = kapi_dialplan:declare_exchanges(),
-    kapi_self:declare_exchanges().
 
 %%--------------------------------------------------------------------
 %% @private

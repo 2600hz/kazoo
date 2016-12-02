@@ -107,7 +107,7 @@ get(Consumer) ->
 
 -spec add_exchange(kz_amqp_exchange()) -> 'ok'.
 add_exchange(#'exchange.declare'{}=Exchange) ->
-    gen_server:cast(?SERVER, {'add_exchange', Exchange}).
+    gen_server:call(?SERVER, {'add_exchange', Exchange}).
 
 -spec list_exchanges() -> kz_amqp_exchanges().
 list_exchanges() ->
@@ -200,6 +200,18 @@ handle_call('list_exchanges', {Connection, _}, #state{exchanges=Exchanges
     _Ref = monitor('process', Connection),
     {'reply', [Exchange || {_, Exchange} <- dict:to_list(Exchanges)]
     ,State#state{connections=sets:add_element(Connection, Connections)}};
+handle_call({'add_exchange', #'exchange.declare'{exchange=Name}=Exchange}
+           , _From
+           ,#state{exchanges=Exchanges
+                  ,connections=Connections}=State) ->
+    case dict:find(Name, Exchanges) of
+        'error' ->
+            _ = [(catch kz_amqp_connection:new_exchange(Connection, Exchange))
+                 || Connection <- sets:to_list(Connections)
+                ],
+            {'reply', 'ok', State#state{exchanges=dict:store(Name, Exchange, Exchanges)}};
+        {'ok', _Exits} -> {'reply', 'ok', State}
+    end;
 handle_call(_Msg, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 

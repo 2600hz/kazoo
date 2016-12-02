@@ -29,7 +29,7 @@
             "type": "boolean"
         },
         "max_search_quantity": {
-            "default": 120,
+            "default": 500,
             "description": "number_manager.bandwidth2 max search quantity",
             "type": "integer"
         },
