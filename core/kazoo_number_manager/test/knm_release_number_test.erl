@@ -13,16 +13,12 @@
 
 release_unknown_number_test_() ->
     [{"verfiy missing numbers return errors"
-     ,?_assertMatch(
-         {'error', 'not_found'}
-                   ,knm_number:release(?TEST_CREATE_NUM)
-        )
+     ,?_assertMatch({'error', 'not_found'}, knm_number:release(?TEST_CREATE_NUM))
      }
     ].
 
 release_available_number_test_() ->
     {'error', Error} = knm_number:release(?TEST_AVAILABLE_NUM),
-
     [{"Verify error code for releasing available number"
      ,?_assertEqual(400, knm_errors:code(Error))
      }
