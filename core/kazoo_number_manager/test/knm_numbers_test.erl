@@ -177,3 +177,13 @@ assign_to_app_test_() ->
      ,?_assertEqual(MyApp, knm_phone_number:used_by(pn_x(1, Ret2)))
      }
     ].
+
+
+release_test_() ->
+    Ret = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_WITH_HISTORY_NUM]),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    ,?_assertMatch([_], maps:get(ok, Ret))
+    ,{"Verify number went from in_service to available"
+     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret)))
+     }
+    ].
