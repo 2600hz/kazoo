@@ -169,6 +169,12 @@ do_get(Nums, Options) ->
                                 ,fun knm_number:new/1
                                 ]).
 
+-spec do_get_pn(ne_binaries(), knm_number_options:options()) -> t_pn().
+do_get_pn(Nums, Options) ->
+    {Yes, No} = are_reconcilable(Nums),
+    Error = knm_errors:to_json(not_reconcilable),
+    do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -179,9 +185,7 @@ do_get(Nums, Options) ->
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
     ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
-    {Yes, No} = are_reconcilable(Nums),
-    Error = knm_errors:to_json(not_reconcilable),
-    T0 = do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)),
+    T0 = do_get_pn(Nums, Options),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
@@ -226,9 +230,11 @@ update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
 update(Nums, Routines, Options) ->
-    ret(pipe(do_get(Nums, Options), [fun (T) -> update_existing(T, Routines) end
-                                    ,fun save_numbers/1
-                                    ])).
+    ret(pipe(do_get_pn(Nums, Options)
+            ,[fun (T) -> knm_phone_number:setters(T, Routines) end
+             ,fun knm_number:new/1
+             ,fun save_numbers/1
+             ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -262,10 +268,10 @@ delete(Nums, Options) ->
             Error = knm_errors:to_json(unauthorized),
             ret(new(Options, [], Nums, Error));
         true ->
-            T0 = do_get(Nums, Options),
-            F1 = fun knm_providers:delete/1,
-            F2 = fun knm_phone_number:delete/1,
-            ret(do_in_wrap(F2, do(F1, T0)))
+            ret(pipe(do_get_pn(Nums, Options)
+                    ,[fun knm_providers:delete/1
+                     ,fun knm_phone_number:delete/1
+                     ]))
     end.
 
 %%--------------------------------------------------------------------
@@ -399,7 +405,8 @@ new(Options, ToDos, KOs, Reason) ->
 %% if empty use "ok" as the new "todo".
 %% If "ok" is empty, return.
 %% @end
--spec pipe(t(), appliers()) -> t().
+-spec pipe(t(), appliers()) -> t();
+          (t_pn(), appliers()) -> t_pn().
 pipe(T, []) -> T;
 pipe(T=#{todo := [], ok := []}, _) -> T;
 pipe(T=#{todo := [], ok := OK}, Fs) ->
@@ -504,9 +511,6 @@ update_for_create(T=#{todo := _PNs, options := Options}) ->
                 props:delete('state', Options)
                ),
     knm_phone_number:setters(T, Updates).
-
-update_existing(T0, Setters) ->
-    do_in_wrap(fun (T) -> knm_phone_number:setters(T, Setters) end, T0).
 
 update_for_reconcile(T, Options) ->
     S = [{fun knm_phone_number:set_assigned_to/2, knm_number_options:assign_to(Options)}
