@@ -973,11 +973,11 @@ get_clid(Endpoint, Properties, Call, Type) ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
             CallerNumber = case kapps_call:caller_id_number(Call) of
                                Number -> 'undefined';
-                               _Number -> Number
+                               NewNumber -> NewNumber
                            end,
             CallerName = case kapps_call:caller_id_name(Call) of
                              Name -> 'undefined';
-                             _Name -> Name
+                             NewName -> NewName
                          end,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
             #clid{caller_number=CallerNumber
