@@ -268,10 +268,10 @@ delete(Nums, Options) ->
             Error = knm_errors:to_json(unauthorized),
             ret(new(Options, [], Nums, Error));
         true ->
-            ret(pipe(do_get_pn(Nums, Options)
-                    ,[fun knm_providers:delete/1
-                     ,fun knm_phone_number:delete/1
-                     ]))
+            T0 = do_get(Nums, Options),
+            F1 = fun knm_providers:delete/1,
+            F2 = fun knm_phone_number:delete/1,
+            ret(do_in_wrap(F2, do(F1, T0)))
     end.
 
 %%--------------------------------------------------------------------
@@ -509,12 +509,14 @@ maybe_create(NotFounds, T) ->
                  ]),
     merge_okkos(Ta, Tb).
 
+-spec update_for_create(t_pn()) -> t_pn().
 update_for_create(T=#{todo := _PNs, options := Options}) ->
     Updates = knm_number_options:to_phone_number_setters(
                 props:delete('state', Options)
                ),
     knm_phone_number:setters(T, Updates).
 
+-spec update_for_reconcile(t_pn(), knm_number_options:options()) -> t_pn().
 update_for_reconcile(T, Options) ->
     S = [{fun knm_phone_number:set_assigned_to/2, knm_number_options:assign_to(Options)}
         ,{fun knm_phone_number:set_auth_by/2,     knm_number_options:auth_by(Options)}
