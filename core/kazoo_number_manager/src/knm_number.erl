@@ -244,10 +244,7 @@ save_phone_number(PhoneNumber, Number) ->
     set_phone_number(Number, knm_phone_number:save(PhoneNumber)).
 
 -spec save_wrap_phone_number(knm_number()) -> knm_number_return().
--spec save_wrap_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number_return().
 save_wrap_phone_number(Number) -> {ok, save_phone_number(Number)}.
-save_wrap_phone_number(PhoneNumber, Number) ->
-    {ok, save_phone_number(PhoneNumber, Number)}.
 
 -spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
 dry_run_or_number(Number) ->
@@ -492,23 +489,7 @@ assign_to_app(Num, App) ->
     assign_to_app(Num, App, knm_number_options:default()).
 
 assign_to_app(Num, App, Options) ->
-    case get(Num, Options) of
-        {'error', _R}=E -> E;
-        {'ok', Number} ->
-            maybe_update_assignment(Number, App)
-    end.
-
--spec maybe_update_assignment(knm_number(), api_binary()) -> knm_number_return().
-maybe_update_assignment(Number, NewApp) ->
-    PhoneNumber = phone_number(Number),
-    case knm_phone_number:used_by(PhoneNumber) of
-        NewApp -> {'ok', Number};
-        _OldApp ->
-            lager:debug("assigning ~s to ~s", [knm_phone_number:number(PhoneNumber), NewApp]),
-            save_wrap_phone_number(knm_phone_number:set_used_by(PhoneNumber, NewApp)
-                                  ,Number
-                                  )
-    end.
+    ?TRY3(assign_to_app, Num, App, Options).
 
 %%--------------------------------------------------------------------
 %% @public
