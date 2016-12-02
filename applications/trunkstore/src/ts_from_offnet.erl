@@ -281,8 +281,9 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
 
     CidOptions  = props:get_value(<<"Caller-ID-Options">>, RoutingData1),
     CidFormat   = kz_json:get_ne_value(<<"format">>, CidOptions),
-    OldCallerId = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
-    NewCallerId = maybe_anonymize_caller_id(State, OldCallerId, CidFormat),
+    OldCNum = kz_json:get_value(<<"Caller-ID-Number">>, JObj),
+    OldCNam = kz_json:get_value(<<"Caller-ID-Name">>, JObj, OldCNum),
+    NewCallerId = maybe_anonymize_caller_id(State, OldCNum, OldCNam, CidFormat),
     RoutingData = RoutingData1 ++ NewCallerId,
 
     AuthUser = props:get_value(<<"To-User">>, RoutingData),
@@ -444,8 +445,8 @@ callee_id([JObj | T]) ->
             end
     end.
 
--spec maybe_anonymize_caller_id(ts_callflow:state(), ne_binary(), ne_binary()) -> kz_proplist().
-maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
+-spec maybe_anonymize_caller_id(ts_callflow:state(), ne_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+maybe_anonymize_caller_id(State, OldCNum, OldCNam, CidFormat) ->
     CCVs = ts_callflow:get_custom_channel_vars(State),
     case should_anonymize_caller_id(State, ?CALLER_PRIVACY(CCVs)) of
         'true' ->
@@ -454,7 +455,10 @@ maybe_anonymize_caller_id(State, OldCallerId, CidFormat) ->
             ];
         'false' ->
             [{<<"Outbound-Caller-ID-Name">>
-             ,kapps_call:maybe_format_caller_id_str(OldCallerId, CidFormat)
+             ,kapps_call:maybe_format_caller_id_str(OldCNam, CidFormat)
+             }
+            ,{<<"Outbound-Caller-ID-Num">>
+             ,kapps_call:maybe_format_caller_id_str(OldCNum, CidFormat)
              }
             ]
     end.
