@@ -85,7 +85,6 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
     Transaction = create_transaction(Number, Feature, Units),
     N = knm_number:set_charges(Number, Feature, TotalCharges),
     knm_number:add_transaction(N, Transaction).
-
 -endif.
 
 %%--------------------------------------------------------------------

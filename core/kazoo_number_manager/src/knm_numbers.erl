@@ -14,10 +14,13 @@
         ,options/1, options/2
         ,plan/1, plan/2
         ,services/1, services/2
-        ,transactions/1, transactions/2
-        ,charges/1, charges/2
+        ,transactions/1, transactions/2, transaction/2
+        ,charges/1, charges/2, charge/3
         ]).
 -export([ok/2, ko/3]).
+-export([assigned_to/1
+        ,prev_assigned_to/1
+        ]).
 
 -export([get/1, get/2
         ,create/2
@@ -76,13 +79,14 @@
 -type options() :: knm_number_options:options().
 -type plan() :: kz_service_plans:plan() | undefined.
 -type services() :: kz_services:services() | undefined.
+-type transaction() :: kz_transaction:transaction().
 -type transactions() :: kz_transaction:transactions().
 -type charges() :: [{ne_binary(), non_neg_integer()}].
 
 -export_type([options/0
              ,plan/0
              ,services/0
-             ,transactions/0
+             ,transaction/0, transactions/0
              ,charges/0
              ]).
 
@@ -102,6 +106,44 @@ num(N) ->
 %%--------------------------------------------------------------------
 -spec todo(t()) -> nums() | oks().
 todo(#{todo := ToDo}) -> ToDo.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set of numbers' assigned_to fields.
+%% @end
+%%--------------------------------------------------------------------
+-spec assigned_to(t()) -> api_ne_binary().
+assigned_to(#{todo := Ns}) ->
+    F = fun (N, S) ->
+                case knm_phone_number:assigned_to(knm_number:phone_number(N)) of
+                    undefined -> S;
+                    ?MATCH_ACCOUNT_RAW(AccountId) -> sets:add_element(AccountId, S)
+                end
+        end,
+    case sets:to_list(lists:foldl(F, sets:new(), Ns)) of
+        [] -> undefined;
+        [AccountId] -> AccountId
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Set of numbers' prev_assigned_to fields.
+%% @end
+%%--------------------------------------------------------------------
+-spec prev_assigned_to(t()) -> api_ne_binary().
+prev_assigned_to(#{todo := Ns}) ->
+    F = fun (N, S) ->
+                case knm_phone_number:prev_assigned_to(knm_number:phone_number(N)) of
+                    undefined -> S;
+                    ?MATCH_ACCOUNT_RAW(AccountId) -> sets:add_element(AccountId, S)
+                end
+        end,
+    case sets:to_list(lists:foldl(F, sets:new(), Ns)) of
+        [] -> undefined;
+        [AccountId] -> AccountId
+    end.
 
 %% @public
 -spec options(t()) -> options().
@@ -128,10 +170,18 @@ transactions(#{transactions := V}) -> V.
 transactions(V, T) -> T#{transactions => V}.
 
 %% @public
+-spec transaction(kz_transaction:transaction(), t()) -> t().
+transaction(V, T=#{transactions := Vs}) -> T#{transactions => [V | Vs]}.
+
+%% @public
 -spec charges(t()) -> charges().
 -spec charges(charges(), t()) -> t().
 charges(#{charges := V}) -> V.
 charges(V, T) -> T#{charges => V}.
+
+%% @public
+-spec charge(ne_binary(), non_neg_integer(), t()) -> t().
+charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
 %% @public
 -spec ok(ok() | oks(), t()) -> t().
