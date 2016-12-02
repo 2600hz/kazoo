@@ -20,6 +20,7 @@
         ,db_info/2
         ,db_exists/2
         ,db_archive/3
+        ,db_import/3
         ,db_list/2
         ]).
 
@@ -162,6 +163,26 @@ archive_docs(File, [Doc]) ->
 archive_docs(File, [Doc|Docs]) ->
     'ok' = file:write(File, [kz_json:encode(Doc), $,, $\n]),
     archive_docs(File, Docs).
+
+-spec db_import(server(), ne_binary(), ne_binary()) ->
+                       'ok' |
+                       couchbeam_error().
+db_import(#server{}=Conn, DbName, Filename) ->
+    case file:read_file(Filename) of
+        {'ok', Text} -> do_db_import(Conn, DbName, kz_json:decode(Text));
+        Error -> Error
+    end.
+
+-spec do_db_import(server(), ne_binary(), kz_json:objects()) ->
+                          'ok' |
+                          couchbeam_error().
+do_db_import(#server{}=Conn, DbName, Docs) ->
+    JObjs0 = [kz_json:delete_keys([<<"_rev">>, <<"_attachments">>], kz_json:get_value(<<"doc">>, Doc)) || Doc <- Docs],
+    JObjs = [JObj || JObj <- JObjs0, filter_views(kz_json:get_value(<<"_id">>, JObj))],
+    kz_couch_doc:save_docs(Conn, DbName, JObjs, []).
+
+filter_views(<<"_design", _/binary>>) -> 'false';
+filter_views(_Id) -> true.
 
 %% Internal DB-related functions -----------------------------------------------
 
