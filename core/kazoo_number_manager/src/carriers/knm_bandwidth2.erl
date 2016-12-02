@@ -196,8 +196,6 @@ acquire_number(Number) ->
         'false' ->
             knm_errors:unspecified('provisioning_disabled', Number);
         'true' ->
-            io:format(user, "ACQUIRE NUMBER ~p~n", [Number]),
-
             PhoneNumber = knm_number:phone_number(Number),
             Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
             ON = lists:flatten([?BW2_ORDER_NAME_PREFIX, "-", integer_to_list(kz_util:current_tstamp())]),
@@ -343,9 +341,7 @@ api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/availableN
     Resp = knm_util:fixture("bandwidth2_find_tollfree.xml"),
     handle_response({'ok', 200, [], Resp});
 api_get("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders/" ++ _) ->
-    io:format(user, "GETTING ORDER~n", []),
     Resp = knm_util:fixture("bandwidth2_check_order.xml"),
-    io:format(user, "GOT ORDER ~p~n", [Resp]),
     handle_response({'ok', 200, [], Resp}).
 -endif.
 

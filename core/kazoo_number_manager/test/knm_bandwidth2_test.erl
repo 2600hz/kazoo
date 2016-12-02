@@ -19,10 +19,9 @@ api_test_() ->
     X = [find_numbers(Options)
         ,find_tollfree_numbers(Options)
         ,acquire_number()
-    ],
+        ],
     _ = gen_server:stop(Pid),
     X.
-
 
 find_numbers(Options) ->
     Limit = 2,
@@ -76,7 +75,6 @@ acquire_number() ->
     N = <<"+19734096113">>,
     Number = knm_number(N),
     Result = knm_bandwidth2:acquire_number(Number),
-    io:format(user, "ACQUIRE ~p~n", [Result]),
     [{"Verify number is still one inputed"
      ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
      }
