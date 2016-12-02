@@ -160,3 +160,20 @@ reserve_test_() ->
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
      }
     ].
+
+
+assign_to_app_test_() ->
+    MyApp = <<"my_app">>,
+    Ret1 = knm_numbers:get([?NOT_NUM, ?TEST_AVAILABLE_NUM]),
+    Ret2 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM], MyApp),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
+    ,?_assertMatch([_], maps:get(ok, Ret1))
+    ,{"Verify number is initially used by the callflow app"
+     ,?_assertEqual(<<"callflow">>, knm_phone_number:used_by(pn_x(1, Ret1)))
+     }
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
+    ,?_assertMatch([_], maps:get(ok, Ret2))
+    ,{"Verify number is now used by another app"
+     ,?_assertEqual(Myapp, knm_phone_number:used_by(pn_x(1, Ret2)))
+     }
+    ].
