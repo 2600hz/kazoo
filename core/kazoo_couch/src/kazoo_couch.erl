@@ -23,6 +23,7 @@
         ,db_info/1, db_info/2
         ,db_exists/2
         ,db_archive/3
+        ,db_import/3
         ,db_list/2
         ]).
 
@@ -109,6 +110,10 @@ db_exists(Server, DbName) ->
 -spec db_archive(kz_data:connection(), ne_binary(), ne_binary()) -> any().
 db_archive(Server, DbName, Filename) ->
     kz_couch_db:db_archive(Server, DbName, Filename).
+
+-spec db_import(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+db_import(Server, DbName, Filename) ->
+    kz_couch_db:db_import(Server, DbName, Filename).
 
 -spec db_list(kz_data:connection(), kz_data:options()) -> any().
 db_list(Server, Options) ->
