@@ -175,7 +175,6 @@ is_reconcilable(Number) ->
     is_reconcilable_by_regex(Num, Regex).
 
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
-is_reconcilable(<<"+", _/binary>> = _Number, _AccountId) -> 'true';
 is_reconcilable(Number, AccountId) ->
     Regex = kapps_account_config:get_global(
               AccountId
