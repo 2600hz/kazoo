@@ -19,6 +19,8 @@
         ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
         ,top_mem_consumers/0, top_mem_consumers/1
         ,etop/0
+
+        ,ets_info/0
         ]).
 
 -include("include/kz_types.hrl").
@@ -94,3 +96,25 @@ top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
 etop() ->
     etop:start([{'output', 'text'}]),
     'ok'.
+
+-spec ets_info() -> 'ok'.
+ets_info() ->
+    io:format("ETS table memory usage:~n"),
+    [print_table(T) || T <- sort_tables(ets:all())],
+    'ok'.
+
+-spec sort_tables([ets:tid()]) -> [{ets:tid(), integer()}].
+sort_tables(Ts) ->
+    lists:reverse(
+      lists:keysort(2
+                   ,[{T, table_size(T)} || T <- Ts]
+                   )
+     ).
+
+-spec table_size(ets:tid()) -> integer().
+table_size(T) ->
+    ets:info(T, 'memory') * erlang:system_info('wordsize').
+
+-spec print_table({ets:tid(), integer()}) -> 'ok'.
+print_table({T, Mem}) ->
+    io:format("  ~-25s: ~-10s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
