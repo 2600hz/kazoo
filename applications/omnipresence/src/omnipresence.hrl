@@ -21,6 +21,11 @@
 -define(PRESENCE_EVENT, <<"presence">>).
 -define(OMNIPRESENCE_EVENT_ALL, <<"all">>).
 
+-define(RINGING_TIME, 24 * ?SECONDS_IN_HOUR).
+-define(ANSWERED_TIME, 24 * ?SECONDS_IN_HOUR).
+-define(HANGUP_TIME, 10).
+-define(OTHER_TIME, 36000).
+
 -define(FAKE_CALLID(C), kz_util:to_hex_binary(crypto:hash(md5, C))).
 
 -record(omnip_subscription, {
