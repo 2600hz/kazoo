@@ -19,6 +19,9 @@
         ,gc_top_mem_consumers/0, gc_top_mem_consumers/1
         ,top_mem_consumers/0, top_mem_consumers/1
         ,etop/0
+
+        ,ets_info/0
+        ,mem_info/0
         ]).
 
 -include("include/kz_types.hrl").
@@ -94,3 +97,38 @@ top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
 etop() ->
     etop:start([{'output', 'text'}]),
     'ok'.
+
+-spec ets_info() -> 'ok'.
+ets_info() ->
+    io:format("ETS table memory usage:~n"),
+    [print_table(T) || T <- sort_tables(ets:all())],
+    'ok'.
+
+-spec sort_tables([ets:tid()]) -> [{ets:tid(), integer()}].
+sort_tables(Ts) ->
+    lists:reverse(
+      lists:keysort(2
+                   ,[{T, table_size(T)} || T <- Ts]
+                   )
+     ).
+
+-spec table_size(ets:tid()) -> integer().
+table_size(T) ->
+    words_to_bytes(ets:info(T, 'memory')).
+
+words_to_bytes(Words) ->
+    Words * erlang:system_info('wordsize').
+
+-spec print_table({ets:tid(), integer()}) -> 'ok'.
+print_table({T, Mem}) ->
+    io:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+
+-spec mem_info() -> 'ok'.
+mem_info() ->
+    io:format(" VM Memory Info:~n"),
+    [print_memory_type(Info) || Info <- erlang:memory()],
+    'ok'.
+
+-spec print_memory_type({erlang:memory_type(), integer()}) -> 'ok'.
+print_memory_type({Type, Size}) ->
+    io:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]).

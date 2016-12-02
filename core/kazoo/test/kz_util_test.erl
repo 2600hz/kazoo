@@ -409,31 +409,38 @@ format_account_modb_raw(F) -> kz_util:format_account_modb(F, 'raw').
 format_account_modb_encoded(F) -> kz_util:format_account_modb(F, 'encoded').
 format_account_modb_unencoded(F) -> kz_util:format_account_modb(F, 'unencoded').
 
+-define(PP_TESTS, [{0, <<"0B">>, <<"0B">>}
+                  ,{1, <<"1B">>, <<"1B">>}
+                  ,{2, <<"2B">>, <<"2B">>}
+
+                  ,{?BYTES_K-1, <<"1023B">>, <<"1023B">>}
+                  ,{?BYTES_K, <<"1K">>, <<"1K">>}
+                  ,{?BYTES_K+1, <<"1K1B">>, <<"1K">>}
+
+                  ,{?BYTES_M-1, <<"1023K1023B">>, <<"1023K">>}
+                  ,{?BYTES_M, <<"1M">>, <<"1M">>}
+                  ,{?BYTES_M+1, <<"1M1B">>, <<"1M">>}
+
+                  ,{?BYTES_G-1, <<"1023M1023K1023B">>, <<"1023M">>}
+                  ,{?BYTES_G, <<"1G">>, <<"1G">>}
+                  ,{?BYTES_G+1, <<"1G1B">>, <<"1G">>}
+
+                  ,{?BYTES_T-1, <<"1023G1023M1023K1023B">>, <<"1023G">>}
+                  ,{?BYTES_T, <<"1T">>, <<"1T">>}
+                  ,{?BYTES_T+1, <<"1T1B">>, <<"1T">>}
+                  ]).
 
 pretty_print_bytes_test_() ->
-    Tests = [{0, <<"0B">>}
-            ,{1, <<"1B">>}
-            ,{2, <<"2B">>}
-
-            ,{?BYTES_K-1, <<"1023B">>}
-            ,{?BYTES_K, <<"1K">>}
-            ,{?BYTES_K+1, <<"1K1B">>}
-
-            ,{?BYTES_M-1, <<"1023K1023B">>}
-            ,{?BYTES_M, <<"1M">>}
-            ,{?BYTES_M+1, <<"1M1B">>}
-
-            ,{?BYTES_G-1, <<"1023M1023K1023B">>}
-            ,{?BYTES_G, <<"1G">>}
-            ,{?BYTES_G+1, <<"1G1B">>}
-
-            ,{?BYTES_T-1, <<"1023G1023M1023K1023B">>}
-            ,{?BYTES_T, <<"1T">>}
-            ,{?BYTES_T+1, <<"1T1B">>}
-            ],
-    [?_assertEqual({Bytes, Formatted}, {Bytes, kz_util:pretty_print_bytes(Bytes)})
-     || {Bytes, Formatted} <- Tests
+    Tests = ?PP_TESTS,
+    [?_assertEqual({Bytes, FullFormatted, TruncFormatted}
+                  ,{Bytes
+                   ,kz_util:pretty_print_bytes(Bytes, 'full')
+                   ,kz_util:pretty_print_bytes(Bytes, 'truncated')
+                   }
+                  )
+     || {Bytes, FullFormatted, TruncFormatted} <- Tests
     ].
+
 
 runs_in_test_() ->
     [?_assertEqual(timeout, kz_util:runs_in(1, fun timer:sleep/1, [10]))

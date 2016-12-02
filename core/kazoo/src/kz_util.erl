@@ -92,7 +92,7 @@
         ,iso8601/1
         ,pretty_print_elapsed_s/1
         ,decr_timeout/2
-        ,pretty_print_bytes/1
+        ,pretty_print_bytes/1, pretty_print_bytes/2
         ,bin_usage/0, mem_usage/0
         ]).
 -export([microseconds_to_seconds/1
@@ -1474,26 +1474,36 @@ unitfy_seconds(Seconds) ->
     [to_binary(D), "d", unitfy_seconds(Seconds - (D * ?SECONDS_IN_DAY))].
 
 -spec pretty_print_bytes(non_neg_integer()) -> ne_binary().
-pretty_print_bytes(0) -> <<"0B">>;
+-spec pretty_print_bytes(non_neg_integer(), 'full' | 'truncated') -> ne_binary().
 pretty_print_bytes(Bytes) ->
-    iolist_to_binary(unitfy_bytes(Bytes)).
+    pretty_print_bytes(Bytes, 'full').
 
--spec unitfy_bytes(non_neg_integer()) -> iolist().
-unitfy_bytes(0) -> "";
-unitfy_bytes(Bytes) when Bytes < ?BYTES_K  ->
+pretty_print_bytes(0, _) -> <<"0B">>;
+pretty_print_bytes(Bytes, Type) ->
+    iolist_to_binary(unitfy_bytes(Bytes, Type)).
+
+-spec unitfy_bytes(non_neg_integer(), 'full' | 'truncated') -> iolist().
+unitfy_bytes(0, _Type) -> "";
+unitfy_bytes(Bytes, _Type) when Bytes < ?BYTES_K  ->
     [to_binary(Bytes), "B"];
-unitfy_bytes(Bytes) when Bytes < ?BYTES_M ->
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_M ->
     K = Bytes div ?BYTES_K,
-    [to_binary(K), "K", unitfy_bytes(Bytes rem ?BYTES_K)];
-unitfy_bytes(Bytes) when Bytes < ?BYTES_G ->
+    [to_binary(K), "K", maybe_unitfy_bytes(Bytes rem ?BYTES_K, Type)];
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_G ->
     M = Bytes div ?BYTES_M,
-    [to_binary(M), "M", unitfy_bytes(Bytes rem ?BYTES_M)];
-unitfy_bytes(Bytes) when Bytes < ?BYTES_T ->
+    [to_binary(M), "M", maybe_unitfy_bytes(Bytes rem ?BYTES_M, Type)];
+unitfy_bytes(Bytes, Type) when Bytes < ?BYTES_T ->
     G = Bytes div ?BYTES_G,
-    [to_binary(G), "G", unitfy_bytes(Bytes rem ?BYTES_G)];
-unitfy_bytes(Bytes) ->
+    [to_binary(G), "G", maybe_unitfy_bytes(Bytes rem ?BYTES_G, Type)];
+unitfy_bytes(Bytes, Type) ->
     T = Bytes div ?BYTES_T,
-    [to_binary(T), "T", unitfy_bytes(Bytes rem ?BYTES_T)].
+    [to_binary(T), "T", maybe_unitfy_bytes(Bytes rem ?BYTES_T, Type)].
+
+-spec maybe_unitfy_bytes(non_neg_integer(), 'full' | 'truncated') -> iolist().
+maybe_unitfy_bytes(Bytes, 'full'=Type) ->
+    unitfy_bytes(Bytes, Type);
+maybe_unitfy_bytes(_Bytes, 'truncated') ->
+    <<>>.
 
 -spec decr_timeout(kz_timeout(), non_neg_integer() | kz_now()) -> kz_timeout().
 decr_timeout('infinity', _) -> 'infinity';
