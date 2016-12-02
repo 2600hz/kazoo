@@ -528,7 +528,7 @@ to_map_test_() ->
 are_equal_test_() ->
     JObj = kz_json:from_map(kz_json:to_map(?MAP_JSON)),
     [?_assertEqual(true, kz_json:are_equal(?MAP_JSON, JObj))
-    [?_assertEqual(true, kz_json:are_equal(JObj, ?MAP_JSON))
+    ,?_assertEqual(true, kz_json:are_equal(JObj, ?MAP_JSON))
     ,?_assertEqual(true, kz_json:are_equal(undefined, undefined))
     ,?_assertEqual(false, kz_json:are_equal(undefined, kz_json:new()))
     ,?_assertEqual(false, kz_json:are_equal(kz_json:new(), undefined))
