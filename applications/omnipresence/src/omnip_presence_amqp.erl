@@ -230,13 +230,14 @@ maybe_handle_presence_state(JObj, State) ->
 
 -spec handle_update(kz_json:object(), ne_binary()) -> 'ok'.
 handle_update(JObj, ?PRESENCE_HANGUP) ->
-    handle_update(JObj, ?PRESENCE_HANGUP, 0);
+    handle_update(JObj, ?PRESENCE_HANGUP, ?HANGUP_TIME);
 handle_update(JObj, ?PRESENCE_RINGING) ->
-    handle_update(JObj, ?PRESENCE_RINGING, 120);
+    handle_update(JObj, ?PRESENCE_RINGING, ?RINGING_TIME);
 handle_update(JObj, ?PRESENCE_ANSWERED) ->
-    handle_update(JObj, ?PRESENCE_ANSWERED, 36000);
+    handle_update(JObj, ?PRESENCE_ANSWERED, ?ANSWERED_TIME);
 handle_update(JObj, State) ->
-    handle_update(JObj, State, 0).
+    lager:debug("handle update ~s", [State]),
+    handle_update(JObj, State, ?OTHER_TIME).
 
 -spec handle_update(kz_json:object(), ne_binary(), integer()) -> 'ok'.
 handle_update(JObj, State, Expires) ->
