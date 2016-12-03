@@ -70,6 +70,7 @@ set_values(Name, Number, Call) ->
     Call1 = kapps_call:exec([
                              fun(C) -> kapps_call:set_caller_id_name(Name, C) end
                             ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+                            ,{fun kapps_call:kvs_store/3, 'keep_cid', 'true'}
                             ], Call),
     cf_exe:set_call(Call1),
     cf_exe:continue(Call1).
