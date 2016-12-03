@@ -76,8 +76,8 @@
                {error, Reason};
             {false, #{ok := [Number]}} ->
                {ok, Number};
-            {true, #{ok := [Number], services := Services}} ->
-               Charges = knm_services:phone_number_activation_charges(Number),
+            {true, T=#{ok := [_Number], services := Services}} ->
+               Charges = knm_services:phone_number_activation_charges(T),
                {dry_run, Services, Charges}).
 
 -define(TRY2(F, Num, Options),

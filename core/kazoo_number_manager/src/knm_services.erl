@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_services).
 
@@ -20,13 +21,7 @@
 
 -include("knm.hrl").
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--endif.
-
 -define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
--define(KEY_TRANSACTIONS, <<"transactions">>).
--define(KEY_ACTIVATION_CHARGES, <<"activation">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -118,42 +113,34 @@ deactivate_features(Number, Features) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec update_services(knm_number:knm_number()) -> knm_number:knm_number();
-                     (knm_numbers:collection()) -> knm_numbers:collection().
+-spec update_services(knm_numbers:collection()) -> knm_numbers:collection().
 -ifdef(TEST).
-update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T);
-update_services(Number) -> Number.
+update_services(T=#{todo := Ns}) -> knm_numbers:ok(Ns, T).
 -else.
-update_services(T=#{todo := Ns}) ->
-    NewNs = [update_services(N) || N <- Ns],
-    knm_numbers:ok(NewNs, T);
-update_services(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    update_services(Number
-                   ,knm_phone_number:dry_run(PhoneNumber)
-                   ,knm_phone_number:batch_run(PhoneNumber)
-                   ).
-
--spec update_services(knm_number:knm_number(), boolean(), boolean()) ->
-                             knm_number:knm_number().
-update_services(Number, _, 'true') ->
-    lager:debug("batch_run-ing btw"),
-    Number;
-update_services(Number, 'true', _) ->
-    lager:debug("somewhat dry_run-ing btw"),
-    Services = kz_service_phone_numbers:reconcile(fetch_services(Number)),
-    knm_number:set_services(Number, Services);
-update_services(Number, 'false', _) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    _ = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
-    PrevAssignedTo = knm_phone_number:prev_assigned_to(PhoneNumber),
-    _ = kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
-    Services = fetch_services(Number),
-    Transactions = knm_number:transactions(Number),
-    _ = 'undefined' =/= AssignedTo
-        andalso kz_services:commit_transactions(Services, Transactions),
-    knm_number:set_services(Number, Services).
+update_services(T=#{todo := Ns, options := Options}) ->
+    case {knm_number_options:batch_run(Options)
+         ,knm_number_options:dry_run(Options)
+         }
+    of
+        {true, _} ->
+            lager:debug("batch_run-ing btw"),
+            knm_numbers:ok(Ns, T);
+        {_, true} ->
+            lager:debug("somewhat dry_run-ing btw"),
+            PNs = [knm_number:phone_number(N) || N <- Ns],
+            AssignedTo = knm_numbers:assigned_to(T),
+            Services = kz_service_phone_numbers:reconcile(do_fetch_services(AssignedTo), PNs),
+            knm_numbers:ok(Ns, T#{services => Services});
+        {_, false} ->
+            AssignedTo = knm_numbers:assigned_to(T),
+            _ = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
+            PrevAssignedTo = knm_numbers:prev_assigned_to(T),
+            _ = kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+            Services = do_fetch_services(AssignedTo),
+            _ = 'undefined' =/= AssignedTo
+                andalso kz_services:commit_transactions(Services, knm_numbers:transactions(T)),
+            knm_numbers:ok(Ns, T#{services => Services})
+    end.
 -endif.
 
 %%--------------------------------------------------------------------
@@ -161,77 +148,69 @@ update_services(Number, 'false', _) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec activate_phone_number(knm_number:knm_number()) ->
-                                   knm_number:knm_number().
--spec activate_phone_number(knm_number:knm_number(), ne_binary()) ->
-                                   knm_number:knm_number().
--spec activate_phone_number(knm_number:knm_number(), ne_binary(), integer()) ->
-                                   knm_number:knm_number().
-activate_phone_number(Number) ->
-    BillingId = fetch_billing_id(Number),
-    activate_phone_number(Number, BillingId).
+-spec activate_phone_number(knm_numbers:collection()) -> knm_numbers:collection().
+activate_phone_number(T0=#{todo := Ns, services := Services}) ->
+    AssignedTo = knm_numbers:assigned_to(T0),
+    BillingId = fetch_billing_id(T0),
+    F = fun (N, T) ->
+                Num = knm_phone_number:number(knm_number:phone_number(N)),
+                case kz_service_phone_numbers:phone_number_activation_charge(Services, Num) of
+                    0 ->
+                        lager:debug("no activation charge for ~s", [Num]),
+                        knm_numbers:ok(N, T);
+                    Units ->
+                        do_activate(T, Num, Units, BillingId, AssignedTo)
+                end
+        end,
+    lists:foldl(F, T0, Ns).
 
-activate_phone_number(Number, BillingId) ->
-    Services = fetch_services(Number),
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    Units = kz_service_phone_numbers:phone_number_activation_charge(Services, Num),
-    activate_phone_number(Number, BillingId, Units).
-
-activate_phone_number(Number, _BillingId, 0) ->
-    Num = knm_phone_number:number(knm_number:phone_number(Number)),
-    lager:debug("no activation charge for ~s", [Num]),
-    Number;
-activate_phone_number(Number, BillingId, Units) ->
-    Charges = knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES),
-    TotalCharges = Charges + Units,
+do_activate(T, Num, Units, BillingId, AssignedTo) ->
+    TotalCharges = activation_charges(T) + Units,
     case kz_services:check_bookkeeper(BillingId, TotalCharges) of
-        'false' ->
-            Message = io_lib:format("not enough credit to activate number for $~p"
-                                   ,[wht_util:units_to_dollars(Units)]),
+        false ->
+            Message =
+                iolist_to_binary(
+                  io_lib:format("not enough credit to activate number for $~p"
+                               ,[wht_util:units_to_dollars(Units)])),
             lager:error(Message),
-            knm_errors:service_restriction(Number, iolist_to_binary(Message));
-        'true' ->
-            Transaction = create_transaction(Number, Units),
-            knm_number:set_charges(knm_number:add_transaction(Number, Transaction)
-                                  ,?KEY_NUMBER_ACTIVATION_CHARGES
-                                  ,TotalCharges
-                                  )
+            Error = knm_errors:to_json(service_restriction, undefined, Message),
+            knm_numbers:ko(Num, Error, T);
+        true ->
+            Transaction = create_transaction(Num, Units, BillingId, AssignedTo),
+            knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES
+                              ,TotalCharges
+                              ,knm_numbers:transaction(T, Transaction)
+                              )
     end.
 
 %% @public
--spec phone_number_activation_charges(knm_number:knm_number()) -> number().
-phone_number_activation_charges(Number) ->
-    knm_number:charges(Number, ?KEY_NUMBER_ACTIVATION_CHARGES).
+-spec phone_number_activation_charges(knm_numbers:collection()) -> non_neg_integer().
+phone_number_activation_charges(T) ->
+    knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES, T).
 
 %% @public
--spec activation_charges(knm_number:knm_number()) -> number().
-activation_charges(Number) ->
-    knm_number:charges(Number, ?KEY_ACTIVATION_CHARGES).
+-spec activation_charges(knm_numbers:collection()) -> non_neg_integer().
+activation_charges(T) ->
+    knm_numbers:charge(<<"activation">>, T).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_services(knm_number:knm_number()) -> kz_services:services().
--ifdef(TEST).
-fetch_services(_Number) -> kz_services:new().
--else.
+-ifndef(TEST).
+-spec fetch_services(knm_number:knm_number() | ne_binary()) -> kz_services:services().
 fetch_services(Number) ->
     case knm_number:services(Number) of
         'undefined' ->
-            case knm_phone_number:assigned_to(knm_number:phone_number(Number)) of
-                'undefined' -> kz_services:new();
-                AssignedTo ->
-                    kz_services:fetch(AssignedTo)
-            end;
+            do_fetch_services(
+              knm_phone_number:assigned_to(
+                knm_number:phone_number(Number)));
         Services ->
             Services
     end.
+
+do_fetch_services(undefined) -> kz_services:new();
+do_fetch_services(?MATCH_ACCOUNT_RAW(AssignedTo)) -> kz_services:fetch(AssignedTo).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -239,40 +218,28 @@ fetch_services(Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch_billing_id(knm_number:knm_number()) ->
-                              ne_binary().
+-spec fetch_billing_id(knm_number:knm_number()) -> api_ne_binary();
+                      (knm_numbers:collection()) -> api_ne_binary().
 -ifdef(TEST).
 fetch_billing_id(_Number) -> ?RESELLER_ACCOUNT_ID.
 -else.
+fetch_billing_id(#{services := Services}) ->
+    kz_services:get_billing_id(Services);
 fetch_billing_id(Number) ->
     kz_services:get_billing_id(fetch_services(Number)).
 -endif.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec create_transaction(knm_number:knm_number(), integer()) ->
-                                kz_transaction:transaction().
-create_transaction(Number, Units) ->
-    BillingId = fetch_billing_id(Number),
-    PhoneNumber = knm_number:phone_number(Number),
-    AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_util:format_account_id(BillingId, 'raw'),
-    Num = knm_phone_number:number(PhoneNumber),
-
-    Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
-               ,fun(T) -> kz_transaction:set_number(Num, T) end
-               ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
-               ],
+create_transaction(Num, Units, BillingId, AccountId) ->
+    LedgerId = kz_util:format_account_id(BillingId),
+    Fs = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
+         ,fun(T) -> kz_transaction:set_number(Num, T) end
+         ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
+         ],
     lager:debug("staging number activation charge $~p for ~s via billing account ~s"
                ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]),
-
-    lists:foldl(fun(F, T) -> F(T) end
-               ,kz_transaction:debit(LedgerId, Units)
-               ,Routines
-               ).
+    T0 = kz_transaction:debit(LedgerId, Units),
+    lists:foldl(fun(F, T) -> F(T) end, T0, Fs).
 
 -ifndef(TEST).
 -spec create_transaction(knm_number:knm_number(), ne_binary(), integer()) ->

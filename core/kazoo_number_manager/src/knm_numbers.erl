@@ -15,7 +15,7 @@
         ,plan/1, plan/2
         ,services/1, services/2
         ,transactions/1, transactions/2, transaction/2
-        ,charges/1, charges/2, charge/3
+        ,charges/1, charges/2, charge/2, charge/3
         ]).
 -export([ok/2, ko/3]).
 -export([assigned_to/1
@@ -50,6 +50,8 @@
 -type ret() :: #{ok => oks()
                 ,ko => kos()
                 ,dry_run => kz_json:object()
+                ,services => services()
+                ,charges => charges()
                 }.
 
 -export_type([ret/0
@@ -180,7 +182,9 @@ charges(#{charges := V}) -> V.
 charges(V, T) -> T#{charges => V}.
 
 %% @public
+-spec charge(ne_binary(), t()) -> non_neg_integer().
 -spec charge(ne_binary(), non_neg_integer(), t()) -> t().
+charge(K, #{charges := Vs}) -> props:get_value(K, Vs, 0).
 charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
 %% @public
@@ -519,18 +523,20 @@ id(T=#{todo := Todo}) -> ok(Todo, T).
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
+     ,services := Services
+     ,charges := Charges
      }) ->
     %%FIXME: use the collection()'s services.
-    ServicesList = [Services || N <- OKs,
-                                Services <- [knm_number:services(N)],
-                                Services =/= undefined
+    ServicesList = [S || N <- OKs,
+                         S <- [knm_number:services(N)],
+                         S =/= undefined
                    ],
-    F = fun (Services, JObj) -> kz_json:sum(kz_services:dry_run(Services), JObj) end,
-    DryRun = lists:foldl(F, kz_json:new(), ServicesList),
+    F = fun (S, JObj) -> kz_json:sum(kz_services:dry_run(S), JObj) end,
     #{ok => OKs
      ,ko => KOs %%FIXME Convert to error format
-     ,dry_run => DryRun
-     ,services => case ServicesList of [] -> undefined; [S|_] -> S end
+     ,dry_run => lists:foldl(F, kz_json:new(), ServicesList)
+     ,services => Services
+     ,charges => Charges
      }.
 
 %% @private
