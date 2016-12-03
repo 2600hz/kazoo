@@ -9,13 +9,8 @@
 %%%-------------------------------------------------------------------
 -module(knm_number_states).
 
--export([to_reserved/1
+-export([to_options_state/1
         ,to_deleted/1
-        ,to_in_service/1
-        ,to_aging/1
-        ,to_port_in/1
-        ,to_state/2, to_state/3
-        ,to_options_state/1
         ]).
 
 -include("knm.hrl").
@@ -32,18 +27,6 @@ to_options_state(T0=#{todo := Ns, options := Options}) ->
                 end
         end,
     lists:foldl(F, T0, Ns).
-
--spec to_state(ne_binary() | kn(), ne_binary()) -> kn().
--spec to_state(ne_binary() | kn(), ne_binary(), kz_proplist()) -> kn().
-to_state(DID, ToState) ->
-    to_state(DID, ToState, knm_number_options:default()).
-to_state(?NE_BINARY = DID, ToState, Options) ->
-    case knm_number:get(DID, Options) of
-        {'error', E} -> knm_errors:unspecified(E, DID);
-        {'ok', Number} -> change_state(Number, ToState)
-    end;
-to_state(Number, ToState, _Options) ->
-    change_state(Number, ToState).
 
 -spec change_state(kn(), ne_binary()) -> kn().
 change_state(Number, ?NUMBER_STATE_RESERVED) ->
