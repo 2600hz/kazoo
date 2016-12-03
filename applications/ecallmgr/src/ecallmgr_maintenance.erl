@@ -604,7 +604,7 @@ remove_acl(Name, ACLs, ConfigFun) ->
 -spec list_acls(kz_json:object(), api_binary()) -> 'no_return'.
 list_acls(ACLs, Network) ->
     io:format("+--------------------------------+-------------------+---------------+-------+------------------+----------------------------------+~n", []),
-    FormatString = "| ~-30s | ~-17s | ~-13s | ~-5s | ~-16s | ~-32s |~n",
+    FormatString = "| ~-30s | ~-18s | ~-13s | ~-5s | ~-16s | ~-32s |~n",
     io:format(FormatString, [<<"Name">>, <<"CIDR">>, <<"List">>, <<"Type">>, <<"Authorizing Type">>, <<"ID">>]),
     io:format("+================================+===================+===============+=======+==================+==================================+~n", []),
     Props = kz_json:foldl(fun(Name, ACL, Acc) ->
