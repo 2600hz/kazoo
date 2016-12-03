@@ -512,6 +512,10 @@ merge_okkos(#{ok := OKa, ko := KOa}
       }.
 
 %% @private
+-spec id(t()) -> t().
+id(T=#{todo := Todo}) -> ok(Todo, T).
+
+%% @private
 -spec ret(t()) -> ret().
 ret(#{ok := OKs
      ,ko := KOs
@@ -630,5 +634,62 @@ to_reserved(T) ->
          ]).
 
 unwind_or_disconnect(T) ->
-    T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
-    do(fun knm_number:unwind_or_disconnect/1, T0).
+    #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
+    {ToDisconnect, ToUnwind} = lists:partition(fun is_history_empty/1, Ns),
+    Ta = do_in_wrap(fun unwind/1, ok(ToUnwind, T0)),
+    Tb = pipe(ok(ToDisconnect, T0)
+             ,[fun knm_carriers:disconnect/1
+              ,fun delete_maybe_age/1
+              ]),
+    merge_okkos(Ta, Tb).
+
+unwind(T0=#{todo := PNs}) ->
+    BaseRoutines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}],
+    F = fun (PN, T) ->
+                [NewAssignedTo|_] = knm_phone_number:reserve_history(PN),
+                Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo} | BaseRoutines],
+                {ok, NewPN} = knm_phone_number:setters(PN, Routines),
+                ok(NewPN, T)
+        end,
+    lists:foldl(F, T0, PNs).
+
+delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
+    case knm_config:should_permanently_delete(
+           knm_number_options:should_delete(Options))
+    of
+        true -> delete_permanently(T);
+        false ->
+            {LocalNs, OtherNs} = split_on(fun is_carrier_local/1, T),
+            merge_okkos(delete_permanently(LocalNs), maybe_age(OtherNs))
+    end.
+
+delete_permanently(T) ->
+    lager:debug("deleting permanently"),
+    NewOptions = [{state, ?NUMBER_STATE_DELETED} | Options],
+    do(fun knm_number_states:to_options_state/1, options(NewOptions, T)).
+
+split_on(Pred, T=#{todo := Ns}) ->
+    {Yes, No} = lists:partition(Pred, Ns),
+    {T#{todo => Yes}, T#{todo => No}}.
+
+is_carrier_local(N) ->
+    ?CARRIER_LOCAL =:= knm_phone_number:module_name(knm_number:phone_number(N)).
+
+maybe_age(T=#{todo := Ns}) ->
+    case knm_config:should_age() of
+        false -> ok(Ns, T);
+        true ->
+            lager:debug("aging for some time"),
+            {Yes, No} = lists:partition(fun is_state_available/1, Ns),
+            Ta = do(fun id/1, T#{todo => No}),
+            NewOptions = [{state, ?NUMBER_STATE_AGING} | options(T)],
+            Tb = do(fun knm_number_states:to_options_state/1
+                   ,options(NewOptions, T#{todo => Yes})),
+            merge_okkos(Ta, Tb)
+    end.
+
+is_history_empty(N) ->
+    [] =:= knm_phone_number:reserve_history(knm_number:phone_number(N)).
+
+is_state_available(N) ->
+    ?NUMBER_STATE_AVAILABLE =:= knm_phone_number:state(knm_number:phone_number(N)).

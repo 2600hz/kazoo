@@ -356,10 +356,20 @@ acquire(Number, ?NE_BINARY=Mod, 'false') ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect(knm_number:knm_number()) -> knm_number:knm_number().
+-spec disconnect(knm_number:knm_number()) -> knm_number:knm_number();
+                (knm_numbers:collection()) -> knm_numbers:collection().
+disconnect(T0=#{todo := Ns}) ->
+    F = fun (N, T) ->
+                case knm_number:attempt(fun disconnect/1, [N]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} ->
+                        Num = knm_phone_number:number(knm_number:phone_number(N)),
+                        knm_numbers:ko(Num, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns);
 disconnect(Number) ->
     Module = knm_phone_number:module_name(knm_number:phone_number(Number)),
     try apply(Module, disconnect_number, [Number]) of

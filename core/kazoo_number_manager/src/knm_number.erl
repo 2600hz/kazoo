@@ -37,7 +37,6 @@
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
         ,state_for_create/2
-        ,unwind_or_disconnect/1
         ]).
 
 -ifdef(TEST).
@@ -380,63 +379,13 @@ reconcile(DID, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec release(ne_binary()) ->
-                     knm_number_return().
--spec release(ne_binary(), knm_number_options:options()) ->
-                     knm_number_return().
+-spec release(ne_binary()) -> knm_number_return().
+-spec release(ne_binary(), knm_number_options:options()) -> knm_number_return().
 release(Num) ->
     release(Num, knm_number_options:default()).
 
 release(Num, Options) ->
     ?TRY2(release, Num, Options).
-
--spec unwind_or_disconnect(knm_numbers:collection()) -> knm_numbers:collection().
-unwind_or_disconnect(T=#{todo := Ns, options := Options}) ->
-    NewNs = [case knm_phone_number:reserve_history(phone_number(N)) of
-                 [] -> disconnect(N, Options);
-                 History -> unwind(N, History)
-             end
-             || N <- Ns
-            ],
-    knm_numbers:ok(NewNs, T).
-
--spec unwind(knm_phone_number:phone_number(), ne_binaries()) -> knm_number().
-unwind(Number, [NewAssignedTo|_]) ->
-    Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo}
-               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}
-               ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
-    set_phone_number(Number, PhoneNumber).
-
--spec disconnect(knm_number(), knm_number_options:options()) -> knm_number().
-disconnect(Number, Options) ->
-    ShouldDelete = knm_config:should_permanently_delete(
-                     knm_number_options:should_delete(Options))
-        orelse ?CARRIER_LOCAL =:= knm_phone_number:module_name(phone_number(Number)),
-    try knm_carriers:disconnect(Number) of
-        N when ShouldDelete -> delete_phone_number(N);
-        N -> maybe_age(N)
-    catch
-        _E:_R when ShouldDelete ->
-            ?LOG_WARN("failed to disconnect number: ~s: ~p", [_E, _R]),
-            delete_phone_number(Number)
-    end.
-
--spec delete_phone_number(knm_number()) -> knm_number().
-delete_phone_number(Number) ->
-    lager:debug("deleting permanently"),
-    knm_number_states:to_deleted(Number).
-
--spec maybe_age(knm_number()) -> knm_number().
-maybe_age(Number) ->
-    case knm_config:should_age()
-        andalso knm_phone_number:state(phone_number(Number))
-    of
-        ?NUMBER_STATE_AVAILABLE ->
-            lager:debug("aging available number for some time"),
-            knm_number_states:to_aging(Number);
-        _ -> Number
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
