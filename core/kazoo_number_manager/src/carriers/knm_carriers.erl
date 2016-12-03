@@ -337,7 +337,16 @@ all_modules() ->
 %% Buy a number from its carrier module
 %% @end
 %%--------------------------------------------------------------------
--spec acquire(knm_number:knm_number()) -> knm_number:knm_number().
+-spec acquire(knm_number:knm_number()) -> knm_number:knm_number();
+             (knm_numbers:collection()) -> knm_numbers:collection().
+acquire(T0=#{todo := Ns}) ->
+    F = fun (N, T) ->
+                case knm_number:attempt(fun acquire/1, [N]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} -> knm_numbers:ko(N, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns);
 acquire(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Module = knm_phone_number:module_name(PhoneNumber),

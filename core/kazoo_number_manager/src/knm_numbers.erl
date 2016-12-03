@@ -39,6 +39,10 @@
         ,account_listing/1
         ]).
 
+-export([pipe/2]).
+-export([do/2]).
+-export([merge_okkos/2, merge_okkos/1]).
+
 -include("knm.hrl").
 
 -type num() :: ne_binary().  %%TODO: support ranges?
@@ -194,11 +198,14 @@ ok(Numbers, T) when is_list(Numbers) ->
 ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 
 %% @public
--spec ko(num() | knm_number:knm_number(), ko(), t()) -> t().
+-spec ko(num() | knm_number:knm_number() | [num()], ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
     KOs = maps:get(ko, T),
     T#{ko => KOs#{Num => Reason}};
+ko(Ns=[_|_], Reason, T0) ->
+    F = fun (N, T) -> ko(N, Reason, T) end,
+    lists:foldl(F, T0, Ns);
 ko(N, Reason, T) ->
     PN = knm_number:phone_number(N),
     Num = knm_phone_number:number(PN),
@@ -471,6 +478,7 @@ new(Options, ToDos, KOs, Reason) ->
 %% Apply something to "todo" if not empty,
 %% if empty use "ok" as the new "todo".
 %% If "ok" is empty, return.
+%% Exported ONLY for knm_number_states use.
 %% @end
 -spec pipe(t(), appliers()) -> t();
           (t_pn(), appliers()) -> t_pn().
@@ -486,6 +494,9 @@ pipe(T, [F|Fs]) ->
     end.
 
 %% @private
+%% @doc
+%% Exported ONLY for knm_number_states use.
+%% @end
 -spec do(applier(), t()) -> t().
 do(_, T=#{todo := [], ok := []}) -> T;
 do(F, T=#{todo := [], ok := OK}) ->
@@ -508,12 +519,20 @@ do_in_wrap(F, T0=#{todo := Ns}) ->
     rewrap_phone_numbers(NumsMap, T1).
 
 %% @private
+%% Exported ONLY for knm_number_states use.
 -spec merge_okkos(t(), t()) -> t().
 merge_okkos(#{ok := OKa, ko := KOa}
            ,#{ok := OKb, ko := KOb} = B) ->
     B#{ok => OKa ++ OKb
       ,ko => maps:merge(KOa, KOb)
       }.
+
+%% @private
+%% Exported ONLY for knm_number_states use.
+-spec merge_okkos([t()]) -> t().
+merge_okkos([T]) -> T;
+merge_okkos([T0|Ts]) ->
+    lists:foldl(fun merge_okkos/2, T0, Ts).
 
 %% @private
 -spec id(t()) -> t().
