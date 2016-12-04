@@ -22,6 +22,7 @@
                                     ,<<"WhApps">>, <<"Used-Memory">>, <<"Processes">>
                                     ,<<"Ports">>, <<"Version">>, <<"Channels">>
                                     ,<<"Registrations">>, <<"Zone">>
+                                    ,<<"Globals">>
                                     ]).
 -define(ADVERTISE_VALUES, [{<<"Event-Category">>, <<"nodes">>}
                           ,{<<"Event-Name">>, <<"advertise">>}

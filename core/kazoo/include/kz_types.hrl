@@ -381,6 +381,7 @@
                  ,version :: api_binary() | '_'
                  ,channels = 0 :: non_neg_integer() | '_'
                  ,registrations = 0 :: non_neg_integer() | '_'
+                 ,globals = [] :: kz_proplist() | '$1' | '_'
                  }).
 
 -type kz_node() :: #kz_node{}.

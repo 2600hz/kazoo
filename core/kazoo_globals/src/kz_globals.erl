@@ -17,6 +17,7 @@
         ,registered/0
         ,reconcile/0
         ,is_ready/0
+        ,stats/0
         ]).
 
 -export([start_link/0
@@ -165,6 +166,14 @@ register_name(Name, Pid) ->
 -spec registered() -> kz_global:names().
 registered() ->
     kz_global:all_names(?TAB_NAME).
+
+-spec stats() -> kz_proplist().
+stats() ->
+    case kz_global:stats(?TAB_NAME) of
+        [] -> [{'total', 0}];
+        Stats -> Stats
+    end.
+
 
 -spec unregister_name(kz_global:name()) -> 'ok'.
 unregister_name(Name) ->
@@ -881,7 +890,7 @@ amqp_call_timeout(_Seconds) ->
 
 -spec amqp_call_scope() -> fun() | 'undefined'.
 amqp_call_scope() ->
-    Count = kz_nodes:whapp_count('kazoo_globals', 'true'),
+    Count = kz_nodes:globals_scope(),
     {StartTime, _} = statistics('wall_clock'),
     amqp_call_scope(Count, StartTime).
 
@@ -891,7 +900,7 @@ amqp_call_scope(_N, Seconds)
     lager:debug("system running for less than 2 minutes, attempting to collect 10 responses from kazoo_globals"),
     amqp_call_scope_fun(10);
 amqp_call_scope(N, _Seconds) ->
-    amqp_call_scope_fun(N - 1).
+    amqp_call_scope_fun(N).
 
 -spec amqp_call_scope_fun(integer()) -> fun() | 'undefined'.
 amqp_call_scope_fun(0) -> 'undefined';

@@ -25,11 +25,11 @@
          ]]
        ).
 
--define(CHILDREN, [?WORKER('kz_nodes')
-                  ,?WORKER('kz_globals')
-                  ,?SUPER('kz_global_proxies_sup')
+-define(CHILDREN, [?WORKER('kz_globals')
                   ,?WORKER_ARGS('kazoo_etsmgr_srv', ?ETSMGR_ARGS)
                   ,?WORKER('kazoo_globals_init')
+                  ,?WORKER('kz_nodes')
+                  ,?SUPER('kz_global_proxies_sup')
                   ]).
 
 %% ===================================================================
