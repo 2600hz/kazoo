@@ -96,7 +96,7 @@ e911_test_() ->
               ,{'public_fields', JObj}
               ],
     {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
+    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN1 = knm_number:phone_number(N1),
     PN2 = knm_number:phone_number(N2),
     [{"Verify feature is properly set"
@@ -129,7 +129,7 @@ cnam_test_() ->
               ,{'public_fields', JObj}
               ],
     {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
+    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN1 = knm_number:phone_number(N1),
     PN2 = knm_number:phone_number(N2),
     [{"Verify inbound CNAM is properly activated"

@@ -149,6 +149,9 @@ update_services(T=#{todo := Ns, options := Options}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec activate_phone_number(knm_numbers:collection()) -> knm_numbers:collection().
+activate_phone_number(T=#{services := undefined}) ->
+    AssignedTo = knm_numbers:assigned_to(T),
+    activate_phone_number(T#{services => do_fetch_services(AssignedTo)});
 activate_phone_number(T0=#{todo := Ns, services := Services}) ->
     AssignedTo = knm_numbers:assigned_to(T0),
     BillingId = fetch_billing_id(T0),
@@ -197,8 +200,11 @@ activation_charges(T) ->
 %%% Internal functions
 %%%===================================================================
 
--ifndef(TEST).
--spec fetch_services(knm_number:knm_number() | ne_binary()) -> kz_services:services().
+-ifdef(TEST).
+do_fetch_services(undefined) -> kz_services:new();
+do_fetch_services(?MATCH_ACCOUNT_RAW(_)) -> kz_services:new().
+-else.
+-spec fetch_services(knm_number:knm_number()) -> kz_services:services().
 fetch_services(Number) ->
     case knm_number:services(Number) of
         'undefined' ->

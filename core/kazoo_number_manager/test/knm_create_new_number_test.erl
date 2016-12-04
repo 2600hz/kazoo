@@ -203,7 +203,7 @@ create_dry_run_test_() ->
      ,?_assertEqual(0, Charges)
      }
     ,{"Verify services for dry_run"
-     ,?_assertEqual('undefined', Services)
+     ,?_assertEqual(true, Services =:= kz_services:new())
      }
     ].
 

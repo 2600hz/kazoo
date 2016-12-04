@@ -295,9 +295,22 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 update(Nums, Routines) ->
     update(Nums, Routines, knm_number_options:default()).
 
+-ifdef(TEST).
+update([?NE_BINARY|_]=Nums, Routines, Options) ->
+    Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
+    do_update(do_get_pn(Nums, Options, Reason), Routines);
+update(Ns, Routines, Options) ->
+    T0 = new(Options, Ns),
+    T1 = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Routines) end, T0),
+    ret(do(fun save_numbers/1, T1)).
+-else.
 update(Nums, Routines, Options) ->
     Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
-    ret(pipe(do_get_pn(Nums, Options, Reason)
+    do_update(do_get_pn(Nums, Options, Reason), Routines).
+-endif.
+
+do_update(T0, Routines) ->
+    ret(pipe(T0
             ,[fun (T) -> knm_phone_number:setters(T, Routines) end
              ,fun knm_number:new/1
              ,fun save_numbers/1

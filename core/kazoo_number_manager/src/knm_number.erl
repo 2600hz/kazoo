@@ -41,7 +41,6 @@
 
 -ifdef(TEST).
 -export([ensure_can_create/2]).
--export([update_phone_number/2]).
 -endif.
 
 -include_lib("kazoo_json/include/kazoo_json.hrl").
@@ -299,43 +298,6 @@ update(Num, Routines) ->
 
 update(Num, Routines, Options) ->
     ?TRY3(update, Num, Routines, Options).
-
--ifdef(TEST).
--spec update_phone_number(knm_number(), knm_phone_number:set_functions()) -> knm_number_return().
-update_phone_number(Number, Routines) ->
-    PhoneNumber = phone_number(Number),
-    case knm_phone_number:setters(PhoneNumber, Routines) of
-        {'error', _R}=Error -> Error;
-        {'ok', NewPN} ->
-            {'ok', save_number(set_phone_number(Number, NewPN))}
-    end.
-
--spec save_number(knm_number()) -> knm_number().
-save_number(Number) ->
-    Routines = [fun knm_providers:save/1
-               ,fun save_phone_number/1
-               ,fun knm_services:update_services/1
-               ,fun dry_run_or_number/1
-               ],
-    apply_number_routines(Number, Routines).
-
--type dry_run_or_number_return() :: knm_number() | dry_run_return().
--spec dry_run_or_number(knm_number()) -> dry_run_or_number_return().
-dry_run_or_number(Number) ->
-    case knm_phone_number:dry_run(phone_number(Number)) of
-        'false' -> Number;
-        'true' ->
-            Charges = knm_services:phone_number_activation_charges(Number),
-            {'dry_run', services(Number), Charges}
-    end.
-
--type number_routine() :: fun((knm_number()) -> dry_run_or_number_return()).
--type number_routines() :: [number_routine()].
--spec apply_number_routines(knm_number(), number_routines()) ->
-                                   dry_run_or_number_return().
-apply_number_routines(Number, Routines) ->
-    lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
