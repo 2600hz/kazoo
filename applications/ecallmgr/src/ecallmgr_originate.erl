@@ -574,6 +574,9 @@ originate_execute(Node, Dialstrings, Timeout) ->
             Media = get('hold_media'),
             _Pid = kz_util:spawn(fun set_music_on_hold/3, [Node, UUID, Media]),
             {'ok', UUID};
+        {'ok', <<"-ERR ", Other/binary>>} ->
+            lager:debug("recv other 'ok': ~s", [Other]),
+            {'error', kz_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};
         {'ok', Other} ->
             lager:debug("recv other 'ok': ~s", [Other]),
             {'error', kz_util:strip_binary(binary:replace(Other, <<"\n">>, <<>>))};

@@ -1,4 +1,4 @@
-<html><body><h3>Error : {% firstof error.fax_info error.call_info "unknown error" %} </h3>
+<html><body><h3>Error : {% firstof error.call_info error.fax_info "unknown error" %} </h3>
 <table>
                          <tr><td>Caller ID</td><td>{% firstof caller_id.name fax.remote_station_id caller_id.number "unknown number" %} ({% firstof fax.remote_station_id caller_id.number "unknown number" %})</td></tr>
                                                   <tr><td>Callee ID</td><td>{{to.user}} (originally dialed number)</td></tr>

@@ -555,7 +555,7 @@ attempt_to_acquire_job(Id, Q) ->
             attempt_to_acquire_job(JObj, Q, kz_json:get_value(<<"pvt_job_status">>, JObj))
     end.
 
-attempt_to_acquire_job(JObj, Q, <<"pending">>) ->
+attempt_to_acquire_job(JObj, Q, <<"locked">>) ->
     kz_datamgr:save_doc(?KZ_FAXES_DB
                        ,kz_json:set_values([{<<"pvt_job_status">>, <<"processing">>}
                                            ,{<<"pvt_job_node">>, kz_util:to_binary(node())}

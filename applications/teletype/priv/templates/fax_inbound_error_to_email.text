@@ -1,4 +1,4 @@
-Error : {% firstof error.fax_info error.call_info "unknown error" %}
+Error : {% firstof error.call_info error.fax_info "unknown error" %}
 
 Caller ID: {% firstof caller_id.name fax.remote_station_id caller_id.number "unknown number" %} ({% firstof fax.remote_station_id caller_id.number "unknown number" %})
 

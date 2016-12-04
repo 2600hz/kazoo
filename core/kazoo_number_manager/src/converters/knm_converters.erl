@@ -190,9 +190,7 @@ is_reconcilable_by_regex(Num, Regex) ->
         'nomatch' ->
             lager:debug("number '~s' is not reconcilable", [Num]),
             'false';
-        _ ->
-            lager:debug("number '~s' can be reconciled, proceeding", [Num]),
-            'true'
+        _ -> 'true'
     end.
 
 
