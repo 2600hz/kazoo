@@ -299,10 +299,8 @@ maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=Accou
                           kz_json:get_value(<<"state">>, JObj) =:= ?NUMBER_STATE_IN_SERVICE
                       ],
             case lists:member(CandidateNumber, Numbers) of
-                'true' ->
-                    {CandidateNumber, Name};
-                'false' ->
-                    maybe_get_assigned_numbers(Numbers, Name)
+                'true' -> {CandidateNumber, Name};
+                'false' -> maybe_get_assigned_numbers(Numbers, Name)
             end;
         _ ->
             Number = default_cid_number(),

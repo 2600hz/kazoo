@@ -20,6 +20,7 @@
 -export([ok/2, ko/3]).
 -export([assigned_to/1
         ,prev_assigned_to/1
+        ,to_json/1
         ]).
 
 -export([get/1, get/2
@@ -198,7 +199,7 @@ ok(Numbers, T) when is_list(Numbers) ->
 ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
 
 %% @public
--spec ko(num() | knm_number:knm_number() | [num()], ko(), t()) -> t().
+-spec ko(num() | knm_number:knm_number() | nums(), ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
     KOs = maps:get(ko, T),
@@ -570,6 +571,16 @@ ret(#{ok := OKs
      ,services => Services
      ,charges => Charges
      }.
+
+%% @public
+-spec to_json(ret()) -> kz_json:object().
+to_json(#{ok := Ns, ko := KOs}) ->
+    Successes = [{num(N), knm_number:to_public_json(N)} || N <- Ns],
+    kz_json:from_list(
+      props:filter_empty(
+        [{<<"success">>, kz_json:from_list(Successes)}
+        ,{<<"error">>, kz_json:from_map(KOs)}
+        ])).
 
 %% @private
 -spec unwrap_phone_numbers(knm_number:knm_numbers()) ->

@@ -339,8 +339,8 @@ post(Context, ?COLLECTION) ->
 post(Context, ?LOCALITY) ->
     fetch_locality(Context);
 post(Context, Number) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ],
     JObj = cb_context:doc(Context),
     Result = knm_number:update(Number, [{fun knm_phone_number:reset_doc/2, JObj}], Options),
@@ -353,8 +353,8 @@ put(Context, ?COLLECTION) ->
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 put(Context, Number) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ],
@@ -375,8 +375,8 @@ put(Context, Number, ?ACTIVATE) ->
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?ACTIVATE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?RESERVE) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ],
@@ -384,8 +384,8 @@ put(Context, Number, ?RESERVE) ->
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?RESERVE) end,
     set_response(Result, Context, CB);
 put(Context, Number, ?PORT) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ,{'state', ?NUMBER_STATE_PORT_IN}
@@ -884,7 +884,7 @@ set_response(Result, Context) ->
     set_response(Result, Context, fun() -> Context end).
 
 -type result() :: {'ok', kz_json:object()} |
-                  {ne_binary(), [kz_services:services()], kz_json:object()} |
+                  knm_numbers:ret() |
                   knm_number_return() |
                   {binary(), binary()}.
 -type cb() :: fun(() -> cb_context:context()).
@@ -896,21 +896,18 @@ set_response({'ok', Thing}, Context, _) ->
         'false' -> crossbar_util:response(Thing, Context)
     end;
 
-set_response({?COLLECTION, ServicesList, ResultJObj}, Context, CB) ->
-    case kz_json:get_value(<<"error">>, ResultJObj) of
-        'undefined' ->
-            case ServicesList of
-                [] -> crossbar_util:response(ResultJObj, Context);
-                _ ->
-                    RespJObj = fold_dry_runs(ServicesList),
-                    case kz_json:is_empty(RespJObj) of
-                        'true' -> CB();
-                        'false' -> crossbar_util:response_402(RespJObj, Context)
-                    end
-            end;
-        _Errors ->
-            crossbar_util:response_400(<<"client error">>, ResultJObj, Context)
+set_response(Ret=#{ko := [], services := undefined}, Context, _) ->
+    ResultJObj = knm_numbers:to_json(Ret),
+    crossbar_util:response(ResultJObj, Context);
+set_response(#{ko := [], services := Services}, Context, CB) ->
+    RespJObj = kz_services:dry_run(Services),
+    case kz_json:is_empty(RespJObj) of
+        'true' -> CB();
+        'false' -> crossbar_util:response_402(RespJObj, Context)
     end;
+set_response(Ret=#{}, Context, _) ->
+    ResultJObj = knm_numbers:to_json(Ret),
+    crossbar_util:response_400(<<"client error">>, ResultJObj, Context);
 
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = kz_services:dry_run(Services),
@@ -964,38 +961,15 @@ reply_number_not_found(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--type process_result() :: {kz_services:services(), kz_json:object()}.
--spec collection_process(cb_context:context(), ne_binary()) -> {ne_binary(), kz_services:services(), kz_json:object()}.
+-spec collection_process(cb_context:context(), ne_binary()) -> knm_numbers:ret().
 collection_process(Context, Action) ->
     ReqData = cb_context:req_data(Context),
     Numbers = kz_json:get_value(<<"numbers">>, ReqData),
     Context1 = cb_context:set_req_data(Context, kz_json:delete_key(<<"numbers">>, ReqData)),
-    {ServicesList, ResultJObj} = collection_process(Context1, Action, Numbers),
-    {?COLLECTION, ServicesList, ResultJObj}.
-
--spec collection_process(cb_context:context(), ne_binary(), ne_binaries()) -> process_result().
-collection_process(Context, Action, Numbers) ->
-    lists:foldl(fun ({Number, {'ok', KNMNumber}}, {ServicesAcc, JObjAcc}) ->
-                        JObj = knm_number:to_public_json(KNMNumber),
-                        {ServicesAcc
-                        ,kz_json:set_value([<<"success">>, Number], JObj, JObjAcc)
-                        };
-                    ({_Number, {'dry_run', Services, _ActivationCharges}}, {ServicesAcc, JObjAcc}) ->
-                        {[Services | ServicesAcc]
-                        ,JObjAcc
-                        };
-                    ({Number, {'error', KNMError}}, {ServicesAcc, JObjAcc}) ->
-                        {ServicesAcc
-                        ,kz_json:set_value([<<"error">>, Number], KNMError, JObjAcc)
-                        }
-                end
-               ,{[], kz_json:new()}
-               ,numbers_action(Context, Action, Numbers)
-               ).
+    numbers_action(Context1, Action, Numbers).
 
 %% @private
--spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) ->
-                            knm_numbers:numbers_return().
+-spec numbers_action(cb_context:context(), ne_binary(), ne_binaries()) -> knm_numbers:ret().
 numbers_action(Context, ?ACTIVATE, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
@@ -1003,15 +977,15 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
               ],
     knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:req_data(Context)}
               ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ],
     JObj = cb_context:req_data(Context),
     knm_numbers:update(Numbers, [{fun knm_phone_number:reset_doc/2, JObj}], Options);
@@ -1020,11 +994,6 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
               ],
     Releaser = pick_release_or_delete(Context, Options),
     knm_numbers:Releaser(Numbers, Options).
-
--spec fold_dry_runs([kz_services:services(),...]) -> kz_json:object().
-fold_dry_runs(ServicesList) ->
-    F = fun (Services, JObj) -> kz_json:sum(kz_services:dry_run(Services), JObj) end,
-    lists:foldl(F, kz_json:new(), ServicesList).
 
 %% @private
 -spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
