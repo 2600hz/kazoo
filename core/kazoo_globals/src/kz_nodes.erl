@@ -120,12 +120,12 @@ is_up(Node) ->
 -spec globals_scope() -> integer().
 globals_scope() ->
     MatchSpec = [{#kz_node{globals='$1'
-                          ,zone='$2'
+                          ,node='$2'
                           ,_ = '_'
                           }
                  ,[{'andalso'
                    ,{'=/=', '$1', []}
-                   ,{'=/=', '$2', {'const', local_zone()}}
+                   ,{'=/=', '$2', {'const', node()}}
                    }]
                  ,['$1']
                  }],
