@@ -25,7 +25,7 @@
         ,new/0
         ,number/1, set_number/2
         ,number_db/1
-        ,assign_to/1
+        ,assign_to/1, set_assign_to/2
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
