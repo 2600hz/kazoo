@@ -149,7 +149,7 @@ find_fold(Carrier, Prefix, Options, Acc=#{left := Quantity}) ->
             ST = erlang:get_stacktrace(),
             ?LOG_WARN("failed to query carrier ~s for ~p numbers: ~s: ~p"
                      ,[Carrier, Quantity, _E, _R]),
-            log_stacktrace(ST),
+            kz_util:log_stacktrace(ST),
             Acc
     end.
 
@@ -503,24 +503,3 @@ keep_only_reachable(ModuleNames) ->
      || M <- ModuleNames,
         (Module = kz_util:try_load_module(M)) =/= 'false'
     ].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
-log_stacktrace(ST) ->
-    ?LOG_DEBUG("stacktrace:", []),
-    _ = [log_stacktrace_mfa(M, F, A, Info)
-         || {M, F, A, Info} <- ST
-        ],
-    'ok'.
-
-log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
-    ?LOG_DEBUG("st: ~s:~s/~b at (~b)"
-              ,[M, F, Arity, props:get_value('line', Info, 0)]
-              );
-log_stacktrace_mfa(M, F, Args, Info) ->
-    ?LOG_DEBUG("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    _ = [?LOG_DEBUG("args: ~p", [Arg]) || Arg <- Args],
-    'ok'.
