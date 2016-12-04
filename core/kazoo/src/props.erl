@@ -101,11 +101,9 @@ get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
 get_value(_Key, [], Default) -> Default;
-get_value([Key], Props, Default) when is_binary(Key)
-                                      orelse is_atom(Key) ->
+get_value([Key], Props, Default) when is_binary(Key); is_atom(Key) ->
     get_value(Key, Props, Default);
-get_value([Key|Keys], Props, Default) when is_binary(Key)
-                                           orelse is_atom(Key) ->
+get_value([Key|Keys], Props, Default) when is_binary(Key); is_atom(Key) ->
     case get_value(Key, Props) of
         'undefined' -> Default;
         SubProps -> get_value(Keys, SubProps, Default)
@@ -117,8 +115,7 @@ get_value(Key, Props, Default) when is_list(Props) ->
                 'true' -> 'true';
                 'false' -> Default
             end;
-        {Key, V} -> V; % only return V if a two-tuple is found
-        Other when is_tuple(Other) -> Default % otherwise return the default
+        {Key, V} -> V
     end.
 
 %% Given a list of keys, find the first one defined
