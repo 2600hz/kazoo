@@ -28,6 +28,7 @@
         ]).
 -export([local_zone/0]).
 -export([whapp_zones/1, whapp_zone_count/1]).
+-export([globals_scope/0]).
 
 -export([init/1
         ,handle_call/3
@@ -115,6 +116,20 @@ is_up(Node) ->
         [] -> 'false';
         [_] -> 'true'
     end.
+
+-spec globals_scope() -> integer().
+globals_scope() ->
+    MatchSpec = [{#kz_node{globals='$1'
+                          ,zone='$2'
+                          ,_ = '_'
+                          }
+                 ,[{'andalso'
+                   ,{'=/=', '$1', []}
+                   ,{'=/=', '$2', {'const', local_zone()}}
+                   }]
+                 ,['$1']
+                 }],
+    length(ets:select(?MODULE, MatchSpec)).
 
 -spec whapp_count(text()) -> integer().
 whapp_count(Whapp) ->
@@ -237,6 +252,7 @@ print_node_status(#kz_node{zone=NodeZone
                           ,used_memory=UsedMemory
                           ,broker=Broker
                           ,kapps=Whapps
+                          ,globals=Globals
                           }=Node
                  ,Zone
                  ) ->
@@ -253,6 +269,7 @@ print_node_status(#kz_node{zone=NodeZone
 
     io:format("Broker        : ~s~n", [Broker]),
 
+    _ = maybe_print_globals(Globals),
     _ = maybe_print_kapps(Whapps),
     _ = maybe_print_media_servers(Node),
 
@@ -263,6 +280,13 @@ maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
     io:format("Zone          : ~s (local)~n", [Zone]);
 maybe_print_zone(NodeZone, _Zone) ->
     io:format("Zone          : ~s~n", [NodeZone]).
+
+-spec maybe_print_globals(kz_proplist()) -> 'ok'.
+maybe_print_globals([]) -> 'ok';
+maybe_print_globals(Globals) ->
+    io:format("Globals       :"),
+    lists:foreach(fun({K,V}) -> io:format(" ~s (~B)",[K, V]) end, Globals),
+    io:format("~n").
 
 -spec maybe_print_kapps(kz_proplist()) -> 'ok'.
 maybe_print_kapps(Whapps) ->
@@ -579,6 +603,7 @@ create_node(Heartbeat, #state{zone=Zone
                            ,ports=length(erlang:ports())
                            ,version=Version
                            ,zone=Zone
+                           ,globals=kz_globals:stats()
                            }).
 
 -spec normalize_amqp_uri(ne_binary()) -> ne_binary().
@@ -658,6 +683,7 @@ advertise_payload(#kz_node{expires=Expires
                           ,channels=Channels
                           ,registrations=Registrations
                           ,zone=Zone
+                          ,globals=Globals
                           }) ->
     props:filter_undefined(
       [{<<"Expires">>, kz_util:to_binary(Expires)}
@@ -670,6 +696,7 @@ advertise_payload(#kz_node{expires=Expires
       ,{<<"Channels">>, Channels}
       ,{<<"Registrations">>, Registrations}
       ,{<<"Zone">>, kz_util:to_binary(Zone)}
+      ,{<<"Globals">>, kz_json:from_list(Globals)}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -699,6 +726,7 @@ from_json(JObj, State) ->
             ,registrations=kz_json:get_integer_value(<<"Registrations">>, JObj, 0)
             ,broker=get_amqp_broker(JObj)
             ,zone=get_zone(JObj, State)
+            ,globals=kz_json:to_proplist(kz_json:get_value(<<"Globals">>, JObj, kz_json:new()))
             }.
 
 -spec kapps_from_json(api_terms()) -> kapps_info().

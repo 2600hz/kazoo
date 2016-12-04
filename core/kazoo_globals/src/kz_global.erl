@@ -25,6 +25,7 @@
         ,all_globals_by_pid/2
         ,all_globals_by_node/2
         ,all_dead_pids/1
+        ,stats/1
 
         ,from_jobj/2
         ,update_with_pid_ref/2, update_with_pid_ref/3
@@ -104,6 +105,14 @@ update_with_pid_ref(Global, Pid, Ref)
 all_names(Table) ->
     MatchSpec = [{#kz_global{name = '$1', _ = '_'} ,[],['$1']}],
     ets:select(Table, MatchSpec).
+
+-spec stats(ets:tab()) -> kz_proplist().
+stats(Table) ->
+    MatchSpec = [{#kz_global{state = '$1', _ = '_'} ,[],['$1']}],
+    lists:foldl(fun(State, Props) ->
+                        V = props:get_integer_value(State, Props, 0) + 1,
+                        props:set_value(State, V, Props)
+                end, [], ets:select(Table, MatchSpec)).
 
 -spec all_globals_by_pid(ets:tab(), pid()) -> globals().
 all_globals_by_pid(Table, Pid) ->
