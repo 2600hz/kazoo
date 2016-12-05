@@ -157,6 +157,8 @@ details_groups([{<<"cf_flow">>, V} | KS], {Group, Acc}) ->
     details_groups(KS, {Group, details_groups(V, {<<"callflow">>, Acc})});
 details_groups([{<<"error_details">>, V} | KS], {Group, Acc}) ->
     details_groups(KS, {Group, details_groups(V, {<<"error_details">>, Acc})});
+details_groups([{<<"reply_headers">>, V} | KS], {Group, Acc}) ->
+    details_groups(KS, {Group, details_groups(V, {<<"http_headers">>, Acc})});
 details_groups([{<<"cf_", _/binary>>,_}=KV | KS], {Group, Acc}) ->
     details_groups(KS, {Group, add_to_group(<<"callflow">>, KV, Acc)});
 details_groups([KV | KS], {Group, Acc}) ->
