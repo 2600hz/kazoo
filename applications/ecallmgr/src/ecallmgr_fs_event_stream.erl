@@ -369,6 +369,10 @@ process_stream(<<"sofia::intercepted">> = EventName, UUID, Props, Node) ->
     end,
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
+process_stream(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
+process_stream(<<"CHANNEL_UNHOLD">> = EventName, UUID, Props, Node) ->
+    gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
 process_stream(EventName, UUID, EventProps, Node) ->
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
