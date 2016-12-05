@@ -45,6 +45,7 @@ send_request(Url, Contents) ->
             Err
     end.
 
+-spec handle_send(pid(), 'ok' | {'error', any()}) -> 'ok' | {'error', any()}.
 handle_send(Pid, 'ok') -> ftp:close(Pid);
 handle_send(Pid, {'error', _Reason}=Err) ->
     lager:debug("error transfering file to ftp server : ~p", [_Reason]),
@@ -75,6 +76,7 @@ fetch_attachment(Url) ->
             Err
     end.
 
+-spec handle_fetch(pid(), tuple()) -> {'ok', binary()} | {'error', any()}.
 handle_fetch(Pid, {'ok', _Bin}=OK) ->
     ftp:close(Pid),
     OK;
