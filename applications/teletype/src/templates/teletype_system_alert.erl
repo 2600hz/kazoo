@@ -109,9 +109,9 @@ process_req(JObj) ->
                                              ,teletype_util:find_account_id(DataJObj)
                                              ),
 
-    Subject = try kz_json:get_value(<<"subject">>, DataJObj) of
+    Subject = try kz_json:get_ne_binary_value(<<"subject">>, DataJObj) of
                   'undefined' ->
-                      SubjectTemplate = kz_json:get_value(<<"subject">>, TemplateMetaJObj, ?TEMPLATE_SUBJECT),
+                      SubjectTemplate = kz_json:get_ne_binary_value(<<"subject">>, TemplateMetaJObj, ?TEMPLATE_SUBJECT),
                       teletype_util:render_subject(SubjectTemplate, Macros);
                   Text -> Text
               catch
