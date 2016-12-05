@@ -109,11 +109,14 @@ process_req(JObj) ->
                                              ,teletype_util:find_account_id(DataJObj)
                                              ),
 
-    Subject =
-        teletype_util:render_subject(
-          kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                    ,Macros
-         ),
+    Subject = try kz_json:get_ne_binary_value(<<"subject">>, DataJObj) of
+                  'undefined' ->
+                      SubjectTemplate = kz_json:get_ne_binary_value(<<"subject">>, TemplateMetaJObj, ?TEMPLATE_SUBJECT),
+                      teletype_util:render_subject(SubjectTemplate, Macros);
+                  Text -> Text
+              catch
+                  _:_ -> <<"system alert received into ", (kz_util:to_binary(node()))/binary>>
+              end,
 
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     Emails = teletype_util:find_addresses(

@@ -26,10 +26,11 @@
 -include("fax.hrl").
 
 -define(STALE_LIMIT, 360).
--define(POLLING_INTERVAL, 5000).
+-define(POLLING_INTERVAL, 5 * ?MILLISECONDS_IN_SECOND).
 -define(DEFAULT_LIMITS(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"max_outbound">>, 10)).
 
--define(MAX_WAIT_FOR_PENDING, 25000).
+-define(MAX_WAIT_FOR_PENDING, 120 * ?MILLISECONDS_IN_SECOND).
+-define(MAX_WAIT_FOR_RUNNING, ?MILLISECONDS_IN_HOUR).
 
 -define(INIT_JOBS, #{distribute => []
                     ,serialize => []
@@ -102,6 +103,7 @@ start_link(AccountId) ->
 %%--------------------------------------------------------------------
 -spec init([ne_binary()]) -> {'ok', state(), kz_timeout()}.
 init([AccountId]) ->
+    _ = kz_util:spawn(fun cleanup_jobs/1, [AccountId]),
     State = #state{account_id=AccountId
                   ,limits = #{account => ?DEFAULT_LIMITS(AccountId) }
                   ,jobs = ?INIT_JOBS
@@ -145,6 +147,7 @@ handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
                                                                      ,queue => ServerId
+                                                                     ,start => kz_util:now_ms()
                                                                      }
                                                           }
                                       }
@@ -167,6 +170,8 @@ handle_cast({'job_status',{JobId, <<"end">>, ServerId}}, #state{jobs=#{pending :
     };
 handle_cast({'gen_listener',{'created_queue', Queue}}, State) ->
     {'noreply', State#state{queue=Queue}, ?POLLING_INTERVAL};
+handle_cast({'gen_listener',{'is_consuming', _IsConsuming}}, State) ->
+    {'noreply', State, ?POLLING_INTERVAL};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -184,38 +189,26 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', #state{queue='undefined'}=State) ->
     {'noreply', State, ?POLLING_INTERVAL};
+handle_info('timeout', #state{stale= ?STALE_LIMIT}=State) ->
+    {'stop', 'normal', State};
 handle_info('timeout', #state{jobs=#{distribute := []
                                     ,serialize := []
+                                    ,pending := []
+                                    ,running := []
                                     }
-                             ,stale= ?STALE_LIMIT
+                             ,stale= Stale
                              }=State) ->
-    {'stop', 'normal', State};
+    {'noreply', State#state{stale = Stale + 1}, ?POLLING_INTERVAL};
 handle_info('timeout', #state{account_id=AccountId
-                             ,jobs=#{distribute := []
-                                    ,serialize := []
+                             ,jobs=#{distribute := Distribute
                                     ,pending := Pending
+                                    ,running := Running
                                     }=Map0
-                             ,stale=Stale
                              }=State) ->
-    Map = maps:fold(fun check_pending/3, Map0, Pending),
-    Upto = kz_util:current_tstamp(),
-    ViewOptions = [{'limit', 100}
-                  ,{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, Upto]}
-                  ],
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
-        {'ok', []} -> {'noreply', State#state{stale = Stale + 1}, ?POLLING_INTERVAL};
-        {'ok', Jobs} ->
-            lager:debug("fetched ~b jobs for account ~s, attempting to distribute to workers"
-                       ,[length(Jobs), AccountId]
-                       ),
-            {'noreply', distribute_jobs(State#state{jobs=Map#{distribute => Jobs}, stale = 0}), ?POLLING_INTERVAL};
-        {'error', _Reason} ->
-            lager:debug("failed to fetch fax jobs for account ~s : ~p", [AccountId, _Reason]),
-            {'noreply', State#state{stale = Stale + 1}, ?POLLING_INTERVAL}
-    end;
-handle_info('timeout', State) ->
-    {'noreply', distribute_jobs(State), ?POLLING_INTERVAL};
+    Map2 = #{running := Running} = maps:fold(fun check_pending/3, Map0, Pending),
+    Map1 = maps:fold(fun check_running/3, Map2, Running),
+    Map = Map1#{distribute => Distribute ++ get_account_jobs(AccountId)},
+    {'noreply', distribute_jobs(State#state{jobs=Map, stale = 0}), ?POLLING_INTERVAL};
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State, ?POLLING_INTERVAL}.
@@ -355,10 +348,82 @@ number(JObj) ->
 check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending, numbers := Numbers} = Map) ->
     case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
         'true'  ->
-            lager:debug("recovering fax job ~s", [JobId]),
+            lager:debug("recovering pending fax job ~s", [JobId]),
             Map#{pending => maps:remove(JobId, Pending)
                 ,numbers => maps:remove(ToNumber, Numbers)
                 };
         'false' ->
             Map
+    end.
+
+-spec check_running(ne_binary(), map(), map()) -> map().
+check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running, numbers := Numbers} = Map) ->
+    case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_RUNNING of
+        'true'  ->
+            lager:debug("recovering running fax job ~s", [JobId]),
+            Map#{running => maps:remove(JobId, Running)
+                ,numbers => maps:remove(ToNumber, Numbers)
+                };
+        'false' ->
+            Map
+    end.
+
+-spec get_account_jobs(ne_binary()) -> kz_json:objects().
+get_account_jobs(AccountId) ->
+    Upto = kz_util:current_tstamp(),
+    ViewOptions = [{'limit', 100}
+                  ,{'startkey', [AccountId]}
+                  ,{'endkey', [AccountId, Upto]}
+                  ],
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/jobs_by_account">>, ViewOptions) of
+        {'ok', Jobs} -> lock_account_jobs(Jobs);
+        {'error', _Reason} ->
+            lager:debug("failed to fetch fax jobs for account ~s : ~p", [AccountId, _Reason]),
+            []
+    end.
+
+-spec lock_account_jobs(kz_json:objects()) -> kz_json:objects().
+lock_account_jobs([]) -> [];
+lock_account_jobs(Jobs) ->
+    lists:foldr(fun lock_account_jobs_fold/2, [], Jobs).
+
+-spec lock_account_jobs_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+lock_account_jobs_fold(JObj, Jobs) ->
+    case kz_datamgr:open_doc(?KZ_FAXES_DB, kz_doc:id(JObj)) of
+        {'ok', Doc} -> lock_account_job(Doc, JObj, Jobs);
+        {'error', Error} ->
+            lager:debug("failed to lock jobid ~s : ~p", [kz_doc:id(JObj), Error]),
+            Jobs
+    end.
+
+-spec lock_account_job(kz_json:object(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+lock_account_job(Doc, JObj, Jobs) ->
+    UpdatedDoc = kz_json:set_value(<<"pvt_job_status">>, <<"locked">>, Doc),
+    case kz_datamgr:save_doc(?KZ_FAXES_DB, UpdatedDoc, [{'rev', kz_doc:revision(Doc)}]) of
+        {'ok', _U} ->
+
+            lager:debug("UPDATED LOCKING JOB ~s / ~p", [kz_doc:id(_U), _U]),
+            [JObj | Jobs];
+        {'error', Error} ->
+            lager:debug("failed to lock jobid ~s", [kz_doc:id(Doc), Error]),
+            Jobs
+    end.
+
+-spec cleanup_jobs(ne_binary()) -> 'ok'.
+cleanup_jobs(AccountId) ->
+    ViewOptions = [{'key', AccountId}
+                  ],
+    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/locked_jobs_by_account">>, ViewOptions) of
+        {'ok', []} -> 'ok';
+        {'ok', JObjs} ->
+            lager:debug("cleaning up ~B fax jobs for account_id ~s", [length(JObjs), AccountId]),
+            _ = [begin
+                     DocId = kz_doc:id(JObj),
+                     lager:debug("moving zombie job ~s status to pending", [DocId]),
+                     kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
+                 end
+                 || JObj <- JObjs
+                ],
+            'ok';
+        {'error', _R} -> lager:debug("unable to cleanup account_id ~s fax jobs: ~p", [AccountId, _R])
     end.

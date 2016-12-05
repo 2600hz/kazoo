@@ -11,7 +11,6 @@
 -behaviour(gen_server).
 
 -export([start_link/0]).
--export([cleanup_jobs/0]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -64,7 +63,6 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
-    _ = kz_util:spawn(fun cleanup_jobs/0),
     {'ok', #state{}, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
@@ -173,18 +171,3 @@ maybe_start_account('false', AccountId) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
     kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_account/1).
-
--spec cleanup_jobs() -> 'ok'.
-cleanup_jobs() ->
-    case kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxes/processing_by_node">>) of
-        {'ok', JObjs} ->
-            _ = [begin
-                     DocId = kz_doc:id(JObj),
-                     lager:debug("moving zombie job ~s status to pending", [DocId]),
-                     kz_datamgr:update_doc(?KZ_FAXES_DB, DocId, [{<<"pvt_job_status">>, <<"pending">>}])
-                 end
-                 || JObj <- JObjs
-                ],
-            'ok';
-        {'error', _R} -> lager:debug("unable to cleanup jobs: ~p", [_R])
-    end.
