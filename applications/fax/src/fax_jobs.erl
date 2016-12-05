@@ -396,7 +396,7 @@ lock_account_jobs_fold(JObj, Jobs) ->
             Jobs
     end.
 
--spec lock_account_jobs_fold(kz_json:object(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
+-spec lock_account_job(kz_json:object(), kz_json:object(), kz_json:objects()) -> kz_json:objects().
 lock_account_job(Doc, JObj, Jobs) ->
     UpdatedDoc = kz_json:set_value(<<"pvt_job_status">>, <<"locked">>, Doc),
     case kz_datamgr:save_doc(?KZ_FAXES_DB, UpdatedDoc, [{'rev', kz_doc:revision(Doc)}]) of
