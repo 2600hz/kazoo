@@ -551,8 +551,7 @@ save_recording(#state{call=Call, media=Media}=State, _) ->
             lager:warning("error storing metadata : ~p", [Err]),
             gen_server:cast(self(), 'store_failed');
         Rev ->
-            StoreUrl = store_url(State, Rev),
-            lager:info("store url: ~s", [StoreUrl]),
+            StoreUrl = fun()-> store_url(State, Rev) end,
             store_recording(Media, StoreUrl, Call)
     end.
 
@@ -568,7 +567,7 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     kapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
 
--spec store_recording({ne_binary(), ne_binary()}, ne_binary(), kapps_call:call()) -> 'ok'.
+-spec store_recording({ne_binary(), ne_binary()}, ne_binary() | function(), kapps_call:call()) -> 'ok'.
 store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
