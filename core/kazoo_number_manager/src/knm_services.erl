@@ -182,7 +182,7 @@ do_activate(T, Num, Units, BillingId, AssignedTo) ->
             Transaction = create_transaction(Num, Units, BillingId, AssignedTo),
             knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES
                               ,TotalCharges
-                              ,knm_numbers:transaction(T, Transaction)
+                              ,knm_numbers:transaction(Transaction, T)
                               )
     end.
 

@@ -57,6 +57,7 @@
                 ,dry_run => kz_json:object()
                 ,services => services()
                 ,charges => charges()
+                ,options => options()
                 }.
 
 -export_type([ret/0
@@ -558,6 +559,7 @@ ret(#{ok := OKs
      ,ko := KOs
      ,services := Services
      ,charges := Charges
+     ,options := Options
      }) ->
     %%FIXME: use the collection()'s services.
     ServicesList = [S || N <- OKs,

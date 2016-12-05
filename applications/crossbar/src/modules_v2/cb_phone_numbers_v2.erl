@@ -896,18 +896,24 @@ set_response({'ok', Thing}, Context, _) ->
         'false' -> crossbar_util:response(Thing, Context)
     end;
 
-set_response(Ret=#{ko := [], services := undefined}, Context, _) ->
-    ResultJObj = knm_numbers:to_json(Ret),
-    crossbar_util:response(ResultJObj, Context);
-set_response(#{ko := [], services := Services}, Context, CB) ->
-    RespJObj = kz_services:dry_run(Services),
-    case kz_json:is_empty(RespJObj) of
-        'true' -> CB();
-        'false' -> crossbar_util:response_402(RespJObj, Context)
+set_response(Ret=#{ko := KOs, services := Services, options := Options}, Context, CB) ->
+    case {KOs =/= #{}, Services =:= undefined, knm_number_options:dry_run(Options)} of
+        {true, _, _} ->
+            ResultJObj = knm_numbers:to_json(Ret),
+            crossbar_util:response_400(<<"client error">>, ResultJObj, Context);
+        {_, true, _} ->
+            ResultJObj = knm_numbers:to_json(Ret),
+            crossbar_util:response(ResultJObj, Context);
+        {_, _, true} ->
+            RespJObj = kz_services:dry_run(Services),
+            case kz_json:is_empty(RespJObj) of
+                true -> CB();
+                false -> crossbar_util:response_402(RespJObj, Context)
+            end;
+        _ ->
+            ResultJObj = knm_numbers:to_json(Ret),
+            crossbar_util:response(ResultJObj, Context)
     end;
-set_response(Ret=#{}, Context, _) ->
-    ResultJObj = knm_numbers:to_json(Ret),
-    crossbar_util:response_400(<<"client error">>, ResultJObj, Context);
 
 set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
     RespJObj = kz_services:dry_run(Services),
