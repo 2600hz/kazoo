@@ -76,7 +76,7 @@
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
                           ,is_billable = 'false' :: boolean()
-                          ,is_dirty = 'undefined' :: api_boolean()
+                          ,is_dirty = 'false' :: boolean()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -177,9 +177,6 @@ save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{is_dirty = false}=PhoneNumber) ->
-    lager:debug("not dirty: skipping save"),
-    PhoneNumber;
-save(#knm_phone_number{is_dirty = undefined}=PhoneNumber) ->
     lager:debug("not dirty: skipping save"),
     PhoneNumber;
 save(PhoneNumber) ->
