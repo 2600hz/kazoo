@@ -106,6 +106,8 @@
                       ,account_name :: api_binary() | '_'
                       ,proxy :: api_binary() | '_'
                       ,bridge_uri :: api_binary() | '_'
+                      ,source_ip :: api_binary() | '_'
+                      ,source_port :: api_binary() | '_'
                       }).
 
 -type registration() :: #registration{}.
@@ -833,6 +835,8 @@ create_registration(JObj) ->
                       ,call_id=kz_json:get_value(<<"Call-ID">>, JObj, Reg#registration.call_id)
                       ,user_agent=kz_json:get_value(<<"User-Agent">>, JObj, Reg#registration.user_agent)
                       ,initial=kz_json:is_true(<<"First-Registration">>, JObj, Reg#registration.initial)
+                      ,source_ip=kz_json:get_value(<<"Source-IP">>, JObj)
+                      ,source_port=kz_json:get_value(<<"Source-Port">>, JObj)
                       }
                         ,JObj
      ).
@@ -1159,6 +1163,8 @@ to_props(Reg) ->
       ,{<<"First-Registration">>, Reg#registration.initial}
       ,{<<"Initial-Registration">>, Reg#registration.initial_registration}
       ,{<<"Last-Registration">>, Reg#registration.last_registration}
+      ,{<<"Source-IP">>, Reg#registration.source_ip}
+      ,{<<"Source-Port">>, Reg#registration.source_port}
       ]
      ).
 
