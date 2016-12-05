@@ -289,7 +289,7 @@ maybe_print_zone(NodeZone, _Zone) ->
 -spec maybe_print_globals(kz_proplist()) -> 'ok'.
 maybe_print_globals([]) -> 'ok';
 maybe_print_globals(Globals) ->
-    io:format("Globals       :"),
+    io:format(?HEADER_COL ++ ":", [<<"Globals">>]),
     lists:foreach(fun({K,V}) -> io:format(" ~s (~B)",[K, V]) end, Globals),
     io:format("~n").
 
