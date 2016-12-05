@@ -157,9 +157,11 @@ process_event(UUID, Props, Node) ->
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
-process_specific_event(<<"CHANNEL_HOLD">>, UUID, _Props, _Node) ->
-    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'true');
-process_specific_event(<<"CHANNEL_UNHOLD">>, UUID, _Props, _Node) ->
-    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'false');
+process_specific_event(<<"CHANNEL_HOLD">>, UUID, Props, _Node) ->
+    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'true'),
+    ecallmgr_call_events:process_channel_event([UUID | Props]);
+process_specific_event(<<"CHANNEL_UNHOLD">>, UUID, Props, _Node) ->
+    ecallmgr_fs_channels:update(UUID, #channel.is_onhold, 'false'),
+    ecallmgr_call_events:process_channel_event([UUID | Props]);
 process_specific_event(_Event, _UUID, _Props, _Node) ->
     lager:debug("event ~s for callid ~s not handled in channel hold (~s)", [_Event, _UUID, _Node]).
