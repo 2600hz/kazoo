@@ -33,7 +33,11 @@ exec_cmd(<<"send_http">>, Args, JObj, Node, Options) ->
     lager:debug("received http_send command for node ~s with version ~s", [Node, Version]),
     Url = kz_json:get_ne_binary_value(<<"Url">>, Args),
     File = kz_json:get_value(<<"File-Name">>, Args),
-    Method = <<"http_", (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
+    HttpFun = case Version >= <<"mod_kazoo v1.4">> of
+                  'true' -> <<"kz_http_">>;
+                  'false' -> <<"http_">>
+              end,
+    Method = <<HttpFun/binary, (kz_json:get_value(<<"Http-Method">>, Args, <<"put">>))/binary>>,
     Default = ecallmgr_config:is_true([?NODE_CMD_CONFIG, <<"send_http">>, <<"delete_on_success">>], 'false'),
     DeleteOnSuccess = kz_json:is_true(<<"Delete-On-Success">>, JObj, Default),
     send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess);
@@ -91,7 +95,7 @@ send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess) ->
     end.
 
 send_http_api_and_callback_funs(Version)->
-    case Version >= <<"mod_kazoo v1.3">> of
+    case Version >= <<"mod_kazoo v1.4">> of
         'true' -> {fun freeswitch:bgapi4/5, fun send_http_cb/4};
         'false' -> {fun freeswitch:bgapi/5, fun send_http_cb/3}
     end.
@@ -110,6 +114,10 @@ send_http_cb('ok', <<"+OK", _/binary>>, _FSProps, [JobId, JObj, DeleteOnSuccess,
     lager:debug("processed http_send command with success : ~s", [JobId]),
     _ = maybe_delete_file(Node, File, DeleteOnSuccess),
     reply_success(JObj);
+send_http_cb(_, <<"-ERR ", Reply/binary>>, [_ | FSProps], [JobId, JObj | _]) ->
+    lager:debug("error processing http_send : ~p : ~s", [Reply, JobId]),
+    Props = ecallmgr_util:unserialize_fs_props(FSProps),
+    reply_error(Reply, kz_json:from_list(Props), JObj);
 send_http_cb(_, Reply, [_ | FSProps], [JobId, JObj | _]) ->
     lager:debug("error processing http_send : ~p : ~s", [Reply, JobId]),
     Props = ecallmgr_util:unserialize_fs_props(FSProps),
