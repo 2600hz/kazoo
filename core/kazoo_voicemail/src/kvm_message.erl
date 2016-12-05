@@ -298,7 +298,7 @@ create_message_doc(AccountId, Props) ->
     MsgJObj = kzd_box_message:new(AccountId, Props),
     {'ok', SavedJObj} = kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj),
 
-    MediaUrl = fun() -> 
+    MediaUrl = fun() ->
                        kz_media_url:store(SavedJObj
                                          ,props:get_value(<<"Attachment-Name">>, Props)
                                          )

@@ -3024,19 +3024,16 @@ store_file(Filename, Url, Tries, Timeout, Call) ->
     API = fun() -> [{<<"Command">>, <<"send_http">>}
                    ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
                    ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
-                     | kz_api:default_headers(AppName, AppVersion)
+                    | kz_api:default_headers(AppName, AppVersion)
                    ]
           end,
     do_store_file(Tries, Timeout, API, Msg, Call).
 
--spec do_store_file(pos_integer(), kz_timeout(), kz_proplist() | function()
+-spec do_store_file(pos_integer(), kz_timeout(), function()
                    ,ne_binary(), kapps_call:call()) ->
                            'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
-    Payload = case is_function(API, 0) of
-                  'true' -> API();
-                  'false' -> API
-              end,
+    Payload = API(),
     case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
