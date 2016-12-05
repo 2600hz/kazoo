@@ -48,6 +48,7 @@
         ]).
 
 -export([list_attachments/2]).
+
 -ifndef(TEST).
 -export([push_stored/0]).
 -endif.
@@ -138,6 +139,9 @@ fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
     handle_fetched_result(?BW_EXISTING_JSON, Options);
+fetch(?TEST_OLD_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
+    handle_fetched_result(JObj, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
