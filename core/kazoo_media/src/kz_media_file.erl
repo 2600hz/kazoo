@@ -83,7 +83,10 @@ proxy_uri(JObj, #media_store_path{db = Db
                                  }=Store) ->
     StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
     _ = maybe_prepare_proxy(StreamType, Store),
-    Host = kz_network_utils:get_hostname(),
+    Host = case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>, undefined()) of
+               'undefined' -> kz_network_utils:get_hostname();
+               ProxyHostname -> ProxyHostname
+           end,
     Port = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
     Permissions = case StreamType =:= <<"store">> of
                       'true' -> 'proxy_store';
@@ -97,7 +100,12 @@ proxy_uri(JObj, #media_store_path{db = Db
       ,"/", File/binary
     >>.
 
-
+%% NOTE
+%% This is to trick kapps_config usage
+%% we don't want a default
+%% and we also don't want to be required
+-spec undefined() -> 'undefined'.
+undefined() -> 'undefined'.
 
 -spec find_attachment(ne_binaries() | ne_binary() | kz_proplist()) ->
                              {'ok', media_store_path()} |
