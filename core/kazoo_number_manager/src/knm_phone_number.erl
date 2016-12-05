@@ -742,6 +742,8 @@ set_ported_in(N, Ported) when is_boolean(Ported) ->
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_module_name(N, <<"undefined">>) ->
+    set_module_name(N, ?CARRIER_LOCAL);
 set_module_name(N0, ?CARRIER_LOCAL=Name) ->
     Feature =
         case feature(N0, ?FEATURE_LOCAL) of
