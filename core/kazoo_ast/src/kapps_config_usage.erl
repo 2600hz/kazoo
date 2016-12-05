@@ -48,12 +48,15 @@ static_fields(Name, JObj) ->
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
+-define(NO_DEFAULTS_EXCEPTIONS, [<<"proxy_hostname">>]).
+
 -spec fields_without_defaults(kz_json:object()) -> ne_binaries().
 fields_without_defaults(JObj0) ->
     JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
     lists:sort([Field
                 || {Field, Content} <- kz_json:to_proplist(JObj),
-                   'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content)
+                   'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content),
+                   not lists:member(Field, ?NO_DEFAULTS_EXCEPTIONS)
                ]).
 
 -spec process_project() -> kz_json:object().
