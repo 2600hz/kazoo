@@ -88,7 +88,7 @@ restore_system_template(TemplateId) ->
 
     Mod = kz_util:to_atom(<<"teletype_", ModId/binary>>, 'true'),
     io:format("  re-initializing template ~s~n", [ModId]),
-    Mod:init(),
+    catch(Mod:init()),
     io:format("  finished~n").
 
 list_system_templates() ->
