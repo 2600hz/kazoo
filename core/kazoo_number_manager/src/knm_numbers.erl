@@ -572,6 +572,7 @@ ret(#{ok := OKs
      ,dry_run => lists:foldl(F, kz_json:new(), ServicesList)
      ,services => Services
      ,charges => Charges
+     ,options => Options
      }.
 
 %% @public
