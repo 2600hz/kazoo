@@ -182,13 +182,7 @@ sysconf_first(_, _) -> 'true'.
 
 -spec list_apps() -> atoms().
 list_apps() ->
-    case get_running_apps() of
-        [] ->
-            [kz_util:to_atom(KApp, 'true')
-             || KApp <- start_which_kapps()
-            ];
-        Resp -> [App || {App, _, _} <- Resp]
-    end.
+    [App || {App, _, _} <- get_running_apps()].
 
 %%%===================================================================
 %%% Internal functions
