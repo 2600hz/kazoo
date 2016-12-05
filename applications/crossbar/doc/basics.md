@@ -80,8 +80,8 @@ Some clients do not support the ability to set the [Accept header](http://www.w3
 
 Most APIs require the client to have authenticated and received a token usable on subsequent requests. Crossbar provides a couple ways to receive an authentication token:
 
-1. [User Authentication](./user_authentication)
-2. [API Key Authentication](./api_authentication)
+1. [User Authentication](./user_authentication.md)
+2. [API Key Authentication](./api_authentication.md)
 
 <a name="request_envelope"></a>
 ##### Request Envelope
