@@ -171,8 +171,10 @@ fix_docs({error, timeout}, _AccountDb, _, _DID) ->
 fix_docs({error, _R}, _AccountDb, _, DID) ->
     ?LOG("failed to get ~s from ~s (~p), creating it", [DID, _AccountDb, _R]),
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    _ = knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]),
-    ok;
+    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]) of
+        {ok, _} -> ok;
+        {error, _E} -> ?LOG("creating ~s failed: ~p", [DID, _E])
+    end;
 fix_docs({ok, Doc}, AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(NumberDb, DID),
     fix_docs(Res, Doc, AccountDb, NumberDb, DID).
@@ -195,28 +197,28 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
             Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
-            try
-                knm_number:update(DID, Routines, [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-                                                  %% No caching + bulk doc writes
-                                                 ,{batch_run, true}
-                                                 ])
+            try knm_number:update(DID, Routines, options()) of
+                {ok, _} -> ok;
+                {error, _R} -> ?LOG("sync of ~s failed: ~p", [DID, _R])
             catch error:function_clause ->
                     kz_util:log_stacktrace(),
                     ?LOG("failed to sync ~s", [DID])
-            end,
-            ok
+            end
     end.
+
+options() ->
+    [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+     %% No caching + bulk doc writes
+    ,{batch_run, true}
+    ].
 
 -spec fix_unassign_doc(ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
-    Routines = [{fun knm_phone_number:set_used_by/2, undefined}
-               ],
-    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-               %% bulk doc writes
-              ,{batch_run, true}
-              ],
-    _ = knm_number:update(DID, Routines, Options),
-    ok.
+    Setters = [{fun knm_phone_number:set_used_by/2, undefined}],
+    case knm_number:update(DID, Setters, options()) of
+        {ok, _} -> ok;
+        {error, _R} -> ?LOG("failed fixing unassigned ~s: ~p", [DID, _R])
+    end.
 
 -type dids() :: gb_sets:set(ne_binary()).
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
