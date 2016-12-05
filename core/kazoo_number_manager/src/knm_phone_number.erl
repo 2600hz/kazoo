@@ -76,7 +76,7 @@
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
                           ,is_billable = 'false' :: boolean()
-                          ,is_dirty = 'true' :: boolean()
+                          ,is_dirty = 'undefined' :: api_boolean()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -177,6 +177,9 @@ save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 save(#knm_phone_number{is_dirty = false}=PhoneNumber) ->
+    lager:debug("not dirty: skipping save"),
+    PhoneNumber;
+save(#knm_phone_number{is_dirty = undefined}=PhoneNumber) ->
     lager:debug("not dirty: skipping save"),
     PhoneNumber;
 save(PhoneNumber) ->
@@ -371,7 +374,7 @@ from_json(JObj) ->
                 ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
                 ]),
-    PhoneNumber#knm_phone_number{is_dirty = false}.
+    PhoneNumber.
 
 %% Handle 3.22 -> 4.0 features migration.
 %% Note: if a feature matches here that means it was enabled in 3.22.
@@ -566,6 +569,8 @@ set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
                       }.
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary(), api_ne_binary()) -> knm_phone_number().
+set_assigned_to(N=#knm_phone_number{assigned_to = V}, V, UsedBy) ->
+    set_used_by(N, UsedBy);
 set_assigned_to(N0, AssignedTo='undefined', UsedBy) ->
     N = set_used_by(N0, UsedBy),
     N#knm_phone_number{assigned_to = AssignedTo};
@@ -768,7 +773,13 @@ set_module_name(N, Name=?NE_BINARY) ->
 set_module_name(N0, Name, IsBillable)
   when is_boolean(IsBillable) ->
     N = set_module_name(N0, Name),
-    N#knm_phone_number{is_billable = IsBillable};
+    case N#knm_phone_number.is_billable of
+        IsBillable -> N;
+        _ ->
+            N#knm_phone_number{is_dirty = true
+                              ,is_billable = IsBillable
+                              }
+    end;
 set_module_name(N0, Name, 'undefined') ->
     set_module_name(N0, Name).
 
