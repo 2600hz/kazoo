@@ -471,9 +471,9 @@ store_attachment(#state{call=Call
                        ,storage=#fax_storage{attachment_id=AttachmentId}
                        ,fax_doc=FaxDoc
                        }=State) ->
-    FaxUrl = kz_media_url:store(FaxDoc, AttachmentId),
+    FaxUrlFun = fun() -> kz_media_url:store(FaxDoc, AttachmentId) end,
     FaxFile = get_fs_filename(State),
-    case kapps_call_command:store_file(FaxFile, FaxUrl, Call) of
+    case kapps_call_command:store_file(FaxFile, FaxUrlFun, Call) of
         'ok' ->
             notify_success(FaxResultObj, State),
             {'stop', 'normal', State};

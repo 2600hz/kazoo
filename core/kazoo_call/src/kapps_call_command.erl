@@ -2989,25 +2989,29 @@ wait_for_unparked_call(Call, Timeout) ->
             end
     end.
 
--spec store_file_args(ne_binary(), ne_binary()) -> kz_proplist().
-store_file_args(Filename, Url) ->
+-spec store_file_args(ne_binary(), ne_binary() | function()) -> kz_proplist().
+store_file_args(Filename, UrlFun) ->
+    Url = case is_function(UrlFun, 0) of
+              'true' -> UrlFun();
+              'false' -> UrlFun
+          end,
     [{<<"File-Name">>, Filename}
     ,{<<"Url">>, Url}
     ,{<<"Http-Method">>, <<"put">>}
     ].
 
--spec store_file(ne_binary(), ne_binary(), kapps_call:call()) -> 'ok' | {'error', any()}.
+-spec store_file(ne_binary(), ne_binary() | function(), kapps_call:call()) -> 'ok' | {'error', any()}.
 store_file(Filename, Url, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, Url, storage_retries(App), storage_timeout(App), Call).
 
--spec store_file(ne_binary(), ne_binary(), pos_integer(), kapps_call:call()) ->
+-spec store_file(ne_binary(), ne_binary() | function(), pos_integer(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Call) ->
     App = kz_util:calling_app(),
     store_file(Filename, Url, Tries, storage_timeout(App), Call).
 
--spec store_file(ne_binary(), ne_binary(), pos_integer(), kz_timeout(), kapps_call:call()) ->
+-spec store_file(ne_binary(), ne_binary() | function(), pos_integer(), kz_timeout(), kapps_call:call()) ->
                         'ok' | {'error', any()}.
 store_file(Filename, Url, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
@@ -3017,18 +3021,20 @@ store_file(Filename, Url, Tries, Timeout, Call) ->
               ErrorMsg -> ErrorMsg
           end,
     {AppName, AppVersion} = kz_util:calling_app_version(),
-    API = [{<<"Command">>, <<"send_http">>}
-          ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
-          ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
-           | kz_api:default_headers(AppName, AppVersion)
-          ],
+    API = fun() -> [{<<"Command">>, <<"send_http">>}
+                   ,{<<"Args">>, kz_json:from_list(store_file_args(Filename, Url))}
+                   ,{<<"FreeSWITCH-Node">>, kapps_call:switch_nodename(Call)}
+                    | kz_api:default_headers(AppName, AppVersion)
+                   ]
+          end,
     do_store_file(Tries, Timeout, API, Msg, Call).
 
--spec do_store_file(pos_integer(), kz_timeout(), kz_proplist()
+-spec do_store_file(pos_integer(), kz_timeout(), function()
                    ,ne_binary(), kapps_call:call()) ->
                            'ok' | {'error', any()}.
 do_store_file(Tries, Timeout, API, Msg, Call) ->
-    case kz_amqp_worker:call(API, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
+    Payload = API(),
+    case kz_amqp_worker:call(Payload, fun kapi_switch:publish_command/1, fun kapi_switch:fs_reply_v/1, Timeout) of
         {'ok', JObj} ->
             case kz_json:get_ne_binary_value(<<"Result">>, JObj) of
                 <<"success">> -> 'ok';
@@ -3057,7 +3063,7 @@ do_store_file(Tries, Timeout, API, Msg, Call) ->
             retry_store_file(Tries - 1, Timeout, API, Msg, kz_util:to_binary(Error), Call)
     end.
 
--spec retry_store_file(integer(), kz_timeout(), kz_proplist()
+-spec retry_store_file(integer(), kz_timeout(), kz_proplist() | function()
                       ,ne_binary(), ne_binary(), kapps_call:call()) ->
                               'ok' | {'error', any()}.
 retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->

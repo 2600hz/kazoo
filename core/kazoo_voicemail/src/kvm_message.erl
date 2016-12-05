@@ -293,14 +293,16 @@ media_url(AccountId, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_message_doc(ne_binary(), kz_proplist()) -> {ne_binary(), ne_binary()}.
+-spec create_message_doc(ne_binary(), kz_proplist()) -> {ne_binary(), ne_binary() | function()}.
 create_message_doc(AccountId, Props) ->
     MsgJObj = kzd_box_message:new(AccountId, Props),
     {'ok', SavedJObj} = kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj),
 
-    MediaUrl = kz_media_url:store(SavedJObj
-                                 ,props:get_value(<<"Attachment-Name">>, Props)
-                                 ),
+    MediaUrl = fun() ->
+                       kz_media_url:store(SavedJObj
+                                         ,props:get_value(<<"Attachment-Name">>, Props)
+                                         )
+               end,
 
     {kz_doc:id(MsgJObj), MediaUrl}.
 
@@ -309,7 +311,7 @@ create_message_doc(AccountId, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary(), kapps_call:call()) ->
+-spec store_recording(ne_binary(), ne_binary() | function(), kapps_call:call()) ->
                              'ok' |
                              {'error', kapps_call:call()}.
 store_recording(AttachmentName, Url, Call) ->
