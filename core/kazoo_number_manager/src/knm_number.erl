@@ -200,15 +200,10 @@ ensure_state(PhoneNumber, ExpectedState) ->
 reserve(Num, Options) ->
     ?TRY2(reserve, Num, Options).
 
--spec save_phone_number(knm_number()) -> knm_number().
--spec save_phone_number(knm_phone_number:knm_phone_number(), knm_number()) -> knm_number().
-save_phone_number(Number) ->
-    save_phone_number(phone_number(Number), Number).
-save_phone_number(PhoneNumber, Number) ->
-    set_phone_number(Number, knm_phone_number:save(PhoneNumber)).
-
 -spec save_wrap_phone_number(knm_number()) -> knm_number_return().
-save_wrap_phone_number(Number) -> {ok, save_phone_number(Number)}.
+save_wrap_phone_number(Number) ->
+    PN = knm_phone_number:save(phone_number(Number)),
+    {ok, set_phone_number(Number, PN)}.
 
 -spec ensure_can_create(knm_numbers:collection()) -> knm_numbers:collection().
 ensure_can_create(T0=#{todo := Nums, options := Options}) ->
