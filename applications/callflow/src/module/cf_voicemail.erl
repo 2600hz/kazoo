@@ -1301,20 +1301,8 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                   ],
     case kvm_message:new(Call, NewMsgProps) of
         'ok' -> send_mwi_update(Box, Call);
-        {'error', Call1, Msg} ->
-            system_report(Msg, Call1)
+        {'error', _, _Msg} -> lager:warning("failed to save voice mail message recorded media : ~p", [_Msg])
     end.
-
--spec system_report(text(), kapps_call:call()) -> 'ok'.
-system_report(Msg, Call) ->
-    Notify = props:filter_undefined(
-               [{<<"Subject">>, <<"failed to store voicemail recorded media">>}
-               ,{<<"Message">>, iolist_to_binary(Msg)}
-               ,{<<"Details">>, kapps_call:to_json(Call)}
-               ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-               ]),
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
 
 %%--------------------------------------------------------------------
 %% @private
