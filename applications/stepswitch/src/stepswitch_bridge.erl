@@ -59,6 +59,10 @@
                                        ]
                               }).
 
+-define(SHOULD_ENSURE_E911_CID_VALID,
+        kapps_config:get_is_true(?SS_CONFIG_CAT, <<"ensure_valid_emergency_cid">>, false)).
+
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -414,7 +418,7 @@ bridge_emergency_cid_name(OffnetReq) ->
         Name -> Name
     end.
 
--spec bridge_emergency_cid_number(kapi_offnet_resource:req()) -> api_binary().
+-spec bridge_emergency_cid_number(kapi_offnet_resource:req()) -> api_ne_binary().
 bridge_emergency_cid_number(OffnetReq) ->
     case kapi_offnet_resource:emergency_caller_id_number(OffnetReq) of
         'undefined' -> kapi_offnet_resource:outbound_caller_id_number(OffnetReq);
@@ -423,12 +427,7 @@ bridge_emergency_cid_number(OffnetReq) ->
 
 -spec find_emergency_number(kapi_offnet_resource:req()) -> api_binary().
 find_emergency_number(OffnetReq) ->
-    case kapps_config:get_is_true(
-           ?SS_CONFIG_CAT
-                                 ,<<"ensure_valid_emergency_cid">>
-                                 ,'false'
-          )
-    of
+    case ?SHOULD_ENSURE_E911_CID_VALID of
         'true' -> ensure_valid_emergency_number(OffnetReq);
         'false' ->
             lager:debug("using first configured unverified emergency caller id"),
@@ -466,8 +465,7 @@ find_valid_emergency_number([Number|_]) ->
 
 -spec default_emergency_number(ne_binary()) -> ne_binary().
 default_emergency_number(Requested) ->
-    Key = <<"default_emergency_cid_number">>,
-    case kapps_config:get_non_empty(?SS_CONFIG_CAT, Key) of
+    case ?DEFAULT_EMERGENCY_CID_NUMBER of
         'undefined' -> Requested;
         Else -> Else
     end.
