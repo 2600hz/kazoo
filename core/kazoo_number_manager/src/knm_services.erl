@@ -162,7 +162,8 @@ activate_phone_number(T0=#{todo := Ns, services := Services}) ->
                         lager:debug("no activation charge for ~s", [Num]),
                         knm_numbers:ok(N, T);
                     Units ->
-                        do_activate(T, Num, Units, BillingId, AssignedTo)
+                        T1 = do_activate(T, Num, Units, BillingId, AssignedTo),
+                        knm_numbers:ok(N, T1)
                 end
         end,
     lists:foldl(F, T0, Ns).
