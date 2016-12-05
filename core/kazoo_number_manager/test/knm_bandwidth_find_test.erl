@@ -31,7 +31,8 @@ npan_tests(Options) ->
     Results = knm_search:find([{'quantity',Limit}
                               ,{prefix, Prefix}
                               ,{query_id, <<"QID-", Prefix/binary>>}
-                               |Options]),
+                               | Options
+                              ]),
     [{"Verify area code result size"
      ,?_assertEqual(Limit, length(Results))
      }
@@ -43,7 +44,8 @@ area_code_tests(Options) ->
     Results = knm_search:find([{'quantity',Limit}
                               ,{prefix, Prefix}
                               ,{query_id, <<"QID-", Prefix/binary>>}
-                               |Options]),
+                               | Options
+                              ]),
     [{"Verify area code result size"
      ,?_assertEqual(Limit, length(Results))
      }
