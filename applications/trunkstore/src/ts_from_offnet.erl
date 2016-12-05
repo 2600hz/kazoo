@@ -100,8 +100,7 @@ route_call(State, Command) ->
 
     Timeout = endpoint_timeout(Command),
 
-    wait_for_bridge(State, Timeout),
-    ts_callflow:send_hangup(State).
+    wait_for_bridge(State, Timeout).
 
 -spec endpoint_timeout(kz_proplist()) -> api_integer().
 endpoint_timeout(Command) when is_list(Command) ->
