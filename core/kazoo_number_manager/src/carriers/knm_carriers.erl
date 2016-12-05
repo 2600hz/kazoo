@@ -195,25 +195,21 @@ check_for_existing_did(Number, Acc, Carrier, {'ok', ExistingPhoneNumber}) ->
     case knm_phone_number:module_name(ExistingPhoneNumber) of
         Carrier -> [found_number_to_jobj(Number) | Acc];
         _OtherCarrier ->
-            transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc)
+            [transition_existing_to_discovery(Number, ExistingPhoneNumber) | Acc]
     end.
 
--spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number()
-                                      ,kz_json:objects()) -> kz_json:objects().
-transition_existing_to_discovery(Number, ExistingPhoneNumber, Acc) ->
+-spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number()) ->
+                                              kz_json:object().
+transition_existing_to_discovery(Number, ExistingPhoneNumber) ->
     PhoneNumber0 = knm_number:phone_number(Number),
     Setters = [{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
               ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
+              ,{fun knm_phone_number:set_assign_to/2, undefined}
               ],
-    {'ok', PhoneNumber} =
-        knm_phone_number:setters(ExistingPhoneNumber, Setters),
-    case knm_number:save(knm_number:set_phone_number(Number, PhoneNumber)) of
-        {'ok', SavedNumber} -> [found_number_to_jobj(SavedNumber) | Acc];
-        {'error', _R} ->
-            lager:debug("skipping number ~s: ~p", [knm_phone_number:number(PhoneNumber), _R]),
-            Acc
-    end.
+    {'ok', PhoneNumber} = knm_phone_number:setters(ExistingPhoneNumber, Setters),
+    SavedNumber = knm_number:set_phone_number(Number, knm_phone_number:save(PhoneNumber)),
+    found_number_to_jobj(SavedNumber).
 
 -spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
 found_number_to_jobj(Number) ->

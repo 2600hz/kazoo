@@ -19,7 +19,6 @@
         ,delete/2
         ,assign_to_app/2, assign_to_app/3
         ,lookup_account/1
-        ,save/1
         ,reconcile/2
         ,reserve/2
         ]).
@@ -200,11 +199,6 @@ ensure_state(PhoneNumber, ExpectedState) ->
 reserve(Num, Options) ->
     ?TRY2(reserve, Num, Options).
 
--spec save_wrap_phone_number(knm_number()) -> knm_number_return().
-save_wrap_phone_number(Number) ->
-    PN = knm_phone_number:save(phone_number(Number)),
-    {ok, set_phone_number(Number, PN)}.
-
 -spec ensure_can_create(knm_numbers:collection()) -> knm_numbers:collection().
 ensure_can_create(T0=#{todo := Nums, options := Options}) ->
     F = fun (Num, T) ->
@@ -293,33 +287,6 @@ update(Num, Routines) ->
 
 update(Num, Routines, Options) ->
     ?TRY3(update, Num, Routines, Options).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec save(knm_number()) -> knm_number_return().
-save(Number) ->
-    N = case is_carrier_search_result(Number) of
-            'false' -> knm_services:update_services(Number);
-            'true' ->
-                %% Number was created as a result of carrier search
-                %%  thus has no services associated with it
-                Number
-        end,
-    save_wrap_phone_number(N).
-
-%% @private
--spec is_carrier_search_result(knm_number()) -> boolean().
-is_carrier_search_result(Number) ->
-    PhoneNumber = phone_number(Number),
-    SearchableStates = [?NUMBER_STATE_DISCOVERY
-                       ,?NUMBER_STATE_AVAILABLE
-                       ,?NUMBER_STATE_RESERVED
-                       ],
-    'undefined' == knm_phone_number:assigned_to(PhoneNumber)
-        andalso lists:member(knm_phone_number:state(PhoneNumber), SearchableStates).
 
 %%--------------------------------------------------------------------
 %% @public
