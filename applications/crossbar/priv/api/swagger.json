@@ -1518,6 +1518,7 @@
             "properties": {
                 "cdr_url": {
                     "description": "Optional URL to send the CDR to at the end of the call",
+                    "pattern": "^https?://",
                     "required": false,
                     "type": "string"
                 },
@@ -1551,6 +1552,7 @@
                 },
                 "voice_url": {
                     "description": "What URL to request the initial Pivot callflow",
+                    "pattern": "^https?://",
                     "required": true,
                     "type": "string"
                 }
@@ -1681,6 +1683,7 @@
                 },
                 "url": {
                     "description": "The URL to use when sending the recording for storage",
+                    "format": "uri",
                     "required": false,
                     "type": "string"
                 }
@@ -1718,6 +1721,7 @@
                 },
                 "url": {
                     "description": "The URL to use when sending the recording for storage",
+                    "format": "uri",
                     "required": false,
                     "type": "string"
                 }
@@ -3669,6 +3673,7 @@
                                         },
                                         "url": {
                                             "description": "The URL to call back with the results",
+                                            "pattern": "^https?://",
                                             "required": false,
                                             "type": "string"
                                         }
@@ -3746,6 +3751,7 @@
                                         },
                                         "url": {
                                             "description": "The URL to call back with the results",
+                                            "pattern": "^https?://",
                                             "required": false,
                                             "type": "string"
                                         }
@@ -3870,6 +3876,7 @@
                         },
                         "url": {
                             "description": "The url of the fax document",
+                            "pattern": "^https?://",
                             "required": true,
                             "type": "string"
                         }

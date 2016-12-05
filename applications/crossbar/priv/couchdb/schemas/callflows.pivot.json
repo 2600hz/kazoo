@@ -5,6 +5,7 @@
     "properties": {
         "cdr_url": {
             "description": "Optional URL to send the CDR to at the end of the call",
+            "pattern": "^https?://",
             "required": false,
             "type": "string"
         },
@@ -38,6 +39,7 @@
         },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
+            "pattern": "^https?://",
             "required": true,
             "type": "string"
         }

@@ -30,6 +30,7 @@
         },
         "url": {
             "description": "The URL to use when sending the recording for storage",
+            "format": "uri",
             "required": false,
             "type": "string"
         }
