@@ -511,7 +511,7 @@ emergency_cid_number(OffnetReq) ->
 %% if there are no emergency enabled numbers then either use the global system default
 %% or the requested (if there isnt one)
 emergency_cid_number(Requested, _, []) ->
-    case kapps_config:get_non_empty(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>) of
+    case ?DEFAULT_EMERGENCY_CID_NUMBER of
         'undefined' -> Requested;
         DefaultEmergencyCID -> DefaultEmergencyCID
     end;

@@ -35,5 +35,8 @@
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>, <<"sms">>]).
 
+-define(DEFAULT_EMERGENCY_CID_NUMBER,
+        kapps_config:get_non_empty(?SS_CONFIG_CAT, <<"default_emergency_cid_number">>)).
+
 -define(STEPSWITCH_HRL, 'true').
 -endif.
