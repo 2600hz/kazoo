@@ -16,7 +16,7 @@ Key | Description | Type | Default | Required
 `call_forward.require_keypress` | Determines if the callee is prompted to press 1 to accept the call | `boolean` | `true` | `false`
 `call_forward.substitute` | Determines if the call forwarding replaces the device | `boolean` | `true` | `false`
 `call_restriction` | Device level call restrictions for each available number classification | `object` | `{}` | `false`
-`call_waiting` |   | `#/definitions/call_waiting` |   | `false`
+`call_waiting` |   | [#/definitions/call_waiting](#call_waiting) |   | `false`
 `caller_id` | The device caller ID parameters | `object` | `{}` | `false`
 `contact_list` | Contect List Parameters | `object` | `{}` | `false`
 `contact_list.exclude` | If set to true the device is excluded from the contact list | `boolean` |   | `false`
@@ -42,7 +42,7 @@ Key | Description | Type | Default | Required
 `media.video` | The video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8', 'H264', 'H263', 'H261'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
-`metaflows` | The device metaflow parameters | `#/definitions/metaflows` |   | `false`
+`metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
 `mwi_unsolicitated_updates` | When true enables unsolicitated mwi notifications | `boolean` | `true` | `false`
@@ -53,9 +53,9 @@ Key | Description | Type | Default | Required
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
 `provision.feature_keys` | Feature Keys | `object` |   | `false`
-`provision.feature_keys.^[0-9]+$` |   | `object` |   | `false`
-`provision.feature_keys.^[0-9]+$.type` | Feature key type | `string('presence', 'parking', 'personal_parking', 'speed_dial')` |   | `true`
-`provision.feature_keys.^[0-9]+$.value` | Feature key value | `string, integer` |   | `true`
+`provision.feature_keys./^[0-9]+$/` |   | `object` |   | `false`
+`provision.feature_keys./^[0-9]+$/.type` | Feature key type | `string('presence', 'parking', 'personal_parking', 'speed_dial')` |   | `true`
+`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `string, integer` |   | `true`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
 `ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
@@ -76,6 +76,215 @@ Key | Description | Type | Default | Required
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean` | `false` | `false`
 `timezone` | Device's timezone | `string` |   | `false`
 
+
+##### call_waiting
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`enabled` | Determines if server side call waiting is enabled/disabled | `boolean` |   | `false`
+
+##### caller_id
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`emergency` | The caller ID used when a resource is flagged as 'emergency' | `object` |   | `false`
+`emergency.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`emergency.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+`external` | The default caller ID used when dialing external numbers | `object` |   | `false`
+`external.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`external.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+`internal` | The default caller ID used when dialing internal extensions | `object` |   | `false`
+`internal.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`internal.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+
+##### dialplans
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`system` | List of system dial plans | `array()` |   | `false`
+
+##### metaflow
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+
+##### metaflow.audio_level
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string` |   | `true`
+`data.level` |   | `string` |   | `false`
+`data.mode` |   | `string` |   | `false`
+`module` |   | `string('audio_level')` |   | `true`
+
+##### metaflow.break
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('break')` |   | `true`
+
+##### metaflow.callflow
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.id` |   | `string` |   | `true`
+`module` |   | `string('callflow')` |   | `true`
+
+##### metaflow.hangup
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('hangup')` |   | `true`
+
+##### metaflow.hold
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.moh_aleg` |   | `string` |   | `false`
+`data.moh_bleg` |   | `string` |   | `false`
+`data.unhold_key` |   | `string` | `1` | `false`
+`module` |   | `string('hold')` |   | `true`
+
+##### metaflow.hold_control
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`data.action` |   | `string('hold', 'unhold', 'toggle')` | `toggle` | `false`
+`module` |   | `string('hold_control')` |   | `true`
+
+##### metaflow.intercept
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.auto_answer` |   | `boolean` | `false` | `false`
+`data.target_id` |   | `string` |   | `true`
+`data.target_type` |   | `string('device', 'user', 'number')` |   | `true`
+`data.unbridged_only` |   | `boolean` | `true` | `false`
+`module` |   | `string('intercept')` |   | `true`
+
+##### metaflow.move
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.auto_answer` |   | `boolean` | `false` | `false`
+`data.device_id` |   | `string` |   | `false`
+`data.owner_id` |   | `string` |   | `false`
+`module` |   | `string('move')` |   | `true`
+
+##### metaflow.play
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.id` |   | `string` |   | `true`
+`data.leg` |   | `string('both', 'self', 'peer')` | `both` | `false`
+`module` |   | `string('play')` |   | `true`
+
+##### metaflow.record_call
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string('start', 'stop', 'toggle')` | `toggle` | `true`
+`data.format` |   | `string` |   | `false`
+`data.media_name` |   | `string` |   | `false`
+`module` |   | `string('record_call')` |   | `true`
+
+##### metaflow.resume
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('resume')` |   | `true`
+
+##### metaflow.say
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.language` |   | `string` |   | `false`
+`data.method` |   | `string` |   | `false`
+`data.text` |   | `string` |   | `true`
+`data.type` |   | `string` |   | `false`
+`module` |   | `string('say')` |   | `true`
+
+##### metaflow.sound_touch
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string('start', 'stop')` |   | `true`
+`data.adjust_in_octaves` |   | `integer` |   | `false`
+`data.adjust_in_semitones` |   | `integer` |   | `false`
+`data.hook_dtmf` |   | `boolean` | `false` | `false`
+`data.pitch` |   | `integer` |   | `false`
+`data.rate` |   | `integer` |   | `false`
+`data.sending_leg` |   | `boolean` | `false` | `false`
+`data.tempo` |   | `integer` |   | `false`
+`module` |   | `string('sound_touch')` |   | `true`
+
+##### metaflow.transfer
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.Transfer-Type` |   | `string` | `attended` | `false`
+`data.captures` |   | `string` |   | `false`
+`data.target` |   | `string` |   | `false`
+`module` |   | `string('transfer')` |   | `true`
+
+##### metaflow.tts
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.engine` |   | `string` | `flite` | `false`
+`data.language` |   | `string` |   | `false`
+`data.leg` |   | `string` | `self` | `false`
+`data.terminators` |   | `string` |   | `false`
+`data.text` |   | `string` |   | `true`
+`data.voice` |   | `string` | `female` | `false`
+`module` |   | `string('tts')` |   | `true`
+
+##### metaflow_children
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+
+##### metaflows
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
+`digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
+`listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
+`numbers` | A list of static numbers with their flows | `object` |   | `false`
+`numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+`patterns` | A list of patterns with their flows | `object` |   | `false`
+`patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 
 #### Fetch
 
