@@ -174,7 +174,6 @@ stats() ->
         Stats -> Stats
     end.
 
-
 -spec unregister_name(kz_global:name()) -> 'ok'.
 unregister_name(Name) ->
     case where(Name) of
