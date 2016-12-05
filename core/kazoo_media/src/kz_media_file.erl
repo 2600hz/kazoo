@@ -68,7 +68,8 @@ maybe_proxy(JObj, #media_store_path{db = Db
                                    ,opt = Options
                                    }=Store) ->
     lager:debug("fetching attachment url for '~p' , '~p', '~p'", [Db, Id, Attachment]),
-    case kz_datamgr:attachment_url(Db, Id, Attachment, Options) of
+    StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
+    case kz_datamgr:attachment_url(Db, Id, Attachment, [{'stream_type',StreamType} | Options]) of
         {'error', 'not_found'} -> <<>>;
         {'proxy', _} -> proxy_uri(JObj, Store);
         <<_/binary>> = URI -> URI
@@ -83,7 +84,10 @@ proxy_uri(JObj, #media_store_path{db = Db
                                  }=Store) ->
     StreamType = kz_media_util:convert_stream_type(kz_json:get_value(<<"Stream-Type">>, JObj)),
     _ = maybe_prepare_proxy(StreamType, Store),
-    Host = kz_network_utils:get_hostname(),
+    Host = case kapps_config:get_ne_binary(?CONFIG_CAT, <<"proxy_hostname">>) of
+               'undefined' -> kz_network_utils:get_hostname();
+               ProxyHostname -> ProxyHostname
+           end,
     Port = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
     Permissions = case StreamType =:= <<"store">> of
                       'true' -> 'proxy_store';
@@ -96,8 +100,6 @@ proxy_uri(JObj, #media_store_path{db = Db
       ,"/", Path/binary
       ,"/", File/binary
     >>.
-
-
 
 -spec find_attachment(ne_binaries() | ne_binary() | kz_proplist()) ->
                              {'ok', media_store_path()} |

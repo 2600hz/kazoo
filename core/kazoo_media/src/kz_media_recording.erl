@@ -66,6 +66,7 @@
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
                ,retries = 0               :: integer()
+               ,verb = 'put'              :: atom()
                }).
 -type state() :: #state{}.
 
@@ -167,6 +168,7 @@ init([Call, Data]) ->
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
+    Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
 
     {'ok', #state{url=Url
                  ,format=Format
@@ -183,6 +185,7 @@ init([Call, Data]) ->
                  ,sample_rate = SampleRate
                  ,record_min_sec = RecordMinSec
                  ,retries = ?STORAGE_RETRY_TIMES(AccountId)
+                 ,verb = Verb
                  }}.
 
 %%--------------------------------------------------------------------
@@ -487,9 +490,10 @@ store_url(#state{doc_db=Db
                 ,media={_,MediaName}
                 ,format=Ext
                 ,should_store={'true', 'other', Url}
+                ,verb=Verb
                 }, _Rev) ->
     HttpOptions = #{url => Url
-                   ,verb => 'put'
+                   ,verb => Verb
                    ,field_separator => <<>>
                    ,field_list => [<<"call_recording_">>
                                   ,{field, <<"call_id">>}
