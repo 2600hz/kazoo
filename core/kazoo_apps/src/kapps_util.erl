@@ -715,7 +715,7 @@ system_report(Subject, Msg, Call) ->
     AppName = kapps_call:application_name(Call),
     AppVersion = kapps_call:application_version(Call),
     Notify = props:filter_undefined(
-               [{<<"Subject">>, Subject}
+               [{<<"Subject">>, iolist_to_binary(Subject)}
                ,{<<"Message">>, iolist_to_binary(Msg)}
                ,{<<"Details">>, kapps_call:to_json(Call)}
                ,{<<"Account-ID">>, kapps_call:account_id(Call)}
