@@ -76,7 +76,7 @@ stop_bootstrap() ->
 -spec pools() -> [{atom(), pid()}].
 pools() ->
     [{Pool, Pid}
-     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children('kz_amqp_sup')
+     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(?MODULE)
     ].
 
 -spec pool_name() -> atom().
