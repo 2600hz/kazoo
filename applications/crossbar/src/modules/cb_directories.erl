@@ -89,9 +89,8 @@ resource_exists(_) -> 'true'.
 content_types_provided(Context, _Id) ->
     case cb_context:req_verb(Context) of
         ?HTTP_GET ->
-            cb_context:add_content_types_provided(Context
-                                                 ,[{'to_pdf', ?PDF_CONTENT_TYPES} | ?CONTENT_PROVIDED]
-                                                 );
+            CTPs = ?CONTENT_PROVIDED ++ [{'to_pdf', ?PDF_CONTENT_TYPES}],
+            cb_context:add_content_types_provided(Context, CTPs);
         _Verb ->
             Context
     end.
