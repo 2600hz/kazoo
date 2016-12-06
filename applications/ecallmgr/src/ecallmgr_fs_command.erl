@@ -26,7 +26,7 @@
 %% set channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec set(atom(), api_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec set(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 set(_, _, []) -> 'ok';
 set(_Node, 'undefined', _Props) ->
     lager:debug("no UUID for setting on node ~s: ~p", [_Node, _Props]);
@@ -44,7 +44,7 @@ set(Node, UUID, Props) ->
 %% set channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_set(atom(), api_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_set(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_set(_, _, []) -> 'ok';
 bg_set(_Node, 'undefined', _Props) ->
     lager:debug("no UUID for setting on node ~s: ~p", [_Node, _Props]);
@@ -62,7 +62,7 @@ bg_set(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec unset(atom(), api_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec unset(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 unset(_, _, []) -> 'ok';
 unset(_Node, 'undefined', _Props) ->
     lager:debug("no UUID for unsetting on node ~s: ~p", [_Node, _Props]);
@@ -76,7 +76,7 @@ unset(Node, UUID, Props) ->
 %% unset channel and call variables in FreeSWITCH (in background)
 %% @end
 %%--------------------------------------------------------------------
--spec bg_unset(atom(), api_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec bg_unset(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 bg_unset(_, _, []) -> 'ok';
 bg_unset(_Node, 'undefined', _Props) ->
     lager:debug("no UUID for unsetting on node ~s: ~p", [_Node, _Props]);
@@ -90,7 +90,7 @@ bg_unset(Node, UUID, Props) ->
 %% export channel and call variables in FreeSWITCH
 %% @end
 %%--------------------------------------------------------------------
--spec export(atom(), api_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
+-spec export(atom(), api_ne_binary(), kz_proplist()) -> ecallmgr_util:send_cmd_ret().
 export(_, _, []) -> 'ok';
 export(_Node, 'undefined', _Props) ->
     lager:debug("no UUID for exporting on node ~s: ~p", [_Node, _Props]);
@@ -169,7 +169,7 @@ maybe_export_vars(Node, UUID, Props) ->
 api(Node, Cmd, Args) ->
     freeswitch:api(Node, Cmd, Args).
 
--spec api(atom(), api_binary(), atom(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
+-spec api(atom(), api_ne_binary(), atom(), binary() | list()) -> ecallmgr_util:send_cmd_ret().
 api(_, _, _, []) -> 'ok';
 api(_Node, 'undefined', _Cmd, _Args) ->
     lager:debug("no UUID to run cmd on ~s: ~s: ~s", [_Node, _Cmd, _Args]);
