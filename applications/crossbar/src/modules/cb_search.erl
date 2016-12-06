@@ -362,7 +362,7 @@ multi_search(Context, Type, [_|Props], Acc) ->
 %%--------------------------------------------------------------------
 -spec maybe_normalize_value(ne_binary(), ne_binary()) -> ne_binary().
 maybe_normalize_value(<<"account">>, Value) ->
-    kz_util:normalize_account_name(Value);
+    kz_util:to_lower_binary(Value);
 maybe_normalize_value(_, Value) ->
     Value.
 
