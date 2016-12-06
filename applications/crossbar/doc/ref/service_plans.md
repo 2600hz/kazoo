@@ -12,6 +12,13 @@ Key | Description | Type | Default | Required
 `plan` | Outlines the service plan for various services | `object` |   | `true`
 
 
+##### bookkeepers
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`braintree` |   | `object` |   | `false`
+`local` |   | `object` |   | `false`
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans

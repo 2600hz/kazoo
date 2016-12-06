@@ -15,7 +15,7 @@ Key | Description | Type | Default | Required
 `name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
 `not_configurable` | Determines if the user can configure this voicemail. | `boolean` | `false` | `false`
 `notify` |   | `object` |   | `false`
-`notify.callback` |   | `#/definitions/notify.callback` |   | `false`
+`notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`
 `notify_email_addresses` | List of email addresses to send notifications to (in addition to owner's email, if any) | `array(string)` | `[]` | `false`
 `notify_email_addresses.[]` |   | `string` |   | `false`
 `owner_id` | The ID of the user object that 'owns' the voicemail box | `string(32)` |   | `false`
@@ -26,6 +26,17 @@ Key | Description | Type | Default | Required
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
 `timezone` | The default timezone | `string(5..32)` |   | `false`
 
+
+##### notify.callback
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`attempts` | How many attempts without answer will system do | `integer` |   | `false`
+`disabled` | Determines if the system will call to callback number | `boolean` |   | `false`
+`interval_s` | How long will system wait between call back notification attempts | `integer` |   | `false`
+`number` | Number for callback notifications about new messages | `string` |   | `false`
+`schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
+`timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
 
 #### Fetch
 

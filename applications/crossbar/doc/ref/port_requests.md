@@ -19,7 +19,7 @@ Key | Description | Type | Default | Required
 `notifications.email` | Inbound Email Notifications | `object` |   | `false`
 `notifications.email.send_to` | A list or string of email recipent(s) | `string, array(string)` |   | `false`
 `numbers` | The numbers to port in | `object` |   | `true`
-`numbers.\+?[0-9]+` |   | `object` |   | `false`
+`numbers./\+?[0-9]+/` |   | `object` |   | `false`
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
 `scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`

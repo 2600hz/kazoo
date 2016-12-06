@@ -4724,7 +4724,8 @@
                 "module": {
                     "enum": [
                         "audio_level"
-                    ]
+                    ],
+                    "type": "string"
                 }
             },
             "required": [
