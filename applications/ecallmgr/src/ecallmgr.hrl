@@ -510,10 +510,10 @@
 
 -define(FS_EVENT_FILTERS,
         lists:usort(
-        ?FS_GENERATED_EVENT_FILTERS
-        ++ ?CONFERENCE_VARS
-        ++ ?FS_MOD_KAZOO_EVENT_FILTERS
-        )
+          ?FS_GENERATED_EVENT_FILTERS
+          ++ ?CONFERENCE_VARS
+          ++ ?FS_MOD_KAZOO_EVENT_FILTERS
+         )
        ).
 
 -define(ECALLMGR_HRL, 'true').
