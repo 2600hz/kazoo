@@ -60,18 +60,24 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
+-spec handle(kz_json:object(), kapps_call:call(), api_binary(), api_binary()) -> 'ok'.
 handle(Data, Call) ->
-    case kz_json:get_value(<<"action">>, Data) of
-        <<"list">> ->
-            lager:info("user is choosing a caller id for this call from couchdb doc"),
-            handle_list(Data, Call);
-        <<"lists">> ->
-            lager:info("using account's lists/entries view to get new cid info"),
-            handle_lists(Data, Call);
-        _ ->
-            lager:info("user must manually enter on keypad the caller id for this call"),
-            handle_manual(Data, Call)
-    end.
+    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+    Action = kz_json:get_value(<<"action">>, Data),
+    handle(Data, Call, Action, CaptureGroup).
+
+handle(Data, Call, <<"list">>, ?NE_BINARY = _CaptureGroup) ->
+    lager:info("user is choosing a caller id for this call from couchdb doc"),
+    handle_list(Data, Call);
+handle(Data, Call, <<"lists">>, ?NE_BINARY = _CaptureGroup) ->
+    lager:info("using account's lists/entries view to get new cid info"),
+    handle_lists(Data, Call);
+handle(Data, Call, _Manual, ?NE_BINARY = CaptureGroup) ->
+    lager:info("user must manually enter on keypad the caller id for this call"),
+    handle_manual(Data, Call, CaptureGroup);
+handle(Data, Call, _Manual, CaptureGroup) ->
+    lager:info("capture group is not present, forcing manual action. user must manually enter on keypad the caller id for this call"),
+    handle_manual(Data, Call, CaptureGroup).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -79,27 +85,43 @@ handle(Data, Call) ->
 %% Handle manual mode of dynamic cid
 %% @end
 %%--------------------------------------------------------------------
--spec handle_manual(kz_json:object(), kapps_call:call()) -> 'ok'.
-handle_manual(Data, Call) ->
+-spec handle_manual(kz_json:object(), kapps_call:call(), api_binary()) -> 'ok'.
+handle_manual(Data, Call, CaptureGroup) ->
     CID = collect_cid_number(Data, Call),
-    CaptureGroup = get_callee_number('cf_capture_group', Call),
-    Number = knm_converters:normalize(CaptureGroup),
+    update_call(Call, CID, CaptureGroup),
+    cf_exe:continue(Call).
 
-    Request = list_to_binary([Number, "@", kapps_call:request_realm(Call)]),
-    To = list_to_binary([Number, "@", kapps_call:to_realm(Call)]),
-
-    Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CID}
-              ,{fun kapps_call:set_caller_id_number/2, CID}
-              ,{fun kapps_call:set_request/2, Request}
-              ,{fun kapps_call:set_to/2, To}
-              ,{fun kapps_call:set_callee_id_number/2, Number}
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Update caller id number. If call
+%% has a capture group, strip the non capture group digits from
+%% request, to and callee_number
+%% @end
+%%--------------------------------------------------------------------
+-spec update_call(kapps_call:call(), api_binary(), api_binary()) -> 'ok'.
+update_call(Call, CIDNumber, DestNumber) ->
+    Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
+              ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
               ],
     {'ok', C1} = cf_exe:get_call(Call),
-    lager:info("setting the caller id number to ~s", [CID]),
-    cf_exe:set_call(kapps_call:exec(Updates, C1)),
+    lager:info("setting the caller id number to ~s (from ~s)", [CIDNumber, kapps_call:caller_id_number(Call)]),
+    maybe_strip_features_code(kapps_call:exec(Updates, C1), DestNumber).
 
-    lager:info("send the call onto real destination of: ~s", [Number]),
-    cf_exe:continue(Call).
+-spec maybe_strip_features_code(kapps_call:call(), api_binary()) -> kapps_call:call().
+maybe_strip_features_code(Call, 'undefined') ->
+    cf_exe:set_call(Call);
+maybe_strip_features_code(Call, DestNumber) ->
+    Norm = knm_converters:normalize(DestNumber),
+    Request = list_to_binary([Norm, "@", kapps_call:request_realm(Call)]),
+    To = list_to_binary([Norm, "@", kapps_call:to_realm(Call)]),
+
+    lager:info("sending the call onto real destination of: ~s", [Norm]),
+
+    Updates = [{fun kapps_call:set_request/2, Request}
+              ,{fun kapps_call:set_to/2, To}
+              ,{fun kapps_call:set_callee_id_number/2, Norm}
+              ],
+    cf_exe:set_call(kapps_call:exec(Updates, Call)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -131,7 +153,7 @@ maybe_proceed_with_call(_, _, Call) ->
 
 -spec proceed_with_call(ne_binary(), ne_binary(), binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
 proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
-    lager:debug("caller id number is about to be changed from: ~p to: ~p ", [kapps_call:caller_id_number(Call), NewCallerIdNumber]),
+    lager:info("caller id number is about to be changed from: ~p to: ~p ", [kapps_call:caller_id_number(Call), NewCallerIdNumber]),
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', NewCallerIdNumber}
               ,{fun kapps_call:set_caller_id_number/2, NewCallerIdNumber}
               ,{fun kapps_call:set_caller_id_name/2, NewCallerIdName}
@@ -260,21 +282,6 @@ collect_cid_number(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Get capture_group, if it's not present fall back to Callee-ID-Number
-%% @end
-%%--------------------------------------------------------------------
--spec get_callee_number('cf_capture_group' | 'cf_capture_groups', kapps_call:call()) -> ne_binary().
-get_callee_number(Key, Call) ->
-    case kapps_call:kvs_fetch(Key, Call) of
-        'undefined' ->
-            kapps_call:callee_id_number(Call);
-        CaptureGroup ->
-            CaptureGroup
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
 %% Pull in document from database with the callerid switching information inside
 %% @end
 %%--------------------------------------------------------------------
@@ -298,9 +305,9 @@ find_key_and_dest(ListJObj, Data, Call) ->
     case kz_json:get_value(<<"idx_name">>, Data) of
         'undefined' -> find_key_and_dest(ListJObj, Call);
         Idx ->
-            Groups = get_callee_number('cf_capture_groups', Call),
+            Groups = kapps_call:kvs_fetch('cf_capture_groups', Call),
             CIDKey = kz_json:get_value(Idx, Groups),
-            Dest = get_callee_number('cf_capture_group', Call),
+            Dest = kapps_call:kvs_fetch('cf_capture_group', Call),
             {CIDKey, Dest}
     end.
 
@@ -308,7 +315,7 @@ find_key_and_dest(ListJObj, Data, Call) ->
 find_key_and_dest(ListJObj, Call) ->
     LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj),
     lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
-    CaptureGroup = get_callee_number('cf_capture_group', Call),
+    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
     {CIDKey, Dest}.
 
@@ -328,7 +335,7 @@ get_lists_entry(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
         {'ok', Entries} ->
-            CaptureGroup = get_callee_number('cf_capture_group', Call),
+            CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
             <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,
             {NewCallerIdName, NewCallerIdNumber} = cid_key_lookup(CIDKey, Entries),
             {NewCallerIdName, NewCallerIdNumber, Dest};
