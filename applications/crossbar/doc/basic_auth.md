@@ -16,6 +16,10 @@ PASSWORD=`echo -n username:password | md5sum | awk '{print $1}'`
 
 #### Sample cURL Requests
 
-    curl -v -basic -user {AUTH_ACCOUNT_ID}:$PASSWORD http://server.com:8000/v2/accounts/{ACCOUNT_ID}/devices
+```shell
+curl -v \
+    -basic -user {AUTH_ACCOUNT_ID}:$PASSWORD \
+    http://server.com:8000/v2/accounts/{ACCOUNT_ID}/devices
+```
 
 This will still allow a reseller to execute requests against a sub-account.
