@@ -1250,8 +1250,7 @@ handle_transferor(_Props, #state{fetch_id=_FetchId
                                 }=State) ->
     {'noreply', State}.
 
--spec handle_intercepted(atom(), ne_binary(), kz_proplist()) ->
-                                'ok'.
+-spec handle_intercepted(atom(), ne_binary(), kz_proplist()) -> 'ok'.
 handle_intercepted(Node, CallId, Props) ->
     _ = case {props:get_value(<<"Core-UUID">>, Props)
              ,props:get_value(?GET_CUSTOM_HEADER(<<"Core-UUID">>), Props)
@@ -1271,7 +1270,8 @@ handle_intercepted(Node, CallId, Props) ->
                 UUID = props:get_value(<<"intercepted_by">>, Props),
                 CDR = props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), Props),
                 ecallmgr_fs_command:set(Node, UUID, [{<<?CALL_INTERACTION_ID>>, CDR}])
-        end.
+        end,
+    'ok'.
 
 -spec handle_event_info(ne_binary(), kzd_freeswitch:data(), state()) ->
                                {'noreply', state()} |
