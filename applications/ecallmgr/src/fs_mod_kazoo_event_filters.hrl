@@ -294,7 +294,7 @@
 %%%
 
 -define(FS_MOD_KAZOO_EVENT_FILTERS
-        [<<"alt_event_type">>
+       ,[<<"alt_event_type">>
         ,<<"Application-Name">>
         ,<<"Auth-Method">>
         ,<<"Auth-User">>
