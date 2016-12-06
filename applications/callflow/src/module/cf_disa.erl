@@ -92,20 +92,11 @@ allow_dial(_, Call, 0, _Interdigit) ->
     cf_exe:continue(Call);
 allow_dial(Data, Call, Retries, Interdigit) ->
     _ = start_preconnect_audio(Data, Call),
-    MaxDigits = kz_json:get_integer_value(<<"max_digits">>, Data, 15),
+    Number = collect_destination_number(Call, Data, Interdigit),
 
-    lager:debug("collecting max ~p digits for destination number", [MaxDigits]),
-    {'ok', Digits} = kapps_call_command:collect_digits(MaxDigits
-                                                      ,kapps_call_command:default_collect_timeout()
-                                                      ,Interdigit
-                                                      ,Call
-                                                      ),
-
-    Number = knm_converters:normalize(Digits),
     lager:info("caller is trying to call '~s'", [Number]),
 
     Call1 = maybe_update_caller_id(Data, Call),
-
     maybe_route_to_callflow(Data, Call1, Retries, Interdigit, Number).
 
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
@@ -128,6 +119,30 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
             _ = kapps_call_command:b_prompt(<<"disa-invalid_extension">>, Call),
             allow_dial(Data, Call, Retries - 1, Interdigit)
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Check collect digits to be not empty, if empty collect again
+%% (e.g. if previous callflow crashed during collecting digits before recieving pound
+%%  FreeSwitch still thinks it's collecting for the previous callflow, and collect_digits
+%%  for this module will be resulted to an empty binary)
+%% @end
+%%--------------------------------------------------------------------
+-spec collect_destination_number(kapps_call:call(), kz_json:object(), pos_integer()) -> ne_binary().
+collect_destination_number(Call, Data, Interdigit) ->
+    MaxDigits = kz_json:get_integer_value(<<"max_digits">>, Data, 15),
+    Timeout = kapps_call_command:default_collect_timeout(),
+    lager:debug("collecting max ~p digits for destination number", [MaxDigits]),
+    try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout).
+
+-spec try_collect_destination_number(kapps_call:call(), pos_integer(), pos_integer(), pos_integer()) -> ne_binary().
+try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout) ->
+    case kapps_call_command:collect_digits(MaxDigits, Timeout, Interdigit, Call) of
+        {'ok', <<>>} -> try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout);
+        {'ok', Digits} -> knm_converters:normalize(Digits)
+    end.
+
 
 -spec update_cid(kapps_call:call()) -> kapps_call:call().
 update_cid(Call) ->

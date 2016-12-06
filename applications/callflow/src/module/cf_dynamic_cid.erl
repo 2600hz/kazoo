@@ -82,8 +82,7 @@ handle(Data, Call) ->
 -spec handle_manual(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_manual(Data, Call) ->
     CID = collect_cid_number(Data, Call),
-
-    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+    CaptureGroup = get_callee_number('cf_capture_group', Call),
     Number = knm_converters:normalize(CaptureGroup),
 
     Request = list_to_binary([Number, "@", kapps_call:request_realm(Call)]),
@@ -261,6 +260,21 @@ collect_cid_number(Data, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Get capture_group, if it's not present fall back to Callee-ID-Number
+%% @end
+%%--------------------------------------------------------------------
+-spec get_callee_number('cf_capture_group' | 'cf_capture_groups', kapps_call:call()) -> ne_binary().
+get_callee_number(Key, Call) ->
+    case kapps_call:kvs_fetch(Key, Call) of
+        'undefined' ->
+            kapps_call:callee_id_number(Call);
+        CaptureGroup ->
+            CaptureGroup
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Pull in document from database with the callerid switching information inside
 %% @end
 %%--------------------------------------------------------------------
@@ -284,9 +298,9 @@ find_key_and_dest(ListJObj, Data, Call) ->
     case kz_json:get_value(<<"idx_name">>, Data) of
         'undefined' -> find_key_and_dest(ListJObj, Call);
         Idx ->
-            Groups = kapps_call:kvs_fetch('cf_capture_groups', Call),
+            Groups = get_callee_number('cf_capture_groups', Call),
             CIDKey = kz_json:get_value(Idx, Groups),
-            Dest = kapps_call:kvs_fetch('cf_capture_group', Call),
+            Dest = get_callee_number('cf_capture_group', Call),
             {CIDKey, Dest}
     end.
 
@@ -294,7 +308,7 @@ find_key_and_dest(ListJObj, Data, Call) ->
 find_key_and_dest(ListJObj, Call) ->
     LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj),
     lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
-    CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+    CaptureGroup = get_callee_number('cf_capture_group', Call),
     <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
     {CIDKey, Dest}.
 
@@ -314,7 +328,7 @@ get_lists_entry(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
         {'ok', Entries} ->
-            CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
+            CaptureGroup = get_callee_number('cf_capture_group', Call),
             <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,
             {NewCallerIdName, NewCallerIdNumber} = cid_key_lookup(CIDKey, Entries),
             {NewCallerIdName, NewCallerIdNumber, Dest};
