@@ -7,11 +7,11 @@ Crossbar is the REST API server, from which developers can build applications th
 
     /{VERSION}/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 
-* {VERSION} - The version of the API you are calling.
+* `{VERSION}` - The version of the API you are calling.
     * v2 - Most APIs respond on the v2
     * v2 - A select number of APIs have newer behaviour. If you used the v2 version, it will work as before.
-* {ACCOUNT\_ID} - Most requests operate against a specific account and thus require the account_id to route the resquest properly
-* {RESOURCE\_ID} - When accessing a specific resource, like a device, user, or callflow, this is the {RESOURCE\_ID} points to the specific instance you're accessing.
+* `{ACCOUNT_ID}` - Most requests operate against a specific account and thus require the account_id to route the resquest properly
+* `{RESOURCE_ID}` - When accessing a specific resource, like a device, user, or callflow, this is the `{RESOURCE_ID}` points to the specific instance you're accessing.
 
 ##### Resources
 
@@ -67,7 +67,7 @@ If a resource does not support PATCH yet, clients can expect to receive a `405 M
 
 Some clients do not support the full range of HTTP verbs, and are typically limited to *GET* and *POST*. To access the functionalities of *PUT* and *DELETE*, you can tunnel the verb in a *POST* in a couple of ways:
 
-1. As part of the [request envelope](#request_envelope): `{"data":{...},"verb":"PUT"}`
+1. As part of the [request envelope](#request_envelope): `{"data":{...}, "verb":"PUT"}`
 1. As a query string parameter: `/v2/accounts/{ACCOUNT_ID}/resources?verb=PUT`
 
 ###### Tunneling the Accept Header
@@ -94,29 +94,40 @@ When issuing a PUT or POST, a request body is needed. When submitting a JSON (th
 
 ###### Sample Request Envelope
 
-    {"data":{"foo":"bar"}
-     ,"auth_token":"{AUTH_TOKEN}"
-     ,"verb":"delete"
-    }
+```json
+{
+    "data": {
+        "foo": "bar"
+    },
+    "auth_token": "{AUTH_TOKEN}",
+    "verb": "delete"
+}
+```
 
 ##### Response Envelope
 
 When receiving JSON responses, clients will receive the response in an envelope. The response includes some duplicated data from the HTTP Response headers, since some clients do not have access to those headers.
 
-* data: contains the results of the request, if any
-* auth\_token: contains the auth\_token used on the request
-* status: One of 'success', 'error', or 'fatal'
-* message: Optional message that should clarify what happened on the request
-* error: Error code, if any
-* request_id: ID of the request; usuable for debugging the server-side processing of the request
+* `data`: contains the results of the request, if any
+* `auth_token`: contains the auth\_token used on the request
+* `status`: One of 'success', 'error', or 'fatal'
+* `message`: Optional message that should clarify what happened on the request
+* `error: Error code, if any
+* `request_id`: ID of the request; usuable for debugging the server-side processing of the request
 
 ###### Sample Response Envelope
 
-    {"data":{"the":"response", "data":"is here"}
-     ,"auth_token":"{AUTH_TOKEN}"
-     ,"status":"success"
-     ,"request_id":"{REQUEST_ID}"
-    }
+```json
+{
+    "data": {
+        "the": "response",
+        "data": "is here"
+    },
+    "auth_token": "{AUTH_TOKEN}",
+    "status": "success",
+    "request_id": "{REQUEST_ID}"
+}
+```
 
 ##### Pagination
 
@@ -128,19 +139,29 @@ Let's take a look at the CDRs API to see how to interpret pagination.
 
 We start with the typical CDR request for a listing of CDRs:
 
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
-    {"auth_token": "{AUTH_TOKEN}"
-     ,"data": [{CDR_OBJECT}
-               ,{CDR_OBJECT}
-               ,...
-              ]
-     ,"next_start_key": 63566193143
-     ,"page_size": 25
-     ,"request_id": "{REQUEST_ID}"
-     ,"revision": "{REVISION}"
-     ,"start_key": 63565345339
-     ,"status": "success"
-    }
+```shell
+curl -v \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {CDR_OBJECT},
+        {CDR_OBJECT},
+        ...
+    ],
+    "next_start_key": 63566193143,
+    "page_size": 25,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "start_key": 63565345339,
+    "status": "success"
+}
+```
 
 The pagination response keys are `next_start_key`, `page_size`, and `start_key`.
 
@@ -154,23 +175,33 @@ Assuming no changes are made to the underlying documents, `start_key` will get y
 
 Using the `next_start_key` value, let's request the next page of CDRs:
 
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?start_key=63566193143
-    {"auth_token": "{AUTH_TOKEN}"
-     ,"data": [{CDR_OBJECT}
-               ,{CDR_OBJECT}
-               ,...
-              ]
-     ,"next_start_key": 63566542092
-     ,"page_size": 25
-     ,"request_id": "{REQUEST_ID}"
-     ,"revision": "{REVISION}"
-     ,"start_key": 63566193143
-     ,"status": "success"
-    }
+```shell
+curl -v \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/cdrs?start_key=63566193143
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}"
+    "data": [
+        {CDR_OBJECT},
+        {CDR_OBJECT},
+        ...
+    ],
+    "next_start_key": 63566542092,
+    "page_size": 25,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "start_key": 63566193143,
+    "status": "success"
+}
+```
 
 Observe now that `start_key` is the requested `start_key` and `next_start_key` points to the start of the next page of results.
 
-&tip If `next_start_key` is missing from the response envelope, the response represents the last page of results.
+*If `next_start_key` is missing from the response envelope, the response represents the last page of results.*
 
 You can also choose to receive pages in bigger or smaller increments by specifying `page_size` on the request. Do take care, as the `next_start_key` will probably vary if you use the same `start_key` but differing `page_size` values.
 
@@ -178,14 +209,25 @@ You can also choose to receive pages in bigger or smaller increments by specifyi
 
 If you want to disable pagination for a request, simply include `paginate=false` on the query string.
 
-###### Pretty Printing 
+###### Pretty Printing
 
-If needed the json response from the server can be pretty printed
+If needed the json response from the server can be pretty printed.
 
-Include pretty printing inside the header
+Include pretty printing inside the header.
 
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" -H "X-Pretty-Print:true" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/
+```shell
+curl -v \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -H "X-Pretty-Print:true" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}/
+```
 
-If the client cannot use headers the options can be included inside the url
+If the client cannot use headers the options can be included inside the url.
 
-    curl -v -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}?pretty_print=true
+```shell
+curl -v \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://{SERVER_URL}:8000/v2/accounts/{ACCOUNT_ID}?pretty_print=true
+```

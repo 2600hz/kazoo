@@ -26,10 +26,10 @@ With multipart you can create an outgoing fax request and upload the document to
 ##### Execute the cURL request
 
 ```shell
-    curl -v -X PUT -i \
-        -H 'X-Auth-Token: {AUTH_TOKEN}' \
-        -H "Content-Type: multipart/mixed" \
-        -F "content=@{FILE.json}; type=application/json" \
-        -F "content=@{FILE.pdf}; type=application/pdf" \
-        http://{SERVER}/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
+curl -v -X PUT -i \
+    -H 'X-Auth-Token: {AUTH_TOKEN}' \
+    -H "Content-Type: multipart/mixed" \
+    -F "content=@{FILE.json}; type=application/json" \
+    -F "content=@{FILE.pdf}; type=application/pdf" \
+    http://{SERVER}/v2/accounts/{ACCOUNT_ID}/faxes/outgoing
 ```

@@ -54,10 +54,10 @@ curl -v -X PUT \
         "language": "en-US",
         "owner_id": "{OWNER_ID}",
         "reseller_id": "{RESELLER_ID}"
-    }
-    ,"request_id": "{REQUEST_ID}
-    ,"revision": "{REVISION}"
-    ,"status": "success"
+    },
+    "request_id": "{REQUEST_ID},
+    "revision": "{REVISION}",
+    "status": "success"
 }
 ```
 
