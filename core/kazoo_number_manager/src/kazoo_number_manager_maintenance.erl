@@ -90,7 +90,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
             ],
     {Classifications, Regexs} = lists:unzip(Pairs),
     MapView = number_services_map(Classifications, Regexs),
-    RedView = number_services_red(Classifications),
+    RedView = number_services_red(),
     ViewName = <<"_design/numbers">>,
     {ok, View} = kz_datamgr:open_doc(AccountDb, ViewName),
     NewView = kz_json:set_values([{[<<"views">>, <<"reconcile_services">>, <<"map">>], MapView}
@@ -230,30 +230,23 @@ escape(?NE_BINARY=Bin0) ->
     <<Start:StartSz/binary, Escaped:SizeOfWhatIWant/binary, End:EndSz/binary>> = Bin,
     Escaped.
 
-fields_zeros(Fields) ->
-    kz_util:iolist_join($,, [[$',Field,"':0"] || Field <- Fields]).
-
-array_items(Items) ->
-    kz_util:iolist_join($,, [[$',I,$'] || I <- Items]).
-
 number_services_map(Classifications, Regexs) ->
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
        "  var e164 = doc._id;"
-       "  var resCB = {", fields_zeros(Classifications), "};"
-       "  var resCnB = {", fields_zeros(Classifications), "};"
+       "  var resCB = {}, resCnB = {};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
        "  var is_billable = (true === doc.pvt_is_billable);" %% If undefined, defaults to false.
        "  if (false) return;"
       ,[["  else if (e164.match(", escape(R), ")) {"
          "    if (is_billable)"
-         "      resCB['", C, "'] = 1;"
+         "      resCB['", Class, "'] = 1;"
          "    else"
-         "      resCnB['", C, "'] = 1;"
+         "      resCnB['", Class, "'] = 1;"
          "  }"
         ]
-        || {C, R} <- lists:zip(Classifications, Regexs)
+        || {Class, R} <- lists:zip(Classifications, Regexs)
        ]
       ,"  var resF = {};"
        "  var used = doc.pvt_features || {};"
@@ -265,10 +258,9 @@ number_services_map(Classifications, Regexs) ->
        "}"
       ]).
 
-number_services_red(Classifications) ->
+number_services_red() ->
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
-
        "  var incr = function (o, k, v) {"
        "    if (o[k] === undefined)"
        "      o[k] = v;"
@@ -277,18 +269,20 @@ number_services_red(Classifications) ->
        "    return o;"
        "  };"
 
-       "  var resC = {'billable':     {", fields_zeros(Classifications), "}"
-       "             ,'non_billable': {", fields_zeros(Classifications), "}};"
+       "  var resCB = {}, resCnB = {};"
        "  var resF = {};"
        "  var resM = {};"
-       "  var keysC = [", array_items(Classifications), "];"
        "  for (var i in Values) {"
        "    var Value = Values[i];"
-       "    for (var k in keysC) {"
-       "      var key = keysC[k];"
-       "      resC['billable'][key] += Value['classifications']['billable'][key] || 0;"
-       "      resC['non_billable'][key] += Value['classifications']['non_billable'][key] || 0;"
-       "    }"
+
+       "    var CB = Value['classifications']['billable'] || {};"
+       "    var CnB = Value['classifications']['non_billable'] || {};"
+       "    for (var klass in CB)"
+       "      if (CB.hasOwnProperty(klass))"
+       "        resCB = incr(resCB, klass, CB[klass]);"
+       "    for (var klass in CnB)"
+       "      if (CnB.hasOwnProperty(klass))"
+       "        resCnB = incr(resCnB, klass, CnB[klass]);"
 
        "    var features = Value['features'] || {};"
        "    for (var feature in features)"
@@ -303,9 +297,8 @@ number_services_red(Classifications) ->
        "    } else {"
        "      resM = incr(resM, modules, 1);"
        "    }"
-
        "  }"
-       "  return {'classifications':resC, 'features':resF, 'modules':resM};"
+       "  return {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM};"
        "}"
       ]).
 
