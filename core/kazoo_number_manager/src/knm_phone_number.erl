@@ -772,11 +772,14 @@ set_module_name(N, Name=?NE_BINARY) ->
                               }
     end.
 
-%% Do not override is_billable when field is already set on doc.
 -spec set_module_name(knm_phone_number(), ne_binary(), api_boolean()) -> knm_phone_number().
+%% Some old docs have these as module name
+set_module_name(N, <<"undefined">>, IsBillable) ->
+    set_module_name(N, ?CARRIER_LOCAL, IsBillable);
 set_module_name(N0, Name, IsBillable)
   when is_boolean(IsBillable) ->
     N = set_module_name(N0, Name),
+    %% Do not override is_billable when field is already set on doc.
     case N#knm_phone_number.is_billable of
         IsBillable -> N;
         _ ->
