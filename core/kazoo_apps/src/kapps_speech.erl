@@ -108,9 +108,10 @@ create(<<"ispeech">> = Engine, Text, Voice, Format, Opts) ->
                     create_response(Engine, Response)
             end
     end;
-create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">> = _Format, Options) ->
+create(<<"voicefabric">> = Engine, Text, Voice, <<"wav">>, Options) ->
     create_voicefabric(Engine, Text, Voice, Options);
-create(_, _, _, _, _) ->
+create(_Engine, _, _, _Format, _) ->
+    lager:debug("unknown or misconfigured provider/format: ~p/~p", [_Engine, _Format]),
     {'error', 'unknown_provider'}.
 
 -spec create_voicefabric(ne_binary(), binary(), ne_binary(), kz_proplist()) ->
@@ -267,7 +268,8 @@ attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
             HTTPOptions = props:delete('receiver', Opts),
             kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
     end;
-attempt_asr_freeform(_, _, _, _, _) ->
+attempt_asr_freeform(_Engine, _, _, _, _) ->
+    lager:debug("unknown or misconfigured provider: ~p", [_Engine]),
     {'error', 'unknown_provider'}.
 
 %%------------------------------------------------------------------------------
@@ -331,7 +333,8 @@ asr_commands(<<"ispeech">>, Bin, Commands, ContentType, Locale, Opts) ->
             HTTPOptions = props:delete('receiver', Opts),
             kz_http:post(BaseUrl, Headers, Body, HTTPOptions)
     end;
-asr_commands(_, _, _, _, _, _) ->
+asr_commands(_Engine, _, _, _, _, _) ->
+    lager:debug("unknown or misconfigured provider: ~p", [_Engine]),
     {'error', 'unknown_provider'}.
 
 -spec create_response(ne_binary(), kz_http:ret()) ->
