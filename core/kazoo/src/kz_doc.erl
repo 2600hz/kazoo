@@ -387,7 +387,7 @@ set_id(JObj, Id) ->
 type(JObj) ->
     type(JObj, 'undefined').
 type(JObj, Default) ->
-    kz_json:get_value(?KEY_PVT_TYPE, JObj, Default).
+    kz_json:get_ne_binary_value(?KEY_PVT_TYPE, JObj, Default).
 
 -spec set_type(kz_json:object(), ne_binary()) -> kz_json:object().
 set_type(JObj, Type) ->

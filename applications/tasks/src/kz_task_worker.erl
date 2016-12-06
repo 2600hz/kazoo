@@ -25,7 +25,6 @@
 -define(IN, 'csv_in').
 -define(OUT(TaskId), <<"/tmp/task_out.", (TaskId)/binary, ".csv">>).
 
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -58,26 +57,34 @@ init(TaskId, API, ExtraArgs) ->
     case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
         {'error', _R}=Error ->
             lager:error("failed loading attachment ~s from ~s/~s: ~p"
-                       ,[?KZ_TASKS_ANAME_IN, ?KZ_TASKS_DB, TaskId, _R]),
+                       ,[?KZ_TASKS_ANAME_IN, ?KZ_TASKS_DB, TaskId, _R]
+                       ),
             Error;
         {'ok', CSV} ->
-            {Header, CSVRest} = kz_csv:take_row(CSV),
-            case write_output_csv_header(TaskId, API, Header) of
-                {'error', _R}=Error ->
-                    lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
-                    Error;
-                'ok' ->
-                    Verifier = build_verifier(API),
-                    Fields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
-                    FAssoc = kz_csv:associator(Header, Fields, Verifier),
-                    State = #state{task_id = TaskId
-                                  ,api = API
-                                  ,fassoc = FAssoc
-                                  ,extra_args = ExtraArgs
-                                  },
-                    _ = put(?IN, CSVRest),
-                    {'ok', State}
-            end
+            init_from_csv(TaskId, API, ExtraArgs, CSV)
+    end.
+
+-spec init_from_csv(kz_tasks:id(), kz_json:object(), map(), binary()) ->
+                           {'ok', state()} |
+                           {'error', any()}.
+init_from_csv(TaskId, API, ExtraArgs, CSV) ->
+    {CSVHeader, CSVRest} = kz_csv:take_row(CSV),
+    case write_output_csv_header(TaskId, API, CSVHeader) of
+        {'error', _R}=Error ->
+            lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
+            Error;
+        'ok' ->
+            Verifier = build_verifier(API),
+            TaskFields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
+
+            FAssoc = kz_csv:associator(CSVHeader, TaskFields, Verifier),
+            State = #state{task_id = TaskId
+                          ,api = API
+                          ,fassoc = FAssoc
+                          ,extra_args = ExtraArgs
+                          },
+            _ = put(?IN, CSVRest),
+            {'ok', State}
     end.
 
 %% @private

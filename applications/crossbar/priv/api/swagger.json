@@ -6366,7 +6366,7 @@
             "properties": {
                 "account_id": {
                     "description": "Reseller's account ID",
-                    "requred": false,
+                    "required": false,
                     "type": "string"
                 },
                 "carrier": {
@@ -6456,8 +6456,8 @@
                     "required": false,
                     "type": "string"
                 },
-                "ratedeck_name": {
-                    "description": "Ratedeck name",
+                "ratedeck_id": {
+                    "description": "ID of the ratedeck this rate belongs to",
                     "required": false,
                     "type": "string"
                 },
@@ -6913,12 +6913,130 @@
             "required": true,
             "type": "object"
         },
+        "service_plan": {
+            "description": "Describes a service plan",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "service_plan.category",
+                    "description": "Category name",
+                    "type": "object"
+                }
+            }
+        },
+        "service_plan.category": {
+            "description": "Describes a service plan category",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "service_plan.item",
+                    "description": "Item name",
+                    "type": "object"
+                }
+            },
+            "properties": {
+                "_all": {
+                    "$ref": "service_plan.item",
+                    "description": "Applies item rules to any item in this category",
+                    "properties": {
+                        "exceptions": {
+                            "description": "Items that are not included in this item plan",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                }
+            }
+        },
+        "service_plan.item": {
+            "description": "Describes a service plan item",
+            "properties": {
+                "activation_charge": {
+                    "description": "What to charge when activating an Item",
+                    "type": "float"
+                },
+                "as": {
+                    "description": "Count Item as if it was another Item",
+                    "type": "string"
+                },
+                "cascade": {
+                    "description": "Whether to count quantities among all sub-accounts or just the account",
+                    "type": "boolean"
+                },
+                "cumulative_discount": {
+                    "description": "Whether to give a discount based on quatities of the account and all sub-accounts",
+                    "type": "boolean"
+                },
+                "cumulative_discount_rate": {
+                    "description": "How much of a discount to apply",
+                    "type": "float"
+                },
+                "discounts": {
+                    "properties": {
+                        "cumulative": {
+                            "properties": {
+                                "maximum": {
+                                    "description": "The most number of Items to apply discount to",
+                                    "type": "integer"
+                                },
+                                "rate": {
+                                    "description": "The discount to apply, up to maximum Items (if applicable)",
+                                    "type": "float"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
+                "minimum": {
+                    "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Friendly name for this Item",
+                    "type": "string"
+                },
+                "quantity": {
+                    "description": "How many of the item are allowed",
+                    "type": "integer"
+                },
+                "rate": {
+                    "description": "How much is the item billed, per-item",
+                    "type": "float"
+                },
+                "rates": {
+                    "description": "Tiers of rates based on quantities",
+                    "patternProperties": {
+                        "^[0-9]+$": {
+                            "description": "The rate to charge when under the quantity indicated in the key",
+                            "type": "float"
+                        }
+                    },
+                    "type": "object"
+                },
+                "single_discount": {
+                    "description": "Whether to give a discount to the account",
+                    "type": "boolean"
+                },
+                "single_discount_rate": {
+                    "description": "How much of a discount to apply, per-item",
+                    "type": "float"
+                }
+            },
+            "type": "object"
+        },
         "service_plans": {
             "description": "Describes services offered to sub-accounts",
             "properties": {
                 "bookkeepers": {
                     "$ref": "bookkeepers",
                     "type": "object"
+                },
+                "category": {
+                    "description": "Optional category used for grouping service plans",
+                    "type": "string"
                 },
                 "description": {
                     "description": "Describes the service plan offering",
@@ -6934,6 +7052,12 @@
                 },
                 "plan": {
                     "description": "Outlines the service plan for various services",
+                    "patternProperties": {
+                        "^[0-9a-zA-Z_]+$": {
+                            "$ref": "service_plan",
+                            "type": "object"
+                        }
+                    },
                     "required": true,
                     "type": "object"
                 }
@@ -9589,6 +9713,11 @@
                     "description": "default surcharge amount for rate",
                     "type": "number"
                 },
+                "default_ratedeck": {
+                    "default": "ratedeck",
+                    "description": "default ratedeck database to use",
+                    "type": "string"
+                },
                 "filter_list": {
                     "default": [
                         "direction",
@@ -9599,7 +9728,7 @@
                     "type": "array"
                 },
                 "rate_version": {
-                    "description": "If defined, use rates with this varsion",
+                    "description": "If defined, use rates with this version",
                     "type": "string"
                 },
                 "sort_by_weight": {

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz, INC
+%%% @copyright (C) 2012-2017, 2600Hz, INC
 %%% @doc
 %%%
 %%% @end
@@ -25,7 +25,7 @@
 -spec reconcile(kz_services:services(), api_binary()) -> kz_services:services().
 reconcile(Services) ->
     PlanJObj = kz_services:service_plan_json(Services),
-    %% TODO: resolve conflict when there is more then one ratedeck_name
+    %% TODO: resolve conflict when there is more than one ratedeck_name
     case kz_json:get_keys(kz_json:get_json_value([<<"plan">>, ?SERVICE_CATEGORY], PlanJObj, kz_json:new())) of
         [] -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
         [RatedeckName] -> kz_services:update(?SERVICE_CATEGORY, RatedeckName, 1, Services);
@@ -36,8 +36,10 @@ reconcile(Services) ->
             Services
     end.
 
-reconcile(Services, 'undefined') -> kz_services:reset_category(?SERVICE_CATEGORY, Services);
-reconcile(Services, RatedeckName) -> kz_services:update(?SERVICE_CATEGORY, RatedeckName, 1, Services).
+reconcile(Services, 'undefined') ->
+    kz_services:reset_category(?SERVICE_CATEGORY, Services);
+reconcile(Services, RatedeckName) ->
+    kz_services:update(?SERVICE_CATEGORY, RatedeckName, 1, Services).
 
 -spec get_ratedeck_name(api_binary() | kz_services:services()) -> api_binary().
 get_ratedeck_name('undefined') -> 'undefined';

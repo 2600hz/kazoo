@@ -34,8 +34,9 @@
                ,auth_account_id :: api_binary()
                ,bulk_limit = 500 :: non_neg_integer()
                ,processed_rows = 0 :: non_neg_integer()
-               ,acc = [] :: api_list()
+               ,acc = [] :: ne_binaries() | kz_json:objects()
                }).
+-type state() :: #state{}.
 
 %%%===================================================================
 %%% API
@@ -91,8 +92,9 @@ account_id(_) -> 'false'.
 
 %%% Appliers
 
--spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-import(#{auth_account_id := AuthBy}=ExtraArgs, init, Args) ->
+-spec import(kz_tasks:extra_args(), kz_tasks:iterator() | state(), kz_tasks:args()) ->
+                    {kz_tasks:return(), state()} | 'stop'.
+import(#{auth_account_id := AuthBy}=ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
                   ,auth_account_id = AuthBy
@@ -115,22 +117,21 @@ import(_ExtraArgs
       ) ->
     Doc = generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Stop),
     Acc = case (ProcessedRows + 1) rem Limit =:= 0 of
-              false -> [Doc | Docs];
-              true ->
+              'false' -> [Doc | Docs];
+              'true' ->
                   do_insert(Db, [Doc | Docs]),
                   []
           end,
     {[], State#state{acc=Acc, processed_rows=ProcessedRows+1}};
 import(_ExtraArgs, State, _Args) ->
     lager:error("wrong state: ~p", [State]),
-    stop.
+    'stop'.
 
--spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-delete(ExtraArgs, init, Args) ->
+-spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
+                    {kz_tasks:return(), state()} | 'stop'.
+delete(ExtraArgs, 'init', Args) ->
     kz_datamgr:suppress_change_notice(),
-    State = #state{db = get_selectors_db(ExtraArgs)
-                   %% ,bulk_limit = kz_datamgr:max_bulk_insert()
-                  },
+    State = #state{db = get_selectors_db(ExtraArgs)},
     delete(ExtraArgs, State, Args);
 delete(_ExtraArgs
       ,#state{bulk_limit = Limit
@@ -145,8 +146,8 @@ delete(_ExtraArgs
       ) ->
     Key = [Resource, Name, Selector],
     Acc = case (ProcessedRows + 1) rem Limit =:= 0 of
-              false -> [Key | Keys];
-              true ->
+              'false' -> [Key | Keys];
+              'true' ->
                   do_delete(Db, [Key | Keys]),
                   []
           end,
@@ -156,7 +157,7 @@ delete(_ExtraArgs
     {[], NewState};
 delete(_ExtraArgs, State, _Args) ->
     lager:error("wrong state: ~p", [State]),
-    stop.
+    'stop'.
 
 -spec cleanup(ne_binary(), any()) -> any().
 cleanup(<<"import">>, #state{db=Db, acc=Docs}) ->
@@ -181,8 +182,8 @@ do_insert(Db, Docs) ->
         {'error', E} -> lager:error("error adding selectors: ~p",[E])
     end.
 
--spec do_delete(api_binary(), api_list()) -> ok.
-do_delete(_Db, []) -> ok;
+-spec do_delete(api_binary(), api_list()) -> 'ok'.
+do_delete(_Db, []) -> 'ok';
 do_delete(Db, DelKeys) ->
     BulkLimit = kz_datamgr:max_bulk_insert(),
     DelKeysBlocks = split_keys(DelKeys, BulkLimit),
@@ -237,6 +238,10 @@ refresh_selectors_index(Db) ->
     {'ok', _} = kz_datamgr:get_results(Db, <<"resource_selectors/resource_name_selector_listing">>, [{'limit', 1}]),
     'ok'.
 
+-spec generate_selector_doc(ne_binary(), api_binary(), api_binary(), api_binary()
+                           ,api_binary(), api_binary(), api_binary()
+                           ) ->
+                                   kz_json:object().
 generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Stop) ->
     Props = [{<<"pvt_type">>, <<"resource_selector">>}
             ,{<<"name">>, Name}
@@ -250,6 +255,7 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 
+-spec init_db(ne_binary()) -> 'ok'.
 init_db(Db) when is_binary(Db) ->
     _ = kz_datamgr:db_create(Db),
     {'ok', _} = kz_datamgr:revise_doc_from_file(Db, 'crossbar', "views/resource_selectors.json"),

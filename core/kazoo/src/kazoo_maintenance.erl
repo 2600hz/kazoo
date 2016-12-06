@@ -101,7 +101,7 @@ etop() ->
 -spec ets_info() -> 'ok'.
 ets_info() ->
     io:format("ETS table memory usage:~n"),
-    [print_table(T) || T <- sort_tables(ets:all())],
+    _ = [print_table(T) || T <- sort_tables(ets:all())],
     'ok'.
 
 -spec sort_tables([ets:tid()]) -> [{ets:tid(), integer()}].
@@ -119,7 +119,7 @@ table_size(T) ->
 words_to_bytes(Words) ->
     Words * erlang:system_info('wordsize').
 
--spec print_table({ets:tid(), integer()}) -> 'ok'.
+-spec print_table({ets:tab(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->
     io:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
 

@@ -66,21 +66,21 @@ curl -v -X DELETE \
 
 #### Fetch
 
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
-
-```shell
-curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
-```
-
-#### Fetch
-
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
 
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
+```
+
+#### Fetch
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 ```
 

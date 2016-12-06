@@ -33,6 +33,11 @@
             "description": "default surcharge amount for rate",
             "type": "number"
         },
+        "default_ratedeck": {
+            "default": "ratedeck",
+            "description": "default ratedeck database to use",
+            "type": "string"
+        },
         "filter_list": {
             "default": [
                 "direction",
@@ -43,7 +48,7 @@
             "type": "array"
         },
         "rate_version": {
-            "description": "If defined, use rates with this varsion",
+            "description": "If defined, use rates with this version",
             "type": "string"
         },
         "sort_by_weight": {

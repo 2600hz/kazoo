@@ -2,6 +2,20 @@
 
 #### About Rates
 
+System operators can create multiple ratedecks and assign those ratedecks to their accounts or sub-accounts via service plans.
+
+If no ratedeck has been assigned, the system ratedeck will be used (backwards-compatible operation).
+
+Flow is:
+
+1. System admin creates a ratedeck CSV and uploads it using the `tasks` API endpoint.
+  a. Optionally assign a `ratedeck_name` to each row to add rates to different ratedeck databases
+2. Create a [service plan](./service_plans.md) for ratedecks
+  a. Add the service plan to account(s)
+3. When {ACCOUNT_ID} has a rate-able call, hotornot will lookup what ratedeck database to use
+  a. If using the trie, hotornot will find the PID with that ratedeck's trie and query it
+  b. Otherwise, use the view of the ratedeck database to query for rates
+
 #### Schema
 
 Defines a rate for a given prefix
@@ -25,12 +39,10 @@ Key | Description | Type | Default | Required
 `rate_nocharge_time` | If the call duration is shorter than this threshold (seconds), the call is not billed | `integer` |   | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` |   | `false`
 `rate_version` | Rate version | `string` |   | `false`
-`ratedeck_name` | Ratedeck name | `string` |   | `false`
+`ratedeck_id` | ID of the ratedeck this rate belongs to | `string` |   | `false`
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
-`ratedeck` | Virtual ratedeck ID | `string` |   | `false`
-`account_id` | Reseller's account ID | `string` |   | `false`
 
 
 

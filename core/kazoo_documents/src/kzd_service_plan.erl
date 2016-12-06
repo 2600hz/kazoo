@@ -29,6 +29,7 @@
         ,items/2, item/3
 
         ,bookkeepers/1, bookkeeper/2, bookkeeper_ids/1
+        ,grouping_category/1, grouping_category/2
 
         ,all_items_key/0
         ]).
@@ -77,14 +78,11 @@ merge_overrides(Plan, Overrides) ->
 item_activation_charge(Plan, Category, Item) ->
     item_activation_charge(Plan, Category, Item, 0).
 item_activation_charge(Plan, Category, Item, Default) ->
-    kzd_item_plan:activation_charge(
-      kz_json:get_json_value(
-        [?PLAN, Category, Item]
-                            ,Plan
-                            ,kz_json:new()
-       )
-                                   ,Default
-     ).
+    ItemConfig = kz_json:get_json_value([?PLAN, Category, Item]
+                                       ,Plan
+                                       ,kz_json:new()
+                                       ),
+    kzd_item_plan:activation_charge(ItemConfig, Default).
 
 -spec category_activation_charge(doc(), ne_binary()) -> float().
 -spec category_activation_charge(doc(), ne_binary(), Default) -> float() | Default.
@@ -184,3 +182,10 @@ plan(Plan, Default) ->
 -spec set_plan(doc(), kz_json:object()) -> doc().
 set_plan(Plan, P) ->
     kz_json:set_value(?PLAN, P, Plan).
+
+-spec grouping_category(doc()) -> api_ne_binary().
+-spec grouping_category(doc(), Default) -> ne_binary() | Default.
+grouping_category(ServicePlan) ->
+    grouping_category(ServicePlan, 'undefined').
+grouping_category(ServicePlan, Default) ->
+    kz_json:get_ne_binary_value(<<"category">>, ServicePlan, Default).

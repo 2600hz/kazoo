@@ -229,8 +229,13 @@ format_error({'ok', 500, _Headers, Body}) ->
     end;
 format_error({'bad_response',{500, _Headers, Body}}) ->
     kz_json:get_first_defined([<<"reason">>, <<"error">>], kz_json:decode(Body), 'unknown_error');
-format_error({'bad_response',{Code, _Headers, _Body}}) ->
-    io_lib:format("response code ~b not expected", [Code]);
+format_error({'bad_response',{Code, _Headers, Body}}) ->
+    try kz_json:decode(Body) of
+        BodyJObj -> iolist_to_binary([integer_to_list(Code), ": ", kz_json:get_value(<<"error">>, BodyJObj)])
+    catch
+        _:_ ->
+            io_lib:format("response code ~b not expected", [Code])
+    end;
 format_error('timeout') -> 'timeout';
 format_error('conflict') -> 'conflict';
 format_error('not_found') -> 'not_found';

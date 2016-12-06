@@ -25,7 +25,7 @@ Key | Description | Type | Default | Required
 `rate_nocharge_time` | If the call duration is shorter than this threshold (seconds), the call is not billed | `integer` |   | `false`
 `rate_surcharge` | The upfront cost of connecting the call | `number` |   | `false`
 `rate_version` | Rate version | `string` |   | `false`
-`ratedeck_name` | Ratedeck name | `string` |   | `false`
+`ratedeck_id` | ID of the ratedeck this rate belongs to | `string` |   | `false`
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
@@ -112,3 +112,4 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/rates/number/{PHONE_NUMBER}
 ```
+

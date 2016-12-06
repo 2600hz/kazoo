@@ -12,7 +12,9 @@
 -export([tasks/0, tasks/1]).
 -export([add/5, add/4]).
 -export([task/1, task_input/1, task_output/1]).
--export([start/1]).
+-export([start/1
+        ,restart/1
+        ]).
 -export([remove/1]).
 
 -export([start_cleanup_pass/0
@@ -104,6 +106,13 @@ task_output(TaskId) ->
 -spec start(text()) -> 'no_return'.
 start(TaskId) ->
     case kz_tasks_scheduler:start(TaskId) of
+        {'ok', StartedTask} -> print_json(StartedTask);
+        {'error', Reason} -> print_error(Reason)
+    end.
+
+-spec restart(text()) -> 'no_return'.
+restart(TaskId) ->
+    case kz_tasks_scheduler:restart(TaskId) of
         {'ok', StartedTask} -> print_json(StartedTask);
         {'error', Reason} -> print_error(Reason)
     end.

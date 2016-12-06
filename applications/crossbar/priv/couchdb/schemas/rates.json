@@ -5,7 +5,7 @@
     "properties": {
         "account_id": {
             "description": "Reseller's account ID",
-            "requred": false,
+            "required": false,
             "type": "string"
         },
         "carrier": {
@@ -95,8 +95,8 @@
             "required": false,
             "type": "string"
         },
-        "ratedeck_name": {
-            "description": "Ratedeck name",
+        "ratedeck_id": {
+            "description": "ID of the ratedeck this rate belongs to",
             "required": false,
             "type": "string"
         },

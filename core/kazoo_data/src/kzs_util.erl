@@ -13,6 +13,7 @@
         ]).
 
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include_lib("kazoo_documents/include/kzd_ratedeck.hrl").
 -include("kz_data.hrl").
 
 %%------------------------------------------------------------------------------
@@ -25,13 +26,17 @@ db_classification(Db) when not is_binary(Db) ->
     db_classification(kz_term:to_binary(Db));
 db_classification(<<"_users">>) -> 'external';
 db_classification(<<"_replicator">>) -> 'external';
+db_classification(<<"_global_changes">>) -> 'external';
 db_classification(<<"ts">>) -> 'deprecated';
 db_classification(<<"crossbar_schemas">>) -> 'deprecated';
 db_classification(<<"registrations">>) -> 'deprecated';
 db_classification(<<"crossbar%2Fsessions">>) -> 'deprecated';
 db_classification(<<"sms">>) -> 'deprecated';
 db_classification(<<"signups">>) -> 'system'; %% Soon to be deprecated
-db_classification(?KZ_RATES_DB) -> 'system';
+db_classification(?KZ_RATES_DB) -> 'ratedeck';
+db_classification(?MATCH_RATEDECK_DB_ENCODED(_)) -> 'ratedeck';
+db_classification(?MATCH_RATEDECK_DB_encoded(_)) -> 'ratedeck';
+db_classification(?MATCH_RATEDECK_DB_UNENCODED(_)) -> 'ratedeck';
 db_classification(?KZ_ALERTS_DB) -> 'system';
 db_classification(?KZ_OFFNET_DB) -> 'system';
 db_classification(?KZ_ANONYMOUS_CDR_DB) -> 'system';

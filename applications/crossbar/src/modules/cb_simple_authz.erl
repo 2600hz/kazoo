@@ -36,10 +36,10 @@
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
-    ok.
+    'ok'.
 
 -spec authorize(cb_context:context()) -> boolean().
 authorize(Context) ->

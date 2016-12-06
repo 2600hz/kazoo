@@ -184,11 +184,14 @@ validate_service_plan(Context, PlanId, ?HTTP_DELETE) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 
 post(Context) ->
-    Routines = [fun(S) -> add_plans(Context, S) end
-               ,fun(S) -> delete_plans(Context, S) end
+    Routines = [fun(Services) -> add_plans(Context, Services) end
+               ,fun(Services) -> delete_plans(Context, Services) end
                ,fun kz_services:save/1
                ],
-    Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
+    Services = lists:foldl(fun apply_fun/2
+                          ,kz_services:fetch(cb_context:account_id(Context))
+                          ,Routines
+                          ),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
                        ,{fun cb_context:set_resp_status/2, 'success'}
@@ -259,7 +262,10 @@ delete(Context, PlanId) ->
     Routines = [fun(S) -> kz_services:delete_service_plan(PlanId, S) end
                ,fun kz_services:save/1
                ],
-    Services = lists:foldl(fun apply_fun/2, kz_services:fetch(cb_context:account_id(Context)), Routines),
+    Services = lists:foldl(fun apply_fun/2
+                          ,kz_services:fetch(cb_context:account_id(Context))
+                          ,Routines
+                          ),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, kz_services:service_plan_json(Services)}
                        ,{fun cb_context:set_resp_status/2, 'success'}
@@ -272,11 +278,10 @@ delete(Context, PlanId) ->
 -spec add_plans(cb_context:context(), kz_services:services()) -> kz_services:services().
 add_plans(Context, Services) ->
     ReqData = cb_context:req_data(Context),
-    lists:foldl(
-      fun kz_services:add_service_plan/2
+    lists:foldl(fun kz_services:add_service_plan/2
                ,Services
                ,kz_json:get_value(<<"add">>, ReqData, [])
-     ).
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -286,11 +291,10 @@ add_plans(Context, Services) ->
 -spec delete_plans(cb_context:context(), kz_services:services()) -> kz_services:services().
 delete_plans(Context, Services) ->
     ReqData = cb_context:req_data(Context),
-    lists:foldl(
-      fun kz_services:delete_service_plan/2
+    lists:foldl(fun kz_services:delete_service_plan/2
                ,Services
                ,kz_json:get_value(<<"delete">>, ReqData, [])
-     ).
+               ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -350,6 +354,7 @@ normalize_view_results(JObj, Acc) ->
 is_allowed(Context) ->
     ResellerId = kz_services:find_reseller_id(cb_context:account_id(Context)),
     AuthAccountId = cb_context:auth_account_id(Context),
+
     (AuthAccountId =:= ResellerId
      orelse kz_util:is_system_admin(AuthAccountId)
     )
@@ -392,18 +397,19 @@ check_plan_ids(Context, ResellerId) ->
     AddPlanIds = kz_json:get_value(<<"add">>, ReqData, []),
     check_plan_ids(maybe_forbid_delete(Context), ResellerId, AddPlanIds).
 
+check_plan_ids(Context, _ResellerId, []) ->
+    Context;
 check_plan_ids(Context, ResellerId, PlanIds) ->
-    lists:foldl(
-      fun(PlanId, Ctxt) ->
-              case cb_context:resp_status(Ctxt) of
-                  'success' ->
-                      check_plan_id(Ctxt, PlanId, ResellerId);
-                  _Status -> Ctxt
-              end
-      end
+    lists:foldl(fun(PlanId, Ctxt) ->
+                        case cb_context:resp_status(Ctxt) of
+                            'success' ->
+                                check_plan_id(Ctxt, PlanId, ResellerId);
+                            _Status -> Ctxt
+                        end
+                end
                ,cb_context:set_resp_status(Context, 'success')
                ,PlanIds
-     ).
+               ).
 
 
 %%--------------------------------------------------------------------

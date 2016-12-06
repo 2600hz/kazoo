@@ -27,9 +27,11 @@
 -define(SERVER, ?MODULE).
 
 -define(BINDINGS, [{'rate', []}]).
--define(TRIE_BINDINGS, [{'conf', [{'db', ?KZ_RATES_DB}
-                                 ,{'action', <<"db_edited">>}
-                                 ]}]).
+-define(TRIE_BINDINGS, [{'conf', [{'db', <<"*">>}
+                                 ,{'action', <<"*">>}
+                                 ]
+                        }
+                       ]).
 -define(RESPONDERS, [{'hon_rater', [{<<"rate">>, <<"req">>}]}]).
 -define(TRIE_RESPONDERS, [{{'hon_trie', 'handle_db_update'}
                           ,[{<<"configuration">>, <<"*">>}]
@@ -47,7 +49,7 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    case hon_util:use_trie() of
+    case hotornot_config:should_use_trie() of
         'false' ->
             Bindings = ?BINDINGS,
             Responders = ?RESPONDERS;

@@ -1,16 +1,17 @@
-# Hot or Not *Call rating*
+# Hot or Not: *Call rating*
 
 This application serves `rate_req` AMQP requests.
 
 Rates are stored in a system-wide "ratedeck" database.
 
-Each rate is separate document:
-```JSON
+Each rate is a separate document:
+
+```json
 {
     "_id": "f36cac061205f7a0f7fde6b4d3370bf9",
     "_rev": "1-1b67fb507c69c35200178a9b1e0e6cfc",
     "routes": [
-        "^\\+?1.+$"
+        "^\\+1[0-9]+$"
     ],
     "weight": "1",
     "rate_name": "outbound_US_1",
@@ -54,6 +55,14 @@ Rate lookups, by default, will use the CouchDB view `rates/lookup` and a list of
 Starting the 'hon_trie' process will result in increased memory usage (~115 bytes per prefix in the database) on the VMs running hotornot. It would be advisable, if you have large ratedecks, to run a VM with just hotornot running to ensure memory is allocated properly.
 
 To enable the trie, update the `system_config`: `sup kapps_config set_default hotornot use_trie true` and restart any VMs running hotornot: `sup kapps_controller restart_app hotornot`
+
+### Enabling the Trie
+
+Enable the trie by setting `use_trie` to `true` in the `system_config/hotornot` document:
+
+```shell
+sup kapps_config set_boolean hotornot use_trie true
+```
 
 ## Filters
 

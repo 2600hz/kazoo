@@ -6,12 +6,16 @@
 %%% @contributors
 %%%   James Aimonetti
 %%%-------------------------------------------------------------------
--module(hotornot_sup).
+-module(hon_tries_sup).
 
 -behaviour(supervisor).
 
 %% API
--export([start_link/0, upgrade/0]).
+-export([start_link/0
+        ,start_trie/1, restart_trie/1
+        ,stop_trie/1
+        ,upgrade/0
+        ]).
 
 %% Supervisor callbacks
 -export([init/1]).
@@ -20,8 +24,8 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, [?CACHE(?CACHE_NAME)
-                  ,?WORKER('hotornot_listener')
+-define(CHILDREN, [?WORKER_NAME_ARGS('hon_trie', Ratedeck, [Ratedeck])
+                   || Ratedeck <- hotornot_config:ratedecks()
                   ]).
 
 %% ===================================================================
@@ -31,6 +35,29 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
+
+-spec start_trie(ne_binary()) -> startlink_ret().
+start_trie(Ratedeck) ->
+    RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
+    supervisor:start_child(?SERVER, ?WORKER_NAME_ARGS('hon_trie', RatedeckDb, [RatedeckDb])).
+
+-spec restart_trie(ne_binary()) -> startlink_ret().
+restart_trie(Ratedeck) ->
+    RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
+    supervisor:restart_child(?SERVER, RatedeckDb).
+
+-spec stop_trie(server_ref()) -> 'ok' | {'error', any()}.
+stop_trie(Pid) when is_pid(Pid) ->
+    case [Id || {Id, P, _, _} <- supervisor:which_children(?SERVER),
+                Pid =:= P
+         ]
+    of
+        [Id] -> supervisor:terminate_child(?SERVER, Id);
+        [] -> 'ok'
+    end;
+stop_trie('undefined') -> 'ok';
+stop_trie(Name) -> stop_trie(whereis(Name)).
+
 
 %% @doc
 %% Add processes if necessary.
@@ -62,11 +89,4 @@ init([]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    {'ok', {SupFlags, maybe_start_trie(?CHILDREN)}}.
-
--spec maybe_start_trie(list()) -> list().
-maybe_start_trie(Children) ->
-    case hotornot_config:should_use_trie() of
-        'false' -> Children;
-        'true' -> [?WORKER('hon_tries_sup') | Children]
-    end.
+    {'ok', {SupFlags, ?CHILDREN}}.

@@ -1264,10 +1264,10 @@ extract_included_docs(Context, JObjs) ->
 
 extract_included_docs_fold(JObj, {Docs, Context}) ->
     case kz_json:get_ne_value(<<"doc">>, JObj) of
-        undefined ->
+        'undefined' ->
             Reason = kz_json:get_ne_value(<<"error">>, JObj),
             ID = kz_json:get_ne_value(<<"key">>, JObj),
-            {Docs, handle_datamgr_errors(kz_term:to_atom(Reason,true), ID, Context)};
+            {Docs, handle_datamgr_errors(kz_term:to_atom(Reason, 'true'), ID, Context)};
         Doc ->
             {[Doc|Docs], Context}
     end.

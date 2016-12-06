@@ -253,8 +253,6 @@ load_audit_logs(Context) ->
 normalize_audit_logs(JObj, Acc) ->
     [kz_json:get_value(<<"doc">>, JObj) || Acc].
 
-
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -335,10 +333,8 @@ create_status_payload(Context) ->
 create_status_payload('true', _JObj) ->
     kz_json:from_list([{<<"in_good_standing">>, 'true'}]);
 create_status_payload('false', JObj) ->
-    kz_json:from_list(
-      props:filter_undefined([
-                              {<<"in_good_standing">>, 'false'}
-                             ,{<<"reason">>, kzd_services:reason(JObj)}
-                             ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
-                             ])
-     ).
+    kz_json:from_list(props:filter_undefined([{<<"in_good_standing">>, 'false'}
+                                             ,{<<"reason">>, kzd_services:reason(JObj)}
+                                             ,{<<"reason_code">>, kzd_services:reason_code(JObj)}
+                                             ])
+                     ).

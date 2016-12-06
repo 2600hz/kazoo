@@ -7,6 +7,10 @@
             "$ref": "bookkeepers",
             "type": "object"
         },
+        "category": {
+            "description": "Optional category used for grouping service plans",
+            "type": "string"
+        },
         "description": {
             "description": "Describes the service plan offering",
             "required": false,
@@ -21,6 +25,12 @@
         },
         "plan": {
             "description": "Outlines the service plan for various services",
+            "patternProperties": {
+                "^[0-9a-zA-Z_]+$": {
+                    "$ref": "service_plan",
+                    "type": "object"
+                }
+            },
             "required": true,
             "type": "object"
         }

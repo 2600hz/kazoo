@@ -1,0 +1,80 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "service_plan.item",
+    "description": "Describes a service plan item",
+    "properties": {
+        "activation_charge": {
+            "description": "What to charge when activating an Item",
+            "type": "float"
+        },
+        "as": {
+            "description": "Count Item as if it was another Item",
+            "type": "string"
+        },
+        "cascade": {
+            "description": "Whether to count quantities among all sub-accounts or just the account",
+            "type": "boolean"
+        },
+        "cumulative_discount": {
+            "description": "Whether to give a discount based on quatities of the account and all sub-accounts",
+            "type": "boolean"
+        },
+        "cumulative_discount_rate": {
+            "description": "How much of a discount to apply",
+            "type": "float"
+        },
+        "discounts": {
+            "properties": {
+                "cumulative": {
+                    "properties": {
+                        "maximum": {
+                            "description": "The most number of Items to apply discount to",
+                            "type": "integer"
+                        },
+                        "rate": {
+                            "description": "The discount to apply, up to maximum Items (if applicable)",
+                            "type": "float"
+                        }
+                    },
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "minimum": {
+            "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
+            "type": "integer"
+        },
+        "name": {
+            "description": "Friendly name for this Item",
+            "type": "string"
+        },
+        "quantity": {
+            "description": "How many of the item are allowed",
+            "type": "integer"
+        },
+        "rate": {
+            "description": "How much is the item billed, per-item",
+            "type": "float"
+        },
+        "rates": {
+            "description": "Tiers of rates based on quantities",
+            "patternProperties": {
+                "^[0-9]+$": {
+                    "description": "The rate to charge when under the quantity indicated in the key",
+                    "type": "float"
+                }
+            },
+            "type": "object"
+        },
+        "single_discount": {
+            "description": "Whether to give a discount to the account",
+            "type": "boolean"
+        },
+        "single_discount_rate": {
+            "description": "How much of a discount to apply, per-item",
+            "type": "float"
+        }
+    },
+    "type": "object"
+}

@@ -132,6 +132,9 @@ pages:
     - 'DNS Settings': 'applications/fax/doc/dns.md'
     - 'Google Cloud Printer': 'applications/fax/doc/gcp.md'
     - 'Internet Fax for Office 2010': 'applications/fax/doc/user.md'
+  - 'HotOrNot':
+      - 'applications/hotornot/doc/README.md'
+      - 'Managing Multiple Ratedecks': 'doc/blog/understanding_rates.md'
   - 'Stepswitch':
     - 'applications/stepswitch/doc/README.md'
     - 'applications/stepswitch/doc/resource_selectors.md'

@@ -1,25 +1,22 @@
+# Ratedecks
 
-# Ratedeck name
+This service plan allows you to assign a ratedeck to an account.
 
-This service plan item allows you to assign some ratedeck name to account. This name will be used by HotOrNot application to select appropriate rate.
+At this time, there are no key/value pairs in the ratedeck item object.
 
-This item is similar to other service plan items, with one exceptions - quantity of this item will always be equal 1.
+## Example service plan
 
-Example service plan:
-```JSON
+```json
 {
-    "pvt_type": "service_plan",
-    "name": "Ratedeck 1",
-    "description": "Service plan with ratedeck",
-    "plan": {
-        "ratedeck_name": {
-            "ratedeck_id_1": {
-                "name": "Ratedeck 1"
+    "_id":"plan_bulk_ratedeck",
+    "pvt_type":"service_plan",
+    "name":"Bulk Ratedeck Service Plan",
+    "plans":{
+        "ratedeck":{
+            "bulk":{
             }
         }
     }
 }
 ```
-
-**Note: each account should have only one service plan with only one `ratedeck_name` item in it**.
-When you will try add another service plan with `ratedeck_name` item, on reconcilation there will be generated system alert notification (and error message in log) about this situation. `ratedeck_name` item will stay unchanged until you remove one of conflicting service plans.
+In this case the "item" is "bulk" which would correspond to a ratedeck uploaded using "bulk" as the "ratedeck_id".

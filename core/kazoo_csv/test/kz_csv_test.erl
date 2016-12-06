@@ -4,16 +4,15 @@
 %%% @end
 %%% @contributors
 %%%   Pierre Fenoll
+%%%   James Aimonetti
 %%%-------------------------------------------------------------------
 -module(kz_csv_test).
 
--include_lib("kazoo_csv/include/kazoo_csv.hrl").
--include_lib("kazoo/include/kz_types.hrl").
-
 -include_lib("eunit/include/eunit.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
 -define(FIELDS, [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>]).
-
 
 verify_bin1(Cell)
   when 1 =:= byte_size(Cell) -> true;
@@ -27,7 +26,7 @@ associator_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verifier/2),
-    ?assertEqual({ok
+    ?assertEqual({'ok'
                  ,#{<<"A">> => <<"1">>
                    ,<<"B">> => <<"2">>
                    ,<<"C">> => <<"3">>
@@ -105,8 +104,8 @@ take_row_test_() ->
     ,?_assertEqual({[<<"c">>], CSV4}, kz_csv:take_row(CSV3))
     ,?_assertEqual({[<<"d">>], CSV5}, kz_csv:take_row(CSV4))
     ,?_assertEqual({[<<"e">>], CSV6}, kz_csv:take_row(CSV5))
-    ,?_assertEqual(eof, kz_csv:take_row(CSV6))
-    ,?_assertEqual(eof, kz_csv:take_row(CSV7))
+    ,?_assertEqual('eof', kz_csv:take_row(CSV6))
+    ,?_assertEqual('eof', kz_csv:take_row(CSV7))
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, kz_csv:take_row(<<"1,B">>))
     ].
 
@@ -120,22 +119,23 @@ count_rows_test_() ->
     [?_assertEqual(0, kz_csv:count_rows(<<"a,b,\n,1,2,">>))
     ,?_assertEqual(0, kz_csv:count_rows(<<"abc">>))
     ,?_assertEqual(0, kz_csv:count_rows(<<>>))
-    ,?_assertEqual(0, kz_csv:count_rows(<<"a,b,c\n1\n2\n3">>))
+    ,?_assertMatch(0, kz_csv:count_rows(<<"a,b,c\n1\n2\n3">>))
     ,?_assertEqual(1, kz_csv:count_rows(<<"a,b,c\n1,2,3">>))
     ,?_assertEqual(3, kz_csv:count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n7,8,9\n">>))
+    ,?_assertEqual(3, kz_csv:count_rows(<<"a,b,c\n1,2,3\r\n4,5,6\n\r7,8,9\r\r">>))
     ].
 
 row_to_iolist_test_() ->
-    [?_assertException(error, function_clause, kz_csv:row_to_iolist([]))
-    ] ++
-        [?_assertEqual(Expected, iolist_to_binary(kz_csv:row_to_iolist(Input)))
-         || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
-                                 ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}
-                                 ,{<<",,b">>, [?ZILCH, ?ZILCH, <<"b">>]}
-                                 ,{<<"a,b,">>, [<<"a">>, <<"b">>, ?ZILCH]}
-                                 ,{<<"a,b,,,c">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
-                                 ]
-        ].
+    [?_assertException('error', 'function_clause', kz_csv:row_to_iolist([]))
+    ]
+        ++ [?_assertEqual(Expected, iolist_to_binary(kz_csv:row_to_iolist(Input)))
+            || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
+                                    ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}
+                                    ,{<<",,b">>, [?ZILCH, ?ZILCH, <<"b">>]}
+                                    ,{<<"a,b,">>, [<<"a">>, <<"b">>, ?ZILCH]}
+                                    ,{<<"a,b,,,c">>, [<<"a">>, <<"b">>, ?ZILCH, ?ZILCH, <<"c">>]}
+                                    ]
+           ].
 
 json_to_iolist_test_() ->
     Records1 = [kz_json:from_list([{<<"A">>, <<"a1">>}])
@@ -152,3 +152,32 @@ json_to_iolist_test_() ->
     ,?_assertEqual(<<"field1,field deux\n,QUUX\n,\nr'bla.+\\n',\n">>, kz_csv:json_to_iolist(Records2))
     ,?_assertEqual(<<"account_id,e164,cnam.outbound\n009afc511c97b2ae693c6cc4920988e8,+14157215234,me\n,+14157215235,\n">>, kz_csv:json_to_iolist(Records3))
     ].
+
+split_test_() ->
+    Rows = [{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
+            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+            }
+           ,{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>
+            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+            }
+           ,{<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
+            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+            }
+           ,{<<",">>, [<<>>, <<>>]}
+           ,{<<"test,">>,[<<"test">>,<<>>]}
+           ,{<<"test,,">>,[<<"test">>,<<>>,<<>>]}
+           ,{<<"test,,foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
+           ,{<<"test,"",foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
+           ],
+    lists:foldl(fun add_split_row_assertions/2, [], Rows).
+
+add_split_row_assertions({Row, Split}, Tests) ->
+    {Fields, _} = kz_csv:split_row(Row),
+    [{binary_to_list(Row), ?_assertEqual(Split, Fields)} | Tests].
+
+files_test_() ->
+    filelib:fold_files("test/", "\\.csv\$", 'false', fun gen_file_tests/2, []).
+
+gen_file_tests(File, Tests) ->
+    {'ok', CSV} = file:read_file(File),
+    [{File, ?_assert(0 < kz_csv:count_rows(CSV))} | Tests].
