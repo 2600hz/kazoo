@@ -216,11 +216,6 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
     ,{"application", "export sip_redirect_context=context_2"}
     ,{"application", "set hangup_after_bridge=true"}
     ,{"application", lists:concat(["export "
-                                  ,?CHANNEL_VAR_PREFIX, "Inception"
-                                  ,"="
-                                  ,"${", ?CHANNEL_VAR_PREFIX, "Inception}"
-                                  ])}
-    ,{"application", lists:concat(["export "
                                   ,?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID
                                   ,"="
                                   ,"${", ?CHANNEL_VAR_PREFIX, ?CALL_INTERACTION_ID, "}"
