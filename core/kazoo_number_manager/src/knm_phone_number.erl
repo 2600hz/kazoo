@@ -950,7 +950,8 @@ reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(knm_phone_number()) -> gregorian_seconds().
-modified(#knm_phone_number{modified=Modified}) -> Modified.
+modified(#knm_phone_number{is_dirty = true}) -> kz_util:current_tstamp();
+modified(#knm_phone_number{modified = Modified}) -> Modified.
 
 -spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
 set_modified(PN, Modified)
