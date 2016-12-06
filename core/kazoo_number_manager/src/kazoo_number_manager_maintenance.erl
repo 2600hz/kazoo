@@ -81,8 +81,8 @@ refresh_numbers_db(Suffix) ->
 
 %% @public
 -spec update_number_services_view(ne_binary()) -> ok.
-update_number_services_view(?MATCH_ACCOUNT_RAW(A, B, Rest)) ->
-    update_number_services_view(?MATCH_ACCOUNT_ENCODED(A, B, Rest));
+update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    update_number_services_view(kz_util:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
     JObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
     Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], JObj)}
