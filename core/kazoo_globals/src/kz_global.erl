@@ -112,7 +112,10 @@ stats(Table) ->
     lists:foldl(fun(State, Props) ->
                         V = props:get_integer_value(State, Props, 0) + 1,
                         props:set_value(State, V, Props)
-                end, [], ets:select(Table, MatchSpec)).
+                end
+               ,[]
+               ,ets:select(Table, MatchSpec)
+               ).
 
 -spec all_globals_by_pid(ets:tab(), pid()) -> globals().
 all_globals_by_pid(Table, Pid) ->

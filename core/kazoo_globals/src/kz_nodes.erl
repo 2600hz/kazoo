@@ -39,7 +39,6 @@
         ,code_change/3
         ]).
 
-
 -type request_info() :: {'app', atom()} |
                         {'media_servers', [{ne_binary(), kz_json:object()}]} |
                         {'channels', non_neg_integer()} |
@@ -74,6 +73,10 @@
 -define(MEDIA_SERVERS_HEADER, "Media Servers : ").
 -define(MEDIA_SERVERS_LINE, "                ").
 -define(MEDIA_SERVERS_DETAIL, "~s (~s)").
+
+-define(HEADER_COL, "~-14s").
+-define(SIMPLE_ROW_STR, ?HEADER_COL ": ~s~n").
+-define(SIMPLE_ROW_NUM, ?HEADER_COL ": ~B~n").
 
 -record(state, {heartbeat_ref = erlang:make_ref() :: reference()
                ,tab :: ets:tid()
@@ -253,38 +256,40 @@ print_node_status(#kz_node{zone=NodeZone
                           ,broker=Broker
                           ,kapps=Whapps
                           ,globals=Globals
+                          ,node_info=NodeInfo
                           }=Node
                  ,Zone
                  ) ->
     MemoryUsage = kz_network_utils:pretty_print_bytes(UsedMemory),
-    io:format("Node          : ~s~n", [N]),
-    io:format("Version       : ~s~n", [Version]),
-    io:format("Memory Usage  : ~s~n", [MemoryUsage]),
-    io:format("Processes     : ~B~n", [Processes]),
-    io:format("Ports         : ~B~n", [Ports]),
+    io:format(?SIMPLE_ROW_STR, [<<"Node">>, N]),
+    io:format(?SIMPLE_ROW_STR, [<<"Version">>, Version]),
+    io:format(?SIMPLE_ROW_STR, [<<"Memory Usage">>, MemoryUsage]),
+    io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]),
+    io:format(?SIMPLE_ROW_NUM, [<<"Ports">>, Ports]),
 
     _ = maybe_print_zone(kz_util:to_binary(NodeZone)
                         ,kz_util:to_binary(Zone)
                         ),
 
-    io:format("Broker        : ~s~n", [Broker]),
+    io:format(?SIMPLE_ROW_STR, [<<"Broker">>, Broker]),
 
     _ = maybe_print_globals(Globals),
     _ = maybe_print_kapps(Whapps),
     _ = maybe_print_media_servers(Node),
+    _ = maybe_print_node_info(NodeInfo),
 
     io:format("~n").
 
 -spec maybe_print_zone(ne_binary(), ne_binary()) -> 'ok'.
 maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
-    io:format("Zone          : ~s (local)~n", [Zone]);
+    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, <<Zone, " (local)">>]);
 maybe_print_zone(NodeZone, _Zone) ->
-    io:format("Zone          : ~s~n", [NodeZone]).
+    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, NodeZone]).
 
 -spec maybe_print_globals(kz_proplist()) -> 'ok'.
 maybe_print_globals([]) -> 'ok';
 maybe_print_globals(Globals) ->
-    io:format("Globals       :"),
+    io:format(?HEADER_COL ++ ":", [<<"Globals">>]),
     lists:foreach(fun({K,V}) -> io:format(" ~s (~B)",[K, V]) end, Globals),
     io:format("~n").
 
@@ -293,7 +298,7 @@ maybe_print_kapps(Whapps) ->
     case lists:sort(fun compare_apps/2, Whapps) of
         []-> 'ok';
         SortedWhapps ->
-            io:format("WhApps        : "),
+            io:format(?HEADER_COL ": ", [<<"WhApps">>]),
             status_list(SortedWhapps, 0)
     end.
 
@@ -308,10 +313,10 @@ maybe_print_media_servers(#kz_node{media_servers=MediaServers
     case lists:sort(MediaServers) of
         [] when Registrations =:= 0 -> 'ok';
         [] when Registrations > 0 ->
-            io:format("Registrations : ~B~n", [Registrations]);
+            io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]);
         [Server|Servers] ->
-            io:format("Channels      : ~B~n", [Channels]),
-            io:format("Registrations : ~B~n", [Registrations]),
+            io:format(?SIMPLE_ROW_NUM, [<<"Channels">>, Channels]),
+            io:format(?SIMPLE_ROW_NUM, [<<"Registrations">>, Registrations]),
             print_media_server(Server, ?MEDIA_SERVERS_HEADER),
             lists:foreach(fun print_media_server/1, Servers)
     end.
@@ -329,10 +334,29 @@ print_media_server({Name, JObj}, Format) ->
                 )
               ]).
 
+-spec maybe_print_node_info(api_object()) -> 'ok'.
+maybe_print_node_info('undefined') -> 'ok';
+maybe_print_node_info(NodeInfo) ->
+    io:format(?HEADER_COL ++ ": ", [<<"Node Info">>]),
+    [First | Rest] = kz_json:to_proplist(NodeInfo),
+    print_node_info(First),
+    lists:foreach(fun print_each_node_info/1, Rest).
+
+-spec print_each_node_info({ne_binary(), ne_binary() | integer()}) -> 'ok'.
+print_each_node_info(KV) ->
+    io:format(?HEADER_COL "  ", [<<>>]),
+    print_node_info(KV).
+
+-spec print_node_info({ne_binary(), ne_binary() | integer()}) -> 'ok'.
+print_node_info({K, ?NE_BINARY = V}) ->
+    io:format("~s: ~s~n", [K, V]);
+print_node_info({K, V}) when is_integer(V) ->
+    io:format("~s: ~B~n", [K, V]).
+
 -spec status_list(kapps_info(), 0..4) -> 'ok'.
 status_list([], _) -> io:format("~n", []);
 status_list(Whapps, Column) when Column > 3 ->
-    io:format("~n~-16s", [""]),
+    io:format("~n" ++ ?HEADER_COL ++ "  ", [""]),
     status_list(Whapps, 0);
 status_list([{Whapp, #whapp_info{startup='undefined'}}|Whapps], Column) ->
     io:format("~-25s", [Whapp]),
@@ -366,6 +390,7 @@ notify_expire(Pid) ->
 -spec handle_advertise(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_advertise(JObj, Props) ->
     'true' = kapi_nodes:advertise_v(JObj),
+
     Srv = props:get_value('server', Props),
     Node = props:get_value('node', Props),
     case kz_json:get_value(<<"Node">>, JObj, Node) =:= Node of
@@ -604,6 +629,7 @@ create_node(Heartbeat, #state{zone=Zone
                            ,version=Version
                            ,zone=Zone
                            ,globals=kz_globals:stats()
+                           ,node_info=node_info()
                            }).
 
 -spec normalize_amqp_uri(ne_binary()) -> ne_binary().
@@ -697,6 +723,7 @@ advertise_payload(#kz_node{expires=Expires
       ,{<<"Registrations">>, Registrations}
       ,{<<"Zone">>, kz_util:to_binary(Zone)}
       ,{<<"Globals">>, kz_json:from_list(Globals)}
+      ,{<<"Node-Info">>, node_info()}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
       ]).
 
@@ -727,6 +754,7 @@ from_json(JObj, State) ->
             ,broker=get_amqp_broker(JObj)
             ,zone=get_zone(JObj, State)
             ,globals=kz_json:to_proplist(kz_json:get_value(<<"Globals">>, JObj, kz_json:new()))
+            ,node_info=kz_json:get_json_value(<<"Node-Info">>, JObj)
             }.
 
 -spec kapps_from_json(api_terms()) -> kapps_info().
@@ -900,3 +928,24 @@ maybe_add_zone(#kz_node{zone=Zone, broker=B}, #state{zones=Zones}=State) ->
         'undefined' -> State#state{zones=[{Broker, Zone} | Zones]};
         _ -> State
     end.
+
+-spec node_info() -> kz_json:object().
+node_info() ->
+    kz_json:from_list(pool_states()).
+
+-spec pool_states() -> kz_proplist().
+pool_states() ->
+    lists:keysort(1, [pool_state(Pool) || {Pool, _Pid} <- kz_amqp_sup:pools()]).
+
+-spec pool_state(atom()) -> {ne_binary(), ne_binary()}.
+-spec pool_state(atom(), atom(), integer(), integer(), integer()) -> {ne_binary(), ne_binary()}.
+pool_state(Name) ->
+    {PoolState, Workers, OverFlow, Monitors} = poolboy:status(Name),
+    pool_state(Name, PoolState, Workers, OverFlow, Monitors).
+
+pool_state(Name, State, Workers, Overflow, Monitors) ->
+    {kz_util:to_binary(Name)
+    ,iolist_to_binary(
+       io_lib:format("~p/~p/~p (~p)", [Workers, Monitors, Overflow, State])
+      )
+    }.

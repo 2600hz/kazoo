@@ -14,6 +14,7 @@
         ,pool_name/0
         ,add_amqp_pool/4, add_amqp_pool/5, add_amqp_pool/6, add_amqp_pool/7
         ,pool_pid/1
+        ,pools/0
         ]).
 
 -export([init/1]).
@@ -71,6 +72,12 @@ start_link() ->
 -spec stop_bootstrap() -> 'ok' | {'error', any()}.
 stop_bootstrap() ->
     _ = supervisor:terminate_child(?SERVER, 'kz_amqp_bootstrap').
+
+-spec pools() -> [{atom(), pid()}].
+pools() ->
+    [{Pool, Pid}
+     || {Pool, Pid, _Type, ['poolboy']} <- supervisor:which_children(?MODULE)
+    ].
 
 -spec pool_name() -> atom().
 pool_name() ->
