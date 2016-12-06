@@ -663,7 +663,7 @@ set_feature(N, Feature=?NE_BINARY, Data) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec state(knm_phone_number()) -> api_binary().
+-spec state(knm_phone_number()) -> api_ne_binary().
 state(#knm_phone_number{state=State}) -> State.
 
 -spec set_state(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -738,7 +738,7 @@ set_ported_in(N, Ported) when is_boolean(Ported) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec module_name(knm_phone_number()) -> api_binary().
+-spec module_name(knm_phone_number()) -> api_ne_binary().
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
