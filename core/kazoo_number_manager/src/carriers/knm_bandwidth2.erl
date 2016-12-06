@@ -502,9 +502,11 @@ verify_response(Xml) ->
     NPAPath = "count(//TelephoneNumberDetailList/TelephoneNumberDetail)",
     TollFreePath = "count(//TelephoneNumberList/TelephoneNumber)",
     SitesPath = "count(//SitesResponse/Sites/Site)",
+    PeersPath = "count(//TNSipPeersResponse/SipPeers/SipPeer)",
     case validate_xpath_value(xmerl_xpath:string(NPAPath, Xml))
         orelse validate_xpath_value(xmerl_xpath:string(TollFreePath, Xml))
         orelse validate_xpath_value(xmerl_xpath:string(SitesPath, Xml))
+        orelse validate_xpath_value(xmerl_xpath:string(PeersPath, Xml))
         orelse validate_xpath_value(kz_util:get_xml_value("//OrderStatus/text()", Xml))
     of
         'true' ->
