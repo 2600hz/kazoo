@@ -238,7 +238,6 @@ array_items(Items) ->
 
 number_services_map(Classifications, Regexs) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
-    Modules = knm_carriers:all_modules(),
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
@@ -246,7 +245,7 @@ number_services_map(Classifications, Regexs) ->
        "  var resCB = {", fields_zeros(Classifications), "};"
        "  var resCnB = {", fields_zeros(Classifications), "};"
        %% "log('+14157125234'.match(",escape(<<"\\d+">>),"));"
-       "  var is_billable = (true === doc.pvt_is_billable);"
+       "  var is_billable = (true === doc.pvt_is_billable);" %% If undefined, defaults to false.
        "  if (false) return;"
       ,[["  else if (e164.match(", escape(R), ")) {"
          "    if (is_billable)"
@@ -265,24 +264,30 @@ number_services_map(Classifications, Regexs) ->
        "    if (used.hasOwnProperty(feature))"
        "      resF[feature] += 1;"
        "  }"
-       "  var resM = {", fields_zeros(Modules), "};"
-       "  resM[doc.pvt_module_name] = 1;"
+       "  var resM = doc.pvt_module_name;"
        "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM});"
        "}"
       ]).
 
 number_services_red(Classifications) ->
     Features = ?DEFAULT_ALLOWED_FEATURES,
-    Modules = knm_carriers:all_modules(),
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
+
+       "  var incr = function (o, k, v) {"
+       "    if (o[k] === undefined)"
+       "      o[k] = v;"
+       "    else"
+       "      o[k] += v;"
+       "    return o;"
+       "  };"
+
        "  var resC = {'billable':     {", fields_zeros(Classifications), "}"
        "             ,'non_billable': {", fields_zeros(Classifications), "}};"
        "  var resF = {", fields_zeros(Features), "};"
-       "  var resM = {", fields_zeros(Modules), "};"
+       "  var resM = {};"
        "  var keysC = [", array_items(Classifications), "];"
        "  var keysF = [", array_items(Features), "];"
-       "  var keysM = [", array_items(Modules), "];"
        "  for (var i in Values) {"
        "    var Value = Values[i];"
        "    for (var k in keysC) {"
@@ -294,10 +299,16 @@ number_services_red(Classifications) ->
        "      var key = keysF[k];"
        "      resF[key] += Value['features'][key] || 0;"
        "    }"
-       "    for (var k in keysM) {"
-       "      var key = keysM[k];"
-       "      resM[key] += Value['modules'][key] || 0;"
+
+       "    var modules = Value['modules'] || {};"
+       "    if (typeof modules === typeof {}) {"
+       "      for (var k in modules)"
+       "        if (modules.hasOwnProperty(k))"
+       "          resM = incr(resM, k, modules[k]);"
+       "    } else {"
+       "      resM = incr(resM, modules, 1);"
        "    }"
+
        "  }"
        "  return {'classifications':resC, 'features':resF, 'modules':resM};"
        "}"
