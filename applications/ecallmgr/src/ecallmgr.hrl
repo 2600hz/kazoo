@@ -5,6 +5,7 @@
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
 
 -include("fs_event_filters.hrl").
+-include("fs_mod_kazoo_event_filters.hrl").
 
 -define(ECALLMGR_UTIL_CACHE, 'ecallmgr_util_cache').
 -define(ECALLMGR_AUTH_CACHE, 'ecallmgr_auth_cache').
@@ -508,8 +509,11 @@
                             ]).
 
 -define(FS_EVENT_FILTERS,
-        ?FS_GENERATED_EVENT_FILTERS
-        ++ ?CONFERENCE_VARS
+        lists:usort(
+          ?FS_GENERATED_EVENT_FILTERS
+          ++ ?CONFERENCE_VARS
+          ++ ?FS_MOD_KAZOO_EVENT_FILTERS
+         )
        ).
 
 -define(ECALLMGR_HRL, 'true').
