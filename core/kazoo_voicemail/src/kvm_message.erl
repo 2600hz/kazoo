@@ -353,10 +353,10 @@ maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
             save_meta(Length, Action, Call, MediaId, BoxId);
         <<"failed">> ->
             lager:debug("attachment failed to send out via notification: ~s", [kz_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
-            save_meta(Length, Action, Call, MediaId, BoxId);
+            save_meta(Length, 'nothing', Call, MediaId, BoxId);
         _ ->
             lager:info("timed out waiting for voicemail new notification resp"),
-            save_meta(Length, Action, Call, MediaId, BoxId)
+            save_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
 -spec save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
