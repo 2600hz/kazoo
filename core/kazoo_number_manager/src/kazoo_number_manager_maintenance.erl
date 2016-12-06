@@ -237,7 +237,6 @@ array_items(Items) ->
     kz_util:iolist_join($,, [[$',I,$'] || I <- Items]).
 
 number_services_map(Classifications, Regexs) ->
-    Features = ?DEFAULT_ALLOWED_FEATURES,
     iolist_to_binary(
       ["function(doc) {"
        "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;"
@@ -256,21 +255,17 @@ number_services_map(Classifications, Regexs) ->
         ]
         || {C, R} <- lists:zip(Classifications, Regexs)
        ]
-      ,"  var resF = {", fields_zeros(Features), "};"
-       "  var features = [", array_items(Features), "];"
+      ,"  var resF = {};"
        "  var used = doc.pvt_features || {};"
-       "  for (var i in features) {"
-       "    var feature = features[i];"
+       "  for (var feature in used)"
        "    if (used.hasOwnProperty(feature))"
-       "      resF[feature] += 1;"
-       "  }"
+       "      resF[feature] = 1;"
        "  var resM = doc.pvt_module_name;"
        "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM});"
        "}"
       ]).
 
 number_services_red(Classifications) ->
-    Features = ?DEFAULT_ALLOWED_FEATURES,
     iolist_to_binary(
       ["function(Keys, Values, _Rereduce) {"
 
@@ -284,10 +279,9 @@ number_services_red(Classifications) ->
 
        "  var resC = {'billable':     {", fields_zeros(Classifications), "}"
        "             ,'non_billable': {", fields_zeros(Classifications), "}};"
-       "  var resF = {", fields_zeros(Features), "};"
+       "  var resF = {};"
        "  var resM = {};"
        "  var keysC = [", array_items(Classifications), "];"
-       "  var keysF = [", array_items(Features), "];"
        "  for (var i in Values) {"
        "    var Value = Values[i];"
        "    for (var k in keysC) {"
@@ -295,10 +289,11 @@ number_services_red(Classifications) ->
        "      resC['billable'][key] += Value['classifications']['billable'][key] || 0;"
        "      resC['non_billable'][key] += Value['classifications']['non_billable'][key] || 0;"
        "    }"
-       "    for (var k in keysF) {"
-       "      var key = keysF[k];"
-       "      resF[key] += Value['features'][key] || 0;"
-       "    }"
+
+       "    var features = Value['features'] || {};"
+       "    for (var feature in features)"
+       "      if (features.hasOwnProperty(feature))"
+       "        resF = incr(resF, feature, features[feature]);"
 
        "    var modules = Value['modules'] || {};"
        "    if (typeof modules === typeof {}) {"
