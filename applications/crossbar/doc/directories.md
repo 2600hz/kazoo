@@ -2,7 +2,7 @@
 
 #### About Directories
 
-Directories provide the ability to route a caller to a user by having the caller enter DTMF corresponding to the directory users' first orlast names (versus having to know the user's extension).
+Directories provide the ability to route a caller to a user by having the caller enter DTMF corresponding to the directory users' first or last names (versus having to know the user's extension).
 
 #### Schema
 
@@ -16,7 +16,8 @@ Key | Description | Type | Default | Required
 `users` | The list of users associated with this directory | `array(string)` | `[]` | `false`
 `users.[]` |   | `string` |   | `false`
 
-#### Fetch
+
+#### List directories
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories
 
@@ -24,6 +25,22 @@ Key | Description | Type | Default | Required
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "77dfb38ff2353624e35bf4df91acda94",
+            "name": "SmartPBX Directory"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
 ```
 
 #### Create
@@ -53,14 +70,33 @@ curl -v -X DELETE \
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/77dfb38ff2353624e35bf4df91acda94
 ```
 
-#### Fetch a directory as a PDF
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "confirm_match": false,
+        "id": "77dfb38ff2353624e35bf4df91acda94",
+        "max_dtmf": 0,
+        "min_dtmf": 3,
+        "name": "SmartPBX Directory",
+        "sort_by": "last_name",
+        "ui_metadata": {
+            "origin": "voip",
+            "ui": "monster-ui",
+            "version": "3.23"
+        },
+        "users": []
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
 
-It is possible to fetch the directory as a PDF for download (such as a company direcotry, a sales department directory, etc)
-
-> GET /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
+It is possible to fetch the directory as a PDF for download (such as a company directory, a sales department directory, etc).
 
 ```shell
 curl -v -X GET \
@@ -69,7 +105,11 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 ```
 
-If your client doesn't support setting the `Accept` header, you can append `?accept=pdf` to the URI and Kazoo will pretend you sent the proper `Accept` header.
+```
+Streams back a PDF document.
+```
+
+If your client does not support setting the `Accept` header, you can append `?accept=pdf` to the URI and Kazoo will pretend you sent the proper `Accept` header.
 
 #### Patch
 
