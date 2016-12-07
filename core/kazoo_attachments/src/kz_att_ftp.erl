@@ -31,26 +31,65 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
 
     case send_request(Url, Contents) of
-        'ok' -> {'ok', url_fields(DocUrlField, Url)};
-        {'error', _} = Error -> Error
+        'ok' ->
+            lager:debug("attachment ~s of document ~s/~s uploaded to ~s"
+                       ,[AName, DocId, DbName, Url]
+                       ),
+            {'ok', url_fields(DocUrlField, Url)};
+        {'error', _Err} = Error ->
+            lager:debug("error '~p' uploading attachment ~s of document ~s/~s to ~s"
+                       ,[_Err, AName, DocId, DbName, Url]
+                       ),
+            Error
     end.
 
 -spec send_request(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 send_request(Url, Contents) ->
-    {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
-    case ftp:open(Host) of
-        {'ok', Pid} -> handle_send(Pid, ftp:send_bin(Pid, Contents, File));
-        {'error', _Reason}=Err ->
-            lager:debug("error '~p' opening ftp connection to ~s for saving ~s", [_Reason, Host, File]),
-            Err
+    case http_uri:parse(kz_util:to_list(Url)) of
+        {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
+            send_request(Host, Port, UserPass, FullPath, Contents);
+        _ -> {'error', <<"error parsing url : ", Url/binary>>}
     end.
 
--spec handle_send(pid(), 'ok' | {'error', any()}) -> 'ok' | {'error', any()}.
-handle_send(Pid, 'ok') -> ftp:close(Pid);
-handle_send(Pid, {'error', _Reason}=Err) ->
-    lager:debug("error transfering file to ftp server : ~p", [_Reason]),
-    ftp:close(Pid),
-    Err.
+-spec send_request(string(), integer(), string(), string(), binary()) -> 'ok' | {'error', any()}.
+send_request(Host, Port, UserPass, FullPath, Contents) ->
+    {User, Pass} = case string:tokens(UserPass, ":") of
+                       [U, P] -> {U, P};
+                       _ -> ftp_anonymous_user_pass()
+                   end,
+    Dir = filename:dirname(FullPath),
+    File = filename:basename(FullPath),
+    try
+        case ftp:open(Host, [{'port', Port}]) of
+            {'ok', Pid} ->
+                Routines = [fun() -> ftp:user(Pid, User, Pass) end
+                           ,fun() -> ftp:type(Pid, 'binary') end
+                           ,fun() -> ftp:cd(Pid, Dir) end
+                           ,fun() -> ftp:send_bin(Pid, Contents, File) end
+                           ],
+                Res = ftp_cmds(Routines),
+                ftp:close(Pid),
+                Res;
+            {'error', _}=E -> E
+        end
+    catch
+        _Exc:_Err ->
+            lager:debug("error ~p / ~p sending file ~s to ~s", [_Exc, _Err, FullPath, Host]),
+            {'error', _Err}
+    end.
+
+-spec ftp_cmds(list()) -> 'ok' | {'error', any()}.
+ftp_cmds([]) -> 'ok';
+ftp_cmds([Fun|Funs]) ->
+    case Fun() of
+        'ok' -> ftp_cmds(Funs);
+        Other -> Other
+    end.
+
+-spec ftp_anonymous_user_pass() -> {string(), string()}.
+ftp_anonymous_user_pass() ->
+    Domain = kz_util:to_list(kz_util:node_hostname()),
+    {"anonymous", "kazoo@" ++ Domain}.
 
 url_fields('undefined', Url) ->
     [{'attachment', [{<<"url">>, Url}]}];
@@ -69,11 +108,15 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
 -spec fetch_attachment(ne_binary()) -> {'ok', binary()} | {'error', any()}.
 fetch_attachment(Url) ->
     {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
-    case ftp:open(Host) of
-        {'ok', Pid} -> handle_fetch(Pid, ftp:recv_bin(Pid, File));
+    try ftp:open(kz_util:to_list(Host)) of
+        {'ok', Pid} -> handle_fetch(Pid, ftp:recv_bin(Pid, kz_util:to_list(File)));
         {'error', _Reason}=Err ->
             lager:debug("error '~p' opening ftp connection to ~s for saving ~s", [_Reason, Host, File]),
             Err
+    catch
+        _E:Reason ->
+            lager:debug("exception '~p/~p' opening ftp connection to ~s for saving ~s", [_E, Reason, Host, File]),
+            {'error', Reason}
     end.
 
 -spec handle_fetch(pid(), tuple()) -> {'ok', binary()} | {'error', any()}.
