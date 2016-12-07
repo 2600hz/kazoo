@@ -14,7 +14,7 @@ For example, to get a listing of all system media files:
 You can then get the "id" of the media file and manipulate it in a similar fashion as regular account media (including TTS if you have a TTS engine like iSpeech configured).
 
 
-Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is "en-us" by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
+Part of the schema of media files is a language attribute. It defaults to a `system_config/media` value for the `default_language` key (and is `"en-us"` by default). Properly defined media files can be searched for based on language using the basic filters provided by Crossbar:
 
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en
     curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server.com:8000/v2/media?filter_language=en-US
@@ -99,6 +99,26 @@ curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": [
+        {
+            "id": "0c347bba3754056caad610bb8a337342",
+            "is_prompt": false,
+            "language": "en-us",
+            "media_source": "tts",
+            "name": "Main AA BG"
+        }
+    ],
+    "page_size": 1,
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
 
 #### Create a nee media object (required before uploading the actual media data)
 
@@ -186,8 +206,35 @@ curl -v -X DELETE \
 ```shell
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/0c347bba3754056caad610bb8a337342
 ```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "description": "tts file",
+        "id": "0c347bba3754056caad610bb8a337342",
+        "language": "en-us",
+        "media_source": "tts",
+        "name": "Main AA BG",
+        "streamable": true,
+        "tts": {
+            "text": "Thank you for calling My Amazing Company where we do amazing things. You may dial any extension at any time. To schedule an appointment, press 1. For billing questions about your account, press 2. For all other inquiries, press 0.  To hear this menu again, please stay on the line.",
+            "voice": "female/en-US"
+        },
+        "ui_metadata": {
+            "origin": "callflows",
+            "ui": "monster-ui",
+            "version": "4.0-7"
+        }
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
 
 #### Update metadata
 
