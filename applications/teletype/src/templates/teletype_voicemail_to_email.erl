@@ -99,7 +99,7 @@ handle_new_voicemail(JObj, _Props) ->
 
 -spec maybe_add_user_email(ne_binaries(), api_binary(), boolean()) -> ne_binaries().
 maybe_add_user_email(BoxEmails, 'undefined', _) -> BoxEmails;
-maybe_add_user_email(BoxEmails, _UserEmail, 'false') -> BoxEmails;
+maybe_add_user_email(BoxEmails, UserEmail, 'false') -> lists:delete(UserEmail, BoxEmails);
 maybe_add_user_email(BoxEmails, UserEmail, 'true') -> [UserEmail | BoxEmails].
 
 -spec get_owner(kzd_voicemail_box:doc(), kz_json:object()) ->
