@@ -98,7 +98,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
                                  ]
                                 ,View
                                 ),
-    case kz_json:are_identical(View, NewView) of
+    case kz_json:are_equal(View, NewView) of
         true -> ?LOG("View is up to date.", []);
         false ->
             true = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),

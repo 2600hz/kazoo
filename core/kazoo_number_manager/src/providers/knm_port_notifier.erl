@@ -87,7 +87,7 @@ maybe_port_changed(Number, Port) ->
 maybe_port_changed(Number, _Port, 'true') -> Number;
 maybe_port_changed(Number, Port, 'false') ->
     CurrentPort = feature(Number),
-    case kz_json:are_identical(CurrentPort, Port) of
+    case kz_json:are_equal(CurrentPort, Port) of
         'true' -> Number;
         'false' ->
             lager:debug("port information has been changed: ~s", [kz_json:encode(Port)]),
