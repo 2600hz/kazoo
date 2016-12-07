@@ -31,8 +31,16 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
 
     case send_request(Url, Contents) of
-        'ok' -> {'ok', url_fields(DocUrlField, Url)};
-        {'error', _} = Error -> Error
+        'ok' ->
+            lager:debug("attachment ~s of document ~s/~s uploaded to ~s"
+                       ,[AName, DocId, DbName, Url]
+                       ),
+            {'ok', url_fields(DocUrlField, Url)};
+        {'error', _Err} = Error ->
+            lager:debug("error '~p' uploading attachment ~s of document ~s/~s to ~s"
+                       ,[_Err, AName, DocId, DbName, Url]
+                       ),
+            Error
     end.
 
 -spec send_request(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
@@ -60,7 +68,6 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
                            ,fun() -> ftp:send_bin(Pid, Contents, File) end
                            ],
                 Res = ftp_cmds(Routines),
-                lager:debug("RESUULT ~p", [Res]),
                 ftp:close(Pid),
                 Res;
             {'error', _}=E -> E
