@@ -414,27 +414,31 @@ reconcile(DID, Options) ->
 -spec reconcile_number(knm_number(), knm_number_options:options()) -> knm_number_return().
 reconcile_number(Number, Options) ->
     PhoneNumber = phone_number(Number),
-    Updaters = [{knm_number_options:assign_to(Options)
-                ,knm_phone_number:assigned_to(PhoneNumber)
-                ,fun knm_phone_number:set_assigned_to/2
-                }
-               ,{knm_number_options:auth_by(Options)
-                ,knm_phone_number:auth_by(PhoneNumber)
-                ,fun knm_phone_number:set_auth_by/2
-                }
-               ,{knm_number_options:public_fields(Options)
-                ,knm_phone_number:doc(PhoneNumber)
-                ,fun knm_phone_number:update_doc/2
-                }
-               ,{knm_number_options:module_name(Options)
-                ,knm_phone_number:module_name(PhoneNumber)
-                ,fun knm_phone_number:set_module_name/2
-                }
-               ,{?NUMBER_STATE_IN_SERVICE
-                ,knm_phone_number:state(PhoneNumber)
-                ,fun knm_phone_number:set_state/2
-                }
-               ],
+    Updaters = case props:is_defined(module_name, Options) of
+                   false -> [];
+                   true ->
+                       [{knm_number_options:module_name(Options)
+                        ,knm_phone_number:module_name(PhoneNumber)
+                        ,fun knm_phone_number:set_module_name/2
+                        }]
+               end ++
+        [{knm_number_options:assign_to(Options)
+         ,knm_phone_number:assigned_to(PhoneNumber)
+         ,fun knm_phone_number:set_assigned_to/2
+         }
+        ,{knm_number_options:auth_by(Options)
+         ,knm_phone_number:auth_by(PhoneNumber)
+         ,fun knm_phone_number:set_auth_by/2
+         }
+        ,{knm_number_options:public_fields(Options)
+         ,knm_phone_number:doc(PhoneNumber)
+         ,fun knm_phone_number:update_doc/2
+         }
+        ,{?NUMBER_STATE_IN_SERVICE
+         ,knm_phone_number:state(PhoneNumber)
+         ,fun knm_phone_number:set_state/2
+         }
+        ],
     case updates_require_save(PhoneNumber, Updaters) of
         {'false', _PhoneNumber} -> {'ok', Number};
         {'true', UpdatedPhoneNumber} ->
