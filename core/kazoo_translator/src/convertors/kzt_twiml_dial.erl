@@ -21,34 +21,35 @@
 exec(Call, [#xmlText{type='text'}|_]=DialMeTxts, Attrs) ->
     kapps_call_command:answer(Call),
 
-    case knm_converters:normalize(cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts))) of
+    case cleanup_dial_me(kz_xml:texts_to_binary(DialMeTxts)) of
         <<>> ->
-            lager:debug("no text to dial, using only xml elements"),
+            lager:info("no text to dial, using only xml elements"),
             exec(Call, kz_xml:elements(DialMeTxts), Attrs);
-        DialMe -> dial_me(Call, Attrs, DialMe)
+        DialMe -> dial_me(Call, Attrs, knm_converters:normalize(DialMe))
     end;
 exec(Call
     ,[#xmlElement{name='Number'
                  ,content=Number
-                 ,attributes=Attrs
-                 }
+                 ,attributes=NumberAttrs
+                 }=_El
      ]
-    ,Attrs) ->
-    lager:debug("single <Number>"),
-    case knm_converters:normalize(cleanup_dial_me(kz_xml:texts_to_binary(Number))) of
+    ,DialAttrs) ->
+    lager:info("single <Number>"),
+    case cleanup_dial_me(kz_xml:texts_to_binary(Number)) of
         <<>> ->
             lager:debug("no dialable Number in tag, continuing"),
             {'ok', Call};
-        DialMe ->
-            Props = kz_xml:attributes_to_proplist(Attrs),
+        NumberText ->
+            DialMe = knm_converters:normalize(NumberText),
+            NumberProps = kz_xml:attributes_to_proplist(NumberAttrs),
 
-            SendDigits = props:get_value('sendDigis', Props),
-            _Url = props:get_value('url', Props),
-            _Method = props:get_value('method', Props),
+            SendDigits = props:get_value('sendDigis', NumberProps),
+            _Url = props:get_value('url', NumberProps),
+            _Method = props:get_value('method', NumberProps),
 
-            lager:debug("maybe sending number ~s: send ~s", [DialMe, SendDigits]),
+            lager:info("maybe sending number ~s: send ~s", [DialMe, SendDigits]),
 
-            dial_me(Call, Attrs, DialMe)
+            dial_me(Call, DialAttrs, DialMe)
     end;
 exec(Call, [#xmlElement{name='Conference'
                        ,content=ConfIdTxts
@@ -82,12 +83,11 @@ exec(Call, [#xmlElement{name='Conference'
     _WaitUrl = props:get_value('waitUrl', ConfProps),
     _WaitMethod = kzt_util:http_method(ConfProps),
 
-    {'ok', Call1} = kzt_receiver:wait_for_conference(
-                      kzt_util:update_call_status(?STATUS_ANSWERED, setup_call_for_dial(
-                                                                      add_conference_profile(Call, ConfProps)
-                                                                                       ,DialProps
-                                                                     ))
-                     ),
+    CallWithConf = add_conference_profile(Call, ConfProps),
+    SetupCall = setup_call_for_dial(CallWithConf, DialProps),
+    AnsweredCall = kzt_util:update_call_status(?STATUS_ANSWERED, SetupCall),
+
+    {'ok', Call1} = kzt_receiver:wait_for_conference(AnsweredCall),
 
     lager:debug("waited for offnet, maybe ending dial"),
 
@@ -116,7 +116,7 @@ exec(Call, [#xmlElement{name='Queue'
     {'stop', Call1};
 
 exec(Call, [#xmlElement{}|_]=Endpoints, Attrs) ->
-    lager:debug("dialing endpoints"),
+    lager:info("dialing endpoints: ~p", [Endpoints]),
 
     Props = kz_xml:attributes_to_proplist(Attrs),
     Call1 = setup_call_for_dial(Call, Props),
@@ -435,10 +435,8 @@ conference_member_flags(ConfProps) ->
         'false' -> 'undefined'
     end.
 
-%% copy of cf_user:get_endpoints/3
--spec get_endpoints(api_binary(), kz_json:object(), kapps_call:call()) ->
+-spec get_endpoints(binary(), kz_json:object(), kapps_call:call()) ->
                            kz_json:objects().
-get_endpoints('undefined', _, _) -> [];
 get_endpoints(UserId, Data, Call) ->
     Params = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Data),
     kz_endpoints:by_owner_id(UserId, Params, Call).
