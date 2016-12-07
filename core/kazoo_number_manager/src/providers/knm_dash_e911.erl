@@ -96,7 +96,7 @@ feature(Number) ->
 maybe_update_e911(Number) ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
-    NotChanged = kz_json:are_identical(CurrentE911, E911),
+    NotChanged = kz_json:are_equal(CurrentE911, E911),
     case kz_util:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),

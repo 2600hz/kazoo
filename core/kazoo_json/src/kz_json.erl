@@ -80,7 +80,7 @@
         ,normalize_jobj/3
         ,normalize/1
         ,normalize_key/1
-        ,are_identical/2, are_equal/2
+        ,are_equal/2
         ]).
 -export([public_fields/1
         ,private_fields/1
@@ -212,25 +212,6 @@ is_json_term(Vs) when is_list(Vs) ->
 is_json_term({'json', IOList}) when is_list(IOList) -> 'true';
 is_json_term(MaybeJObj) ->
     is_json_object(MaybeJObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec are_identical(api_object(), api_object()) -> boolean().
-are_identical('undefined', 'undefined') -> 'true';
-are_identical('undefined', _) -> 'false';
-are_identical(_, 'undefined') -> 'false';
-are_identical(JObj1, JObj2) ->
-    [KV || {_, V}=KV <- to_proplist(JObj1),
-           not kz_util:is_empty(V)
-    ]
-        =:=
-        [KV || {_, V}=KV <- to_proplist(JObj2),
-               not kz_util:is_empty(V)
-        ].
 
 %%--------------------------------------------------------------------
 %% @public
