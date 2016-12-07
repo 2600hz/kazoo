@@ -33,21 +33,21 @@ parse_cmds(XMLBin) ->
                   {'request', kapps_call:call()} |
                   {'stop', kapps_call:call()}.
 exec(Call, #xmlElement{name='Response', content=Els}) ->
-    exec_elements(Call, Els);
+    exec_elements(Call, kz_xml:filter_empty_text(Els));
 exec(Call, Resp) ->
-    try xmerl_scan:string(kz_util:to_list(Resp)) of
+    try xmerl_scan:string(kz_util:to_list(Resp), [{'space', 'normalize'}]) of
         {#xmlElement{name='Response', content=Els}, _} ->
-            exec_elements(Call, Els);
+            exec_elements(Call, kz_xml:filter_empty_text(Els));
         _Other ->
             lager:debug("failed to scan XML: ~p", [_Other]),
             {'error', Call}
     catch
         _E:_R ->
-            lager:debug("xml extraction fail: ~s: ~p: ~p", [_E, _R, Resp]),
+            lager:error("xml extraction fail: ~s: ~p: ~p", [_E, _R, Resp]),
             {'error', Call}
     end.
 
--spec exec_elements(kapps_call:call(), xml_els()) ->
+-spec exec_elements(kapps_call:call(), xml_els() | xml_texts()) ->
                            {'error', kapps_call:call()} |
                            {'request', kapps_call:call()} |
                            {'stop', kapps_call:call()}.
@@ -62,10 +62,10 @@ exec_elements(Call, [El|Els]) ->
         {'stop', _Call}=STOP -> STOP
     catch
         'throw':{'unknown_element', Name} ->
-            lager:debug("unknown element in response: ~s", [Name]),
+            lager:error("unknown element in response: ~s", [Name]),
             {'error', kzt_util:add_error(Call, <<"unknown_element">>, Name)};
         _E:_R ->
-            lager:debug("'~s' when execing el ~p: ~p", [_E, El, _R]),
+            lager:error("'~s' when execing el ~p: ~p", [_E, El, _R]),
             kz_util:log_stacktrace(),
             {'error', Call}
     end.
@@ -79,7 +79,8 @@ exec_element(Call, #xmlElement{name='Dial'
                               ,content=Endpoints
                               ,attributes=Attrs
                               }) ->
-    kzt_twiml_dial:exec(Call, Endpoints, Attrs);
+    EPs = kz_xml:filter_empty_text(Endpoints),
+    kzt_twiml_dial:exec(Call, EPs, Attrs);
 exec_element(Call, #xmlElement{name='Record'
                               ,content=[] % nothing inside the tags please
                               ,attributes=Attrs
