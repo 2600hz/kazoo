@@ -104,8 +104,16 @@ maybe_add_auth(User, Pass, Options) ->
 check_options(Options) ->
     Routines = [fun convert_options/1
                ,fun filter_options/1
+               ,fun maybe_default_recv_timeout/1
                ],
     lists:foldl(fun(Fun, Opts) -> Fun(Opts) end, Options, Routines).
+
+-spec maybe_default_recv_timeout(kz_proplist()) -> kz_proplist().
+maybe_default_recv_timeout(Options) ->
+    case props:get_value('recv_timeout', Options) of
+        'undefined' -> [{'recv_timeout', 20000} | Options];
+         _Else -> Options
+    end.
 
 filter_options(Options) ->
     [ KV || {K, _} = KV <- Options, not lists:member(K, ?NO_OPTIONS)].
