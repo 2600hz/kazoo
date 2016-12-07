@@ -58,7 +58,7 @@ new(Call, Props) ->
            ],
 
     lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MessageId]),
-    case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call)) of
+    case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call), MessageId) of
         'ok' ->
             notify_and_update_meta(Call, MessageId, Length, Props);
         {'error', Call1} ->
@@ -323,13 +323,30 @@ create_message_doc(Call, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary() | function(), kapps_call:call()) ->
+-spec store_recording(ne_binary(), ne_binary() | function(), kapps_call:call(), ne_binary()) ->
                              'ok' |
                              {'error', kapps_call:call()}.
-store_recording(AttachmentName, Url, Call) ->
+store_recording(AttachmentName, Url, Call, MessageId) ->
     case kapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         'ok' -> 'ok';
-        {'error', _} -> {'error', Call}
+        {'error', _R} ->
+            lager:warning("error during storing voicemail recording ~s , checking attachment existence: ~p", [MessageId, _R]),
+            check_attachment_exists(Call, MessageId)
+    end.
+
+-spec check_attachment_exists(kapps_call:call(), ne_binary()) -> 'ok' | {'error', kapps_call:call()}.
+check_attachment_exists(Call, MessageId) ->
+    case fetch(kapps_call:account_id(Call), MessageId) of
+        {'ok', JObj} ->
+            case kz_util:is_empty(kz_doc:attachments(JObj)) of
+                'true' ->
+                    {'error', Call};
+                'false' ->
+                    lager:debug("freeswitch returned error during store voicemail recording, but attachments is saved anyway")
+            end;
+        {'error', _R} ->
+            lager:warning("failed to check attachment existence doc id ~s: ~p", [MessageId, _R]),
+            {'error', Call}
     end.
 
 %%--------------------------------------------------------------------
