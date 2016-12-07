@@ -282,7 +282,7 @@ print_node_status(#kz_node{zone=NodeZone
 
 -spec maybe_print_zone(ne_binary(), ne_binary()) -> 'ok'.
 maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
-    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, <<Zone, " (local)">>]);
+    io:format(?SIMPLE_ROW_STR, [<<"Zone">>, <<Zone/binary, " (local)">>]);
 maybe_print_zone(NodeZone, _Zone) ->
     io:format(?SIMPLE_ROW_STR, [<<"Zone">>, NodeZone]).
 
