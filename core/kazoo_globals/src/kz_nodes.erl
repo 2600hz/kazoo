@@ -274,9 +274,10 @@ print_node_status(#kz_node{zone=NodeZone
     io:format(?SIMPLE_ROW_STR, [<<"Broker">>, Broker]),
 
     _ = maybe_print_globals(Globals),
+    _ = maybe_print_node_info(NodeInfo),
+
     _ = maybe_print_kapps(Whapps),
     _ = maybe_print_media_servers(Node),
-    _ = maybe_print_node_info(NodeInfo),
 
     io:format("~n").
 
