@@ -46,7 +46,7 @@ new(Call, Props) ->
 
     lager:debug("saving new ~bms voicemail media and metadata", [Length]),
 
-    {MessageId, MediaUrl} = create_message_doc(kapps_call:account_id(Call), Props),
+    {MessageId, MediaUrl} = create_message_doc(Call, Props),
 
     Msg = io_lib:format("failed to store voicemail media ~s in voicemail box ~s of account ~s"
                        ,[MessageId, BoxId, kapps_call:account_id(Call)]
@@ -58,9 +58,9 @@ new(Call, Props) ->
            ],
 
     lager:debug("storing voicemail media recording ~s in doc ~s", [AttachmentName, MessageId]),
-    case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call)) of
+    case store_recording(AttachmentName, MediaUrl, kapps_call:exec(Funs, Call), MessageId) of
         'ok' ->
-            notify_and_save_meta(Call, MessageId, Length, Props);
+            notify_and_update_meta(Call, MessageId, Length, Props);
         {'error', Call1} ->
             lager:error(Msg),
             {'error', Call1, Msg}
@@ -293,9 +293,21 @@ media_url(AccountId, Message) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec create_message_doc(ne_binary(), kz_proplist()) -> {ne_binary(), ne_binary() | function()}.
-create_message_doc(AccountId, Props) ->
-    MsgJObj = kzd_box_message:new(AccountId, Props),
+-spec create_message_doc(kapps_call:call(), kz_proplist()) -> {ne_binary(), ne_binary() | function()}.
+create_message_doc(Call, Props) ->
+    AccountId = kapps_call:account_id(Call),
+
+    JObj = kzd_box_message:new(AccountId, Props),
+
+    MediaId = kz_doc:id(JObj),
+    Length = props:get_value(<<"Length">>, Props),
+    CIDNumber = kvm_util:get_caller_id_number(Call),
+    CIDName = kvm_util:get_caller_id_name(Call),
+    Timestamp = kz_util:current_tstamp(),
+
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
+
+    MsgJObj = kzd_box_message:set_metadata(Metadata, JObj),
     {'ok', SavedJObj} = kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj),
 
     MediaUrl = fun() ->
@@ -304,21 +316,37 @@ create_message_doc(AccountId, Props) ->
                                          )
                end,
 
-    {kz_doc:id(MsgJObj), MediaUrl}.
+    {MediaId, MediaUrl}.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec store_recording(ne_binary(), ne_binary() | function(), kapps_call:call()) ->
+-spec store_recording(ne_binary(), ne_binary() | function(), kapps_call:call(), ne_binary()) ->
                              'ok' |
                              {'error', kapps_call:call()}.
-store_recording(AttachmentName, Url, Call) ->
-    lager:debug("storing recording ~s at ~s", [AttachmentName, Url]),
+store_recording(AttachmentName, Url, Call, MessageId) ->
     case kapps_call_command:store_file(<<"/tmp/", AttachmentName/binary>>, Url, Call) of
         'ok' -> 'ok';
-        {'error', _} -> {'error', Call}
+        {'error', _R} ->
+            lager:warning("error during storing voicemail recording ~s , checking attachment existence: ~p", [MessageId, _R]),
+            check_attachment_exists(Call, MessageId)
+    end.
+
+-spec check_attachment_exists(kapps_call:call(), ne_binary()) -> 'ok' | {'error', kapps_call:call()}.
+check_attachment_exists(Call, MessageId) ->
+    case fetch(kapps_call:account_id(Call), MessageId) of
+        {'ok', JObj} ->
+            case kz_util:is_empty(kz_doc:attachments(JObj)) of
+                'true' ->
+                    {'error', Call};
+                'false' ->
+                    lager:debug("freeswitch returned error during store voicemail recording, but attachments is saved anyway")
+            end;
+        {'error', _R} ->
+            lager:warning("failed to check attachment existence doc id ~s: ~p", [MessageId, _R]),
+            {'error', Call}
     end.
 
 %%--------------------------------------------------------------------
@@ -326,78 +354,68 @@ store_recording(AttachmentName, Url, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec notify_and_save_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> 'ok'.
-notify_and_save_meta(Call, MediaId, Length, Props) ->
+-type notify_action() :: 'save' | 'delete' | 'nothing'.
+
+-spec notify_and_update_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> 'ok'.
+notify_and_update_meta(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
 
     case kvm_util:publish_saved_notify(MediaId, BoxId, Call, Length, Props) of
         {'ok', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            maybe_save_meta(Length, NotifyAction, Call, MediaId, JObj, BoxId);
+            log_notification_response(NotifyAction, MediaId, JObj),
+            maybe_update_meta(Length, NotifyAction, Call, MediaId, BoxId);
         {'timeout', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            maybe_save_meta(Length, 'nothing', Call, MediaId, JObj, BoxId);
+            log_notification_response(NotifyAction, MediaId, JObj),
+            maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId);
         {'error', _E} ->
             lager:debug("voicemail new notification error: ~p", [_E]),
-            save_meta(Length, 'nothing', Call, MediaId, BoxId)
+            maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
--spec maybe_save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
-maybe_save_meta(Length, 'nothing', Call, MediaId, _UpdateJObj, BoxId) ->
-    save_meta(Length, 'nothing', Call, MediaId, BoxId);
-
-maybe_save_meta(Length, Action, Call, MediaId, UpdateJObj, BoxId) ->
+-spec log_notification_response(notify_action(), ne_binary(), kz_json:object()) -> 'ok'.
+log_notification_response('nothing', _MediaId, _UpdateJObj) -> 'ok';
+log_notification_response(_Action, MediaId, UpdateJObj) ->
     case kz_json:get_value(<<"Status">>, UpdateJObj) of
-        <<"completed">> ->
-            save_meta(Length, Action, Call, MediaId, BoxId);
+        <<"completed">> -> 'ok';
         <<"failed">> ->
-            lager:debug("attachment failed to send out via notification: ~s", [kz_json:get_value(<<"Failure-Message">>, UpdateJObj)]),
-            save_meta(Length, 'nothing', Call, MediaId, BoxId);
+            lager:debug("attachment for ~s failed to send out via notification: ~s"
+                       ,[MediaId
+                        ,kz_json:get_value(<<"Failure-Message">>, UpdateJObj)
+                        ]);
         _ ->
-            lager:info("timed out waiting for voicemail new notification resp"),
-            save_meta(Length, 'nothing', Call, MediaId, BoxId)
+            lager:info("timed out waiting for new voicemail (~s) notification resp", [MediaId])
     end.
 
--spec save_meta(pos_integer(), atom(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
-save_meta(Length, Action, Call, MediaId, BoxId) ->
+-spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
     AccountId = kapps_call:account_id(Call),
-    CIDNumber = kvm_util:get_caller_id_number(Call),
-    CIDName = kvm_util:get_caller_id_name(Call),
-    Timestamp = kz_util:current_tstamp(),
-
-    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
-
     case Action of
         'delete' ->
-            lager:debug("attachment was sent out via notification, deleteing media file"),
+            lager:debug("attachment was sent out via notification, set folder to delete"),
             Fun = [fun(JObj) ->
-                           kzd_box_message:apply_folder(?VM_FOLDER_DELETED, JObj)
+                           kzd_box_message:apply_folder({?VM_FOLDER_DELETED, 'false'}, JObj)
                    end
                   ],
-            save_metadata(Metadata, AccountId, BoxId, MediaId, Fun);
+            update_metadata(AccountId, BoxId, MediaId, Fun);
         'save' ->
-            lager:debug("attachment was sent out via notification, saving media file"),
+            lager:debug("attachment was sent out via notification, set folder to saved"),
             Fun = [fun(JObj) ->
                            kzd_box_message:apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
-            save_metadata(Metadata, AccountId, BoxId, MediaId, Fun);
+            update_metadata(AccountId, BoxId, MediaId, Fun);
         'nothing' ->
-            save_metadata(Metadata, AccountId, BoxId, MediaId, []),
-            lager:debug("stored voicemail metadata for ~s", [MediaId]),
+            Timestamp = kz_util:current_tstamp(),
             kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 
--spec save_metadata(kz_json:object(), ne_binary(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
-save_metadata(NewMessage, AccountId, BoxId, MessageId, Funs) ->
-    UpdateFuns = [fun(JObj) ->
-                          kzd_box_message:set_metadata(NewMessage, JObj)
-                  end
-                  | Funs
-                 ],
+-spec update_metadata(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
+update_metadata(AccountId, BoxId, MessageId, UpdateFuns) ->
     case update(AccountId, BoxId, MessageId, UpdateFuns) of
         {'ok', _} -> 'ok';
         {'error', _R} ->
-            lager:info("error while storing voicemail metadata: ~p", [_R])
+            lager:info("error while updating voicemail metadata: ~p", [_R])
     end.
