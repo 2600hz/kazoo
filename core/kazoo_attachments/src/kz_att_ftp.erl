@@ -60,7 +60,8 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
     Dir = filename:dirname(FullPath),
     File = filename:basename(FullPath),
     try
-        case ftp:open(Host, [{'port', Port}]) of
+        Options = [{'port', Port}],
+        case ftp:open(Host, Options) of
             {'ok', Pid} ->
                 Routines = [fun() -> ftp:user(Pid, User, Pass) end
                            ,fun() -> ftp:type(Pid, 'binary') end
@@ -68,14 +69,17 @@ send_request(Host, Port, UserPass, FullPath, Contents) ->
                            ,fun() -> ftp:send_bin(Pid, Contents, File) end
                            ],
                 Res = ftp_cmds(Routines),
-                ftp:close(Pid),
-                Res;
-            {'error', _}=E -> E
+                catch(ftp:close(Pid)),
+                case Res of
+                    'ok' -> 'ok';
+                    {'error', Error} -> {'error', term_to_binary(Error)}
+                end;
+            {'error', Error} -> {'error', term_to_binary(Error)}
         end
     catch
-        _Exc:_Err ->
-            lager:debug("error ~p / ~p sending file ~s to ~s", [_Exc, _Err, FullPath, Host]),
-            {'error', _Err}
+        _Exc:Err ->
+            lager:debug("error ~p / ~p sending file ~s to ~s", [_Exc, Err, FullPath, Host]),
+            {'error', term_to_binary(Err)}
     end.
 
 -spec ftp_cmds(list()) -> 'ok' | {'error', any()}.
