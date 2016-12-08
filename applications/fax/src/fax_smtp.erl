@@ -876,8 +876,13 @@ maybe_process_image(CT, Body, Size, State) ->
 write_tmp_file(Extension, Body) ->
     write_tmp_file('undefined', Extension, Body).
 
+write_tmp_file('undefined', Extension, ?NE_BINARY = Body) ->
+    Basename = kz_util:to_hex_binary(erlang:md5(Body)),
+    Filename = <<"/tmp/email_attachment_", Basename/binary>>,
+    write_tmp_file(Filename, Extension, Body);
 write_tmp_file('undefined', Extension, Body) ->
-    Filename = <<"/tmp/email_attachment_", (kz_util:to_binary(kz_util:current_tstamp()))/binary>>,
+    Basename = kz_util:to_binary(kz_util:current_tstamp()),
+    Filename = <<"/tmp/email_attachment_", Basename/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->
     File = <<Filename/binary, ".", Extension/binary>>,
