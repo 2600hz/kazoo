@@ -15,9 +15,10 @@
 -export([get_fs_kv/2, get_fs_kv/3, get_fs_key_and_value/3]).
 -export([get_fs_key/1]).
 -export([process_fs_kv/4, format_fs_kv/4]).
--export([fs_args_to_binary/1, fs_args_to_binary/2]).
+-export([fs_args_to_binary/1, fs_args_to_binary/2, fs_args_to_binary/3]).
 -export([multi_set_args/3, multi_unset_args/3]).
 -export([multi_set_args/4, multi_unset_args/4]).
+-export([multi_set_args/5, multi_unset_args/5]).
 
 -export([get_expires/1]).
 -export([get_interface_properties/1, get_interface_properties/2]).
@@ -448,7 +449,11 @@ multi_set_args(Node, UUID, KVs) ->
 
 -spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
 multi_set_args(Node, UUID, KVs, Separator) ->
-    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'set')), Separator).
+    multi_set_args(Node, UUID, KVs, Separator, ?FS_MULTI_VAR_SEP_PREFIX).
+
+-spec multi_set_args(atom(), ne_binary(), kz_proplist(), ne_binary(), binary() | string()) -> binary().
+multi_set_args(Node, UUID, KVs, Separator, Prefix) ->
+    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'set')), Separator, Prefix).
 
 -spec multi_unset_args(atom(), ne_binary(), kz_proplist()) -> binary().
 multi_unset_args(Node, UUID, KVs) ->
@@ -456,7 +461,11 @@ multi_unset_args(Node, UUID, KVs) ->
 
 -spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary()) -> binary().
 multi_unset_args(Node, UUID, KVs, Separator) ->
-    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'unset')), Separator).
+    multi_unset_args(Node, UUID, KVs, Separator, ?FS_MULTI_VAR_SEP_PREFIX).
+
+-spec multi_unset_args(atom(), ne_binary(), kz_proplist(), ne_binary(), binary() | string()) -> binary().
+multi_unset_args(Node, UUID, KVs, Separator, Prefix) ->
+    fs_args_to_binary(lists:reverse(process_fs_kv(Node, UUID, KVs, 'unset')), Separator, Prefix).
 
 -spec fs_args_to_binary(list()) -> binary().
 fs_args_to_binary([_]=Args) ->
@@ -465,11 +474,15 @@ fs_args_to_binary(Args) ->
     fs_args_to_binary(Args, <<?FS_MULTI_VAR_SEP>>).
 
 -spec fs_args_to_binary(list(), ne_binary()) -> binary().
-fs_args_to_binary([_]=Args, _Sep) ->
-    list_to_binary(Args);
 fs_args_to_binary(Args, Sep) ->
+    fs_args_to_binary(Args, Sep, ?FS_MULTI_VAR_SEP_PREFIX).
+
+-spec fs_args_to_binary(list(), ne_binary(), binary() | string()) -> binary().
+fs_args_to_binary([_]=Args, _Sep, _Prefix) ->
+    list_to_binary(Args);
+fs_args_to_binary(Args, Sep, Prefix) ->
     Bins = [list_to_binary([Sep, Arg]) || Arg <- Args],
-    list_to_binary([?FS_MULTI_VAR_SEP_PREFIX, Bins]).
+    list_to_binary([Prefix, Bins]).
 
 -spec process_fs_kv(atom(), ne_binary(), kz_proplist(), atom()) -> [binary()].
 process_fs_kv(_, _, [], _) -> [];

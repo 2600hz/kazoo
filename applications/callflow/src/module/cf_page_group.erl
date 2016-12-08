@@ -33,9 +33,10 @@ handle(Data, Call) ->
 
 -spec attempt_page(kz_json:objects(), kz_json:object(), kapps_call:call()) -> 'ok'.
 attempt_page(Endpoints, Data, Call) ->
-    Timeout = kz_json:get_binary_value(<<"timeout">>, Data, 5),
+    Timeout = kz_json:get_integer_value(<<"timeout">>, Data, 5),
+    BargeOption = barge_option(Data),
     lager:info("attempting page group of ~b members", [length(Endpoints)]),
-    case kapps_call_command:b_page(Endpoints, Timeout, Call) of
+    case send_page(Endpoints, Timeout, BargeOption, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the page group - call finished normally"),
             cf_exe:stop(Call);
@@ -43,6 +44,25 @@ attempt_page(Endpoints, Data, Call) ->
             lager:info("error bridging to page group: ~p", [_R]),
             cf_exe:continue(Call)
     end.
+
+-spec barge_option(kz_json:object()) -> kz_json:object().
+barge_option(Data) ->
+    case kz_json:is_true(<<"barge_calls">>, Data) of
+        'false' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]);
+        'true' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'false'}])
+    end.
+
+-spec send_page(kz_json:objects(), integer(), kz_json:object(), kapps_call:call()) ->
+                       {'error', 'timeout' | kz_json:object()} | {'ok', kz_json:object()}.
+send_page(Endpoints, Timeout, CCVs, Call) ->
+    kapps_call_command:b_page(Endpoints
+                             ,Timeout
+                             ,'undefined'
+                             ,'undefined'
+                             ,'undefined'
+                             ,CCVs
+                             ,Call
+                             ).
 
 -spec get_endpoints(kz_json:objects(), kapps_call:call()) -> kz_json:objects().
 get_endpoints(Members, Call) ->
