@@ -55,16 +55,16 @@ find_numbers(Prefix, Quantity, Options) ->
 -spec find_numbers_in_account(ne_binary(), pos_integer(), api_ne_binary(), knm_carriers:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
+find_numbers_in_account(_Prefix, _Quantity, 'undefined', _Options) -> {'ok', []};
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
     Offset = knm_carriers:offset(Options),
     QID = knm_search:query_id(Options),
     case do_find_numbers_in_account(Prefix, Quantity, Offset, AccountId, QID) of
-        {'error', 'not_available'}=Error ->
+        {'error', 'not_available'} ->
             ResellerId = knm_carriers:reseller_id(Options),
-            case AccountId =:= 'undefined'
-                orelse AccountId =:= ResellerId
+            case AccountId =:= ResellerId
             of
-                'true' -> Error;
+                'true' -> {'ok', []};
                 'false' ->
                     NewOptions = [{'offset', 0} | Options],
                     find_numbers_in_account(Prefix, Quantity, ResellerId, NewOptions)
