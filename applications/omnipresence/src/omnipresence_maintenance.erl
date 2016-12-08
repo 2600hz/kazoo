@@ -14,7 +14,6 @@
         ,count_current_subscriptions/0
         ,subscribe/2
         ,send_mwi_update/3
-        ,list_terminated_callids/0
         ,reset_subscription/1, reset_subscription/2
         ,reset_subscriber/1, reset_subscriber/2
         ]).
@@ -107,15 +106,6 @@ send_mwi_update(User, New, Saved) ->
               ],
     kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_mwi_update/1),
     'ok'.
-
--spec list_terminated_callids() -> 'ok'.
-list_terminated_callids() ->
-    io:format("Here are the call IDs currently cached as terminated:~n", []),
-    io:format("~s~n", [kz_util:join_binary(
-                         omnip_subscriptions:cached_terminated_callids()
-                                          ,<<", ">>
-                        )
-                      ]).
 
 -spec reset_subscription(ne_binary()) -> any().
 reset_subscription(User) ->

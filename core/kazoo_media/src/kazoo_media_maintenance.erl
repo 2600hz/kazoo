@@ -207,7 +207,7 @@ maybe_retry_upload(ID, AttachmentName, Contents, Options, Retries) ->
                     timer:sleep(?MILLISECONDS_IN_SECOND),
                     upload_prompt(ID, AttachmentName, Contents, Options, Retries-1);
                 _Attachment ->
-                    io:format("  attachment appears to have uploaded successfully!")
+                    io:format("  attachment appears to have uploaded successfully!~n")
             end;
         {'error', E}=Error ->
             io:format("  failed to open the media doc again: ~p~n", [E]),
