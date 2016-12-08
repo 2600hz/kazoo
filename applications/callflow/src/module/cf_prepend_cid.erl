@@ -29,6 +29,7 @@ handle(<<"reset">>, _Data, Call) ->
     Name   = kapps_call:kvs_fetch(<<"original_cid_name">>, kapps_call:caller_id_name(Call), Call),
     Number = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
 
+    lager:info("reset prepend cid resulted in cid number ~s and cid name ~s", [Number, Name]),
     set_values(Name, Number, Call);
 
 handle(<<"prepend">>, Data, Call) ->
@@ -39,16 +40,16 @@ handle(<<"prepend">>, Data, Call) ->
     OrigNum  = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
 
     {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
-                         <<"original">> -> {
-                             <<NamePre/binary, OrigName/binary>>
-                                           ,<<NumberPre/binary, OrigNum/binary>>
+                         <<"original">> ->
+                            {<<NamePre/binary, OrigName/binary>>
+                            ,<<NumberPre/binary, OrigNum/binary>>
                             };
-
-                         <<"current">> -> {
-                             <<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
-                                          ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
+                         <<"current">> ->
+                            {<<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
+                            ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
                             }
                      end,
+    lager:info("prepend cid resulted in cid number ~s and cid name ~s", [Number, Name]),
     set_values(Name, Number, Call).
 
 -spec maybe_set_orig_name(kapps_call:call()) -> kapps_call:call().

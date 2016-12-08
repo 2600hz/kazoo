@@ -107,9 +107,6 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
                        ,list_to_binary([Number, "@", kapps_call:request_realm(Call)])
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
-                      ,fun(C) when NoMatch -> update_cid(C);
-                          (C) -> C
-                       end
                       ],
             {'ok', C} = cf_exe:get_call(Call),
             cf_exe:set_call(kapps_call:exec(Updates, C)),
@@ -143,15 +140,6 @@ try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout) ->
         {'ok', Digits} -> knm_converters:normalize(Digits)
     end.
 
-
--spec update_cid(kapps_call:call()) -> kapps_call:call().
-update_cid(Call) ->
-    {CIDNum, CIDName} = kz_attributes:caller_id(<<"external">>, Call),
-    Updates = [{fun kapps_call:set_caller_id_number/2, CIDNum}
-              ,{fun kapps_call:set_caller_id_name/2, CIDName}
-              ],
-    kapps_call:exec(Updates, Call).
-
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -174,7 +162,13 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
 maybe_update_caller_id(Data, Call) ->
     case kz_json:is_true(<<"use_account_caller_id">>, Data, ?DEFAULT_USE_ACCOUNT_CALLER_ID) of
         'true'  -> set_caller_id(Call);
-        'false' -> Call
+        'false' ->
+            lager:debug("keep the original caller id"),
+            Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', kapps_call:caller_id_number(C), C) end
+                      ],
+            UpdatedCall = kapps_call:exec(Updates, Call),
+            cf_exe:set_call(UpdatedCall),
+            UpdatedCall
     end.
 
 -spec start_preconnect_audio(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -226,7 +220,8 @@ play_ringing(Data, Call) ->
 set_caller_id(Call) ->
     AccountId = kapps_call:account_id(Call),
     {Number, Name} = maybe_get_account_cid(AccountId, Call),
-    lager:info("setting the caller id number to ~s from account ~s", [Number, AccountId]),
+    lager:info("setting the caller id number to ~s and caller id name to ~s from account ~s"
+              ,[Number, Name, AccountId]),
     Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', Number, C) end
               ,fun(C) ->
                        C1 = kapps_call:set_caller_id_number(Number, C),
@@ -253,6 +248,9 @@ set_caller_id(Call) ->
 maybe_get_account_cid(AccountId, Call) ->
     Name = kapps_call:caller_id_name(Call),
     Number = kapps_call:caller_id_number(Call),
+
+    lager:info("current cid number ~s and name ~s", [Number, Name]),
+
     case kz_account:fetch(AccountId) of
         {'error', _} -> kz_attributes:maybe_get_assigned_number(Number, Name, Call);
         {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
