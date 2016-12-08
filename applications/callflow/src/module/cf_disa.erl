@@ -219,68 +219,23 @@ play_ringing(Data, Call) ->
 -spec set_caller_id(kapps_call:call()) -> kapps_call:call().
 set_caller_id(Call) ->
     AccountId = kapps_call:account_id(Call),
-    {Number, Name} = maybe_get_account_cid(AccountId, Call),
+    {Number, Name} = kz_attributes:get_account_external_cid(Call),
+
     lager:info("setting the caller id number to ~s and caller id name to ~s from account ~s"
               ,[Number, Name, AccountId]),
+
+    Props = [{<<"Caller-ID-Number">>, Number}
+            ,{<<"Caller-ID-Name">>, Name}
+            ],
+
     Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', Number, C) end
-              ,fun(C) ->
-                       C1 = kapps_call:set_caller_id_number(Number, C),
-                       kapps_call:set_caller_id_name(Name, C1)
-               end
-              ,fun(C) ->
-                       Props = [{<<"Caller-ID-Number">>, Number}
-                               ,{<<"Caller-ID-Name">>, Name}
-                               ],
-                       kapps_call:set_custom_channel_vars(Props, C)
-               end
+              ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+              ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
+              ,fun(C) -> kapps_call:set_custom_channel_vars(Props, C) end
               ],
     UpdatedCall = kapps_call:exec(Updates, Call),
     cf_exe:set_call(UpdatedCall),
     UpdatedCall.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_get_account_cid(ne_binary(), kapps_call:call()) ->
-                                   {api_binary(), api_binary()}.
-maybe_get_account_cid(AccountId, Call) ->
-    Name = kapps_call:caller_id_name(Call),
-    Number = kapps_call:caller_id_number(Call),
-
-    lager:info("current cid number ~s and name ~s", [Number, Name]),
-
-    case kz_account:fetch(AccountId) of
-        {'error', _} -> kz_attributes:maybe_get_assigned_number(Number, Name, Call);
-        {'ok', JObj} -> maybe_get_account_external_number(Number, Name, JObj, Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_get_account_external_number(ne_binary(), ne_binary(), kz_json:object(), kapps_call:call()) ->
-                                               {api_binary(), api_binary()}.
-maybe_get_account_external_number(Number, Name, Account, Call) ->
-    External = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
-    case is_valid_caller_id(External, Call) of
-        'true' ->
-            lager:info("valid account external caller id <~s> ~s", [Name, Number]),
-            {External, Name};
-        'false' ->
-            kz_attributes:maybe_get_account_default_number(Number, Name, Account, Call)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec is_valid_caller_id(api_binary(), kapps_call:call()) -> boolean().
-is_valid_caller_id('undefined', _) -> 'false';
-is_valid_caller_id(_, _) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @private
