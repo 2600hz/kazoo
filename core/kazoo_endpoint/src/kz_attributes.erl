@@ -259,7 +259,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
         'true' ->
-            lager:info("determined valid account external caller id is <~s> ~s", [Name, Number]),
+            lager:info("determined valid account external caller id is <~s> ~s", [Name, External]),
             {External, Name};
         'false' ->
             maybe_get_account_default_number(Number, Name, Account, Call)
@@ -271,7 +271,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = kz_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
         'true' ->
-            lager:info("determined valid account default caller id is <~s> ~s", [Name, Number]),
+            lager:info("determined valid account default caller id is <~s> ~s", [Name, Default]),
             {Default, Name};
         'false' ->
             maybe_get_assigned_number(Number, Name, Call)
