@@ -96,34 +96,47 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
 -spec save_fax_attachment(api_object(), binary(), ne_binary())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
--spec save_fax_attachment(api_object(), binary(), ne_binary(), non_neg_integer())->
+-spec save_fax_attachment(api_object(), binary(), ne_binary(), ne_binary(), non_neg_integer())->
                                  {'ok', kz_json:object()} |
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
     MaxStorageRetry = kapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
-    save_fax_attachment(JObj, FileContents, CT, MaxStorageRetry).
+    ContentsMD5 = kz_util:to_hex_binary(erlang:md5(FileContents)),
+    Name = attachment_name(ContentsMD5, CT),
 
-save_fax_attachment(JObj, _FileContents, _CT, 0) ->
-    DocId = kz_doc:id(JObj),
-    lager:error("max retry saving attachment on fax id ~s rev ~s",[DocId, kz_doc:revision(JObj)]),
+    save_fax_attachment(JObj, FileContents, CT, Name, MaxStorageRetry).
+
+save_fax_attachment(JObj, _FileContents, _CT, _Name, 0) ->
+    lager:error("max retry saving attachment ~s on fax id ~s rev ~s"
+               ,[_Name, kz_doc:id(JObj), kz_doc:revision(JObj)]
+               ),
     {'error', <<"max retry saving attachment">>};
-save_fax_attachment(JObj, FileContents, CT, Count) ->
+save_fax_attachment(JObj, FileContents, CT, Name, Count) ->
     DocId = kz_doc:id(JObj),
-    Opts = [{'content_type', CT}],
-    Name = attachment_name(<<>>, CT),
-    _ = kz_datamgr:put_attachment(?KZ_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
             lager:warning("missing fax attachment on fax id ~s",[DocId]),
+
+            _ = attempt_save(JObj, FileContents, CT, Name),
+
             timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
-            save_fax_attachment(J, FileContents, CT, Count-1);
+            save_fax_attachment(J, FileContents, CT, Name, Count-1);
         {'error', _R} ->
             lager:debug("error '~p' saving fax attachment on fax id ~s",[_R, DocId]),
             timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             {'ok', J} = kz_datamgr:open_doc(?KZ_FAXES_DB, DocId),
-            save_fax_attachment(J, FileContents, CT, Count-1)
+            save_fax_attachment(J, FileContents, CT, Name, Count-1)
     end.
+
+-spec attempt_save(kz_json:object(), binary(), ne_binary(), ne_binary()) ->
+                          {'ok', kz_json:objcet()} |
+                          kz_datamgr:data_error().
+attempt_save(JObj, FileContents, CT, Name) ->
+    Opts = [{'content_type', CT}
+           ],
+
+    kz_datamgr:put_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), Name, FileContents, Opts).
 
 -spec check_fax_attachment(ne_binary(), ne_binary())->
                                   {'ok', kz_json:object()} |

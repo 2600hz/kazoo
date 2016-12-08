@@ -85,6 +85,7 @@
 
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
+             ,data_error/0
              ]).
 
 -include("kz_data.hrl").
