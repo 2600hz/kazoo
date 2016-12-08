@@ -19,7 +19,6 @@
         ,owned_by_docs/2, owned_by_docs/3
         ]).
 -export([owner_ids/2]).
--export([get_account_external_cid/1]).
 -export([maybe_get_assigned_number/3]).
 -export([maybe_get_account_default_number/4]).
 
@@ -235,16 +234,6 @@ ensure_valid_caller_id(Number, Name, Call) ->
             maybe_get_account_cid(Number, Name, Call)
     end.
 
--spec get_account_external_cid(kapps_call:call()) ->
-                                      {api_binary(), api_binary()}.
-get_account_external_cid(Call) ->
-    Number = kapps_call:caller_id_number(Call),
-    Name = kapps_call:caller_id_name(Call),
-
-    lager:info("current cid number ~s and name ~s", [Number, Name]),
-
-    maybe_get_account_cid(Number, Name, Call).
-
 -spec maybe_get_account_cid(ne_binary(), ne_binary(), kapps_call:call()) ->
                                    {api_binary(), api_binary()}.
 maybe_get_account_cid(Number, Name, Call) ->
@@ -259,7 +248,7 @@ maybe_get_account_external_number(Number, Name, Account, Call) ->
     External = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Account),
     case is_valid_caller_id(External, Call) of
         'true' ->
-            lager:info("determined valid account external caller id is <~s> ~s", [Name, External]),
+            lager:info("determined valid account external caller id is <~s> ~s", [Name, Number]),
             {External, Name};
         'false' ->
             maybe_get_account_default_number(Number, Name, Account, Call)
@@ -271,7 +260,7 @@ maybe_get_account_default_number(Number, Name, Account, Call) ->
     Default = kz_json:get_ne_value([<<"caller_id">>, <<"default">>, <<"number">>], Account),
     case is_valid_caller_id(Default, Call) of
         'true' ->
-            lager:info("determined valid account default caller id is <~s> ~s", [Name, Default]),
+            lager:info("determined valid account default caller id is <~s> ~s", [Name, Number]),
             {Default, Name};
         'false' ->
             maybe_get_assigned_number(Number, Name, Call)
