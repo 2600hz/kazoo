@@ -68,9 +68,14 @@ maybe_set_orig_number(Call) ->
 
 -spec set_values(binary(), binary(), kapps_call:call()) -> any().
 set_values(Name, Number, Call) ->
-    Call1 = kapps_call:exec([fun(C) -> kapps_call:kvs_store('dynamic_cid', Number, C) end
-                            ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
-                            ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
-                            ], Call),
+    Props = [{<<"Retain-CID">>, 'true'}
+            ,{<<"Caller-ID-Number">>, Number}
+            ,{<<"Caller-ID-Name">>, Name}
+            ],
+    Updates = [fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+              ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
+              ,fun(C) -> kapps_call:set_custom_channel_vars(Props, C) end
+              ],
+    Call1 = kapps_call:exec(Updates, Call),
     cf_exe:set_call(Call1),
     cf_exe:continue(Call1).

@@ -96,7 +96,7 @@ allow_dial(Data, Call, Retries, Interdigit) ->
 
     lager:info("caller is trying to call '~s'", [Number]),
 
-    Call1 = maybe_update_caller_id(Data, Call),
+    Call1 = maybe_update_caller_id(Call, should_use_account_cid(Data)),
     maybe_route_to_callflow(Data, Call1, Retries, Interdigit, Number).
 
 maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
@@ -108,8 +108,7 @@ maybe_route_to_callflow(Data, Call, Retries, Interdigit, Number) ->
                        }
                       ,{fun kapps_call:set_to/2, list_to_binary([Number, "@", kapps_call:to_realm(Call)])}
                       ],
-            {'ok', C} = cf_exe:get_call(Call),
-            cf_exe:set_call(kapps_call:exec(Updates, C)),
+            cf_exe:set_call(kapps_call:exec(Updates, Call)),
             maybe_restrict_call(Data, Call, Number, Flow);
         _ ->
             lager:info("failed to find a callflow to satisfy ~s", [Number]),
@@ -158,16 +157,13 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             cf_exe:branch(kz_json:get_value(<<"flow">>, Flow), Call)
     end.
 
--spec maybe_update_caller_id(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_update_caller_id(Data, Call) ->
-    case kz_json:is_true(<<"use_account_caller_id">>, Data, ?DEFAULT_USE_ACCOUNT_CALLER_ID) of
-        'true'  -> set_caller_id(Call);
-        'false' ->
-            lager:debug("keep the original caller id"),
-            Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', kapps_call:caller_id_number(C), C) end
-                      ],
-            cf_exe:update_call(Call, Updates)
-    end.
+-spec should_use_account_cid(kz_json:object()) -> boolean().
+should_use_account_cid(Data) ->
+    kz_json:is_true(<<"use_account_caller_id">>, Data, ?DEFAULT_USE_ACCOUNT_CALLER_ID).
+
+-spec maybe_update_caller_id(kz_json:object(), boolean()) -> kapps_call:call().
+maybe_update_caller_id(Call, 'true') -> use_account_cid(Call);
+maybe_update_caller_id(Call, 'false') -> keep_original_cid(Call).
 
 -spec start_preconnect_audio(kz_json:object(), kapps_call:call()) -> 'ok'.
 start_preconnect_audio(Data, Call) ->
@@ -214,24 +210,40 @@ play_ringing(Data, Call) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec set_caller_id(kapps_call:call()) -> kapps_call:call().
-set_caller_id(Call) ->
+-spec use_account_cid(kapps_call:call()) -> kapps_call:call().
+use_account_cid(Call) ->
     AccountId = kapps_call:account_id(Call),
     {Number, Name} = kz_attributes:get_account_external_cid(Call),
 
-    lager:info("setting the caller id number to ~s and caller id name to ~s from account ~s"
-              ,[Number, Name, AccountId]),
+    lager:info("setting the caller id to <~s> ~s from account ~s", [Name, Number, AccountId]),
 
-    Props = [{<<"Caller-ID-Number">>, Number}
+    set_cid(Number, Name, Call).
+
+-spec keep_original_cid(kapps_call:call()) -> kapps_call:call().
+keep_original_cid(Call) ->
+    Number = kapps_call:caller_id_number(Call),
+    Name = kapps_call:caller_id_name(Call),
+
+    lager:info("keep the original caller id <~s> ~s", [Name, Number]),
+
+    set_cid(Number, Name, Call).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec set_cid(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_call:call().
+set_cid(Number, Name, Call) ->
+    Props = [{<<"Retain-CID">>, 'true'}
+            ,{<<"Caller-ID-Number">>, Number}
             ,{<<"Caller-ID-Name">>, Name}
             ],
-
-    Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', Number, C) end
-              ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+    Updates = [fun(C) -> kapps_call:set_caller_id_number(Number, C) end
               ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
               ,fun(C) -> kapps_call:set_custom_channel_vars(Props, C) end
               ],
-    cf_exe:update_call(Call, Updates).
+    kapps_call:exec(Updates, Call).
 
 %%--------------------------------------------------------------------
 %% @private

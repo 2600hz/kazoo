@@ -972,15 +972,12 @@ get_clid(Endpoint, Properties, Call, Type) ->
         'true' -> #clid{};
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
-            DynamicCID = kz_util:is_true(kapps_call:kvs_fetch('dynamic_cid', Call)),
             CallerNumber = case kapps_call:caller_id_number(Call) of
                                Number -> 'undefined';
-                               NewNumber when DynamicCID -> NewNumber;
                                _Number -> Number
                            end,
             CallerName = case kapps_call:caller_id_name(Call) of
                              Name -> 'undefined';
-                             NewName when DynamicCID -> NewName;
                              _Name -> Name
                          end,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
