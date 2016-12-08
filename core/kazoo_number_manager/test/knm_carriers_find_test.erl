@@ -22,34 +22,41 @@ find_local_test_() ->
     ].
 
 find_other_test_() ->
-    [find_no_phonebook()
-    ,find_blocks()
-    ,find_numbers()
-    ].
-
-find_no_phonebook() ->
-    Options = [{'carriers', [?CARRIER_OTHER]}
-              ,{'quantity', 1}
+    {'ok', Pid} = knm_search:start_link(),
+    Options = [{carriers, [?CARRIER_OTHER]}
+              ,{'query_id', <<"QID">>}
               ],
+    X = [find_no_phonebook(Options)
+        ,find_blocks(Options)
+        ,find_numbers(Options)
+        ],
+    _ = gen_server:stop(Pid),
+    X.
+
+find_no_phonebook(Options0) ->
     Prefix = <<"415">>,
+    Options = [{prefix, Prefix}
+               |Options0
+              ],
     [{"Verify no phonebook url yields no results"
-     ,?_assertEqual([], knm_carriers:find(Prefix, Options))
+     ,?_assertEqual([], knm_search:find(Options))
      }
     ].
 
-find_blocks() ->
+find_blocks(Options0) ->
     Prefix = <<"415">>,
     Limit = 10,
     Options = [{'phonebook_url', ?BLOCK_PHONEBOOK_URL}
               ,{'blocks', 'true'}
               ,{'account_id', ?RESELLER_ACCOUNT_ID}
-              ,{'carriers', [?CARRIER_OTHER]}
               ,{'quantity', Limit}
+              ,{prefix, Prefix}
+               | Options0
               ],
 
     {'bulk', [StartNumber, EndNumber]=Numbers} =
         knm_other:find_numbers(Prefix, Limit, Options),
-    [StartJObj, EndJObj]=Results = knm_carriers:find(Prefix, Options),
+    [StartJObj, EndJObj]=Results = knm_search:find(Options),
 
     [{"Verify the same amount of numbers and results"
      ,?_assertEqual(length(Numbers), length(Results))
@@ -91,15 +98,16 @@ verify_block(PhoneNumber, JObj, DID, Activation) ->
      }
     ].
 
-find_numbers() ->
+find_numbers(Options0) ->
     Prefix = <<"415">>,
     Limit = 10,
     Options = [{'phonebook_url', ?NUMBER_PHONEBOOK_URL}
               ,{'account_id', ?MASTER_ACCOUNT_ID}
-              ,{'carriers', [?CARRIER_OTHER]}
               ,{'quantity', 10}
+              ,{prefix, Prefix}
+               | Options0
               ],
-    Results = knm_carriers:find(Prefix, Options),
+    Results = knm_search:find(Options),
     [{"Verify results returned is the expected amount"
      ,?_assertEqual(Limit, length(Results))
      }

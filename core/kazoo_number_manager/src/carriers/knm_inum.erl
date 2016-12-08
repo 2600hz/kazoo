@@ -52,7 +52,7 @@ find_numbers(<<"+", _/binary>>=Prefix, Quantity, Options) ->
 find_numbers(Prefix, Quantity, Options) ->
     find_numbers(<<"+",Prefix/binary>>, Quantity, Options).
 
--spec find_numbers_in_account(ne_binary(), pos_integer(), api_binary(), knm_carriers:options()) ->
+-spec find_numbers_in_account(ne_binary(), pos_integer(), api_ne_binary(), knm_carriers:options()) ->
                                      {'ok', knm_number:knm_numbers()} |
                                      {'error', any()}.
 find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
