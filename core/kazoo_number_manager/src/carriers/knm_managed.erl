@@ -92,9 +92,7 @@ do_find_numbers_in_account(Prefix, Quantity, AccountId, Options) ->
 -spec format_numbers_resp(kz_json:objects(), knm_search:options()) -> {'ok', list()}.
 format_numbers_resp(JObjs, Options) ->
     QID = knm_search:query_id(Options),
-    Numbers = [N || JObj <- JObjs,
-                    N <- [format_number_resp(QID, JObj)]
-              ],
+    Numbers = [format_number_resp(QID, JObj) || JObj <- JObjs],
     {'ok', Numbers}.
 
 -spec format_number_resp(ne_binary(), kz_json:object()) -> tuple().

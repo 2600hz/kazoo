@@ -408,8 +408,7 @@ import(Props, AccountIds
                   ,{?E911_STREET2, E911ExtendedAddress}
                   ,{?E911_CITY, E911Locality}
                   ,{?E911_STATE, E911Region}
-                  ])
-               ),
+                  ])),
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'batch_run', 'true'}
               ,{'assign_to', AccountId}
