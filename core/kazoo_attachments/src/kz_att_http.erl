@@ -57,7 +57,10 @@ send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
             NewDebug = add_debug(Debug, Url, Code, ReplyHeaders),
             Fun = fun(URL, Tries, Data) -> send_request(URL, Verb, Headers, Contents, Tries, Data) end,
             maybe_redirect(Url, ReplyHeaders, Redirects, NewDebug, Fun);
-        _E -> {'error', _E}
+        {'ok', Code, _ReplyHeaders, Body} ->
+            {'error', kz_util:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
+        {'error', Error} ->
+            {'error', term_to_binary(Error)}
     end.
 
 maybe_redirect(ToUrl, Headers, Redirects, Debug, Fun) ->
@@ -118,8 +121,9 @@ fetch_attachment(Url, Redirects, Debug) ->
             NewDebug = add_debug(Debug, Url, Code, Headers),
             Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
             maybe_redirect(Url, Headers, Redirects, NewDebug, Fun);
-        {'ok', _, _Headers, Body} -> {'error', Body};
-        _R -> {'error', <<"error getting from url">>}
+        {'ok', Code, _Headers, Body} ->
+            {'error', kz_util:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
+        _R -> {'error', <<"error getting attachment from url ", Url/binary>>}
     end.
 
 format_url(Fields, JObj, Args, Separator) ->
