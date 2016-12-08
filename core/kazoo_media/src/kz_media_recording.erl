@@ -591,10 +591,14 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
 -spec store_recording({ne_binary(), ne_binary()}, ne_binary() | function(), kapps_call:call()) -> 'ok'.
 store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
+    kz_util:spawn(fun store_recording/4, [self(), Filename, StoreUrl, Call]).
+
+-spec store_recording(pid(), ne_binary(), ne_binary() | function(), kapps_call:call()) -> 'ok'.
+store_recording(Pid, Filename, StoreUrl, Call) ->
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
-        {'error', 'timeout'} -> gen_server:cast(self(), 'store_failed');
+        {'error', 'timeout'} -> gen_server:cast(Pid, 'store_failed');
         {'error', Error} ->
             lager:error("error storing recording : ~p", [Error]),
-            gen_server:cast(self(), 'store_failed');
-        'ok' -> gen_server:cast(self(), 'store_succeeded')
+            gen_server:cast(Pid, 'store_failed');
+        'ok' -> gen_server:cast(Pid, 'store_succeeded')
     end.
