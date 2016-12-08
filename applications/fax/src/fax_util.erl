@@ -111,8 +111,12 @@ save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = kz_doc:id(JObj),
     Rev = kz_doc:revision(JObj),
     Opts = [{'content_type', CT} ,{'rev', Rev}],
-    Name = attachment_name(<<>>, CT),
+
+    ContentsMD5 = kz_util:to_hex_binary(erlang:md5(FileContents)),
+    Name = attachment_name(ContentsMD5, CT),
+
     _ = kz_datamgr:put_attachment(?KZ_FAXES_DB, DocId, Name, FileContents, Opts),
+
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
