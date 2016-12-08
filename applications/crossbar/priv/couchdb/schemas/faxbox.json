@@ -92,6 +92,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "pattern": "^https?://",
                                     "required": false,
                                     "type": "string"
                                 }
@@ -169,6 +170,7 @@
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
+                                    "pattern": "^https?://",
                                     "required": false,
                                     "type": "string"
                                 }
