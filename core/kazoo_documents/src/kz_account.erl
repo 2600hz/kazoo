@@ -13,6 +13,9 @@
         ,id/1
         ,fetch/1, fetch/2
 
+        ,get_inherited_value/2
+        ,get_inherited_value/3
+
         ,name/1, name/2, set_name/2
         ,realm/1, realm/2, set_realm/2
         ,language/1, set_language/2
@@ -74,6 +77,45 @@
 
 -type doc() :: kz_json:object().
 -export_type([doc/0]).
+
+-spec get_inherited_value(api_binary(), fun()) -> any().
+get_inherited_value(Account, ValueFun) ->
+    get_inherited_value(Account, ValueFun, 'undefined').
+
+-spec get_inherited_value(api_binary(), fun(), any()) -> any().
+get_inherited_value('undefined', _ValueFun, Default) ->
+    Default;
+
+get_inherited_value(Account, ValueFun, Default) ->
+    case check_account(Account, ValueFun) of
+        'undefined' ->
+            check_reseller(Account, ValueFun, Default);
+
+        Value ->
+            Value
+    end.
+
+-spec check_account(api_binary(), fun()) -> any().
+check_account(Account, ValueFun) ->
+    case fetch(Account) of
+        {'error', _Err} ->
+            'undefined';
+
+        {'ok', JObj} ->
+            ValueFun(JObj)
+    end.
+
+-spec check_reseller(api_binary(), fun(), any()) -> any().
+check_reseller(Account, ValueFun, Default) ->
+    Reseller = kz_services:find_reseller_id(Account),
+
+    case check_account(Reseller, ValueFun) of
+        'undefined' ->
+            Default;
+
+        Value ->
+            Value
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

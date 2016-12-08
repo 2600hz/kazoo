@@ -215,36 +215,14 @@ should_handle_port(JObj) ->
 
 -spec should_handle(kz_json:object()) -> boolean().
 should_handle(JObj) ->
-    case kz_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj) of
-        'undefined' -> should_handle_system();
-        Account -> should_handle_account(Account)
-    end.
+    Account = kz_json:get_first_defined([<<"Account-ID">>, <<"Account-DB">>], JObj),
 
--spec should_handle_system() -> boolean().
-should_handle_system() ->
-    kapps_config:get(?NOTIFY_CONFIG_CAT, <<"notification_app">>, <<"teletype">>)
-        =:= ?APP_NAME.
+    Config = kz_account:get_inherited_value(Account
+                                           ,fun kz_account:notification_preference/1
+                                           ,kapps_config:get(?NOTIFY_CONFIG_CAT
+                                                            ,<<"notification_app">>
+                                                            ,<<"teletype">>)
+                                           ),
 
--spec should_handle_account(ne_binary()) -> boolean().
-should_handle_account(Account) ->
-    AccountId = kz_util:format_account_id(Account, 'raw'),
-    case kz_account:fetch(Account) of
-        {'ok', AccountJObj} ->
-            kz_account:notification_preference(AccountJObj) =:= 'undefined'
-                andalso should_handle_reseller(kz_services:find_reseller_id(AccountId));
-        {'error', _E} -> 'false'
-    end.
-
-should_handle_reseller(ResellerId) ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    should_handle_reseller(ResellerId, MasterAccountId).
-
-should_handle_reseller(MasterAccountId, MasterAccountId) ->
-    lager:debug("reached master account, checking system"),
-    should_handle_system();
-should_handle_reseller(ResellerId, _MasterAccountId) ->
-    case kz_account:fetch(ResellerId) of
-        {'ok', ResellerJObj} ->
-            kz_account:notification_preference(ResellerJObj) =:= 'undefined';
-        {'error', _E} -> 'false'
-    end.
+    lager:debug("notification configuration is: ~p", [Config]),
+    Config =:= ?APP_NAME.

@@ -598,51 +598,19 @@ should_handle_notification(JObj) ->
 should_handle_notification(_JObj, 'true') ->
     lager:debug("notification is a preview, handling"),
     'true';
+
 should_handle_notification(JObj, 'false') ->
-    case find_account_id(JObj) of
-        'undefined' -> should_handle_system();
-        Account -> should_handle_account(Account)
-    end.
+    Account = find_account_id(JObj),
 
--spec should_handle_system() -> boolean().
-should_handle_system() ->
-    lager:debug("should system handle notification"),
-    kapps_config:get(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
-        =:= ?APP_NAME.
+    Config = kz_account:get_inherited_value(Account
+                                           ,fun kz_account:notification_preference/1
+                                           ,kapps_config:get(?NOTIFY_CONFIG_CAT
+                                                            ,<<"notification_app">>
+                                                            ,?APP_NAME)
+                                           ),
 
--spec should_handle_account(ne_binary()) -> boolean().
--spec should_handle_account(api_binary(), api_binary()) -> boolean().
-should_handle_account(Account) ->
-    case kz_account:fetch(Account) of
-        {'error', _E} ->
-            lager:debug("teletype should handle account ~s", [Account]),
-            'true';
-        {'ok', JObj} ->
-            should_handle_account(Account
-                                 ,kz_account:notification_preference(JObj)
-                                 )
-    end.
-
-should_handle_account(_Account, ?APP_NAME) -> 'true';
-should_handle_account('undefined', 'undefined') ->
-    should_handle_system();
-should_handle_account(Account, 'undefined') ->
-    should_handle_reseller(Account);
-should_handle_account(_Account, _Preference) ->
-    lager:debug("not handling notification;"
-                " unknown notification preference '~s' for '~s'"
-               ,[_Preference, _Account]
-               ).
-
--spec should_handle_reseller(ne_binary()) -> boolean().
-should_handle_reseller(Account) ->
-    case kz_account:fetch(kz_services:find_reseller_id(Account)) of
-        {'error', _E} -> 'true';
-        {'ok', ResellerJObj} ->
-            should_handle_account('undefined'
-                                 ,kz_account:notification_preference(ResellerJObj)
-                                 )
-    end.
+    lager:debug("notification configuration is: ~p", [Config]),
+    Config =:= ?APP_NAME.
 
 -define(MOD_CONFIG_CAT(Key), <<(?NOTIFY_CONFIG_CAT)/binary, ".", Key/binary>>).
 
