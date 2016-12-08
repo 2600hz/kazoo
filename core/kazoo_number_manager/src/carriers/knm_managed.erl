@@ -95,7 +95,6 @@ format_numbers_resp(JObjs, Options) ->
     Numbers = [format_number_resp(QID, JObj) || JObj <- JObjs],
     {'ok', Numbers}.
 
--spec format_number_resp(ne_binary(), kz_json:object()) -> tuple().
 format_number_resp(QID, JObj) ->
     Num = kz_doc:id(kz_json:get_value(<<"doc">>, JObj)),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.

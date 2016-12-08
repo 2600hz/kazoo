@@ -86,8 +86,8 @@ is_number_billable(_Number) -> 'true'.
 %% Query the system for a quantity of available numbers in a rate center
 %% @end
 %%--------------------------------------------------------------------
--spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
-                          {'ok', knm_number:knm_numbers()} |
+-spec find_numbers(ne_binary(), pos_integer(), knm_search:options()) ->
+                          {'ok', list()} |
                           {'error', any()}.
 find_numbers(<<"+", Rest/binary>>, Quantity, Options) ->
     find_numbers(Rest, Quantity, Options);
@@ -96,11 +96,11 @@ find_numbers(<<"1", Rest/binary>>, Quantity, Options) ->
 find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"npa", NPA}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, knm_carriers:account_id(Options));
+    to_numbers(MaybeJson, knm_search:query_id(Options));
 find_numbers(<<NXX:6/binary,_/binary>>, Quantity, Options) ->
     Resp = soap("getDIDs", [{"nxx", NXX}]),
     MaybeJson = to_json('find_numbers', Quantity, Resp),
-    to_numbers(MaybeJson, knm_carriers:account_id(Options)).
+    to_numbers(MaybeJson, knm_search:query_id(Options)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -167,20 +167,14 @@ should_lookup_cnam() -> 'true'.
     Else.
 
 -spec to_numbers(to_json_ret(), ne_binary()) ->
-                        {'ok', knm_number:knm_numbers()} |
+                        {'ok', [tuple()]} |
                         {'error', any()}.
 to_numbers({'error',_R}=Error, _) ->
     Error;
-to_numbers({'ok',JObjs}, AccountId) ->
+to_numbers({'ok',JObjs}, QID) ->
     Numbers =
-        [N || JObj <- JObjs,
-              {'ok', N} <-
-                  [knm_carriers:create_found(kz_json:get_value(<<"e164">>, JObj)
-                                            ,?MODULE
-                                            ,AccountId
-                                            ,JObj
-                                            )
-                  ]
+        [{QID, {kz_json:get_value(<<"e164">>, JObj), ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}
+         || JObj <- JObjs
         ],
     {'ok', Numbers}.
 

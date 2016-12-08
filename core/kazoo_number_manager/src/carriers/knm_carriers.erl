@@ -31,9 +31,6 @@
         ,is_number_billable/1
         ]).
 
-%%% For knm carriers only
--export([create_found/4, create_found/5]).
-
 -export([options_to_jobj/1]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
@@ -333,41 +330,6 @@ disconnect(Number) ->
         _Mod ->
             lager:debug("non-existant carrier module ~p, allowing disconnect", [_Mod]),
             Number
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Create a number in a discovery (or given) state.
-%% @end
-%%--------------------------------------------------------------------
--spec create_found(ne_binary(), module(), api_ne_binary(), kz_json:object()) ->
-                          knm_number_return().
--spec create_found(ne_binary(), module(), api_ne_binary(), kz_json:object(), ne_binary()) ->
-                          knm_number_return().
-create_found(DID, Carrier, AuthBy, Data) ->
-    create_found(DID, Carrier, AuthBy, Data, ?NUMBER_STATE_DISCOVERY).
-
-create_found(DID=?NE_BINARY, Carrier, Auth, Data, State=?NE_BINARY)
-  when is_atom(Carrier) ->
-    AuthBy =
-        case Auth of
-            'undefined' -> ?KNM_DEFAULT_AUTH_BY;
-            ?MATCH_ACCOUNT_RAW(AccountId) -> AccountId
-        end,
-    case knm_number:get(DID) of
-        {'ok', _Number}=Ok -> Ok;
-        {'error', 'not_found'} ->
-            Options = [{'auth_by', AuthBy}
-                      ,{'assign_to', 'undefined'}
-                      ,{'state', State}
-                      ,{'module_name', kz_util:to_binary(Carrier)}
-                      ],
-            {'ok', PhoneNumber} =
-                knm_phone_number:setters(knm_phone_number:new(DID, Options)
-                                        ,[{fun knm_phone_number:set_carrier_data/2, Data}
-                                         ]),
-            knm_number:save(knm_number:set_phone_number(knm_number:new(), PhoneNumber))
     end.
 
 

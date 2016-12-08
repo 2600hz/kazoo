@@ -242,24 +242,25 @@ handle_number_query_results({'ok', _Status, _Headers, _Body}, _Options) ->
     lager:error("number query failed with ~p: ~s", [_Status, _Body]),
     {'error', 'not_available'}.
 
--spec format_numbers_resp(kz_json:object(), knm_carriers:options()) ->
+-spec format_numbers_resp(kz_json:object(), knm_search:options()) ->
                                  {'ok', knm_number:knm_numbers()} |
                                  {'error', 'not_available'}.
 format_numbers_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
             DataJObj = kz_json:get_value(<<"data">>, JObj),
-            AccountId = knm_carriers:account_id(Options),
-            {'ok'
-            ,[N
-              || {DID, CarrierData} <- kz_json:to_proplist(DataJObj),
-                 {'ok', N} <- [knm_carriers:create_found(DID, ?MODULE, AccountId, CarrierData)]
-             ]
-            };
+            QID = knm_search:query_id(Options),
+            Numbers = [format_found(QID, DID, CarrierData)
+                       || {DID, CarrierData} <- kz_json:to_proplist(DataJObj)
+                      ],
+            {'ok', Numbers};
         _Error ->
             lager:error("block lookup resp error: ~p", [_Error]),
             {'error', 'not_available'}
     end.
+
+format_found(QID, DID, CarrierData) ->
+    {QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -304,15 +305,15 @@ get_blocks(Url, Prefix, Quantity, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec format_blocks_resp(kz_json:object(), knm_carriers:options()) ->
+-spec format_blocks_resp(kz_json:object(), knm_search:options()) ->
                                 {'bulk', knm_number:knm_numbers()} |
                                 {'error', 'not_available'}.
 format_blocks_resp(JObj, Options) ->
     case kz_json:get_value(<<"status">>, JObj) of
         <<"success">> ->
-            AccountId = knm_carriers:account_id(Options),
+            QID = knm_search:query_id(Options),
             Numbers =
-                lists:flatmap(fun(I) -> format_block_resp_fold(I, AccountId) end
+                lists:flatmap(fun(I) -> format_block_resp_fold(I, QID) end
                              ,kz_json:get_value(<<"data">>, JObj, [])
                              ),
             {'bulk', Numbers};
@@ -321,19 +322,12 @@ format_blocks_resp(JObj, Options) ->
             {'error', 'not_available'}
     end.
 
--spec format_block_resp_fold(kz_json:object(), api_binary()) -> knm_number:knm_numbers().
-format_block_resp_fold(Block, AccountId) ->
+format_block_resp_fold(Block, QID) ->
     StartNumber = kz_json:get_value(<<"start_number">>, Block),
     EndNumber = kz_json:get_value(<<"end_number">>, Block),
-    [N || {'ok', N} <- [block_resp(Block, AccountId, StartNumber)
-                       ,block_resp(Block, AccountId, EndNumber)
-                       ]
+    [format_found(QID, StartNumber, Block)
+    ,format_found(QID, EndNumber, Block)
     ].
-
--spec block_resp(kz_json:object(), api_binary(), ne_binary()) ->
-                        knm_number:knm_number_return().
-block_resp(JObj, AccountId, Num) ->
-    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
 
 %%--------------------------------------------------------------------
 %% @private

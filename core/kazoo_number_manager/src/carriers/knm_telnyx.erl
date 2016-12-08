@@ -146,24 +146,20 @@ numbers(SearchKind, Quantity, Prefix, NXX) ->
         _ -> kz_json:get_value(<<"result">>, Rep)
     end.
 
--spec numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
 numbers(JObjs, Options) ->
-    AccountId = knm_carriers:account_id(Options),
-    [Number
+    QID = knm_search:query_id(Options),
+    [{QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, Data}}
      || Data <- JObjs,
-        Num <- [kz_json:get_ne_binary_value(<<"number_e164">>, Data)],
-        {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
+        Num <- [kz_json:get_ne_binary_value(<<"number_e164">>, Data)]
     ].
 
--spec international_numbers(kz_json:objects(), knm_carriers:options()) -> knm_number:knm_numbers().
 international_numbers(JObjs, Options) ->
-    AccountId = knm_carriers:account_id(Options),
     Dialcode = knm_carriers:dialcode(Options),
-    [Number
+    QID = knm_search:query_id(Options),
+    [{QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, Data}}
      || Data <- JObjs,
         Num0 <- [kz_json:get_ne_binary_value(<<"area_code">>, Data)],
-        Num <- [ugly_hack(Dialcode, Num0)],
-        {'ok', Number} <- [knm_carriers:create_found(Num, ?MODULE, AccountId, Data)]
+        Num <- [ugly_hack(Dialcode, Num0)]
     ].
 
 %%TODO: once Telnyx gives back real numbers, remove this.

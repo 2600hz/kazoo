@@ -173,8 +173,6 @@ process_response(JObjs, Options) ->
                  {'ok', N} <- [response_jobj_to_number(JObj, AccountId)]
            ]}.
 
--spec response_jobj_to_number(kz_json:object(), api_binary()) ->
-                                     knm_number:knm_number_return().
-response_jobj_to_number(JObj, AccountId) ->
+response_jobj_to_number(JObj, QID) ->
     Num = kz_json:get_value(<<"number">>, JObj),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
+    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
