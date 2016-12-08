@@ -971,13 +971,16 @@ get_clid(Endpoint, Properties, Call, Type) ->
         'true' -> #clid{};
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
+            KeepCID = kz_util:is_true(kapps_call:kvs_fetch('keep_cid', Call)),
             CallerNumber = case kapps_call:caller_id_number(Call) of
                                Number -> 'undefined';
-                               _Number -> Number
+                               NewNumber when KeepCID -> NewNumber;
+                               _ -> Number
                            end,
             CallerName = case kapps_call:caller_id_name(Call) of
                              Name -> 'undefined';
-                             _Name -> Name
+                             NewName when KeepCID -> NewName;
+                             _ -> Name
                          end,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
             #clid{caller_number=CallerNumber
