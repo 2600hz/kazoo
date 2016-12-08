@@ -41,13 +41,13 @@ handle(<<"prepend">>, Data, Call) ->
 
     {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
                          <<"original">> ->
-                            {<<NamePre/binary, OrigName/binary>>
-                            ,<<NumberPre/binary, OrigNum/binary>>
-                            };
+                             {<<NamePre/binary, OrigName/binary>>
+                             ,<<NumberPre/binary, OrigNum/binary>>
+                             };
                          <<"current">> ->
-                            {<<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
-                            ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
-                            }
+                             {<<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
+                             ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
+                             }
                      end,
     lager:info("prepend cid resulted in cid number ~s and cid name ~s", [Number, Name]),
     set_values(Name, Number, Call).

@@ -166,9 +166,7 @@ maybe_update_caller_id(Data, Call) ->
             lager:debug("keep the original caller id"),
             Updates = [fun(C) -> kapps_call:kvs_store('dynamic_cid', kapps_call:caller_id_number(C), C) end
                       ],
-            UpdatedCall = kapps_call:exec(Updates, Call),
-            cf_exe:set_call(UpdatedCall),
-            UpdatedCall
+            cf_exe:update_call(Call, Updates)
     end.
 
 -spec start_preconnect_audio(kz_json:object(), kapps_call:call()) -> 'ok'.
@@ -233,9 +231,7 @@ set_caller_id(Call) ->
               ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
               ,fun(C) -> kapps_call:set_custom_channel_vars(Props, C) end
               ],
-    UpdatedCall = kapps_call:exec(Updates, Call),
-    cf_exe:set_call(UpdatedCall),
-    UpdatedCall.
+    cf_exe:update_call(Call, Updates).
 
 %%--------------------------------------------------------------------
 %% @private
