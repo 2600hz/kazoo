@@ -333,18 +333,23 @@ get_fs_app(_Node, UUID, JObj, <<"soft_hold">>) ->
 
     {<<"soft_hold">>, list_to_binary([UnholdKey, " ", AMedia, " ", BMedia])};
 
-get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
+get_fs_app(Node, UUID, JObj, <<"page">>) ->
     Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:page_v(JObj) of
         'false' -> {'error', <<"page failed to execute as JObj did not validate">>};
         'true' when Endpoints =:= [] -> {'error', <<"page request had no endpoints">>};
         'true' ->
             PageId = <<"page_", (kz_util:rand_hex_binary(8))/binary>>,
+            DefaultCCV = kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]),
+            CCVs = kz_json:to_proplist(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, DefaultCCV)),
+            BargeParams = ecallmgr_util:multi_set_args(Node, UUID, CCVs, <<",">>, <<",">>),
+            AutoAnswer = list_to_binary(["{sip_invite_params=intercom=true"
+                                        ,",alert_info=intercom"
+                                        ,BargeParams
+                                        ,"}"
+                                        ]),
             Routines = [fun(DP) ->
                                 [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
-                                ,{"application", <<"export sip_invite_params=intercom=true">>}
-                                ,{"application", <<"export sip_auto_answer=true">>}
-                                ,{"application", <<"export alert_info=intercom">>}
                                 ,{"application", <<"set conference_auto_outcall_flags=mute">>}
                                 ,{"application", <<"set conference_auto_outcall_profile=page">>}
                                 ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
@@ -368,7 +373,7 @@ get_fs_app(_Node, _UUID, JObj, <<"page">>) ->
                                 Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
                                          ],
                                 EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
-                                Channels = [<<"{alert_info=intercom}", Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
+                                Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
                                 OutCall = kz_util:join_binary(Channels, <<"|">>),
                                 [{"application", <<"conference_set_auto_outcall ", OutCall/binary>>} | DP]
                         end

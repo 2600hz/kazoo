@@ -60,7 +60,7 @@
         ,unbridge/1, unbridge/2, unbridge/3
         ,b_bridge_wait/2
         ]).
--export([page/2, page/3, page/4, page/5, page/6]).
+-export([page/2, page/3, page/4, page/5, page/6, page/7]).
 -export([hold/1, hold/2
         ,hold_command/1, hold_command/2
         ,b_hold/1, b_hold/2, b_hold/3
@@ -127,7 +127,7 @@
 -export([b_echo/1]).
 -export([b_ring/1]).
 
--export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6]).
+-export([b_page/2, b_page/3, b_page/4, b_page/5, b_page/6, b_page/7]).
 
 -export([b_prompt/2, b_prompt/3]).
 -export([b_record/2, b_record/3, b_record/4, b_record/5, b_record/6]).
@@ -936,6 +936,7 @@ b_hangup('true', Call) ->
 -spec page(kz_json:objects(), integer(), api_binary(), kapps_call:call()) -> 'ok'.
 -spec page(kz_json:objects(), integer(), api_binary(), api_binary(), kapps_call:call()) -> 'ok'.
 -spec page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), kapps_call:call()) -> 'ok'.
+-spec page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), kapps_call:call()) -> 'ok'.
 
 -spec b_page(kz_json:objects(), kapps_call:call()) ->
                     wait_for_application_return().
@@ -947,6 +948,8 @@ b_hangup('true', Call) ->
                     wait_for_application_return().
 -spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), kapps_call:call()) ->
                     wait_for_application_return().
+-spec b_page(kz_json:objects(), integer(), api_binary(), api_binary(), api_object(), api_object(), kapps_call:call()) ->
+                    wait_for_application_return().
 
 page(Endpoints, Call) ->
     page(Endpoints, ?DEFAULT_TIMEOUT_S, Call).
@@ -957,12 +960,15 @@ page(Endpoints, Timeout, CIDName, Call) ->
 page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
     page(Endpoints, Timeout, CIDName, CIDNumber, 'undefined', Call).
 page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
+    page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, 'undefined', Call).
+page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Call) ->
     Command = [{<<"Application-Name">>, <<"page">>}
               ,{<<"Endpoints">>, Endpoints}
               ,{<<"Timeout">>, Timeout}
               ,{<<"Caller-ID-Name">>, CIDName}
               ,{<<"Caller-ID-Number">>, CIDNumber}
               ,{<<"Custom-SIP-Headers">>, SIPHeaders}
+              ,{<<"Custom-Channel-Vars">>, CCVs}
               ],
     send_command(Command, Call).
 
@@ -975,7 +981,9 @@ b_page(Endpoints, Timeout, CIDName, Call) ->
 b_page(Endpoints, Timeout, CIDName, CIDNumber, Call) ->
     b_page(Endpoints, Timeout, CIDName, CIDNumber, 'undefined', Call).
 b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call) ->
-    page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, Call),
+    b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, 'undefined', Call).
+b_page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Call) ->
+    page(Endpoints, Timeout, CIDName, CIDNumber, SIPHeaders, CCVs, Call),
     wait_for_application(Call, <<"page">>).
 
 %%--------------------------------------------------------------------
