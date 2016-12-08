@@ -16,7 +16,7 @@
 
 %% API
 -export([start_link/0]).
--export([new/2]).
+-export([new/3]).
 -export([workers/0]).
 
 %% Supervisor callbacks
@@ -36,9 +36,9 @@
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
--spec new(kapps_call:call(), kz_json:object()) -> sup_startchild_ret().
-new(Call, JObj) ->
-    supervisor:start_child(?SERVER, [Call, JObj]).
+-spec new(kapps_call:call(), kz_json:object(), fax_storage()) -> sup_startchild_ret().
+new(Call, JObj, Storage) ->
+    supervisor:start_child(?SERVER, [Call, JObj, Storage]).
 
 -spec workers() -> pids().
 workers() ->
