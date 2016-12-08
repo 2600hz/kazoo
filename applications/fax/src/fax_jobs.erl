@@ -406,7 +406,7 @@ lock_account_job(Doc, JObj, Jobs) ->
     case kz_datamgr:save_doc(?KZ_FAXES_DB, UpdatedDoc, [{'rev', kz_doc:revision(Doc)}]) of
         {'ok', _U} ->
 
-            lager:debug("UPDATED LOCKING JOB ~s / ~p", [kz_doc:id(_U), _U]),
+            lager:debug("fax job ~s locked for executing", [kz_doc:id(Doc)]),
             [JObj | Jobs];
         {'error', Error} ->
             lager:debug("failed to lock jobid ~s", [kz_doc:id(Doc), Error]),

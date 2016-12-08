@@ -109,18 +109,17 @@ save_fax_attachment(JObj, _FileContents, _CT, 0) ->
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Count) ->
     DocId = kz_doc:id(JObj),
-    Rev = kz_doc:revision(JObj),
-    Opts = [{'content_type', CT} ,{'rev', Rev}],
+    Opts = [{'content_type', CT}],
     Name = attachment_name(<<>>, CT),
     _ = kz_datamgr:put_attachment(?KZ_FAXES_DB, DocId, Name, FileContents, Opts),
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
-            lager:warning("missing fax attachment on fax id ~s rev ~s",[DocId, Rev]),
+            lager:warning("missing fax attachment on fax id ~s",[DocId]),
             timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             save_fax_attachment(J, FileContents, CT, Count-1);
         {'error', _R} ->
-            lager:debug("error '~p' saving fax attachment on fax id ~s rev ~s",[_R, DocId, Rev]),
+            lager:debug("error '~p' saving fax attachment on fax id ~s",[_R, DocId]),
             timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             {'ok', J} = kz_datamgr:open_doc(?KZ_FAXES_DB, DocId),
             save_fax_attachment(J, FileContents, CT, Count-1)
