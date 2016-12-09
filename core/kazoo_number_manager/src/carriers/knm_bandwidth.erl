@@ -108,10 +108,10 @@ find_numbers(Search, Quanity, Options) ->
                                          {'ok', list()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    AccountId = knm_carriers:account_id(Options),
+    QID = knm_search:query_id(Options),
     {'ok', [N
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
-               {'ok', N} <- [found_number_to_KNM(Number, AccountId)]
+               N <- [found_number_to_KNM(Number, QID)]
            ]
     }.
 
