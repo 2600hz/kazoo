@@ -104,23 +104,22 @@ find_numbers(Search, Quanity, Options) ->
         {'ok', Xml} -> process_numbers_search_resp(Xml, Options)
     end.
 
--spec process_numbers_search_resp(xml_el(), knm_carriers:options()) ->
-                                         {'ok', knm_number:knm_numbers()}.
+-spec process_numbers_search_resp(xml_el(), knm_search:options()) ->
+                                         {'ok', list()}.
 process_numbers_search_resp(Xml, Options) ->
     TelephoneNumbers = "/numberSearchResponse/telephoneNumbers/telephoneNumber",
-    AccountId = knm_carriers:account_id(Options),
+    QID = knm_search:query_id(Options),
     {'ok', [N
             || Number <- xmerl_xpath:string(TelephoneNumbers, Xml),
-               {'ok', N} <- [found_number_to_KNM(Number, AccountId)]
+               N <- [found_number_to_KNM(Number, QID)]
            ]
     }.
 
--spec found_number_to_KNM(xml_el() | xml_els(), api_binary()) ->
-                                 knm_number:knm_number_return().
-found_number_to_KNM(Found, AccountId) ->
+-spec found_number_to_KNM(xml_el() | xml_els(), ne_binary()) -> tuple().
+found_number_to_KNM(Found, QID) ->
     JObj = number_search_response_to_json(Found),
     Num = kz_json:get_value(<<"e164">>, JObj),
-    knm_carriers:create_found(Num, ?MODULE, AccountId, JObj).
+    {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, JObj}}.
 
 %%--------------------------------------------------------------------
 %% @public

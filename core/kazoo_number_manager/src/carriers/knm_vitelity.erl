@@ -198,20 +198,15 @@ find(Prefix, Quantity, Options, VitelityOptions) ->
         {'ok', JObj} -> response_to_numbers(JObj, Options)
     end.
 
--spec response_to_numbers(kz_json:object(), knm_carriers:options()) ->
-                                 {'ok', knm_number:knm_numbers()}.
 response_to_numbers(JObj, Options) ->
-    AccountId = knm_carriers:account_id(Options),
-    F = fun(K, V, Acc) -> response_pair_to_number(K, V, Acc, AccountId) end,
-    {'ok', kz_json:foldl(F, [], JObj)}.
+    QID = knm_search:query_id(Options),
+    Ns = [to_number(Num, CarrierData, QID)
+          || {Num, CarrierData} <- kz_json:to_proplist(JObj)
+         ],
+    {'ok', Ns}.
 
--spec response_pair_to_number(ne_binary(), kz_json:object(), knm_number:knm_numbers(), api_binary()) ->
-                                     knm_number:knm_numbers().
-response_pair_to_number(DID, CarrierData, Acc, AccountId) ->
-    case knm_carriers:create_found(DID, ?MODULE, AccountId, CarrierData) of
-        {'ok', N} -> [N | Acc];
-        _ -> Acc
-    end.
+to_number(DID, CarrierData, QID) ->
+    {QID, {DID, ?MODULE, ?NUMBER_STATE_DISCOVERY, CarrierData}}.
 
 
 %%--------------------------------------------------------------------
