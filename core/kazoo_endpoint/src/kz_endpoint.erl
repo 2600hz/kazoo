@@ -173,11 +173,12 @@ maybe_cached_hotdesk_ids(Props, JObj, AccountDb) ->
                         end, Props, OwnerIds)
     end.
 
--spec maybe_format_endpoint(kz_json:object(), api_object()) -> kz_json:object().
-maybe_format_endpoint(Endpoint, 'undefined') ->
+-spec maybe_format_endpoint(kz_json:object(), boolean()) -> kz_json:object().
+maybe_format_endpoint(Endpoint, 'true') ->
     lager:debug("no formatters defined"),
     Endpoint;
-maybe_format_endpoint(Endpoint, Formatters) ->
+maybe_format_endpoint(Endpoint, 'false') ->
+    Formatters = kz_json:get_value(<<"formatters">>, Endpoint),
     Formatted = kz_formatters:apply(Endpoint, Formatters, 'outbound'),
     lager:debug("with ~p formatted ~p", [Formatters, Endpoint]),
     lager:debug("formatted as ~p", [Formatted]),
@@ -1057,7 +1058,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Metaflows">>, kz_json:get_value(<<"metaflows">>, Endpoint)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
-    maybe_format_endpoint(SIPEndpoint, kz_json:get_value(<<"formatters">>, Endpoint)).
+    maybe_format_endpoint(SIPEndpoint, kz_util:is_empty(kz_json:get_value(<<"formatters">>, Endpoint))).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_proplist().
 maybe_get_t38(Endpoint, Call) ->

@@ -29,6 +29,7 @@ handle(<<"reset">>, _Data, Call) ->
     Name   = kapps_call:kvs_fetch(<<"original_cid_name">>, kapps_call:caller_id_name(Call), Call),
     Number = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
 
+    lager:info("reset prepend cid resulted in cid number ~s and cid name ~s", [Number, Name]),
     set_values(Name, Number, Call);
 
 handle(<<"prepend">>, Data, Call) ->
@@ -39,16 +40,16 @@ handle(<<"prepend">>, Data, Call) ->
     OrigNum  = kapps_call:kvs_fetch(<<"original_cid_number">>, kapps_call:caller_id_number(Call), Call),
 
     {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"original">>) of
-                         <<"original">> -> {
-                             <<NamePre/binary, OrigName/binary>>
-                                           ,<<NumberPre/binary, OrigNum/binary>>
-                            };
-
-                         <<"current">> -> {
-                             <<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
-                                          ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
-                            }
+                         <<"original">> ->
+                             {<<NamePre/binary, OrigName/binary>>
+                             ,<<NumberPre/binary, OrigNum/binary>>
+                             };
+                         <<"current">> ->
+                             {<<NamePre/binary, (kapps_call:caller_id_name(Call))/binary>>
+                             ,<<NumberPre/binary, (kapps_call:caller_id_number(Call))/binary>>
+                             }
                      end,
+    lager:info("prepend cid resulted in cid number ~s and cid name ~s", [Number, Name]),
     set_values(Name, Number, Call).
 
 -spec maybe_set_orig_name(kapps_call:call()) -> kapps_call:call().
@@ -67,9 +68,14 @@ maybe_set_orig_number(Call) ->
 
 -spec set_values(binary(), binary(), kapps_call:call()) -> any().
 set_values(Name, Number, Call) ->
-    Call1 = kapps_call:exec([
-                             fun(C) -> kapps_call:set_caller_id_name(Name, C) end
-                            ,fun(C) -> kapps_call:set_caller_id_number(Number, C) end
-                            ], Call),
+    Props = [{<<"Retain-CID">>, 'true'}
+            ,{<<"Caller-ID-Number">>, Number}
+            ,{<<"Caller-ID-Name">>, Name}
+            ],
+    Updates = [fun(C) -> kapps_call:set_caller_id_number(Number, C) end
+              ,fun(C) -> kapps_call:set_caller_id_name(Name, C) end
+              ,fun(C) -> kapps_call:set_custom_channel_vars(Props, C) end
+              ],
+    Call1 = kapps_call:exec(Updates, Call),
     cf_exe:set_call(Call1),
     cf_exe:continue(Call1).
