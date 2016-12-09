@@ -9,10 +9,10 @@
 -module(konami_config).
 
 -export([numbers/0, numbers/1
-         ,patterns/0, patterns/1
-         ,binding_digit/0, binding_digit/1
-         ,timeout/0, timeout/1
-         ,listen_on/0, listen_on/1
+        ,patterns/0, patterns/1
+        ,binding_digit/0, binding_digit/1
+        ,timeout/0, timeout/1
+        ,listen_on/0, listen_on/1
         ]).
 
 -include("konami.hrl").
@@ -21,7 +21,7 @@
 -define(DEFAULT_DIGIT_TIMEOUT, 800).
 
 -define(META_SAY_HI, kz_json:from_list([{<<"module">>, <<"say">>}
-                                        ,{<<"data">>, kz_json:from_list([{<<"text">>, <<"hi">>}])}
+                                       ,{<<"data">>, kz_json:from_list([{<<"text">>, <<"hi">>}])}
                                        ])).
 
 -define(DEFAULT_NUMBERS, kz_json:from_list([{<<"2">>, ?META_SAY_HI}

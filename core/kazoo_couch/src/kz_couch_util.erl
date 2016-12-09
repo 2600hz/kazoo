@@ -112,7 +112,7 @@ check_options(Options) ->
 maybe_default_recv_timeout(Options) ->
     case props:get_value('recv_timeout', Options) of
         'undefined' -> [{'recv_timeout', 20000} | Options];
-         _Else -> Options
+        _Else -> Options
     end.
 
 filter_options(Options) ->

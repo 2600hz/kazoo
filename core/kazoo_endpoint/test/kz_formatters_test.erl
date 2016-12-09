@@ -32,28 +32,28 @@
 
 regex_inbound_test_() ->
     Formatter = kz_json:from_list([{<<"to">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"prefix">>, <<"+1">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ])
                                     ]
                                    }
                                   ,{<<"from">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"prefix">>, <<"+1">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ])
                                     ]
                                    }
                                   ,{<<"request">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"prefix">>, <<"+1">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ])
                                     ]
                                    }
                                   ,{<<"caller_id_number">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ])
                                     ]
@@ -70,7 +70,7 @@ regex_inbound_test_() ->
 
 strip_inbound_test_() ->
     Formatter = kz_json:from_list([{<<"to">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"prefix">>, <<"+1">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ,{<<"strip">>, 'true'}
@@ -78,7 +78,7 @@ strip_inbound_test_() ->
                                     ]
                                    }
                                   ,{<<"caller_id_number">>
-                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})$">>}
+                                   ,[kz_json:from_list([{<<"regex">>, <<"^\\+?1?(\\d{10})\$">>}
                                                        ,{<<"direction">>, <<"inbound">>}
                                                        ,{<<"strip">>, 'true'}
                                                        ])

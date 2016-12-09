@@ -10,11 +10,11 @@
 -module(kz_pdf).
 
 -export([find_template/2
-         ,find_template/3
+        ,find_template/3
         ]).
 
 -export([generate/2
-         ,generate/3
+        ,generate/3
         ]).
 
 -export([error_empty/0]).
@@ -69,7 +69,7 @@ generate(AccountId, Props) ->
     case find_template(AccountId, Props) of
         {'error', _R}=Error -> Error;
         {'ok', Template} ->
-           generate(AccountId, Props, Template)
+            generate(AccountId, Props, Template)
     end.
 
 generate(Account, Props, Template) ->
@@ -93,10 +93,10 @@ generate(Account, Props, Template) ->
 
     RawCmd = kapps_config:get(?PDF_CONFIG_CAT, <<"html2pdf">>, ?HTML_TO_PDF),
     Cmd = lists:foldl(fun cmd_fold/2
-                      ,RawCmd
-                      ,[{<<"$pdf$">>, PDFFile}
-                        ,{<<"$html$">>, HTMLFile}
-                       ]
+                     ,RawCmd
+                     ,[{<<"\$pdf\$">>, PDFFile}
+                      ,{<<"\$html\$">>, HTMLFile}
+                      ]
                      ),
     lager:debug("exec ~s", [Cmd]),
     case os:cmd(kz_util:to_list(Cmd)) of
@@ -141,7 +141,7 @@ default_template(DocType, AttachmentId) ->
         {'error', 'not_found'} -> maybe_create_default_template(DocType, AttachmentId);
         {'error', _R}=Error ->
             lager:error("failed to find  default template ~s/~s : ~p"
-                        ,[?TEMPLATE_DOC_ID(DocType), AttachmentId, _R]),
+                       ,[?TEMPLATE_DOC_ID(DocType), AttachmentId, _R]),
             Error
     end.
 
@@ -162,21 +162,20 @@ create_default_template(Template, DocType, AttachmentId) ->
     lager:debug("creating default template ~s", [DocType]),
     Default = kz_json:from_list([{<<"template_name">>, DocType}]),
     JObj =
-        kz_doc:update_pvt_parameters(
-          kz_json:from_list(
-            [{<<"_id">>, ?TEMPLATE_DOC_ID(DocType)}
-             ,{<<"default">>, Default}
-            ]
-           )
-          ,?KZ_CONFIG_DB
-          ,[{'type', <<"config">>}]
-         ),
+        kz_doc:update_pvt_parameters(kz_json:from_list(
+                                       [{<<"_id">>, ?TEMPLATE_DOC_ID(DocType)}
+                                       ,{<<"default">>, Default}
+                                       ]
+                                      )
+                                    ,?KZ_CONFIG_DB
+                                    ,[{'type', <<"config">>}]
+                                    ),
     case kz_datamgr:save_doc(?KZ_CONFIG_DB, JObj) of
         {'ok', _} -> save_default_attachment(Template, DocType, AttachmentId);
         {'error', 'conflict'} -> save_default_attachment(Template, DocType, AttachmentId);
         {'error', _R}=Error ->
             lager:error("failed to create default template doc for ~s : ~p"
-                         ,[?TEMPLATE_DOC_ID(DocType), _R]),
+                       ,[?TEMPLATE_DOC_ID(DocType), _R]),
             Error
     end.
 
@@ -184,16 +183,15 @@ create_default_template(Template, DocType, AttachmentId) ->
 save_default_attachment(Template, DocType, AttachmentId) ->
     lager:debug("saving default template ~s attachment", [DocType]),
     case
-        kz_datamgr:put_attachment(
-          ?KZ_CONFIG_DB
-          ,?TEMPLATE_DOC_ID(DocType)
-          ,AttachmentId
-          ,Template
-         )
+        kz_datamgr:put_attachment(?KZ_CONFIG_DB
+                                 ,?TEMPLATE_DOC_ID(DocType)
+                                 ,AttachmentId
+                                 ,Template
+                                 )
     of
         {'error', _R}=Error ->
             lager:error("failed to save default template attachment for ~s : ~p"
-                        ,[?TEMPLATE_DOC_ID(DocType), _R]),
+                       ,[?TEMPLATE_DOC_ID(DocType), _R]),
             Error;
         {'ok', _} -> {'ok', Template}
     end.
