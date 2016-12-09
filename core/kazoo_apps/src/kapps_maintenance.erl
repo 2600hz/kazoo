@@ -102,7 +102,7 @@ migrate_to_4_0() ->
     %% Number migration
     knm_maintenance:migrate(),
     %% Voicemail migration
-    kvm_maintenance:migrate(),
+    kazoo_voicemail_maintenance:migrate(),
     no_return.
 
 %%--------------------------------------------------------------------
