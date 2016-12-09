@@ -29,15 +29,15 @@
 -define(KNM_BW2_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".bandwidth2">>).
 
 -ifdef(TEST).
-- export([auth/0]).  %% Only to pass compilation
+-export([auth/0]).  %% Only to pass compilation
 -endif.
 
 -ifdef(TEST).
--define(BW2_DEBUG, 'false').
--define(DEBUG_WRITE(Format, Args), lager:debug(Format, Args)).
--define(DEBUG_APPEND(Format, Args), lager:debug(Format, Args)).
+-define(DEBUG_WRITE(Format, Args), io:format(user, Format, Args)).
+-define(DEBUG_APPEND(Format, Args), io:format(user, Format, Args)).
 -else.
 -define(BW2_DEBUG, kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"debug">>, 'false')).
+-define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 -define(DEBUG_WRITE(Format, Args),
         _ = ?BW2_DEBUG
         andalso file:write_file(?BW2_DEBUG_FILE, io_lib:format(Format, Args))
@@ -48,33 +48,21 @@
        ).
 -endif.
 
--define(BW2_DEBUG_FILE, "/tmp/bandwidth2.com.xml").
 -define(BW2_BASE_URL, "https://api.inetwork.com/v1.0").
 
 -ifdef(TEST).
-
--define(IS_SANDBOX_PROVISIONING_TRUE, 'true').
--define(IS_PROVISIONING_ENABLED, 'true').
--define(BW2_ORDER_NAME_PREFIX, "Kazoo").
 -define(BW2_ACCOUNT_ID, "eunit_testing_account").
-
--define(BW2_API_USERNAME, <<>>).
--define(BW2_API_PASSWORD, <<>>).
--define(BW2_SIP_PEER, "").
--define(BW2_SITE_ID, "").
-
--define(MAX_SEARCH_QUANTITY, 500).
-
 -else.
+-define(BW2_ACCOUNT_ID,
+        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
+-endif.
+
 -define(IS_SANDBOX_PROVISIONING_TRUE,
         kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).
 -define(IS_PROVISIONING_ENABLED,
         kapps_config:get_is_true(?KNM_BW2_CONFIG_CAT, <<"enable_provisioning">>, 'true')).
 -define(BW2_ORDER_NAME_PREFIX,
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"order_name_prefix">>, "Kazoo")).
-
--define(BW2_ACCOUNT_ID,
-        kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"account_id">>, "")).
 
 -define(BW2_API_USERNAME,
         kapps_config:get_binary(?KNM_BW2_CONFIG_CAT, <<"api_username">>, <<>>)).
@@ -87,8 +75,6 @@
 
 -define(MAX_SEARCH_QUANTITY,
         kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
-
--endif.
 
 -define(BW2_ORDER_POLL_INTERVAL, 2000).
 
@@ -528,8 +514,4 @@ validate_xpath_value(_) -> 'true'.
 should_lookup_cnam() -> 'true'.
 
 -spec quantity_uri_param(integer()) -> string().
--ifdef(TEST).
-quantity_uri_param(Q) -> integer_to_list(Q).
--else.
 quantity_uri_param(Q) -> integer_to_list(min(Q, ?MAX_SEARCH_QUANTITY)).
--endif.
