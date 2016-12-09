@@ -455,6 +455,7 @@ build_originate_req(Contact, Context) ->
            ,{<<"Loopback-Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ,{<<"From-URI">>, <<CalleeNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
            ,{<<"Request-URI">>, <<OutboundNumber/binary, "@", (kz_account:realm(AccountDoc))/binary>>}
+           ,{<<"Retain-CID">>, 'true'}
            ],
 
     Endpoint = [{<<"Invite-Format">>, <<"loopback">>}
@@ -489,11 +490,11 @@ build_originate_req(Contact, Context) ->
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
       ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>
                                           ,<<"Auto-Answer-Loopback">>, <<"Loopback-Request-URI">>
-                                          ,<<"From-URI">>, <<"Request-URI">>
+                                          ,<<"From-URI">>, <<"Request-URI">>, <<"Retain-CID">>
                                           ]
        }
-      ,{<<"Simplify-Loopback">>, <<"true">>}
-      ,{<<"Loopback-Bowout">>, <<"true">>}
+      ,{<<"Simplify-Loopback">>, <<"false">>}
+      ,{<<"Loopback-Bowout">>, <<"false">>}
       ,{<<"Start-Control-Process">>, <<"false">>}
        | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
       ]).
