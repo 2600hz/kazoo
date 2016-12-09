@@ -32,47 +32,6 @@
 -define(NUMBERS, <<"numbers">>).
 -define(PATTERNS, <<"patterns">>).
 
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--define(SCHEMA_KEY1
-       ,kz_json:from_list([{<<"type">>, <<"string">>}
-                          ,{<<"required">>, 'true'}
-                          ]
-                         )
-       ).
-
--define(SCHEMA_KEY2
-       ,kz_json:from_list([{<<"type">>, <<"integer">>}
-                          ,{<<"required">>, 'true'}
-                          ]
-                         )
-       ).
-
--define(SCHEMA_KEY3
-       ,kz_json:from_list([{<<"type">>, <<"string">>}
-                          ,{<<"required">>, 'false'}
-                          ,{<<"default">>, <<"value3">>}
-                          ]
-                         )
-       ).
-
--define(PROPERTIES_JOBJ
-       ,kz_json:from_list(
-          [{<<"key1">>, ?SCHEMA_KEY1}
-          ,{<<"key2">>, ?SCHEMA_KEY2}
-          ,{<<"key3">>, ?SCHEMA_KEY3}
-          ]
-         )
-       ).
-
--define(SCHEMA_JOBJ
-       ,kz_json:from_list(
-          [{<<"properties">>, ?PROPERTIES_JOBJ}]
-         )
-       ).
--endif.
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -172,14 +131,24 @@ validate_flow_elements(Flow) ->
     validate_flow_elements(Flow, {Flow, []}, []).
 
 -ifdef(TEST).
-validate_flow_elements(Flow, Acc, Path) ->
-    Module = kz_json:get_binary_value(<<"module">>, Flow),
-    Data = kz_json:get_json_value(<<"data">>, Flow),
-    Children = kz_json:get_json_value(<<"children">>, Flow, kz_json:new()),
+validate_flow_elements(Flow, {_RootFlow, ErrorsSoFar}=Acc, Path) ->
+    case kz_json_schema:validate(<<"callflows.action">>
+                                ,Flow
+                                ,[{'schema_loader_fun', fun kz_json_schema:fload/1}
+                                 ,{'allowed_errors', 'infinity'}
+                                 ])
+    of
+        {'ok', ValidatedFlow} ->
+            Module = kz_json:get_binary_value(<<"module">>, ValidatedFlow),
+            Data = kz_json:get_json_value(<<"data">>, ValidatedFlow),
+            Children = kz_json:get_json_value(<<"children">>, ValidatedFlow, kz_json:new()),
 
-    validate_action_schema(Module, Data, Children, Acc, Path).
+            validate_action_schema(Module, Data, Children, Acc, Path);
+        {'error', Errors} ->
+            {Flow, update_error_key_paths(Path, Errors) ++ ErrorsSoFar}
+    end.
 -else.
-validate_flow_elements(Flow, Acc, Path) ->
+validate_flow_elements(Flow, {_RootFlow, ErrorsSoFar}=Acc, Path) ->
     case kz_json_schema:validate(<<"callflows.action">>, Flow) of
         {'ok', ValidatedFlow} ->
             Module = kz_json:get_binary_value(<<"module">>, ValidatedFlow),
@@ -188,7 +157,7 @@ validate_flow_elements(Flow, Acc, Path) ->
 
             validate_action_schema(Module, Data, Children, Acc, Path);
         {'error', Errors} ->
-            {Flow, Errors}
+            {Flow, update_error_key_paths(Path, Errors) ++ ErrorsSoFar}
     end.
 -endif.
 
@@ -327,106 +296,3 @@ maybe_fix_index(Keys)
              );
 maybe_fix_index(Key) ->
     Key.
-
-
--ifdef(TEST).
-
-simple_successful_validation_test_() ->
-    ChildData = kz_json:from_list([{<<"key1">>, <<"value1">>}
-                                  ,{<<"key2">>, 1}
-                                  ]
-                                 ),
-    Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                              ,{<<"data">>, ChildData}
-                              ]
-                             ),
-    Doc = kz_json:from_list([{?FLOW, Child}]),
-
-    {'ok', ValidatedDoc} = validate_flow(Doc),
-    ValidatedFlow = flow(ValidatedDoc),
-
-    [?_assertEqual(<<"value3">>, kz_json:get_value([<<"data">>, <<"key3">>], ValidatedFlow))].
-
-nested_children_test_() ->
-    ChildData = kz_json:from_list([{<<"key1">>, <<"value1">>}
-                                  ,{<<"key2">>, 1}
-                                  ,{<<"key3">>, <<"top">>}
-                                  ]
-                                 ),
-    Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                              ,{<<"data">>, ChildData}
-                              ]
-                             ),
-
-    Nested = kz_json:set_value([<<"children">>, <<"_">>]
-                              ,kz_json:delete_key([<<"data">>, <<"key3">>], Child)
-                              ,Child
-                              ),
-
-    Doc = kz_json:from_list([{?FLOW, Nested}]),
-
-    {'ok', ValidatedDoc} = validate_flow(Doc),
-    ValidatedFlow = flow(ValidatedDoc),
-
-    [?_assertEqual(<<"top">>, kz_json:get_value([<<"data">>, <<"key3">>], ValidatedFlow))
-    ,?_assertEqual(<<"value3">>, kz_json:get_value([<<"children">>, <<"_">>, <<"data">>, <<"key3">>], ValidatedFlow))
-    ].
-
-simple_failed_test_() ->
-    ChildData = kz_json:from_list([{<<"key1">>, 'true'}
-                                  ,{<<"key2">>, 1}
-                                  ]
-                                 ),
-    Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                              ,{<<"data">>, ChildData}
-                              ]
-                             ),
-    Doc = kz_json:from_list([{?FLOW, Child}]),
-
-    {'error', Errors} = validate_flow(Doc),
-    [?_assertMatch([{'data_invalid', _SchemaJObj, 'wrong_type', 'true', [<<"key1">>]}], Errors)].
-
-complex_failed_test_() ->
-    ChildData = kz_json:from_list([{<<"key2">>, 'true'}]),
-    Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                              ,{<<"data">>, ChildData}
-                              ]
-                             ),
-    Doc = kz_json:from_list([{?FLOW, Child}]),
-
-    {'error', Errors} = validate_flow(Doc),
-    [?_assertMatch([{'data_invalid', _Key2SchemaJObj, 'wrong_type', 'true', [<<"key2">>]}
-                   ,{'data_invalid', _Key1SchemaJObj, {'missing_required_property', <<"key1">>}, _Value, []}
-                   ]
-                  ,Errors
-                  )
-    ].
-
-nested_children_failure_test_() ->
-    ChildData = kz_json:from_list([{<<"key1">>, <<"value1">>}
-                                  ,{<<"key2">>, 'true'}
-                                  ,{<<"key3">>, <<"top">>}
-                                  ]
-                                 ),
-    Child = kz_json:from_list([{<<"module">>, <<"test">>}
-                              ,{<<"data">>, ChildData}
-                              ]
-                             ),
-
-    Nested = kz_json:set_value([<<"children">>, <<"_">>]
-                              ,kz_json:delete_key([<<"data">>, <<"key3">>], Child)
-                              ,Child
-                              ),
-
-    Doc = kz_json:from_list([{?FLOW, Nested}]),
-
-    {'error', Errors} = validate_flow(Doc),
-
-    [?_assertMatch([{'data_invalid', _SchemaJObj, 'wrong_type', 'true', [<<"children">>, <<"_">>, <<"key2">>]}
-                   ,{'data_invalid', _SchemaJObj, 'wrong_type', 'true', [<<"key2">>]}
-                   ]
-                  ,Errors
-                  )
-    ].
-
--endif.
