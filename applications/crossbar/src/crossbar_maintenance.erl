@@ -35,6 +35,7 @@
 
 -export([init_apps/2, init_app/2]).
 -export([init_apps/1, init_app/1]).
+-export([apps/0]).
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -879,7 +880,6 @@ maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
                   || SShot <- Screenshots
                  ],
-
     _ = update_images(AppId, MasterAccountDb, [IconPath], <<"icon">>),
     _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
 
@@ -933,4 +933,38 @@ find_metadata(AppPath) ->
         {'ok', _}=OK -> OK;
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
+    end.
+
+-spec apps() -> no_return.
+-spec apps(ne_binary()) -> no_return.
+apps() ->
+    {ok, MA} = kapps_util:get_master_account_db(),
+    apps(MA).
+
+apps(Account) ->
+    AccountDb = kz_util:format_account_db(Account),
+    case kz_datamgr:get_results(AccountDb, <<"apps_store/crossbar_listing">>) of
+        {error, _R} -> lager:debug("failed to read apps in ~s: ~p", [AccountDb, _R]);
+        {ok, JObjs} -> lists:foreach(fun print_app/1, JObjs)
+    end,
+    no_return.
+
+print_app(AppJObj) ->
+    io:format("\nApp ~s\n", [kz_json:get_ne_value(<<"key">>, AppJObj)]),
+    _ = put(pp_lvl, 1),
+    print_k_v(kz_json:get_value(<<"value">>, AppJObj)).
+
+print_k_v(JObj) ->
+    _ = kz_json:map(fun print_k_v/2, JObj),
+    ok.
+print_k_v(K, V) ->
+    Lvl = get(pp_lvl),
+    Indent = string:copies("  ", Lvl),
+    case kz_json:is_json_object(V) of
+        false -> io:format("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
+        true ->
+            io:format("~s~s:\n", [Indent, K]),
+            _ = put(pp_lvl, Lvl + 1),
+            print_k_v(V),
+            _ = put(pp_lvl, Lvl)
     end.
