@@ -120,7 +120,7 @@ initialize_kapps() ->
     Started = [KApp || KApp <- lists:sort(fun sysconf_first/2, ToStart),
                        {'ok',_} <- [start_app(KApp)]
               ],
-    lager:notice("auto-started kapps ~p", [Started]).
+    lager:notice("auto-started kapps ~p", [lists:sort(Started)]).
 
 -spec start_which_kapps() -> [ne_binary() | atom() | nonempty_string()].
 start_which_kapps() ->
