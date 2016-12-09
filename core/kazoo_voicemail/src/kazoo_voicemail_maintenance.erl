@@ -65,27 +65,27 @@ migrate(AccountId, Box) ->
 %%--------------------------------------------------------------------
 -spec recover_messages_all() -> 'ok'.
 recover_messages_all() ->
-   MODbs = kapps_util:get_all_account_mods(),
-   recover_messages(MODbs, length(MODbs)).
+    MODbs = kapps_util:get_all_account_mods(),
+    recover_messages(MODbs, length(MODbs)).
 
 -spec recover_messages_month(ne_binary(), ne_binary()) -> 'ok'.
 recover_messages_month(Year, Month) ->
-   MODbs = [MODb || MODb <- kapps_util:get_all_account_mods()
-            ,modb_filter(MODb, Year, Month)
-           ],
-   recover_messages(MODbs, length(MODbs)).
+    MODbs = [MODb || MODb <- kapps_util:get_all_account_mods()
+                         ,modb_filter(MODb, Year, Month)
+            ],
+    recover_messages(MODbs, length(MODbs)).
 
 -spec recover_messages_account(ne_binary()) -> 'ok'.
 recover_messages_account(Account) ->
-   MODbs = kapps_util:get_account_mods(Account),
-   recover_messages(MODbs, length(MODbs)).
+    MODbs = kapps_util:get_account_mods(Account),
+    recover_messages(MODbs, length(MODbs)).
 
 -spec recover_messages_account(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 recover_messages_account(Account, Year, Month) ->
-   MODbs = [MODb || MODb <- kapps_util:get_account_mods(Account)
-            ,modb_filter(MODb, Year, Month)
-           ],
-   recover_messages(MODbs, length(MODbs)).
+    MODbs = [MODb || MODb <- kapps_util:get_account_mods(Account)
+                         ,modb_filter(MODb, Year, Month)
+            ],
+    recover_messages(MODbs, length(MODbs)).
 
 -spec modb_filter(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 modb_filter(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, Year, Month), Year, Month) -> 'true';
