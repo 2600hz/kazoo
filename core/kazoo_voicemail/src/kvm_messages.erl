@@ -86,20 +86,28 @@ count_by_owner(?MATCH_ACCOUNT_ENCODED(_)=AccountDb, OwnerId) ->
     AccountId = kz_util:format_account_id(AccountDb),
     count_by_owner(AccountId, OwnerId);
 count_by_owner(AccountId, OwnerId) ->
-    ViewOpts = [{'key', [OwnerId, <<"vmbox">>]}],
-
-    case kz_datamgr:get_results(kvm_util:get_db(AccountId), <<"attributes/owned">>, ViewOpts) of
+    ViewOptions = [{'key', [OwnerId, <<"vmbox">>]}],
+    case kz_datamgr:get_results(kvm_util:get_db(AccountId), <<"attributes/owned">>, ViewOptions) of
         {'ok', []} ->
-            lager:info("voicemail box owner is not found"),
+            lager:info("no voicemail boxes belonging to user ~s found", [OwnerId]),
             {0, 0};
-        {'ok', [Owned|_]} ->
-            VMBoxId = kz_json:get_value(<<"value">>, Owned),
-            FoldersCounts = count_per_folder(AccountId, VMBoxId),
-            normalize_count_none_deleted(VMBoxId, FoldersCounts);
+        {'ok', Boxes} ->
+            FolderQuantities = count_per_folder(AccountId),
+            BoxIds = [kz_json:get_value(<<"value">>, Box) || Box <- Boxes],
+            lager:debug("found ~p vociemail boxes belonging to user ~s", [length(BoxIds), OwnerId]),
+            sum_owner_mailboxes(FolderQuantities, BoxIds, {0, 0});
         {'error', _R} ->
             lager:info("unable to lookup vm counts by owner: ~p", [_R]),
             {0, 0}
     end.
+
+-spec sum_owner_mailboxes(kz_json:objects(), ne_binaries(), count_result()) -> count_result().
+sum_owner_mailboxes(_, [], Results) -> Results;
+sum_owner_mailboxes(FolderQuantities, [BoxId|BoxIds], {New, Saved}) ->
+    {BoxNew, BoxSaved} = normalize_count_none_deleted(BoxId, FolderQuantities),
+    lager:debug("adding mailbox ~s with ~p new and ~p saved messages to user's quantities"
+               ,[BoxId, BoxNew, BoxSaved]),
+    sum_owner_mailboxes(FolderQuantities, BoxIds, {New + BoxNew, Saved + BoxSaved}).
 
 %%--------------------------------------------------------------------
 %% @public
