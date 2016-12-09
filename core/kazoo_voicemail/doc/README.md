@@ -2,7 +2,7 @@
 
 This library is for accessing and managing all voicemail messages in the system.
 
-Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo version 3.22 to MODB. The `kvm_migrate` module is written to do this transition. For migrating messages in specific account or mailbox use helper functions from `kvm_maintenance`.
+Starting with Kazoo 4.0 all new voicemail messages goes into modb. All Kazoo Administrators need to migrate their voicemail messages from Kazoo version 3.22 to MODB. The `kvm_migrate` module is written to do this transition. For migrating messages in specific account or mailbox use helper functions from `kazoo_voicemail_maintenance`.
 
 **Note:** Kazoo 4.0 assumes you migrated all voicemail messages to MODB, and it's only using MODBs for accessing and managing messages!
 
