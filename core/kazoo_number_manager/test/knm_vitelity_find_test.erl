@@ -11,47 +11,55 @@
 -include("knm.hrl").
 
 find_test_() ->
-    [tollfree_tests()
-    ,local_number_tests()
-    ,local_prefix_tests()
-    ].
-
-tollfree_tests() ->
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_vitelity">>]}
-              ,{'quantity', 1}
+              ,{'query_id', <<"QID">>}
               ],
-    <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,
-    [Result] = knm_carriers:find(Num, Options),
-    [Result] = knm_carriers:find(Num, [{'tollfree','true'}|Options]),
+    {setup
+    ,fun () -> {'ok', Pid} = knm_search:start_link(), Pid end
+    ,fun gen_server:stop/1
+    ,fun (_ReturnOfSetup) ->
+             [tollfree_tests(Options)
+             ,local_number_tests(Options)
+             ,local_prefix_tests(Options)
+             ]
+     end
+    }.
 
+tollfree_tests(Options0) ->
+    <<"+1", Num/binary>> = ?TEST_CREATE_TOLL,
+    Options = [{'prefix', Num}
+              ,{'quantity', 1}
+               | Options0
+              ],
+    [Result] = knm_search:find(Options),
     [{"Verify found number"
      ,?_assertEqual(?TEST_CREATE_TOLL, kz_json:get_value(<<"number">>, Result))
      }
-    ,{"Verify activation charge found"
-     ,?_assertEqual(1.0, kz_json:get_value(<<"activation_charge">>, Result))
-     }
+    ,?_assertEqual([Result], knm_search:find([{'tollfree','true'}|Options]))
     ].
 
-local_number_tests() ->
+local_number_tests(Options0) ->
     Limit = 1,
-    Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
-              ,{'carriers', [<<"knm_vitelity">>]}
+    Prefix = <<"9875559876">>,
+    Options = [{'prefix', Prefix}
               ,{'quantity', Limit}
+               | Options0
               ],
-    Results = knm_carriers:find(<<"9875559876">>, Options),
+    Results = knm_search:find(Options),
     [{"Verify local number search result size"
      ,?_assertEqual(Limit, length(Results))
      }
     ].
 
-local_prefix_tests() ->
+local_prefix_tests(Options0) ->
     Limit = 2,
-    Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
-              ,{'carriers', [<<"knm_vitelity">>]}
+    Prefix = <<"987">>,
+    Options = [{'prefix', Prefix}
               ,{'quantity', Limit}
+               | Options0
               ],
-    Results = knm_carriers:find(<<"987">>, Options),
+    Results = knm_search:find(Options),
     [{"Verify local prefix search result size"
      ,?_assertEqual(Limit, length(Results))
      }

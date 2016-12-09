@@ -13,14 +13,18 @@
 api_test_() ->
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_voip_innovations">>]}
+              ,{'query_id', <<"QID">>}
               ],
-    [find_numbers(Options)
-    ,acquire_number()
-    ,disconnect_number()
-    ].
+    {setup
+    ,fun () -> {'ok', Pid} = knm_search:start_link(), Pid end
+    ,fun gen_server:stop/1
+    ,fun (_ReturnOfSetup) ->
+             [find_numbers(Options)
+             ]
+     end
+    }.
 
-
-find_numbers(Options) ->
+find_numbers(Options0) ->
     [[{"Verify found numbers"
       ,?_assertEqual(Limit, length(Results))
       }
@@ -31,7 +35,11 @@ find_numbers(Options) ->
      || {Prefix, Limit} <- [{<<"435">>, 2}
                            ,{<<"877">>, 1}
                            ],
-        Results <- [knm_carriers:find(Prefix, [{'quantity',Limit}|Options])]
+        Options <- [[{quantity, Limit}
+                    ,{prefix, Prefix}
+                     | Options0
+                    ]],
+        Results <- [knm_search:find(Options)]
     ].
 
 matcher(Prefix) ->
@@ -43,7 +51,7 @@ matcher(Prefix) ->
             end
     end.
 
-acquire_number() ->
+acquire_number_test_() ->
     N = <<"+14352154006">>,
     PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
@@ -53,7 +61,7 @@ acquire_number() ->
      }
     ].
 
-disconnect_number() ->
+disconnect_number_test_() ->
     N = <<"+14352154974">>,
     PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),

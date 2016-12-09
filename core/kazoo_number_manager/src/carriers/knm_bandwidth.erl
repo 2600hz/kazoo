@@ -42,12 +42,16 @@
                                )
        ).
 
+-ifdef(TEST).
+-define(BW_DEBUG(Format, Args), io:format(user, Format, Args)).
+-else.
 -define(BW_DEBUG, kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
 -define(BW_DEBUG(Format, Args),
         _ = ?BW_DEBUG
         andalso file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
        ).
+-endif.
 
 -define(IS_SANDBOX_PROVISIONING_TRUE,
         kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"sandbox_provisioning">>, 'true')).

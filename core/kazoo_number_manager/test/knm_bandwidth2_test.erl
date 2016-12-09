@@ -11,17 +11,20 @@
 -include("knm.hrl").
 
 api_test_() ->
-    {'ok', Pid} = knm_search:start_link(),
     Options = [{'account_id', ?RESELLER_ACCOUNT_ID}
               ,{'carriers', [<<"knm_bandwidth2">>]}
               ,{'query_id', <<"QID">>}
               ],
-    X = [find_numbers(Options)
-        ,find_tollfree_numbers(Options)
-        ,acquire_number()
-        ],
-    _ = gen_server:stop(Pid),
-    X.
+    {setup
+    ,fun () -> {'ok', Pid} = knm_search:start_link(), Pid end
+    ,fun gen_server:stop/1
+    ,fun (_ReturnOfSetup) ->
+             [find_numbers(Options)
+             ,find_tollfree_numbers(Options)
+             ,acquire_number()
+             ]
+     end
+    }.
 
 find_numbers(Options) ->
     Limit = 2,
