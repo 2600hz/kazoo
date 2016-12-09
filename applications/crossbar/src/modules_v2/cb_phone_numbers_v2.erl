@@ -327,7 +327,7 @@ classified_number(Context, Number, Classifier) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
     AccountDb = cb_context:account_db(Context),
-    'ok' = knm_maintenance:fix_account_numbers(AccountDb),
+    'ok' = kazoo_number_manager_maintenance:migrate(AccountDb),
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),

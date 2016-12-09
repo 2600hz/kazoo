@@ -8,6 +8,7 @@
 -module(kzs_util).
 
 -export([db_classification/1
+        ,db_priority/1
         ,map_keys_to_atoms/1
         ]).
 
@@ -71,6 +72,57 @@ db_classification(_Database) ->
     lager:debug("unknown database classification : ~p", [erlang:process_info(self(),current_stacktrace)]),
     'undefined'.
 
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
+-spec db_priority(text()) -> non_neg_integer().
+db_priority(Db) when not is_binary(Db) ->
+    db_priority(kz_util:to_binary(Db));
+db_priority(?KZ_CONFIG_DB) -> 0;
+db_priority(?KZ_DATA_DB) -> 1;
+db_priority(?KZ_OFFNET_DB) -> 2;
+db_priority(?KZ_ACCOUNTS_DB) -> 3;
+db_priority(?KZ_SIP_DB) -> 4;
+db_priority(?KZ_AUTH_DB) -> 5;
+db_priority(?KZ_WEBHOOKS_DB) -> 6;
+db_priority(?KZ_RATES_DB) -> 7;
+db_priority(?KZ_ACDC_DB) -> 8;
+db_priority(?KZ_FAXES_DB) -> 9;
+db_priority(?KZ_SCHEMA_DB) -> 10;
+db_priority(?KZ_SERVICES_DB) -> 11;
+db_priority(?KZ_PORT_REQUESTS_DB) -> 12;
+db_priority(?KZ_TASKS_DB) -> 13;
+db_priority(?KZ_DEDICATED_IP_DB) -> 14;
+db_priority(?KZ_ALERTS_DB) -> 15;
+db_priority(?KZ_MEDIA_DB) -> 16;
+db_priority(?KZ_OAUTH_DB) -> 17;
+db_priority(?KZ_TOKEN_DB) -> 18;
+db_priority(<<?KNM_DB_PREFIX, _/binary>>) -> 19;
+db_priority(<<?KNM_DB_PREFIX_ENCODED, _/binary>>) -> 19;
+db_priority(<<?KNM_DB_PREFIX_encoded, _/binary>>) -> 19;
+db_priority(<<"numbers/", _/binary>>) -> 20;
+db_priority(<<"numbers%2F", _/binary>>) -> 20;
+db_priority(<<"numbers%2f", _/binary>>) -> 20;
+db_priority(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 21;
+db_priority(?MATCH_ACCOUNT_encoded(_AccountId)) -> 21;
+db_priority(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 21;
+db_priority(?MATCH_MODB_SUFFIX_UNENCODED(_A,_B,_Rest,_Year,_Month)) -> 22;
+db_priority(?MATCH_MODB_SUFFIX_ENCODED(_A,_B,_Rest,_Year,_Month)) -> 22;
+db_priority(?MATCH_MODB_SUFFIX_encoded(_A,_B,_Rest,_Year,_Month)) -> 22;
+db_priority(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 22;
+db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId)) -> 23;
+db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId)) -> 23;
+db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId)) -> 23;
+db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 23;
+db_priority(_Database) -> 24.
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%------------------------------------------------------------------------------
 -spec map_keys_to_atoms(map()) -> map().
 map_keys_to_atoms(Map) ->
     maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).

@@ -7,10 +7,13 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(knm_maintenance).
+-module(kazoo_number_manager_maintenance).
 
 -include("knm.hrl").
 
+-export([refresh_numbers_dbs/0
+        ,refresh_numbers_db/1
+        ]).
 -export([fix_account_numbers/1
         ,fix_accounts_numbers/1
         ]).
@@ -36,7 +39,44 @@
         end
        ).
 
-%% API
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec refresh_numbers_dbs() -> 'ok'.
+refresh_numbers_dbs() ->
+    {'ok', Databases} = kz_datamgr:db_info(),
+    NumberDbs = [Db
+                 || Db <- Databases,
+                    kzs_util:db_classification(Db) =:= 'numbers'
+                        orelse kzs_util:db_classification(Db) =:= 'system_numbers'
+               ],
+    refresh_numbers_dbs(NumberDbs, length(NumberDbs)).
+
+-spec refresh_numbers_dbs(ne_binaries(), non_neg_integer()) -> 'ok'.
+refresh_numbers_dbs([], _) -> 'ok';
+refresh_numbers_dbs([NumberDb|NumberDbs], Total) ->
+    ?LOG("(~p/~p) updating number db ~s", [length(NumberDbs) + 1, Total, NumberDb]),
+    _ = refresh_numbers_db(NumberDb),
+    refresh_numbers_dbs(NumberDbs, Total).
+
+-spec refresh_numbers_db(ne_binary()) -> 'ok'.
+refresh_numbers_db(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
+    {'ok',_} = kz_datamgr:revise_doc_from_file(NumberDb
+                                              ,'kazoo_number_manager'
+                                              ,<<"views/numbers.json">>
+                                              ),
+    'ok';
+refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
+    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
+    refresh_numbers_db(NumberDb);
+refresh_numbers_db(<<"+", Suffix/binary>>) ->
+    refresh_numbers_db(Suffix);
+refresh_numbers_db(Suffix) ->
+    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
+    refresh_numbers_db(NumberDb).
 
 %% @public
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
@@ -90,6 +130,7 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 
 -spec migrate() -> 'ok'.
 migrate() ->
+    _ = refresh_numbers_dbs(),
     AccountDbs = kapps_util:get_all_accounts(),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs),
     erase(callflow_DIDs),
