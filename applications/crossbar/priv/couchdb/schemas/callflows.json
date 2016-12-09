@@ -23,30 +23,8 @@
             "type": "object"
         },
         "flow": {
-            "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "properties": {
-                "children": {
-                    "default": {},
-                    "description": "Children callflows",
-                    "required": false,
-                    "type": "object"
-                },
-                "data": {
-                    "default": {},
-                    "description": "The data/arguments of the callflow module",
-                    "required": true,
-                    "type": "object"
-                },
-                "module": {
-                    "description": "The name of the callflow module to excute at this node",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "required": true,
-                    "type": "string"
-                }
-            },
-            "required": true,
-            "type": "object"
+            "$ref": "callflows.action",
+            "description": "A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to"
         },
         "metaflow": {
             "$ref": "metaflows",

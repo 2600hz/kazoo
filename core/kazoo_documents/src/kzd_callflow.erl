@@ -14,7 +14,9 @@
         ,patterns/1, set_patterns/2
         ,is_feature_code/1
         ,flow/1, flow/2
-        ,set_flow/2, validate_flow/1
+        ,set_flow/2
+        ,validate/1
+        ,validate_flow/1
         ]).
 
 -include("kz_documents.hrl").
@@ -145,30 +147,52 @@ flow(Doc, Default) ->
 set_flow(Doc, Flow) ->
     kz_json:set_value(?FLOW, Flow, Doc).
 
+-spec validate(doc()) -> {'ok', doc()} |
+                         {'error', kz_json_schema:validation_errors()}.
+validate(Doc) ->
+    case kz_json_schema:validate(<<"callflows">>, Doc) of
+        {'ok', ValidatedDoc} -> validate_flow(ValidatedDoc);
+        {'error', Errors} ->
+            {'error', kz_json_schema:errors_to_jobj(Errors)}
+    end.
+
 -spec validate_flow(doc()) -> {'ok', doc()} |
-                              {'error', list()}.
+                              {'error', kz_json_schema:validation_errors()}.
 validate_flow(Doc) ->
     case validate_flow_elements(flow(Doc)) of
-        {Flow, []} ->
-            {'ok', set_flow(Doc, Flow)};
+        {Flow, []} -> {'ok', set_flow(Doc, Flow)};
         {_Flow, Errors} ->
             {'error', Errors}
     end.
 
 -type validate_acc() :: {kz_json:object(), [jesse_error:error_reason()]}.
 -spec validate_flow_elements(kz_json:object()) -> validate_acc().
+-spec validate_flow_elements(kz_json:object(), validate_acc(), ne_binaries()) -> validate_acc().
 validate_flow_elements(Flow) ->
     validate_flow_elements(Flow, {Flow, []}, []).
 
--spec validate_flow_elements(kz_json:object(), validate_acc(), ne_binaries()) -> validate_acc().
+-ifdef(TEST).
 validate_flow_elements(Flow, Acc, Path) ->
     Module = kz_json:get_binary_value(<<"module">>, Flow),
     Data = kz_json:get_json_value(<<"data">>, Flow),
     Children = kz_json:get_json_value(<<"children">>, Flow, kz_json:new()),
 
     validate_action_schema(Module, Data, Children, Acc, Path).
+-else.
+validate_flow_elements(Flow, Acc, Path) ->
+    case kz_json_schema:validate(<<"callflows.action">>, Flow) of
+        {'ok', ValidatedFlow} ->
+            Module = kz_json:get_binary_value(<<"module">>, ValidatedFlow),
+            Data = kz_json:get_json_value(<<"data">>, ValidatedFlow),
+            Children = kz_json:get_json_value(<<"children">>, ValidatedFlow, kz_json:new()),
 
--spec validate_action_schema(ne_binary(), kz_json:object(), kz_json:object(), validate_acc(), ne_binaries()) ->
+            validate_action_schema(Module, Data, Children, Acc, Path);
+        {'error', Errors} ->
+            {Flow, Errors}
+    end.
+-endif.
+
+-spec validate_action_schema(api_binary(), api_object(), kz_json:object(), validate_acc(), ne_binaries()) ->
                                     validate_acc().
 validate_action_schema(Module, Data, Children, {RootFlow, ErrorsSoFar}, Path) ->
     {UpdatedData, Errors} =
@@ -207,6 +231,9 @@ update_error_key_path(Path, {'data_invalid', SchemaJObj, Error, Value, Key}) ->
 validate_action_schema(Module, Data) ->
     validate_action_schema(Module, Data, {'ok', ?SCHEMA_JOBJ}).
 -else.
+-spec validate_action_schema(ne_binary(), kz_json:object()) ->
+                                    {'true', kz_json:object()} |
+                                    {'false', kz_json_schema:validation_errors()}.
 validate_action_schema(Module, Data) ->
     Schema = <<"callflows.", Module/binary>>,
     validate_action_schema(Module, Data, kz_json_schema:load(Schema)).
@@ -257,8 +284,9 @@ validate_action(<<"record_call">>, Data, SchemaJObj) ->
 validate_action(_Module, Data, _SchemaJObj) ->
     {'true', Data}.
 
--spec maybe_fix_js_types(ne_binary(), kz_json:object(), kz_json:object(), list()) ->
-                                {boolean(), kz_json:object() | list()}.
+-spec maybe_fix_js_types(ne_binary(), kz_json:object(), kz_json:object(), kz_json_schema:validation_errors()) ->
+                                {'true', kz_json:object()} |
+                                {'false', kz_json_schema:validation_errors()}.
 maybe_fix_js_types(Module, Data, SchemaJObj, Errors) ->
     case maybe_fix_js_types(Data, Errors) of
         {'false', _} -> {'false', Errors};
@@ -288,7 +316,7 @@ maybe_fix_js_integer(Key, Value, Data) ->
             {'false', Data}
     end.
 
--spec maybe_fix_index(kz_json:path() | kz_json:path()) -> kz_json:path() | kz_json:path().
+-spec maybe_fix_index(kz_json:path() | kz_json:path()) -> kz_json:path().
 maybe_fix_index(Keys)
   when is_list(Keys) ->
     lists:map(fun(K) when is_integer(K) ->
@@ -400,6 +428,5 @@ nested_children_failure_test_() ->
                   ,Errors
                   )
     ].
-
 
 -endif.

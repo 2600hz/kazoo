@@ -18,6 +18,8 @@
         ,build_error_message/2
         ]).
 
+-export_type([validation_error/0, validation_errors/0]).
+
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
@@ -147,11 +149,12 @@ validate(SchemaJObj, DataJObj, Options) ->
 -type options() :: [option()].
 
 -type validation_error() :: {integer(), ne_binary(), kz_json:object()}.
+-type validation_errors() :: [validation_error()].
 
 -spec errors_to_jobj([jesse_error:error_reason()]) ->
-                            [validation_error()].
+                            validation_errors().
 -spec errors_to_jobj([jesse_error:error_reason()], options()) ->
-                            [validation_error()].
+                            validation_errors().
 errors_to_jobj(Errors) ->
     errors_to_jobj(Errors, [{'version', ?CURRENT_VERSION}]).
 
