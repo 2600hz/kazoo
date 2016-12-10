@@ -827,7 +827,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
--spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> no_return.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
     CurrentDocId = kzd_app:id(AppJObj),
@@ -880,7 +880,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
             kz_datamgr:delete_attachment(AccountDb, AppId, Image)
     end.
 
--spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> no_return.
 maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     Icon = kzd_app:icon(MetaData),
     Screenshots = kzd_app:screenshots(MetaData),
