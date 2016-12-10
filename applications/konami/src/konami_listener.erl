@@ -35,7 +35,7 @@
                   ,{'route', []}
                   ]).
 -define(RESPONDERS, [{{?MODULE, 'handle_metaflow'}
-                     ,[{<<"metaflow">>, <<"bindings">>}]
+                     ,[{<<"metaflow">>, <<"bind">>}]
                      }
                     ,{{?MODULE, 'handle_channel_create'}
                      ,[{<<"call_event">>, <<"CHANNEL_CREATE">>}]
