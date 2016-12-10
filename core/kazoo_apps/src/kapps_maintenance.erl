@@ -186,7 +186,7 @@ refresh([Database|Databases], Pause, Total) ->
 -spec get_databases() -> ne_binaries().
 get_databases() ->
     {'ok', Databases} = kz_datamgr:db_info(),
-    lists:sort(fun get_database_sort/2, Databases).
+    lists:sort(fun get_database_sort/2, lists:usort(Databases ++ ?KZ_SYSTEM_DBS)).
 
 -spec get_database_sort(ne_binary(), ne_binary()) -> boolean().
 get_database_sort(Db1, Db2) ->
