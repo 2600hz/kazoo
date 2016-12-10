@@ -328,7 +328,7 @@ build_local_extension(#state{number_props=Props
       ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Simplify-Loopback">>, <<"false">>}
       ,{<<"Loopback-Bowout">>, <<"false">>}
-      ,{<<"Media">>, <<"process">>},
+      ,{<<"Media">>, <<"process">>}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
