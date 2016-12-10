@@ -293,6 +293,7 @@ build_local_extension(#state{number_props=Props
                    ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Retain-CID">>, kz_json:get_value(<<"Retain-CID">>, CCVsOrig)}
                    ,{<<"Resource-ID">>, AccountId}
                    ,{<<"Loopback-Request-URI">>, <<Number/binary, "@", Realm/binary>>}
+                   ,{<<?CHANNEL_LOOPBACK_HEADER_PREFIX, "Inception-Account-ID">>, OriginalAccountId}
                    ]),
 
     Endpoint = kz_json:from_list(
@@ -327,6 +328,7 @@ build_local_extension(#state{number_props=Props
       ,{<<"Caller-ID-Number">>, CIDNum}
       ,{<<"Simplify-Loopback">>, <<"false">>}
       ,{<<"Loopback-Bowout">>, <<"false">>}
+      ,{<<"Media">>, <<"process">>}
        | kz_api:default_headers(Q, <<"call">>, <<"command">>, ?APP_NAME, ?APP_VERSION)
       ]).
 
