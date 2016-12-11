@@ -192,7 +192,7 @@ handle_update(JObj, To) ->
     MessagesUrgent = kz_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
     MessagesUrgentSaved = kz_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
-    Expires = 60 * ?MILLISECONDS_IN_DAY,
+    Expires = 60 * ?SECONDS_IN_DAY,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
                ,{<<"To-User">>, ToUsername}
