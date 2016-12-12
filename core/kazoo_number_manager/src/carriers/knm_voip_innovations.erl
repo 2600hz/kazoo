@@ -17,6 +17,7 @@
 -export([disconnect_number/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
+-export([check_numbers/1]).
 
 -ifdef(TEST).
 - export([soap_request/2]).  %% Only to pass compilation
@@ -78,6 +79,16 @@ is_local() -> 'false'.
 %% @public
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(_Number) -> 'true'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check with carrier if these numbers are registered with it.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
+                                      {error, any()}.
+check_numbers(_Numbers) -> {error, not_implemented}.
 
 
 %%--------------------------------------------------------------------

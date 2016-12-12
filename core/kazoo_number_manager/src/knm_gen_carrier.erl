@@ -32,3 +32,7 @@
 
 -callback is_local() ->
     boolean().
+
+-callback check_numbers(ne_binaries()) ->
+    {'ok', kz_json:object()} |
+    {'error', any()}.
