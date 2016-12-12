@@ -1,8 +1,3 @@
-/*
-Section: USER
-Title: User utilities
-Language: en-US
-*/
 
 # Internet fax for Office 2010
 * Create a fax.reg file with the contents below replacing xxx.fax.kazoo.io with the smtp address of faxbox.

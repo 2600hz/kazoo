@@ -1,9 +1,3 @@
-/*
-Section: Konami
-Title: Move
-Language: en-US
-Version: 3.19
-*/
 
 When a user is talking on one of their endpoints (say their Kazoo Mobile phone) and they move locations to have access to their IP Desk phone, it is helpful to move the call from the mobile phone to the deskphone with the other party unware of the change.
 

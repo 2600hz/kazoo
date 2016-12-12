@@ -1,8 +1,3 @@
-/*
-Section: Call Inspector
-Title: Call Inspector
-Language: en-US
-*/
 
 # Call Inspector
 

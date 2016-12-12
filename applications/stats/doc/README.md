@@ -1,8 +1,3 @@
-/*
-Section: Stats
-Title: Stats
-Language: en-US
-*/
 
 Events counts are collected by kazoo_stats.erl running on every kazoo
 cluster node and are regularly sent via the targeted/statistics amqp queue to

@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: DTMF Collection
-Language: en-US
-*/
 
 # Overview
 

@@ -1,8 +1,3 @@
-/*
-Section: Konami
-Title: Resume
-Language: en-US
-*/
 
 Some Konami actions put the other leg on hold (say for a transfer). The *resume* module allows the initiating party to reconnect with the on-hold party (cancelling whatever metaflow module had initiated the hold).
 

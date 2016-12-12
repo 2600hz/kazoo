@@ -1,13 +1,3 @@
-/*
-Section: Callflows
-
-Title: Language
-
-Language: en-US
-
-Sponsors: CloudPBX
-
-*/
 
 Prompts and other content take optional language settings to know which to fetch. Use this callflow action to set the language for the call.
 

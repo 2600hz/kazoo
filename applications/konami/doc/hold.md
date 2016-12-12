@@ -1,9 +1,3 @@
-/*
-Section: Konami
-Title: Hold
-Language: en-US
-Version: 3.22
-*/
 
 Some phones do not support putting the other line on hold or making it easy to set custom music to play while on hold. The Konami *hold* module permits both.
 

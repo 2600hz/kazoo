@@ -1,8 +1,3 @@
-/*
-Section: ACLs
-Title: Managing your ACLs
-Language: en-US
-*/
 
 ACLs control whether to request username/password authentication from a source IP address or not. Kazoo maintains two lists of ACLs, one for the SBCs (typically Kamailio) and one for upstream carriers to send inbound traffic to Kazoo.
 

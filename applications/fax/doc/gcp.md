@@ -1,8 +1,3 @@
-/*
-Section: GCP
-Title: Google Cloud Printer
-Language: en-US
-*/
 
 # Google Cloud Printer
 ## Features

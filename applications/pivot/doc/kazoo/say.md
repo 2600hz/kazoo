@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: Saying Text
-Language: en-US
-*/
 
 # Overview
 

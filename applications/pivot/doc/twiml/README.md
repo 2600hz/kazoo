@@ -1,9 +1,3 @@
-/*
-Section: Pivot
-Title: Pivot
-Language: en-US
-Version: 3.18
-*/
 
 # Overview
 

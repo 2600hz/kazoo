@@ -1,8 +1,3 @@
-/*
-Section: DNS
-Title: DNS
-Language: en-US
-*/
 
 # DNS configuration for smtp-to-fax
 

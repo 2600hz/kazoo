@@ -1,8 +1,3 @@
-/*
-Section: HAPROXY
-Title: HAPROXY
-Language: en-US
-*/
 
 # HAPROXY role in smtp to fax
 if you have more than one kapps node running the fax application, you may want to distribute the load from smtp among the several nodes.

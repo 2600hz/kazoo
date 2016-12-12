@@ -1,8 +1,3 @@
-/*
-Section: System Config
-Title: System Config
-Language: en-US
-*/
 
 Kazoo configuration, for the most part, lives in the `system_config` database (with a few exceptions for BigCouch, RabbitMQ, and basic Kazoo settings).
 

@@ -1,9 +1,3 @@
-/*
-Section: Pivot
-Title: Hangups
-Language: en-US
-Version: 3.18
-*/
 
 # Overview
 

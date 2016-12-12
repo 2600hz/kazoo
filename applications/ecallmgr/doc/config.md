@@ -1,9 +1,3 @@
-/*
-Section: eCallmgr
-Title: eCallmgr System Config
-Language: en-US
-Version: 3.19
-*/
 
 # System configuration options in ecallmgr
 

@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: Issues
-Language: en-US
-*/
 
 * Default data submitted on request: CallerName, Direction, ApiVerson, CallStatus, To, From, AccountSid, CallSid
 * Play

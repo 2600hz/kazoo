@@ -1,8 +1,3 @@
-/*
-Section: DTH
-Title: DTH
-Language: en-US
-*/
 
 Getting started:
 

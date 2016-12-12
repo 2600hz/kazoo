@@ -1,8 +1,3 @@
-/*
-Section: Callflow
-Title: Temporal Route
-Language: en-US
-*/
 
 # Rule Set
 

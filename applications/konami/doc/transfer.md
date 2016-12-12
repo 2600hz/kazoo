@@ -1,8 +1,3 @@
-/*
-Section: Konami
-Title: Transfers
-Language: en-US
-*/
 
 # In-Call Attended Transfer
 

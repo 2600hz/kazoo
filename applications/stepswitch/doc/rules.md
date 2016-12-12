@@ -1,9 +1,3 @@
-/*
-Section: Stepswitch
-Title: Rules
-Language: en-US
-Version: 3.18
-*/
 
 # Rules fields
 
