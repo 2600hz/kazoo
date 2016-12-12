@@ -1,8 +1,3 @@
-/*
-Section: Jonny5
-Title: Jonny5
-Language: en-US
-*/
 
 # Overview
 

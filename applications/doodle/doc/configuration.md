@@ -1,9 +1,3 @@
-/*
-Section: Doodle
-Title: Doodle
-Language: en-US
-Version: 3.20
-*/
 
 # Configure inbound listeners
 

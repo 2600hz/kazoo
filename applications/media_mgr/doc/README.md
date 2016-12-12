@@ -1,8 +1,3 @@
-/*
-Section: Media Manager
-Title: Media Manager
-Language: en-US
-*/
 
 # Media Manager
 Single play stream

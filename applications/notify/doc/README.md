@@ -1,8 +1,3 @@
-/*
-Section: Notify
-Title: Notify
-Language: en-US
-*/
 
 # Notify
 

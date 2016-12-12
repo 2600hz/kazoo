@@ -1,8 +1,3 @@
-/*
-Section: Pusher
-Title: Pusher
-Language: en-US
-*/
 
 # Pusher
 pusher app allows kazoo to send a push message to a device when the device is the target of a bridge call and is not registered, so that the device can "wake up", register and receive the call.

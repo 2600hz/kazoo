@@ -1,8 +1,3 @@
-/*
-Section: Callflow
-Title: Fax Detect
-Language: en-US
-*/
 
 # Fax Detect
 

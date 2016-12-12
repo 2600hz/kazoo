@@ -1,9 +1,3 @@
-/*
-Section: Teletype
-Title: Index
-Language: en-US
-Version: 3.19
-*/
 
 # Overview
 

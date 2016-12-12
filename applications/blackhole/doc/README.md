@@ -1,8 +1,3 @@
-/*
-Section: Blackhole
-Title: Blackhole
-Language: en-US
-*/
 
 # Blackhole *Realtime HTTP Websocket Events*
 

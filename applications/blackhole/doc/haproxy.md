@@ -1,8 +1,3 @@
-/*
-Section: Blackhole
-Title: Haproxy
-Language: en-US
-*/
 
 # Blackhole
 

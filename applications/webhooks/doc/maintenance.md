@@ -1,9 +1,3 @@
-/*
-Section: WebHooks
-Title: Maintenance
-Language: en-US
-Version: 3.21
-*/
 
 ## See what hooks are active
 

@@ -1,9 +1,3 @@
-/*
-Section: Omnipresence
-Title: Maintenance
-Language: en-US
-Version: 3.16
-*/
 
 ## Current Subscriptions
 

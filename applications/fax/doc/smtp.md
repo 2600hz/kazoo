@@ -1,8 +1,3 @@
-/*
-Section: SMTP
-Title: SMTP Integration
-Language: en-US
-*/
 
 # SMTP Integration
 kazoo will generate an smtp domain address for each faxbox on its creation.

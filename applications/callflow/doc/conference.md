@@ -1,9 +1,3 @@
-/*
-Section: Callflows
-Title: Conference
-Language: en-US
-Version: 3.22
-*/
 
 The Conference callflow element allows one to override parts of a Conference document.
 

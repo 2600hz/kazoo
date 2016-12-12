@@ -1,9 +1,3 @@
-/*
-Section: Callflows
-Title: Ring Group
-Language: en-US
-Version: 3.20
-*/
 
 Ring group callflow element allows calling multiple endpoints with given strategy and timeout.
 

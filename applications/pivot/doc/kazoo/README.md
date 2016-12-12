@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: Build your callflows on-demand
-Language: en-US
-*/
 
 # Overview
 

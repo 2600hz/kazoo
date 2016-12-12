@@ -1,8 +1,3 @@
-/*
-Section: Tasks
-Title: Tasks
-Language: en-US
-*/
 
 # Kazoo Tasks
 

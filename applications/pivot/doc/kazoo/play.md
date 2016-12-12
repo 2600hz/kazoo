@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: Playing Files
-Language: en-US
-*/
 
 # Overview
 

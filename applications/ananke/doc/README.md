@@ -1,8 +1,3 @@
-/*
-Section: Ananke
-Title: Ananke
-Language: en-US
-*/
 
 # Ananke *Callback features*
 

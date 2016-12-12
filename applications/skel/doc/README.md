@@ -1,8 +1,3 @@
-/*
-Section: Skel
-Title: Skel
-Language: en-US
-*/
 
 # Overview
 

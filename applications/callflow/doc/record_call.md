@@ -1,9 +1,3 @@
-/*
-Section: Callflows
-Title: Record Call
-Language: en-US
-Version: 3.20
-*/
 
 The `record_call` callflow enables you to record the audio of the call.
 
