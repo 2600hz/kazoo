@@ -34,6 +34,8 @@
 -define(DEFAULT_IMAGE_SIZE_CMD_FMT, <<"echo -n `identify -format \"%[fx:w]x%[fx:h]\" ~s`">>).
 -define(IMAGE_SIZE_CMD_FMT, whapps_config:get_binary(?CONFIG_CAT, <<"image_size_cmd_format">>, ?DEFAULT_IMAGE_SIZE_CMD_FMT)).
 
+-define(ERROR_NO_VALID_ATTACHMENT, <<"no valid attachment">>).
+
 -record(state, {
           options = [] :: list()
           ,from :: binary()
@@ -677,7 +679,7 @@ process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
 process_parts([], #state{filename='undefined'
                          ,errors=Errors
                         }=State) ->
-    {'ok', State#state{errors=[<<"no valid attachment">> | Errors]}};
+    {'ok', State#state{errors=[?ERROR_NO_VALID_ATTACHMENT | Errors]}};
 process_parts([], State) ->
     {'ok', State};
 process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
@@ -689,7 +691,7 @@ process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
                        ,BodyPart
                        ,State
                       ),
-    process_parts(Parts, NewState).
+    process_parts(Parts, maybe_ignore_no_valid_attachment(NewState)).
 
 -spec maybe_process_part(ne_binary(), wh_proplist(), binary() | mimemail:mimetuple(), state()) ->
                           {'ok', state()}.
@@ -749,6 +751,15 @@ process_part(CT, Body, State) ->
     {'ok', State#state{filename=Filename
                        ,content_type=CT
                       }}.
+
+%% If the filename is no longer undefined, but the "no valid attachment" error
+%% was triggered by an undefined filename at one point, remove it
+-spec maybe_ignore_no_valid_attachment(state()) -> state().
+maybe_ignore_no_valid_attachment(#state{filename='undefined'}=State) -> State;
+maybe_ignore_no_valid_attachment(#state{errors=Errors}=State) ->
+    NewErrors = [Error || Error <- Errors
+                              ,Error =/= ?ERROR_NO_VALID_ATTACHMENT],
+    State#state{errors=NewErrors}.
 
 -spec is_allowed_content_type(ne_binary()) -> boolean().
 is_allowed_content_type(CT) ->
