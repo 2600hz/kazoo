@@ -5,7 +5,7 @@
         "crossbar_listing": {
             "map": [
                 "function(doc) {",
-                "  if(doc.pvt_type != 'number' || doc.pvt_deleted) return;",
+                "  if (doc.pvt_type != 'number' || doc.pvt_deleted) return;",
                 "  var features = [], o = doc.pvt_features || {};",
                 "  for (var p in o)",
                 "    if (o.hasOwnProperty(p))",

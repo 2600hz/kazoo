@@ -52,7 +52,7 @@ refresh_numbers_dbs() ->
                  || Db <- Databases,
                     kzs_util:db_classification(Db) =:= 'numbers'
                         orelse kzs_util:db_classification(Db) =:= 'system_numbers'
-               ],
+                ],
     refresh_numbers_dbs(NumberDbs, length(NumberDbs)).
 
 -spec refresh_numbers_dbs(ne_binaries(), non_neg_integer()) -> 'ok'.
