@@ -396,7 +396,7 @@ are_features_available_synced(NumDoc) ->
 
 -spec is_billable_a_boolean(kz_json:object()) -> boolean().
 is_billable_a_boolean(NumDoc) ->
-    undefined =/= kz_json:get_value(?PVT_IS_BILLABLE, NumDoc).
+    is_boolean(kz_json:get_value(?PVT_IS_BILLABLE, NumDoc)).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().
 cleanse(JObj) ->
