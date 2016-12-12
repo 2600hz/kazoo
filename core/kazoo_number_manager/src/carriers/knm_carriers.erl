@@ -6,6 +6,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
@@ -13,7 +14,7 @@
 -include("knm.hrl").
 
 -export([find/1, find/2
-        ,check/1, check/2
+        ,check/1
         ,available_carriers/1, all_modules/0
         ,default_carriers/0, default_carrier/0
         ,acquire/1
@@ -237,22 +238,34 @@ activation_charge(DID, AccountId) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Normalize then query the various providers for available numbers.
+%% @doc
+%% Normalize then query the various providers for available numbers.
+%% @end
 %%--------------------------------------------------------------------
--type checked_numbers() :: [{module(), {'ok', kz_json:object()} |
-                             {'error', any()} |
-                             {'EXIT', any()}
-                            }].
--spec check(ne_binaries()) -> checked_numbers().
--spec check(ne_binaries(), options()) -> checked_numbers().
-check(Numbers) -> check(Numbers, []).
-
-check(Numbers, Options) ->
+-spec check(ne_binaries()) -> kz_json:object().
+check(Numbers) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
-    [{Module, catch(Module:check_numbers(FormattedNumbers, Options))}
-     || Module <- available_carriers(Options)
-    ].
+    F = fun (Mod, Acc) -> check_fold(Mod, Acc, FormattedNumbers) end,
+    {OKs, KOs} = lists:foldl(F, {#{},#{}}, available_carriers([])),
+    kz_json:from_map(maps:merge(KOs, OKs)).
+
+check_fold(Module, {OKs0, KOs0}, Nums) ->
+    {OKs, KOs} = check_numbers(Module, Nums),
+    {maps:merge(OKs, OKs0)
+    ,maps:merge(maps:without(maps:keys(OKs0), KOs), KOs0)
+    }.
+
+check_numbers(Module, Nums) ->
+    lager:debug("checking ~p", [Module]),
+    try Module:check_numbers(Nums) of
+        {ok, JObj} -> {kz_json:to_map(JObj), #{}};
+        {error, _} -> {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+    catch
+        _:_ ->
+            kz_util:log_stacktrace(),
+            {#{}, maps:from_list([{Num,<<"error">>} || Num <- Nums])}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -331,9 +331,7 @@ post(Context, ?FIX) ->
     summary(Context);
 post(Context, ?CHECK) ->
     Numbers = cb_context:req_value(Context, ?COLLECTION_NUMBERS),
-    Unformatted = knm_carriers:check(Numbers),
-    RespData = format_carriers_check(Unformatted),
-    cb_context:set_resp_data(Context, RespData);
+    cb_context:set_resp_data(Context, knm_carriers:check(Numbers));
 post(Context, ?COLLECTION) ->
     Results = collection_process(Context, ?HTTP_POST),
     CB = fun() -> post(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
@@ -705,29 +703,6 @@ validate_collection_request(Context, _E) ->
     Msg = kz_json:from_list([{<<"message">>, <<"numbers must be a list">>}
                             ]),
     cb_context:add_validation_error(?COLLECTION_NUMBERS, <<"type">>, Msg, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec format_carriers_check(list()) -> kz_json:object().
--spec format_carriers_check(list(), kz_json:object()) -> kz_json:object().
-format_carriers_check(Checked) ->
-    format_carriers_check(Checked, kz_json:new()).
-format_carriers_check([], JObj) -> JObj;
-format_carriers_check([{_Module, {'ok', ModuleResults}}|Rest], JObj) ->
-    JObj1 =
-        lists:foldl(
-          fun ({Number, Status}, Acc) ->
-                  kz_json:set_value(Number, Status, Acc)
-          end
-                   ,JObj
-                   ,kz_json:to_proplist(ModuleResults)
-         ),
-    format_carriers_check(Rest, JObj1);
-format_carriers_check([_|Rest], JObj) ->
-    format_carriers_check(Rest, JObj).
 
 %%--------------------------------------------------------------------
 %% @private
