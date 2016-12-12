@@ -54,7 +54,6 @@
 -type kos() :: #{num() => ko()}.
 -type ret() :: #{ok => oks()
                 ,ko => kos()
-                ,dry_run => kz_json:object()
                 ,services => services()
                 ,charges => charges()
                 ,options => options()
@@ -561,15 +560,8 @@ ret(#{ok := OKs
      ,charges := Charges
      ,options := Options
      }) ->
-    %%FIXME: use the collection()'s services.
-    ServicesList = [S || N <- OKs,
-                         S <- [knm_number:services(N)],
-                         S =/= undefined
-                   ],
-    F = fun (S, JObj) -> kz_json:sum(kz_services:dry_run(S), JObj) end,
     #{ok => OKs
      ,ko => KOs %%FIXME Convert to error format
-     ,dry_run => lists:foldl(F, kz_json:new(), ServicesList)
      ,services => Services
      ,charges => Charges
      ,options => Options
