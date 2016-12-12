@@ -388,7 +388,7 @@ refresh_account_db(Database) ->
     _ = remove_depreciated_account_views(AccountDb),
     _ = ensure_account_definition(AccountDb, AccountId),
     _ = kapps_util:update_views(AccountDb, get_all_account_views(), 'true'),
-    _ = knm_maintenance:update_number_services_view(AccountDb),
+    _ = kazoo_number_manager_maintenance:update_number_services_view(AccountDb),
     kapps_account_config:migrate(AccountDb),
     _ = kazoo_bindings:map(binding({'refresh_account', AccountDb}), AccountId),
     'ok'.
