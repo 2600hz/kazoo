@@ -10,6 +10,39 @@
         },
         "list_reserved": {
             "map": "function(doc) {if (doc.pvt_type != 'number' || doc.pvt_deleted || doc.pvt_state != 'reserved') return; emit(doc._id, null);}"
+        },
+        "reconcile_services": {
+            "reduce": [
+                "function(Keys, Values, _Rereduce) {",
+                "  var incr = function (o, k, v) {",
+                "    if (o[k] === undefined)",
+                "      o[k] = v;",
+                "    else",
+                "      o[k] += v;",
+                "    return o;",
+                "  };",
+                "  var acc = function (Oout, Oin) {",
+                "    for (var Ofield in Oin)",
+                "      if (Oin.hasOwnProperty(Ofield))",
+                "        Oout = incr(Oout, Ofield, Oin[Ofield]);",
+                "    return Oout;",
+                "  };",
+                "  var resCB = {}, resCnB = {};",
+                "  var resF = {};",
+                "  var resM = {};",
+                "  for (var i in Values) {",
+                "    var Value = Values[i];",
+                "    resCB = acc(resCB, Value['classifications']['billable'] || {});",
+                "    resCnB = acc(resCnB, Value['classifications']['non_billable'] || {});",
+                "    resF = acc(resF, Value['features'] || {});",
+                "    resM = acc(resM, Value['modules'] || {});",
+                "  }",
+                "  return {'classifications':{'billable':resCB, 'non_billable':resCnB},",
+                "          'features':resF,",
+                "          'modules':resM",
+                "         };",
+                "}"
+            ]
         }
     }
 }
