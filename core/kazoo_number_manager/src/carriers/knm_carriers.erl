@@ -244,16 +244,19 @@ activation_charge(DID, AccountId) ->
 %%--------------------------------------------------------------------
 -spec check(ne_binaries()) -> kz_json:object().
 check(Numbers) ->
-    FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
-    lager:info("attempting to check ~p ", [FormattedNumbers]),
-    F = fun (Mod, Acc) -> check_fold(Mod, Acc, FormattedNumbers) end,
-    {OKs, KOs} = lists:foldl(F, {#{},#{}}, available_carriers([])),
+    Nums = lists:usort([knm_converters:normalize(Num) || Num <- Numbers]),
+    lager:info("attempting to check ~p ", [Nums]),
+    {_, OKs, KOs} =
+        lists:foldl(fun check_fold/2, {Nums, #{}, #{}}, available_carriers([])),
     kz_json:from_map(maps:merge(KOs, OKs)).
 
-check_fold(Module, {OKs0, KOs0}, Nums) ->
+check_fold(_, {[], _, _}=Acc) -> Acc;
+check_fold(Module, {Nums, OKs0, KOs0}) ->
     {OKs, KOs} = check_numbers(Module, Nums),
-    {maps:merge(OKs, OKs0)
-    ,maps:merge(maps:without(maps:keys(OKs0), KOs), KOs0)
+    OKNums = maps:keys(OKs0),
+    {Nums -- OKNums
+    ,maps:merge(OKs, OKs0)
+    ,maps:merge(maps:without(OKNums, KOs), KOs0)
     }.
 
 check_numbers(Module, Nums) ->
