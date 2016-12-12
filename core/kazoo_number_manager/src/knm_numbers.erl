@@ -637,8 +637,12 @@ update_for_reconcile(T, Options) ->
     S = [{fun knm_phone_number:set_assigned_to/2, knm_number_options:assign_to(Options)}
         ,{fun knm_phone_number:set_auth_by/2,     knm_number_options:auth_by(Options)}
         ,{fun knm_phone_number:update_doc/2,      knm_number_options:public_fields(Options)}
-        ,{fun knm_phone_number:set_module_name/2, knm_number_options:module_name(Options)}
         ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_IN_SERVICE}
+         | case props:is_defined(module_name, Options) of
+               false -> [];
+               true ->
+                   [{fun knm_phone_number:set_module_name/2, knm_number_options:module_name(Options)}]
+           end
         ],
     knm_phone_number:setters(T, S).
 
