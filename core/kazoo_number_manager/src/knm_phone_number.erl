@@ -76,7 +76,7 @@
                           ,doc = kz_json:new() :: kz_json:object()
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
-                          ,is_billable = 'false' :: boolean()
+                          ,is_billable = undefined :: api_boolean()
                           ,is_dirty = 'false' :: boolean()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
@@ -749,12 +749,20 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    case N0#knm_phone_number.module_name =:= Name of
-        true -> N;
-        false ->
+    case N#knm_phone_number.is_billable of
+        undefined ->
             N#knm_phone_number{is_dirty = true
                               ,module_name = Name
-                              }
+                              ,is_billable = false
+                              };
+        _ ->
+            case N0#knm_phone_number.module_name =:= Name of
+                true -> N;
+                false ->
+                    N#knm_phone_number{is_dirty = true
+                                      ,module_name = Name
+                                      }
+            end
     end;
 %% knm_bandwidth is deprecated, updating to the new module
 set_module_name(N, <<"wnm_bandwidth">>) ->
@@ -979,7 +987,7 @@ set_created(PN, Created)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec is_billable(knm_phone_number()) -> boolean().
+-spec is_billable(knm_phone_number()) -> api_boolean().
 is_billable(#knm_phone_number{is_billable = IsBillable}) -> IsBillable.
 
 %%--------------------------------------------------------------------

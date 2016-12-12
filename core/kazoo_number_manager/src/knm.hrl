@@ -40,7 +40,14 @@
             orelse Prefix == <<"88*">>
        ).
 
--define(DEFAULT_E911_FEATURE, ?DASH_KEY).
+
+-define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
+                                  ,?FEATURE_E911
+                                  ,?FEATURE_FAILOVER
+                                  ,?FEATURE_PORT
+                                  ,?FEATURE_PREPEND
+                                  ]).
+
 
 
 -ifdef(TEST).

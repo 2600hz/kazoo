@@ -34,6 +34,9 @@
         kapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
 -endif.
 
+-define(ACCOUNT_RECONCILE_REGEX,
+        kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
+
 -define(CONVERTER_MOD, kz_util:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
@@ -79,14 +82,16 @@
                           ,{<<"friendly_name">>, <<"Unknown">>}
                           ])).
 
--define(DEFAULT_CLASSIFIERS, [{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
-                             ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
-                             ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
-                             ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
-                             ,{<<"did_us">>, ?CLASSIFIER_DID_US}
-                             ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
-                             ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
-                             ]).
+-define(DEFAULT_CLASSIFIERS,
+        kz_json:from_list([{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
+                          ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
+                          ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
+                          ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
+                          ,{<<"did_us">>, ?CLASSIFIER_DID_US}
+                          ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
+                          ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
+                          ])).
+-define(CLASSIFIERS, kapps_config:get(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -170,20 +175,13 @@ to_db(_) ->
 %%--------------------------------------------------------------------
 -spec is_reconcilable(ne_binary()) -> boolean().
 is_reconcilable(Number) ->
-    Regex = ?RECONCILE_REGEX,
     Num = normalize(Number),
-    is_reconcilable_by_regex(Num, Regex).
+    is_reconcilable_by_regex(Num, ?RECONCILE_REGEX).
 
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
 is_reconcilable(Number, AccountId) ->
-    Regex = kapps_account_config:get_global(
-              AccountId
-                                           ,?KNM_CONFIG_CAT
-                                           ,?KEY_RECONCILE_REGEX
-                                           ,?DEFAULT_RECONCILE_REGEX
-             ),
     Num = normalize(Number, AccountId),
-    is_reconcilable_by_regex(Num, Regex).
+    is_reconcilable_by_regex(Num, ?ACCOUNT_RECONCILE_REGEX).
 
 is_reconcilable_by_regex(Num, Regex) ->
     case re:run(Num, Regex) of
@@ -199,17 +197,6 @@ is_reconcilable_by_regex(Num, Regex) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--ifdef(TEST).
--define(CLASSIFIERS, kz_json:from_list(?DEFAULT_CLASSIFIERS)).
--else.
--define(CLASSIFIERS
-       ,kapps_config:get(?KNM_CONFIG_CAT
-                        ,<<"classifiers">>
-                        ,kz_json:from_list(?DEFAULT_CLASSIFIERS)
-                        )
-       ).
--endif.
-
 -spec classify(ne_binary()) -> api_binary().
 classify(Number) ->
     Num = normalize(Number),
@@ -223,10 +210,7 @@ classify(Number) ->
 %%--------------------------------------------------------------------
 -spec available_classifiers() -> kz_json:object().
 available_classifiers() ->
-    kz_json:foldl(fun correct_depreciated_classifiers/3
-                 ,kz_json:new()
-                 ,?CLASSIFIERS
-                 ).
+    kz_json:foldl(fun correct_depreciated_classifiers/3, kz_json:new(), ?CLASSIFIERS).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -286,7 +270,7 @@ get_classifier_regex(JObj) ->
 %%--------------------------------------------------------------------
 -spec correct_depreciated_classifiers(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                                  kz_json:object().
-correct_depreciated_classifiers(Classifier, ?NE_BINARY = Regex, JObj) ->
+correct_depreciated_classifiers(Classifier, ?NE_BINARY=Regex, JObj) ->
     J = kz_json:from_list([{<<"regex">>, Regex}
                           ,{<<"friendly_name">>, Classifier}
                           ]),

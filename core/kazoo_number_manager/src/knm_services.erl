@@ -137,8 +137,7 @@ update_services(Number, _, 'true') ->
     Number;
 update_services(Number, 'true', _) ->
     lager:debug("somewhat dry_run-ing btw"),
-    PhoneNumber = knm_number:phone_number(Number),
-    Services = kz_service_phone_numbers:reconcile(fetch_services(Number), [PhoneNumber]),
+    Services = kz_service_phone_numbers:reconcile(fetch_services(Number)),
     knm_number:set_services(Number, Services);
 update_services(Number, 'false', _) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -150,7 +149,7 @@ update_services(Number, 'false', _) ->
     Transactions = knm_number:transactions(Number),
     _ = 'undefined' =/= AssignedTo
         andalso kz_services:commit_transactions(Services, Transactions),
-    Number.
+    knm_number:set_services(Number, Services).
 -endif.
 
 %%--------------------------------------------------------------------

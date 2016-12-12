@@ -14,7 +14,7 @@
 
 -export([find/1, find/2
         ,check/1, check/2
-        ,available_carriers/1
+        ,available_carriers/1, all_modules/0
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
@@ -256,7 +256,9 @@ check(Numbers, Options) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Create a list of all available carrier modules
+%% @doc
+%% Create a list of all carrier modules available to a subaccount.
+%% @end
 %%--------------------------------------------------------------------
 -spec available_carriers(options()) -> atoms().
 -ifdef(TEST).
@@ -288,6 +290,28 @@ default_carriers() ->
 -spec default_carrier() -> ne_binary().
 default_carrier() ->
     ?DEFAULT_CARRIER_MODULE.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% List all carrier modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec all_modules() -> ne_binaries().
+all_modules() ->
+    [<<"knm_bandwidth2">>
+    ,<<"knm_bandwidth">>
+    ,<<"knm_inum">>
+    ,<<"knm_local">>
+    ,<<"knm_managed">>
+    ,<<"knm_mdn">>
+    ,<<"knm_other">>
+    ,<<"knm_reserved">>
+    ,<<"knm_reserved_reseller">>
+    ,<<"knm_simwood">>
+    ,<<"knm_telnyx">>
+    ,<<"knm_vitelity">>
+    ,<<"knm_voip_innovations">>
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
