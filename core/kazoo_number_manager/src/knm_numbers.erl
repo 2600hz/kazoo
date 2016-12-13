@@ -210,7 +210,7 @@ emergency_enabled(AccountId=?MATCH_ACCOUNT_RAW(_)) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec account_listing(ne_binary()) -> [{ne_binary(), kz_json:object()}].
-account_listing(AccountDb = ?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
+account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
     case kz_datamgr:get_results(AccountDb, <<"phone_numbers/crossbar_listing">>) of
         {'ok', []} ->
             lager:debug("account ~s holds no numbers", [AccountDb]),
