@@ -502,7 +502,7 @@ view_account_phone_numbers(Context) ->
                                      ,rename_qs_filters(Context)
                                      ,fun normalize_view_results/2
                                      ),
-    ListOfNumProps = cb_context:resp_data(Context1),
+    ListOfNumProps = lists:map(fun maybe_fix_available/1, cb_context:resp_data(Context1)),
     PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
@@ -511,6 +511,19 @@ view_account_phone_numbers(Context) ->
                                     ,{<<"casquade_quantity">>, Quantity}
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
+
+maybe_fix_available(NumJObj) ->
+    [{Num, JObj}] = kz_json:to_proplist(NumJObj),
+    FAs = kz_json:get_ne_value(<<"features_available">>, JObj, []),
+    NewJObj =
+        case lists:member(<<"local">>, FAs) of
+            false -> JObj;
+            true ->
+                Fs = kz_json:get_ne_value(<<"features">>, JObj, []),
+                NewFAs = ?LOCAL_FEATURES(FAs) -- lists:usort(Fs),
+                kz_json:set_value(<<"features_available">>, NewFAs, JObj)
+        end,
+    kz_json:from_list([{Num, NewJObj}]).
 
 %% @private
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
