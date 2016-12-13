@@ -59,6 +59,9 @@
 -define(API_KEY, <<"pvt_api_key">>).
 -define(IS_SUPERDUPER_ADMIN, <<"pvt_superduper_admin">>).
 -define(ALLOW_NUMBER_ADDITIONS, <<"pvt_wnm_allow_additions">>).
+-define(NOTIFY_CONFIG, <<"notifications">>).
+-define(NOTIFY_VM_TO_EMAIL, [?NOTIFY_CONFIG, <<"voicemail_to_email">>]).
+-define(NOTIFY_FAX_TO_EMAIL, [?NOTIFY_CONFIG, <<"fax_to_email">>]).
 -define(NOTIFY_PREF, <<"pvt_notification_preference">>).
 -define(KEY_TRIAL_EXPIRATION, <<"pvt_trial_expires">>).
 -define(KEY_TRIAL_ACCOUNT, <<"is_trial_account">>).
@@ -435,7 +438,29 @@ set_tree(JObj, Tree) ->
 %%--------------------------------------------------------------------
 -spec notification_preference(doc()) -> api_binary().
 notification_preference(JObj) ->
-    kz_json:get_value(?NOTIFY_PREF, JObj).
+    Pref = notification_preference(JObj, [
+                                          ?NOTIFY_PREF
+                                         ,?NOTIFY_VM_TO_EMAIL
+                                         ,?NOTIFY_FAX_TO_EMAIL
+                                         ]),
+
+    case Pref of
+        'undefined'    -> 'undefined';
+        <<"teletype">> -> <<"teletype">>;
+        _Default       -> <<"notify">>
+    end.
+
+-spec notification_preference(doc(), list()) -> api_binary().
+notification_preference(_JObj, []) ->
+    'undefined';
+
+notification_preference(JObj, [H|T]) ->
+    case kz_json:get_value(H, JObj) of
+        'undefined' ->
+            notification_preference(JObj, T);
+        Value ->
+            Value
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
