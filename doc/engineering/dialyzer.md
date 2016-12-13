@@ -1,7 +1,3 @@
-/*
-Section: Kazoo
-Title: Dialyzer
-*/
 
 # Using Dialyzer on Kazoo
 

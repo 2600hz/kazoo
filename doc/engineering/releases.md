@@ -1,7 +1,3 @@
-/*
-Section: Kazoo
-Title: Releases
-*/
 
 # How to use Erlang releases with Kazoo
 

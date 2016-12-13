@@ -1,9 +1,3 @@
-/*
-Section: Reference
-Title: Rating and Limits
-Language: en-US
-Version: 3.22
-*/
 
 # Rating and Limits
 
