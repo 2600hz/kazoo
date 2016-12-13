@@ -480,7 +480,8 @@ update_field(Value, {_IsUpdated, TemplateJObj}=Acc, GetFun, SetFun) ->
                        ,[Value, GetFun, kz_doc:revision(TemplateJObj)]
                        ),
             {'true', SetFun(TemplateJObj, Value)};
-        _V -> Acc
+        Value -> Acc;
+        _V -> {'true', SetFun(TemplateJObj, Value)}
     end.
 
 -spec update_subject(ne_binary(), update_acc()) ->
