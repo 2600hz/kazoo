@@ -35,7 +35,8 @@
 
 -define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id caller_id.number \"unknown number\" %} ({% firstof fax.remote_station_id caller_id.number \"unknown number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
--define(TEMPLATE_NAME, <<"Inbound Fax Error to Email">>).
+-define(TEMPLATE_NAME, <<"Inbound Fax Negotiation Error to Email">>).
+-define(FILTERED_TEMPLATE_NAME, <<"Inbound Fax Receive Error to Email">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -49,14 +50,13 @@ init() ->
     Fields = [{'macros', ?TEMPLATE_MACROS}
              ,{'subject', ?TEMPLATE_SUBJECT}
              ,{'category', ?TEMPLATE_CATEGORY}
-             ,{'friendly_name', ?TEMPLATE_NAME}
              ,{'to', ?TEMPLATE_TO}
              ,{'from', ?TEMPLATE_FROM}
              ,{'cc', ?TEMPLATE_CC}
              ,{'bcc', ?TEMPLATE_BCC}
              ,{'reply_to', ?TEMPLATE_REPLY_TO}],
-    teletype_templates:init(?TEMPLATE_ID_FILTERED, Fields),
-    teletype_templates:init(?TEMPLATE_ID, Fields).
+    teletype_templates:init(?TEMPLATE_ID_FILTERED, [{'friendly_name', ?FILTERED_TEMPLATE_NAME} | Fields]),
+    teletype_templates:init(?TEMPLATE_ID, [{'friendly_name', ?TEMPLATE_NAME} | Fields]).
 
 -spec handle_fax_inbound_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_fax_inbound_error(JObj, _Props) ->
@@ -72,7 +72,9 @@ handle_fax_inbound_error(JObj, _Props) ->
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID)
     end,
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED) and is_true_fax_error(AccountId, JObj) of
+    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID_FILTERED)
+        andalso is_true_fax_error(AccountId, JObj)
+    of
         'false' -> lager:debug("filtered notification handling not configured for this account");
         'true' -> handle_fax_inbound(DataJObj, ?TEMPLATE_ID_FILTERED)
     end.
