@@ -439,9 +439,9 @@ set_tree(JObj, Tree) ->
 -spec notification_preference(doc()) -> api_binary().
 notification_preference(JObj) ->
     Pref = notification_preference(JObj, [
-                                          ?NOTIFY_VM_TO_EMAIL
+                                          ?NOTIFY_PREF
+                                         ,?NOTIFY_VM_TO_EMAIL
                                          ,?NOTIFY_FAX_TO_EMAIL
-                                         ,?NOTIFY_PREF
                                          ]),
 
     case Pref of
