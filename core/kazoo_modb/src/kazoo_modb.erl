@@ -71,6 +71,7 @@ strip_modb_options(ViewOptions) ->
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
 is_modb_option({'create_db', _}) -> 'true';
+is_modb_option({'view_json', _}) -> 'true';
 is_modb_option(_) -> 'false'.
 
 -spec get_results_not_found(ne_binary(), ne_binary(), view_options(), integer()) ->
