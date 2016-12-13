@@ -784,6 +784,8 @@ set_module_name(N, Name=?NE_BINARY) ->
 %% Some old docs have these as module name
 set_module_name(N, <<"undefined">>, IsBillable) ->
     set_module_name(N, ?CARRIER_LOCAL, IsBillable);
+set_module_name(N, 'undefined', IsBillable) ->
+    set_module_name(N, ?CARRIER_LOCAL, IsBillable);
 set_module_name(N0, Name, IsBillable)
   when is_boolean(IsBillable) ->
     N = set_module_name(N0, Name),
