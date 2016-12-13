@@ -427,4 +427,4 @@ mwi_event(JObj) ->
               ,{<<"Flush-Level">>, 1}
               ,{<<"Call-Direction">>, <<"inbound">>}
               ]),
-    handle_update(kz_json:from_list(Props), State, 0).
+    handle_update(kz_json:from_list(Props), State, 60 * ?SECONDS_IN_DAY).

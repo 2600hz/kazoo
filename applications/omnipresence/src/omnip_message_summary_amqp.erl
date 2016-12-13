@@ -192,6 +192,7 @@ handle_update(JObj, To) ->
     MessagesUrgent = kz_json:get_integer_value(<<"Messages-Urgent">>, JObj, 0),
     MessagesUrgentSaved = kz_json:get_integer_value(<<"Messages-Urgent-Saved">>, JObj, 0),
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
+    Expires = 60 * ?SECONDS_IN_DAY,
     Update = props:filter_undefined(
                [{<<"To">>, <<"sip:", To/binary>>}
                ,{<<"To-User">>, ToUsername}
@@ -200,6 +201,7 @@ handle_update(JObj, To) ->
                ,{<<"From-User">>, ToUsername}
                ,{<<"From-Realm">>, ToRealm}
                ,{<<"Call-ID">>, ?FAKE_CALLID(To)}
+               ,{<<"Expires">>, Expires}
                ,{<<"Message-Account">>, <<"sip:", To/binary>>}
                ,{<<"Messages-Waiting">>, MessagesWaiting}
                ,{<<"Messages-New">>, MessagesNew}
