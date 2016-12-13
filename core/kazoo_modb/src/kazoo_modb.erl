@@ -80,7 +80,7 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
-            refresh_views(AccountMODb),
+            refresh_views(AccountMODb, ViewOptions),
             get_results(Account, View, ViewOptions, Retry-1);
         'false' ->
             get_results_missing_db(Account, View, ViewOptions, Retry)
@@ -326,10 +326,15 @@ is_account_deleted(AccountId) ->
 
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
-    lager:debug("init modb ~p", [AccountMODb]),
+    refresh_views(AccountMODb, []).
+
+-spec refresh_views(ne_binary(), list()) -> 'ok'.
+refresh_views(AccountMODb, Options) ->
+    lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
-    _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
+    ExtraViews = props:get_value('view_json', Options, []),
+    _ = kapps_util:update_views(EncodedMODb, Views++ExtraViews, 'true'),
     'ok'.
 
 -spec get_modb_views() -> kz_proplist().
