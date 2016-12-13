@@ -1068,12 +1068,14 @@ merge_available(AccountAvailable, Available) ->
 -spec merge_fold(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 merge_fold(Overridden, Acc) ->
     Id = kz_doc:id(Overridden),
+    [Master] = [JObj || JObj <- Acc, kz_doc:id(JObj) =:= Id],
+    Filtered = [JObj || JObj <- Acc, kz_doc:id(JObj) =/= Id],
+    Values = [{<<"friendly_name">>, kz_json:get_value(<<"friendly_name">>, Master)}
+             ,{<<"macros">>, kz_json:get_value(<<"macros">>, Master)}
+             ],
+    JObj = kz_json:set_values(Values, Overridden),
     lager:debug("noting ~s is overridden in account", [Id]),
-    [note_account_override(Overridden)
-     | [JObj || JObj <- Acc,
-                kz_doc:id(JObj) =/= Id
-       ]
-    ].
+    [note_account_override(JObj) | Filtered].
 
 -type normalize_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()).
 
