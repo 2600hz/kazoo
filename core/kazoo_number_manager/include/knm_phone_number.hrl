@@ -75,6 +75,15 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
 
+-define(LOCAL_FEATURES, [?FEATURE_FAILOVER
+                        ,?FEATURE_FORCE_OUTBOUND
+                        ,?FEATURE_LOCAL
+                        ,?FEATURE_PREPEND
+                        ,?FEATURE_RINGBACK
+                        ]).
+-define(LOCAL_FEATURES(Features),
+        lists:usort(?LOCAL_FEATURES ++ Features)).
+
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).
 
