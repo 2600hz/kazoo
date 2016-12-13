@@ -35,6 +35,8 @@ start_link(Args) ->
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
+    Start = kz_util:current_tstamp(),
+    PoolStatus = poolboy:status('teletype_render_farm'),
     try gen_server:call(Renderer
                        ,{'render', TemplateId, Template, TemplateData}
                        ,?MILLISECONDS_IN_HOUR
@@ -44,6 +46,8 @@ render(TemplateId, Template, TemplateData) ->
             lager:debug("rendering failed: ~s: ~p", [_E, _R]),
             {'error', 'render_failed'}
     after
+        End = kz_util:current_tstamp(),
+        lager:info("MARKDEBUG ~p ~p ~p ~p ~p", [TemplateId, PoolStatus, Start, End, End-Start]),
         poolboy:checkin(teletype_sup:render_farm_name(), Renderer)
     end.
 
