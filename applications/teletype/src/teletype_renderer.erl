@@ -47,7 +47,7 @@ render(TemplateId, Template, TemplateData) ->
             {'error', 'render_failed'}
     after
         End = kz_util:current_tstamp(),
-        lager:info("MARKDEBUG ~p ~p ~p ~p ~p", [TemplateId, PoolStatus, Start, End, End-Start]),
+        lager:info("rendering (~p) took ~p. start: ~p end: ~p pool: ~p", [TemplateId, End-Start, Start, End, PoolStatus]),
         poolboy:checkin(teletype_sup:render_farm_name(), Renderer)
     end.
 
