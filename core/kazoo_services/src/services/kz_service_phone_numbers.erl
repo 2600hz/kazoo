@@ -42,6 +42,7 @@ reconcile(Services) ->
         {error, _R} ->
             lager:debug("unable to get reconcile_services for phone numbers: ~p", [_R]),
             Services;
+        {ok, []} -> Services;
         {ok, [JObj]} ->
             Categories = #{?BILLABLE => ?PHONE_NUMBERS
                           ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
