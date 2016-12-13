@@ -42,7 +42,7 @@ reconcile(Services) ->
         {error, _R} ->
             lager:debug("unable to get reconcile_services for phone numbers: ~p", [_R]),
             Services;
-        {ok, []} -> Services;
+        {ok, []} -> reset(Services);
         {ok, [JObj]} ->
             Categories = #{?BILLABLE => ?PHONE_NUMBERS
                           ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
@@ -57,6 +57,18 @@ reconcile(Services, PNs) ->
     S1 = kz_services:reset_category(?PHONE_NUMBERS, Services),
     S2 = kz_services:reset_category(?NUMBER_SERVICES, S1),
     update_numbers(S2, PNs).
+
+-spec reset(kz_services:services()) -> kz_services:services().
+reset(Services) ->
+    Categories = [?PHONE_NUMBERS
+                 ,?NUMBER_SERVICES
+                 ],
+    reset(Services, Categories).
+
+-spec reset(kz_services:services(), ne_binaries()) -> kz_services:services().
+reset(Services, []) -> Services;
+reset(Services, [Category | Categories]) ->
+    reset(kz_services:reset_category(Category, Services), Categories).
 
 %%--------------------------------------------------------------------
 %% @public
