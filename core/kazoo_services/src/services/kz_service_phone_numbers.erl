@@ -25,6 +25,12 @@
 -define(FEATURES, [?KEY_VALUE, <<"features">>]).
 -define(MODULES, [?KEY_VALUE, <<"modules">>]).
 
+-define(DEFAULT_RESET_CATEGORIES, [?PHONE_NUMBERS
+                                  ,?NUMBER_SERVICES
+                                  ,?PHONE_NUMBERS_NON_BILLABLE
+                                  ,?NUMBER_CARRIERS
+                                  ]).
+
 -type pn() :: knm_phone_number:knm_phone_number().
 -type pns() :: [pn()].
 
@@ -42,6 +48,7 @@ reconcile(Services) ->
         {error, _R} ->
             lager:debug("unable to get reconcile_services for phone numbers: ~p", [_R]),
             Services;
+        {ok, []} -> reset(Services);
         {ok, [JObj]} ->
             Categories = #{?BILLABLE => ?PHONE_NUMBERS
                           ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
@@ -53,9 +60,16 @@ reconcile(Services) ->
     end.
 
 reconcile(Services, PNs) ->
-    S1 = kz_services:reset_category(?PHONE_NUMBERS, Services),
-    S2 = kz_services:reset_category(?NUMBER_SERVICES, S1),
-    update_numbers(S2, PNs).
+    update_numbers(reset(Services), PNs).
+
+-spec reset(kz_services:services()) -> kz_services:services().
+reset(Services) ->
+    reset(Services, ?DEFAULT_RESET_CATEGORIES).
+
+-spec reset(kz_services:services(), ne_binaries()) -> kz_services:services().
+reset(Services, []) -> Services;
+reset(Services, [Category | Categories]) ->
+    reset(kz_services:reset_category(Category, Services), Categories).
 
 %%--------------------------------------------------------------------
 %% @public
