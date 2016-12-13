@@ -408,9 +408,11 @@ reseller_id(Options) ->
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(PhoneNumber) ->
     Carrier = knm_phone_number:module_name(PhoneNumber),
-    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
-    Module:is_number_billable(PhoneNumber).
-
+    try erlang:binary_to_existing_atom(Carrier, 'utf8') of
+        Module -> Module:is_number_billable(PhoneNumber)
+    catch
+        'error':'badarg' -> 'false'
+    end.
 
 %%%===================================================================
 %%% Internal functions

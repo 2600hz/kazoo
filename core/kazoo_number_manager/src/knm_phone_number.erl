@@ -770,7 +770,7 @@ set_module_name(N, <<"wnm_bandwidth">>) ->
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
 set_module_name(N, Name=?NE_BINARY) ->
-    IsBillable = knm_carriers:is_number_billable(N),
+    IsBillable = knm_carriers:is_number_billable(N#knm_phone_number{module_name = Name}),
     case {N#knm_phone_number.module_name, N#knm_phone_number.is_billable} of
         {Name, IsBillable} -> N;
         _ ->
@@ -783,6 +783,8 @@ set_module_name(N, Name=?NE_BINARY) ->
 -spec set_module_name(knm_phone_number(), ne_binary(), api_boolean()) -> knm_phone_number().
 %% Some old docs have these as module name
 set_module_name(N, <<"undefined">>, IsBillable) ->
+    set_module_name(N, ?CARRIER_LOCAL, IsBillable);
+set_module_name(N, 'undefined', IsBillable) ->
     set_module_name(N, ?CARRIER_LOCAL, IsBillable);
 set_module_name(N0, Name, IsBillable)
   when is_boolean(IsBillable) ->
