@@ -35,31 +35,35 @@ start_link(Args) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
-    render(TemplateId, Template, TemplateData, 3).
+    Renderer = next_renderer(),
+    render(Renderer, TemplateId, Template, TemplateData, 3).
 
--spec render(ne_binary(), binary(), kz_proplist(), integer()) ->
+-spec render(pid(), ne_binary(), binary(), kz_proplist(), integer()) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 
-render(TemplateId, _Template, _TemplateData, 0) ->
+render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
     lager:error("rendering of ~p failed after several tries", [TemplateId]),
+    exit(Renderer, 'kill'),
     {'error', 'render_failed'};
 
-render(TemplateId, Template, TemplateData, Tries) ->
-    case do_render(TemplateId, Template, TemplateData) of
+render(Renderer, TemplateId, Template, TemplateData, Tries) ->
+    Start = kz_util:current_tstamp(),
+    PoolStatus = poolboy:status('teletype_render_farm'),
+    case do_render(Renderer, TemplateId, Template, TemplateData) of
         {'error', 'render_failed'} ->
-            render(TemplateId, Template, TemplateData, Tries-1);
+            lager:info("failed in ~p, pool: ~p", [kz_util:current_tstamp() - Start, PoolStatus]),
+            render(Renderer, TemplateId, Template, TemplateData, Tries-1);
         GoodReturn ->
+            lager:info("completed in ~p, pool: ~p", [kz_util:current_tstamp() - Start, PoolStatus]),
+            poolboy:checkin(teletype_sup:render_farm_name(), Renderer),
             GoodReturn
     end.
 
--spec do_render(ne_binary(), binary(), kz_proplist()) ->
+-spec do_render(pid(), ne_binary(), binary(), kz_proplist()) ->
                        {'ok', iolist()} |
                        {'error', any()}.
-do_render(TemplateId, Template, TemplateData) ->
-    Renderer = next_renderer(),
-    Start = kz_util:current_tstamp(),
-    PoolStatus = poolboy:status('teletype_render_farm'),
+do_render(Renderer, TemplateId, Template, TemplateData) ->
     try gen_server:call(Renderer
                        ,{'render', TemplateId, Template, TemplateData}
                        ,?RENDER_TIMEOUT
@@ -68,10 +72,6 @@ do_render(TemplateId, Template, TemplateData) ->
         _E:_R ->
             lager:debug("rendering failed: ~s: ~p", [_E, _R]),
             {'error', 'render_failed'}
-    after
-        End = kz_util:current_tstamp(),
-        lager:info("rendering (~p) took ~p. start: ~p end: ~p pool: ~p", [TemplateId, End-Start, Start, End, PoolStatus]),
-        poolboy:checkin(teletype_sup:render_farm_name(), Renderer)
     end.
 
 -spec next_renderer() -> pid().
