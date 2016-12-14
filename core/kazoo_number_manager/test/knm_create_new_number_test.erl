@@ -40,6 +40,53 @@ create_new_number_test_() ->
      }
     ].
 
+reseller_new_number_test_() ->
+    Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             }
+            ],
+    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify phone number is assigned to reseller account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
+     }
+    ,{"Verify new phone number was authorized by master account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     }
+    ,{"Verify new phone number database is properly set"
+     ,?_assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN))
+     }
+    ,{"Verify new phone number is in RESERVED state"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN))
+     }
+    ,{"Verify the reseller account is listed in reserve history"
+     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
+     }
+    ,{"Verify the local carrier module is being used"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
+     }
+    ].
+
+fail_new_number_test_() ->
+    Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+             }
+            ],
+    {'error', Reason} = knm_number:create(?TEST_CREATE_NUM, Props),
+    [{"Verify that without the allow number additions the proper error is thrown"
+     ,?_assertEqual(<<"forbidden">>, kz_json:get_value(<<"error">>, Reason))
+     }
+    ,{"Verify that without the allow number additions the proper message is thrown"
+     ,?_assertEqual(<<"requestor is unauthorized to perform operation">>, kz_json:get_value(<<"message">>, Reason))
+     }
+    ].
+
 create_new_available_number_test_() ->
     Props = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
             ,{'assign_to', ?MASTER_ACCOUNT_ID}
@@ -99,11 +146,11 @@ create_existing_number_test_() ->
     ].
 
 create_new_port_in_test_() ->
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+    Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
              }
             ,{'state', ?NUMBER_STATE_PORT_IN}
             ,{'module_name', ?CARRIER_LOCAL}
@@ -114,7 +161,7 @@ create_new_port_in_test_() ->
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
-     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
      }
     ,{"Verify new phone number database is properly set"
      ,?_assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN))
