@@ -71,7 +71,6 @@ strip_modb_options(ViewOptions) ->
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
 is_modb_option({'create_db', _}) -> 'true';
-is_modb_option({'view_json', _}) -> 'true';
 is_modb_option(_) -> 'false'.
 
 -spec get_results_not_found(ne_binary(), ne_binary(), view_options(), integer()) ->
@@ -81,7 +80,7 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_exists(EncodedMODb, View) of
         'true' ->
-            refresh_views(AccountMODb, ViewOptions),
+            refresh_views(AccountMODb),
             get_results(Account, View, ViewOptions, Retry-1);
         'false' ->
             get_results_missing_db(Account, View, ViewOptions, Retry)
@@ -330,8 +329,7 @@ refresh_views(AccountMODb) ->
     lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
-    ExtraViews = props:get_value('view_json', Options, []),
-    _ = kapps_util:update_views(EncodedMODb, Views++ExtraViews, 'true'),
+    _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
     'ok'.
 
 -spec get_modb_views() -> kz_proplist().
