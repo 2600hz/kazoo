@@ -121,9 +121,6 @@
             "description": "ecallmgr capabilities",
             "type": "array"
         },
-        "configuration_handlers": {
-            "description": "ecallmgr configuration handlers"
-        },
         "debug_channel": {
             "default": false,
             "description": "ecallmgr debug channel",
@@ -231,48 +228,6 @@
             "default": 10000,
             "description": "ecallmgr maximum timeout for node restart",
             "type": "integer"
-        },
-        "modules": {
-            "default": {
-                "authn": {
-                    "type": "worker"
-                },
-                "channel": {
-                    "type": "worker"
-                },
-                "channel_hold": {
-                    "type": "worker"
-                },
-                "conference": {
-                    "type": "worker"
-                },
-                "config": {
-                    "type": "worker"
-                },
-                "event_stream_sup": {
-                    "type": "supervisor"
-                },
-                "msg": {
-                    "type": "worker"
-                },
-                "node": {
-                    "type": "worker"
-                },
-                "notify": {
-                    "type": "worker"
-                },
-                "recordings": {
-                    "type": "worker"
-                },
-                "resource": {
-                    "type": "worker"
-                },
-                "route_sup": {
-                    "type": "supervisor"
-                }
-            },
-            "description": "ecallmgr modules",
-            "type": "object"
         },
         "network_map": {
             "default": {},
@@ -413,7 +368,6 @@
         }
     },
     "required": [
-        "configuration_handlers",
         "default_ringback",
         "fs_reconnect_cmds",
         "node_commands",
