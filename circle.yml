@@ -35,7 +35,8 @@ test:
     - ./scripts/validate-js.sh $($CHANGED)
     - . ~/.kerl/$OTP_VERSION/activate && make apis
     - |
-      if [[ 0 -ne `make docs` ]]; then
+      make docs
+      if [[ 0 -ne `echo $? ]]; then
           exit 1
       fi
     - make validate-swagger
