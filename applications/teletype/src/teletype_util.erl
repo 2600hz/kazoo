@@ -416,6 +416,7 @@ render_subject(Template, Macros) ->
 
 -spec render(ne_binary(), ne_binary(), kz_proplist()) -> binary().
 render(TemplateId, Template, Macros) ->
+    lager:info("about to render ~p with macros: ~p", [TemplateId, Macros]),
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
