@@ -364,29 +364,39 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
     case kvm_util:publish_saved_notify(MediaId, BoxId, Call, Length, Props) of
         {'ok', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            log_notification_response(NotifyAction, MediaId, JObj),
+            log_notification_response(NotifyAction, MediaId, JObj, Call),
             maybe_update_meta(Length, NotifyAction, Call, MediaId, BoxId);
         {'timeout', JObjs} ->
             JObj = kvm_util:get_notify_completed_message(JObjs),
-            log_notification_response(NotifyAction, MediaId, JObj),
+            log_notification_response(NotifyAction, MediaId, JObj, Call),
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId);
-        {'error', _E} ->
-            lager:debug("voicemail new notification error: ~p", [_E]),
+        {'error', _R} ->
+            AccountId = kapps_call:account_id(Call),
+            lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~p"
+                       ,[MediaId, AccountId, _R]),
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
--spec log_notification_response(notify_action(), ne_binary(), kz_json:object()) -> 'ok'.
-log_notification_response('nothing', _MediaId, _UpdateJObj) -> 'ok';
-log_notification_response(_Action, MediaId, UpdateJObj) ->
+-spec log_notification_response(notify_action(), ne_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
+log_notification_response('nothing', _MediaId, _UpdateJObj, Call) ->
+    AccountId = kapps_call:account_id(Call),
+    lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
+               ,[_MediaId, AccountId, kz_json:encode(_UpdateJObj)]);
+log_notification_response(_Action, MediaId, UpdateJObj, Call) ->
+    AccountId = kapps_call:account_id(Call),
     case kz_json:get_value(<<"Status">>, UpdateJObj) of
-        <<"completed">> -> 'ok';
+        <<"completed">> ->
+            lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
+                       ,[MediaId, AccountId, kz_json:encode(UpdateJObj)]);
         <<"failed">> ->
-            lager:debug("attachment for ~s failed to send out via notification: ~s"
+            lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~s"
                        ,[MediaId
+                        ,AccountId
                         ,kz_json:get_value(<<"Failure-Message">>, UpdateJObj)
                         ]);
         _ ->
-            lager:info("timed out waiting for new voicemail (~s) notification resp", [MediaId])
+            lager:info("failed to send new voicemail notification for message ~s in account ~s: timeout"
+                      ,[MediaId, AccountId])
     end.
 
 -spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
