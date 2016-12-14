@@ -17,7 +17,6 @@
         ,post/1, post/2, post/3, post/4
         ,put/1, put/2, put/3, put/4
         ,delete/1, delete/2, delete/3, delete/4
-        ,handle_response/1
         ]).
 
 -include("kz_web.hrl").

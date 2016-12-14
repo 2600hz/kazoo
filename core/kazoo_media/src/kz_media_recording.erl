@@ -291,6 +291,8 @@ handle_cast('store_recording', #state{should_store=Store
     {'noreply', State#state{store_attempted='true'
                            ,is_recording='false'
                            }};
+handle_cast('store_recording', #state{store_attempted='true'}=State) ->
+    {'noreply', State};
 handle_cast('store_recording', #state{is_recording='false'}=State) ->
     lager:debug("store_recording event but we're not recording, exiting"),
     {'stop', 'normal', State};
@@ -596,7 +598,6 @@ store_recording({DirName, MediaName}, StoreUrl, Call) ->
 -spec store_recording(pid(), ne_binary(), ne_binary() | function(), kapps_call:call()) -> 'ok'.
 store_recording(Pid, Filename, StoreUrl, Call) ->
     case kapps_call_command:store_file(Filename, StoreUrl, Call) of
-        {'error', 'timeout'} -> gen_server:cast(Pid, 'store_failed');
         {'error', Error} ->
             lager:error("error storing recording : ~p", [Error]),
             gen_server:cast(Pid, 'store_failed');
