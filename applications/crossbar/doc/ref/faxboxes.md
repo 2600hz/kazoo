@@ -26,22 +26,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
 ```
@@ -56,12 +56,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/faxboxes/{FAXBOX_ID}
 ```

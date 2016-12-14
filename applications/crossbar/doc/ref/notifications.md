@@ -4,6 +4,8 @@
 
 #### Schema
 
+Notifications templates
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bcc` | Bcc email field | `object` |   | `false`
@@ -47,16 +49,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
@@ -73,6 +65,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```

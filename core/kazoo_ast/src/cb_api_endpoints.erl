@@ -9,6 +9,11 @@
         ,schema_to_table/1
         ]).
 
+-ifdef(TEST).
+-export([sort_methods/1]).
+
+-endif.
+
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("crossbar/src/crossbar.hrl").
 
@@ -74,8 +79,25 @@ methods_to_section(ModuleName, {Path, Methods}, Acc) ->
                         method_to_section(Method, Acc1, APIPath)
                 end
                ,Acc
-               ,Methods
+               ,sort_methods(Methods)
                ).
+
+-spec sort_methods(ne_binaries()) -> ne_binaries().
+sort_methods(Methods) ->
+    Ordering = [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE],
+    sort_methods(Methods, Ordering, []).
+
+sort_methods([], _Ordering, Acc) -> lists:reverse(Acc);
+sort_methods(Methods, [], Acc) -> lists:reverse(Methods ++ Acc);
+sort_methods(Methods, [Method | Ordering], Acc) ->
+    case lists:member(Method, Methods) of
+        'false' -> sort_methods(Methods, Ordering, Acc);
+        'true' ->
+            sort_methods(lists:delete(Method, Methods)
+                        ,Ordering
+                        ,[Method | Acc]
+                        )
+    end.
 
 method_to_section(Method, Acc, APIPath) ->
     [[ "#### ", method_as_action(Method), "\n\n"
@@ -172,6 +194,7 @@ schema_to_table(SchemaJObj) ->
     schema_to_table(SchemaJObj, []).
 
 schema_to_table(SchemaJObj, BaseRefs) ->
+    Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
     Properties = kz_json:get_value(<<"properties">>, SchemaJObj, kz_json:new()),
     F = fun (K, V, Acc) -> property_to_row(SchemaJObj, K, V, Acc) end,
     {Reversed, RefSchemas} = kz_json:foldl(F, {[?TABLE_HEADER], BaseRefs}, Properties),
@@ -183,7 +206,7 @@ schema_to_table(SchemaJObj, BaseRefs) ->
 
     WithSubRefs = include_sub_refs(OneOfRefs),
 
-    [[lists:reverse(Reversed)]
+    [[schema_description(Description), lists:reverse(Reversed)]
      |[{RefSchemaName, RefTable}
        || RefSchemaName <- WithSubRefs,
           BaseRefs =:= [],
@@ -191,6 +214,10 @@ schema_to_table(SchemaJObj, BaseRefs) ->
           (RefTable = schema_to_table(RefSchema, WithSubRefs)) =/= []
       ]
     ].
+
+-spec schema_description(binary()) -> iodata().
+schema_description(<<>>) -> <<>>;
+schema_description(Description) -> [Description, "\n\n"].
 
 include_sub_refs(Refs) ->
     lists:usort(lists:foldl(fun include_sub_ref/2, [], Refs)).

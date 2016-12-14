@@ -4,6 +4,8 @@
 
 #### Schema
 
+Access Control List entries
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `cidr` | Classless Inter-Domain Routing IP notation for use on the ACL | `string` |   | `true`

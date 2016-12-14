@@ -4,6 +4,8 @@
 
 #### Schema
 
+IP addresses assigned to the account
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `ips` | List of IP addresses | `array(string)` |   | `false`
@@ -30,16 +32,6 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
@@ -56,6 +48,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/ips/{IP_ADDRESS}
 ```

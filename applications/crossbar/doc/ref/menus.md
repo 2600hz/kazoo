@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for a menus
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `allow_record_from_offnet` | Determines if the record pin can be used by external calls | `boolean` | `false` | `false`
@@ -43,22 +45,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
 ```
@@ -73,12 +75,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/menus/{MENU_ID}
 ```

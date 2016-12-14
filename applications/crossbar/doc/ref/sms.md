@@ -4,6 +4,8 @@
 
 #### Schema
 
+sms document
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `body` | text message | `string(1..700)` |   | `true`
@@ -32,22 +34,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms/{SMS_ID}
 ```

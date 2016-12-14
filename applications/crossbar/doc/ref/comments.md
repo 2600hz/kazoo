@@ -6,16 +6,6 @@
 
 
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/comments
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/comments
@@ -38,12 +28,12 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/comments
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments
 ```
 
 #### Fetch
@@ -62,6 +52,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/comments/{COMMENT_ID}
 ```

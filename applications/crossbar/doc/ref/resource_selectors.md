@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for resource selector document
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | Selector name | `string` |   | `true`
@@ -24,16 +26,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
@@ -50,6 +42,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/{UUID}
 ```

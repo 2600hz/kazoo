@@ -4,6 +4,8 @@
 
 #### Schema
 
+Trunkstore configuration document - this is old stuff; do not recommend building off this if possible
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account` | Information that applies to the account as a whole | `object` |   | `false`
@@ -58,22 +60,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 ```
@@ -88,12 +90,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 ```

@@ -4,6 +4,8 @@
 
 #### Schema
 
+Accounts represent tenants or customers on the system. Each account represents an individual dataset or sandbox that only one tenant can access. The data set is architecturally independent from other tenants.
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `call_restriction` | Account level call restrictions for each available number classification | `object` | `{}` | `false`
@@ -33,11 +35,15 @@ Key | Description | Type | Default | Required
 
 ##### call_waiting
 
+Parameters for server-side call waiting
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `enabled` | Determines if server side call waiting is enabled/disabled | `boolean` |   | `false`
 
 ##### caller_id
+
+Defines caller ID settings based on the type of call being made
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -59,10 +65,14 @@ Key | Description | Type | Default | Required
 
 ##### metaflow
 
+A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 
 ##### metaflow.audio_level
+
+audio_level metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -75,6 +85,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.break
 
+break metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -82,6 +94,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('break')` |   | `true`
 
 ##### metaflow.callflow
+
+callflow metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -92,6 +106,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.hangup
 
+hangup metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -99,6 +115,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('hangup')` |   | `true`
 
 ##### metaflow.hold
+
+hold metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -111,6 +129,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.hold_control
 
+hold_control metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -119,6 +139,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('hold_control')` |   | `true`
 
 ##### metaflow.intercept
+
+intercept metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -132,6 +154,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.move
 
+move metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -143,6 +167,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.play
 
+play metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -152,6 +178,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('play')` |   | `true`
 
 ##### metaflow.record_call
+
+record_call metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -164,6 +192,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.resume
 
+resume metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -171,6 +201,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('resume')` |   | `true`
 
 ##### metaflow.say
+
+say metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -183,6 +215,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('say')` |   | `true`
 
 ##### metaflow.sound_touch
+
+sound_touch metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -200,6 +234,8 @@ Key | Description | Type | Default | Required
 
 ##### metaflow.transfer
 
+transfer metaflow schema
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
@@ -210,6 +246,8 @@ Key | Description | Type | Default | Required
 `module` |   | `string('transfer')` |   | `true`
 
 ##### metaflow.tts
+
+tts metaflow schema
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -225,10 +263,14 @@ Key | Description | Type | Default | Required
 
 ##### metaflow_children
 
+A metaflow child nodes
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 
 ##### metaflows
+
+Actions applied to a call outside of the normal callflow, initiated by the caller(s)
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -241,6 +283,8 @@ Key | Description | Type | Default | Required
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 
 ##### notify.callback
+
+Schema for a callback options
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -261,16 +305,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}
@@ -281,12 +315,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Patch
+#### Create
 
-> PATCH /v2/accounts/{ACCOUNT_ID}
+> PUT /v2/accounts/{ACCOUNT_ID}
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
@@ -301,12 +335,22 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
 
-#### Create
+#### Patch
 
-> PUT /v2/accounts/{ACCOUNT_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}
 
 ```shell
-curl -v -X PUT \
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
 ```
@@ -371,22 +415,22 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/children
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/reseller
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
-```
-
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/reseller
 
 ```shell
 curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/reseller
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/reseller
 ```

@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for a match list
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `description` | A friendly list description | `string(1..128)` |   | `false`
@@ -31,32 +33,12 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```shell
 curl -v -X GET \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
-```
-
-#### Patch
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
-
-```shell
-curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
@@ -71,14 +53,24 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
+#### Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
+```
+
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}
 ```
 
 #### Fetch
@@ -103,12 +95,12 @@ curl -v -X PUT \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries
 ```
 
 #### Fetch
@@ -117,6 +109,16 @@ curl -v -X DELETE \
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
 ```
@@ -131,12 +133,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/lists/{LIST_ID}/entries/{LIST_ENTRY_ID}
 ```

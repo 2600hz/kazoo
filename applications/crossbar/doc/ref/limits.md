@@ -4,6 +4,8 @@
 
 #### Schema
 
+Limit an account's ability to place concurrent calls using flat rate trunks
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `allow_prepay` | Determines if the account would like to allow per-minute calls if they have credit | `boolean` | `true` | `false`

@@ -6772,6 +6772,7 @@
             "additionalProperties": false,
             "patternProperties": {
                 "^_": {
+                    "description": "Ignores CouchDB fields prefixed by underscores",
                     "type": [
                         "string",
                         "integer",
@@ -6780,6 +6781,7 @@
                     ]
                 },
                 "^pvt_": {
+                    "description": "Ignores Kazoo private fields prefixed by pvt_",
                     "type": [
                         "string",
                         "integer",
@@ -6789,43 +6791,55 @@
             },
             "properties": {
                 "attachments": {
-                    "$ref": "storage.attachments"
+                    "$ref": "storage.attachments",
+                    "description": "Defines where and how to store attachments"
                 },
                 "connections": {
-                    "$ref": "storage.connections"
+                    "$ref": "storage.connections",
+                    "description": "Describes alternative connections to use (such as alternative CouchDB instances"
                 },
                 "plan": {
-                    "$ref": "storage.plan"
+                    "$ref": "storage.plan",
+                    "description": "Describes how to store documents depending on the database or document type"
                 }
             },
             "type": "object"
         },
         "storage.attachment.aws": {
-            "description": "schema for aws attachment entry",
+            "description": "schema for AWS attachment entry",
             "properties": {
                 "handler": {
+                    "description": "What AWS service to use",
                     "enum": [
                         "s3"
-                    ]
+                    ],
+                    "type": "string"
                 },
                 "name": {
+                    "description": "Friendly name for this configuration",
                     "type": "string"
                 },
                 "settings": {
+                    "description": "AWS API settings",
                     "properties": {
                         "bucket": {
+                            "description": "Bucket name to store data to",
                             "type": "string"
                         },
                         "host": {
+                            "description": "Region-specific hostname to use, if applicable",
                             "type": "string"
                         },
                         "key": {
+                            "description": "AWS Key to use",
                             "type": "string"
                         },
                         "path": {
+                            "description": "Custom path to use as a prefix when saving files",
                             "type": "string"
                         },
                         "secret": {
+                            "description": "AWS Secret to use",
                             "type": "string"
                         }
                     },
@@ -6847,19 +6861,25 @@
             "description": "schema for google drive attachment entry",
             "properties": {
                 "handler": {
+                    "description": "What handler module to use",
                     "enum": [
                         "google_drive"
-                    ]
+                    ],
+                    "type": "string"
                 },
                 "name": {
+                    "description": "Friendly name for this configuration",
                     "type": "string"
                 },
                 "settings": {
+                    "description": "Settings for the Google Drive account",
                     "properties": {
-                        "oauth_doc_id": {
+                        "folder_id": {
+                            "description": "Folder ID in which to store the file, if any",
                             "type": "string"
                         },
-                        "path": {
+                        "oauth_doc_id": {
+                            "description": "Doc ID in the system 'oauth' database",
                             "type": "string"
                         }
                     },
@@ -6876,8 +6896,10 @@
             "type": "object"
         },
         "storage.attachments": {
+            "description": "Keys are 32-character identifiers to be used in storage plans",
             "patternProperties": {
                 "^[a-z,0-9]{32}$": {
+                    "description": "Configuration for the supported storage backends",
                     "oneOf": [
                         {
                             "$ref": "storage.attachment.aws"

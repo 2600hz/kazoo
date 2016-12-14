@@ -4,6 +4,8 @@
 
 #### Schema
 
+Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `custom_data` | These properties will be added to the event and will overwrite existing values. | `object` |   | `false`
@@ -26,16 +28,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
-#### Patch
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
-```
-
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/webhooks
@@ -46,14 +38,14 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
-#### Remove
+#### Patch
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/webhooks
 
 ```shell
-curl -v -X DELETE \
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 ```
 
 #### Fetch
@@ -62,6 +54,16 @@ curl -v -X DELETE \
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
@@ -76,12 +78,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks/{WEBHOOK_ID}
 ```

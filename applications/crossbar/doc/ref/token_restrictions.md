@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for token restrictions
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `restrictions` |   | `object` |   | `false`
@@ -16,16 +18,6 @@ Key | Description | Type | Default | Required
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/` | verbs | `array(string('GET', 'PUT', 'POST', 'PATCH', 'DELETE', '_'))` |   | `false`
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string` |   | `false`
 
-
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
-```
 
 #### Fetch
 
@@ -43,6 +35,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/token_restrictions
 ```

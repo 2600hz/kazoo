@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for conferences
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `conference_numbers` | Defines conference numbers that can be used by members or moderators | `array(string)` | `[]` | `false`
@@ -49,16 +51,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
@@ -69,12 +61,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Patch
+#### Create
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
@@ -89,12 +81,22 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```
 
-#### Create
+#### Patch
 
-> PUT /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 
 ```shell
-curl -v -X PUT \
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/conferences/{CONFERENCE_ID}
 ```

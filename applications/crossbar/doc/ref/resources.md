@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for resources
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `emergency` | Determines if the resource represents emergency services | `boolean` | `false` | `false`
@@ -77,16 +79,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
@@ -103,6 +95,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
@@ -127,22 +129,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/jobs
 ```
 
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/resources/collection
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
-```
-
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/resources/collection
 
 ```shell
 curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/resources/collection
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/collection
 ```

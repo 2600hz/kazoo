@@ -4,6 +4,7 @@
     "additionalProperties": false,
     "patternProperties": {
         "^_": {
+            "description": "Ignores CouchDB fields prefixed by underscores",
             "type": [
                 "string",
                 "integer",
@@ -12,6 +13,7 @@
             ]
         },
         "^pvt_": {
+            "description": "Ignores Kazoo private fields prefixed by pvt_",
             "type": [
                 "string",
                 "integer",
@@ -21,13 +23,20 @@
     },
     "properties": {
         "attachments": {
-            "$ref": "storage.attachments"
+            "$ref": "storage.attachments",
+            "description": "Defines where and how to store attachments"
         },
         "connections": {
-            "$ref": "storage.connections"
+            "$ref": "storage.connections",
+            "description": "Describes alternative connections to use (such as alternative CouchDB instances"
+        },
+        "id": {
+            "description": "ID of the storage document",
+            "type": "string"
         },
         "plan": {
-            "$ref": "storage.plan"
+            "$ref": "storage.plan",
+            "description": "Describes how to store documents depending on the database or document type"
         }
     },
     "type": "object"

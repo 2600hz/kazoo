@@ -4,6 +4,8 @@
 
 #### Schema
 
+Schema for media
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `content_length` | Length, in bytes, of the file | `integer` |   | `false`
@@ -41,16 +43,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
@@ -67,6 +59,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 ```

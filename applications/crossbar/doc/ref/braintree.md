@@ -116,16 +116,6 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/transactions/{TRANSACTION_ID}
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
@@ -148,12 +138,12 @@ curl -v -X POST \
 
 #### Remove
 
-> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 
 ```shell
 curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/addresses/{ADDRESS_ID}
 ```
 
 #### Fetch
@@ -172,6 +162,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/braintree/cards/{CARD_ID}
 ```

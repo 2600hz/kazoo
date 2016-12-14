@@ -1,31 +1,40 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.attachment.aws",
-    "description": "schema for aws attachment entry",
+    "description": "schema for AWS attachment entry",
     "properties": {
         "handler": {
+            "description": "What AWS service to use",
             "enum": [
                 "s3"
-            ]
+            ],
+            "type": "string"
         },
         "name": {
+            "description": "Friendly name for this configuration",
             "type": "string"
         },
         "settings": {
+            "description": "AWS API settings",
             "properties": {
                 "bucket": {
+                    "description": "Bucket name to store data to",
                     "type": "string"
                 },
                 "host": {
+                    "description": "Region-specific hostname to use, if applicable",
                     "type": "string"
                 },
                 "key": {
+                    "description": "AWS Key to use",
                     "type": "string"
                 },
                 "path": {
+                    "description": "Custom path to use as a prefix when saving files",
                     "type": "string"
                 },
                 "secret": {
+                    "description": "AWS Secret to use",
                     "type": "string"
                 }
             },

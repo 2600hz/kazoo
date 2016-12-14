@@ -4,6 +4,8 @@
 
 #### Schema
 
+Calling cards callback platform user's info
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `active` | Show's whether CID/PIN active | `boolean` | `false` | `false`
@@ -34,22 +36,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
+```
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
 ```
@@ -64,12 +66,12 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
 ```
 
-#### Create
+#### Remove
 
-> PUT /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
 
 ```shell
-curl -v -X PUT \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/cccps/{CCCP_ID}
 ```

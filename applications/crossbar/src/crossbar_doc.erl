@@ -328,17 +328,19 @@ merge(DataJObj, JObj, Context) ->
 
 -spec patch_and_validate(ne_binary(), cb_context:context(), validate_fun()) ->
                                 cb_context:context().
+-spec patch_and_validate_doc(ne_binary(), cb_context:context(), validate_fun(), crossbar_status()) ->
+                                    cb_context:context().
 patch_and_validate(Id, Context, ValidateFun) ->
     Context1 = load(Id, Context, ?TYPE_CHECK_OPTION_ANY),
-    Context2 = case cb_context:resp_status(Context1) of
-                   'success' ->
-                       PubJObj = kz_doc:public_fields(cb_context:req_data(Context)),
-                       PatchedJObj = kz_json:merge_recursive(cb_context:doc(Context1), PubJObj),
-                       cb_context:set_req_data(Context, PatchedJObj);
-                   _Status ->
-                       Context1
-               end,
-    ValidateFun(Id, Context2).
+    patch_and_validate_doc(Id, Context1, ValidateFun, cb_context:resp_status(Context1)).
+
+patch_and_validate_doc(Id, Context, ValidateFun, 'success') ->
+    PubJObj = kz_doc:public_fields(cb_context:req_data(Context)),
+    PatchedJObj = kz_json:merge(cb_context:doc(Context), PubJObj),
+    Context1 = cb_context:set_req_data(Context, PatchedJObj),
+    ValidateFun(Id, Context1);
+patch_and_validate_doc(Id, Context, ValidateFun, _RespStatus) ->
+    ValidateFun(Id, Context).
 
 %%--------------------------------------------------------------------
 %% @public
