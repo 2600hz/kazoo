@@ -290,21 +290,29 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     AuthzId = props:get_value(<<"Authorizing-ID">>, RoutingData),
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
     Invite = ts_util:invite_format(kz_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
-    {'endpoint', kz_json:from_list(
-                   [{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Auth-User">>, AuthUser}
-                                                                  ,{<<"Auth-Realm">>, AuthRealm}
-                                                                  ,{<<"Direction">>, <<"inbound">>}
-                                                                  ,{<<"Account-ID">>, AccountId}
-                                                                  ,{<<"Authorizing-ID">>, AuthzId}
-                                                                  ,{<<"Authorizing-Type">>, <<"sys_info">>}
-                                                                  ])
-                    }
-                   ,{<<"Custom-SIP-Headers">>, kz_json:from_list([{<<"X-KAZOO-AOR">>, <<"sip:", AuthUser/binary, "@", AuthRealm/binary>>}
-                                                                 ])
-                    }
-                    | Invite
-                   ])
-    }.
+    Routines = [fun(E) -> get_endpoint_ccvs(E, AuthUser, AuthRealm, AccountId, AuthzId) end
+               ,fun(E) -> get_endpoint_sip_headers(E, AuthUser, AuthRealm) end
+               ],
+    Endpoint = lists:foldl(fun(F, E) -> F(E) end, Invite, Routines),
+    {'endpoint', kz_json:from_list(Endpoint)}.
+
+-spec get_endpoint_ccvs(kz_proplist(), api_binary(), api_binary(), ne_binary(), ne_binary()) -> kz_proplist().
+get_endpoint_ccvs(Endpoint, AuthUser, AuthRealm, AccountId, AuthzId) ->
+    Props = props:filter_undefined([{<<"Auth-User">>, AuthUser}
+                                   ,{<<"Auth-Realm">>, AuthRealm}
+                                   ,{<<"Direction">>, <<"inbound">>}
+                                   ,{<<"Account-ID">>, AccountId}
+                                   ,{<<"Authorizing-ID">>, AuthzId}
+                                   ,{<<"Authorizing-Type">>, <<"sys_info">>}
+                                   ]),
+    [{<<"Custom-Channel-Vars">>, kz_json:from_list(Props)} | Endpoint].
+
+-spec get_endpoint_sip_headers(kz_proplist(), api_binary(), api_binary()) -> kz_proplist().
+get_endpoint_sip_headers(Endpoint, 'undefined', _) -> Endpoint;
+get_endpoint_sip_headers(Endpoint, _, 'undefined') -> Endpoint;
+get_endpoint_sip_headers(Endpoint, AuthUser, AuthRealm) ->
+    Props = [{<<"X-KAZOO-AOR">>, <<"sip:", AuthUser/binary, "@", AuthRealm/binary>>}],
+    [{<<"Custom-SIP-Headers">>, kz_json:from_list(Props)} | Endpoint].
 
 -spec routing_data(ne_binary(), ne_binary()) -> [{<<_:48,_:_*8>>, any()}].
 -spec routing_data(ne_binary(), ne_binary(), kz_json:object()) -> [{<<_:48,_:_*8>>, any()}].
