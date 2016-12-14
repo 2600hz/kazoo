@@ -44,10 +44,10 @@
         ,<<"Event-Subclass">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
+        ,<<"Hunt-Callee-ID-Number">>
         ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
         ,<<"Join-Time">>
-        ,<<"Other-Leg-ANI">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -55,7 +55,6 @@
         ,<<"Other-Leg-Channel-Name">>
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
-        ,<<"Other-Leg-RDNIS">>
         ,<<"Other-Leg-Unique-ID">>
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
@@ -89,8 +88,12 @@
         ,<<"sip_auth_response">>
         ,<<"sip_auth_uri">>
         ,<<"sip_call_id">>
+        ,<<"sip_loopback_req_uri">>
+        ,<<"sip_req_host">>
+        ,<<"sip_req_uri">>
         ,<<"sip_request_host">>
         ,<<"sip_to_host">>
+        ,<<"sip_to_user">>
         ,<<"sip_user_agent">>
         ,<<"technology">>
         ,<<"to_user">>
@@ -164,9 +167,11 @@
         ,<<"variable_silence_hits_exhausted">>
         ,<<"variable_sip_auth_realm">>
         ,<<"variable_sip_call_id">>
+        ,<<"variable_sip_contact_user">>
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
+        ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_received_ip">>
         ,<<"variable_sip_received_port">>
