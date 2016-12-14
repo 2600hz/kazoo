@@ -213,22 +213,10 @@ handle_config_req(Node, Id, <<"kazoo.conf">>, Data) ->
     fetch_mod_kazoo_config(Node, Id, kzd_freeswitch:event_name(Data), Data);
 handle_config_req(Node, Id, Conf, Data) ->
     kz_util:put_callid(Id),
-    handle_config_req(Node, Id, Conf, Data, ecallmgr_config:get(<<"configuration_handlers">>)).
-
--spec handle_config_req(atom(), ne_binary(), ne_binary(), kz_proplist() | 'undefined', api_object() | binary()) -> fs_sendmsg_ret().
-handle_config_req(Node, Id, Conf, _Data, 'undefined') ->
-    config_req_not_handled(Node, Id, Conf);
-handle_config_req(Node, Id, Conf, Data, <<_/binary>> = Module) ->
-    lager:debug("relaying configuration ~s to ~s", [Conf, Module]),
-    try
-        (kz_util:to_atom(Module, 'true')):handle_config_req(Node, Id, Conf, Data)
-    catch
-        _E1:_E2 ->
-            lager:debug("exception ~p/~p calling module ~s for configuration ~s", [_E1, _E2, Module, Conf]),
-            config_req_not_handled(Node, Id, Conf)
-    end;
-handle_config_req(Node, Id, Conf, Data, JObj) ->
-    handle_config_req(Node, Id, Conf, Data, kz_json:get_binary_value(Conf, JObj)).
+    case kazoo_bindings:map(<<"freeswitch.config.", Conf/binary>>, [Node, Id, Conf, Data]) of
+        [] -> config_req_not_handled(Node, Id, Conf);
+        _  -> 'ok'
+    end.
 
 -spec config_req_not_handled(atom(), ne_binary(), ne_binary()) -> fs_sendmsg_ret().
 config_req_not_handled(Node, Id, Conf) ->
