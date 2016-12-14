@@ -1100,7 +1100,16 @@ get_results(DbName, DesignDoc) ->
 
 get_results(DbName, DesignDoc, Options) when ?VALID_DBNAME ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
-    kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options);
+    Plan = kzs_plan:plan(DbName, Opts),
+
+    case kzs_view:get_results(Plan, DbName, DesignDoc, Options) of
+        {'error', 'not_found'} ->
+            maybe_create_view(DbName, Plan, DesignDoc, Options);
+
+        Other ->
+            Other
+    end;
+
 get_results(DbName, DesignDoc, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> get_results(Db, DesignDoc, Options);
@@ -1110,6 +1119,17 @@ get_results(DbName, DesignDoc, Options) ->
 get_results_count(DbName, DesignDoc, Options) ->
     Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
     kzs_view:get_results_count(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options).
+
+-spec maybe_create_view(ne_binary(), map(), ne_binary(), view_options()) -> get_results_return().
+maybe_create_view(DbName, Plan, DesignDoc, Options) ->
+    case props:get_value('view_json', Options) of
+        'undefined' ->
+            {'error', 'not_found'};
+
+        ViewJson ->
+            db_view_update(DbName, ViewJson),
+            kzs_view:get_results(Plan, DbName, DesignDoc, Options)
+    end.
 
 -spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
                              {'ok', ne_binaries()} | data_error().
