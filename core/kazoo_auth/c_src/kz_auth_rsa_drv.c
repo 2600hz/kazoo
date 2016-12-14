@@ -134,7 +134,7 @@ static ErlDrvSSizeT call(ErlDrvData edd, unsigned int cmd, char *buf,
   if (cmd == CUTKEY_CMD_RSA) {
     errno = CUTKEY_ERR_ARG;
     ei_decode_ei_term(buf, &index, &tuple);
-    if (!tuple.ei_type == ERL_TUPLE || tuple.arity != 3) {
+    if (tuple.ei_type != ERL_SMALL_TUPLE_EXT || tuple.arity != 3) {
       goto error;
     }
     ei_decode_ei_term(buf, &index, &ref);
@@ -185,8 +185,23 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
   ck_job_t* job = (ck_job_t*) async_data;
   if (job->cmd == CUTKEY_CMD_RSA) {
     if (job->rsa != NULL) {
-      RSA* rsa = job->rsa;
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_START
+#if OPENSSL_VERSION_NUMBER > 0x1010000fL
+      const BIGNUM *bn_e, *bn_n, *bn_d, *bn_p, *bn_q;
+      const BIGNUM *bn_dmp1, *bn_dmq1, *bn_iqmp;
+      RSA_get0_factors(job->rsa, &bn_p, &bn_q);
+      RSA_get0_key(job->rsa, &bn_n, &bn_e, &bn_d);
+      RSA_get0_crt_params(job->rsa, &bn_dmp1, &bn_dmq1, &bn_iqmp);
+      int esize = BN_bn2mpi(bn_e, NULL);
+      int nsize = BN_bn2mpi(bn_n, NULL);
+      int dsize = BN_bn2mpi(bn_d, NULL);
+      int psize = BN_bn2mpi(bn_p, NULL);
+      int qsize = BN_bn2mpi(bn_q, NULL);
+      int dmp1size = BN_bn2mpi(bn_dmp1, NULL);
+      int dmq1size = BN_bn2mpi(bn_dmq1, NULL);
+      int iqmpsize = BN_bn2mpi(bn_iqmp, NULL);
+#else
+      RSA* rsa = job->rsa;
       int esize = BN_bn2mpi(rsa->e, NULL);
       int nsize = BN_bn2mpi(rsa->n, NULL);
       int dsize = BN_bn2mpi(rsa->d, NULL);
@@ -195,6 +210,8 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
       int dmp1size = BN_bn2mpi(rsa->dmp1, NULL);
       int dmq1size = BN_bn2mpi(rsa->dmq1, NULL);
       int iqmpsize = BN_bn2mpi(rsa->iqmp, NULL);
+#endif
+
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_END
       unsigned char *e = driver_alloc(esize);
       unsigned char *n = driver_alloc(nsize);
@@ -205,6 +222,16 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
       unsigned char *dmq1 = driver_alloc(dmq1size);
       unsigned char *iqmp = driver_alloc(iqmpsize);
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_START
+#if OPENSSL_VERSION_NUMBER > 0x1010000fL
+      esize = BN_bn2mpi(bn_e, e);
+      nsize = BN_bn2mpi(bn_n, n);
+      dsize = BN_bn2mpi(bn_d, d);
+      psize = BN_bn2mpi(bn_p, p);
+      qsize = BN_bn2mpi(bn_q, q);
+      dmp1size = BN_bn2mpi(bn_dmp1, dmp1);
+      dmq1size = BN_bn2mpi(bn_dmq1, dmq1);
+      iqmpsize = BN_bn2mpi(bn_iqmp, iqmp);
+#else
       esize = BN_bn2mpi(rsa->e, e);
       nsize = BN_bn2mpi(rsa->n, n);
       dsize = BN_bn2mpi(rsa->d, d);
@@ -213,6 +240,7 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
       dmp1size = BN_bn2mpi(rsa->dmp1, dmp1);
       dmq1size = BN_bn2mpi(rsa->dmq1, dmq1);
       iqmpsize = BN_bn2mpi(rsa->iqmp, iqmp);
+#endif
       CUTKEY_SILENCE_DEPRECATED_ON_OSX_END
       ErlDrvTermData spec[] =
     {ERL_DRV_PORT, dd->term_port,
@@ -253,8 +281,20 @@ static void ready_async(ErlDrvData edd, ErlDrvThreadData async_data) {
 }
 
 static void do_rsa_job(void* data) {
+  RSA *r = NULL;
+  BIGNUM *bne = NULL;
+  int ret = 0;
   ck_job_t* job = (ck_job_t*) data;
+  bne = BN_new();
+  BN_set_word(bne, job->e);
   CUTKEY_SILENCE_DEPRECATED_ON_OSX_START
-  job->rsa = RSA_generate_key(job->num, job->e, NULL, NULL);
+  r = RSA_new();
+  ret = RSA_generate_key_ex(r, job->num, bne, NULL);
+  if(ret != 1) {
+    RSA_free(r);
+  } else {
+    job->rsa = r;
+  }
+  BN_free(bne);
   CUTKEY_SILENCE_DEPRECATED_ON_OSX_END
 }
