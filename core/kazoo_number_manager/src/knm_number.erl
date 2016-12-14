@@ -514,8 +514,8 @@ unwind(Number, [NewAssignedTo|_]) ->
 -spec disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 disconnect(Number, Options) ->
     ShouldDelete = knm_config:should_permanently_delete(
-                     knm_number_options:should_delete(Options)
-                    ),
+                     knm_number_options:should_delete(Options))
+        orelse ?CARRIER_LOCAL =:= knm_phone_number:module_name(phone_number(Number)),
     try knm_carriers:disconnect(Number) of
         N when ShouldDelete -> delete_phone_number(N);
         N -> maybe_age(N)
