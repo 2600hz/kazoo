@@ -16,7 +16,7 @@
         ]).
 -export([stop/1]).
 
--export([freeswitch_node_modules/1]).
+-export([freeswitch_node_modules/0]).
 
 %% Application callbacks
 
@@ -87,6 +87,6 @@ freeswitch_nodesup_unbind() ->
     _ = kazoo_bindings:unbind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
     'ok'.
 
--spec freeswitch_node_modules(kz_json:object()) -> kz_json:object().
-freeswitch_node_modules(Acc) ->
-    kz_json:merge_jobjs(Acc, ?NODE_MODULES).
+-spec freeswitch_node_modules() -> ne_binaries().
+freeswitch_node_modules() ->
+    application:get_env(?APP, 'node_modules', ?NODE_MODULES).

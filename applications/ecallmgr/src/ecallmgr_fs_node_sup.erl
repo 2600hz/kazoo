@@ -31,6 +31,10 @@
 
 -include("ecallmgr.hrl").
 
+-define(NODE_CHILD_TYPE(Type), kz_json:from_list([{<<"type">>, Type}])).
+-define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
+-define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
+
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -118,7 +122,8 @@ init([Node, Options]) ->
 
     NodeB = kz_util:to_binary(Node),
     Args = [Node, Options],
-    Modules = kazoo_bindings:fold(<<"freeswitch.node.modules">>, kz_json:new()),
+    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
+    Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
     JObj = maybe_correct_modules(Modules),
     Children = kz_json:foldr(fun(Module, V, Acc) ->
                                      Type = kz_json:get_ne_binary_value(<<"type">>, V),
@@ -163,7 +168,10 @@ fix_module_type(_) ->
 maybe_module_deprecated(<<"route">>) -> <<"route_sup">>;
 maybe_module_deprecated(Mod) -> Mod.
 
--spec fix_module(ne_binary()) -> {ne_binary(), kz_json:object()}.
+-spec fix_module(ne_binary() | string()) -> {ne_binary(), kz_json:object()}.
+fix_module(Mod)
+  when not is_binary(Mod)->
+    fix_module(kz_util:to_binary(Mod));
 fix_module(Mod) ->
     Module = maybe_module_deprecated(Mod),
     ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),

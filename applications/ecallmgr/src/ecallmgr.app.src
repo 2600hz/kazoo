@@ -44,5 +44,18 @@
                                  ]
                                 ,'loopback::bowout'
                                 ]}
+         ,{node_modules, ["config"
+                         ,"node"
+                         ,"authn"
+                         ,"channel"
+                         ,"conference"
+                         ,"event_stream_sup"
+                         ,"msg"
+                         ,"notify"
+                         ,"recordings"
+                         ,"resource"
+                         ,"route_sup"
+                         ,"channel_hold"
+                         ]}
          ]}
  ]}.

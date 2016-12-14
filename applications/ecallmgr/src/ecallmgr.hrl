@@ -516,5 +516,20 @@
          )
        ).
 
+-define(NODE_MODULES,
+        [<<"config">>
+        ,<<"node">>
+        ,<<"event_stream_sup">>
+        ,<<"authn">>
+        ,<<"channel">>
+        ,<<"conference">>
+        ,<<"msg">>
+        ,<<"notify">>
+        ,<<"recordings">>
+        ,<<"resource">>
+        ,<<"route_sup">>
+        ,<<"channel_hold">>
+        ]).
+
 -define(ECALLMGR_HRL, 'true').
 -endif.
