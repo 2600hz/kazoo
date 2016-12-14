@@ -9,13 +9,14 @@
 
 -behaviour(application).
 
--include_lib("kazoo/include/kz_types.hrl").
+-include("ecallmgr.hrl").
 
 -export([start/2
         ,request/1
         ]).
 -export([stop/1]).
 
+-export([freeswitch_node_modules/1]).
 
 %% Application callbacks
 
@@ -25,6 +26,7 @@
 start(_StartType, _StartArgs) ->
     _ = declare_exchanges(),
     _ = node_bindings(),
+    _ = freeswitch_nodesup_bind(),
     ecallmgr_sup:start_link().
 
 -spec request(kz_nodes:request_acc()) -> kz_nodes:request_acc().
@@ -48,6 +50,8 @@ request(Acc) ->
 %% @doc Implement the application stop behaviour
 -spec stop(any()) -> any().
 stop(_State) ->
+    _ = freeswitch_nodesup_unbind(),
+    _ = kz_nodes_bindings:unbind('ecallmgr', ?MODULE),
     'ok'.
 
 -spec declare_exchanges() -> 'ok'.
@@ -72,3 +76,17 @@ declare_exchanges() ->
 node_bindings() ->
     _ = kz_nodes_bindings:bind('ecallmgr', ?MODULE),
     'ok'.
+
+-spec freeswitch_nodesup_bind() -> 'ok'.
+freeswitch_nodesup_bind() ->
+    _ = kazoo_bindings:bind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
+    'ok'.
+
+-spec freeswitch_nodesup_unbind() -> 'ok'.
+freeswitch_nodesup_unbind() ->
+    _ = kazoo_bindings:unbind(<<"freeswitch.node.modules">>, ?MODULE, 'freeswitch_node_modules'),
+    'ok'.
+
+-spec freeswitch_node_modules(kz_json:object()) -> kz_json:object().
+freeswitch_node_modules(Acc) ->
+    kz_json:merge_jobjs(Acc, ?NODE_MODULES).
