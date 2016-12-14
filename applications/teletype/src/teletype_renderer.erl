@@ -54,8 +54,8 @@ render(TemplateId, Template, TemplateData, Tries) ->
     end.
 
 -spec do_render(ne_binary(), binary(), kz_proplist()) ->
-                    {'ok', iolist()} |
-                    {'error', any()}.
+                       {'ok', iolist()} |
+                       {'error', any()}.
 do_render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     Start = kz_util:current_tstamp(),
