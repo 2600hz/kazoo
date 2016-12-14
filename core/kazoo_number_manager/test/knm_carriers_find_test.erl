@@ -10,6 +10,24 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
+check_test_() ->
+    Nums = [?TEST_AVAILABLE_NUM
+           ,?TEST_IN_SERVICE_NUM
+           ,?TEST_IN_SERVICE_WITH_HISTORY_NUM
+           ,?TEST_EXISTING_TOLL
+           ],
+    [?_assertEqual(kz_json:new(), knm_carriers:check([]))
+    ,{"Checking numbers against unconfigured carriers"
+     ,?_assertEqual(#{?TEST_AVAILABLE_NUM => <<"error">>
+                     ,?TEST_IN_SERVICE_NUM => <<"error">>
+                     ,?TEST_IN_SERVICE_WITH_HISTORY_NUM => <<"error">>
+                     ,?TEST_EXISTING_TOLL => <<"error">>
+                     }
+                   ,kz_json:to_map(knm_carriers:check(Nums))
+                   )
+     }
+    ].
+
 find_local_test_() ->
     [{"Finding local numbers not supported"
      ,?_assertMatch({'error', 'not_available'}

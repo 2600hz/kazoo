@@ -14,11 +14,11 @@
 
 -export([is_local/0]).
 -export([find_numbers/3]).
--export([check_numbers/2]).
 -export([is_number_billable/1]).
 -export([acquire_number/1]).
 -export([disconnect_number/1]).
 -export([should_lookup_cnam/0]).
+-export([check_numbers/1]).
 
 -include("knm.hrl").
 
@@ -74,14 +74,12 @@ find_numbers(Prefix, Quantity, Options) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Query the local system for a quantity of available numbers
-%% in a rate center
+%% Check with carrier if these numbers are registered with it.
 %% @end
 %%--------------------------------------------------------------------
--spec check_numbers(ne_binaries(), knm_search:options()) ->
-                           {'ok', kz_json:object()} |
-                           {'error', any()}.
-check_numbers(Numbers, _Options) ->
+-spec check_numbers(ne_binaries()) -> {'ok', kz_json:object()} |
+                                      {'error', any()}.
+check_numbers(Numbers) ->
     FormatedNumbers = [knm_converters:to_npan(Number) || Number <- Numbers],
     case kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>) of
         'undefined' -> {'error', 'not_available'};
