@@ -11,6 +11,7 @@
 -include("teletype.hrl").
 
 -define(SERVER, ?MODULE).
+-define(RENDER_TIMEOUT, 1000 * 60 * 10).
 
 -export([start_link/1
         ,render/3
@@ -34,12 +35,34 @@ start_link(Args) ->
                     {'ok', iolist()} |
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
+    render(TemplateId, Template, TemplateData, 3).
+
+-spec render(ne_binary(), binary(), kz_proplist(), integer()) ->
+                    {'ok', iolist()} |
+                    {'error', any()}.
+
+render(TemplateId, _Template, _TemplateData, 0) ->
+    lager:error("rendering of ~p failed after several tries", [TemplateId]),
+    {'error', 'render_failed'};
+
+render(TemplateId, Template, TemplateData, Tries) ->
+    case do_render(TemplateId, Template, TemplateData) of
+        {'error', 'render_failed'} ->
+            render(TemplateId, Template, TemplateData, Tries-1);
+        GoodReturn ->
+            GoodReturn
+    end.
+
+-spec do_render(ne_binary(), binary(), kz_proplist()) ->
+                    {'ok', iolist()} |
+                    {'error', any()}.
+do_render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
     Start = kz_util:current_tstamp(),
     PoolStatus = poolboy:status('teletype_render_farm'),
     try gen_server:call(Renderer
                        ,{'render', TemplateId, Template, TemplateData}
-                       ,?MILLISECONDS_IN_HOUR
+                       ,?RENDER_TIMEOUT
                        )
     catch
         _E:_R ->
