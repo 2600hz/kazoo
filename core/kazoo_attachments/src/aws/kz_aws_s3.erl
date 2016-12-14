@@ -220,15 +220,20 @@ delete_objects_batch(Bucket, KeyList, Config) ->
                 'utf8'),
 
     Len = integer_to_list(string:len(Payload)),
-    Url = lists:flatten([Config#aws_config.s3_scheme,
-                         Bucket, ".", Config#aws_config.s3_host, port_spec(Config), "/?delete"]),
     Host = Bucket ++ "." ++ Config#aws_config.s3_host,
+    Url = lists:flatten([Config#aws_config.s3_scheme
+                        ,Host
+                        ,port_spec(Config), "/?delete"
+                        ]),
+
     ContentMD5 = base64:encode(kz_att_util:md5(Payload)),
     Headers = [{"host", Host},
                {"content-md5", binary_to_list(ContentMD5)},
-               {"content-length", Len}],
-    Result = kz_aws_httpc:request(
-               Url, "POST", Headers, Payload, delete_objects_batch_timeout(Config), Config),
+               {"content-length", Len}
+              ],
+    Result = kz_aws_httpc:request(Url, 'post', Headers, Payload
+                                 ,delete_objects_batch_timeout(Config), Config
+                                 ),
     kz_aws:http_headers_body(Result).
 
 delete_objects_batch_timeout(#aws_config{timeout = 'undefined'}) -> 1000;
@@ -392,10 +397,12 @@ list_objects(BucketName, Options, Config)
                  ],
     kz_aws_xml:decode(Attributes, Doc).
 
+-spec extract_prefixes(list(kz_aws_xml:xml())) -> list(kz_aws_xml:decoded()).
 extract_prefixes(Nodes) ->
     Attributes = [{'prefix', "Prefix", 'text'}],
     [kz_aws_xml:decode(Attributes, Node) || Node <- Nodes].
 
+-spec extract_contents(list(kz_aws_xml:xml())) -> list(kz_aws_xml:decoded()).
 extract_contents(Nodes) ->
     Attributes = [{'key', "Key", 'text'}
                  ,{'last_modified', "LastModified", 'time'}
@@ -406,6 +413,7 @@ extract_contents(Nodes) ->
                  ],
     [kz_aws_xml:decode(Attributes, Node) || Node <- Nodes].
 
+-spec extract_user(list(kz_aws_xml:xml())) -> kz_aws_xml:decoded().
 extract_user([]) -> [];
 extract_user([Node]) ->
     Attributes = [{'id', "ID", 'optional_text'}
@@ -420,57 +428,66 @@ get_bucket_attribute(BucketName, AttributeName) ->
     get_bucket_attribute(BucketName, AttributeName, default_config()).
 
 -spec get_bucket_attribute(string(), s3_bucket_attribute_name(), aws_config()) -> term().
-
 get_bucket_attribute(BucketName, AttributeName, Config)
   when is_list(BucketName), is_atom(AttributeName) ->
     Attr = case AttributeName of
-               'acl'             -> "acl";
-               'location'        -> "location";
-               'logging'         -> "logging";
                'request_payment' -> "requestPayment";
-               'versioning'      -> "versioning"
+               AN -> kz_util:to_list(AN)
            end,
+
     Doc = s3_xml_request(Config, 'get', BucketName, "/", Attr, [], <<>>, []),
-    case AttributeName of
-        'acl' ->
-            Attributes = [{'owner', "Owner", fun extract_user/1}
-                         ,{'access_control_list', "AccessControlList/Grant", fun extract_acl/1}
+    get_bucket_attribute_from_xml(AttributeName, Doc).
+
+-spec get_bucket_attribute_from_xml(s3_bucket_attribute_name(), xml_el() | {'error', any()}) ->
+                                           {'error', any()} |
+                                           kz_aws_xml:decoded() |
+                                           {'enabled', boolean()} |
+                                           atom() |
+                                           string().
+get_bucket_attribute_from_xml(_AttributeName, {'error', _}=Error) -> Error;
+get_bucket_attribute_from_xml('acl', Doc) ->
+    Attributes = [{'owner', "Owner", fun extract_user/1}
+                 ,{'access_control_list', "AccessControlList/Grant", fun extract_acl/1}
+                 ],
+    kz_aws_xml:decode(Attributes, Doc);
+get_bucket_attribute_from_xml('location', Doc) ->
+    case kz_aws_xml:get_text("/LocationConstraint", Doc) of
+        %% logic according to http://s3tools.org/s3cmd
+        %% s3cmd-1.5.2/S3/S3.py : line 342 (function get_bucket_location)
+        [] -> "us-east-1";
+        ["US"] -> "us-east-1";
+        ["EU"] -> "eu-west-1";
+        Loc -> Loc
+    end;
+get_bucket_attribute_from_xml('logging', Doc) ->
+    case xmerl_xpath:string("/BucketLoggingStatus/LoggingEnabled", Doc) of
+        [] -> {'enabled', 'false'};
+        [LoggingEnabled] ->
+            Attributes = [{'target_bucket', "TargetBucket", 'text'},
+                          {'target_prefix', "TargetPrefix", 'text'},
+                          {'target_trants', "TargetGrants/Grant", fun extract_acl/1}
                          ],
-            kz_aws_xml:decode(Attributes, Doc);
-        'location' ->
-            case kz_aws_xml:get_text("/LocationConstraint", Doc) of
-                %% logic according to http://s3tools.org/s3cmd
-                %% s3cmd-1.5.2/S3/S3.py : line 342 (function get_bucket_location)
-                [] -> "us-east-1";
-                ["US"] -> "us-east-1";
-                ["EU"] -> "eu-west-1";
-                Loc -> Loc
-            end;
-        'logging' ->
-            case xmerl_xpath:string("/BucketLoggingStatus/LoggingEnabled", Doc) of
-                [] -> {'enabled', 'false'};
-                [LoggingEnabled] ->
-                    Attributes = [{'target_bucket', "TargetBucket", 'text'},
-                                  {'target_prefix', "TargetPrefix", 'text'},
-                                  {'target_trants', "TargetGrants/Grant", fun extract_acl/1}],
-                    [{'enabled', 'true'} | kz_aws_xml:decode(Attributes, LoggingEnabled)]
-            end;
-        'request_payment' ->
-            case kz_aws_xml:get_text("/RequestPaymentConfiguration/Payer", Doc) of
-                "Requester" -> 'requester';
-                _           -> 'bucket_owner'
-            end;
-        'versioning' ->
-            case kz_aws_xml:get_text("/VersioningConfiguration/Status", Doc) of
-                "Enabled"   -> 'enabled';
-                "Suspended" -> 'suspended';
-                _           -> 'disabled'
-            end
+            [{'enabled', 'true'}
+             | kz_aws_xml:decode(Attributes, LoggingEnabled)
+            ]
+    end;
+get_bucket_attribute_from_xml('request_payment', Doc) ->
+    case kz_aws_xml:get_text("/RequestPaymentConfiguration/Payer", Doc) of
+        "Requester" -> 'requester';
+        _           -> 'bucket_owner'
+    end;
+get_bucket_attribute_from_xml('versioning', Doc) ->
+    case kz_aws_xml:get_text("/VersioningConfiguration/Status", Doc) of
+        "Enabled"   -> 'enabled';
+        "Suspended" -> 'suspended';
+        _           -> 'disabled'
     end.
 
+-spec extract_acl(xml_els()) -> kz_proplists().
 extract_acl(ACL) ->
     [extract_grant(Item) || Item <- ACL].
 
+-spec extract_grant(xml_el()) -> kz_proplist().
 extract_grant(Node) ->
     [{'grantee', extract_user(xmerl_xpath:string("Grantee", Node))}
     ,{'permission', decode_permission(kz_aws_xml:get_text("Permission", Node))}
@@ -1114,6 +1131,9 @@ s3_simple_request(Config, Method, Host, Path, Subresource, Params, POSTData, Hea
         {'error', _}=E -> E
     end.
 
+-spec s3_xml_request(aws_config(), kz_aws:method(), string(), string(), string(), kz_proplist(), iodata(), kz_proplist()) ->
+                            {'error', any()} |
+                            xml_el().
 s3_xml_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) ->
     case s3_request(Config, Method, Host, Path, Subresource, Params, POSTData, Headers) of
         {'ok', {_Headers, Body}} ->
@@ -1228,6 +1248,7 @@ query_string_from_params(Params, "") ->
 query_string_from_params(Params, _SubResource) ->
     [$&, kz_aws_http:make_query_string(Params, 'no_assignment')].
 
+-spec s3_result_fun(aws_request()) -> aws_request().
 s3_result_fun(#aws_request{response_type = 'ok'} = Request) ->
     Request;
 s3_result_fun(#aws_request{response_type = 'error'
@@ -1241,19 +1262,18 @@ s3_result_fun(#aws_request{response_type = 'error'
                           } = Request) ->
     Request#aws_request{should_retry = 'false'}.
 
-make_authorization(Config, Method, ContentMD5, ContentType, Date, AmzHeaders,
-                   Host, Resource, Subresource, Params) ->
+make_authorization(#aws_config{secret_access_key=Secret
+                              ,access_key_id=AccessKey
+                              }
+                  ,Method, ContentMD5, ContentType, Date, AmzHeaders
+                  ,Host, Resource, Subresource, Params) ->
     CanonizedAmzHeaders =
         [[Name, $:, Value, $\n] || {Name, Value} <- lists:sort(AmzHeaders)],
 
-    SubResourcesToInclude = ["acl", "lifecycle", "location", "logging", "notification", "partNumber", "policy", "requestPayment", "torrent", "uploadId", "uploads", "versionId", "versioning", "versions", "website"],
-    FilteredParams = [NV
-                      || {Name, _Value}=NV <- Params,
-                         lists:member(Name, SubResourcesToInclude)
-                     ],
+    FilteredParams = filter_sub_resources(Params),
 
-    ParamsQueryString = kz_aws_http:make_query_string(lists:keysort(1, FilteredParams),
-                                                      'no_assignment'
+    ParamsQueryString = kz_aws_http:make_query_string(lists:keysort(1, FilteredParams)
+                                                     ,'no_assignment'
                                                      ),
     StringToSign = [string:to_upper(atom_to_list(Method)), $\n
                    ,ContentMD5, $\n
@@ -1265,18 +1285,30 @@ make_authorization(Config, Method, ContentMD5, ContentType, Date, AmzHeaders,
                    ,case Subresource of "" -> ""; _ -> [$?, Subresource] end
                    ,string_from_params_QS(ParamsQueryString, Subresource)
                    ],
-    Signature = base64:encode(kz_att_util:sha_mac(Config#aws_config.secret_access_key, StringToSign)),
-    ["AWS ", Config#aws_config.access_key_id, $:, Signature].
+    Signature = base64:encode(kz_att_util:sha_mac(Secret, StringToSign)),
+    ["AWS ", AccessKey, $:, Signature].
 
+-spec filter_sub_resources(kz_proplist()) -> kz_proplist().
+filter_sub_resources(Params) ->
+    SubResourcesToInclude = ["acl", "lifecycle", "location", "logging", "notification", "partNumber", "policy", "requestPayment", "torrent", "uploadId", "uploads", "versionId", "versioning", "versions", "website"],
+
+    [NV
+     || {Name, _Value}=NV <- Params,
+        lists:member(Name, SubResourcesToInclude)
+    ].
+
+-spec string_from_params_QS(string(), string()) -> iolist().
 string_from_params_QS("", _SubResource) -> "";
 string_from_params_QS(ParamsQueryString, "") ->
     [$?, ParamsQueryString];
 string_from_params_QS(ParamsQueryString, _SubResource) ->
     [$&, ParamsQueryString].
 
+-spec default_config() -> aws_config().
 default_config() -> kz_aws:default_config().
 
+-spec port_spec(aws_config()) -> iolist().
 port_spec(#aws_config{s3_port=80}) ->
     "";
 port_spec(#aws_config{s3_port=Port}) ->
-    [":", erlang:integer_to_list(Port)].
+    [":", kz_util:to_list(Port)].

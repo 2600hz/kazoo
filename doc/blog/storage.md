@@ -1,17 +1,18 @@
-- [Alternative Storage Options for Kazoo](#orge5ae9ca)
-  - [Scenarios](#org14c948d)
-  - [Introducing Storage Plans](#org6f59fdf)
-  - [Getting started](#org1a8f7b0)
-    - [Create the initial storage](#orge502a7d)
-    - [Add S3 configuration](#org6963c4b)
-  - [Creating Storage Plans](#org278db10)
-    - [MODB plan](#org4f789df)
-    - [Mailbox message attachments](#orgfc87d54)
-    - [Adding the plan](#org4cd9246)
+- [Alternative Storage Options for Kazoo](#org8916b87)
+  - [Scenarios](#orgdbd1b36)
+  - [Introducing Storage Plans](#orga265582)
+  - [Getting started](#org6770240)
+    - [Create the initial storage](#org8386c70)
+    - [Add S3 configuration](#org889959c)
+  - [Creating Storage Plans](#orge72995a)
+    - [MODB plan](#org5099381)
+    - [Mailbox message attachments](#org782a1d9)
+    - [Adding the plan](#org150e76d)
+  - [Wrapping Up](#orga6745b5)
 
 
 
-<a id="orge5ae9ca"></a>
+<a id="org8916b87"></a>
 
 # Alternative Storage Options for Kazoo
 
@@ -20,7 +21,7 @@ Kazoo has long been opinionated about where it stores its data - [CouchDB](https
 However, while CouchDB serves the majority of Kazoo's needs well, there are scenarios where CouchDB isn't the best option. We'll try to cover some of those scenarios as well as provide step-by-step instructions for how to take advantage of alternative storage options.
 
 
-<a id="org14c948d"></a>
+<a id="orgdbd1b36"></a>
 
 ## Scenarios
 
@@ -37,7 +38,7 @@ Other possibilities include:
 -   And many more!
 
 
-<a id="org6f59fdf"></a>
+<a id="orga265582"></a>
 
 ## Introducing Storage Plans
 
@@ -47,7 +48,7 @@ With Kazoo 4.0, the 'storage plan' concept is introduced to allow system adminis
 2.  Configure 'plans', to determine what types of data will use which configured 'storage' option.
 
 
-<a id="org1a8f7b0"></a>
+<a id="org6770240"></a>
 
 ## Getting started
 
@@ -82,7 +83,7 @@ What happened?
 Well, the storage hasn't been configured yet, so of course it wasn't found.
 
 
-<a id="orge502a7d"></a>
+<a id="org8386c70"></a>
 
 ### Create the initial storage
 
@@ -108,7 +109,7 @@ curl -v -X PUT \
 ```
 
 
-<a id="org6963c4b"></a>
+<a id="org889959c"></a>
 
 ### Add S3 configuration
 
@@ -184,7 +185,7 @@ curl -v -X PATCH \
 Success! We now have an attachment configuration at '{UUID}' to reference elsewhere.
 
 
-<a id="org278db10"></a>
+<a id="orge72995a"></a>
 
 ## Creating Storage Plans
 
@@ -210,7 +211,7 @@ Our base "plan" will look like this:
 ```
 
 
-<a id="org4f789df"></a>
+<a id="org5099381"></a>
 
 ### MODB plan
 
@@ -232,7 +233,7 @@ Augmenting our plan to add the 'types' restriction:
 ```
 
 
-<a id="orgfc87d54"></a>
+<a id="org782a1d9"></a>
 
 ### Mailbox message attachments
 
@@ -255,7 +256,7 @@ We just want to store the binary data (and not the metadata) in S3, so we'll def
 ```
 
 
-<a id="org4cd9246"></a>
+<a id="org150e76d"></a>
 
 ### Adding the plan
 
@@ -277,7 +278,7 @@ curl -v -X PATCH -H "content-type: application/json" -H "X-Auth-Token: $AUTH_TOK
 
 ```json
 {
-    "auth_token": "{AUTH_TOKEN}"
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "attachments": {
             "{UUID}": {
@@ -308,3 +309,12 @@ curl -v -X PATCH -H "content-type: application/json" -H "X-Auth-Token: $AUTH_TOK
     "status": "success"
 }
 ```
+
+
+<a id="orga6745b5"></a>
+
+## Wrapping Up
+
+Now that you've created the storage plan for the account, try placing a call to leave a voicemail. Once left, you should see a file appear in your S3 bucket within a minute or two!
+
+There's a lot more to storage than just pushing voicemails to S3. We'll cover those in future articles!

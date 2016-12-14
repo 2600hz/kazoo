@@ -237,7 +237,7 @@ curl -v -X PATCH -H "content-type: application/json" -H "X-Auth-Token: $AUTH_TOK
 #+END_SRC
 #+BEGIN_SRC json
 {
-    "auth_token": "{AUTH_TOKEN}"
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
         "attachments": {
             "{UUID}": {
@@ -268,3 +268,7 @@ curl -v -X PATCH -H "content-type: application/json" -H "X-Auth-Token: $AUTH_TOK
     "status": "success"
 }
 #+END_SRC
+** Wrapping Up
+Now that you've created the storage plan for the account, try placing a call to leave a voicemail. Once left, you should see a file appear in your S3 bucket within a minute or two!
+
+There's a lot more to storage than just pushing voicemails to S3. We'll cover those in future articles!

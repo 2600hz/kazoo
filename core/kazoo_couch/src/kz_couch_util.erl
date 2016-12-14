@@ -90,7 +90,7 @@ retry504s(Fun, Cnt) ->
 %% @doc
 %% @end
 %%------------------------------------------------------------------------------
--spec new_connection(couch_connection() | #{}) ->
+-spec new_connection(couch_connection() | map()) ->
                             server() |
                             {'error', 'timeout' | 'ehostunreach' | _}.
 new_connection(#{}=Map) ->
@@ -203,7 +203,7 @@ db_url(#server{}=Conn, DbName) ->
 %% returns the #db{} record
 %% @end
 %%------------------------------------------------------------------------------
--spec get_db(server(), ne_binary()) -> db().
+-spec get_db(kz_data:connection(), ne_binary()) -> db().
 get_db(#server{}=Conn, DbName) ->
     {'ok', Db} = couchbeam:open_db(Conn, DbName),
     Db.

@@ -18,7 +18,7 @@
                    {'error', any()}).
 -export_type([request_fun/0]).
 
--spec request(string(), kz_aws:method(), kz_aws:headers(), binary(), pos_integer(), aws_config()) ->
+-spec request(string(), kz_aws:method(), kz_aws:headers(), iodata(), pos_integer(), aws_config()) ->
                      {'ok', {{pos_integer(), string()}, kz_aws:headers(), binary()}} |
                      {'error', any()}.
 request(URL, Method, Hdrs, Body, Timeout,

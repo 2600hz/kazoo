@@ -62,12 +62,12 @@
 -type error(Type) :: {'error', Type}.
 -type error() :: error('resource_not_available').
 
-
 %% Server operations
--spec new_connection(kz_data:connection()) -> error().
--spec format_error(error(A)) -> error(A).
+-spec new_connection(map()) -> error().
 new_connection(_Map) ->
     {'error', 'resource_not_available'}.
+
+-spec format_error(error(A)) -> error(A).
 format_error(Error) ->
     Error.
 

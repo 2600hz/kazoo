@@ -20,11 +20,11 @@ encode_query_term(Key, Value, _) ->
 %% sign url differently, S3 requires that empty arguments have no
 %% '=' (/?acl) while SQS requires it (/?QueuePrefix=)
 %% default behaviour is adding '='
--spec make_query_string([{nonempty_string(), any()}]) -> nonempty_string().
+-spec make_query_string([{nonempty_string(), any()}]) -> string().
 make_query_string(Params) ->
     make_query_string(Params, 'empty_assignment').
 
--spec make_query_string([{nonempty_string(), any()}], atom()) -> nonempty_string().
+-spec make_query_string([{nonempty_string(), any()}], atom()) -> string().
 make_query_string(Params, EmptyQueryOpt) ->
     string:join([encode_query_term(Key, Value, EmptyQueryOpt)
                  || {Key, Value} <- Params,

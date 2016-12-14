@@ -20,7 +20,7 @@
 
 -include("kz_couch.hrl").
 
--type ddoc() :: atom() | ne_binary() | {ne_binary(), ne_binary()}.
+-type ddoc() :: 'all_docs' | ne_binary() | {ne_binary(), ne_binary()}.
 
 %%% View-related functions -----------------------------------------------------
 -spec design_compact(server(), ne_binary(), ne_binary()) -> boolean().
@@ -39,7 +39,7 @@ design_info(#server{}=Conn, DBName, Design) ->
     Db = kz_couch_util:get_db(Conn, DBName),
     do_get_design_info(Db, Design).
 
--spec all_design_docs(server(), ne_binary(), view_options()) ->
+-spec all_design_docs(kz_data:connection(), ne_binary(), view_options()) ->
                              {'ok', kz_json:objects()} |
                              couchbeam_error().
 all_design_docs(#server{}=Conn, DBName, Options) ->

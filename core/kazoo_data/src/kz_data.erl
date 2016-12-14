@@ -10,15 +10,19 @@
 -include("kz_data.hrl").
 
 -type connection() :: server() | any().
--type options() :: kz_proplist().
+-type option() :: {atom(), term()}.
+-type options() :: [option()].
 -type document() :: kz_json:object().
 -type documents() :: [document()].
 
--export_type([connection/0, options/0, document/0, documents/0]).
+-export_type([connection/0
+             ,option/0, options/0
+             ,document/0
+             ,documents/0
+             ]).
 
--callback new_connection(ne_binary()) -> connection().
+-callback new_connection(map()) -> connection().
 -callback format_error(any()) -> any().
-
 
 %% Connection operations
 -callback get_db(connection(), ne_binary()) -> any().
