@@ -168,9 +168,9 @@ renotify(Account, MessageId) ->
             Length = kz_json:get_value(<<"length">>, Metadata, 0),
             Props = [{<<"Transcribe-Voicemail">>, 'false'}],
             log_renotify_result(
-                MessageId
-                ,BoxId
-                ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
+              MessageId
+                  ,BoxId
+                  ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
             )
     end.
 

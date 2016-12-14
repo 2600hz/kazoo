@@ -373,7 +373,7 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
         {'error', _R} ->
             AccountId = kapps_call:account_id(Call),
             lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~p"
-                        ,[MediaId, AccountId, _R]),
+                       ,[MediaId, AccountId, _R]),
             maybe_update_meta(Length, 'nothing', Call, MediaId, BoxId)
     end.
 
