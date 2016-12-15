@@ -145,9 +145,11 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     Routines = [{fun kapps_call:set_to/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_from/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_call_id/2, kz_util:rand_hex_binary(12)}
+               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
+               ,{fun kapps_call:set_caller_id_name/2, CIDName}
                ],
     Call = kapps_call:exec(Routines, kapps_call:new()),
-    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj).
 
 %%--------------------------------------------------------------------
