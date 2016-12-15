@@ -47,7 +47,6 @@
               ,node = node()           :: atom()
               ,name                    :: atom()
               ,sync                    :: any()
-                                          %% ,candidates             :: atoms()
               }).
 
 -record(?MODULE, {from, msg}).
