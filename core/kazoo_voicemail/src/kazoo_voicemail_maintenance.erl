@@ -171,7 +171,7 @@ renotify(Account, MessageId) ->
               MessageId
                                ,BoxId
                                ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
-            )
+             )
     end.
 
 -spec log_renotify_result(ne_binary(), ne_binary(), any()) -> 'ok'.
