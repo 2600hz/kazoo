@@ -55,7 +55,6 @@ render(Template, Module, TemplateData) ->
     render(Template, Module, TemplateData, []).
 
 render(Template, Module, TemplateData, CompileOpts) ->
-    lager:info("starting render"),
     case compile(Template, Module, CompileOpts) of
         {'ok', Module} -> render_template(Module, TemplateData);
         {'error', _} = Error -> Error
@@ -68,7 +67,6 @@ compile(Template, Module) ->
     compile(Template, Module, []).
 
 compile(Template, Module, CompileOpts) when is_binary(Template) ->
-    lager:info("starting compile1"),
     try erlydtl:compile_template(Template, Module, ?COMPILE_OPTS(CompileOpts)) of
         Result ->
             handle_compile_result(Template, Module, Result)
@@ -78,7 +76,6 @@ compile(Template, Module, CompileOpts) when is_binary(Template) ->
             {'error', 'failed_to_compile'}
     end;
 compile(Path, Module, CompileOpts) ->
-    lager:info("starting compile2"),
     try erlydtl:compile_file(Path, Module, ?COMPILE_OPTS(CompileOpts)) of
         Result ->
             handle_compile_result(Path, Module, Result)
@@ -99,7 +96,6 @@ compile(Path, Module, CompileOpts) ->
 %%--------------------------------------------------------------------
 -spec render_template(atom(), kz_proplist()) -> template_result().
 render_template(Module, TemplateData) ->
-    lager:info("about to render with ~p", [Module]),
     try Module:render(props:filter_empty(TemplateData)) of
         {'ok', _IOList}=OK ->
             lager:debug("rendered template successfully: '~s'", [_IOList]),
