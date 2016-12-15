@@ -6,7 +6,6 @@
     "pvt_db_name": "numbers%2F%2B1201",
     "pvt_features_available": [
         "cnam",
-        "e911",
         "failover",
         "port",
         "prepend"

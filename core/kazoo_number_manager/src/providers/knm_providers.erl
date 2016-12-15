@@ -65,22 +65,34 @@ allowed_features(PhoneNumber) ->
 -spec available_features(api_ne_binary()) -> ne_binaries().
 available_features(undefined) -> [];
 available_features(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    Master = master_providers(),
-    Reseller = legacy_providers(AccountId),
+    FromMaster = master_providers(),
+    FromReseller = reseller_providers(AccountId),
     [Feature
-     || Feature <- Reseller,
-        lists:member(Feature, Master)
+     || Feature <- FromReseller,
+        lists:member(Feature, FromMaster)
     ].
 
-legacy_providers(undefined) -> [];
-legacy_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
+-ifdef(TEST).
+reseller_providers(?RESELLER_ACCOUNT_ID) ->
+    lists:usort([?FEATURE_E911 | ?DEFAULT_RESELLER_PROVIDERS]);
+reseller_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
     Providers =
         kapps_account_config:get_from_reseller(AccountId
                                               ,?KNM_CONFIG_CAT
                                               ,<<"providers">>
-                                              ,?DEFAULT_LEGACY_PROVIDERS
+                                              ,?DEFAULT_RESELLER_PROVIDERS
                                               ),
     lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+-else.
+reseller_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    Providers =
+        kapps_account_config:get_from_reseller(AccountId
+                                              ,?KNM_CONFIG_CAT
+                                              ,<<"providers">>
+                                              ,?DEFAULT_RESELLER_PROVIDERS
+                                              ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+-endif.
 
 master_providers() ->
     Providers =
@@ -90,8 +102,8 @@ master_providers() ->
                         ),
     lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
 
-legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> Rest;
-legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> Rest;
+legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
+legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
 legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
 legacy_provider_to_feature(<<"dash_e911">>) -> ?FEATURE_E911;
 legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
@@ -187,11 +199,6 @@ provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
-%% These 2 for backward compatibility:
-provider_module(<<"dash_e911">>=OldFeature, _) ->
-    <<"knm_", OldFeature/binary>>;
-provider_module(<<"vitelity_e911">>=OldFeature, _) ->
-    <<"knm_", OldFeature/binary>>;
 provider_module(Other, _) ->
     lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.

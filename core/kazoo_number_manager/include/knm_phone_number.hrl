@@ -75,12 +75,11 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
 
--define(DEFAULT_LEGACY_PROVIDERS, [?FEATURE_CNAM
-                                  ,?FEATURE_FAILOVER
-                                  ,?FEATURE_LOCAL
-                                  ,?FEATURE_PORT
-                                  ,?FEATURE_PREPEND
-                                  ]).
+-define(DEFAULT_RESELLER_PROVIDERS, [?FEATURE_CNAM
+                                    ,?FEATURE_FAILOVER
+                                    ,?FEATURE_PORT
+                                    ,?FEATURE_PREPEND
+                                    ]).
 
 -define(DEFAULT_MASTER_PROVIDERS, [?FEATURE_CNAM
                                   ,?FEATURE_E911
