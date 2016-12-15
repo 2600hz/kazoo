@@ -17,7 +17,7 @@ is_number_billable_test_() ->
     PN3 = knm_phone_number:set_module_name(PN1, <<"wnm_pacwest">>),
     [?_assertEqual(false, knm_carriers:is_number_billable(PN1))
     ,?_assertEqual(true, knm_carriers:is_number_billable(PN2))
-    ,?_assertEqual(false, knm_carriers:is_number_billable(PN3))
+    ,?_assertEqual(true, knm_carriers:is_number_billable(PN3))
     ].
 
 check_test_() ->
