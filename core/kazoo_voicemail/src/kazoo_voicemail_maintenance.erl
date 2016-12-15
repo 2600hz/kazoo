@@ -17,6 +17,7 @@
         ,recover_messages_account/1
         ,recover_messages_account/3
         ]).
+-export([renotify/2]).
 
 -include("kz_voicemail.hrl").
 
@@ -149,4 +150,78 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj).
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec renotify(text(), text()) -> 'ok'.
+renotify(Account, MessageId) ->
+    MODb = get_modb(Account, MessageId),
+    AccountId = get_account_id(Account),
+    case kz_datamgr:open_doc(MODb, MessageId) of
+        {'error', _R} -> ?LOG("unable to find message ~s in ~s: ~p", [MODb, MessageId, _R]);
+        {'ok', JObj} ->
+            Call = rebuild_kapps_call(JObj, AccountId),
+            BoxId = kzd_box_message:source_id(JObj),
+            Metadata = kzd_box_message:metadata(JObj),
+            Length = kz_json:get_value(<<"length">>, Metadata, 0),
+            Props = [{<<"Transcribe-Voicemail">>, 'false'}],
+            log_renotify_result(
+              MessageId
+                               ,BoxId
+                               ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
+             )
+    end.
 
+-spec log_renotify_result(ne_binary(), ne_binary(), any()) -> 'ok'.
+log_renotify_result(MessageId, BoxId, {'ok', JObj}) ->
+    ?LOG("re-notify sent message ~s from mailbox ~s: ~s"
+        ,[MessageId, BoxId, kz_json:encode(JObj)]
+        );
+log_renotify_result(MessageId, BoxId, {'error', JObj}) ->
+    ?LOG("re-notify failed to send message ~s from mailbox ~s: ~s"
+        ,[MessageId, BoxId, kz_json:encode(JObj)]
+        );
+log_renotify_result(MessageId, BoxId, {'timeout', JObjs}) ->
+    ?LOG("re-notify timed out sending message ~s from mailbox ~s: ~s"
+        ,[MessageId, BoxId, kz_json:encode(JObjs)]
+        );
+log_renotify_result(MessageId, BoxId, Result) ->
+    ?LOG("unexpected error in re-notify sending message ~s from mailbox ~s: ~p"
+        ,[MessageId, BoxId, Result]
+        ).
+
+-spec get_modb(ne_binary(), ne_binary()) -> ne_binary().
+get_modb(?MATCH_MODB_SUFFIX_ENCODED(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
+get_modb(?MATCH_MODB_SUFFIX_encoded(_A, _B, _C, _Y, _M) = MODb, _) -> MODb;
+get_modb(?MATCH_MODB_SUFFIX_RAW(_A, _B, _C, _Y, _M) = MODb, _) ->
+    kz_util:format_account_modb(MODb, 'encoded');
+get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_A, _B, _C, _Y, _M) = MODb, _) ->
+    kz_util:format_account_modb(MODb, 'encoded');
+get_modb(Account, ?MATCH_MODB_PREFIX(Year, Month, _)) ->
+    kz_util:format_account_mod_id(Account, Year, Month).
+
+-spec get_account_id(ne_binary()) -> ne_binary().
+get_account_id(?MATCH_ACCOUNT_RAW(AccountId)) -> AccountId;
+get_account_id(?MATCH_ACCOUNT_UNENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
+get_account_id(?MATCH_ACCOUNT_ENCODED(A, B, Rest)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
+get_account_id(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _)) -> AccountId;
+get_account_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest);
+get_account_id(?MATCH_MODB_SUFFIX_UNENCODED(A, B, Rest, _, _)) -> ?MATCH_ACCOUNT_RAW(A, B, Rest).
+
+-spec rebuild_kapps_call(kz_json:object(), ne_binary()) -> kapps_call:call().
+rebuild_kapps_call(JObj, AccountId) ->
+    Metadata = kzd_box_message:metadata(JObj),
+    To = kz_json:get_value(<<"to">>, Metadata, <<"unknown@nodomain">>),
+    CCVs = [{<<"Account-ID">>, AccountId}],
+    Props = [{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, Metadata, kz_util:rand_hex_binary(12))}
+            ,{<<"From">>, kz_json:get_value(<<"from">>, Metadata, <<"unknown@nodomain">>)}
+            ,{<<"Caller-ID-Name">>, kz_json:get_value(<<"caller_id_name">>, Metadata, kz_util:anonymous_caller_id_name())}
+            ,{<<"Caller-ID-Number">>, kz_json:get_value(<<"caller_id_number">>, Metadata, kz_util:anonymous_caller_id_number())}
+            ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+            ,{<<"Custom-SIP-Headers">>, kz_json:new()}
+            ,{<<"Request">>, To}
+            ,{<<"To">>, To}
+            ],
+    kapps_call:from_route_req(kz_json:from_list(Props), kapps_call:new()).
