@@ -99,6 +99,20 @@
             "description": "number manager porting module name",
             "type": "string"
         },
+        "providers": {
+            "default": [
+                "cnam",
+                "e911",
+                "failover",
+                "force_outbound",
+                "local",
+                "port",
+                "prepend",
+                "ringback"
+            ],
+            "description": "Number features sub accounts are allowed to enabled or disable",
+            "type": "array"
+        },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
             "description": "number_manager reconcile regex",

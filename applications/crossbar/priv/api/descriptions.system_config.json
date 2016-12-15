@@ -466,6 +466,7 @@
     "number_manager.other.endpoints": "number_manager.other endpoints",
     "number_manager.other.phonebook_url": "number_manager.other phonebook url",
     "number_manager.porting_module_name": "number manager porting module name",
+    "number_manager.providers": "Number features sub accounts are allowed to enabled or disable",
     "number_manager.reconcile_regex": "number_manager reconcile regex",
     "number_manager.released_state": "number_manager released state",
     "number_manager.should_age": "number_manager should age",
