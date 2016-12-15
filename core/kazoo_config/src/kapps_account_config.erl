@@ -13,7 +13,7 @@
 
 -export([get/2, get/3, get/4
         ,get_global/3, get_global/4
-        ,get_from_reseller/4
+        ,get_from_reseller/3, get_from_reseller/4
         ,set/4
         ,set_global/4
         ,flush/1, flush/2
@@ -49,6 +49,11 @@ get_global(Account, Category, Key, Default) ->
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
 %% @end
 %%--------------------------------------------------------------------
+-spec get_from_reseller(account(), ne_binary(), kz_json:path()) ->
+                               kz_json:api_json_term().
+get_from_reseller(Account, Category, Key) ->
+    get_from_reseller(Account, Category, Key, 'undefined').
+
 -spec get_from_reseller(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                kz_json:api_json_term().
 -ifdef(TEST).

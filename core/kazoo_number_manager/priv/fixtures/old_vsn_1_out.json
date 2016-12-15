@@ -8,12 +8,19 @@
     "pvt_features": {
         "local": {}
     },
-    "pvt_features_available": [
-        "cnam",
-        "e911",
+    "pvt_features_allowed": [
         "failover",
+        "force_outbound",
+        "prepend",
+        "ringback"
+    ],
+    "pvt_features_denied": [
+        "cnam",
+        "inbound_cnam",
+        "outbound_cnam",
+        "e911",
         "port",
-        "prepend"
+        "failover"
     ],
     "pvt_is_billable": false,
     "pvt_modified": 63648176955,

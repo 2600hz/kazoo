@@ -69,6 +69,15 @@
         "e164_converters": {
             "description": "number_manager e164 converters"
         },
+        "features": {
+            "properties": {
+                "allow": {
+                    "properties": {
+                        "description": "Number features a number is allowed to enable or disable"
+                    }
+                }
+            }
+        },
         "fetch_account_from_ports": {
             "default": true,
             "description": "number_manager fetch account from ports",
@@ -98,6 +107,9 @@
             "default": "knm_local",
             "description": "number manager porting module name",
             "type": "string"
+        },
+        "providers": {
+            "description": "Number features sub accounts are allowed to enable or disable"
         },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
@@ -135,6 +147,8 @@
     },
     "required": [
         "e164_converters",
+        "features",
+        "providers",
         "released_state",
         "should_permanently_delete"
     ],
