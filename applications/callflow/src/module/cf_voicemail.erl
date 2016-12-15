@@ -89,6 +89,9 @@
                         )
        ).
 
+-define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
+-define(MAX_LOGIN_ATTEMPTS, 3).
+
 -record(keys, {
           %% Compose Voicemail
           operator = <<"0">>
@@ -116,6 +119,7 @@
               %% Post playbak
               ,keep = <<"1">>
               ,replay = <<"2">>
+              ,forward = <<"3">>
               ,prev = <<"4">>
               ,next = <<"6">>
               ,delete = <<"7">>
@@ -134,7 +138,7 @@
                  ,name_media_id :: api_binary()
                  ,pin = <<>> :: binary()
                  ,timezone :: ne_binary()
-                 ,max_login_attempts = 3 :: non_neg_integer()
+                 ,max_login_attempts = ?MAX_LOGIN_ATTEMPTS :: non_neg_integer()
                  ,require_pin = 'false' :: boolean()
                  ,check_if_owner = 'true' :: boolean()
                  ,owner_id :: api_binary()
@@ -220,9 +224,8 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when
     'ok';
 check_mailbox(#mailbox{exists='false'}=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
-    Resp = find_mailbox(Box, Call, Loop),
-    _ = send_mwi_update(Box, Call),
-    Resp;
+    {PossibleBox, NewLoop} = find_mailbox(Box, Call, ?DEFAULT_FIND_BOX_PROMPT, Loop),
+    check_mailbox(PossibleBox, Call, NewLoop);
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
@@ -270,17 +273,18 @@ check_mailbox(#mailbox{pin=Pin
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_mailbox(mailbox(), kapps_call:call(), non_neg_integer()) -> 'ok'.
+-spec find_mailbox(mailbox(), kapps_call:call(), ne_binary(), non_neg_integer()) -> {mailbox(), non_neg_integer()}.
 
-find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, Loop) when Loop > MaxLoginAttempts ->
+find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, _Call, _VmEntryIdMedia, Loop)
+  when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
+    %% Note: check_mailbox will play vm-abort
     lager:info("maximum number of invalid attempts to find mailbox"),
-    _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
-    'ok';
-find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
+    {Box, Loop};
+find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, Loop) ->
     lager:info("requesting mailbox number to check"),
 
-    NoopId = kapps_call_command:prompt(<<"vm-enter_id">>, Call),
+    NoopId = kapps_call_command:prompt(VmEntryIdMedia, Call),
 
     case kapps_call_command:collect_digits(?MAILBOX_DEFAULT_BOX_NUMBER_LENGTH
                                           ,kapps_call_command:default_collect_timeout()
@@ -289,26 +293,60 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, Loop) ->
                                           ,Call
                                           )
     of
-        {'ok', <<>>} -> find_mailbox(Box, Call, Loop + 1);
+        {'ok', <<>>} ->
+            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            find_mailbox(Box, Call, VmEntryIdMedia, Loop + 1);
         {'ok', Mailbox} ->
             BoxNum = try kz_util:to_integer(Mailbox) catch _:_ -> 0 end,
-            %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
-            %% caller is the owner, and the pin is not required then we skip requesting the pin
-            ViewOptions = [{'key', BoxNum}],
-            AccountDb = kapps_call:account_db(Call),
-            case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
-                {'ok', JObj} ->
-                    lager:info("get profile of ~p", [JObj]),
-                    ReqBox = get_mailbox_profile(kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}])
-                                                ,Call
-                                                ),
-                    check_mailbox(ReqBox, Call, Loop);
-                _E ->
-                    lager:info("mailbox ~s lookup failed: ~p", [Mailbox, _E]),
-                    find_mailbox(Box, Call, Loop + 1)
+            case find_mailbox_by_number(BoxNum, Call) of
+                {'ok', FoundBox} -> {FoundBox, Loop};
+                {'error', 'not_found'} ->
+                    _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+                    find_mailbox(Box, Call, VmEntryIdMedia, Loop + 1);
+                {'error', _R} ->
+                    lager:info("mailbox ~s lookup failed: ~p", [Mailbox, _R]),
+                    _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+                    find_mailbox(Box, Call, VmEntryIdMedia, Loop + 1)
             end;
         _E ->
-            lager:info("recv other: ~p", [_E])
+            lager:info("recv other: ~p", [_E]),
+            {Box, Loop + 1}
+    end.
+
+%% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
+%% caller is the owner, and the pin is not required then we skip requesting the pin
+%%
+%% Note: Check mailbox existence here to properly updating Loop in find_mailbox/4
+-spec find_mailbox_by_number(non_neg_integer(), kapps_call:call()) ->
+                                    {'ok', mailbox()} |
+                                    {'error', any()}.
+find_mailbox_by_number(BoxNum, Call) ->
+    ViewOptions = [{'key', BoxNum}],
+    AccountDb = kapps_call:account_db(Call),
+    case kz_datamgr:get_single_result(AccountDb, <<"vmboxes/listing_by_mailbox">>, ViewOptions) of
+        {'ok', JObj} ->
+            lager:info("get profile of ~p", [JObj]),
+            case get_mailbox_profile(kz_json:from_list([{<<"id">>, kz_doc:id(JObj)}]), Call) of
+                #mailbox{exists='false'} -> {'error', 'not_found'};
+                Found -> {'ok', Found}
+            end;
+        Error -> Error
+    end.
+
+find_destination_mailbox(Call, _SrcBoxId, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+    lager:info("maximum number of invalid attempts to find destination mailbox"),
+    _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    #mailbox{};
+find_destination_mailbox(Call, SrcBoxId, Loop) ->
+    case find_mailbox(#mailbox{}, <<"vm-enter_forward_id">>, Call, Loop) of
+        {#mailbox{exists='false'}, NewLoop} ->
+            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            find_destination_mailbox(Call, SrcBoxId, NewLoop);
+        {#mailbox{mailbox_id=SrcBoxId}, NewLoop} ->
+            lager:info("source mailbox can't be a destination mailbox"),
+            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
+            find_destination_mailbox(Call, SrcBoxId, NewLoop + 1);
+        {DestBox, _NewLoop} -> DestBox
     end.
 
 %%--------------------------------------------------------------------
@@ -773,6 +811,12 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'replay'} ->
             lager:info("caller chose to replay"),
             play_messages(Messages, PrevMessages, Count, Box, Call);
+        {'ok', 'forward'} ->
+            lager:info("caller chose to forward the message"),
+            forward_message(H, Box, Call),
+            _ = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
+            play_messages(T, PrevMessages, Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
@@ -797,11 +841,135 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Main function for forwarding a message to another vmbox of this account
+%% @end
+%%--------------------------------------------------------------------
+-spec forward_message(kz_json:object(), mailbox(), kapps_call:call()) -> 'ok'.
+forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
+    lager:info("enter destination mailbox number"),
+    _ = kapps_call_command:b_flush(Call),
+    PossibleBox = find_destination_mailbox(Call, SrcBoxId, 1),
+    forward_message(Message, SrcBoxId, PossibleBox, Call).
+
+forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, Call) ->
+    _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    lager:info("unable to find destination mailbox, returning to message menu...");
+forward_message(Message, SrcBoxId, DestBox, Call) ->
+    case forward_message_menu(DestBox, Call) of
+        {'ok', 'append'} ->
+            compose_forward_message(Message, SrcBoxId, DestBox, Call);
+        {'ok', 'forward'} ->
+            forward_message('undefined', 'undefined', Message, SrcBoxId, DestBox, Call);
+        {'error', _R} ->
+            lager:info("error during forward message playback: ~p", [_R])
+    end.
+
+forward_message_menu(#mailbox{interdigit_timeout=Interdigit}=DestBox, Call) ->
+    lager:info("playing forward message menu"),
+
+    Prompt = [{'prompt', <<"vm-message_forwarding">>}],
+    NoopId = kapps_call_command:audio_macro(Prompt, Call),
+
+    case kapps_call_command:collect_digits(?KEY_LENGTH
+                                          ,kapps_call_command:default_collect_timeout()
+                                          ,Interdigit
+                                          ,NoopId
+                                          ,Call
+                                          )
+    of
+        {'ok', <<"1">>} -> {'ok', 'append'};
+        {'ok', <<"2">>} -> {'ok', 'forward'};
+        {'ok', <<"0">>} -> {'ok', 'return'};
+        {'error', _}=Error -> Error;
+        _ -> forward_message_menu(DestBox, Call)
+    end.
+
+compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox, Call) ->
+    lager:debug("playing forwarding instructions to caller"),
+    _ = play_instructions(DestBox, Call),
+    _NoopId = kapps_call_command:noop(Call),
+    %% timeout after 5 min for saftey, so this process cant hang around forever
+    case kapps_call_command:wait_for_application_or_dtmf(<<"noop">>, 300000) of
+        {'ok', _} ->
+            lager:info("played fowarding instructions to caller, recording new message"),
+            record_forward(tmp_file(Ext), Message, SrcBoxId, DestBox, Call);
+        {'dtmf', _Digits} ->
+            _ = kapps_call_command:b_flush(Call),
+            lager:info("recording forwarding message"),
+            record_forward(tmp_file(Ext), Message, SrcBoxId, DestBox, Call);
+        {'error', _R} ->
+            lager:info("error while playing voicemail greeting: ~p", [_R])
+    end.
+
+record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
+                                                          ,max_message_length=MaxMessageLength
+                                                          }=DestBox, Call) ->
+    lager:info("composing new forward voicemail to ~s", [AttachmentName]),
+    Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
+                             ,{<<"Duration-ON">>, <<"500">>}
+                             ,{<<"Duration-OFF">>, <<"100">>}
+                             ]),
+    kapps_call_command:tones([Tone], Call),
+    lager:info("composing a voicemail forward to ~s", [AttachmentName]),
+    _NoopId = kapps_call_command:audio_macro([{'prompt',  <<"vm-record_name">>}
+                                             ,{'tones', [Tone]}
+                                             ], Call),
+    case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_util:to_binary(MaxMessageLength), Call) of
+        {'ok', Msg} ->
+            Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
+            IsCallUp = kz_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
+            case IsCallUp
+                andalso review_recording(AttachmentName, 'false', DestBox, Call)
+            of
+                'false' ->
+                    forward_message(AttachmentName, Length, Message, SrcBoxId, DestBox, Call);
+                {'ok', 'record'} ->
+                    record_forward(tmp_file(Ext), Message, SrcBoxId, DestBox, Call);
+                {'ok', _Selection} ->
+                    cf_util:start_task(fun forward_message/6
+                                      ,[AttachmentName, Length, Message, SrcBoxId, DestBox]
+                                      , Call
+                                      )
+            end;
+        {'error', _R} ->
+            lager:info("error while attempting to record a foward message: ~p", [_R])
+    end.
+
+forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_number=BoxNum
+                                                                   ,mailbox_id=BoxId
+                                                                   ,timezone=Timezone
+                                                                   ,owner_id=OwnerId
+                                                                   ,transcribe_voicemail=MaybeTranscribe
+                                                                   ,after_notify_action=Action
+                                                                   ,media_extension=Extension
+                                                                   }=DestBox, Call) ->
+    NewMsgProps = props:filter_empty(
+                    [{<<"Box-Id">>, BoxId}
+                    ,{<<"Owner-Id">>, OwnerId}
+                    ,{<<"Length">>, Length}
+                    ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
+                    ,{<<"After-Notify-Action">>, Action}
+                    ,{<<"Attachment-Name">>, AttachmentName}
+                    ,{<<"Box-Num">>, BoxNum}
+                    ,{<<"Timezone">>, Timezone}
+                    ,{<<"Description">>, <<"forwarded voicemail message with media">>}
+                    ,{<<"Media-Extension">>, Extension}
+                    ]
+                   ),
+    case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
+        'ok' -> send_mwi_update(DestBox, Call);
+        {'error', _, _Msg} ->
+            lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Loops over the message menu after the first play back util the
 %% user provides a valid option
 %% @end
 %%--------------------------------------------------------------------
--type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next'}.
+-type message_menu_returns() :: {'ok', 'keep' | 'delete' | 'return' | 'replay' | 'prev' | 'next' | 'forward'}.
 
 -spec message_menu(mailbox(), kapps_call:call()) ->
                           {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
@@ -813,6 +981,7 @@ message_menu(Box, Call) ->
     message_menu([{'prompt', <<"vm-message_menu">>}], Box, Call).
 message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                         ,keep=Keep
+                                        ,forward=Forward
                                         ,delete=Delete
                                         ,prev=Prev
                                         ,next=Next
@@ -831,6 +1000,7 @@ message_menu(Prompt, #mailbox{keys=#keys{replay=Replay
                                           )
     of
         {'ok', Keep} -> {'ok', 'keep'};
+        {'ok', Forward} -> {'ok', 'forward'};
         {'ok', Delete} -> {'ok', 'delete'};
         {'ok', ReturnMain} -> {'ok', 'return'};
         {'ok', Replay} -> {'ok', 'replay'};

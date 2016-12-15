@@ -11,7 +11,12 @@
 -export([recording_url/2]).
 -export([base_url/2, base_url/3]).
 -export([convert_stream_type/1
-        ,normalize_media/3
+        ,normalize_media/3, normalize_media/4
+        ,normalize_media_file/3, normalize_media_file/4
+        ,synthesize_tone/3, synthesize_tone/4
+        ,detect_file_sample_rate/1
+        ,detect_file_format/1
+        ,join_media_files/1, join_media_files/2
         ]).
 -export([media_path/1, media_path/2]).
 -export([max_recording_time_limit/0]).
@@ -36,85 +41,290 @@
 -define(NORMALIZE_SOURCE_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
 -define(NORMALIZE_DEST_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
 
+-define(NORMALIZATION_FORMAT, kapps_config:get(<<"crossbar.media">>, <<"normalization_format">>, <<"mp3">>)).
+
 -define(USE_ACCOUNT_OVERRIDES, kapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 
--type normalized_media() :: {'ok', iolist()} |
-                            {'error', ne_binary()}.
--spec normalize_media(ne_binary(), ne_binary(), binary()) ->
-                             normalized_media().
--spec normalize_media(ne_binary(), ne_binary(), binary(), kz_proplist()) ->
-                             normalized_media().
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize audio file to the system default or specified sample rate.
+%% Acceptes media file content binary as input.
+%%
+%% By default it returns result as binary, if you want file path to the
+%%  normalized file only, pass the {'output', 'file'} as option.
+%% @end
+%%--------------------------------------------------------------------
+-type normalized_media() :: {'ok', iolist()} | {'error', any()}.
+
+-spec normalize_media(ne_binary(), ne_binary(), binary()) -> normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
     normalize_media(FromFormat, ToFormat, FileContents, []).
 
+-spec normalize_media(ne_binary(), ne_binary(), binary(), kz_proplist()) -> normalized_media().
 normalize_media(FromFormat, ToFormat, FileContents, Options) ->
-    OldFlag = process_flag('trap_exit', 'true'),
+    FileName = tmp_file(FromFormat),
+    case file:write_file(FileName, FileContents) of
+        ok ->
+            Result = normalize_media_file(FromFormat, ToFormat, FileName, Options),
+            kz_util:delete_file(FileName),
+            {'ok', Result};
+        {'error', _}=Error -> Error
+    end.
 
+%%--------------------------------------------------------------------
+%% @doc
+%% Normalize audio file to the system default or specified sample rate.
+%% Acceptes a path to the media file as input.
+%%
+%% By default it returns result as binary, if you want file path to the
+%%  normalized file only, pass the {'output', 'file'} as option.
+%% @end
+%%--------------------------------------------------------------------
+-spec normalize_media_file(ne_binary(), ne_binary(), binary()) -> normalized_media().
+normalize_media_file(FromFormat, FromFormat, FromFile) ->
+    {'ok', FromFile};
+normalize_media_file(FromFormat, ToFormat, FromFile) ->
+    normalize_media_file(FromFormat, ToFormat, FromFile, []).
+
+-spec normalize_media_file(ne_binary(), ne_binary(), binary(), kz_proplist()) -> normalized_media().
+normalize_media_file(FromFormat, ToFormat, FromFile, Options) ->
     FromArgs = props:get_value('from_args', Options, ?NORMALIZE_SOURCE_ARGS),
     ToArgs = props:get_value('to_args', Options, ?NORMALIZE_DEST_ARGS),
     ExtraArgs = props:get_value('extra_args', Options, ""),
+    ToFile = props:get_value('out_file', Options, tmp_file(ToFormat)),
 
     Command = iolist_to_binary([?NORMALIZE_EXE
                                ," ", ExtraArgs
-                               ," -t ", FromFormat, " ", FromArgs, " - "
-                               ," -t ", ToFormat, " ", ToArgs, " - "
+                               ," -t ", FromFormat, " ", FromArgs, " ", FromFile
+                               ," -t ", ToFormat, " ", ToArgs, " ", ToFile
                                ]),
-    PortOptions = ['binary'
-                  ,'exit_status'
-                  ,'use_stdio'
-                  ,'stderr_to_stdout'
-                  ],
-    Response =
-        try open_port({'spawn', kz_util:to_list(Command)}, PortOptions) of
-            Port ->
-                lager:debug("opened port ~p to sox with '~s'", [Port, Command]),
-                do_normalize_media(FileContents, Port, props:get_integer_value('timeout', Options, 20 * ?MILLISECONDS_IN_SECOND))
-        catch
-            _E:_R ->
-                lager:debug("failed to open port with '~s': ~s: ~p", [Command, _E, _R]),
-                {'error', <<"failed to open conversion utility">>}
-        end,
-    process_flag('trap_exit', OldFlag),
-    Response.
+    OutputType = props:get_value('output', Options, 'binary'),
+    lager:debug("normalize media with command: ~p", [Command]),
+    return_command_result(run_command(Command), ToFile, OutputType).
 
--spec do_normalize_media(binary(), port(), pos_integer()) ->
-                                normalized_media().
-do_normalize_media(FileContents, Port, Timeout) ->
-    try erlang:port_command(Port, FileContents) of
-        'true' ->
-            lager:debug("sent data to port"),
-            wait_for_results(Port, Timeout)
+-spec return_command_result({'ok', any()} | {'error', any()}, ne_binary(), 'binary' | 'file') -> normalized_media().
+return_command_result({'ok', _}, FileName, 'binary') ->
+    case file:read_file(FileName) of
+        {'ok', _}=OK ->
+            _ = kz_util:delete_file(FileName),
+            OK;
+        {'error', _}=Error -> Error
+    end;
+return_command_result({'ok', _}, FileName, 'file') -> {'ok', FileName};
+return_command_result({'error', _}=Error, _FileName, _) -> Error.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Run normalizer command
+%% @end
+%%--------------------------------------------------------------------
+run_command(Command) ->
+    try os:cmd(binary_to_list(Command)) of
+        Result ->
+            lager:debug("conversion utility result: ~p", [Result]),
+            {'ok', Result}
     catch
-        _E:_R ->
-            lager:debug("failed to send data to port: ~s: ~p", [_E, _R]),
-            catch erlang:port_close(Port),
-            {'error', <<"failed to communicate with conversion utility">>}
+        _E:Reason ->
+            lager:warning("conversion utility resulted in an exception: ~p:~p", [_E, Reason]),
+            {'error', Reason}
     end.
 
--spec wait_for_results(port(), pos_integer()) ->  normalized_media().
--spec wait_for_results(port(), pos_integer(), iolist()) -> normalized_media().
-wait_for_results(Port, Timeout) ->
-    wait_for_results(Port, Timeout, []).
-wait_for_results(Port, Timeout, Response) ->
-    receive
-        {Port, {'data', Msg}} ->
-            wait_for_results(Port, Timeout, [Response | [Msg]]);
-        {Port, {'exit_status', 0}} ->
-            lager:debug("process exited successfully"),
-            {'ok', Response};
-        {Port, {'exit_status', _Err}} ->
-            lager:debug("process exited with status ~p", [_Err]),
-            {'error', iolist_to_binary(Response)};
-        {'EXIT', Port, _Reason} ->
-            lager:debug("port closed unexpectedly: ~p", [_Reason]),
-            {'error', iolist_to_binary(Response)}
-    after Timeout ->
-            lager:debug("timeout, sending error response: ~p", [Response]),
-            catch erlang:port_close(Port),
-            {'error', iolist_to_binary(Response)}
+%%--------------------------------------------------------------------
+%% @doc
+%% Synthesize a tone, returns as binary or a path to the generated file
+%% @end
+%%--------------------------------------------------------------------
+-spec synthesize_tone(ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', any()}.
+synthesize_tone(SampleRate, Frequency, Length) ->
+    FileName = tmp_file(<<"wav">>),
+    case synthesize_tone(SampleRate, Frequency, Length, FileName) of
+        {'ok', _} ->
+            Result = file:read_file(FileName),
+            kz_util:delete_file(FileName),
+            Result;
+        {'error', _}=Error -> Error
     end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Synthesize a tone, returns as binary or a path to the generated file
+%% @end
+%%--------------------------------------------------------------------
+-spec synthesize_tone(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', any()}.
+synthesize_tone(SampleRate, Frequency, Length, FileName) ->
+    Command = iolist_to_binary([?NORMALIZE_EXE
+                               ,<<" -r ">>, SampleRate
+                               ,<<" -n ">>, FileName
+                               ,<<" synth ">>, Length
+                               ,<<" sin ">>, Frequency
+                               ]),
+    lager:info("synthesize tone command ~p", [Command]),
+    run_command(Command).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Detect sample rate of a media file
+%% @end
+%%--------------------------------------------------------------------
+-spec detect_file_sample_rate(ne_binary()) -> {'ok', binary()} | {'error', 'detection_failed'}.
+detect_file_sample_rate(FileName) ->
+    Command = iolist_to_binary([?NORMALIZE_EXE
+                               ,<<" --i -r ">>
+                               ,FileName
+                               ]),
+    lager:info("detect sample rate command ~p", [Command]),
+    case run_command(Command) of
+        {'ok', Result} ->
+            Regex = "^(\\d+).*$",
+            RegexOptions = [{'capture', [1], 'binary'}],
+            case re:run(Result, Regex, RegexOptions) of
+                {'match', [SampleRate]} ->
+                    {'ok', SampleRate};
+                _Else ->
+                    {'error', 'detection_failed'}
+            end;
+        {'error', _} ->
+            {'error', 'detection_failed'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Detect media format of a media file
+%% @end
+%%--------------------------------------------------------------------
+-spec detect_file_format(ne_binary()) -> {'ok', binary()} | {'error', 'detection_failed'}.
+detect_file_format(FileName) ->
+    Command = iolist_to_binary([?NORMALIZE_EXE
+                               ,<<" --i -t ">>
+                               ,FileName
+                               ]),
+    lager:info("detect file type command ~p~n~n", [Command]),
+    case run_command(Command) of
+        {'ok', Result} ->
+            Regex = "^(\\w+).*$",
+            RegexOptions = [{'capture', [1], 'binary'}],
+            case re:run(Result, Regex, RegexOptions) of
+                {'match', [Format]} ->
+                    {'ok', Format};
+                _Else ->
+                    {'error', 'detection_failed'}
+            end;
+        {'error', _} ->
+            {'error', 'detection_failed'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Join multiple Audio file together. It detects file format, sample rate
+%% of each file and will try to convert sample rate if it different from the
+%% requested sample rate or the default value of 16kHz.
+%% @end
+%%--------------------------------------------------------------------
+-spec join_media_files(ne_binaries()) -> normalized_media().
+join_media_files(FileNames) ->
+    join_media_files(FileNames, []).
+
+-spec join_media_files(ne_binaries(), kz_proplist()) -> normalized_media().
+join_media_files(FileNames, Options) ->
+    DetectedOpts = [detect_format_options(F) || F <- FileNames],
+    SampleRate = props:get_value('sample_rate', Options, <<"16000">>),
+    case maybe_normalize_copy_files(DetectedOpts, SampleRate, []) of
+        {'ok', NewOpts} ->
+            maybe_join_media_files(NewOpts, Options, []);
+        {'error', _}=Error -> Error
+    end.
+
+maybe_join_media_files([], Options, Acc) -> do_join_media_files(Acc, Options);
+maybe_join_media_files([{_, 'undefined', _}|_], _, _) -> {'error', 'join_media_failed'};
+maybe_join_media_files([{_, _, 'undefined'}|_], _, _) -> {'error', 'join_media_failed'};
+maybe_join_media_files([F|Files], Options, Acc) ->
+    maybe_join_media_files(Files, Options, [F|Acc]).
+
+do_join_media_files(Files, Options) ->
+    SampleRate = props:get_value('sample_rate', Options, <<"16000">>),
+    ToFormat = props:get_value('to_format', Options, ?NORMALIZATION_FORMAT),
+    ToFile = props:get_value('out_file', Options, tmp_file(ToFormat)),
+    Command = iolist_to_binary(
+                [?NORMALIZE_EXE
+                ,[[" -r ", Rate, " -t ", Format, " ", File]
+                  || {File, Rate, Format} <- Files
+                 ]
+                ," -r ", SampleRate
+                ," -t ", ToFormat
+                ," ", ToFile
+                ]
+               ),
+    OutputType = props:get_value('output', Options, 'binary'),
+    lager:debug("joining media files with command: ~p", [Command]),
+    Result = return_command_result(run_command(Command), ToFile, OutputType),
+    %% cleanup copied files
+    _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+    Result.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Based on detected format options, normalize the files if
+%% sample rate are different of desire sample rate, otherwise
+%% copy the files to a temporary place to join them together.
+%% @end
+%%--------------------------------------------------------------------
+maybe_normalize_copy_files([], _SampleRate, Acc) -> {'ok', Acc};
+maybe_normalize_copy_files([{File, SampleRate, Format}|Files], SampleRate, Acc) ->
+    NewFile = tmp_file(Format),
+    case file:copy(File, NewFile) of
+        {'ok', _} ->
+            maybe_normalize_copy_files(Files, SampleRate, [{NewFile, SampleRate, Format}|Acc]);
+        {'error', _} ->
+            lager:warning("failed to copy file to a temproray place to join media files"),
+            %% cleanup already copied files
+            _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+            {'error', 'normalization_failed'}
+    end;
+maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
+    NormOptions = [{'output', 'file'}
+                  ,{'to_args', <<"-r ", SampleRate/binary>>}
+                  ],
+    case normalize_media_file(Format, Format, File, NormOptions) of
+        {'ok', NormFile} ->
+            maybe_normalize_copy_files(Files, SampleRate, [{NormFile, SampleRate, Format}|Acc]);
+        {'error', _} ->
+            lager:warning("can't normalize file ~s for preforming join media", [File]),
+            %% cleanup already copied files
+            _ = [kz_util:delete_file(F) || {F, _, _} <- Files],
+            {'error', 'normalization_failed'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Detect file format options(sample_rate, file format) and return
+%% a tuple of detect options
+%% @end
+%%--------------------------------------------------------------------
+detect_format_options(File) ->
+    FileSampleRate = detect_file_sample_rate(File),
+    FileFormat = detect_file_format(File),
+    case {FileSampleRate, FileFormat} of
+        {{'ok', SampleRate}, {'ok', Format}} ->
+            {File, SampleRate, Format};
+        {{'ok', SampleRate}, {'error', _}} ->
+            {File, SampleRate, 'undefined'};
+        {{'error', _}, {'ok', Format}} ->
+            {File, 'undefined', Format};
+        {{'error', _}, {'error', _}} ->
+            {File, 'undefined', 'undefined'}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec tmp_file(ne_binary()) -> ne_binary().
+tmp_file(Ext) ->
+    <<"/tmp/", (kz_util:rand_hex_binary(16))/binary, ".", Ext/binary>>.
 
 -spec recording_url(ne_binary(), kz_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
