@@ -516,6 +516,8 @@
          )
        ).
 
+%% if we change this, we should also in .app file
+%%
 -define(NODE_MODULES,
         [<<"config">>
         ,<<"node">>
