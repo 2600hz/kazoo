@@ -169,8 +169,8 @@ renotify(Account, MessageId) ->
             Props = [{<<"Transcribe-Voicemail">>, 'false'}],
             log_renotify_result(
               MessageId
-                  ,BoxId
-                  ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
+                               ,BoxId
+                               ,kvm_util:publish_saved_notify(MessageId, BoxId, Call, Length, Props)
             )
     end.
 
@@ -183,8 +183,12 @@ log_renotify_result(MessageId, BoxId, {'error', JObj}) ->
     ?LOG("re-notify failed to send message ~s from mailbox ~s: ~s"
         ,[MessageId, BoxId, kz_json:encode(JObj)]
         );
+log_renotify_result(MessageId, BoxId, {'timeout', JObjs}) ->
+    ?LOG("re-notify timed out sending message ~s from mailbox ~s: ~s"
+        ,[MessageId, BoxId, kz_json:encode(JObjs)]
+        );
 log_renotify_result(MessageId, BoxId, Result) ->
-    ?LOG("unexpected error in re-notify sending message ~s from mailbox ~s: ~s"
+    ?LOG("unexpected error in re-notify sending message ~s from mailbox ~s: ~p"
         ,[MessageId, BoxId, Result]
         ).
 

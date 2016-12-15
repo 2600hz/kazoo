@@ -378,11 +378,16 @@ notify_and_update_meta(Call, MediaId, Length, Props) ->
     end.
 
 -spec log_notification_response(notify_action(), ne_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
-log_notification_response('nothing', _MediaId, _UpdateJObj, _) -> 'ok';
+log_notification_response('nothing', _MediaId, _UpdateJObj, Call) ->
+    AccountId = kapps_call:account_id(Call),
+    lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
+               ,[_MediaId, AccountId, kz_json:encode(_UpdateJObj)]);
 log_notification_response(_Action, MediaId, UpdateJObj, Call) ->
     AccountId = kapps_call:account_id(Call),
     case kz_json:get_value(<<"Status">>, UpdateJObj) of
-        <<"completed">> -> 'ok';
+        <<"completed">> ->
+            lager:debug("successfully sent new voicemail notification for message ~s in account ~s: ~s"
+                       ,[MediaId, AccountId, kz_json:encode(UpdateJObj)]);
         <<"failed">> ->
             lager:debug("failed to send new voicemail notification for message ~s in account ~s: ~s"
                        ,[MediaId
