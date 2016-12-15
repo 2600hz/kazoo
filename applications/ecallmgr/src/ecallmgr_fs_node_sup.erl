@@ -35,21 +35,6 @@
 -define(NODE_WORKER, ?NODE_CHILD_TYPE(<<"worker">>)).
 -define(NODE_SUPERVISOR, ?NODE_CHILD_TYPE(<<"supervisor">>)).
 
--define(CHILDREN, kz_json:from_list(
-                    [{<<"config">>, ?NODE_WORKER}
-                    ,{<<"node">>, ?NODE_WORKER}
-                    ,{<<"authn">>, ?NODE_WORKER}
-                    ,{<<"channel">>, ?NODE_WORKER}
-                    ,{<<"conference">>, ?NODE_WORKER}
-                    ,{<<"event_stream_sup">>, ?NODE_SUPERVISOR}
-                    ,{<<"msg">>, ?NODE_WORKER}
-                    ,{<<"notify">>, ?NODE_WORKER}
-                    ,{<<"recordings">>, ?NODE_WORKER}
-                    ,{<<"resource">>, ?NODE_WORKER}
-                    ,{<<"route_sup">>, ?NODE_SUPERVISOR}
-                    ,{<<"channel_hold">>, ?NODE_WORKER}
-                    ])).
-
 %% ===================================================================
 %% API functions
 %% ===================================================================
@@ -137,7 +122,8 @@ init([Node, Options]) ->
 
     NodeB = kz_util:to_binary(Node),
     Args = [Node, Options],
-    Modules = ecallmgr_config:get(<<"modules">>, ?CHILDREN),
+    M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
+    Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
     JObj = maybe_correct_modules(Modules),
     Children = kz_json:foldr(fun(Module, V, Acc) ->
                                      Type = kz_json:get_ne_binary_value(<<"type">>, V),
@@ -170,7 +156,7 @@ maybe_correct_modules(Modules)
   when is_list(Modules) ->
     FixedModules = [fix_module(Mod) || Mod <- Modules],
     maybe_correct_modules(kz_json:from_list(FixedModules));
-maybe_correct_modules(JObj) -> set_order(kz_json:merge_jobjs(JObj, ?CHILDREN)).
+maybe_correct_modules(JObj) -> set_order(JObj).
 
 -spec fix_module_type(ne_binary()) -> kz_json:object().
 fix_module_type(<<"pus_", _/binary>>) ->
@@ -182,7 +168,10 @@ fix_module_type(_) ->
 maybe_module_deprecated(<<"route">>) -> <<"route_sup">>;
 maybe_module_deprecated(Mod) -> Mod.
 
--spec fix_module(ne_binary()) -> {ne_binary(), kz_json:object()}.
+-spec fix_module(ne_binary() | string()) -> {ne_binary(), kz_json:object()}.
+fix_module(Mod)
+  when not is_binary(Mod)->
+    fix_module(kz_util:to_binary(Mod));
 fix_module(Mod) ->
     Module = maybe_module_deprecated(Mod),
     ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),
@@ -194,6 +183,8 @@ set_order(JObj) ->
 
 -spec set_config_first(tuple(), tuple()) -> boolean().
 set_config_first({<<"config">>, _}, _) -> 'true';
+set_config_first({<<"node">>, <<"config">>}, _) -> 'false';
+set_config_first({<<"node">>, _}, _) -> 'true';
 set_config_first(_, _) -> 'false'.
 
 -spec which_children(SupRef) -> [{Id,Child,Type,Modules}] | {'EXIT', any()} when
