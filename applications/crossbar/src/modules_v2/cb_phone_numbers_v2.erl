@@ -512,15 +512,9 @@ view_account_phone_numbers(Context) ->
 
 maybe_fix_available(NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
-    FAs = kz_json:get_ne_value(<<"features_available">>, JObj, []),
-    NewJObj =
-        case lists:member(<<"local">>, FAs) of
-            false -> JObj;
-            true ->
-                Fs = kz_json:get_ne_value(<<"features">>, JObj, []),
-                NewFAs = ?LOCAL_FEATURES(FAs) -- lists:usort(Fs),
-                kz_json:set_value(<<"features_available">>, NewFAs, JObj)
-        end,
+    MaybeAccount = kz_json:get_ne_binary_value(<<"assigned_to">>, JObj),
+    FAs = knm_providers:available_features(MaybeAccount),
+    NewJObj = kz_json:set_value(<<"features_available">>, FAs, JObj),
     kz_json:from_list([{Num, NewJObj}]).
 
 %% @private

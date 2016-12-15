@@ -75,14 +75,22 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
 
--define(LOCAL_FEATURES, [?FEATURE_FAILOVER
-                        ,?FEATURE_FORCE_OUTBOUND
-                        ,?FEATURE_LOCAL
-                        ,?FEATURE_PREPEND
-                        ,?FEATURE_RINGBACK
-                        ]).
--define(LOCAL_FEATURES(Features),
-        lists:usort(?LOCAL_FEATURES ++ Features)).
+-define(DEFAULT_LEGACY_PROVIDERS, [?FEATURE_CNAM
+                                  ,?FEATURE_FAILOVER
+                                  ,?FEATURE_LOCAL
+                                  ,?FEATURE_PORT
+                                  ,?FEATURE_PREPEND
+                                  ]).
+
+-define(DEFAULT_MASTER_PROVIDERS, [?FEATURE_CNAM
+                                  ,?FEATURE_E911
+                                  ,?FEATURE_FAILOVER
+                                  ,?FEATURE_FORCE_OUTBOUND
+                                  ,?FEATURE_LOCAL
+                                  ,?FEATURE_PORT
+                                  ,?FEATURE_PREPEND
+                                  ,?FEATURE_RINGBACK
+                                  ]).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).

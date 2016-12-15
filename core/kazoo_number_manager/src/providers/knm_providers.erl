@@ -54,17 +54,7 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 -spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
 allowed_features(PhoneNumber) ->
-    maybe_fix_e911(
-      available_features(knm_phone_number:assigned_to(PhoneNumber))).
-
--spec maybe_fix_e911(ne_binaries()) -> ne_binaries().
-maybe_fix_e911([]) -> [];
-maybe_fix_e911(Features) ->
-    E911 = [<<"dash_e911">>, <<"vitelity_e911">>],
-    case lists:any(fun(F) -> lists:member(F, Features) end, E911) of
-        'true' -> Features ++ [<<"e911">>];
-        'false' -> Features
-    end.
+    available_features(knm_phone_number:assigned_to(PhoneNumber)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -75,12 +65,43 @@ maybe_fix_e911(Features) ->
 -spec available_features(api_ne_binary()) -> ne_binaries().
 available_features(undefined) -> [];
 available_features(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    lists:usort(
-      kapps_account_config:get_from_reseller(AccountId
-                                            ,?KNM_CONFIG_CAT
-                                            ,<<"allowed_features">>
-                                            ,?DEFAULT_ALLOWED_FEATURES
-                                            )).
+    Master = master_providers(),
+    Reseller = legacy_providers(AccountId),
+    [Feature
+     || Feature <- Reseller,
+        lists:member(Feature, Master)
+    ].
+
+legacy_providers(undefined) -> [];
+legacy_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    Providers =
+        kapps_account_config:get_from_reseller(AccountId
+                                              ,?KNM_CONFIG_CAT
+                                              ,<<"providers">>
+                                              ,?DEFAULT_LEGACY_PROVIDERS
+                                              ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+
+master_providers() ->
+    Providers =
+        kapps_config:get(?KNM_CONFIG_CAT
+                        ,<<"providers">>
+                        ,?DEFAULT_MASTER_PROVIDERS
+                        ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+
+legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> Rest;
+legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> Rest;
+legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"dash_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
+legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"telnyx_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"vitelity_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(Else) ->
+    lager:debug("letting ~p through", [Else]),
+    Else.
 
 %%--------------------------------------------------------------------
 %% @public
