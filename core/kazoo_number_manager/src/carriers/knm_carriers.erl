@@ -382,7 +382,7 @@ is_number_billable(PhoneNumber) ->
     Carrier = knm_phone_number:module_name(PhoneNumber),
     try apply(Carrier, is_number_billable, [PhoneNumber])
     catch
-        'error':_R -> 'false'
+        'error':_R -> 'true'
     end.
 
 %%%===================================================================
