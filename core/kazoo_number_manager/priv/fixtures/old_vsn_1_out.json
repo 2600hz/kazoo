@@ -10,7 +10,6 @@
     },
     "pvt_features_available": [
         "cnam",
-        "e911",
         "failover",
         "port",
         "prepend"

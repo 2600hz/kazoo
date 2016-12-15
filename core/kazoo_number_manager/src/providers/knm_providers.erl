@@ -13,7 +13,7 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([allowed_features/1
+-export([allowed_features/1, available_features/1
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -63,18 +63,66 @@ delete(Number) ->
 %%--------------------------------------------------------------------
 -spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
 allowed_features(PhoneNumber) ->
-    case knm_phone_number:assigned_to(PhoneNumber) of
-        'undefined' -> [];
-        AccountId -> maybe_fix_e911(?ALLOWED_FEATURES(AccountId))
-    end.
+    available_features(knm_phone_number:assigned_to(PhoneNumber)).
 
--spec maybe_fix_e911(ne_binaries()) -> ne_binaries().
-maybe_fix_e911(Features) ->
-    E911 = [<<"dash_e911">>, <<"vitelity_e911">>],
-    case lists:any(fun(F) -> lists:member(F, Features) end, E911) of
-        'true' -> Features ++ [<<"e911">>];
-        'false' -> Features
-    end.
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% List features an account is allowed by its reseller to enable on numbers.
+%% @end
+%%--------------------------------------------------------------------
+-spec available_features(api_ne_binary()) -> ne_binaries().
+available_features(undefined) -> [];
+available_features(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    FromMaster = master_providers(),
+    FromReseller = reseller_providers(AccountId),
+    [Feature
+     || Feature <- FromReseller,
+        lists:member(Feature, FromMaster)
+    ].
+
+-ifdef(TEST).
+reseller_providers(?RESELLER_ACCOUNT_ID) ->
+    lists:usort([?FEATURE_E911 | ?DEFAULT_RESELLER_PROVIDERS]);
+reseller_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    Providers =
+        kapps_account_config:get_from_reseller(AccountId
+                                              ,?KNM_CONFIG_CAT
+                                              ,<<"providers">>
+                                              ,?DEFAULT_RESELLER_PROVIDERS
+                                              ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+-else.
+reseller_providers(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    Providers =
+        kapps_account_config:get_from_reseller(AccountId
+                                              ,?KNM_CONFIG_CAT
+                                              ,<<"providers">>
+                                              ,?DEFAULT_RESELLER_PROVIDERS
+                                              ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+-endif.
+
+master_providers() ->
+    Providers =
+        kapps_config:get(?KNM_CONFIG_CAT
+                        ,<<"providers">>
+                        ,?DEFAULT_MASTER_PROVIDERS
+                        ),
+    lists:usort([legacy_provider_to_feature(P) || P <- Providers]).
+
+legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
+legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
+legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"dash_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
+legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"telnyx_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(<<"vitelity_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(Else) ->
+    lager:debug("letting ~p through", [Else]),
+    Else.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,11 +208,6 @@ provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
-%% These 2 for backward compatibility:
-provider_module(<<"dash_e911">>=OldFeature, _) ->
-    <<"knm_", OldFeature/binary>>;
-provider_module(<<"vitelity_e911">>=OldFeature, _) ->
-    <<"knm_", OldFeature/binary>>;
 provider_module(Other, _) ->
     lager:warning("unmatched feature provider '~s', allowing", [Other]),
     Other.

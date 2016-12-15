@@ -10,14 +10,9 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
--define(FEATURES_AVAILABLE, [<<"cnam">>
-                            ,<<"e911">>
-                            ,<<"failover">>
-                            ,<<"port">>
-                            ,<<"prepend">>
-                            ]).
+-define(FEATURES_AVAILABLE, ?DEFAULT_RESELLER_PROVIDERS).
 
-is_dirty_test_() ->
+is_dirty1_test_() ->
     {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD_NUM),
     JObj = knm_phone_number:to_json(OldPN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_out.json"))),
@@ -36,12 +31,10 @@ is_dirty_test_() ->
                   ,kz_json:get_value(<<"pvt_db_name">>, JObj)
                   )
 
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_available">>, NewJObj)
-                  ,kz_json:get_value(<<"pvt_features_available">>, JObj)
-                  )
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_available">>, OldJObj)
-                  ,kz_json:get_value(<<"pvt_features_available">>, JObj)
-                  )
+    ,?_assertEqual(lists:usort([?FEATURE_E911|?FEATURES_AVAILABLE])
+                  ,kz_json:get_value(<<"pvt_features_available">>, OldJObj))
+    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
+    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
 
     ,?_assertEqual(kz_json:get_value(<<"pvt_module_name">>, NewJObj)
                   ,kz_json:get_value(<<"pvt_module_name">>, JObj)
