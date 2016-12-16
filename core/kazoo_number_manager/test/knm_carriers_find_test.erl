@@ -10,6 +10,16 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
+is_number_billable_test_() ->
+    {ok, N} = knm_number:get(?TEST_OLD_NUM),
+    PN1 = knm_number:phone_number(N),
+    PN2 = knm_phone_number:set_module_name(PN1, <<"knm_bandwidth2">>),
+    PN3 = knm_phone_number:set_module_name(PN1, <<"wnm_pacwest">>),
+    [?_assertEqual(false, knm_carriers:is_number_billable(PN1))
+    ,?_assertEqual(true, knm_carriers:is_number_billable(PN2))
+    ,?_assertEqual(true, knm_carriers:is_number_billable(PN3))
+    ].
+
 check_test_() ->
     Nums = [?TEST_AVAILABLE_NUM
            ,?TEST_IN_SERVICE_NUM
