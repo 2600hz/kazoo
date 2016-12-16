@@ -219,7 +219,7 @@ get_caller_id_number(Call) ->
                                   {'timeout', kz_json:objects()} |
                                   {'error', any()}.
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
-    MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props),
+    MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
     Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),
 
     NotifyProp = [{<<"From-User">>, kapps_call:from_user(Call)}
