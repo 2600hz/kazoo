@@ -859,6 +859,7 @@ forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
     PossibleBox = find_destination_mailbox(Call, SrcBoxId, 1),
     forward_message(Message, SrcBoxId, PossibleBox, Call).
 
+-spec forward_message(kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, Call) ->
     _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
     lager:info("unable to find destination mailbox, returning to message menu...");
@@ -872,6 +873,9 @@ forward_message(Message, SrcBoxId, DestBox, Call) ->
             lager:info("error during forward message playback: ~p", [_R])
     end.
 
+-spec forward_message_menu(mailbox(), kapps_call:call()) ->
+                                  {'error', 'channel_hungup' | 'channel_unbridge' | kz_json:object()} |
+                                  {'ok', 'append' | 'forward' | 'return'}.
 forward_message_menu(#mailbox{interdigit_timeout=Interdigit}=DestBox, Call) ->
     lager:info("playing forward message menu"),
 
@@ -892,6 +896,7 @@ forward_message_menu(#mailbox{interdigit_timeout=Interdigit}=DestBox, Call) ->
         _ -> forward_message_menu(DestBox, Call)
     end.
 
+-spec compose_forward_message(kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox, Call) ->
     lager:debug("playing forwarding instructions to caller"),
     _ = play_instructions(DestBox, Call),
@@ -909,6 +914,7 @@ compose_forward_message(Message, SrcBoxId, #mailbox{media_extension=Ext}=DestBox
             lager:info("error while playing voicemail greeting: ~p", [_R])
     end.
 
+-spec record_forward(ne_binary(), kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
                                                           ,max_message_length=MaxMessageLength
                                                           }=DestBox, Call) ->
@@ -940,6 +946,7 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
             lager:info("error while attempting to record a foward message: ~p", [_R])
     end.
 
+-spec forward_message(api_ne_binary(), api_pos_integer(), kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_number=BoxNum
                                                                    ,mailbox_id=BoxId
                                                                    ,timezone=Timezone
@@ -961,7 +968,6 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ,{<<"Media-Extension">>, Extension}
                     ]
                    ),
-    io:format("NewMsgProps ~p~n~n", [NewMsgProps]),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
         'ok' -> send_mwi_update(DestBox, Call);
         {'error', _, _Msg} ->
