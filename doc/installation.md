@@ -15,6 +15,13 @@ $ sudo apt-get install build-essential libxslt-dev \
 
 Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
 
+#### Docs-relatd
+
+When running `make docs`, some Python libraries are useful:
+
+```shell
+$ sudo apt-get install python2.7 python-yaml
+```
 
 ### Erlang
 
