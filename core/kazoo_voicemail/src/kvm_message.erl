@@ -450,7 +450,7 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec prepend_and_notify(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> 'ok'.
+-spec prepend_and_notify(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> new_msg_ret().
 prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     Length = props:get_value(<<"Length">>, Props),
     try prepend_forward_message(Call, ForwardId, Metadata, SrcBoxId, Props) of
@@ -459,7 +459,6 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {'error', _R} ->
             %% prepend failed, but at least try to forward without a prepend message
-            lager:error("prepend failed: ~p", [_R]),
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     catch
         _T:_E ->
@@ -468,6 +467,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     end.
 
+-spec prepend_forward_message(kapps_call:cal(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
 prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     lager:debug("trying to prepend a message to forwarded voicemail message ~s", [ForwardId]),
     AccountId = kapps_call:account_id(Call),
@@ -494,9 +494,12 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
             kz_datamgr:put_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, JoinFilename, FileContents);
         {'error', _} ->
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
-            lager:warning("failed")
+            lager:warning("failed to join forward message media files"),
+            {'error', 'join_failed'}
+
     end.
 
+-spec write_attachment_to_file(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
 write_attachment_to_file(AccountId, MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Doc} ->
@@ -504,6 +507,7 @@ write_attachment_to_file(AccountId, MessageId) ->
         {'error', _}=Error -> Error
     end.
 
+-spec write_attachment_to_file(ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
 write_attachment_to_file(AccountId, MessageId, AttachmentId) ->
     Db = kvm_util:get_db(AccountId, MessageId),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
