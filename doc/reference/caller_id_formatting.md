@@ -1,7 +1,3 @@
-/*
-Section: Kazoo
-Title: Caller ID Formatting
-*/
 
 # Caller ID Formatting
 

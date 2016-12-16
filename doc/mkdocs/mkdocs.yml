@@ -1,5 +1,4 @@
 site_name: Dev Reference
-theme: null
 theme_dir: '2600Hz_theme'
 
 pages:
@@ -78,7 +77,7 @@ pages:
     - 'Twiml':
       - 'applications/pivot/doc/twiml/README.md'
     - 'Tutorials':
-      - 'applications/pivot/doc/kazoocon-2014.md'
+      - 'doc/kazoocon/pivot2014.md'
     - 'Known_Issues':
       - 'applications/pivot/doc/issues.md'
     - 'Kazoo':

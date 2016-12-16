@@ -1,8 +1,3 @@
-/*
-Section: Pivot
-Title: Pivot KazooCon 2014 Demo
-Language: en-US
-*/
 
 # Infrastructure by Pastie.org
 
