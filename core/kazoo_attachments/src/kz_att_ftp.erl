@@ -145,11 +145,15 @@ format_url(Fields, JObj, Args, Separator) ->
 format_url_field(JObj, Args, Fields, Acc)
   when is_list(Fields) ->
     [format_url(Fields, JObj, Args, <<>>) | Acc];
+format_url_field(JObj, Args, #{<<"arg">> := Arg}, Fields) ->
+    format_url_field(JObj, Args, {arg, Arg}, Fields);
 format_url_field(_JObj, Args, {arg, Arg}, Fields) ->
     case props:get_value(Arg, Args) of
         'undefined' -> Fields;
         V -> [kz_util:uri_encode(V) | Fields]
     end;
+format_url_field(JObj, Args, #{<<"field">> := Field}, Fields) ->
+    format_url_field(JObj, Args, {field, Field}, Fields);
 format_url_field(JObj, _Args, {field, Field}, Fields) ->
     case kz_json:get_value(Field, JObj) of
         'undefined' -> Fields;
@@ -161,6 +165,6 @@ format_url_field(_JObj, _Args, Field, Fields) ->
 default_format() ->
     [{field, <<"pvt_account_id">>}
     ,{field, <<"owner_id">>}
-    ,{args, <<"id">>}
+    ,{arg, <<"id">>}
     ,{arg, <<"attachment">>}
     ].
