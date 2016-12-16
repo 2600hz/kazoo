@@ -107,8 +107,21 @@ maybe_get_endpoint_cid(Validate, Attribute, Call) ->
             Number = get_cid_or_default(Attribute, <<"number">>, JObj),
             Name = get_cid_or_default(Attribute, <<"name">>, JObj),
             _ = log_configured_endpoint_cid(Attribute, Name, Number),
-            maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call)
+            Call1 = maybe_add_originals_to_kvs(Number, Name, Call),
+            maybe_use_presence_number(Number, Name, JObj, Validate, Attribute, Call1)
     end.
+
+-spec maybe_add_originals_to_kvs(api_ne_binary(), api_ne_binary(), kapps_call:call()) -> kapps_call:call().
+maybe_add_originals_to_kvs('undefined', 'undefined', Call) -> Call;
+maybe_add_originals_to_kvs('undefined', ?NE_BINARY=Name, Call) ->
+    kapps_call:exec([fun(C) -> kapps_call:kvs_store('original_cid_name', Name, C) end], Call);
+maybe_add_originals_to_kvs(?NE_BINARY=Number, 'undefined', Call) ->
+    kapps_call:exec([fun(C) -> kapps_call:kvs_store('original_cid_number', Number, C) end], Call);
+maybe_add_originals_to_kvs(Number, Name, Call) ->
+    Updates = [fun(C) -> kapps_call:kvs_store('original_cid_number', Number, C) end
+              ,fun(C) -> kapps_call:kvs_store('original_cid_name', Name, C) end
+              ],
+    kapps_call:exec(Updates, Call).
 
 -spec log_configured_endpoint_cid(ne_binary(), api_binary(), api_binary()) -> 'ok'.
 log_configured_endpoint_cid(Attribute, 'undefined', 'undefined') ->
@@ -148,22 +161,24 @@ maybe_normalize_cid(Number, Name, Validate, Attribute, Call) ->
 -spec maybe_prefix_cid_number(ne_binary(), ne_binary(), boolean(), ne_binary(), kapps_call:call()) ->
                                      {api_binary(), api_binary()}.
 maybe_prefix_cid_number(Number, Name, Validate, Attribute, Call) ->
+    OrigNumber = kapps_call:kvs_fetch('original_cid_number', Number, Call),
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call);
         Prefix ->
             lager:debug("prepending caller id number with ~s", [Prefix]),
-            Prefixed = <<(kz_util:to_binary(Prefix))/binary, Number/binary>>,
+            Prefixed = <<(kz_util:to_binary(Prefix))/binary, OrigNumber/binary>>,
             maybe_prefix_cid_name(Prefixed, Name, Validate, Attribute, Call)
     end.
 
 -spec maybe_prefix_cid_name(ne_binary(), ne_binary(), boolean(), ne_binary(), kapps_call:call()) ->
                                    {api_binary(), api_binary()}.
 maybe_prefix_cid_name(Number, Name, Validate, Attribute, Call) ->
+    OrigName = kapps_call:kvs_fetch('original_cid_name', Name, Call),
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> maybe_rewrite_cid_number(Number, Name, Validate, Attribute, Call);
         Prefix ->
             lager:debug("prepending caller id name with ~s", [Prefix]),
-            Prefixed = <<(kz_util:to_binary(Prefix))/binary, Name/binary>>,
+            Prefixed = <<(kz_util:to_binary(Prefix))/binary, OrigName/binary>>,
             maybe_rewrite_cid_number(Number, Prefixed, Validate, Attribute, Call)
     end.
 
