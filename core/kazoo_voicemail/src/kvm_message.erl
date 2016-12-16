@@ -82,9 +82,7 @@ forward_message(Call, Metadata, SrcBoxId, Props) ->
 -spec new_forward_message(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) -> new_msg_ret().
 new_forward_message(Call, Metadata, SrcBoxId, Props) ->
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
-    PrependLength = props:get_value(<<"Length">>, Props),
-    OrigLength = kz_json:get_integer_value(<<"lenght">>, Metadata, 0),
-    Length = PrependLength + OrigLength,
+    Length = props:get_value(<<"Length">>, Props),
     AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
 
     lager:debug("saving new ~bms forward voicemail media and metadata", [Length]),
@@ -384,9 +382,13 @@ maybe_add_metadata(Call, JObj, 'undefined', Props) ->
     Timestamp = kz_util:current_tstamp(),
     Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj);
-maybe_add_metadata(_Call, JObj, Metadata, _Props) ->
+maybe_add_metadata(_Call, JObj, Metadata, Props) ->
     MediaId = kz_doc:id(JObj),
-    kzd_box_message:set_metadata(kzd_box_message:set_media_id(MediaId, Metadata), JObj).
+    Updates = [fun(M) -> kz_json:set_value(<<"timestamp">>, kz_util:current_tstamp(), M) end
+              ,fun(M) -> kzd_box_message:set_media_id(MediaId, M) end
+              ,fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
+              ],
+    kzd_box_message:set_metadata(lists:foldl(fun(F, Meta) -> F(Meta) end, Metadata, Updates), JObj).
 
 -spec save_generate_media_url(kz_json:object(), ne_binary()) -> {ne_binary(), sotre_media_url()}.
 save_generate_media_url(MsgJObj, AttachmentName) ->
