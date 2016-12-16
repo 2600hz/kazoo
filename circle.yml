@@ -19,9 +19,8 @@ dependencies:
   pre:
       - bash ./scripts/circleci-build-erlang.sh:
           timeout: 1800
+      - pip install --upgrade pip
       - pip install PyYAML
-  post:
-    - pyenv global 2.7.12
 
 test:
   pre:
