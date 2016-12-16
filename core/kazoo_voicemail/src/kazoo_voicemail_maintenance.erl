@@ -149,7 +149,7 @@ rebuild_message_metadata(JObj, AttachmentName) ->
                ,{fun kapps_call:set_caller_id_name/2, CIDName}
                ],
     Call = kapps_call:exec(Routines, kapps_call:new()),
-    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, Timestamp),
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj).
 
 %%--------------------------------------------------------------------
