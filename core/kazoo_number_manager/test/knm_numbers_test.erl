@@ -190,6 +190,6 @@ release_test_() ->
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
     ,?_assertMatch([_], maps:get(ok, Ret1))
     ,{"Verify number went from in_service to available"
-     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret1)))
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret1)))
      }
     ].

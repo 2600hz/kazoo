@@ -711,7 +711,7 @@ delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
             merge_okkos(delete_permanently(LocalNs), maybe_age(OtherNs))
     end.
 
-delete_permanently(T) ->
+delete_permanently(T=#{options := Options}) ->
     lager:debug("deleting permanently"),
     NewOptions = [{state, ?NUMBER_STATE_DELETED} | Options],
     do(fun knm_number_states:to_options_state/1, options(NewOptions, T)).
