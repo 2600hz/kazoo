@@ -12,6 +12,8 @@
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
+-compile({no_auto_import,[apply/3]}).
+
 -export([find/1, find/2
         ,check/1, check/2
         ,available_carriers/1
@@ -130,7 +132,7 @@ find_fold(_Carrier, _, _, Acc=#{should_continue := ShouldContinue
     lager:debug("stopping ~s with ~p (~p) numbers found", [_Carrier, _Count, Left]),
     Acc;
 find_fold(Carrier, Prefix, Options, Acc=#{left := Quantity}) ->
-    try Carrier:find_numbers(Prefix, Quantity, Options) of
+    try apply(Carrier, find_numbers, [Prefix, Quantity, Options]) of
         {'ok', []} -> Acc;
         {'ok', Numbers} -> process_carrier_results(Numbers, Acc);
         {'bulk', []} -> Acc;
@@ -169,8 +171,7 @@ acc_found(Acc=#{found := Found
         ,left => Left - NewNumbersCount
         }.
 
--spec process_number_result(knm_number:knm_number(), kz_json:objects()) ->
-                                   kz_json:objects().
+-spec process_number_result(knm_number:knm_number(), kz_json:objects()) -> kz_json:objects().
 process_number_result(Number, Acc) ->
     PhoneNumber = knm_number:phone_number(Number),
     Carrier = knm_phone_number:module_name(PhoneNumber),
@@ -250,7 +251,7 @@ check(Numbers) -> check(Numbers, []).
 check(Numbers, Options) ->
     FormattedNumbers = [knm_converters:normalize(Num) || Num <- Numbers],
     lager:info("attempting to check ~p ", [FormattedNumbers]),
-    [{Module, catch(Module:check_numbers(FormattedNumbers, Options))}
+    [{Module, catch(apply(Module, check_numbers, [FormattedNumbers, Options]))}
      || Module <- available_carriers(Options)
     ].
 
@@ -309,9 +310,7 @@ acquire(Number, 'undefined', _DryRun) ->
 acquire(Number, _Mod, 'true') ->
     Number;
 acquire(Number, ?NE_BINARY=Mod, 'false') ->
-    Module = carrier_module(Mod),
-    lager:debug("contacting carrier ~s", [Module]),
-    Module:acquire_number(Number).
+    apply(Mod, acquire_number, [Number]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -319,14 +318,11 @@ acquire(Number, ?NE_BINARY=Mod, 'false') ->
 %% Create a list of all available carrier modules
 %% @end
 %%--------------------------------------------------------------------
--spec disconnect(knm_number:knm_number()) ->
-                        knm_number:knm_number().
+-spec disconnect(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect(Number) ->
     case knm_phone_number:module_name(knm_number:phone_number(Number)) of
         ?NE_BINARY=Mod ->
-            Module = kz_util:to_atom(Mod, 'true'),
-            lager:debug("contacting carrier ~s", [Module]),
-            Module:disconnect_number(Number);
+            apply(Mod, disconnect_number, [Number]);
         _Mod ->
             lager:debug("non-existant carrier module ~p, allowing disconnect", [_Mod]),
             Number
@@ -384,10 +380,9 @@ reseller_id(Options) ->
 -spec is_number_billable(knm_phone_number:knm_phone_number()) -> boolean().
 is_number_billable(PhoneNumber) ->
     Carrier = knm_phone_number:module_name(PhoneNumber),
-    try erlang:binary_to_existing_atom(Carrier, 'utf8') of
-        Module -> Module:is_number_billable(PhoneNumber)
+    try apply(Carrier, is_number_billable, [PhoneNumber])
     catch
-        'error':'badarg' -> 'false'
+        'error':_R -> 'true'
     end.
 
 %%%===================================================================
@@ -413,20 +408,28 @@ sort_find_result(A, B) ->
 %%--------------------------------------------------------------------
 -spec is_local(ne_binary()) -> boolean().
 is_local(Carrier) ->
-    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
-    Module:is_local().
+    try apply(Carrier, is_local, [])
+    catch
+        _E:_R ->
+            kz_util:log_stacktrace(),
+            true
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec carrier_module(knm_number:knm_number() | ne_binary()) -> atom().
-carrier_module(?NE_BINARY = Module) ->
-    kz_util:to_atom(Module, 'true');
-carrier_module(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    carrier_module(knm_phone_number:module_name(PhoneNumber)).
+-spec apply(module() | ne_binary() | knm_number:knm_number(), atom(), list()) -> any().
+apply(Module, FName, Args) when is_atom(Module), Module =/= undefined ->
+    lager:debug("contacting carrier ~s for ~s", [Module, FName]),
+    erlang:apply(Module, FName, Args);
+apply(?NE_BINARY=Carrier, FName, Args) ->
+    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
+    apply(Module, FName, Args);
+apply(Number, FName, Args) ->
+    Carrier = knm_phone_number:module_name(knm_number:phone_number(Number)),
+    apply(Carrier, FName, Args).
 
 %%--------------------------------------------------------------------
 %% @private

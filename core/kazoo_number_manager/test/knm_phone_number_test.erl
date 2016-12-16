@@ -168,8 +168,8 @@ is_dirty2_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
 
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
+    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, JObj))
+    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
 
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, JObj))
