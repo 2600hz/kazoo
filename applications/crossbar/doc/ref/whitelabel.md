@@ -4,6 +4,8 @@
 
 #### Schema
 
+Whitelabel settings
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `company_name` | The company name to display to users | `string` |   | `false`
@@ -26,22 +28,22 @@ Key | Description | Type | Default | Required
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string` |   | `false`
 
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
+```
+
+#### Create
+
+> PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
@@ -56,12 +58,12 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```
 
-#### Create
+#### Remove
 
-> PUT /v2/accounts/{ACCOUNT_ID}/whitelabel
+> DELETE /v2/accounts/{ACCOUNT_ID}/whitelabel
 
 ```shell
-curl -v -X PUT \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/whitelabel
 ```

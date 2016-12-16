@@ -4,19 +4,25 @@
     "description": "schema for google drive attachment entry",
     "properties": {
         "handler": {
+            "description": "What handler module to use",
             "enum": [
                 "google_drive"
-            ]
+            ],
+            "type": "string"
         },
         "name": {
+            "description": "Friendly name for this configuration",
             "type": "string"
         },
         "settings": {
+            "description": "Settings for the Google Drive account",
             "properties": {
-                "oauth_doc_id": {
+                "folder_id": {
+                    "description": "Folder ID in which to store the file, if any",
                     "type": "string"
                 },
-                "path": {
+                "oauth_doc_id": {
+                    "description": "Doc ID in the system 'oauth' database",
                     "type": "string"
                 }
             },

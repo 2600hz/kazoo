@@ -6,16 +6,6 @@
 
 
 
-#### Remove
-
-> DELETE /v2/auth/links
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/auth/links
-```
-
 #### Fetch
 
 > GET /v2/auth/links
@@ -32,6 +22,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/auth/links
+```
+
+#### Remove
+
+> DELETE /v2/auth/links
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/auth/links
 ```

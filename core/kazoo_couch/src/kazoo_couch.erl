@@ -148,7 +148,8 @@ save_doc(Server, DbName, Doc, Options) ->
 save_docs(Server, DbName, Docs, Options) ->
     kz_couch_doc:save_docs(Server, DbName, Docs, Options).
 
--spec del_doc(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> any().
+-spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) ->
+                     any().
 del_doc(Server, DbName, Doc, Options) ->
     kz_couch_doc:del_doc(Server, DbName, Doc, Options).
 
@@ -194,8 +195,8 @@ attachment_url(Server, DbName, DocId, AName, Options) ->
 design_info(Server, DBName, Design) ->
     kz_couch_view:design_info(Server, DBName, Design).
 
--spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:connection()) -> any().
-all_design_docs(Server, DBName, Options) ->
+-spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> any().
+all_design_docs(#server{}=Server, ?NE_BINARY = DBName, Options) ->
     kz_couch_view:all_design_docs(Server, DBName, Options).
 
 -spec get_results(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> any().
@@ -214,12 +215,21 @@ all_docs(Server, DbName, Options) ->
 version(#server{options=Options}) ->
     props:get_value('driver_version', Options).
 
+-spec db_local_filter(ne_binaries(), kz_data:options()) -> ne_binaries().
 db_local_filter(List, Options) ->
     [DB || DB <- List,
-           lists:all(fun(Option) ->
-                             db_local_filter_option(Option, DB)
-                     end, Options)].
+           all_valid_options(Options, DB)
+    ].
 
+-spec all_valid_options(kz_data:options(), ne_binary()) -> boolean().
+all_valid_options(Options, DB) ->
+    lists:all(fun(Option) ->
+                      db_local_filter_option(Option, DB)
+              end
+             ,Options
+             ).
+
+-spec db_local_filter_option(kz_data:option(), ne_binary()) -> boolean().
 db_local_filter_option({'start_key', Value}, DB) ->
     DB >= Value;
 db_local_filter_option({'startkey', Value}, DB) ->

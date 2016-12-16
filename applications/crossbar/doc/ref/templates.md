@@ -16,22 +16,22 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
-```
-
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
 
 ```shell
 curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}
 ```

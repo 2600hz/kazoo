@@ -60,8 +60,17 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
                ,{<<"appProperties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
                ,{<<"properties">>, kz_json:from_list(props:get_value('metadata', Options, [])) }
                ])),
-    JsonPart = {kz_json:encode(JObj), [{<<"Content-Type">>, <<"application/json">>}] },
-    FilePart = {base64:encode(Contents), [{<<"Content-Type">>, CT},{<<"Content-Transfer-Encoding">>, <<"base64">>}] },
+
+    JsonPart = {kz_json:encode(JObj)
+               ,[{<<"Content-Type">>, <<"application/json">>}]
+               },
+
+    FilePart = {base64:encode(Contents)
+               ,[{<<"Content-Type">>, CT}
+                ,{<<"Content-Transfer-Encoding">>, <<"base64">>}
+                ]
+               },
+
     Boundary = <<"------", (kz_util:rand_hex_binary(16))/binary>>,
 
     Body = encode_multipart([JsonPart, FilePart], Boundary),
@@ -94,7 +103,9 @@ convert_kv({K, V})
     convert_kv({K, kz_util:to_binary(V)});
 convert_kv(KV) -> KV.
 
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> any().
+-spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', iodata()} |
+                              {'error', 'invalid_data' | 'not_found'}.
 fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
     case kz_json:get_value(<<"gdrive">>, HandlerProps) of
         'undefined' -> {'error', 'invalid_data'};

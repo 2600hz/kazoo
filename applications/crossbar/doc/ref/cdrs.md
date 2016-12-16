@@ -4,6 +4,8 @@
 
 #### Schema
 
+Call Detail Records
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `app_name` | The Kazoo application that issued the CDR | `string` |   | `false`

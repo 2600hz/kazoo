@@ -6,16 +6,6 @@
 
 
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
@@ -26,12 +16,12 @@ curl -v -X GET \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Patch
+#### Create
 
-> PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
+> PUT /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
 ```shell
-curl -v -X PATCH \
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
@@ -46,12 +36,22 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Create
+#### Patch
 
-> PUT /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 
 ```shell
-curl -v -X PUT \
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```

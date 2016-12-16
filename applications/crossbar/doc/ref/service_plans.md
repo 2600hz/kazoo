@@ -4,6 +4,8 @@
 
 #### Schema
 
+Describes services offered to sub-accounts
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bookkeepers` |   | `object` |   | `false`
@@ -13,6 +15,8 @@ Key | Description | Type | Default | Required
 
 
 ##### bookkeepers
+
+The bookkeeper modules provided by Kazoo
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -39,16 +43,6 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
@@ -65,6 +59,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/service_plans/{PLAN_ID}
 ```

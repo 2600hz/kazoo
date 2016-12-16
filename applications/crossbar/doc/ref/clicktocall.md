@@ -4,6 +4,8 @@
 
 #### Schema
 
+Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `auth_required` | Determines if this click to call requires valid auth-tokens when invoked | `boolean` | `true` | `false`
@@ -38,22 +40,22 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
+
+```shell
+curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
 ```
@@ -68,12 +70,12 @@ curl -v -X PATCH \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
 ```
 
-#### Change
+#### Remove
 
-> POST /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
+> DELETE /v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
 
 ```shell
-curl -v -X POST \
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/clicktocall/{C2C_ID}
 ```

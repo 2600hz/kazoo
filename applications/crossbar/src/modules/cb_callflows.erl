@@ -34,7 +34,7 @@
 %%% API
 %%%===================================================================
 
--spec init() -> ok.
+-spec init() -> 'ok'.
 init() ->
     _ = cb_modules_util:bind(?MODULE, [{<<"*.allowed_methods.callflows">>, 'allowed_methods'}
                                       ,{<<"*.resource_exists.callflows">>, 'resource_exists'}
@@ -44,7 +44,7 @@ init() ->
                                       ,{<<"*.execute.patch.callflows">>, 'patch'}
                                       ,{<<"*.execute.delete.callflows">>, 'delete'}
                                       ]),
-    ok.
+    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public

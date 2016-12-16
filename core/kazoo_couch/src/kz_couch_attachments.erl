@@ -83,10 +83,14 @@ do_fetch_attachment(#db{}=Db, DocId, AName) ->
     ?RETRY_504(couchbeam:fetch_attachment(Db, DocId, AName)).
 
 -spec do_stream_attachment(couchbeam_db(), ne_binary(), ne_binary(), pid()) ->
-                                  {'ok', reference()} |
+                                  {'ok', reference() | atom()} |
                                   couchbeam_error().
 do_stream_attachment(#db{}=Db, DocId, AName, Caller) ->
-    case couchbeam:fetch_attachment(Db, DocId, AName, [{stream, true},{async,true}]) of
+    case couchbeam:fetch_attachment(Db, DocId, AName, [{'stream', 'true'}
+                                                      ,{'async', 'true'}
+                                                      ]
+                                   )
+    of
         {'ok', Ref}=Ret ->
             Msg = couchbeam:stream_attachment(Ref),
             St = get(Ref),
@@ -126,4 +130,3 @@ maybe_add_revision(Options) ->
         'undefined' -> <<>>;
         Rev -> <<"?rev=", Rev/binary>>
     end.
-

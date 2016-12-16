@@ -11,13 +11,19 @@
         ,get_time/2
         ]).
 
+-export_type([xml/0
+             ,decoded/0
+             ]).
+
 -include("kz_aws.hrl").
 
 -type xml() :: tuple().
--type xpath() :: {string(), string()}.
--type attribute() :: {atom(), string(), fun()}.
+-type xpath() :: {string(), string()} | string().
+-type attribute() :: {atom(), string(), fun() | atom()}.
+-type attributes() :: [attribute()].
+-type decoded() :: [{atom(), any()}].
 
--spec decode([attribute()], xml()) -> [{atom(), any()}].
+-spec decode(attributes(), xml()) -> decoded().
 decode(Values, Node) ->
     lists:reverse(
       lists:foldl(fun ({Name, XPath, Type}, Output) ->
@@ -32,7 +38,7 @@ decode(Values, Node) ->
                  )
      ).
 
--spec decode([attribute()], xml(), A) -> A.
+-spec decode(attributes(), xml(), A) -> A.
 decode(Values, Node, Record) ->
     lists:foldl(fun ({Index, XPath, Type}, Output) ->
                         case get_value(XPath, Type, Node) of
@@ -100,8 +106,8 @@ get_text(#xmlText{value=Value}) -> Value;
 get_text(#xmlElement{content=Content}) ->
     lists:flatten([get_text(Node) || Node <- Content]).
 
--spec get_text(xpath(), xml()) -> string().
--spec get_text(xpath(), xml(), Default) -> string() | Default.
+-spec get_text(xpath(), xml()) -> string() | [string()].
+-spec get_text(xpath(), xml(), Default) -> string() | [string()] | Default.
 get_text(XPath, Doc) -> get_text(XPath, Doc, "").
 get_text({XPath, AttrName}, Doc, Default) ->
     case xmerl_xpath:string(XPath ++ "/@" ++ AttrName, Doc) of
@@ -112,7 +118,7 @@ get_text(XPath, Doc, Default) ->
     case xmerl_xpath:string(XPath ++ "/text()", Doc) of
         [] -> Default;
         TextNodes ->
-            lists:flatten([Node#xmlText.value || Node <- TextNodes])
+            lists:flatten([V || #xmlText{value=V} <- TextNodes])
     end.
 
 -spec get_list(xpath(), xml()) -> [string()].

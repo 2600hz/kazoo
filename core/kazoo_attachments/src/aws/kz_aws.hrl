@@ -83,6 +83,7 @@
           %% Service specific error information
           should_retry :: boolean()
         }).
+-type aws_request() :: #aws_request{}.
 
 -define(KZ_ATT_AWS_HRL, 'true').
 -endif.

@@ -11,14 +11,14 @@
         ]).
 -export_type([should_retry/0, retry_fun/0]).
 
--type should_retry() :: {'retry' | 'error', #aws_request{}}.
--type retry_fun() :: fun((#aws_request{}) -> should_retry()).
+-type should_retry() :: {'retry' | 'error', aws_request()}.
+-type retry_fun() :: fun((aws_request()) -> should_retry()).
 
 %% Internal impl api
 -export([request/3]).
 
 %% Error returns maintained for backwards compatibility
--spec no_retry(#aws_request{}) -> should_retry().
+-spec no_retry(aws_request()) -> should_retry().
 no_retry(Request) ->
     {'error', Request}.
 
@@ -32,11 +32,11 @@ backoff(Attempt) ->
 %% It's likely this is too many retries for other services
 -define(NUM_ATTEMPTS, 10).
 
--spec default_retry(#aws_request{}) -> should_retry().
+-spec default_retry(aws_request()) -> should_retry().
 default_retry(Request) ->
     default_retry(Request, ?NUM_ATTEMPTS).
 
--spec default_retry(#aws_request{}, integer()) -> should_retry().
+-spec default_retry(aws_request(), integer()) -> should_retry().
 default_retry(#aws_request{attempt = Attempt} = Request, MaxAttempts)
   when Attempt >= MaxAttempts ->
     {'error', Request};
@@ -46,7 +46,7 @@ default_retry(#aws_request{attempt = Attempt} = Request, _) ->
     backoff(Attempt),
     {'retry', Request}.
 
--spec request(aws_config(), #aws_request{}, retry_fun()) -> #aws_request{}.
+-spec request(aws_config(), aws_request(), retry_fun()) -> aws_request().
 request(Config, #aws_request{attempt = 0} = Request, ResultFun) ->
     request_and_retry(Config, ResultFun, {'retry', Request}).
 

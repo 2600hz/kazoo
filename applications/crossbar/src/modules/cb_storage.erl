@@ -16,6 +16,7 @@
         ,validate/1, validate/2, validate/3
         ,put/1, put/2
         ,post/1, post/3
+        ,patch/1, patch/3
         ,delete/1, delete/3
         ]).
 
@@ -60,6 +61,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.get.storage">>, ?MODULE, 'get'),
     _ = crossbar_bindings:bind(<<"*.execute.put.storage">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.storage">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.storage">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.storage">>, ?MODULE, 'delete').
 
 
@@ -120,7 +122,7 @@ do_authorize(Context, {'user', UserId, AccountId}) ->
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
 allowed_methods() ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(?PLANS_TOKEN) ->
@@ -128,7 +130,7 @@ allowed_methods(?PLANS_TOKEN) ->
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?PLANS_TOKEN, _StoragePlanId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -178,6 +180,8 @@ validate_storage(Context, ?HTTP_PUT) ->
     create(Context);
 validate_storage(Context, ?HTTP_POST) ->
     update(Context);
+validate_storage(Context, ?HTTP_PATCH) ->
+    patch_update(Context);
 validate_storage(Context, ?HTTP_DELETE) ->
     read(Context).
 
@@ -192,6 +196,8 @@ validate_storage_plan(Context, PlanId, ?HTTP_GET) ->
     read(Context, PlanId);
 validate_storage_plan(Context, PlanId, ?HTTP_POST) ->
     update(Context, PlanId);
+validate_storage_plan(Context, PlanId, ?HTTP_PATCH) ->
+    patch_update(Context, PlanId);
 validate_storage_plan(Context, PlanId, ?HTTP_DELETE) ->
     read(Context, PlanId).
 
@@ -223,6 +229,14 @@ post(Context) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?PLANS_TOKEN, _PlanId) ->
     crossbar_doc:save(Context).
+
+-spec patch(cb_context:context()) -> cb_context:context().
+patch(Context) ->
+    post(Context).
+
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch(Context, ?PLANS_TOKEN, PlanId) ->
+    post(Context, ?PLANS_TOKEN, PlanId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -275,10 +289,20 @@ update(Context) ->
     OnSuccess = fun(C) -> on_successful_validation(doc_id(Context), C) end,
     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
 
+-spec patch_update(cb_context:context()) -> cb_context:context().
+patch_update(Context) ->
+    VFun = fun(_Id, LoadedContext) -> update(LoadedContext) end,
+    crossbar_doc:patch_and_validate(doc_id(Context), Context, VFun).
+
 -spec update(cb_context:context(), path_token()) -> cb_context:context().
 update(Context, PlanId) ->
     OnSuccess = fun(C) -> on_successful_validation(PlanId, C) end,
     cb_context:validate_request_data(<<"storage">>, Context, OnSuccess).
+
+-spec patch_update(cb_context:context(), path_token()) -> cb_context:context().
+patch_update(Context, PlanId) ->
+    VFun = fun(Id, LoadedContext) -> update(LoadedContext, Id) end,
+    crossbar_doc:patch_and_validate(PlanId, Context, VFun).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -327,6 +351,8 @@ on_successful_validation(Id, ?HTTP_PUT, Context) ->
                ],
     cb_context:set_doc(Context, kz_json:exec(Routines, JObj));
 on_successful_validation(Id, ?HTTP_POST, Context) ->
+    crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS);
+on_successful_validation(Id, ?HTTP_PATCH, Context) ->
     crossbar_doc:load_merge(Id, Context, ?STORAGE_CHECK_OPTIONS).
 
 %%--------------------------------------------------------------------

@@ -120,7 +120,7 @@ read-release-cookie:
 DIALYZER ?= dialyzer
 PLT ?= .kazoo.plt
 
-OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets
+OTP_APPS ?= erts kernel stdlib crypto public_key ssl asn1 inets xmerl
 $(PLT): DEPS_SRCS  ?= $(shell find $(ROOT)/deps -name src )
 # $(PLT): CORE_EBINS ?= $(shell find $(ROOT)/core -name ebin)
 $(PLT):

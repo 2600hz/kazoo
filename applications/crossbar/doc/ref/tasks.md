@@ -4,6 +4,8 @@
 
 #### Schema
 
+Input data to go through as part of a background task
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `file_name` | Human-readable name of a task's input file | `string` |   | `false`
@@ -30,16 +32,6 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks
 ```
 
-#### Remove
-
-> DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-
-```shell
-curl -v -X DELETE \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
-```
-
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
@@ -56,6 +48,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
+```
+
+#### Remove
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
+
+```shell
+curl -v -X DELETE \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 ```

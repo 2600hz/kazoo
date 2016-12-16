@@ -378,21 +378,24 @@ timeout(#aws_config{timeout = 'undefined'}) -> ?DEFAULT_TIMEOUT;
 timeout(#aws_config{timeout = Timeout}) -> Timeout.
 
 %% Convert an aws_request record to return value as returned by http_headers_body
--spec request_to_return(#aws_request{}) -> {'ok', {headers(), binary()}} |
-                                           {'error', any()}.
+-spec request_to_return(aws_request()) -> {'ok', {headers(), binary()}} |
+                                          {'error', any()}.
 request_to_return(#aws_request{response_type = 'ok'
                               ,response_headers = Headers
-                              ,response_body = Body}) ->
+                              ,response_body = Body
+                              }) ->
     {'ok', {[{string:to_lower(H), V} || {H, V} <- Headers], Body}};
 request_to_return(#aws_request{response_type = 'error'
                               ,error_type = httpc
-                              ,httpc_error_reason = Reason}) ->
+                              ,httpc_error_reason = Reason
+                              }) ->
     {'error', {'socket_error', Reason}};
 request_to_return(#aws_request{response_type = 'error'
                               ,error_type = 'aws'
                               ,response_status = Status
                               ,response_status_line = StatusLine
-                              ,response_body = Body}) ->
+                              ,response_body = Body
+                              }) ->
     {'error', {'http_error', Status, StatusLine, Body}}.
 
 %% http://docs.aws.amazon.com/general/latest/gr/signature-version-4.html
