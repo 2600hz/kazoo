@@ -326,7 +326,7 @@ is_account_deleted(AccountId) ->
 
 -spec refresh_views(ne_binary()) -> 'ok'.
 refresh_views(AccountMODb) ->
-    lager:debug("init modb ~p", [AccountMODb]),
+    lager:debug("refresh views on modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     Views = get_modb_views(),
     _ = kapps_util:update_views(EncodedMODb, Views, 'true'),
