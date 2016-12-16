@@ -313,10 +313,18 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
             {Box, Loop + 1}
     end.
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% find the voicemail box, by making a fake 'callflow data payload' we look for it now because if the
 %% caller is the owner, and the pin is not required then we skip requesting the pin
 %%
 %% Note: Check mailbox existence here to properly updating Loop in find_mailbox/4
+%% but it's still the caller responsiblity to check for mailbox existence since
+%% when find_mailbox is reached max_login_attempts it will return and empty
+%% mailbox record.
+%% @end
+%%--------------------------------------------------------------------
 -spec find_mailbox_by_number(non_neg_integer(), kapps_call:call()) ->
                                     {'ok', mailbox()} |
                                     {'error', any()}.
@@ -335,10 +343,10 @@ find_mailbox_by_number(BoxNum, Call) ->
 
 find_destination_mailbox(Call, _SrcBoxId, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("maximum number of invalid attempts to find destination mailbox"),
-    _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
     #mailbox{};
 find_destination_mailbox(Call, SrcBoxId, Loop) ->
-    case find_mailbox(#mailbox{}, <<"vm-enter_forward_id">>, Call, Loop) of
+    case find_mailbox(#mailbox{}, Call, <<"vm-enter_forward_id">>, Loop) of
         {#mailbox{exists='false'}, NewLoop} ->
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
             find_destination_mailbox(Call, SrcBoxId, NewLoop);
@@ -852,7 +860,7 @@ forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
     forward_message(Message, SrcBoxId, PossibleBox, Call).
 
 forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, Call) ->
-    _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
+    _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
     lager:info("unable to find destination mailbox, returning to message menu...");
 forward_message(Message, SrcBoxId, DestBox, Call) ->
     case forward_message_menu(DestBox, Call) of
@@ -909,11 +917,8 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
                              ]),
+    lager:info("composing new voicemail forward to ~s", [AttachmentName]),
     kapps_call_command:tones([Tone], Call),
-    lager:info("composing a voicemail forward to ~s", [AttachmentName]),
-    _NoopId = kapps_call_command:audio_macro([{'prompt',  <<"vm-record_name">>}
-                                             ,{'tones', [Tone]}
-                                             ], Call),
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_util:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -943,7 +948,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                                                                    ,after_notify_action=Action
                                                                    ,media_extension=Extension
                                                                    }=DestBox, Call) ->
-    NewMsgProps = props:filter_empty(
+    NewMsgProps = props:filter_undefined(
                     [{<<"Box-Id">>, BoxId}
                     ,{<<"Owner-Id">>, OwnerId}
                     ,{<<"Length">>, Length}
@@ -956,6 +961,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ,{<<"Media-Extension">>, Extension}
                     ]
                    ),
+    io:format("NewMsgProps ~p~n~n", [NewMsgProps]),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
         'ok' -> send_mwi_update(DestBox, Call);
         {'error', _, _Msg} ->

@@ -82,7 +82,9 @@ forward_message(Call, Metadata, SrcBoxId, Props) ->
 -spec new_forward_message(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) -> new_msg_ret().
 new_forward_message(Call, Metadata, SrcBoxId, Props) ->
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
-    Length = props:get_value(<<"Length">>, Props),
+    PrependLength = props:get_value(<<"Length">>, Props),
+    OrigLength = kz_json:get_integer_value(<<"lenght">>, Metadata, 0),
+    Length = PrependLength + OrigLength,
     AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
 
     lager:debug("saving new ~bms forward voicemail media and metadata", [Length]),
@@ -470,16 +472,20 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     lager:debug("trying to prepend a message to forwarded voicemail message ~s", [ForwardId]),
     AccountId = kapps_call:account_id(Call),
 
+    lager:debug("saving prepend message ~s attachment to file system", [ForwardId]),
     TmpAttachmentName = props:get_value(<<"Attachment-Name">>, Props),
     {'ok', TmpPath} = write_attachment_to_file(AccountId, ForwardId, TmpAttachmentName),
     {'ok', _} = kz_datamgr:delete_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, TmpAttachmentName),
 
-    {'ok', OrigPath} = write_attachment_to_file(AccountId, kzd_box_message:media_id(Metadata)),
+    OrigMsgId = kzd_box_message:media_id(Metadata),
+    lager:debug("saving original message ~s attachment to file system", [OrigMsgId]),
+    {'ok', OrigPath} = write_attachment_to_file(AccountId, OrigMsgId),
     {'ok', OrigSampleRate} = kz_media_util:detect_file_sample_rate(OrigPath),
 
     TonePath = kz_util:join_binary([<<"/tmp/">>, <<(kz_util:rand_hex_binary(16))/binary, ".wav">>], <<>>),
     kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
 
+    lager:debug("joining prepend to original message"),
     case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
         {'ok', FileContents} ->
             JoinFilename = <<(kz_util:rand_hex_binary(16))/binary, ".mp3">>,
@@ -492,14 +498,13 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     end.
 
 write_attachment_to_file(AccountId, MessageId) ->
-    case kvm_message:fetch(AccountId, MessageId) of
+    case fetch(AccountId, MessageId) of
         {'ok', Doc} ->
             write_attachment_to_file(AccountId, MessageId, kz_doc:attachment_names(Doc));
         {'error', _}=Error -> Error
     end.
 
 write_attachment_to_file(AccountId, MessageId, AttachmentId) ->
-    lager:debug("saving message ~s attachment to file system", [MessageId]),
     Db = kvm_util:get_db(AccountId, MessageId),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
     FilePath = kz_util:join_binary([<<"/tmp/_">>, AttachmentId], <<>>),
