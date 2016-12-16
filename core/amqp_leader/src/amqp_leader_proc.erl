@@ -5,20 +5,20 @@
 
 %% API functions
 -export([start/6
-         ,start_link/6
-         ,leader_call/2, leader_call/3
-         ,leader_cast/2
-         ,call/2, call/3
-         ,cast/2
-         ,reply/2
+        ,start_link/6
+        ,leader_call/2, leader_call/3
+        ,leader_cast/2
+        ,call/2, call/3
+        ,cast/2
+        ,reply/2
         ]).
 
 -export([alive/1
-         ,down/1
-         ,candidates/1
-         ,workers/1
-         ,broadcast/3
-         ,leader_node/1
+        ,down/1
+        ,candidates/1
+        ,workers/1
+        ,broadcast/3
+        ,leader_node/1
         ]).
 
 -export([s/1]).
@@ -47,8 +47,7 @@
               ,node = node()           :: atom()
               ,name                    :: atom()
               ,sync                    :: any()
-%              ,candidates             :: atoms()
-             }).
+              }).
 
 -record(?MODULE, {from, msg}).
 
