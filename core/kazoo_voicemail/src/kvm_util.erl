@@ -173,6 +173,7 @@ get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
     ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
     ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
     ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
+    ,fun(DocJ) -> kz_json:set_value(<<"timestamp">>, kz_util:current_tstamp(), DocJ) end
     ].
 
 %%--------------------------------------------------------------------

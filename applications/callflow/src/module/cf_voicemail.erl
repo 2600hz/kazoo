@@ -958,7 +958,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
     NewMsgProps = props:filter_undefined(
                     [{<<"Box-Id">>, BoxId}
                     ,{<<"Owner-Id">>, OwnerId}
-                    ,{<<"Length">>, Length}
+                    ,{<<"Length">>, Length + kz_json:get_integer_value(<<"length">>, Message, 0)}
                     ,{<<"Transcribe-Voicemail">>, MaybeTranscribe}
                     ,{<<"After-Notify-Action">>, Action}
                     ,{<<"Attachment-Name">>, AttachmentName}
