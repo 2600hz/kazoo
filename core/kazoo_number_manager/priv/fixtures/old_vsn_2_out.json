@@ -11,7 +11,7 @@
         "port",
         "prepend"
     ],
-    "pvt_is_billable": false,
+    "pvt_is_billable": true,
     "pvt_modified": 63637990854,
     "pvt_module_name": "knm_pacwest",
     "pvt_ported_in": false,
