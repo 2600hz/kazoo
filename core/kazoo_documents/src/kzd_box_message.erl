@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 -module(kzd_box_message).
 
--export([new/2, build_metadata_object/4
+-export([new/2, build_metadata_object/6
         ,count_folder/2
         ,create_message_name/3
         ,type/0
@@ -163,16 +163,16 @@ message_name(BoxNum, {{Y,M,D},{H,I,S}}, TZ) ->
 %% @doc Build message metadata
 %% @end
 %%--------------------------------------------------------------------
--spec build_metadata_object(pos_integer(), kapps_call:call(), ne_binary(), gregorian_seconds()) ->
+-spec build_metadata_object(pos_integer(), kapps_call:call(), ne_binary(), ne_binary(), ne_binary(), gregorian_seconds()) ->
                                    doc().
-build_metadata_object(Length, Call, MediaId, Timestamp) ->
+build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
     kz_json:from_list(
       props:filter_undefined(
         [{?KEY_META_TIMESTAMP, Timestamp}
         ,{?KEY_META_FROM, kapps_call:from(Call)}
         ,{?KEY_META_TO, kapps_call:to(Call)}
-        ,{?KEY_META_CID_NUMBER, kapps_call:caller_id_number(Call)}
-        ,{?KEY_META_CID_NAME, kapps_call:caller_id_name(Call)}
+        ,{?KEY_META_CID_NUMBER, CIDNumber}
+        ,{?KEY_META_CID_NAME, CIDName}
         ,{?KEY_META_CALL_ID, kapps_call:call_id(Call)}
         ,{?VM_KEY_FOLDER, ?VM_FOLDER_NEW}
         ,{?KEY_META_LENGTH, Length}

@@ -379,8 +379,10 @@ create_message_doc(Call, Metadata, Props) ->
 -spec maybe_add_metadata(kapps_call:call(), kz_json:object(), api_object(), kz_proplist()) -> kz_json:object().
 maybe_add_metadata(Call, JObj, 'undefined', Props) ->
     Length = props:get_value(<<"Length">>, Props),
+    CIDNumber = kvm_util:get_caller_id_number(Call),
+    CIDName = kvm_util:get_caller_id_name(Call),
     Timestamp = kz_util:current_tstamp(),
-    Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), Timestamp),
+    Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj);
 maybe_add_metadata(_Call, JObj, Metadata, _Props) ->
     MediaId = kz_doc:id(JObj),
