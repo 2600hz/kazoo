@@ -50,7 +50,7 @@
         },
         "time_limit": {
             "description": "Time limit, in seconds, for the recording",
-            "maximum": 3600,
+            "maximum": 10800,
             "minimum": 5,
             "required": false,
             "type": "integer"
