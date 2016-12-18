@@ -227,6 +227,8 @@ matches([<<"#">>, <<"*">>], []) -> 'false';
 matches([<<"#">>, <<"*">>], [<<>>]) -> 'false';
 matches([<<"#">>, <<"*">>], [_]) -> 'true'; % match one item:  #.* matches foo
 
+matches([<<"#">>, <<"#">> | Bs], Rs) ->
+    matches([<<"#">> | Bs], Rs);
 matches([<<"#">> | Bs], []) -> % sadly, #.# would match foo, foo.bar, foo.bar.baz, etc
     matches(Bs, []);           % so keep checking by stipping of the first #
 
@@ -239,10 +241,15 @@ matches([_|_], [<<>>]) -> 'false';
 matches([<<"*">> | Bs], [_|Rs]) ->
     matches(Bs, Rs); % so ignore what the routing segment is and continue
 
+matches([<<"#">>, B | Bs], [B, B | Rs]) ->
+    matches(Bs, Rs)
+        orelse matches([<<"#">>|Bs], [B | Rs]);
+
 %% # can match 0 or more segments
 matches([<<"#">>, B | Bs], [B | Rs]) ->
-    %% Since the segment in B could be repeated later in the Routing Key, we need to bifurcate here
-    %% but we'll short circuit if this was indeed the end of the # matching
+    %% Since the segment in B could be repeated later in the Routing Key,
+    %% we need to bifurcate here but we'll short circuit if this was indeed
+    %% the end of the # matching
     %% see binding_matches(<<"#.A.*">>,<<"A.a.A.a">>)
 
     case lists:member(B, Rs) of
