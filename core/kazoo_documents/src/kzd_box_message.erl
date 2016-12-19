@@ -290,7 +290,7 @@ to_sip(JObj, Default) ->
 set_to_sip(To, Metadata) ->
     kz_json:set_value(?KEY_META_TO, To, Metadata).
 
--spec utc_seconds(doc()) -> pos_integer().
+-spec utc_seconds(doc()) -> non_neg_integer().
 utc_seconds(JObj) ->
     kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 

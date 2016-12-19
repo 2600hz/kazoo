@@ -216,9 +216,7 @@ get_caller_id_number(Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_saved_notify(ne_binary(), ne_binary(), kapps_call:call(), pos_integer(), kz_proplist()) ->
-                                  {'ok', kz_json:objects()} |
-                                  {'timeout', kz_json:objects()} |
-                                  {'error', any()}.
+                                  kz_amqp_worker:request_return().
 publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
     MaybeTranscribe = props:get_value(<<"Transcribe-Voicemail">>, Props, 'false'),
     Transcription = maybe_transcribe(kapps_call:account_id(Call), MediaId, MaybeTranscribe),

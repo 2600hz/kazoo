@@ -22,7 +22,7 @@
 
 -export_type([vm_folder/0]).
 
--type new_msg_ret() :: 'ok' | {'error', any()}.
+-type new_msg_ret() :: 'ok' | {'error', kapps_call:call(), any()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -439,11 +439,11 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
     DestBoxId = props:get_value(<<"Box-Id">>, Props),
     Length = props:get_value(<<"Length">>, Props),
     Result = copy_to_vmboxes(AccountId, MediaId, SrcBoxId, DestBoxId),
-    Failed = kz_json:get_value(<<"failed">>, Result),
-    Succeeded = kz_json:get_value(<<"succeeded">>, Result),
+    Failed = kz_json:get_value(<<"failed">>, Result, []),
+    Succeeded = kz_json:get_value(<<"succeeded">>, Result, []),
     case {Failed, Succeeded} of
-        {'undefined', 'undefined'} -> {'error', 'internal_error'};
-        {'undefined', [ForwardId]} ->
+        {[], []} -> {'error', 'internal_error'};
+        {[], [ForwardId]} ->
             %%TODO: update lenght and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {[{_id, Reason}], _} -> {'error', Reason}
@@ -462,11 +462,11 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             %%TODO: update lenght and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
         {'error', _R} ->
-            %% prepend failed, but at least try to forward without a prepend message
+            %% prepend failed, so at least try to forward without a prepend message
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     catch
         _T:_E ->
-            %% prepend failed, but at least try to forward without a prepend message
+            %% prepend failed, so at least try to forward without a prepend message
             lager:error("exception occured during prepend and forward message: ~p:~p", [_T, _E]),
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     end.
@@ -477,7 +477,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     AccountId = kapps_call:account_id(Call),
 
     lager:debug("saving prepend message ~s attachment to file system", [ForwardId]),
-    TmpAttachmentName = props:get_value(<<"Attachment-Name">>, Props),
+    TmpAttachmentName = props:get_ne_binary_value(<<"Attachment-Name">>, Props),
     {'ok', TmpPath} = write_attachment_to_file(AccountId, ForwardId, TmpAttachmentName),
     {'ok', _} = kz_datamgr:delete_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, TmpAttachmentName),
 
@@ -503,7 +503,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
 
     end.
 
--spec write_attachment_to_file(ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
+-spec write_attachment_to_file(ne_binary(), ne_binary()) -> {'ok', ne_binary()} | {'error', any()}.
 write_attachment_to_file(AccountId, MessageId) ->
     case fetch(AccountId, MessageId) of
         {'ok', Doc} ->
@@ -511,8 +511,8 @@ write_attachment_to_file(AccountId, MessageId) ->
         {'error', _}=Error -> Error
     end.
 
--spec write_attachment_to_file(ne_binary(), ne_binary(), ne_binary()) -> {'ok', ne_binary()}.
-write_attachment_to_file(AccountId, MessageId, AttachmentId) ->
+-spec write_attachment_to_file(ne_binary(), ne_binary(), ne_binaries()) -> {'ok', ne_binary()} | {'error', any()}.
+write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
     Db = kvm_util:get_db(AccountId, MessageId),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
     FilePath = kz_util:join_binary([<<"/tmp/_">>, AttachmentId], <<>>),
