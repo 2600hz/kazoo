@@ -120,10 +120,7 @@ maybe_update_e911(Number, Address) ->
             knm_errors:unspecified(E, Number);
         {'invalid', Reason}->
             lager:error("error while checking location ~p", [Reason]),
-            Error =
-                kz_json:from_list([{<<"cause">>, Address}
-                                  ,{<<"message">>, Reason}
-                                  ]),
+            Error = <<Reason/binary, " (", Address/binary, ")">>,
             knm_errors:invalid(Number, Error);
         {'provisioned', _} ->
             lager:debug("location seems already provisioned"),

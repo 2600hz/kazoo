@@ -91,7 +91,7 @@ carrier_not_specified(Number) ->
 not_enough_credit(Number, Units) ->
     throw({'error', 'not_enough_credit', Number, Units}).
 
--spec invalid(kn(), kz_json:object()) -> no_return().
+-spec invalid(kn(), ne_binary()) -> no_return().
 invalid(Number, Reason) ->
     throw({'error', 'invalid', Number, Reason}).
 
