@@ -112,13 +112,21 @@ direction(_) -> 'false'.
 
 -spec export(kz_proplist(), task_iterator()) -> task_iterator().
 export(Props, 'init') ->
-    'true' = is_allowed(Props),
-    State = [{'db', get_ratedeck_db(Props)}
-            ,{'options', [{'limit', ?BULK_LIMIT + 1}
-                         ,'include_docs'
-                         ]}
-            ],
-    export(Props, State);
+    case is_allowed(Props) of
+        'true' -> State = [{'db', get_ratedeck_db(Props)}
+                          ,{'options', [{'limit', ?BULK_LIMIT + 1}
+                                        ,'include_docs'
+                                       ]}
+                          ],
+                  export(Props, State);
+        'false' ->
+            lager:warning("rates exporting is forbidden for account ~s, auth account ~s"
+                          ,[props:get_value('account_id', Props)
+                           ,props:get_value('auth_account_id', Props)
+                           ]
+                         ),
+            {<<"task execution is forbidden">>, 'stop'}
+    end;
 export(_Props, 'stop') -> 'stop';
 export(_Props, State) ->
     Db = props:get_value('db', State),
@@ -142,17 +150,26 @@ export(_Props, State) ->
 -spec import(kz_proplist(), task_iterator(), ?SPEC_FIELDS) -> task_iterator().
 import(Props, 'init', ?VARS) ->
     kz_datamgr:suppress_change_notice(),
-    'true' = is_allowed(Props),
-    State = [{'db', get_ratedeck_db(Props)}
-            ,{'limit', ?BULK_LIMIT}
-            ,{'count', 0}
-            ,{'docs', []}
-            ],
-    import(Props, State, ?VARS);
-import(_Props, State, ?VARS) ->
+    case is_allowed(Props) of 
+        'true' ->
+            State = [{'db', get_ratedeck_db(Props)}
+                    ,{'limit', ?BULK_LIMIT}
+                    ,{'count', 0}
+                    ,{'docs', []}
+                    ],
+            import(Props, State, ?VARS);
+        'false' ->
+            lager:warning("rates importing is forbidden for account ~s, auth account ~s"
+                          ,[props:get_value('account_id', Props)
+                           ,props:get_value('auth_account_id', Props)
+                           ]
+                         ),
+            {<<"task execution is forbidden">>, 'stop'}
+    end;
+import(Props, State, ?VARS) ->
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
-    JObj = generate_row(?VARS),
+    JObj = generate_row([?VARS], Props),
     Docs = props:get_value('docs', State),
     NewDocs = case Count rem Limit =:= 0 of
                   'true' ->
@@ -166,19 +183,32 @@ import(_Props, State, ?VARS) ->
 -spec delete(kz_proplist(), task_iterator(), ?SPEC_FIELDS) -> task_iterator().
 delete(Props, 'init', ?VARS) ->
     kz_datamgr:suppress_change_notice(),
-    'true' = is_allowed(Props),
-    State = [{'db', get_ratedeck_db(Props)}
-            ,{'limit', ?BULK_LIMIT}
-            ,{'count', 0}
-            ,{'keys', []}
-            ,{'dict', dict:new()}
-            ],
-    delete(Props, State, ?VARS);
-delete(_Props, State, ?VARS) ->
+    case is_allowed(Props) of
+        'true' ->
+            State = [{'db', get_ratedeck_db(Props)}
+                    ,{'limit', ?BULK_LIMIT}
+                    ,{'count', 0}
+                    ,{'keys', []}
+                    ,{'dict', dict:new()}
+                    ],
+            delete(Props, State, ?VARS);
+        'false' ->
+            lager:warning("rates deleting is forbidden for account ~s, auth account ~s"
+                          ,[props:get_value('account_id', Props)
+                           ,props:get_value('auth_account_id', Props)
+                           ]
+                         ),
+            {<<"task execution is forbidden">>, 'stop'}
+    end;
+delete(Props, State, ?VARS) ->
     Limit = props:get_value('limit', State),
     Count = props:get_value('count', State) + 1,
     P = kz_util:to_integer(Prefix),
-    Dict = dict:append(P, [?VARS], props:get_value('dict', State)),
+    Row = lists:zip([?DOC_FIELDS], [?VARS]),
+    %% override account-ID from task props
+    Update = [{<<"account_id">>, props:get_value('account_id', Props)}],
+    DictRow = props:filter_undefined(props:set_values(Update, Row)),
+    Dict = dict:append(P, DictRow, props:get_value('dict', State)),
     Keys = [P | props:get_value('keys', State)],
     case Count rem Limit =:= 0 of
         'true' ->
@@ -222,9 +252,14 @@ split_results([_|_] = JObjs) ->
 -spec is_allowed(kz_proplist()) -> boolean().
 is_allowed(Props) ->
     AuthAccountId = props:get_value('auth_account_id', Props),
+    AccountId = props:get_value('account_id', Props),
+    {'ok', AccountDoc} = kz_account:fetch(AccountId),
     {'ok', AuthAccountDoc} = kz_account:fetch(AuthAccountId),
-    %% Serve only requests from SuperAdmin
-    kz_account:is_superduper_admin(AuthAccountDoc).
+    kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
+    %% Serve request for reseller rates
+    andalso kz_account:is_reseller(AccountDoc)
+    %% or serve requests from SuperAdmin
+    orelse kz_account:is_superduper_admin(AuthAccountDoc).
 
 -spec get_ratedeck_db(kz_proplist()) -> ne_binary().
 get_ratedeck_db(_Props) ->
@@ -236,15 +271,18 @@ to_csv_row(Row) ->
     Doc = kz_json:get_json_value(<<"doc">>, Row),
     [kz_json:get_binary_value(Key, Doc) || Key <- [?DOC_FIELDS]].
 
--spec generate_row(?SPEC_FIELDS) -> kz_json:object().
-generate_row(?VARS) ->
-    Props = lists:zip([?DOC_FIELDS], [?VARS]),
+-spec generate_row(api_binaries(), kz_proplist()) -> kz_json:object().
+generate_row([?VARS], Props) ->
+    List = lists:zip([?DOC_FIELDS], [?VARS]),
     Update = [{<<"pvt_type">>, <<"rate">>}
              ,{<<"rate_name">>, maybe_generate_name(Name, Prefix, ISO, Direction)}
              ,{<<"weight">>, maybe_generate_weight(Weight, Prefix, Cost, IntCost)}
              ,{<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>]}
+             %% override account-ID from task props
+             ,{<<"account_id">>, props:get_value('account_id', Props)}
+             ,{<<"pvt_auth_account_id">>, props:get_value('auth_account_id', Props)}
              ],
-    kz_json:from_list(props:filter_undefined(props:set_values(Update, Props))).
+    kz_json:from_list(props:filter_undefined(props:set_values(Update, List))).
 
 -spec save_rates(ne_binary(), kz_json:objects()) -> 'ok'.
 save_rates(Db, Docs) ->
@@ -304,14 +342,12 @@ maybe_delete_rate(JObj, Dict) ->
     Prefix = kz_util:to_integer(kz_json:get_value(<<"key">>, JObj)),
     Doc = kz_json:get_value(<<"doc">>, JObj),
     ReqRates = dict:fetch(Prefix, Dict),
-    DocRate = [kz_json:get_binary_value(Key, Doc) || Key <- [?DOC_FIELDS]],
     %% Delete docs only if its match with all defined fields in CSV row
     case lists:any(fun(ReqRate) ->
-                           lists:all(fun({'undefined', _}) -> 'true';
-                                        ({F, F}) -> 'true';
-                                        (_) -> 'false'
+                           lists:all(fun({ReqKey, ReqValue}) ->
+                                             kz_json:get_value(ReqKey, Doc) =:= ReqValue
                                      end
-                                     ,lists:zip(ReqRate, DocRate)
+                                     ,ReqRate
                                     )
                    end
                    ,ReqRates
