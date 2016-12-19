@@ -29,8 +29,9 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, features_available/1, features_list/1, set_features/2
+        ,features/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
+        ,allowed_features/1, denied_features/1
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
@@ -55,6 +56,7 @@
 
 -include("knm.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
+-define(DEFAULT_FEATURES_AVAILABLE, kz_json:from_list([{<<"allowed">>, []}, {<<"denied">>, []}])).
 
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()
@@ -78,6 +80,7 @@
                           ,created :: gregorian_seconds()
                           ,is_billable = 'false' :: boolean()
                           ,is_dirty = 'false' :: boolean()
+                          ,features_available = ?DEFAULT_FEATURES_AVAILABLE :: kz_json:object()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -377,6 +380,7 @@ from_json(JObj) ->
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
                 ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
+                ,{fun set_features_available/2, features_available(kz_json:get_value(?PVT_FEATURES_AVAILABLE, JObj))}
                 ]),
     PhoneNumber.
 
@@ -633,9 +637,28 @@ features(#knm_phone_number{features=Features}) -> Features.
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
--spec features_available(knm_phone_number()) -> ne_binaries().
-features_available(N) ->
-    knm_providers:available_features(N).
+-spec set_features_available(knm_phone_number(), kz_json:object()) -> knm_phone_number().
+set_features_available(N, JObj) ->
+    N#knm_phone_number{features_available = JObj}.
+
+-spec features_available(knm_phone_number()) -> ks_json:object().
+features_available(#knm_phone_number{features_available = FeaturesAvailable}) ->
+    features_available(FeaturesAvailable);
+features_available(FeaturesAvailable) ->
+    case kz_json:is_json_object(FeaturesAvailable) of
+        'true' -> FeaturesAvailable;
+        'false' -> ?DEFAULT_FEATURES_AVAILABLE
+    end.
+
+-spec allowed_features(knm_phone_number()) -> ne_binaries().
+allowed_features(N) ->
+    FeaturesAvailable = features_available(N),
+    kz_json:get_value(<<"allowed">>, FeaturesAvailable, []).
+
+-spec denied_features(knm_phone_number()) -> ne_binaries().
+denied_features(N) ->
+    FeaturesAvailable = features_available(N),
+    kz_json:get_value(<<"denied">>, FeaturesAvailable, []).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->

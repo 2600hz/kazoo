@@ -40,6 +40,7 @@
 
 -record(feature_parameters, {is_local = 'false' :: boolean()
                             ,assigned_to :: api_binary()
+                            ,used_by :: api_binary()
                             ,allowed_features = [] :: ne_binaries()
                             ,denied_features = [] :: ne_binaries()
                             }).
@@ -99,22 +100,26 @@ available_features(Thing) ->
 phone_number_feature_parameters(PhoneNumber) ->
     #feature_parameters{is_local = knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL
                        ,assigned_to = knm_phone_number:assigned_to(PhoneNumber)
-                       ,allowed_features = []
-                       ,denied_features = []
+                       ,used_by = knm_phone_number:used_by(PhoneNumber)
+                       ,allowed_features = knm_phone_number:allowed_features(PhoneNumber)
+                       ,denied_features = knm_phone_number:denied_features(PhoneNumber)
                        }.
 
 -spec jobj_feature_parameters(kz_json:object()) -> feature_parameters().
 jobj_feature_parameters(JObj) ->
     #feature_parameters{is_local = lists:member(<<"local">>, kz_json:get_value(<<"features">>, JObj, []))
                        ,assigned_to = kz_json:get_value(<<"assigned_to">>, JObj)
-                       ,allowed_features = kz_json:get_value(<<"allowed_features">>, JObj, [])
-                       ,denied_features = kz_json:get_value(<<"denied_features">>, JObj, [])
+                       ,used_by = kz_json:get_value(<<"used_by">>, JObj)
+                       ,allowed_features = kz_json:get_value(<<"features_allowed">>, JObj, [])
+                       ,denied_features = kz_json:get_value(<<"features_denied">>, JObj, [])
                        }.
 
 -spec allowed_features(feature_parameters()) -> ne_binaries().
 allowed_features(Parameters) ->
-    reseller_allowed_features(Parameters)
-        ++ number_allowed_features(Parameters).
+    case number_allowed_features(Parameters) of
+        [] -> reseller_allowed_features(Parameters);
+        NumberAllowed -> NumberAllowed
+    end.
 
 -spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
 reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
@@ -151,20 +156,22 @@ number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures})
 
 -spec denied_features(feature_parameters()) -> ne_binaries().
 denied_features(Parameters) ->
-    reseller_denied_features(Parameters)
-        ++ local_denied_features(Parameters)
-        ++ number_denied_features(Parameters).
+    case number_denied_features(Parameters) of
+        []  -> reseller_denied_features(Parameters)
+                  ++ used_by_denied_features(Parameters);
+        NumberDenied -> NumberDenied
+    end.
 
 -spec reseller_denied_features(feature_parameters()) -> ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
     ?EXTERNAL_NUMBER_FEATURES;
-reseller_denied_features(#feature_parameters{assigned_to = AccountId}) ->
+reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
     case kapps_account_config:get_from_reseller(AccountId
                                                ,?KNM_CONFIG_CAT
                                                ,[<<"features">>, <<"deny">>]
                                                )
     of
-        'undefined' -> [];
+        'undefined' -> local_denied_features(Parameters);
         Providers -> Providers
     end.
 
@@ -172,6 +179,10 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}) ->
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
     ?EXTERNAL_NUMBER_FEATURES.
+
+-spec used_by_denied_features(feature_parameters()) -> ne_binaries().
+used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
+used_by_denied_features(_) -> [?FEATURE_FAILOVER].
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
@@ -187,9 +198,25 @@ legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
 legacy_provider_to_feature(<<"telnyx_e911">>) -> ?FEATURE_E911;
 legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
 legacy_provider_to_feature(<<"vitelity_e911">>) -> ?FEATURE_E911;
-legacy_provider_to_feature(Else) ->
-    lager:debug("letting ~p through", [Else]),
-    Else.
+legacy_provider_to_feature(Else) -> Else.
+
+-spec possible_features(knm_phone_number:knm_phone_number() |
+                        kz_json:object() |
+                        feature_parameters()
+                        ) -> ne_binaries().
+possible_features(#feature_parameters{}=Parameters) ->
+    [legacy_provider_to_feature(Feature)
+     || Feature <- number_allowed_features(Parameters)
+                       ++ reseller_allowed_features(Parameters)
+                       ++ system_allowed_features()
+    ];
+possible_features(Thing) ->
+    Parameters =
+        case knm_phone_number:is_phone_number(Thing) of
+            'true' -> phone_number_feature_parameters(Thing);
+            'false' -> jobj_feature_parameters(Thing)
+        end,
+    possible_features(Parameters).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -251,7 +278,7 @@ provider_modules(Number) ->
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
     Possible0 = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
     Possible = lists:usort(Possible0 ++ knm_phone_number:features_list(PhoneNumber)),
-    AllowedBase = allowed_features(PhoneNumber),
+    AllowedBase = available_features(PhoneNumber),
     Allowed = case lists:member(?FEATURE_E911, Possible0) of
                   true -> AllowedBase;
                   false ->
