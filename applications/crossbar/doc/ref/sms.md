@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `to` | callee-id-number | `string` |   | `true`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/sms

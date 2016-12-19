@@ -25,6 +25,8 @@ Key | Description | Type | Default | Required
 `strategy` | The queue strategy for connecting agents to callers | `string('round_robin', 'most_idle')` | `round_robin` | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/queues

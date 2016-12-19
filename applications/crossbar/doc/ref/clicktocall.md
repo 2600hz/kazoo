@@ -20,6 +20,8 @@ Key | Description | Type | Default | Required
 `whitelist.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/clicktocall

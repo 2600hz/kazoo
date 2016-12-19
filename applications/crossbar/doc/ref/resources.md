@@ -59,6 +59,8 @@ Key | Description | Type | Default | Required
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer` | `50` | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resources

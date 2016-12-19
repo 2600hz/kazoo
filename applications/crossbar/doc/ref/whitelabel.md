@@ -28,6 +28,8 @@ Key | Description | Type | Default | Required
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel

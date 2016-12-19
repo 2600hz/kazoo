@@ -19,6 +19,8 @@ Key | Description | Type | Default | Required
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/token_restrictions

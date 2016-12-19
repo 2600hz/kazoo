@@ -23,6 +23,8 @@ Key | Description | Type | Default | Required
 `braintree` |   | `object` |   | `false`
 `local` |   | `object` |   | `false`
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/service_plans

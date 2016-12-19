@@ -40,6 +40,8 @@ Key | Description | Type | Default | Required
 `servers.[].options` |   | `object` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/connectivity

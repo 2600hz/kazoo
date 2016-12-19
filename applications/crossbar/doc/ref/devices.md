@@ -328,6 +328,8 @@ Key | Description | Type | Default | Required
 `patterns` | A list of patterns with their flows | `object` |   | `false`
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices

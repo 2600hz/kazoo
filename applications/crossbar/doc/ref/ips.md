@@ -12,6 +12,8 @@ Key | Description | Type | Default | Required
 `ips.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips
