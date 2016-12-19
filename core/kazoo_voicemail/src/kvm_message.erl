@@ -442,11 +442,11 @@ forward_to_vmbox(Call, Metadata, SrcBoxId, Props) ->
     Failed = kz_json:get_value(<<"failed">>, Result, []),
     Succeeded = kz_json:get_value(<<"succeeded">>, Result, []),
     case {Failed, Succeeded} of
-        {[], []} -> {'error', 'internal_error'};
+        {[], []} -> {'error', Call, 'internal_error'};
         {[], [ForwardId]} ->
             %%TODO: update lenght and caller_id
             notify_and_update_meta(Call, ForwardId, Length, Props);
-        {[{_id, Reason}], _} -> {'error', Reason}
+        {[{_id, Reason}], _} -> {'error', Call, Reason}
     end.
 
 %%--------------------------------------------------------------------
@@ -467,7 +467,9 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
     catch
         _T:_E ->
             %% prepend failed, so at least try to forward without a prepend message
+            ST = erlang:get_stacktrace(),
             lager:error("exception occured during prepend and forward message: ~p:~p", [_T, _E]),
+            kz_util:log_stacktrace(ST),
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     end.
 
@@ -478,7 +480,7 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
 
     lager:debug("saving prepend message ~s attachment to file system", [ForwardId]),
     TmpAttachmentName = props:get_ne_binary_value(<<"Attachment-Name">>, Props),
-    {'ok', TmpPath} = write_attachment_to_file(AccountId, ForwardId, TmpAttachmentName),
+    {'ok', TmpPath} = write_attachment_to_file(AccountId, ForwardId, [TmpAttachmentName]),
     {'ok', _} = kz_datamgr:delete_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, TmpAttachmentName),
 
     OrigMsgId = kzd_box_message:media_id(Metadata),
