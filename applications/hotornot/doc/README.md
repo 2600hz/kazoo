@@ -1,10 +1,11 @@
-
 # Hot or Not *Call rating*
 
-This application serves `rate_req` requests.
+This application serves `rate_req` AMQP requests.
 
-Rates stored in "ratedeck" database.  
-Each rate is separate doceument:
+Rates are stored in a system-wide "ratedeck" database.
+
+Each rate is separate document:
+
 ```JSON
 {
     "_id": "f36cac061205f7a0f7fde6b4d3370bf9",
@@ -31,21 +32,21 @@ Each rate is separate doceument:
 }
 ```
 
-Schema for this documents described in [cb_rates](../../crossbar/doc/rates.md) module.
+Schema for these rate documents is described in the [rates](../../crossbar/doc/rates.md#schema) reference doc.
 
-## Configuration
+## System Configuration
 
 Key | Description | Type | Default
 --- | ----------- | ---- | -------
-`use_trie` | Use in-memory prefix dictionary for search rates | `boolean` | `false`
-`filter_list` | List additional filters (after prefix match) | `array(string)` | `["direction", "route_options", "routes"]`
-`filter_list.[]` |  | `string` |
-`sort_by_weight` | Sort matched filters by `weight`(`true`) or by `rate_cost` (`false`) | `boolean` | `true`
 `default_rate_cost` | Cost used when `rate_cost` is not defined in rate | `float` | `0.0`
-`default_rate_surcharge` | Surcharge used when `rate_surcharge` is not defined in rate | `float` | `0.0`
-`default_rate_minimum` | Minimum call duration when `rate_minimum` is not defined in rate | `integer` | `60`
 `default_rate_increment` | Increment call duration when `rate_increment` is not defined in rate | `integer` | `60`
+`default_rate_minimum` | Minimum call duration when `rate_minimum` is not defined in rate | `integer` | `60`
 `default_rate_nocharge_time` | No chanrge time when `rate_nocharge_time`  is not defined in rate | `integer` | `0`
+`default_rate_surcharge` | Surcharge used when `rate_surcharge` is not defined in rate | `float` | `0.0`
+`filter_list.[]` |  | `string` |
+`filter_list` | List additional filters (after prefix match) | `array(string)` | `["direction", "route_options", "routes"]`
+`sort_by_weight` | Sort matched filters by `weight`(`true`) or by `rate_cost` (`false`) | `boolean` | `true`
+`use_trie` | Use in-memory prefix dictionary for search rates | `boolean` | `false`
 
 ## Trie
 
