@@ -64,6 +64,10 @@ curl -v -X GET \
 
 #### Upload a ratedeck CSV
 
+Uploading CSVs has moved to using the ['tasks'](./tasks.md) API, which provides a more generic interface. See the [rates task documentation](../../tasks/doc/rates.md) for more details on uploading rates.
+
+##### Deprecated version
+
 > POST /v2/rates
 
 For bulk uploading. CSV rows can be formatted in the following ways:
