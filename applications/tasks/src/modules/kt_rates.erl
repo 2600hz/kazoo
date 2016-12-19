@@ -115,15 +115,15 @@ export(Props, 'init') ->
     case is_allowed(Props) of
         'true' -> State = [{'db', get_ratedeck_db(Props)}
                           ,{'options', [{'limit', ?BULK_LIMIT + 1}
-                                        ,'include_docs'
+                                       ,'include_docs'
                                        ]}
                           ],
                   export(Props, State);
         'false' ->
             lager:warning("rates exporting is forbidden for account ~s, auth account ~s"
-                          ,[props:get_value('account_id', Props)
-                           ,props:get_value('auth_account_id', Props)
-                           ]
+                         ,[props:get_value('account_id', Props)
+                          ,props:get_value('auth_account_id', Props)
+                          ]
                          ),
             {<<"task execution is forbidden">>, 'stop'}
     end;
@@ -150,7 +150,7 @@ export(_Props, State) ->
 -spec import(kz_proplist(), task_iterator(), ?SPEC_FIELDS) -> task_iterator().
 import(Props, 'init', ?VARS) ->
     kz_datamgr:suppress_change_notice(),
-    case is_allowed(Props) of 
+    case is_allowed(Props) of
         'true' ->
             State = [{'db', get_ratedeck_db(Props)}
                     ,{'limit', ?BULK_LIMIT}
@@ -160,9 +160,9 @@ import(Props, 'init', ?VARS) ->
             import(Props, State, ?VARS);
         'false' ->
             lager:warning("rates importing is forbidden for account ~s, auth account ~s"
-                          ,[props:get_value('account_id', Props)
-                           ,props:get_value('auth_account_id', Props)
-                           ]
+                         ,[props:get_value('account_id', Props)
+                          ,props:get_value('auth_account_id', Props)
+                          ]
                          ),
             {<<"task execution is forbidden">>, 'stop'}
     end;
@@ -194,9 +194,9 @@ delete(Props, 'init', ?VARS) ->
             delete(Props, State, ?VARS);
         'false' ->
             lager:warning("rates deleting is forbidden for account ~s, auth account ~s"
-                          ,[props:get_value('account_id', Props)
-                           ,props:get_value('auth_account_id', Props)
-                           ]
+                         ,[props:get_value('account_id', Props)
+                          ,props:get_value('auth_account_id', Props)
+                          ]
                          ),
             {<<"task execution is forbidden">>, 'stop'}
     end;
@@ -257,9 +257,9 @@ is_allowed(Props) ->
     {'ok', AuthAccountDoc} = kz_account:fetch(AuthAccountId),
     kz_util:is_in_account_hierarchy(AuthAccountId, AccountId, 'true')
     %% Serve request for reseller rates
-    andalso kz_account:is_reseller(AccountDoc)
+        andalso kz_account:is_reseller(AccountDoc)
     %% or serve requests from SuperAdmin
-    orelse kz_account:is_superduper_admin(AuthAccountDoc).
+        orelse kz_account:is_superduper_admin(AuthAccountDoc).
 
 -spec get_ratedeck_db(kz_proplist()) -> ne_binary().
 get_ratedeck_db(_Props) ->
@@ -280,8 +280,8 @@ generate_row([?VARS], Props) ->
              ,{<<"routes">>, [<<"^\\+?", Prefix/binary, ".+$">>]}
              %% override account-ID from task props
              ,{<<"account_id">>, props:get_value('account_id', Props)}
-             ,{<<"pvt_auth_account_id">>, props:get_value('auth_account_id', Props)}
-             ],
+                                ,{<<"pvt_auth_account_id">>, props:get_value('auth_account_id', Props)}
+                                ],
     kz_json:from_list(props:filter_undefined(props:set_values(Update, List))).
 
 -spec save_rates(ne_binary(), kz_json:objects()) -> 'ok'.
