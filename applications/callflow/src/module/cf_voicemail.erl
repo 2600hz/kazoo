@@ -828,9 +828,9 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
         {'ok', 'forward'} ->
             lager:info("caller chose to forward the message"),
             forward_message(H, Box, Call),
-            _ = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
+            {_, NMessage} = kvm_message:set_folder(?VM_FOLDER_SAVED, H, AccountId),
             _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
-            play_messages(T, PrevMessages, Count, Box, Call);
+            play_messages(T, [NMessage|PrevMessages], Count, Box, Call);
         {'error', _} ->
             lager:info("error during message playback")
     end;
@@ -870,6 +870,7 @@ forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, _Call) ->
     lager:info("unable to find destination mailbox, returning to message menu...");
 forward_message(Message, SrcBoxId, DestBox, Call) ->
     case forward_message_menu(DestBox, Call) of
+        {'ok', 'return'} -> 'ok';
         {'ok', 'append'} ->
             compose_forward_message(Message, SrcBoxId, DestBox, Call);
         {'ok', 'forward'} ->
