@@ -222,10 +222,16 @@ check_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _, Call, Loop) when
     lager:info("maximum number of invalid attempts to check mailbox"),
     _ = kapps_call_command:b_prompt(<<"vm-abort">>, Call),
     'ok';
-check_mailbox(#mailbox{exists='false'}=Box, _ , Call, Loop) ->
+check_mailbox(#mailbox{exists='false'
+                      ,max_login_attempts=MaxLoginAttempts
+                      }=Box, _ , Call, Loop) ->
     %% if the callflow did not define the mailbox to check then request the mailbox ID from the user
-    {PossibleBox, NewLoop} = find_mailbox(Box, Call, ?DEFAULT_FIND_BOX_PROMPT, Loop),
-    check_mailbox(PossibleBox, Call, NewLoop);
+    case find_mailbox(Box, Call, ?DEFAULT_FIND_BOX_PROMPT, Loop) of
+        {'ok', PossibleBox, NewLoop} -> check_mailbox(PossibleBox, Call, NewLoop);
+        {'error', 'not_found'} ->
+            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            check_mailbox(Box, Call, MaxLoginAttempts + 1)
+    end;
 check_mailbox(#mailbox{require_pin='false'}=Box, 'true', Call, _) ->
     %% If this is the owner of the mailbox calling in and it doesn't require a pin then jump
     %% right to the main menu
@@ -273,14 +279,16 @@ check_mailbox(#mailbox{pin=Pin
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec find_mailbox(mailbox(), kapps_call:call(), ne_binary(), non_neg_integer()) -> {mailbox(), non_neg_integer()}.
+-spec find_mailbox(mailbox(), kapps_call:call(), ne_binary(), non_neg_integer()) ->
+                          {'ok', mailbox(), non_neg_integer()} |
+                          {'error', 'not_found'}.
 
-find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, _Call, _VmEntryIdMedia, Loop)
+find_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, _Call, _VmEntryIdMedia, Loop)
   when Loop > MaxLoginAttempts ->
     %% if we have exceeded the maximum loop attempts then terminate this call
-    %% Note: check_mailbox will play vm-abort
+    %% Note: caller should play vm-abort or appropriate abort failure
     lager:info("maximum number of invalid attempts to find mailbox"),
-    {Box, Loop};
+    {'error', 'not_found'};
 find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, Loop) ->
     lager:info("requesting mailbox number to check"),
 
@@ -299,7 +307,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
         {'ok', Mailbox} ->
             BoxNum = try kz_util:to_integer(Mailbox) catch _:_ -> 0 end,
             case find_mailbox_by_number(BoxNum, Call) of
-                {'ok', FoundBox} -> {FoundBox, Loop};
+                {'ok', FoundBox} -> {'ok', FoundBox, Loop};
                 {'error', 'not_found'} ->
                     _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
                     find_mailbox(Box, Call, VmEntryIdMedia, Loop + 1);
@@ -310,7 +318,7 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
             end;
         _E ->
             lager:info("recv other: ~p", [_E]),
-            {Box, Loop + 1}
+            {'error', 'not_found'}
     end.
 
 %%--------------------------------------------------------------------
@@ -320,9 +328,6 @@ find_mailbox(#mailbox{interdigit_timeout=Interdigit}=Box, Call, VmEntryIdMedia, 
 %% caller is the owner, and the pin is not required then we skip requesting the pin
 %%
 %% Note: Check mailbox existence here to properly updating Loop in find_mailbox/4
-%% but it's still the caller responsiblity to check for mailbox existence since
-%% when find_mailbox is reached max_login_attempts it will return and empty
-%% mailbox record.
 %% @end
 %%--------------------------------------------------------------------
 -spec find_mailbox_by_number(non_neg_integer(), kapps_call:call()) ->
@@ -341,20 +346,21 @@ find_mailbox_by_number(BoxNum, Call) ->
         Error -> Error
     end.
 
+-spec find_destination_mailbox(kapps_call:call(), ne_binary(), non_neg_integer()) -> mailbox().
 find_destination_mailbox(Call, _SrcBoxId, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
     lager:info("maximum number of invalid attempts to find destination mailbox"),
     _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
     #mailbox{};
 find_destination_mailbox(Call, SrcBoxId, Loop) ->
     case find_mailbox(#mailbox{}, Call, <<"vm-enter_forward_id">>, Loop) of
-        {#mailbox{exists='false'}, NewLoop} ->
-            _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
-            find_destination_mailbox(Call, SrcBoxId, NewLoop);
-        {#mailbox{mailbox_id=SrcBoxId}, NewLoop} ->
+        {'ok', #mailbox{mailbox_id=SrcBoxId}, NewLoop} ->
             lager:info("source mailbox can't be a destination mailbox"),
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
             find_destination_mailbox(Call, SrcBoxId, NewLoop + 1);
-        {DestBox, _NewLoop} -> DestBox
+        {'ok', DestBox, _NewLoop} -> DestBox;
+        {'error', 'not_found'} ->
+            %% can't find mailbox, set Loop to max to play abort prompts in above func clause
+            find_destination_mailbox(Call, SrcBoxId, ?MAX_LOGIN_ATTEMPTS + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -860,8 +866,7 @@ forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
     forward_message(Message, SrcBoxId, PossibleBox, Call).
 
 -spec forward_message(kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
-forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, Call) ->
-    _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
+forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, _Call) ->
     lager:info("unable to find destination mailbox, returning to message menu...");
 forward_message(Message, SrcBoxId, DestBox, Call) ->
     case forward_message_menu(DestBox, Call) of
