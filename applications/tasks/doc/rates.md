@@ -28,8 +28,8 @@ Available fields:
 
 **Note 1**: for `import` & `delete` actions, value of `account_id` from CSV file will be ignored, value for this field is taken from task Account-ID .
 
-**Note 2**: `routes` and `options` fields can not be defined via CSV file (because their values a lists).
-`routes` automatically generated from `prefix`. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
+**Note 2**: `routes` and `options` fields can not be defined via CSV file (because their values are lists).
+`routes` is automatically generated from `prefix`. Example: `prefix` 380 generates `routes` - `["^\\+?380.+$"]`.
 
 ## Actions
 
