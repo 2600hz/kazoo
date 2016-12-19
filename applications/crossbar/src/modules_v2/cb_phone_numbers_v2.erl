@@ -514,8 +514,7 @@ view_account_phone_numbers(Context) ->
 
 maybe_fix_available(NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
-    lager:debug("number: ~s", [kz_json:encode(JObj)]),
-    FeaturesAvailable = knm_providers:available_features(knm_phone_number:from_json(JObj)),
+    FeaturesAvailable = knm_providers:available_features(JObj),
     NewJObj = kz_json:set_value(<<"features_available">>, FeaturesAvailable, JObj),
     kz_json:from_list([{Num, NewJObj}]).
 
