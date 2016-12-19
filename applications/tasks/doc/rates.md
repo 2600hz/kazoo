@@ -38,6 +38,14 @@ Available fields:
 Import rates from CSV.
 `prefix` and `rate_cost` are mandatory fields.
 
+```shell
+curl -v -X PUT \
+-H "X-Auth-Header: {AUTH_TOKEN}" \
+-H "Content-type: text/csv" \
+--data-binary @rates.csv \
+'http://{SERVER}:8000/v2/tasks?category=rates&action=import'
+```
+
 ### Export
 
 Export all rates into CSV.
