@@ -635,7 +635,7 @@ features_list(N) ->
 
 -spec features_available(knm_phone_number()) -> ne_binaries().
 features_available(N) ->
-    knm_providers:allowed_features(N).
+    knm_providers:available_features(N).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->

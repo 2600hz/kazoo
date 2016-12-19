@@ -514,10 +514,11 @@ view_account_phone_numbers(Context) ->
 
 maybe_fix_available(NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
-    MaybeAccount = kz_json:get_ne_binary_value(<<"assigned_to">>, JObj),
-    FAs = knm_providers:available_features(MaybeAccount),
-    NewJObj = kz_json:set_value(<<"features_available">>, FAs, JObj),
+    lager:debug("number: ~s", [kz_json:encode(JObj)]),
+    FeaturesAvailable = knm_providers:available_features(knm_phone_number:from_json(JObj)),
+    NewJObj = kz_json:set_value(<<"features_available">>, FeaturesAvailable, JObj),
     kz_json:from_list([{Num, NewJObj}]).
+
 
 %% @private
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
