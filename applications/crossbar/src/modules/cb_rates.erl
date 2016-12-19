@@ -13,6 +13,7 @@
         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
         ,resource_exists/0, resource_exists/1 ,resource_exists/2
         ,content_types_accepted/1
+        ,content_types_provided/1
         ,validate/1, validate/2, validate/3
         ,put/1
         ,post/1, post/2
@@ -50,6 +51,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.rates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
@@ -115,6 +117,19 @@ content_types_accepted(Context) ->
 -spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
 content_types_accepted_by_verb(Context, ?HTTP_POST) ->
     cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]).
+
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+content_types_provided(Context) ->
+    content_types_provided_by_verb(Context, cb_context:req_verb(Context)).
+
+-spec content_types_provided_by_verb(cb_context:context(), http_method()) -> cb_context:context().
+content_types_provided_by_verb(Context, ?HTTP_GET) ->
+    lager:debug("adding csv ctp"),
+    cb_context:add_content_types_provided(Context, [{'to_csv', ?CSV_CONTENT_TYPES}
+                                                   ,{'to_json', ?JSON_CONTENT_TYPES}
+                                                   ]);
+content_types_provided_by_verb(Context, _Verb) ->
+    Context.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -430,9 +445,8 @@ process_row(Row, {Count, JObjs}=Acc) ->
                       ,{<<"direction">>, get_row_direction(Row)}
                       ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                       ,{<<"routes">>, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{<<"options">>, []}
-                                         ]),
-
+                      ,{<<"options">>, []}
+                      ]),
             {Count + 1, [kz_json:from_list(Props) | JObjs]}
     end.
 
