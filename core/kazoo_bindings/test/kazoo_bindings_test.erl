@@ -28,11 +28,11 @@
 
 %% EUNIT and PropEr TESTING %%
 -spec binding_matches(ne_binary(), ne_binary()) -> boolean().
-binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) > 0 ->
-    kazoo_bindings:matches(
-      lists:reverse(binary:split(B, <<".">>, ['global']))
-                          ,lists:reverse(binary:split(R, <<".">>, ['global']))
-     ).
+binding_matches(B, R) ->
+    BRev = lists:reverse(binary:split(B, <<".">>, ['global'])),
+    RRev = lists:reverse(binary:split(R, <<".">>, ['global'])),
+
+    kazoo_bindings:matches(BRev, RRev).
 
 -define(ROUTINGS, [<<"foo.bar.zot">>
                   ,<<"foo.quux.zot">>
@@ -54,19 +54,39 @@ binding_matches(B, R) when erlang:byte_size(B) > 0 andalso erlang:byte_size(R) >
                   ,{<<"#.bar.*">>, ['true', 'false', 'false', 'false', 'false', 'false']}
                   ]).
 
-bindings_match_test() ->
-    lists:foreach(fun({B, _}=Expected) ->
-                          Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], ?ROUTINGS),
-                          ?assertEqual(Expected, {B, Actual})
-                  end, ?BINDINGS).
+bindings_match_test_() ->
+    lists:map(fun({B, _}=Expected) ->
+                      Actual = lists:foldr(fun(R, Acc) -> [binding_matches(B, R) | Acc] end, [], ?ROUTINGS),
+                      ?_assertEqual(Expected, {B, Actual})
+              end
+             ,?BINDINGS
+             ).
+
+%% Left commented out because this was really useful for stepping through
+%% individual tests and I want to keep it here for reference in the future
+%% dbg_test() ->
+%%     dbg:start(),
+
+%%     dbg:tracer(),
+
+%%     dbg:tpl(kazoo_bindings, [{'_', [], [$_]}]),
+%%     dbg:p(all, c),
+
+%%     Result = binding_matches(<<"#.c.#.c.#">>, <<"c.c">>),
+
+%%     dbg:stop_clear(),
+%%     dbg:stop(),
+%%     ?assertEqual('true', Result).
 
 weird_bindings_test_() ->
     [?_assertEqual('true', binding_matches(<<"#.A.*">>,<<"A.a.A.a">>))
     ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo">>))
     ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo.bar">>))
     ,?_assertEqual('false', binding_matches(<<"foo.#.*">>, <<"foo">>))
-     %% ,?_assertEqual('false', binding_matches(<<"#.*">>, <<>>))
+    ,?_assertEqual('false', binding_matches(<<"#.*">>, <<>>))
     ,?_assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>))
+    ,?_assertEqual('true', binding_matches(<<"*.u.*.7.7.#">>,<<"i.u.e.7.7.7.a">>))
+    ,?_assertEqual('true', binding_matches(<<"#.c.#.c.#">>, <<"c.c">>))
     ].
 
 %%% PropEr tests
