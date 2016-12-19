@@ -11,6 +11,14 @@ Key | Description | Type | Default | Required
 `file_name` | Human-readable name of a task's input file | `string` |   | `false`
 `records` | List the rows of input data | `array(object)` |   | `false`
 
+#### Operations
+
+Ensure the endpoint and backend are started:
+
+```shell
+sup crossbar_maintenance start_module cb_tasks
+sup kapps_controller start_app tasks
+```
 
 
 
