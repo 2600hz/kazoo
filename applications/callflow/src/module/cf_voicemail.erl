@@ -868,7 +868,7 @@ forward_message(Message, SrcBoxId, DestBox, Call) ->
         {'ok', 'append'} ->
             compose_forward_message(Message, SrcBoxId, DestBox, Call);
         {'ok', 'forward'} ->
-            forward_message('undefined', 'undefined', Message, SrcBoxId, DestBox, Call);
+            forward_message('undefined', 0, Message, SrcBoxId, DestBox, Call);
         {'error', _R} ->
             lager:info("error during forward message playback: ~p", [_R])
     end.
@@ -946,7 +946,7 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
             lager:info("error while attempting to record a foward message: ~p", [_R])
     end.
 
--spec forward_message(api_ne_binary(), api_pos_integer(), kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
+-spec forward_message(api_ne_binary(), non_neg_integer(), kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
 forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_number=BoxNum
                                                                    ,mailbox_id=BoxId
                                                                    ,timezone=Timezone
@@ -1461,7 +1461,7 @@ collect_pin(Interdigit, Call, NoopId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new_message(ne_binary(), pos_integer(), mailbox(), kapps_call:call()) -> any().
+-spec new_message(ne_binary(), non_neg_integer(), mailbox(), kapps_call:call()) -> any().
 new_message(_, Length, #mailbox{min_message_length=MinLength}, _)
   when Length < MinLength ->
     lager:info("attachment length is ~B and must be larger than ~B to be stored", [Length, MinLength]);

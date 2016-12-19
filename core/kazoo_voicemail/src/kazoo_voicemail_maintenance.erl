@@ -176,7 +176,7 @@ renotify(Account, MessageId) ->
              )
     end.
 
--spec log_renotify_result(ne_binary(), ne_binary(), any()) -> 'ok'.
+-spec log_renotify_result(ne_binary(), ne_binary(), kz_amqp_worker:request_return()) -> 'ok'.
 log_renotify_result(MessageId, BoxId, {'ok', JObj}) ->
     ?LOG("re-notify sent message ~s from mailbox ~s: ~s"
         ,[MessageId, BoxId, kz_json:encode(JObj)]
