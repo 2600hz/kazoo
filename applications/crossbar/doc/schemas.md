@@ -4,7 +4,8 @@
 
 Kazoo uses [JSON Schemas](http://json-schema.org/) to validate incoming data from clients.
 
-Any fields that aren't defined in the JSON schema will be stored, unmodified, along side the validated fields (assuming all is well). This excludes Kazoo-managed private fields (top-level keys prefixed with "_" and "pvt_").
+Any fields that aren't defined in the JSON schema will be stored, unmodified, along side the validated fields (assuming all is well).
+This excludes Kazoo-managed private fields (top-level keys prefixed with `"_"` or `"pvt_"`).
 
 #### Schema
 

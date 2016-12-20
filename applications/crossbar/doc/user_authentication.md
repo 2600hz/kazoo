@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `method` | The hash method | `string('md5', 'sha')` | `md5` | `false`
 `phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false`
 
+
+
 #### Create a new auth token
 
 Easy as 1, 2, 3:
