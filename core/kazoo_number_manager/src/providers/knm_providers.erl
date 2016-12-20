@@ -39,20 +39,20 @@
                                   ,?FEATURE_PORT
                                   ]).
 
--define(KEY_FALLOW, [<<"features">>, <<"allow">>]).
--define(KEY_FDENY, [<<"features">>, <<"deny">>]).
+-define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
+-define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
 -define(FEATURES_ALLOWED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FALLOW)).
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
 
 -define(FEATURES_DENIED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FDENY)).
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
 
 -define(SYSTEM_PROVIDERS,
         kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
 
 -define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FALLOW, Default)).
+        kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
 -define(FEATURES_ALLOWED_SYSTEM,
         ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES)).
