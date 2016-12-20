@@ -323,7 +323,12 @@ exec(Number, Action) ->
         'true' -> exec(Number1, Action, RequestedModules);
         'false' ->
             AllowedModules = allowed_modules(Number),
-            {AllowedRequests, DeniedRequests} = lists:splitwith(fun(Request) -> lists:member(Request, AllowedModules) end, RequestedModules),
+            {AllowedRequests, DeniedRequests} =
+                lists:splitwith(fun(Request) ->
+                                        lists:member(Request, AllowedModules)
+                                end
+                               ,RequestedModules
+                               ),
             Number2 = exec(Number1, Action, AllowedRequests),
             exec(Number2, 'delete', DeniedRequests)
     end.
@@ -340,8 +345,8 @@ fix_old_fields_names(Number) ->
     ToDelete = [?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911, ?LEGACY_TELNYX_E911],
     NewJObj = kz_json:set_values(Values, kz_json:delete_keys(ToDelete, JObj)),
     knm_number:set_phone_number(Number
-        ,knm_phone_number:update_doc(PhoneNumber, NewJObj)
-    ).
+                               ,knm_phone_number:update_doc(PhoneNumber, NewJObj)
+                               ).
 
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->

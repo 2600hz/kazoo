@@ -11,13 +11,13 @@
 -include("knm.hrl").
 
 -export([normalize/1, normalize/2, normalize/3
-         ,to_npan/1
-         ,to_1npan/1
+        ,to_npan/1
+        ,to_1npan/1
         ]).
 
 -define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
                                    ,kz_json:from_list([{<<"prefix">>, <<"+1">>}])
-                                  }
+                                     }
                                   ,{<<"^011(\\d*)$|^00(\\d*)$">>
                                     ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
                                    }
