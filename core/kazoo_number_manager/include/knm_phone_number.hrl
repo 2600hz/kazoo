@@ -26,7 +26,8 @@
 -define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
--define(PVT_FEATURES_AVAILABLE, <<"pvt_features_available">>).
+-define(PVT_FEATURES_ALLOWED, <<"pvt_features_allowed">>).
+-define(PVT_FEATURES_DENIED, <<"pvt_features_denied">>).
 -define(PVT_IS_BILLABLE, <<"pvt_is_billable">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).
@@ -74,22 +75,6 @@
 -define(FEATURE_PORT, <<"port">>).
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
-
--define(DEFAULT_RESELLER_PROVIDERS, [?FEATURE_CNAM
-                                    ,?FEATURE_FAILOVER
-                                    ,?FEATURE_PORT
-                                    ,?FEATURE_PREPEND
-                                    ]).
-
--define(DEFAULT_MASTER_PROVIDERS, [?FEATURE_CNAM
-                                  ,?FEATURE_E911
-                                  ,?FEATURE_FAILOVER
-                                  ,?FEATURE_FORCE_OUTBOUND
-                                  ,?FEATURE_LOCAL
-                                  ,?FEATURE_PORT
-                                  ,?FEATURE_PREPEND
-                                  ,?FEATURE_RINGBACK
-                                  ]).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).

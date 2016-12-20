@@ -31,7 +31,7 @@
         ,used_by/1, set_used_by/2
         ,features/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
-        ,allowed_features/1, denied_features/1
+        ,features_allowed/1, features_denied/1
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
@@ -56,7 +56,9 @@
 
 -include("knm.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
--define(DEFAULT_FEATURES_AVAILABLE, kz_json:from_list([{<<"allowed">>, []}, {<<"denied">>, []}])).
+
+-define(DEFAULT_FEATURES_ALLOWED, []).
+-define(DEFAULT_FEATURES_DENIED, []).
 
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()
@@ -80,7 +82,8 @@
                           ,created :: gregorian_seconds()
                           ,is_billable = 'false' :: boolean()
                           ,is_dirty = 'false' :: boolean()
-                          ,features_available = ?DEFAULT_FEATURES_AVAILABLE :: kz_json:object()
+                          ,features_allowed = ?DEFAULT_FEATURES_ALLOWED :: ne_binaries()
+                          ,features_denied = ?DEFAULT_FEATURES_DENIED :: ne_binaries()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -303,7 +306,9 @@ to_public_json(Number) ->
             ,State
             ,UsedBy
             ,Features
-            ,{<<"features_available">>, features_available(Number)}
+            ,{<<"features_available">>, knm_providers:available_features(Number)}
+            ,{<<"features_allowed">>, features_allowed(Number)}
+            ,{<<"features_denied">>, features_denied(Number)}
             ])
          ),
     Values = props:filter_empty(
@@ -340,7 +345,8 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
             ,{?PVT_USED_BY, used_by(N)}
             ,{?PVT_FEATURES, features(N)}
-            ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
+            ,{?PVT_FEATURES_ALLOWED, features_allowed(N)}
+            ,{?PVT_FEATURES_DENIED, features_denied(N)}
             ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
             ,{?PVT_CARRIER_DATA, carrier_data(N)}
             ,{?PVT_REGION, region(N)}
@@ -380,7 +386,8 @@ from_json(JObj) ->
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
                 ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
-                ,{fun set_features_available/2, features_available(kz_json:get_value(?PVT_FEATURES_AVAILABLE, JObj))}
+                ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
+                ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
                 ]),
     PhoneNumber.
 
@@ -637,29 +644,6 @@ features(#knm_phone_number{features=Features}) -> Features.
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
--spec set_features_available(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-set_features_available(N, JObj) ->
-    N#knm_phone_number{features_available = JObj}.
-
--spec features_available(knm_phone_number()) -> ks_json:object().
-features_available(#knm_phone_number{features_available = FeaturesAvailable}) ->
-    features_available(FeaturesAvailable);
-features_available(FeaturesAvailable) ->
-    case kz_json:is_json_object(FeaturesAvailable) of
-        'true' -> FeaturesAvailable;
-        'false' -> ?DEFAULT_FEATURES_AVAILABLE
-    end.
-
--spec allowed_features(knm_phone_number()) -> ne_binaries().
-allowed_features(N) ->
-    FeaturesAvailable = features_available(N),
-    kz_json:get_value(<<"allowed">>, FeaturesAvailable, []).
-
--spec denied_features(knm_phone_number()) -> ne_binaries().
-denied_features(N) ->
-    FeaturesAvailable = features_available(N),
-    kz_json:get_value(<<"denied">>, FeaturesAvailable, []).
-
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
@@ -680,6 +664,43 @@ feature(Number, Feature) ->
 set_feature(N, Feature=?NE_BINARY, Data) ->
     Features = kz_json:set_value(Feature, Data, features(N)),
     set_features(N, Features). %% Sets is_dirty.
+
+
+-spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_allowed(N, ?DEFAULT_FEATURES_ALLOWED) ->
+    N#knm_phone_number{is_dirty = true
+                      ,features_allowed = knm_providers:allowed_features(N)
+                      };
+set_features_allowed(N, Features) ->
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
+    case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
+        true -> N;
+        false ->
+            N#knm_phone_number{is_dirty = true
+                              ,features_allowed = Features
+                              }
+    end.
+
+-spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_denied(N, ?DEFAULT_FEATURES_DENIED) ->
+    N#knm_phone_number{is_dirty = true
+                      ,features_denied = knm_providers:denied_features(N)
+                      };
+set_features_denied(N, Features) ->
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
+    case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
+        true -> N;
+        false ->
+            N#knm_phone_number{is_dirty = true
+                              ,features_denied = Features
+                              }
+    end.
+
+-spec features_allowed(knm_phone_number()) -> ne_binaries().
+features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
+
+-spec features_denied(knm_phone_number()) -> ne_binaries().
+features_denied(#knm_phone_number{features_denied = Features}) -> Features.
 
 %%--------------------------------------------------------------------
 %% @public

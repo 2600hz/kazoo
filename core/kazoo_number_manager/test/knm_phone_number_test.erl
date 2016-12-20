@@ -10,7 +10,11 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
--define(FEATURES_AVAILABLE, ?DEFAULT_RESELLER_PROVIDERS).
+-define(FEATURES_AVAILABLE, [?FEATURE_CNAM
+                            ,?FEATURE_FAILOVER
+                            ,?FEATURE_PORT
+                            ,?FEATURE_PREPEND
+                            ]).
 
 is_dirty1_test_() ->
     {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD_NUM),
