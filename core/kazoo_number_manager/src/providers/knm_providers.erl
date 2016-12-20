@@ -89,8 +89,8 @@ available_features(#feature_parameters{}=Parameters) ->
      || Feature <- lists:usort(Allowed),
         not lists:member(Feature, Denied)
     ];
-available_features(PN) ->
-    available_features(feature_parameters(PN)).
+available_features(PhoneNumber) ->
+    available_features(feature_parameters(PhoneNumber)).
 
 -spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
                                 ne_binaries().
@@ -122,8 +122,8 @@ allowed_features(#feature_parameters{}=Parameters) ->
         [] -> reseller_allowed_features(Parameters);
         NumberAllowed -> NumberAllowed
     end;
-allowed_features(PN) ->
-    allowed_features(feature_parameters(PN)).
+allowed_features(PhoneNumber) ->
+    allowed_features(feature_parameters(PhoneNumber)).
 
 -spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
 reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
@@ -131,11 +131,14 @@ reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
 reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
-        Providers -> Providers
+        Providers ->
+            lager:debug("allowed number features set on reseller for ~s", [AccountId]),
+            Providers
     end.
 
 -spec system_allowed_features() -> ne_binaries().
 system_allowed_features() ->
+    lager:debug("allowed number features fetched from system config"),
     case ?SYSTEM_PROVIDERS of
         'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
         Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
@@ -143,6 +146,7 @@ system_allowed_features() ->
 
 -spec number_allowed_features(feature_parameters()) -> ne_binaries().
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
+    lager:debug("allowed number features set on number document"),
     AllowedFeatures.
 
 -spec denied_features(feature_parameters() | knm_phone_number:knm_phone_number()) -> ne_binaries().
@@ -153,29 +157,36 @@ denied_features(#feature_parameters{}=Parameters) ->
                 ++ used_by_denied_features(Parameters);
         NumberDenied -> NumberDenied
     end;
-denied_features(PN) ->
-    denied_features(feature_parameters(PN)).
+denied_features(PhoneNumber) ->
+    denied_features(feature_parameters(PhoneNumber)).
 
 -spec reseller_denied_features(feature_parameters()) -> ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
+    lager:debug("denying external number features for unassigned number"),
     ?EXTERNAL_NUMBER_FEATURES;
 reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
-        Providers -> Providers
+        Providers ->
+            lager:debug("denied number features set on reseller for ~s", [AccountId]),
+            Providers
     end.
 
 -spec local_denied_features(feature_parameters()) -> ne_binaries().
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
+    lager:debug("denying external number features for local number"),
     ?EXTERNAL_NUMBER_FEATURES.
 
 -spec used_by_denied_features(feature_parameters()) -> ne_binaries().
 used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
-used_by_denied_features(_) -> [?FEATURE_FAILOVER].
+used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
+    lager:debug("denying external number features for number used by ~s", [UsedBy]),
+    [?FEATURE_FAILOVER].
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
+    lager:debug("denied number features set on number document"),
     DeniedFeatures.
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
@@ -319,6 +330,7 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 exec(Number, Action) ->
     Number1 = fix_old_fields_names(Number),
     RequestedModules = requested_modules(Number),
+    lager:debug("requested number features: ~p", [RequestedModules]),
     case Action =:= 'delete' of
         'true' -> exec(Number1, Action, RequestedModules);
         'false' ->
@@ -329,7 +341,9 @@ exec(Number, Action) ->
                                 end
                                ,RequestedModules
                                ),
+            lager:debug("allowing number features ~p", [AllowedRequests]),
             Number2 = exec(Number1, Action, AllowedRequests),
+            lager:debug("denied number features ~p", [AllowedRequests]),
             exec(Number2, 'delete', DeniedRequests)
     end.
 

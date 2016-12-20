@@ -667,10 +667,6 @@ set_feature(N, Feature=?NE_BINARY, Data) ->
 
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
-set_features_allowed(N, ?DEFAULT_FEATURES_ALLOWED) ->
-    N#knm_phone_number{is_dirty = true
-                      ,features_allowed = knm_providers:allowed_features(N)
-                      };
 set_features_allowed(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
@@ -682,10 +678,6 @@ set_features_allowed(N, Features) ->
     end.
 
 -spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
-set_features_denied(N, ?DEFAULT_FEATURES_DENIED) ->
-    N#knm_phone_number{is_dirty = true
-                      ,features_denied = knm_providers:denied_features(N)
-                      };
 set_features_denied(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
