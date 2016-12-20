@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `username` | Ubiquiti SSO Username | `string(1..64)` |   | `true`
 
 
+
+
 #### Create an auth token
 
 > PUT /v2/ubiquiti_auth

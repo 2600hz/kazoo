@@ -4,10 +4,14 @@ Kazoo Tasks enables listing, adding, starting & removing generic background task
 
 #### Schema
 
+Input data to go through as part of a background task
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `file_name` | Human-readable name of a task's input file | `string` |   | `false`
 `records` | List the rows of input data | `array(object)` |   | `false`
+
+
 
 
 #### List available tasks

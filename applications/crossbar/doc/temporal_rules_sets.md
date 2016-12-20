@@ -15,6 +15,8 @@ Key | Description | Type | Default | Required
 `temporal_rules.[]` |   | `string` |   | `false`
 
 
+
+
 #### Structure
 
 The structure is really simple:

@@ -29,6 +29,7 @@ Key | Description | Type | Default | Required
 
 
 
+
 #### Domains
 
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/domains

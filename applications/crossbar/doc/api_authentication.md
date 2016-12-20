@@ -34,6 +34,7 @@ Key | Description | Type | Default | Required
 
 
 
+
 #### The Authentication Process
 
 > PUT /v2/api_auth

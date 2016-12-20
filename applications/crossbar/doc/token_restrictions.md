@@ -359,6 +359,8 @@ Key | Description | Type | Default | Required
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string` |   | `false`
 
 
+
+
 #### Remove account's token restrictions
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/token_restrictions

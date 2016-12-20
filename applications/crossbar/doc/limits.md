@@ -4,6 +4,8 @@
 
 #### Schema
 
+Limit an account's ability to place concurrent calls using flat rate trunks
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `allow_prepay` | Determines if the account would like to allow per-minute calls if they have credit | `boolean` | `true` | `false`
@@ -13,6 +15,8 @@ Key | Description | Type | Default | Required
 `outbound_trunks` | The number of outbound, flat-rate trunks | `integer` |   | `false`
 `resource_consuming_calls` | A hard limit for the number of resource consuming calls | `integer` |   | `false`
 `twoway_trunks` | The number of two-way, flat-rate trunks | `integer` |   | `false`
+
+
 
 
 #### Get limits for a given account

@@ -6,6 +6,8 @@ The 2600hz mobile API set: manage numbers.
 
 #### Schema
 
+Schema for a number
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `cnam` |   | `object` |   | `false`
@@ -13,7 +15,7 @@ Key | Description | Type | Default | Required
 `cnam.inbound_lookup` |   | `boolean` |   | `false`
 `e911` |   | `object` |   | `false`
 `e911.activated_time` | The time stamp e911 was provisioned | `string` |   | `false`
-`e911.caller_name` | The name that will show to emergency services | `string` |   | `false`
+`e911.caller_name` | The name that will show to emergency services | `string(3..)` |   | `false`
 `e911.extended_address` | The suit/floor/apt. address where the number is in service | `string` |   | `false`
 `e911.latitude` | The e911 provisioning system calculated service address latitude | `string` |   | `false`
 `e911.legacy_data` | Legacy E911 information | `object` |   | `false`
@@ -44,6 +46,8 @@ Key | Description | Type | Default | Required
 `porting.port_id` | The id of the port request | `string` |   | `false`
 `porting.requested_port_date` | The requested port date | `string` |   | `false`
 `porting.service_provider` | The name of the losing carrier | `string` |   | `false`
+
+
 
 
 #### Search for numbers

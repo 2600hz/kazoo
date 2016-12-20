@@ -8,6 +8,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 
 
+
+
 #### Get allotments configuration for a given account
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments

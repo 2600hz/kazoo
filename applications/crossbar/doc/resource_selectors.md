@@ -18,6 +18,8 @@ Key | Description | Type | Default | Required
 `value` | Extra selector data | `string` |   | `false`
 
 
+
+
 ## Rules
 
 Rules is array of JSON objects. Each object contain one item where key is name of the module, and value is another object, with parameters for that module.

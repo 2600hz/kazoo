@@ -33,6 +33,8 @@ Key | Description | Type | Default | Required
 `ips.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch a list of IPs available to the account
 
 > GET /v2/accounts/{ACCOUNT_ID}/ips

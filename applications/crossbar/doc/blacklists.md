@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `numbers` | Map of caller id number to block | `object` | `{}` | `false`
 
 
+
+
 #### Structure
 
 The structure is really simple:
