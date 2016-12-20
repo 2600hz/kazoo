@@ -76,18 +76,6 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
 
--define(ALL_NUMBER_FEATURES, [?FEATURE_CNAM
-                             ,?FEATURE_CNAM_INBOUND
-                             ,?FEATURE_CNAM_OUTBOUND
-                             ,?FEATURE_E911
-                             ,?FEATURE_FAILOVER
-                             ,?FEATURE_FORCE_OUTBOUND
-                             ,?FEATURE_LOCAL
-                             ,?FEATURE_PORT
-                             ,?FEATURE_PREPEND
-                             ,?FEATURE_RINGBACK
-                             ]).
-
 -define(KAZOO_NUMBER_FEATURES, [?FEATURE_FAILOVER
                                ,?FEATURE_FORCE_OUTBOUND
                                ,?FEATURE_PREPEND
