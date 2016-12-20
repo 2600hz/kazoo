@@ -35,6 +35,15 @@
 
 -export([init_apps/2, init_app/2]).
 -export([init_apps/1, init_app/1]).
+-export([apps/0, app/1
+        ,set_app_field/3%, set_app_field/4, set_app_field/5
+        ,set_app_label/2
+        ,set_app_description/2
+        ,set_app_extended_description/2
+        ,set_app_features/2
+        ,set_app_icon/2
+        ,set_app_screenshots/2
+        ]).
 
 -include("crossbar.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -818,7 +827,7 @@ maybe_create_app(AppPath, MetaData, MasterAccountDb) ->
         {'error', _E} -> io:format(" failed to find app ~s: ~p", [AppName, _E])
     end.
 
--spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_update_app(file:filename_all(), kz_json:object(), ne_binary(), kz_json:object()) -> no_return.
 maybe_update_app(AppPath, MetaData, MasterAccountDb, AppJObj) ->
     ApiUrlKey = <<"api_url">>,
     CurrentDocId = kzd_app:id(AppJObj),
@@ -845,7 +854,7 @@ find_app(Db, Name) ->
 -spec create_app(file:filename_all(), kz_json:object(), ne_binary()) -> 'ok'.
 create_app(AppPath, MetaData, MasterAccountDb) ->
     Doc0 = kz_doc:update_pvt_parameters(MetaData, MasterAccountDb, [{'type', <<"app">>}]),
-    Doc = kz_json:delete_keys([<<"source_url">>], Doc0),
+    Doc = kz_json:delete_key(<<"source_url">>, Doc0),
     case kz_datamgr:save_doc(MasterAccountDb, Doc) of
         {'ok', AppJObj} ->
             AppId = kzd_app:id(AppJObj),
@@ -871,7 +880,7 @@ safe_delete_image(AccountDb, AppId, Image) ->
             kz_datamgr:delete_attachment(AccountDb, AppId, Image)
     end.
 
--spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
+-spec maybe_add_images(file:filename_all(), ne_binary(), kz_json:object(), ne_binary()) -> no_return.
 maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     Icon = kzd_app:icon(MetaData),
     Screenshots = kzd_app:screenshots(MetaData),
@@ -879,9 +888,16 @@ maybe_add_images(AppPath, ?NE_BINARY=AppId, MetaData, MasterAccountDb) ->
     SShotPaths = [{SShot, filename:join([AppPath, <<"metadata">>, <<"screenshots">>, SShot])}
                   || SShot <- Screenshots
                  ],
+    update_icon(AppId, MasterAccountDb, IconPath),
+    update_screenshots(AppId, MasterAccountDb, SShotPaths).
 
-    _ = update_images(AppId, MasterAccountDb, [IconPath], <<"icon">>),
-    _ = update_images(AppId, MasterAccountDb, SShotPaths, <<"screenshots">>).
+update_icon(AppId, MA, IconPath) ->
+    update_images(AppId, MA, [IconPath], <<"icon">>),
+    no_return.
+
+update_screenshots(AppId, MA, SShotPaths) ->
+    update_images(AppId, MA, SShotPaths, <<"screenshots">>),
+    no_return.
 
 -type image_path() :: {file:filename_all(), file:filename_all()}.
 -type image_paths() :: [image_path()].
@@ -934,3 +950,104 @@ find_metadata(AppPath) ->
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}
     end.
+
+-spec apps() -> no_return.
+apps() ->
+    {ok, MA} = kapps_util:get_master_account_db(),
+    case kz_datamgr:get_results(MA, ?CB_APPS_STORE_LIST) of
+        {error, _R} -> lager:debug("failed to read apps in ~s: ~p", [MA, _R]);
+        {ok, JObjs} -> lists:foreach(fun print_app/1, JObjs)
+    end,
+    no_return.
+
+-spec app(ne_binary()) -> no_return.
+app(AppNameOrId) ->
+    {ok, MA} = kapps_util:get_master_account_db(),
+    case find_app(MA, AppNameOrId) of
+        {ok, AppJObj} -> print_app(AppJObj);
+        {error, _} ->
+            case kz_datamgr:open_doc(MA, AppNameOrId) of
+                {ok, AppJObj} -> print_app(view_app(AppJObj));
+                _ -> io:format("unknown app\n"), no_return
+            end
+    end.
+
+view_app(AppJObj) ->
+    M = maps:with([<<"name">>, <<"id">>, <<"phase">>, <<"i18n">>
+                  ,<<"tags">>, <<"api_url">>, <<"source_url">>, <<"published">>
+                  ]
+                 ,kz_json:to_map(AppJObj)
+                 ),
+    kz_json:from_list([{<<"key">>, kzd_app:name(AppJObj)}
+                      ,{<<"value">>, kz_json:from_map(M)}
+                      ]).
+
+print_app(AppJObj) ->
+    io:format("App ~s\n", [kz_json:get_ne_value(<<"key">>, AppJObj)]),
+    _ = put(pp_lvl, 1),
+    _ = print_k_v(kz_json:get_value(<<"value">>, AppJObj)),
+    io:format("\n"),
+    no_return.
+
+print_k_v(JObj) -> kz_json:map(fun print_k_v/2, JObj).
+print_k_v(K, V) ->
+    Lvl = get(pp_lvl),
+    Indent = string:copies("  ", Lvl),
+    case kz_json:is_json_object(V) of
+        false -> io:format("~s~s: ~s\n", [Indent, K, kz_json:encode(V)]);
+        true ->
+            io:format("~s~s:\n", [Indent, K]),
+            _ = put(pp_lvl, Lvl + 1),
+            print_k_v(V),
+            _ = put(pp_lvl, Lvl)
+    end.
+
+update_app(AppId, Path, Value) ->
+    case lists:last(Path) of
+        <<"_id">> -> ok;
+        <<"pvt_", _/binary>> -> ok;
+        ?NE_BINARY ->
+            {ok, MA} = kapps_util:get_master_account_db(),
+            Update = [{Path, Value}],
+            case kz_datamgr:update_doc(MA, AppId, Update) of
+                {ok, _} -> app(AppId);
+                {error, _R} -> io:format("updating ~s failed: ~p\n", [AppId, _R])
+            end
+    end,
+    no_return.
+
+-spec set_app_field(ne_binary(), ne_binary(), ne_binary()) -> no_return.
+set_app_field(AppId, Field, Value) ->
+    update_app(AppId, [Field], Value).
+
+-spec set_app_label(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_description(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_extended_description(ne_binary(), ne_binary()) -> no_return.
+-spec set_app_features(ne_binary(), ne_binary()) -> no_return.
+set_app_label(AppId, Value) ->
+    update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"label">>], Value).
+set_app_description(AppId, Value) ->
+    update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"description">>], Value).
+set_app_extended_description(AppId, Value) ->
+    update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"extended_description">>], Value).
+set_app_features(AppId, Value) ->
+    Values = [V || V <- binary:split(Value, <<$@>>, [global]),
+                   V =/= <<>>
+             ],
+    update_app(AppId, [<<"i18n">>, <<"en-US">>, <<"features">>], Values).
+
+-spec set_app_icon(ne_binary(), ne_binary()) -> no_return.
+set_app_icon(AppId, PathToPNGIcon) ->
+    {ok, MA} = kapps_util:get_master_account_db(),
+    io:format("Processing...\n"),
+    Icon = {filename:basename(PathToPNGIcon), PathToPNGIcon},
+    update_icon(AppId, MA, Icon).
+
+-spec set_app_screenshots(ne_binary(), ne_binary()) -> no_return.
+set_app_screenshots(AppId, PathToScreenshotsFolder) ->
+    {ok, MA} = kapps_util:get_master_account_db(),
+    io:format("Processing...\n"),
+    SShots = [{filename:basename(SShot), SShot}
+              || SShot <- filelib:wildcard(kz_util:to_list(PathToScreenshotsFolder) ++ "/*.png")
+             ],
+    update_screenshots(AppId, MA, SShots).
