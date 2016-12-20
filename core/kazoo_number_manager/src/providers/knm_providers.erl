@@ -324,7 +324,7 @@ exec(Number, Action) ->
         'false' ->
             AllowedModules = allowed_modules(Number),
             {AllowedRequests, DeniedRequests} =
-                lists:splitwith(fun(Request) ->
+                lists:partition(fun(Request) ->
                                         lists:member(Request, AllowedModules)
                                 end
                                ,RequestedModules
