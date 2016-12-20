@@ -5,6 +5,7 @@
 The Faxes API exposes lots of ways to send, receive, track and manage faxes.
 
 As a general concept, faxes are either considered inbound or outbound faxes. In addition:
+
 * API calls with the term "incoming" are used for tracking faxes currently in the process of being received
 * API calls with the term "inbox" are used for managing faxes which have already been received
 * API calls with the term "outgoing" are used for tracking faxes currently in the process of being sent
@@ -49,10 +50,12 @@ State | Description
 ----- | -----------
 `attaching_files` | A fax job was submitted via the api (with a multipart/related content type) or smtp and we are in the process of attaching the files to the fax job.
 `pending` | Fax waiting to be picked up by the fax sending job
-`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
+`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response XXX"
 `processing` | Faxes that are actively picked up by the fax worker and are being processed
 `completed` | Faxes that are finished sending
 `failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
+
+
 
 ### Sending Outbound Faxes
 

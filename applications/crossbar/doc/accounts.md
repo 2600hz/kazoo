@@ -36,7 +36,8 @@ Key | Description | Type | Default | Required
 `timezone` | The default timezone | `string(5..32)` | `America/Los_Angeles` | `false`
 `voicemail` |   | `object` |   | `false`
 `voicemail.notify` |   | `object` |   | `false`
-`voicemail.notify.callback` |   | `#/definitions/notify.callback` |   | `false`
+`voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`
+
 
 #### Create a new child account
 

@@ -51,6 +51,7 @@ Key | Description | Type | Default | Required
 `to_uri` | The To SIP URI | `string` |   | `false`
 `user_agent` | User agent header from SIP packet | `string` |   | `false`
 
+
 #### Fetch a summary of CDRs
 
 > GET /v2/accounts/{ACCOUNT_ID}/cdrs

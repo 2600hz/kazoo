@@ -69,6 +69,10 @@ Key | Description | Type | Default | Required
 `username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false`
 `verified` | Determines if the user has been verified | `boolean` | `false` | `false`
 `vm_to_email_enabled` | Determines if the user would like voicemails emailed to them | `boolean` | `true` | `false`
+`voicemail` |   | `object` |   | `false`
+`voicemail.notify` |   | `object` |   | `false`
+`voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`
+
 
 #### Fetch summary of users in account
 

@@ -79,6 +79,7 @@ Key | Description | Type | Default | Required
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean` | `false` | `false`
 `timezone` | Device's timezone | `string` |   | `false`
 
+
 #### Fetch summary of devices in account
 
 > GET /v2/accounts/{ACCOUNT_ID}/devices

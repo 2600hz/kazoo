@@ -18,7 +18,9 @@ You can configure how frequently the system checks for failed jobs in `system_co
 
 You can configure how what is considered a 'stalled' job by defining how old the job is (the last time the job document was modified) relative to the current time. Configure in `system_config/crossbar.resources`, using the `job_recover_threshold_s` key (defaults to 1 hour). If a job is not completed, and hasn't been modified in over an hour, there's a good chance the job executor died. A new job executor will be started to pick up where the old one left off.
 
-#### Resources Schema
+#### Schema
+
+Schema for resources
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -71,6 +73,7 @@ Key | Description | Type | Default | Required
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string)` | `[]` | `false`
 `rules.[]` |   | `string` |   | `false`
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer` | `50` | `false`
+
 
 #### Fetch an account's resources
 
