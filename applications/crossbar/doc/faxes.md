@@ -11,7 +11,6 @@ As a general concept, faxes are either considered inbound or outbound faxes. In 
 * API calls with the term "outgoing" are used for tracking faxes currently in the process of being sent
 * API calls with the term "outbox" are used for managing faxes which have already been sent
 
-
 #### Schema
 
 Key | Description | Type | Default | Required
@@ -44,6 +43,9 @@ Key | Description | Type | Default | Required
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
+
+
+
 #### Processing States
 
 State | Description
@@ -54,8 +56,6 @@ State | Description
 `processing` | Faxes that are actively picked up by the fax worker and are being processed
 `completed` | Faxes that are finished sending
 `failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.
-
-
 
 ### Sending Outbound Faxes
 
