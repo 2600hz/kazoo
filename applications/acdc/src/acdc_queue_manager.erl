@@ -46,7 +46,9 @@
         ]).
 
 -ifdef(TEST).
--compile('export_all').
+-export([ss_size/2
+        ,update_strategy_with_agent/5
+        ]).
 -endif.
 
 -include("acdc.hrl").

@@ -74,7 +74,7 @@ test/$(PROJECT).app: ERLC_OPTS += -DTEST
 test/$(PROJECT).app: $(TEST_SOURCES)
 	@mkdir -p test/
 	@mkdir -p ebin/
-	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec +nowarn_export_all $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
+	ERL_LIBS=$(ELIBS) erlc -v +nowarn_missing_spec $(ERLC_OPTS) $(TEST_PA) -o ebin/ $(TEST_SOURCES)
 	@sed "s/{modules, \[\]}/{modules, \[`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`\]}/" src/$(PROJECT).app.src > $@
 
 
@@ -87,11 +87,11 @@ clean-test: $(CLEAN_MOAR)
 
 ## Use this one when debugging
 test: compile-test
-	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) $(TEST_OPTS) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 ## Use this one when CI
 eunit:
-	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) $(TEST_OPTS) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(PROJECT).coverdata\"), init:stop(); _ -> init:stop(1) end."
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(PROJECT).coverdata\"), init:stop(); _ -> init:stop(1) end."
 
 proper: ERLC_OPTS += -DPROPER
 proper: compile-test test
