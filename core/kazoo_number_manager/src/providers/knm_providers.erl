@@ -21,26 +21,17 @@
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
+-define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
+-define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
+-define(LEGACY_DASH_E911, <<"dash_e911">>).
+-define(LEGACY_VITELITY_E911, <<"vitelity_e911">>).
+-define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
 
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
 
 -define(E911_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
-
--define(KAZOO_NUMBER_FEATURES, [?FEATURE_FAILOVER
-                               ,?FEATURE_PREPEND
-                               ,?FEATURE_FORCE_OUTBOUND
-                               ,?FEATURE_RINGBACK
-                               ]).
-
--define(EXTERNAL_NUMBER_FEATURES, [?FEATURE_CNAM
-                                  ,?FEATURE_E911
-                                  ,?FEATURE_PORT
-                                  ]).
-
--define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
--define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
 -define(FEATURES_ALLOWED_RESELLER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
@@ -191,24 +182,13 @@ number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
 legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
 legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
 legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(<<"dash_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(?LEGACY_DASH_E911) -> ?FEATURE_E911;
 legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
 legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(<<"telnyx_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(?LEGACY_TELNYX_E911) -> ?FEATURE_E911;
 legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(<<"vitelity_e911">>) -> ?FEATURE_E911;
+legacy_provider_to_feature(?LEGACY_VITELITY_E911) -> ?FEATURE_E911;
 legacy_provider_to_feature(Else) -> Else.
-
-%% -spec possible_features(knm_phone_number:knm_phone_number() | feature_parameters()) -> ne_binaries().
-%% possible_features(#feature_parameters{}=Parameters) ->
-%%     lists:usort(
-%%       [legacy_provider_to_feature(Feature)
-%%        || Feature <- number_allowed_features(Parameters)
-%%               ++ reseller_allowed_features(Parameters)
-%%               ++ system_allowed_features()
-%%       ]);
-%% possible_features(PN) ->
-%%     possible_features(feature_parameters(PN)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -251,9 +231,9 @@ e911_caller_name(Number, 'undefined') ->
 %%%===================================================================
 
 -spec service_name(ne_binary()) -> ne_binary().
-service_name(<<"knm_dash_e911">>) -> <<"dash_e911">>;
-service_name(<<"knm_telnyx_e911">>) -> <<"telnyx_e911">>;
-service_name(<<"knm_vitelity_e911">>) -> <<"vitelity_e911">>;
+service_name(<<"knm_dash_e911">>) -> ?LEGACY_DASH_E911;
+service_name(<<"knm_telnyx_e911">>) -> ?LEGACY_TELNYX_E911;
+service_name(<<"knm_vitelity_e911">>) -> ?LEGACY_VITELITY_E911;
 service_name(<<"knm_cnam_notifier">>) -> <<"cnam">>;
 service_name(<<"knm_telnyx_cnam">>) -> <<"telnyx_cnam">>;
 service_name(<<"knm_vitelity_cnam">>) -> <<"vitelity_cnam">>;
@@ -264,24 +244,37 @@ service_name(Feature) -> Feature.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec provider_modules(knm_number:knm_number()) -> ne_binaries().
-provider_modules(Number) ->
+-spec requested_modules(knm_number:knm_number()) -> ne_binaries().
+requested_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    Possible0 = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
-    Possible = lists:usort(Possible0 ++ knm_phone_number:features_list(PhoneNumber)),
-    AllowedBase = available_features(PhoneNumber),
-    Allowed = case lists:member(?FEATURE_E911, Possible0) of
-                  true -> AllowedBase;
-                  false ->
-                      %% For backward compatibility
-                      AllowedBase ++ [<<"dash_e911">>, <<"vitelity_e911">>]
-              end,
-    lager:debug("allowed ~p, possible ~p", [Allowed, Possible]),
+    RequestedFeatures = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
     [provider_module(Feature, AccountId)
-     || Feature <- Possible,
-        lists:member(Feature, Allowed)
+     || Feature <- lists:usort(RequestedFeatures ++ ExistingFeatures)
     ].
+
+-spec allowed_modules(knm_number:knm_number()) -> ne_binaries().
+allowed_modules(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    AccountId = knm_phone_number:assigned_to(PhoneNumber),
+    [provider_module(Feature, AccountId)
+     || Feature <- allowed_features_with_legacy(PhoneNumber)
+    ].
+
+-spec allowed_features_with_legacy(knm_phone_number:knm_phone_number()) -> ne_binaries().
+allowed_features_with_legacy(PhoneNumber) ->
+    AvailableFeatures = available_features(PhoneNumber),
+    RequestedFeatures = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    LegacyDash = lists:member(?LEGACY_DASH_E911, RequestedFeatures),
+    LegacyVitelity = lists:member(?LEGACY_VITELITY_E911, RequestedFeatures),
+    LegacyTelnyx = lists:member(?LEGACY_TELNYX_E911, RequestedFeatures),
+    case lists:member(?FEATURE_E911, AvailableFeatures) of
+        'true' when LegacyDash -> AvailableFeatures ++ [?LEGACY_DASH_E911];
+        'true' when LegacyVitelity -> AvailableFeatures ++ [?LEGACY_VITELITY_E911];
+        'true' when LegacyTelnyx -> AvailableFeatures ++ [?LEGACY_TELNYX_E911];
+        _Else -> AvailableFeatures
+    end.
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
@@ -325,31 +318,38 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 
 exec(Number, Action) ->
     Number1 = fix_old_fields_names(Number),
-    exec(Number1, Action, provider_modules(Number)).
+    RequestedModules = requested_modules(Number),
+    case Action =:= 'delete' of
+        'true' -> exec(Number1, Action, RequestedModules);
+        'false' ->
+            AllowedModules = allowed_modules(Number),
+            {AllowedRequests, DeniedRequests} = lists:splitwith(fun(Request) -> lists:member(Request, AllowedModules) end, RequestedModules),
+            Number2 = exec(Number1, Action, AllowedRequests),
+            exec(Number2, 'delete', DeniedRequests)
+    end.
 
 %% @private
 fix_old_fields_names(Number) ->
-    PN = knm_number:phone_number(Number),
-    Doc = knm_phone_number:doc(PN),
+    PhoneNumber = knm_number:phone_number(Number),
+    JObj = knm_phone_number:doc(PhoneNumber),
     Values = props:filter_undefined(
-               [{?FEATURE_E911, kz_json:get_ne_value(<<"dash_e911">>, Doc)}
-               ,{?FEATURE_E911, kz_json:get_ne_value(<<"vitelity_e911">>, Doc)}
+               [{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_DASH_E911, JObj)}
+               ,{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_VITELITY_E911, JObj)}
+               ,{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_TELNYX_E911, JObj)}
                ]),
-    ToDelete = [<<"dash_e911">>, <<"vitelity_e911">>],
-    NewDoc = kz_json:set_values(Values, kz_json:delete_keys(ToDelete, Doc)),
-    NewPN = knm_phone_number:update_doc(PN, NewDoc),
-    knm_number:set_phone_number(Number, NewPN).
+    ToDelete = [?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911, ?LEGACY_TELNYX_E911],
+    NewJObj = kz_json:set_values(Values, kz_json:delete_keys(ToDelete, JObj)),
+    knm_number:set_phone_number(Number
+        ,knm_phone_number:update_doc(PhoneNumber, NewJObj)
+    ).
 
-exec(Number, Action, Providers) ->
-    lists:foldl(fun (Provider, N) ->
-                        case apply_action(N, Action, Provider) of
-                            {'true', NewN} -> NewN;
-                            'false' -> N
-                        end
-                end
-               ,Number
-               ,Providers
-               ).
+exec(Number, _, []) -> Number;
+exec(Number, Action, [Provider|Providers]) ->
+    case apply_action(Number, Action, Provider) of
+        'false' -> exec(Number, Action, Providers);
+        {'true', UpdatedNumber} ->
+            exec(UpdatedNumber, Action, Providers)
+    end.
 
 -spec apply_action(knm_number:knm_number(), exec_action(), ne_binary()) ->
                           {'true', any()} | 'false'.
