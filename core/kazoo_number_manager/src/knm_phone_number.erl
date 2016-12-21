@@ -373,12 +373,12 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
-from_json(JObj) ->
+from_json(JObj0) ->
+    JObj = maybe_update_rw_features(JObj0),
     Features =
-        case kz_json:get_value(?PVT_FEATURES, JObj) of
+        case kz_json:get_ne_value(?PVT_FEATURES, JObj) of
             'undefined' -> kz_json:new();
-            FeaturesList when is_list(FeaturesList) ->
-                lists:foldl(fun (F, A) -> features_fold(F, A, JObj) end, kz_json:new(), FeaturesList);
+            FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
@@ -389,7 +389,7 @@ from_json(JObj) ->
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
                 ,{fun set_assigned_to/3, kz_json:get_value(?PVT_ASSIGNED_TO, JObj), UsedBy}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_features/2, Features}
+                ,{fun set_features/2, maybe_rename_features(Features)}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
@@ -405,7 +405,35 @@ from_json(JObj) ->
                 ]),
     PhoneNumber.
 
+%% Handle moving away from provider-specific E911
+maybe_rename_features(Features) ->
+    Fs = kz_json:delete_keys([<<"dash_e911">>, <<"vitelity_e911">>], Features),
+    case {kz_json:get_ne_value(<<"dash_e911">>, Features)
+         ,kz_json:get_ne_value(<<"vitelity_e911">>, Features)
+         }
+    of
+        {undefined, undefined} -> Features;
+        {Dash, undefined} -> kz_json:set_value(?FEATURE_E911, Dash, Fs);
+        {undefined, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, Fs);
+        {_Dash, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, Fs)
+    end.
+
+maybe_update_rw_features(JObj) ->
+    case {kz_json:get_ne_value(<<"dash_e911">>, JObj)
+         ,kz_json:get_ne_value(<<"vitelity_e911">>, JObj)
+         }
+    of
+        {undefined, undefined} -> JObj;
+        {Dash, undefined} -> kz_json:set_value(?FEATURE_E911, Dash, JObj);
+        {undefined, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, JObj);
+        {_Dash, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, JObj)
+    end.
+
 %% Handle 3.22 -> 4.0 features migration.
+migrate_features(FeaturesList, JObj) ->
+    F = fun (Feature, A) -> features_fold(Feature, A, JObj) end,
+    lists:foldl(F, kz_json:new(), FeaturesList).
+
 %% Note: if a feature matches here that means it was enabled in 3.22.
 features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
     Data = kz_json:is_true(?FEATURE_FORCE_OUTBOUND, JObj),
@@ -996,7 +1024,7 @@ update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
 reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
     Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), kz_json:private_fields(Doc)),
-    Data = kz_json:delete_key(<<"id">>, Updated),
+    Data = maybe_update_rw_features(kz_json:delete_key(<<"id">>, Updated)),
     case kz_json:are_equal(Data, N#knm_phone_number.doc) of
         true -> N;
         false ->
