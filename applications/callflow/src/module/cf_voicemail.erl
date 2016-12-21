@@ -29,6 +29,7 @@
 -define(KEY_MIN_MESSAGE_SIZE, <<"min_message_size">>).
 -define(KEY_MAX_BOX_NUMBER_LENGTH, <<"max_box_number_length">>).
 -define(KEY_EXTENSION, <<"extension">>).
+-define(KEY_MAX_LOGIN_ATTEMPTS, <<"max_login_attempts">>).
 -define(KEY_MAX_PIN_LENGTH, <<"max_pin_length">>).
 -define(KEY_DELETE_AFTER_NOTIFY, <<"delete_after_notify">>).
 -define(KEY_SAVE_AFTER_NOTIFY, <<"save_after_notify">>).
@@ -57,6 +58,13 @@
        ,kapps_config:get(?CF_CONFIG_CAT
                         ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
                         ,<<"mp3">>
+                        )
+       ).
+
+-define(MAX_LOGIN_ATTEMPTS
+       ,kapps_config:get(?CF_CONFIG_CAT
+                        ,[?KEY_VOICEMAIL, ?KEY_MAX_LOGIN_ATTEMPTS]
+                        ,3
                         )
        ).
 
@@ -90,7 +98,6 @@
        ).
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
--define(MAX_LOGIN_ATTEMPTS, 3).
 
 -record(keys, {
           %% Compose Voicemail
@@ -346,21 +353,22 @@ find_mailbox_by_number(BoxNum, Call) ->
         Error -> Error
     end.
 
--spec find_destination_mailbox(kapps_call:call(), ne_binary(), non_neg_integer()) -> mailbox().
-find_destination_mailbox(Call, _SrcBoxId, Loop) when Loop > ?MAX_LOGIN_ATTEMPTS ->
+-spec find_destination_mailbox(mailbox(), kapps_call:call(), ne_binary(), non_neg_integer()) -> mailbox().
+find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}, Call, _SrcBoxId, Loop)
+  when Loop > MaxLoginAttempts ->
     lager:info("maximum number of invalid attempts to find destination mailbox"),
     _ = kapps_call_command:b_prompt(<<"vm-forward_abort">>, Call),
     #mailbox{};
-find_destination_mailbox(Call, SrcBoxId, Loop) ->
+find_destination_mailbox(#mailbox{max_login_attempts=MaxLoginAttempts}=Box, Call, SrcBoxId, Loop) ->
     case find_mailbox(#mailbox{}, Call, <<"vm-enter_forward_id">>, Loop) of
         {'ok', #mailbox{mailbox_id=SrcBoxId}, NewLoop} ->
             lager:info("source mailbox can't be a destination mailbox"),
             _ = kapps_call_command:b_prompt(<<"menu-invalid_entry">>, Call),
-            find_destination_mailbox(Call, SrcBoxId, NewLoop + 1);
+            find_destination_mailbox(Box, Call, SrcBoxId, NewLoop + 1);
         {'ok', DestBox, _NewLoop} -> DestBox;
         {'error', 'not_found'} ->
             %% can't find mailbox, set Loop to max to play abort prompts in above func clause
-            find_destination_mailbox(Call, SrcBoxId, ?MAX_LOGIN_ATTEMPTS + 1)
+            find_destination_mailbox(Box, Call, SrcBoxId, MaxLoginAttempts + 1)
     end.
 
 %%--------------------------------------------------------------------
@@ -862,7 +870,7 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
 forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
     lager:info("enter destination mailbox number"),
     _ = kapps_call_command:b_flush(Call),
-    PossibleBox = find_destination_mailbox(Call, SrcBoxId, 1),
+    PossibleBox = find_destination_mailbox(#mailbox{}, Call, SrcBoxId, 1),
     forward_message(Message, SrcBoxId, PossibleBox, Call).
 
 -spec forward_message(kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
