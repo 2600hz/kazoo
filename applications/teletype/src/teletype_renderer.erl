@@ -11,6 +11,7 @@
 -include("teletype.hrl").
 
 -define(SERVER, ?MODULE).
+-define(RENDER_TIMEOUT, 1000 * 60 * 10).
 
 -export([start_link/1
         ,render/3
@@ -35,20 +36,43 @@ start_link(Args) ->
                     {'error', any()}.
 render(TemplateId, Template, TemplateData) ->
     Renderer = next_renderer(),
+    render(Renderer, TemplateId, Template, TemplateData, 3).
+
+-spec render(pid(), ne_binary(), binary(), kz_proplist(), integer()) ->
+                    {'ok', iolist()} |
+                    {'error', any()}.
+
+render(Renderer, TemplateId, _Template, _TemplateData, 0) ->
+    lager:error("rendering of ~p failed after several tries", [TemplateId]),
+    exit(Renderer, 'kill'),
+    {'error', 'render_failed'};
+
+render(Renderer, TemplateId, Template, TemplateData, Tries) ->
     Start = kz_util:current_tstamp(),
     PoolStatus = poolboy:status('teletype_render_farm'),
+    lager:info("starting render of ~p", [TemplateId]),
+    case do_render(Renderer, TemplateId, Template, TemplateData) of
+        {'error', 'render_failed'} ->
+            lager:info("render failed in ~p, pool: ~p", [kz_util:current_tstamp() - Start, PoolStatus]),
+            render(Renderer, TemplateId, Template, TemplateData, Tries-1);
+        GoodReturn ->
+            lager:info("render completed in ~p, pool: ~p", [kz_util:current_tstamp() - Start, PoolStatus]),
+            poolboy:checkin(teletype_sup:render_farm_name(), Renderer),
+            GoodReturn
+    end.
+
+-spec do_render(pid(), ne_binary(), binary(), kz_proplist()) ->
+                       {'ok', iolist()} |
+                       {'error', any()}.
+do_render(Renderer, TemplateId, Template, TemplateData) ->
     try gen_server:call(Renderer
                        ,{'render', TemplateId, Template, TemplateData}
-                       ,?MILLISECONDS_IN_HOUR
+                       ,?RENDER_TIMEOUT
                        )
     catch
         _E:_R ->
             lager:debug("rendering failed: ~s: ~p", [_E, _R]),
             {'error', 'render_failed'}
-    after
-        End = kz_util:current_tstamp(),
-        lager:info("rendering (~p) took ~p. start: ~p end: ~p pool: ~p", [TemplateId, End-Start, Start, End, PoolStatus]),
-        poolboy:checkin(teletype_sup:render_farm_name(), Renderer)
     end.
 
 -spec next_renderer() -> pid().
