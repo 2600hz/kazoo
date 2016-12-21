@@ -15,8 +15,8 @@ def find_schema(txt):
     return found[0]
 
 def public_doc(ref_path):
-    doc_root = os.path.split(os.path.split(ref_path)[0])[0]
-    ref_name = os.path.split(ref_path)[1]
+    doc_root = os.path.dirname(ref_path)
+    ref_name = os.path.basename(ref_path)
     ref_to_doc = {
         'api_auth.md': 'api_authentication.md',
         'conferences.md': 'conference.md',
