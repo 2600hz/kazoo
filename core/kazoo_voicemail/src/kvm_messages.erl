@@ -101,7 +101,7 @@ count_by_owner(AccountId, OwnerId) ->
             {0, 0}
     end.
 
--spec sum_owner_mailboxes(kz_json:objects(), ne_binaries(), count_result()) -> count_result().
+-spec sum_owner_mailboxes(kz_json:object(), ne_binaries(), count_result()) -> count_result().
 sum_owner_mailboxes(_, [], Results) -> Results;
 sum_owner_mailboxes(FolderQuantities, [BoxId|BoxIds], {New, Saved}) ->
     {BoxNew, BoxSaved} = normalize_count_none_deleted(BoxId, FolderQuantities),

@@ -345,12 +345,11 @@ normalize_upload(Context, MediaId, FileJObj, UploadContentType) ->
                            ,MediaId
                            ,NewFileJObj
              );
-        {'error', Reason} ->
-            lager:warning("failed to convert to ~s: ~s", [ToExt, Reason]),
-
+        {'error', _R} ->
+            lager:warning("failed to convert to ~s: ~p", [ToExt, _R]),
+            Reason = <<"failed to communicate with conversion utility">>,
             validate_upload(cb_context:set_doc(Context
                                               ,kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
-
                                               )
                            ,MediaId
                            ,FileJObj
