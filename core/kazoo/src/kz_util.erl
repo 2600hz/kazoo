@@ -131,6 +131,7 @@
         ]).
 
 -export([write_file/2, write_file/3
+        ,rename_file/2
         ,delete_file/1
         ,make_dir/1
         ]).
@@ -1632,6 +1633,14 @@ write_file(Filename, Bytes, Modes) ->
         'ok' -> 'ok';
         {'error', _}=_E ->
             lager:error("writing file ~s (~p) failed : ~p", [Filename, Modes, _E])
+    end.
+
+-spec rename_file(file:filename_all(), file:filename_all()) -> 'ok'.
+rename_file(FromFilename, ToFilename) ->
+    case file:rename(FromFilename, ToFilename) of
+        'ok' -> 'ok';
+        {'error', _}=_E ->
+            lager:error("moving file ~s into ~s failed : ~p", [FromFilename, ToFilename, _E])
     end.
 
 %% @public

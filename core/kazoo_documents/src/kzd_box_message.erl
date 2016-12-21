@@ -108,11 +108,12 @@ new(AccountId, Props) ->
     Name = create_message_name(props:get_value(<<"Box-Num">>, Props)
                               ,props:get_value(<<"Timezone">>, Props)
                               ,UtcSeconds),
+    Description = props:get_value(<<"Description">>, Props, <<"voicemail message with media">>),
 
     DocProps = props:filter_undefined(
                  [{<<"_id">>, MsgId}
                  ,{?KEY_NAME, Name}
-                 ,{?KEY_DESC, <<"mailbox message media">>}
+                 ,{?KEY_DESC, Description}
                  ,{?KEY_SOURCE_TYPE, ?KEY_VOICEMAIL}
                  ,{?KEY_SOURCE_ID, props:get_value(<<"Box-Id">>, Props)}
                  ,{?KEY_MEDIA_SOURCE, <<"recording">>}
@@ -289,7 +290,7 @@ to_sip(JObj, Default) ->
 set_to_sip(To, Metadata) ->
     kz_json:set_value(?KEY_META_TO, To, Metadata).
 
--spec utc_seconds(doc()) -> pos_integer().
+-spec utc_seconds(doc()) -> non_neg_integer().
 utc_seconds(JObj) ->
     kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 
