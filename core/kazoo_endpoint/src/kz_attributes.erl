@@ -145,7 +145,7 @@ maybe_use_presence_number(Number, Name, Endpoint, Validate, Attribute, Call) ->
     maybe_format_cid_number(Number, Name, Endpoint, Validate, Attribute, Call).
 
 -spec maybe_format_cid_number(api_binary(), api_binary(), kz_json:object(), boolean(), ne_binary(), kapps_call:call()) -> cid().
-maybe_format_cid_number('undefined', Name, _Endpoint, Validate, Attribute, Call) ->
+maybe_format_cid_number('undefined', Name, Endpoint, Validate, Attribute, Call) ->
     Number = kapps_call:caller_id_number(Call),
     Format = kz_json:get_ne_value([<<"caller_id_options">>, <<"format">>], Endpoint),
     Formatted = kapps_call:maybe_format_caller_id_str(Number, Format),
