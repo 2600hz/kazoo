@@ -13,6 +13,9 @@
 %%% /agents/AID/queue_status
 %%%   POST: login/logout agent to/from queue
 %%%
+%%% /agents/AID/restart
+%%%   POST: force-restart a stuck agent
+%%%
 %%% /agents/AID/status
 %%%   GET: last 10 status updates
 %%%
@@ -24,6 +27,7 @@
 -module(cb_agents).
 
 -export([init/0
+        ,authorize/3
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/1, content_types_provided/2, content_types_provided/3
@@ -43,6 +47,7 @@
 -define(STATS_PATH_TOKEN, <<"stats">>).
 -define(STATUS_PATH_TOKEN, <<"status">>).
 -define(QUEUE_STATUS_PATH_TOKEN, <<"queue_status">>).
+-define(RESTART_PATH_TOKEN, <<"restart">>).
 
 %%%=============================================================================
 %%% API
@@ -61,7 +66,22 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.agents">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.agents">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.execute.post.agents">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.validate.agents">>, ?MODULE, 'validate').
+    _ = crossbar_bindings:bind(<<"*.validate.agents">>, ?MODULE, 'validate'),
+    _ = crossbar_bindings:bind(<<"*.authorize.agents">>, ?MODULE, 'authorize').
+
+%%------------------------------------------------------------------------------
+%% @doc Authorizes the incoming request, returning true if the requestor is
+%% allowed to access the resource, or false if not.
+%% @end
+%%------------------------------------------------------------------------------
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, _, ?RESTART_PATH_TOKEN) ->
+    case cb_context:is_superduper_admin(Context) of
+        'true' -> 'true';
+        'false' ->
+            Context1 = cb_context:add_system_error('forbidden', Context),
+            {'halt', Context1}
+    end.
 
 %%------------------------------------------------------------------------------
 %% @doc Given the path tokens related to this module, what HTTP methods are
@@ -80,7 +100,8 @@ allowed_methods(_UserId) -> [?HTTP_GET].
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
 allowed_methods(?STATUS_PATH_TOKEN, _UserId) -> [?HTTP_GET, ?HTTP_POST];
 allowed_methods(_UserId, ?STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
-allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST].
+allowed_methods(_UserId, ?QUEUE_STATUS_PATH_TOKEN) -> [?HTTP_GET, ?HTTP_POST];
+allowed_methods(_UserId, ?RESTART_PATH_TOKEN) -> [?HTTP_POST].
 
 %%------------------------------------------------------------------------------
 %% @doc Does the path point to a valid resource.
@@ -102,7 +123,8 @@ resource_exists(_) -> 'true'.
 -spec resource_exists(path_token(), path_token()) -> 'true'.
 resource_exists(_, ?STATUS_PATH_TOKEN) -> 'true';
 resource_exists(?STATUS_PATH_TOKEN, _) -> 'true';
-resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true'.
+resource_exists(_, ?QUEUE_STATUS_PATH_TOKEN) -> 'true';
+resource_exists(_, ?RESTART_PATH_TOKEN) -> 'true'.
 
 %%------------------------------------------------------------------------------
 %% @doc Add content types accepted and provided by this module
@@ -130,7 +152,8 @@ content_types_provided(Context, ?STATS_PATH_TOKEN) ->
 -spec content_types_provided(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 content_types_provided(Context, ?STATUS_PATH_TOKEN, _) -> Context;
 content_types_provided(Context, _, ?STATUS_PATH_TOKEN) -> Context;
-content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context.
+content_types_provided(Context, _, ?QUEUE_STATUS_PATH_TOKEN) -> Context;
+content_types_provided(Context, _, ?RESTART_PATH_TOKEN) -> Context.
 
 %%------------------------------------------------------------------------------
 %% @doc Check the request (request body, query string params, path tokens, etc)
@@ -173,7 +196,9 @@ validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_POST) ->
     OnSuccess = fun (C) -> maybe_queues_change(read(AgentId, C)) end,
     cb_context:validate_request_data(<<"queue_update">>, Context, OnSuccess);
 validate_agent_action(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN, ?HTTP_GET) ->
-    fetch_agent_queues(read(AgentId, Context)).
+    fetch_agent_queues(read(AgentId, Context));
+validate_agent_action(Context, AgentId, ?RESTART_PATH_TOKEN, ?HTTP_POST) ->
+    read(AgentId, Context).
 
 -spec maybe_queues_change(cb_context:context()) -> cb_context:context().
 maybe_queues_change(Context) ->
@@ -221,7 +246,10 @@ post(Context, AgentId, ?QUEUE_STATUS_PATH_TOKEN) ->
             cb_context:set_resp_data(Context1, Queues);
         _Status ->
             Context1
-    end.
+    end;
+post(Context, AgentId, ?RESTART_PATH_TOKEN) ->
+    publish_restart(Context, AgentId),
+    crossbar_util:response(kz_json:new(), Context).
 
 -spec publish_action(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
 publish_action(Context, AgentId) ->
@@ -250,6 +278,14 @@ publish_update(Context, AgentId, PubFun) ->
                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                ]),
     kz_amqp_worker:cast(Update, PubFun).
+
+-spec publish_restart(cb_context:context(), kz_term:ne_binary()) -> 'ok'.
+publish_restart(Context, AgentId) ->
+    Payload = [{<<"Account-ID">>, cb_context:account_id(Context)}
+              ,{<<"Agent-ID">>, AgentId}
+               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+              ],
+    kz_amqp_worker:cast(Payload, fun kapi_acdc_agent:publish_restart/1).
 
 %%------------------------------------------------------------------------------
 %% @doc Load an instance from the database

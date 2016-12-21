@@ -51,6 +51,10 @@ handle_status_update(JObj, _Props) ->
         <<"end_wrapup">> ->
             'true' = kapi_acdc_agent:end_wrapup_v(JObj),
             maybe_end_wrapup_agent(AccountId, AgentId, JObj);
+        <<"restart">> ->
+            'true' = kapi_acdc_agent:restart_v(JObj),
+            _ = acdc_agents_sup:restart_agent(AccountId, AgentId),
+            'ok';
         Event -> maybe_agent_queue_change(AccountId, AgentId, Event
                                          ,kz_json:get_value(<<"Queue-ID">>, JObj)
                                          ,JObj
@@ -392,12 +396,9 @@ handle_agent_change(AccountDb, AccountId, AgentId, ?DOC_EDITED) ->
         P when is_pid(P) -> acdc_agent_fsm:refresh(acdc_agent_sup:fsm(P), JObj)
     end;
 handle_agent_change(_, AccountId, AgentId, ?DOC_DELETED) ->
-    case acdc_agents_sup:find_agent_supervisor(AccountId, AgentId) of
-        'undefined' -> lager:debug("user ~s has left us, but wasn't started", [AgentId]);
-        P when is_pid(P) ->
-            lager:debug("agent ~s(~s) has been deleted, stopping ~p", [AccountId, AgentId, P]),
-            _ = acdc_agent_sup:stop(P),
-            acdc_agent_stats:agent_logged_out(AccountId, AgentId)
+    case acdc_agents_sup:stop_agent(AccountId, AgentId) of
+        'ok' -> acdc_agent_stats:agent_logged_out(AccountId, AgentId);
+        _ -> 'ok'
     end.
 
 -spec handle_presence_probe(kz_json:object(), kz_term:proplist()) -> 'ok'.

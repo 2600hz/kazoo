@@ -7,6 +7,7 @@
 %%%   and more!!!
 %%%
 %%% @author James Aimonetti
+%%% @author Daniel Finke
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agent_manager).
@@ -50,6 +51,7 @@
                       ,{<<"agent">>, <<"end_wrapup">>}
                       ,{<<"agent">>, <<"login_queue">>}
                       ,{<<"agent">>, <<"logout_queue">>}
+                      ,{<<"agent">>, <<"restart">>}
                       ]
                      }
                     ,{{'acdc_agent_handler', 'handle_stats_req'}
