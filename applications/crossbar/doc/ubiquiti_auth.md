@@ -1,12 +1,34 @@
+### Ubiquiti auth
 
-### Ubiquiti Single Sign On
+Ubiquiti Single Sign On.
 
-#### Crossbar Requests
+#### About
 
-##### PUT
+#### Schema
 
-    curl -v -X PUT -H "Content-Type: application/json" http://crossbar:8000/v2/ubiquiti_auth -d '{"data":{"username":"{USERNAME}", "password":"{PASSWORD}"}}'
-    {
+Provides an auth-token via Ubiquiti's SSO
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`password` | Ubiquiti SSO Password | `string(1..64)` |   | `true`
+`username` | Ubiquiti SSO Username | `string(1..64)` |   | `true`
+
+
+
+
+#### Create an auth token
+
+> PUT /v2/ubiquiti_auth
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data": {"username":"{USERNAME}", "password":"{PASSWORD}"} }' \
+    http://{SERVER}:8000/v2/ubiquiti_auth
+```
+
+```json
+{
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "sso": {
@@ -34,4 +56,5 @@
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
     "status": "success"
-    }
+}
+```

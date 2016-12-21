@@ -13,6 +13,8 @@ Key | Description | Type | Default | Required
 `temporal_rules.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets

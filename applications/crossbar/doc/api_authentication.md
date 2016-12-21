@@ -1,16 +1,20 @@
+### Api_auth
 
-### Generating an auth token from your API token
+Generating an auth token from your API token
 
 Use your account's API token to instruct Crossbar to create an authentication token to be used on subsequent requests requiring authentication.
 
-#### The Authentication Process
+#### About
 
-1. Get your API key for your account:
-    * This value can be obtained by users on an account via the accounts api endpoint `api_key`.
-    * This value can also be accessed by system administrators directly from the database by using curl to request the account doc from Couch:
+Get your API key for your account:
+
+* It can be obtained by users on an account via the accounts API endpoint `api_key`.
+* It can also be accessed by system administrators directly from the database by using `curl` to request the account doc from CouchDB:
 
 ```shell
-curl -v http://localhost:15984/accounts/{ACCOUNT_ID}
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://localhost:15984//accounts/{ACCOUNT_ID}
 ```
 
 ```json
@@ -20,13 +24,33 @@ curl -v http://localhost:15984/accounts/{ACCOUNT_ID}
 }
 ```
 
-2. Send an HTTP PUT:
+#### Schema
+
+Provides an auth-token via an Account API key
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`api_key` | The Accounts API key | `string(64)` |   | `true`
+
+
+
+
+#### The Authentication Process
+
+> PUT /v2/api_auth
+
+Note:
+
+* `{AUTH_TOKEN}`: this is your authentication token to include in future requests
+* `{ACCOUNT_ID}`: your account's ID, useful for constructing URIs
+* `{OWNER_ID}`: the user's ID of the owner of the credentials used to generate this token
+* `{RESELLER_ID}`: this account's reseller account ID, if any.
+* `{REQUEST_ID}`: useful for debugging requests on your installation
 
 ```shell
 curl -v -X PUT \
-    -H "content-type:application/json" \
-    -d '{"data":{"api_key":"{API_KEY}"}' \
-    http://{SERVER}:8000/v1/api_auth
+    -d '{"data": {"api_key":"{API_KEY}"} }' \
+    http://{SERVER}:8000/v2/api_auth
 ```
 
 ```json
@@ -34,7 +58,7 @@ curl -v -X PUT \
     "auth_token": "{AUTH_TOKEN}",
     "data": {
         "account_id": "{ACCOUNT_ID}",
-        "apps": [],
+        "apps": [...],
         "is_reseller": true,
         "language": "en-US",
         "owner_id": "{OWNER_ID}",
@@ -45,11 +69,3 @@ curl -v -X PUT \
     "status": "success"
 }
 ```
-
-##### The Response
-
-* `{AUTH_TOKEN}`: this is your authentication token to include in future requests
-* `{ACCOUNT_ID}`: your account's ID, useful for constructing URIs
-* `{OWNER_ID}`: The user's ID of the owner of the credentials used to generate this token
-* `{RESELLER_ID}`: The account's reseller account ID, if any
-* `{REQUEST_ID}`: Useful for debugging requests on your installation

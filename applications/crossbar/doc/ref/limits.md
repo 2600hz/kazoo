@@ -17,6 +17,8 @@ Key | Description | Type | Default | Required
 `twoway_trunks` | The number of two-way, flat-rate trunks | `integer` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/limits

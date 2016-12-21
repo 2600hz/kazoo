@@ -114,6 +114,8 @@ Key | Description | Type | Default | Required
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false`
 `connection` |   | `string` |   | `false`
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/storage

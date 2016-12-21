@@ -28,6 +28,8 @@ Key | Description | Type | Default | Required
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/rates

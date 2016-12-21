@@ -5,13 +5,15 @@
 The Faxes API exposes lots of ways to send, receive, track and manage faxes.
 
 As a general concept, faxes are either considered inbound or outbound faxes. In addition:
+
 * API calls with the term "incoming" are used for tracking faxes currently in the process of being received
 * API calls with the term "inbox" are used for managing faxes which have already been received
 * API calls with the term "outgoing" are used for tracking faxes currently in the process of being sent
 * API calls with the term "outbox" are used for managing faxes which have already been sent
 
-
 #### Schema
+
+Faxes API allows you to update and access fax jobs for both sending and receiving
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -38,10 +40,13 @@ Key | Description | Type | Default | Required
 `tx_result.fax_bad_rows` | The number of bad rows | `integer` | `0` | `false`
 `tx_result.fax_error_correction` | True if fax error correction was used | `boolean` | `false` | `false`
 `tx_result.fax_receiver_id` | The receiver id reported by the remote fax device | `string` | "" | `false`
-`tx_result.fax_speed` | The speed achieved during transmission | `integer` | `0` | `false`
+`tx_result.fax_speed` | The speed (Baud-Rate) achieved during transmission | `integer` | `0` | `false`
 `tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
+
+
+
 
 #### Processing States
 
@@ -49,7 +54,7 @@ State | Description
 ----- | -----------
 `attaching_files` | A fax job was submitted via the api (with a multipart/related content type) or smtp and we are in the process of attaching the files to the fax job.
 `pending` | Fax waiting to be picked up by the fax sending job
-`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response <XXX>"
+`failed` | If we can't retrieve the fax document via a requests URL, the state will be "failed" and the error text will contain "could not retrieve file, http response XXX"
 `processing` | Faxes that are actively picked up by the fax worker and are being processed
 `completed` | Faxes that are finished sending
 `failed` | Faxes that did not successfully send after all allotted retries are in state "failed". We pass-thru the FreeSWITCH error code in this case.

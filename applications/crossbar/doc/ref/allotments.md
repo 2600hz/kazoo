@@ -8,6 +8,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/allotments

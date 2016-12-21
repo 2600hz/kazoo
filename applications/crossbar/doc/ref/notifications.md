@@ -29,6 +29,8 @@ Key | Description | Type | Default | Required
 `to.type` |   | `string('original', 'specified', 'admins')` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications

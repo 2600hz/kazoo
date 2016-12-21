@@ -42,6 +42,8 @@ Key | Description | Type | Default | Required
 `schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
 `timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/vmboxes

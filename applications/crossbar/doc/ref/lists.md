@@ -13,6 +13,8 @@ Key | Description | Type | Default | Required
 `org` | Full legal name of the organization | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/lists

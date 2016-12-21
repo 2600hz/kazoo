@@ -15,6 +15,8 @@ Key | Description | Type | Default | Required
 `phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false`
 
 
+
+
 #### Create
 
 > PUT /v2/user_auth

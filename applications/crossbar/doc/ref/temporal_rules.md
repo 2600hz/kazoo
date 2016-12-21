@@ -20,6 +20,8 @@ Key | Description | Type | Default | Required
 `wdays.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules

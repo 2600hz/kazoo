@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `type` | Allow or deny this CIDR | `string('allow', 'deny')` | `allow` | `true`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/acls

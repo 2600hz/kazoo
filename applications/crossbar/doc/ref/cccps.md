@@ -16,6 +16,8 @@ Key | Description | Type | Default | Required
 `user_id` | The ID of the user object that 'owns' cid/pin | `string(32)` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/cccps

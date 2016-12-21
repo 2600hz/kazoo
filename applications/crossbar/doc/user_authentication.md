@@ -6,6 +6,8 @@ Using your username and password, along with an account identifier, will instruc
 
 #### Schema
 
+Provides an auth-token via user credentials
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account_name` | The account name of the user | `string(1..128)` |   | `false`
@@ -13,6 +15,9 @@ Key | Description | Type | Default | Required
 `credentials` | A hash of the uses credentials | `string(1..64)` |   | `true`
 `method` | The hash method | `string('md5', 'sha')` | `md5` | `false`
 `phone_number` | A phone number assigned to the users account | `string(1..64)` |   | `false`
+
+
+
 
 #### Create a new auth token
 

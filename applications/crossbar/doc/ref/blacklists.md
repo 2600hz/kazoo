@@ -12,6 +12,8 @@ Key | Description | Type | Default | Required
 `numbers` | Map of caller id number to block | `object` | `{}` | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/blacklists

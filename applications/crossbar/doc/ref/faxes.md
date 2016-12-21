@@ -37,6 +37,8 @@ Key | Description | Type | Default | Required
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
 
 
+
+
 #### Create
 
 > PUT /v2/accounts/{ACCOUNT_ID}/faxes

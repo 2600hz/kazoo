@@ -23,12 +23,17 @@ Key | Description | Type | Default | Required
 
 Once you've added IPs to the system, you can assign those to different customer accounts to proxy their calls through using the below Crossbar APIs.
 
-#### Crossbar Schema
+#### Schema
+
+IP addresses assigned to the account
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `ips` | List of IP addresses | `array(string)` |   | `false`
 `ips.[]` |   | `string` |   | `false`
+
+
+
 
 #### Fetch a list of IPs available to the account
 

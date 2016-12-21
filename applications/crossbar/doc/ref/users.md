@@ -354,6 +354,8 @@ Key | Description | Type | Default | Required
 `sort-string` | To specify the family name or given name text to be used for national-language-specific sorting of the FN and N types | `string` |   | `false`
 `title` | To specify the position or job of the user | `string` |   | `false`
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/users

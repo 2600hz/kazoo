@@ -16,6 +16,8 @@ Key | Description | Type | Default | Required
 `value` | Extra selector data | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/resource_selectors

@@ -6,6 +6,8 @@ CDRs (Call Detail Records) provide a summary view of a call leg.
 
 #### Schema
 
+Call Detail Records
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `app_name` | The Kazoo application that issued the CDR | `string` |   | `false`
@@ -50,6 +52,9 @@ Key | Description | Type | Default | Required
 `to` | Built by Kazoo, depending on direction, to represent the To user | `string` |   | `false`
 `to_uri` | The To SIP URI | `string` |   | `false`
 `user_agent` | User agent header from SIP packet | `string` |   | `false`
+
+
+
 
 #### Fetch a summary of CDRs
 

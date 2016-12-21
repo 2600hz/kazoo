@@ -295,6 +295,8 @@ Key | Description | Type | Default | Required
 `schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
 `timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
 
+
+
 #### Create
 
 > PUT /v2/accounts

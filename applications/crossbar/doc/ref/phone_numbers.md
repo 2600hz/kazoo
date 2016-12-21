@@ -46,6 +46,8 @@ Key | Description | Type | Default | Required
 `porting.service_provider` | The name of the losing carrier | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers

@@ -39,6 +39,8 @@ The `macros` object is a per-template, system-defined set of macros you can use 
 
 #### Schema
 
+Notifications templates
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bcc` | Bcc email field | `object` |   | `false`
@@ -60,6 +62,8 @@ Key | Description | Type | Default | Required
 `to.email_addresses` |   | `array(string)` |   | `false`
 `to.email_addresses.[]` |   | `string` |   | `false`
 `to.type` |   | `string('original', 'specified', 'admins')` |   | `false`
+
+
 
 
 #### Crossbar

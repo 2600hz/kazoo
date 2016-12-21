@@ -4,6 +4,22 @@
 
 Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organaized in "chanin" (rules).
 
+#### Schema
+
+Schema for resource selector document
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`name` | Selector name | `string` |   | `true`
+`resource` | Resource ID | `string` |   | `true`
+`selector` | Selector data | `string` |   | `true`
+`start_time` | Start time (gregorian seconds) | `integer` |   | `false`
+`stop_time` | Stop time (gregorian seconds) | `integer` |   | `false`
+`value` | Extra selector data | `string` |   | `false`
+
+
+
+
 ## Rules
 
 Rules is array of JSON objects. Each object contain one item where key is name of the module, and value is another object, with parameters for that module.
@@ -12,19 +28,20 @@ Example:
 
 ```json
 {
-  "filter_list": {
-    "value_a": "request:Flags",
-    "value_b": "resource:flags",
-    "action": "keep"
-  }
+    "filter_list": {
+        "value_a": "request:Flags",
+        "value_b": "resource:flags",
+        "action": "keep"
+    }
 }
 ```
+
 here we call modue `filter_list` (which filter resources comparing 2 lists).
 More info about modules and their parameters can be found [here](https://github.com/2600hz/kazoo/blob/master/applications/stepswitch/doc/resource_selectors.md).
 
-Rules can be managed via http://{{IP}}:8000/v2/resource_selectors or http://{{IP}}:8000/v2/accounts/{{ACCOUNT_ID}}/resource_selectors/rules
+Rules can be managed via `http://{IP}:8000/v2/resource_selectors` or `http://{IP}:8000/v2/accounts/{ACCOUNT_ID}/resource_selectors/rules`
 
-Rules storred in `resource_selector_rules` file in Account database. System-wide rules is stored in Master-Account database, so http://{{IP}}:8000/v2/resource_selectors/rules is equal to http://{{IP}}:8000/v2/accounts/{{MASTER_ACCOUNT_ID}}/resource_selectors/rules
+Rules storred in `resource_selector_rules` file in Account database. System-wide rules is stored in Master-Account database, so `http://{IP}:8000/v2/resource_selectors/rules` is equal to `http://{IP}:8000/v2/accounts/{MASTER_ACCOUNT_ID}/resource_selectors/rules`
 
 ### Show rules
 

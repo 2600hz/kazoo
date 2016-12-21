@@ -1,6 +1,230 @@
+### Metaflows
 
+#### About Metaflows
 
 Metaflows allow functionality to be executed on an in-progress call, triggered by DTMFs from the caller/callee. For instance, a callee could setup a metaflow on their user doc such that when they receive a call, they can press "*9" to initiate a recording of the call.
+
+#### Schema
+
+Actions applied to a call outside of the normal callflow, initiated by the caller(s)
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
+`digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
+`listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
+`numbers` | A list of static numbers with their flows | `object` |   | `false`
+`numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+`patterns` | A list of patterns with their flows | `object` |   | `false`
+`patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+
+
+##### metaflow
+
+A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+
+##### metaflow.audio_level
+
+audio_level metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string` |   | `true`
+`data.level` |   | `string` |   | `false`
+`data.mode` |   | `string` |   | `false`
+`module` |   | `string('audio_level')` |   | `true`
+
+##### metaflow.break
+
+break metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('break')` |   | `true`
+
+##### metaflow.callflow
+
+callflow metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.id` |   | `string` |   | `true`
+`module` |   | `string('callflow')` |   | `true`
+
+##### metaflow.hangup
+
+hangup metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('hangup')` |   | `true`
+
+##### metaflow.hold
+
+hold metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.moh_aleg` |   | `string` |   | `false`
+`data.moh_bleg` |   | `string` |   | `false`
+`data.unhold_key` |   | `string` | `1` | `false`
+`module` |   | `string('hold')` |   | `true`
+
+##### metaflow.hold_control
+
+hold_control metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`data.action` |   | `string('hold', 'unhold', 'toggle')` | `toggle` | `false`
+`module` |   | `string('hold_control')` |   | `true`
+
+##### metaflow.intercept
+
+intercept metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.auto_answer` |   | `boolean` | `false` | `false`
+`data.target_id` |   | `string` |   | `true`
+`data.target_type` |   | `string('device', 'user', 'number')` |   | `true`
+`data.unbridged_only` |   | `boolean` | `true` | `false`
+`module` |   | `string('intercept')` |   | `true`
+
+##### metaflow.move
+
+move metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.auto_answer` |   | `boolean` | `false` | `false`
+`data.device_id` |   | `string` |   | `false`
+`data.owner_id` |   | `string` |   | `false`
+`module` |   | `string('move')` |   | `true`
+
+##### metaflow.play
+
+play metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.id` |   | `string` |   | `true`
+`data.leg` |   | `string('both', 'self', 'peer')` | `both` | `false`
+`module` |   | `string('play')` |   | `true`
+
+##### metaflow.record_call
+
+record_call metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string('start', 'stop', 'toggle')` | `toggle` | `true`
+`data.format` |   | `string` |   | `false`
+`data.media_name` |   | `string` |   | `false`
+`module` |   | `string('record_call')` |   | `true`
+
+##### metaflow.resume
+
+resume metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `false`
+`module` |   | `string('resume')` |   | `true`
+
+##### metaflow.say
+
+say metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.language` |   | `string` |   | `false`
+`data.method` |   | `string` |   | `false`
+`data.text` |   | `string` |   | `true`
+`data.type` |   | `string` |   | `false`
+`module` |   | `string('say')` |   | `true`
+
+##### metaflow.sound_touch
+
+sound_touch metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.action` |   | `string('start', 'stop')` |   | `true`
+`data.adjust_in_octaves` |   | `integer` |   | `false`
+`data.adjust_in_semitones` |   | `integer` |   | `false`
+`data.hook_dtmf` |   | `boolean` | `false` | `false`
+`data.pitch` |   | `integer` |   | `false`
+`data.rate` |   | `integer` |   | `false`
+`data.sending_leg` |   | `boolean` | `false` | `false`
+`data.tempo` |   | `integer` |   | `false`
+`module` |   | `string('sound_touch')` |   | `true`
+
+##### metaflow.transfer
+
+transfer metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.Transfer-Type` |   | `string` | `attended` | `false`
+`data.captures` |   | `string` |   | `false`
+`data.target` |   | `string` |   | `false`
+`module` |   | `string('transfer')` |   | `true`
+
+##### metaflow.tts
+
+tts metaflow schema
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` |   | [#/definitions/metaflow_children](#metaflow_children) |   | `false`
+`data` |   | `object` |   | `true`
+`data.engine` |   | `string` | `flite` | `false`
+`data.language` |   | `string` |   | `false`
+`data.leg` |   | `string` | `self` | `false`
+`data.terminators` |   | `string` |   | `false`
+`data.text` |   | `string` |   | `true`
+`data.voice` |   | `string` | `female` | `false`
+`module` |   | `string('tts')` |   | `true`
+
+##### metaflow_children
+
+A metaflow child nodes
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+
+
 
 #### Metaflow structure
 

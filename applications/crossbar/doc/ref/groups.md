@@ -14,6 +14,8 @@ Key | Description | Type | Default | Required
 `name` | A friendly name for the group | `string(1..128)` |   | `true`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/groups

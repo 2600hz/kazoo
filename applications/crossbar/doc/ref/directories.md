@@ -17,6 +17,8 @@ Key | Description | Type | Default | Required
 `users.[]` |   | `string` |   | `false`
 
 
+
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/directories

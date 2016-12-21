@@ -127,7 +127,7 @@ maybe_add_schema(BaseName) ->
         'undefined' -> [?SCHEMA_SECTION, "\n\n"];
         SchemaJObj ->
             [Table | RefTables] = schema_to_table(SchemaJObj),
-            [?SCHEMA_SECTION, Table, "\n\n", ref_tables_to_doc(RefTables)]
+            [?SCHEMA_SECTION, Table, "\n\n", ref_tables_to_doc(RefTables), "\n\n"]
     end.
 
 %% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
