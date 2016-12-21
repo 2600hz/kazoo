@@ -151,6 +151,18 @@ fetch(?TEST_OLD_NUM, Options) ->
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
     handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD3_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD4_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD5_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD6_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
+    handle_fetched_result(JObj, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
@@ -290,7 +302,9 @@ authorized_release(PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Returns same fields view phone_numbers.json returns.
+%% @doc
+%% Returns same fields view phone_numbers.json returns.
+%% @end
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> kz_json:object().
 to_public_json(Number) ->
@@ -405,7 +419,7 @@ features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
     kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
 features_fold(?FEATURE_PREPEND, Acc, JObj) ->
     Name = kz_json:get_ne_value([?FEATURE_PREPEND, <<"name">>], JObj),
-    Data = kz_json:from_list([{<<"enabled">>, true}
+    Data = kz_json:from_list([{<<"enabled">>, kz_json:is_true([?FEATURE_PREPEND, <<"enabled">>], JObj)}
                              ,{<<"name">>, Name}
                              ]),
     kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
@@ -426,6 +440,7 @@ features_fold(FeatureKey, Acc, JObj) ->
     %% Encompasses at least:
     %%   ?FEATURE_PORT & ?FEATURE_FAILOVER
     Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
+    lager:debug("emcompassed ~s", [FeatureKey, kz_json:encode(Data)]),
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%--------------------------------------------------------------------
@@ -458,8 +473,7 @@ from_json_with_options(JObj, PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_phone_number().
-new() ->
-    #knm_phone_number{}.
+new() -> #knm_phone_number{}.
 
 -spec is_phone_number(any()) -> boolean().
 is_phone_number(#knm_phone_number{}) -> 'true';
@@ -661,9 +675,12 @@ feature(Number, Feature) ->
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
-set_feature(N, Feature=?NE_BINARY, Data) ->
-    Features = kz_json:set_value(Feature, Data, features(N)),
-    set_features(N, Features). %% Sets is_dirty.
+set_feature(N0, Feature=?NE_BINARY, Data) ->
+    Features = kz_json:set_value(Feature, Data, features(N0)),
+    N = set_features(N0, Features),
+    N#knm_phone_number.is_dirty
+        andalso lager:debug("setting ~s feature ~s: ~s", [number(N), Feature, kz_json:encode(Data)]),
+    N.
 
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
@@ -826,7 +843,10 @@ set_module_name(N0, Name, IsBillable)
                               }
     end;
 set_module_name(N0, Name, 'undefined') ->
-    set_module_name(N0, Name).
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_dirty = true
+                      ,is_billable = knm_carriers:is_number_billable(N)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1005,7 +1025,8 @@ set_modified(PN, Modified)
 %% @end
 %%--------------------------------------------------------------------
 -spec created(knm_phone_number()) -> gregorian_seconds().
-created(#knm_phone_number{created=Created}) -> Created.
+created(#knm_phone_number{created = undefined}) -> kz_util:current_tstamp();
+created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
 set_created(PN, Created)

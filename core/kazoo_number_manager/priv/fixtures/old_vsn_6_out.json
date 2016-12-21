@@ -1,0 +1,41 @@
+{
+    "_id": "+12156774700",
+    "failover": {
+        "sip": "sip:blipblop@158.85.21.24"
+    },
+    "features": [
+        "local",
+        "failover"
+    ],
+    "prepend": {
+        "enabled": true,
+        "number": "56100"
+    },
+    "pvt_assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+    "pvt_authorizing_account": "system",
+    "pvt_created": 63640935218,
+    "pvt_db_name": "numbers%2F%2B1215",
+    "pvt_features": {
+        "failover": {},
+        "local": {},
+        "prepend": {
+            "enabled": true,
+            "number": "56100"
+        }
+    },
+    "pvt_features_available": [
+        "cnam",
+        "e911",
+        "failover",
+        "port",
+        "prepend"
+    ],
+    "pvt_is_billable": false,
+    "pvt_modified": 63648931233,
+    "pvt_module_name": "knm_local",
+    "pvt_ported_in": false,
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "pvt_used_by": "trunkstore",
+    "state": "in_service"
+}
