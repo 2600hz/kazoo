@@ -1437,10 +1437,10 @@ maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
 maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
     {Endpoint, Call, CallFwd
     ,case kapps_call:inception(Call) =:= 'undefined'
-         orelse kz_json:is_true(<<"keep_caller_id">>, CallFwd)
+         andalso kz_json:is_true(<<"keep_caller_id">>, CallFwd)
      of
          'true' ->
-             lager:info("call forwarding will keep set retain caller id"),
+             lager:info("call forwarding will retain caller id"),
              kz_json:set_value(<<"Retain-CID">>, <<"true">>, JObj);
          'false' -> JObj
      end
