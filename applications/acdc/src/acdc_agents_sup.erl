@@ -2,6 +2,7 @@
 %%% @copyright (C) 2012-2020, 2600Hz
 %%% @doc
 %%% @author James Aimonetti
+%%% @author Daniel Finke
 %%% @end
 %%%-----------------------------------------------------------------------------
 -module(acdc_agents_sup).
@@ -80,7 +81,11 @@ new_thief(Call, QueueId) -> supervisor:start_child(?SERVER, [Call, QueueId]).
 workers() -> [Pid || {_, Pid, 'supervisor', [_]} <- supervisor:which_children(?SERVER)].
 
 -spec restart_acct(kz_term:ne_binary()) -> [kz_types:sup_startchild_ret()].
-restart_acct(AcctId) -> [acdc_agent_sup:restart(S) || S <- workers(), is_agent_in_acct(S, AcctId)].
+restart_acct(AcctId) ->
+    [restart_agent(AcctId, AgentId)
+     || {_, {AcctId1, AgentId, _}} <- agents_running()
+            ,AcctId =:= AcctId1
+    ].
 
 -spec restart_agent(kz_term:ne_binary(), kz_term:ne_binary()) -> kz_types:sup_startchild_ret() | 'ok'.
 restart_agent(AcctId, AgentId) ->
