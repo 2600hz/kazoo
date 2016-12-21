@@ -351,7 +351,7 @@ update_endpoint_emergency_cid(Endpoint, Number, Name) ->
                     ,{<<"Outbound-Caller-ID-Number">>, Number}
                     ],
             kz_json:set_values(Props, Endpoint)
-   end.
+    end.
 
 -spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
 build_bridge(#state{endpoints=Endpoints
