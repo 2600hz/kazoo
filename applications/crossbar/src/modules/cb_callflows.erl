@@ -381,39 +381,61 @@ on_successful_validation(CallflowId, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-type assigned_tuple() :: {ne_binary(), ne_binaries()}.
+-type assigned_tuples() :: [assigned_tuple()].
+
 -spec validate_number_ownership(cb_context:context()) -> cb_context:context().
--spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
-                                       cb_context:context().
--spec validate_number_ownership(knm_number:knm_number()
-                               ,ne_binaries()
-                               ,cb_context:context()) -> cb_context:context().
 validate_number_ownership(Context) ->
     NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
 
-    Assigned =  [Num
+    Assigned =  [knm_converters:normalize(Num)
                  || Num <- NewNums,
-                    Num =/= <<"undefined">>
+                    Num =/= <<"undefined">>,
+                    knm_converters:is_reconcilable(Num)
                 ],
 
-    validate_number_ownership(Assigned, Context).
+    AssignedTo = all_assigned_to_fold(Assigned, []),
+    validate_parent(AssignedTo, Context).
 
-validate_number_ownership([], Context) -> Context;
-validate_number_ownership([Number|Numbers], Context) ->
-    case knm_number:get(Number) of
-        {'ok', NumberObj} ->
-            validate_number_ownership(NumberObj, Numbers, Context);
-        _ -> validate_number_ownership(Numbers, Context)
+-spec all_assigned_to_fold(ne_binaries(), assigned_tuples()) ->
+                                  assigned_tuples().
+all_assigned_to_fold([], Acc) -> Acc;
+all_assigned_to_fold([Number|_]=Numbers, Acc) ->
+    Db = knm_converters:to_db(Number),
+    {SamePrefix, DiffPrefix} = lists:partition(fun(Number1) ->
+                                                       knm_converters:to_db(Number1) =:= Db
+                                               end
+                                              ,Numbers),
+    case kz_datamgr:get_results(Db, <<"numbers/assigned_to">>) of
+        {'ok', Results} ->
+            Acc1 = assigned_to_fold(SamePrefix, Results, Acc),
+            all_assigned_to_fold(DiffPrefix, Acc1);
+        _ -> Acc
     end.
 
-validate_number_ownership(NumberObj, Numbers, Context) ->
+-spec assigned_to_fold(ne_binaries(), kz_json:objects(), assigned_tuples()) ->
+                              assigned_tuples().
+assigned_to_fold([], _, Acc) -> Acc;
+assigned_to_fold([Number|Numbers], ViewJObjs, Acc) ->
+    case kz_json:find_value(<<"id">>, Number, ViewJObjs) of
+        'undefined' -> assigned_to_fold(Numbers, ViewJObjs, Acc);
+        JObj ->
+            AssignedTo = hd(kz_json:get_value(<<"key">>, JObj)),
+            NumbersForAssignedTo = props:get_value(AssignedTo, Acc, []),
+            NumbersForAssignedTo1 = [Number | NumbersForAssignedTo],
+            Acc1 = props:set_value(AssignedTo, NumbersForAssignedTo1, Acc),
+            assigned_to_fold(Numbers, ViewJObjs, Acc1)
+    end.
+
+-spec validate_parent(assigned_tuples(), cb_context:context()) ->
+                             cb_context:context().
+validate_parent([], Context) -> Context;
+validate_parent([{AssignedTo, Numbers}|AssignedTuples], Context) ->
     AuthBy = cb_context:auth_account_id(Context),
-    PhoneNumber = knm_number:phone_number(NumberObj),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
     case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-        'true' -> validate_number_ownership(Numbers, Context);
+        'true' -> validate_parent(AssignedTuples, Context);
         'false' ->
-            Number = knm_phone_number:number(PhoneNumber),
-            Message = <<"unauthorized to add/modify ", Number/binary>>,
+            Message = <<"unauthorized to add/modify ", (hd(Numbers))/binary>>,
             cb_context:add_system_error(403, 'forbidden', Message, Context)
     end.
 
