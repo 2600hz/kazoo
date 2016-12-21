@@ -1099,7 +1099,7 @@ format_emergency_caller_id_number(Context) ->
     end.
 
 format_emergency_caller_id_number(Context, Emergency) ->
-    case kz_json:get_value(<<"number">>, Emergency) of
+    case kz_json:get_ne_binary_value(<<"number">>, Emergency) of
         'undefined' -> Context;
         Number ->
             NEmergency = kz_json:set_value(<<"number">>, knm_converters:normalize(Number), Emergency),
