@@ -312,7 +312,7 @@ maybe_get_assigned_number(CandidateNumber, Name, ?MATCH_ACCOUNT_ENCODED(_)=Accou
 maybe_get_assigned_number(CandidateNumber, Name, Call) ->
     AccountDb = kapps_call:account_db(Call),
     maybe_get_assigned_number(CandidateNumber, Name, AccountDb).
- -spec maybe_get_assigned_numbers(ne_binaries(), ne_binary()) -> cid().
+-spec maybe_get_assigned_numbers(ne_binaries(), ne_binary()) -> cid().
 maybe_get_assigned_numbers([], Name) ->
     Number = default_cid_number(),
     lager:info("failed to find any in-service numbers, using default <~s> ~s", [Name, Number]),

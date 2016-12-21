@@ -202,14 +202,12 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
 
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
                     Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
-                    FlagsJObj = kz_json:set_values(
-                                  [{<<"call_restriction">>, Restriction}
-                                  ,{<<"account">>, merge_account_attributes(AccountJObj
-                                   ,kz_json:get_value(<<"account">>, JObj, kz_json:new()))
-                                   }
-                                  ]
-                                  ,JObj
-                                ),
+                    Props = [{<<"call_restriction">>, Restriction}
+                            ,{<<"account">>
+                             ,merge_account_attributes(AccountJObj, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                             }
+                            ],
+                    FlagsJObj = kz_json:set_values(Props, JObj),
                     kz_cache:store_local(?CACHE_NAME
                                         ,{'lookup_user_flags', Realm, Name, AccountId}
                                         ,FlagsJObj
@@ -226,13 +224,11 @@ merge_account_attributes(?NE_BINARY=AccountId, JObj) ->
     end;
 merge_account_attributes(Account, JObj) ->
     CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, Account),
-    kz_json:set_values(
-      props:filter_undefined(
-        [{<<"caller_id_options">>, CidOptions}
-        ]
-      )
-      ,JObj
-    ).
+    Props = props:filter_undefined(
+              [{<<"caller_id_options">>, CidOptions}
+              ]
+             ),
+    kz_json:set_values(Props, JObj).
 
 -spec get_call_duration(kz_json:object()) -> integer().
 get_call_duration(JObj) ->
