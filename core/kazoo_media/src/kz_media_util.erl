@@ -54,7 +54,7 @@
 %%  normalized file only, pass the {'output', 'file'} as option.
 %% @end
 %%--------------------------------------------------------------------
--type normalized_media() :: {'ok', iolist()} | {'error', any()}.
+-type normalized_media() :: {'ok', iodata()} | {'error', any()}.
 
 -spec normalize_media(ne_binary(), ne_binary(), binary()) -> normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
@@ -121,6 +121,7 @@ return_command_result({'error', _}=Error, _FileName, _) -> Error.
 %% Run normalizer command
 %% @end
 %%--------------------------------------------------------------------
+-spec run_command(ne_binary()) -> normalized_media().
 run_command(Command) ->
     try os:cmd(binary_to_list(Command)) of
         Result ->
@@ -137,7 +138,7 @@ run_command(Command) ->
 %% Synthesize a tone, returns as binary or a path to the generated file
 %% @end
 %%--------------------------------------------------------------------
--spec synthesize_tone(ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', any()}.
+-spec synthesize_tone(ne_binary(), ne_binary(), ne_binary()) -> normalized_media().
 synthesize_tone(SampleRate, Frequency, Length) ->
     FileName = tmp_file(<<"wav">>),
     case synthesize_tone(SampleRate, Frequency, Length, FileName) of
@@ -153,7 +154,7 @@ synthesize_tone(SampleRate, Frequency, Length) ->
 %% Synthesize a tone, returns as binary or a path to the generated file
 %% @end
 %%--------------------------------------------------------------------
--spec synthesize_tone(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> {'ok', binary()} | {'error', any()}.
+-spec synthesize_tone(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> normalized_media().
 synthesize_tone(SampleRate, Frequency, Length, FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
                                ,<<" -r ">>, SampleRate
@@ -169,7 +170,7 @@ synthesize_tone(SampleRate, Frequency, Length, FileName) ->
 %% Detect sample rate of a media file
 %% @end
 %%--------------------------------------------------------------------
--spec detect_file_sample_rate(ne_binary()) -> {'ok', binary()} | {'error', 'detection_failed'}.
+-spec detect_file_sample_rate(ne_binary()) -> normalized_media().
 detect_file_sample_rate(FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
                                ,<<" --i -r ">>
@@ -195,7 +196,7 @@ detect_file_sample_rate(FileName) ->
 %% Detect media format of a media file
 %% @end
 %%--------------------------------------------------------------------
--spec detect_file_format(ne_binary()) -> {'ok', binary()} | {'error', 'detection_failed'}.
+-spec detect_file_format(ne_binary()) -> normalized_media().
 detect_file_format(FileName) ->
     Command = iolist_to_binary([?NORMALIZE_EXE
                                ,<<" --i -t ">>
@@ -223,6 +224,9 @@ detect_file_format(FileName) ->
 %% requested sample rate or the default value of 16kHz.
 %% @end
 %%--------------------------------------------------------------------
+-type join_file() :: {ne_binary(), api_binary(), api_binary()}.
+-type join_files() :: [join_file()].
+
 -spec join_media_files(ne_binaries()) -> normalized_media().
 join_media_files(FileNames) ->
     join_media_files(FileNames, []).
@@ -237,12 +241,14 @@ join_media_files(FileNames, Options) ->
         {'error', _}=Error -> Error
     end.
 
+-spec maybe_join_media_files(join_files(), kz_proplist(), join_files()) -> normalized_media().
 maybe_join_media_files([], Options, Acc) -> do_join_media_files(Acc, Options);
 maybe_join_media_files([{_, 'undefined', _}|_], _, _) -> {'error', 'join_media_failed'};
 maybe_join_media_files([{_, _, 'undefined'}|_], _, _) -> {'error', 'join_media_failed'};
 maybe_join_media_files([F|Files], Options, Acc) ->
     maybe_join_media_files(Files, Options, [F|Acc]).
 
+-spec do_join_media_files(join_files(), kz_proplist()) -> normalized_media().
 do_join_media_files(Files, Options) ->
     SampleRate = props:get_value('sample_rate', Options, <<"16000">>),
     ToFormat = props:get_value('to_format', Options, ?NORMALIZATION_FORMAT),
@@ -271,6 +277,9 @@ do_join_media_files(Files, Options) ->
 %% copy the files to a temporary place to join them together.
 %% @end
 %%--------------------------------------------------------------------
+-spec maybe_normalize_copy_files(join_files(), ne_binary(), join_files()) ->
+                                        {'ok', join_files()} |
+                                        {'error', 'normalization_failed'}.
 maybe_normalize_copy_files([], _SampleRate, Acc) -> {'ok', Acc};
 maybe_normalize_copy_files([{File, SampleRate, Format}|Files], SampleRate, Acc) ->
     NewFile = tmp_file(Format),
@@ -303,6 +312,7 @@ maybe_normalize_copy_files([{File, _Other, Format}|Files], SampleRate, Acc) ->
 %% a tuple of detect options
 %% @end
 %%--------------------------------------------------------------------
+-spec detect_format_options(ne_binary()) -> join_file().
 detect_format_options(File) ->
     FileSampleRate = detect_file_sample_rate(File),
     FileFormat = detect_file_format(File),
