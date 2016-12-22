@@ -14,6 +14,7 @@
 -export([save/1]).
 -export([delete/1]).
 -export([available_features/1, available_features/5
+        ,allowed_features/1, denied_features/1
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -86,6 +87,14 @@ available_features(PhoneNumber) ->
 available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
     list_available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
 
+-spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
+allowed_features(PhoneNumber) ->
+    list_allowed_features(feature_parameters(PhoneNumber)).
+
+-spec denied_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
+denied_features(PhoneNumber) ->
+    list_denied_features(feature_parameters(PhoneNumber)).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -137,8 +146,8 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
-    Allowed = lists:usort([legacy_provider_to_feature(F) || F <- allowed_features(Parameters)]),
-    Denied = lists:usort([legacy_provider_to_feature(F) || F <- denied_features(Parameters)]),
+    Allowed = lists:usort([legacy_provider_to_feature(F) || F <- list_allowed_features(Parameters)]),
+    Denied = lists:usort([legacy_provider_to_feature(F) || F <- list_denied_features(Parameters)]),
     [Feature
      || Feature <- Allowed,
         not lists:member(Feature, Denied)
@@ -163,8 +172,8 @@ feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
                        ,denied_features = Denied
                        }.
 
--spec allowed_features(feature_parameters()) -> ne_binaries().
-allowed_features(Parameters) ->
+-spec list_allowed_features(feature_parameters()) -> ne_binaries().
+list_allowed_features(Parameters) ->
     case number_allowed_features(Parameters) of
         [] -> reseller_allowed_features(Parameters);
         NumberAllowed -> NumberAllowed
@@ -194,8 +203,8 @@ number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures})
     lager:debug("allowed number features set on number document"),
     AllowedFeatures.
 
--spec denied_features(feature_parameters()) -> ne_binaries().
-denied_features(Parameters) ->
+-spec list_denied_features(feature_parameters()) -> ne_binaries().
+list_denied_features(Parameters) ->
     case number_denied_features(Parameters) of
         [] ->
             reseller_denied_features(Parameters)
