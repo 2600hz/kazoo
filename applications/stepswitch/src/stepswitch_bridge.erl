@@ -327,10 +327,31 @@ maybe_deny_emergency_bridge(State, 'undefined', Name) ->
                                        )
     end;
 maybe_deny_emergency_bridge(#state{control_queue=ControlQ}=State, Number, Name) ->
+    State0 = update_endpoint_emergency_cid(State, Number, Name),
     kapi_dialplan:publish_command(ControlQ
-                                 ,build_bridge(State, Number, Name)
+                                 ,build_bridge(State0, Number, Name)
                                  ),
     lager:debug("sent bridge command to ~s", [ControlQ]).
+
+-spec update_endpoint_emergency_cid(state() | kz_json:object(), ne_binary(), api_binary()) -> state().
+update_endpoint_emergency_cid(#state{endpoints=Endpoints}=State, Number, Name) ->
+    State#state{endpoints=[update_endpoint_emergency_cid(Endpoint, Number, Name)
+                           || Endpoint <- Endpoints
+                          ]};
+update_endpoint_emergency_cid(Endpoint, Number, Name) ->
+    case {kz_json:get_value(<<"Outbound-Caller-ID-Number">>, Endpoint, Number)
+         ,kz_json:get_value(<<"Outbound-Caller-ID-Name">>, Endpoint, Name)
+         }
+    of
+        {Number, Name} -> Endpoint;
+        {Number, _} -> kz_json:set_value(<<"Outbound-Caller-ID-Name">>, Name, Endpoint);
+        {_, Name} -> kz_json:set_value(<<"Outbound-Caller-ID-Number">>, Number, Endpoint);
+        {_, _} ->
+            Props = [{<<"Outbound-Caller-ID-Name">>, Name}
+                    ,{<<"Outbound-Caller-ID-Number">>, Number}
+                    ],
+            kz_json:set_values(Props, Endpoint)
+    end.
 
 -spec build_bridge(state(), api_binary(), api_binary()) -> kz_proplist().
 build_bridge(#state{endpoints=Endpoints
