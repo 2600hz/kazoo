@@ -17,8 +17,8 @@
                             ]).
 
 is_dirty1_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
@@ -109,8 +109,8 @@ is_dirty1_test_() ->
 
 
 is_dirty2_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD2_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD2_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
@@ -193,8 +193,8 @@ is_dirty2_test_() ->
 
 
 is_dirty3_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD3_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD3_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
@@ -277,8 +277,8 @@ is_dirty3_test_() ->
 
 
 is_dirty4_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD4_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD4_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
@@ -378,8 +378,8 @@ public_fields_new_5(OldJObj) ->
     M#{<<"e911">> => maps:get(?LEGACY_DASH_E911, M)}.
 
 is_dirty5_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD5_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD5_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
@@ -463,8 +463,8 @@ is_dirty5_test_() ->
 
 
 is_dirty6_test_() ->
-    {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD6_NUM),
-    JObj = knm_phone_number:to_json(OldPN),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD6_NUM),
+    JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
     [?_assertEqual(kz_json:get_value(<<"pvt_assigned_to">>, NewJObj)
