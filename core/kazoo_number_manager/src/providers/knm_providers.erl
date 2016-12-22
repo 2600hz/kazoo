@@ -324,25 +324,22 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 -spec exec(knm_number:knm_number(), exec_action(), ne_binaries()) ->
                   knm_number:knm_number().
 
+exec(Number, Action=delete) ->
+    Number1 = fix_old_fields_names(Number),
+    RequestedModules = requested_modules(Number),
+    lager:debug("requested number features: ~p", [RequestedModules]),
+    exec(Number1, Action, RequestedModules);
 exec(Number, Action) ->
     Number1 = fix_old_fields_names(Number),
     RequestedModules = requested_modules(Number),
     lager:debug("requested number features: ~p", [RequestedModules]),
-    case Action =:= 'delete' of
-        'true' -> exec(Number1, Action, RequestedModules);
-        'false' ->
-            AllowedModules = allowed_modules(Number),
-            {AllowedRequests, DeniedRequests} =
-                lists:partition(fun(Request) ->
-                                        lists:member(Request, AllowedModules)
-                                end
-                               ,RequestedModules
-                               ),
-            lager:debug("allowing number features ~p", [AllowedRequests]),
-            Number2 = exec(Number1, Action, AllowedRequests),
-            lager:debug("denied number features ~p", [AllowedRequests]),
-            exec(Number2, 'delete', DeniedRequests)
-    end.
+    AllowedModules = allowed_modules(Number),
+    Filter = fun (Feature) -> lists:member(Feature, AllowedModules) end,
+    {AllowedRequests, DeniedRequests} = lists:partition(Filter, RequestedModules),
+    lager:debug("allowing number features ~p", [AllowedRequests]),
+    Number2 = exec(Number1, Action, AllowedRequests),
+    lager:debug("denied number features ~p", [AllowedRequests]),
+    exec(Number2, 'delete', DeniedRequests).
 
 %% @private
 fix_old_fields_names(Number) ->
