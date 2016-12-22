@@ -10,12 +10,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
--define(FEATURES_AVAILABLE, [?FEATURE_CNAM
-                            ,?FEATURE_FAILOVER
-                            ,?FEATURE_PORT
-                            ,?FEATURE_PREPEND
-                            ]).
-
 is_dirty1_test_() ->
     {ok, PN} = knm_phone_number:fetch(?TEST_OLD_NUM),
     JObj = knm_phone_number:to_json(PN),
@@ -35,10 +29,10 @@ is_dirty1_test_() ->
                   ,kz_json:get_value(<<"pvt_db_name">>, JObj)
                   )
 
-    ,?_assertEqual(lists:usort([?FEATURE_E911|?FEATURES_AVAILABLE])
-                  ,kz_json:get_value(<<"pvt_features_available">>, OldJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(kz_json:get_value(<<"pvt_module_name">>, NewJObj)
                   ,kz_json:get_value(<<"pvt_module_name">>, JObj)
@@ -148,9 +142,10 @@ is_dirty2_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_features_available">>, OldJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"wnm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
@@ -232,12 +227,10 @@ is_dirty3_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(lists:usort([?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911]++?FEATURES_AVAILABLE)
-                  ,lists:usort(kz_json:get_value(<<"pvt_features_available">>, OldJObj)))
-    ,?_assertEqual(?FEATURES_AVAILABLE
-                  ,lists:usort(kz_json:get_value(<<"pvt_features_available">>, JObj)))
-    ,?_assertEqual(?FEATURES_AVAILABLE
-                  ,lists:usort(kz_json:get_value(<<"pvt_features_available">>, NewJObj)))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
@@ -316,9 +309,10 @@ is_dirty4_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_features_available">>, OldJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"wnm_local">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
@@ -417,9 +411,10 @@ is_dirty5_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_features_available">>, OldJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
@@ -502,9 +497,10 @@ is_dirty6_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_features_available">>, OldJObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, JObj))
-    ,?_assertEqual(?FEATURES_AVAILABLE, kz_json:get_value(<<"pvt_features_available">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
+                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, JObj))

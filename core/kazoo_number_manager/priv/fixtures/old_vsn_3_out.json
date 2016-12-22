@@ -30,12 +30,14 @@
             "street_address": "140 GEARY ST"
         }
     },
-    "pvt_features_available": [
-        "cnam",
+    "pvt_features_allowed": [
         "failover",
-        "port",
+        "force_outbound",
         "prepend",
-        "e911"
+        "ringback"
+    ],
+    "pvt_features_denied": [
+        "failover"
     ],
     "pvt_is_billable": true,
     "pvt_modified": 6364611391,
