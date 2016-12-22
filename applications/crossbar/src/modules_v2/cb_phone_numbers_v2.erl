@@ -514,6 +514,7 @@ view_account_phone_numbers(Context) ->
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
+-spec fix_available(kz_json:object()) -> kz_json:object().
 fix_available(NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
     IsLocal = lists:member(?FEATURE_LOCAL, kz_json:get_list_value(<<"features">>, JObj, [])),

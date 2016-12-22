@@ -16,7 +16,9 @@
     "pvt_created": 63640935218,
     "pvt_db_name": "numbers%2F%2B1215",
     "pvt_features": {
-        "failover": {},
+        "failover": {
+            "sip": "sip:blipblop@158.85.21.24"
+        },
         "local": {},
         "prepend": {
             "enabled": true,
