@@ -261,21 +261,7 @@ requested_modules(Number) ->
 allowed_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    provider_modules(allowed_features_with_legacy(PhoneNumber), AccountId).
-
--spec allowed_features_with_legacy(knm_phone_number:knm_phone_number()) -> ne_binaries().
-allowed_features_with_legacy(PhoneNumber) ->
-    AvailableFeatures = available_features(PhoneNumber),
-    RequestedFeatures = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
-    LegacyDash = lists:member(?LEGACY_DASH_E911, RequestedFeatures),
-    LegacyVitelity = lists:member(?LEGACY_VITELITY_E911, RequestedFeatures),
-    LegacyTelnyx = lists:member(?LEGACY_TELNYX_E911, RequestedFeatures),
-    case lists:member(?FEATURE_E911, AvailableFeatures) of
-        'true' when LegacyDash -> AvailableFeatures ++ [?LEGACY_DASH_E911];
-        'true' when LegacyVitelity -> AvailableFeatures ++ [?LEGACY_VITELITY_E911];
-        'true' when LegacyTelnyx -> AvailableFeatures ++ [?LEGACY_TELNYX_E911];
-        _Else -> AvailableFeatures
-    end.
+    provider_modules(available_features(PhoneNumber), AccountId).
 
 -spec provider_modules(ne_binaries(), api_ne_binary()) -> ne_binaries().
 provider_modules(Features, MaybeAccountId) ->
@@ -325,36 +311,19 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
                   knm_number:knm_number().
 
 exec(Number, Action=delete) ->
-    Number1 = fix_old_fields_names(Number),
     RequestedModules = requested_modules(Number),
     lager:debug("requested number features: ~p", [RequestedModules]),
-    exec(Number1, Action, RequestedModules);
+    exec(Number, Action, RequestedModules);
 exec(Number, Action) ->
-    Number1 = fix_old_fields_names(Number),
     RequestedModules = requested_modules(Number),
     lager:debug("requested number features: ~p", [RequestedModules]),
     AllowedModules = allowed_modules(Number),
     Filter = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     {AllowedRequests, DeniedRequests} = lists:partition(Filter, RequestedModules),
     lager:debug("allowing number features ~p", [AllowedRequests]),
-    Number2 = exec(Number1, Action, AllowedRequests),
-    lager:debug("denied number features ~p", [AllowedRequests]),
-    exec(Number2, 'delete', DeniedRequests).
-
-%% @private
-fix_old_fields_names(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    JObj = knm_phone_number:doc(PhoneNumber),
-    Values = props:filter_undefined(
-               [{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_DASH_E911, JObj)}
-               ,{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_VITELITY_E911, JObj)}
-               ,{?FEATURE_E911, kz_json:get_ne_value(?LEGACY_TELNYX_E911, JObj)}
-               ]),
-    ToDelete = [?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911, ?LEGACY_TELNYX_E911],
-    NewJObj = kz_json:set_values(Values, kz_json:delete_keys(ToDelete, JObj)),
-    knm_number:set_phone_number(Number
-                               ,knm_phone_number:update_doc(PhoneNumber, NewJObj)
-                               ).
+    Number1 = exec(Number, Action, AllowedRequests),
+    lager:debug("denied number features ~p", [DeniedRequests]),
+    exec(Number1, delete, DeniedRequests).
 
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->
