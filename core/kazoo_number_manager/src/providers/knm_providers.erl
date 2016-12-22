@@ -14,7 +14,6 @@
 -export([save/1]).
 -export([delete/1]).
 -export([available_features/1, available_features/5
-        ,allowed_features/1, denied_features/1
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -79,125 +78,13 @@ delete(Number) ->
 %% List features a number is allowed by its reseller to enable.
 %% @end
 %%--------------------------------------------------------------------
--spec available_features(knm_phone_number:knm_phone_number() | feature_parameters()) -> ne_binaries().
-available_features(#feature_parameters{}=Parameters) ->
-    Allowed = [legacy_provider_to_feature(Feature) || Feature <- allowed_features(Parameters)],
-    Denied = [legacy_provider_to_feature(Feature) || Feature <- denied_features(Parameters)],
-    [Feature
-     || Feature <- lists:usort(Allowed),
-        not lists:member(Feature, Denied)
-    ];
+-spec available_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
 available_features(PhoneNumber) ->
-    available_features(feature_parameters(PhoneNumber)).
+    list_available_features(feature_parameters(PhoneNumber)).
 
--spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
-                                ne_binaries().
+-spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
 available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
-    available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
-
--spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
-feature_parameters(PhoneNumber) ->
-    feature_parameters(?CARRIER_LOCAL =:= knm_phone_number:module_name(PhoneNumber)
-                      ,knm_phone_number:assigned_to(PhoneNumber)
-                      ,knm_phone_number:used_by(PhoneNumber)
-                      ,knm_phone_number:features_allowed(PhoneNumber)
-                      ,knm_phone_number:features_denied(PhoneNumber)
-                      ).
-
--spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
-                                feature_parameters().
-feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
-    #feature_parameters{is_local = IsLocal
-                       ,assigned_to = AssignedTo
-                       ,used_by = UsedBy
-                       ,allowed_features = Allowed
-                       ,denied_features = Denied
-                       }.
-
--spec allowed_features(feature_parameters() | knm_phone_number:knm_phone_number()) -> ne_binaries().
-allowed_features(#feature_parameters{}=Parameters) ->
-    case number_allowed_features(Parameters) of
-        [] -> reseller_allowed_features(Parameters);
-        NumberAllowed -> NumberAllowed
-    end;
-allowed_features(PhoneNumber) ->
-    allowed_features(feature_parameters(PhoneNumber)).
-
--spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
-reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
-    system_allowed_features();
-reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
-    case ?FEATURES_ALLOWED_RESELLER(AccountId) of
-        'undefined' -> system_allowed_features();
-        Providers ->
-            lager:debug("allowed number features set on reseller for ~s", [AccountId]),
-            Providers
-    end.
-
--spec system_allowed_features() -> ne_binaries().
-system_allowed_features() ->
-    lager:debug("allowed number features fetched from system config"),
-    case ?SYSTEM_PROVIDERS of
-        'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
-        Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
-    end.
-
--spec number_allowed_features(feature_parameters()) -> ne_binaries().
-number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    lager:debug("allowed number features set on number document"),
-    AllowedFeatures.
-
--spec denied_features(feature_parameters() | knm_phone_number:knm_phone_number()) -> ne_binaries().
-denied_features(#feature_parameters{}=Parameters) ->
-    case number_denied_features(Parameters) of
-        [] ->
-            reseller_denied_features(Parameters)
-                ++ used_by_denied_features(Parameters);
-        NumberDenied -> NumberDenied
-    end;
-denied_features(PhoneNumber) ->
-    denied_features(feature_parameters(PhoneNumber)).
-
--spec reseller_denied_features(feature_parameters()) -> ne_binaries().
-reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
-    lager:debug("denying external number features for unassigned number"),
-    ?EXTERNAL_NUMBER_FEATURES;
-reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
-    case ?FEATURES_DENIED_RESELLER(AccountId) of
-        'undefined' -> local_denied_features(Parameters);
-        Providers ->
-            lager:debug("denied number features set on reseller for ~s", [AccountId]),
-            Providers
-    end.
-
--spec local_denied_features(feature_parameters()) -> ne_binaries().
-local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
-local_denied_features(#feature_parameters{is_local = 'true'}) ->
-    lager:debug("denying external number features for local number"),
-    ?EXTERNAL_NUMBER_FEATURES.
-
--spec used_by_denied_features(feature_parameters()) -> ne_binaries().
-used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
-used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
-    lager:debug("denying external number features for number used by ~s", [UsedBy]),
-    [?FEATURE_FAILOVER].
-
--spec number_denied_features(feature_parameters()) -> ne_binaries().
-number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    lager:debug("denied number features set on number document"),
-    DeniedFeatures.
-
--spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
-legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
-legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
-legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(?LEGACY_DASH_E911) -> ?FEATURE_E911;
-legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
-legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(?LEGACY_TELNYX_E911) -> ?FEATURE_E911;
-legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
-legacy_provider_to_feature(?LEGACY_VITELITY_E911) -> ?FEATURE_E911;
-legacy_provider_to_feature(Else) -> Else.
+    list_available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,6 +134,115 @@ service_name(<<"knm_cnam_notifier">>) -> <<"cnam">>;
 service_name(<<"knm_telnyx_cnam">>) -> <<"telnyx_cnam">>;
 service_name(<<"knm_vitelity_cnam">>) -> <<"vitelity_cnam">>;
 service_name(Feature) -> Feature.
+
+-spec list_available_features(feature_parameters()) -> ne_binaries().
+list_available_features(Parameters) ->
+    Allowed = [legacy_provider_to_feature(Feature) || Feature <- allowed_features(Parameters)],
+    Denied = [legacy_provider_to_feature(Feature) || Feature <- denied_features(Parameters)],
+    [Feature
+     || Feature <- lists:usort(Allowed),
+        not lists:member(Feature, Denied)
+    ].
+
+-spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
+feature_parameters(PhoneNumber) ->
+    feature_parameters(?CARRIER_LOCAL =:= knm_phone_number:module_name(PhoneNumber)
+                      ,knm_phone_number:assigned_to(PhoneNumber)
+                      ,knm_phone_number:used_by(PhoneNumber)
+                      ,knm_phone_number:features_allowed(PhoneNumber)
+                      ,knm_phone_number:features_denied(PhoneNumber)
+                      ).
+
+-spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
+                                feature_parameters().
+feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
+    #feature_parameters{is_local = IsLocal
+                       ,assigned_to = AssignedTo
+                       ,used_by = UsedBy
+                       ,allowed_features = Allowed
+                       ,denied_features = Denied
+                       }.
+
+-spec allowed_features(feature_parameters()) -> ne_binaries().
+allowed_features(Parameters) ->
+    case number_allowed_features(Parameters) of
+        [] -> reseller_allowed_features(Parameters);
+        NumberAllowed -> NumberAllowed
+    end.
+
+-spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
+reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
+    system_allowed_features();
+reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
+    case ?FEATURES_ALLOWED_RESELLER(AccountId) of
+        'undefined' -> system_allowed_features();
+        Providers ->
+            lager:debug("allowed number features set on reseller for ~s", [AccountId]),
+            Providers
+    end.
+
+-spec system_allowed_features() -> ne_binaries().
+system_allowed_features() ->
+    lager:debug("allowed number features fetched from system config"),
+    case ?SYSTEM_PROVIDERS of
+        'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
+        Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
+    end.
+
+-spec number_allowed_features(feature_parameters()) -> ne_binaries().
+number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
+    lager:debug("allowed number features set on number document"),
+    AllowedFeatures.
+
+-spec denied_features(feature_parameters()) -> ne_binaries().
+denied_features(Parameters) ->
+    case number_denied_features(Parameters) of
+        [] ->
+            reseller_denied_features(Parameters)
+                ++ used_by_denied_features(Parameters);
+        NumberDenied -> NumberDenied
+    end.
+
+-spec reseller_denied_features(feature_parameters()) -> ne_binaries().
+reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
+    lager:debug("denying external number features for unassigned number"),
+    ?EXTERNAL_NUMBER_FEATURES;
+reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
+    case ?FEATURES_DENIED_RESELLER(AccountId) of
+        'undefined' -> local_denied_features(Parameters);
+        Providers ->
+            lager:debug("denied number features set on reseller for ~s", [AccountId]),
+            Providers
+    end.
+
+-spec local_denied_features(feature_parameters()) -> ne_binaries().
+local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
+local_denied_features(#feature_parameters{is_local = 'true'}) ->
+    lager:debug("denying external number features for local number"),
+    ?EXTERNAL_NUMBER_FEATURES.
+
+-spec used_by_denied_features(feature_parameters()) -> ne_binaries().
+used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
+used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
+    lager:debug("denying external number features for number used by ~s", [UsedBy]),
+    [?FEATURE_FAILOVER].
+
+-spec number_denied_features(feature_parameters()) -> ne_binaries().
+number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
+    lager:debug("denied number features set on number document"),
+    DeniedFeatures.
+
+-spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
+legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
+legacy_provider_to_feature(<<"knm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
+legacy_provider_to_feature(<<"cnam_notifier">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(?LEGACY_DASH_E911) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"port_notifier">>) -> ?FEATURE_PORT;
+legacy_provider_to_feature(<<"telnyx_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(?LEGACY_TELNYX_E911) -> ?FEATURE_E911;
+legacy_provider_to_feature(<<"vitelity_cnam">>) -> ?FEATURE_CNAM;
+legacy_provider_to_feature(?LEGACY_VITELITY_E911) -> ?FEATURE_E911;
+legacy_provider_to_feature(Else) -> Else.
 
 %%--------------------------------------------------------------------
 %% @private
