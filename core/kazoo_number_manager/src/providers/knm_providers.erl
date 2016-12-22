@@ -21,11 +21,9 @@
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
+
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
--define(LEGACY_DASH_E911, <<"dash_e911">>).
--define(LEGACY_VITELITY_E911, <<"vitelity_e911">>).
--define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
 
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).

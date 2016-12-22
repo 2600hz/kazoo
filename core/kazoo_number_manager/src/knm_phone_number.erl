@@ -407,9 +407,9 @@ from_json(JObj0) ->
 
 %% Handle moving away from provider-specific E911
 maybe_rename_features(Features) ->
-    Fs = kz_json:delete_keys([<<"dash_e911">>, <<"vitelity_e911">>], Features),
-    case {kz_json:get_ne_value(<<"dash_e911">>, Features)
-         ,kz_json:get_ne_value(<<"vitelity_e911">>, Features)
+    Fs = kz_json:delete_keys([?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911], Features),
+    case {kz_json:get_ne_value(?LEGACY_DASH_E911, Features)
+         ,kz_json:get_ne_value(?LEGACY_VITELITY_E911, Features)
          }
     of
         {undefined, undefined} -> Features;
@@ -419,8 +419,8 @@ maybe_rename_features(Features) ->
     end.
 
 maybe_update_rw_features(JObj) ->
-    case {kz_json:get_ne_value(<<"dash_e911">>, JObj)
-         ,kz_json:get_ne_value(<<"vitelity_e911">>, JObj)
+    case {kz_json:get_ne_value(?LEGACY_DASH_E911, JObj)
+         ,kz_json:get_ne_value(?LEGACY_VITELITY_E911, JObj)
          }
     of
         {undefined, undefined} -> JObj;
@@ -458,10 +458,13 @@ features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
 features_fold(?CNAM_INBOUND_LOOKUP, Acc, _) ->
     Data = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
     kz_json:set_value(?FEATURE_CNAM_INBOUND, Data, Acc);
-features_fold(<<"dash_e911">>=Feature, Acc, JObj) ->
+features_fold(?LEGACY_DASH_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
     kz_json:set_value(?FEATURE_E911, Data, Acc);
-features_fold(<<"vitelity_e911">>=Feature, Acc, JObj) ->
+features_fold(?LEGACY_VITELITY_E911=Feature, Acc, JObj) ->
+    Data = kz_json:get_value(Feature, JObj),
+    kz_json:set_value(?FEATURE_E911, Data, Acc);
+features_fold(?LEGACY_TELNYX_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
     kz_json:set_value(?FEATURE_E911, Data, Acc);
 features_fold(FeatureKey, Acc, JObj) ->

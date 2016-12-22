@@ -232,7 +232,7 @@ is_dirty3_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(lists:usort([<<"dash_e911">>, <<"vitelity_e911">>]++?FEATURES_AVAILABLE)
+    ,?_assertEqual(lists:usort([?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911]++?FEATURES_AVAILABLE)
                   ,lists:usort(kz_json:get_value(<<"pvt_features_available">>, OldJObj)))
     ,?_assertEqual(?FEATURES_AVAILABLE
                   ,lists:usort(kz_json:get_value(<<"pvt_features_available">>, JObj)))
@@ -368,14 +368,14 @@ maps_take(Key, Map) ->
 
 features_5(OldJObj) ->
     OldFeatures = kz_json:to_map(kz_json:get_value(<<"pvt_features">>, OldJObj)),
-    {E911, M} = maps_take(<<"dash_e911">>, OldFeatures),
+    {E911, M} = maps_take(?LEGACY_DASH_E911, OldFeatures),
     M#{<<"e911">> => E911}.
 
 public_fields_new_5(OldJObj) ->
     M = kz_json:to_map(
           kz_json:public_fields(
             kz_json:delete_key(<<"used_by">>, OldJObj))),
-    M#{<<"e911">> => maps:get(<<"dash_e911">>, M)}.
+    M#{<<"e911">> => maps:get(?LEGACY_DASH_E911, M)}.
 
 is_dirty5_test_() ->
     {ok, OldPN} = knm_phone_number:fetch(?TEST_OLD5_NUM),
