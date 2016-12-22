@@ -137,10 +137,10 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
-    Allowed = [legacy_provider_to_feature(Feature) || Feature <- allowed_features(Parameters)],
-    Denied = [legacy_provider_to_feature(Feature) || Feature <- denied_features(Parameters)],
+    Allowed = lists:usort([legacy_provider_to_feature(F) || F <- allowed_features(Parameters)]),
+    Denied = lists:usort([legacy_provider_to_feature(F) || F <- denied_features(Parameters)]),
     [Feature
-     || Feature <- lists:usort(Allowed),
+     || Feature <- Allowed,
         not lists:member(Feature, Denied)
     ].
 
@@ -255,17 +255,13 @@ requested_modules(Number) ->
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
     RequestedFeatures = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
     ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
-    [provider_module(Feature, AccountId)
-     || Feature <- lists:usort(RequestedFeatures ++ ExistingFeatures)
-    ].
+    provider_modules(RequestedFeatures ++ ExistingFeatures, AccountId).
 
 -spec allowed_modules(knm_number:knm_number()) -> ne_binaries().
 allowed_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    [provider_module(Feature, AccountId)
-     || Feature <- allowed_features_with_legacy(PhoneNumber)
-    ].
+    provider_modules(allowed_features_with_legacy(PhoneNumber), AccountId).
 
 -spec allowed_features_with_legacy(knm_phone_number:knm_phone_number()) -> ne_binaries().
 allowed_features_with_legacy(PhoneNumber) ->
@@ -280,6 +276,13 @@ allowed_features_with_legacy(PhoneNumber) ->
         'true' when LegacyTelnyx -> AvailableFeatures ++ [?LEGACY_TELNYX_E911];
         _Else -> AvailableFeatures
     end.
+
+-spec provider_modules(ne_binaries(), api_ne_binary()) -> ne_binaries().
+provider_modules(Features, MaybeAccountId) ->
+    lists:usort(
+      [provider_module(Feature, MaybeAccountId)
+       || Feature <- Features
+      ]).
 
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
