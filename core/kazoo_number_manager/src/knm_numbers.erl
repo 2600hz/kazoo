@@ -707,8 +707,8 @@ delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
     of
         true -> delete_permanently(T);
         false ->
-            {LocalNs, OtherNs} = split_on(fun is_carrier_local/1, T),
-            merge_okkos(delete_permanently(LocalNs), maybe_age(OtherNs))
+            {DeleteNs, OtherNs} = split_on(fun is_carrier_local_or_mdn/1, T),
+            merge_okkos(delete_permanently(DeleteNs), maybe_age(OtherNs))
     end.
 
 delete_permanently(T=#{options := Options}) ->
@@ -720,8 +720,10 @@ split_on(Pred, T=#{todo := Ns}) ->
     {Yes, No} = lists:partition(Pred, Ns),
     {T#{todo => Yes}, T#{todo => No}}.
 
-is_carrier_local(N) ->
-    ?CARRIER_LOCAL =:= knm_phone_number:module_name(knm_number:phone_number(N)).
+is_carrier_local_or_mdn(N) ->
+    Carrier = knm_phone_number:module_name(knm_number:phone_number(N)),
+    ?CARRIER_LOCAL =:= Carrier
+        orelse ?CARRIER_MDN =:= Carrier.
 
 maybe_age(T=#{todo := Ns}) ->
     case knm_config:should_age() of

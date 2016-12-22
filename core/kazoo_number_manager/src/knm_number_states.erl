@@ -9,9 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_number_states).
 
--export([to_options_state/1
-        ,to_deleted/1
-        ]).
+-export([to_options_state/1]).
 
 -include("knm.hrl").
 
@@ -163,23 +161,17 @@ to_in_service(T=#{todo := Ns}, ?NUMBER_STATE_IN_SERVICE) ->
 to_in_service(T, State) ->
     invalid_state_transition(T, State, ?NUMBER_STATE_IN_SERVICE).
 
--spec to_deleted(kn()) -> kn();
-                (t()) -> t().
-to_deleted(T=#{}) ->
-    knm_numbers:pipe(T, [fun move_to_deleted_state/1]);
-to_deleted(Number) -> %%FIXME: remove clause.
-    Routines = [fun move_to_deleted_state/1],
-    apply_transitions(Number, Routines).
+-spec to_deleted(t()) -> t().
+to_deleted(T) ->
+    knm_numbers:pipe(T, [fun move_to_deleted_state/1]).
 
 -ifdef(TEST).
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
        ,AuthBy =:= ?MASTER_ACCOUNT_ID
-        andalso AssignTo =:= ?RESELLER_ACCOUNT_ID
-       ).
+        andalso AssignTo =:= ?RESELLER_ACCOUNT_ID).
 -else.
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
-       ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
-       ).
+       ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)).
 -endif.
 
 -spec authorize(t()) -> t().
@@ -370,21 +362,9 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
               ],
     knm_phone_number:setters(PhoneNumber, Setters).
 
--type transition() :: fun((kn()) -> kn()).
--type transitions() :: [transition()].
-
--spec apply_transitions(kn(), transitions()) -> kn().
-apply_transitions(Number, Routines) ->
-    lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
-
 -spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
 is_authorized_operation(CheckFor, InAccount) ->
     kz_util:is_in_account_hierarchy(CheckFor, InAccount).
-
--spec number_state(kn()) -> ne_binary().
-number_state(Number) ->
-    knm_phone_number:state(
-      knm_number:phone_number(Number)).
 
 
 %% @private
@@ -404,7 +384,7 @@ is_assigned_to_assignto(N) ->
 -spec group_by_state(t()) -> [{ne_binary(), knm_numbers:oks()}].
 group_by_state(#{todo := Ns}) ->
     F = fun (N, M) ->
-                State = number_state(N),
+                State = knm_phone_number:state(knm_number:phone_number(N)),
                 AccNs = maps:get(State, M, []),
                 M#{State => [N|AccNs]}
         end,

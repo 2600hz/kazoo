@@ -164,6 +164,8 @@ fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_NUMBER, Options);
+fetch(?TEST_IN_SERVICE_MDN, Options) ->
+    handle_fetched_result(?IN_SERVICE_MDN, Options);
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
@@ -352,7 +354,7 @@ authorized_release(PhoneNumber) ->
     Routines = [{fun set_features/2, kz_json:new()}
                ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
                ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-               ,{fun set_assigned_to/2, 'undefined'}
+               ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, ReleasedState}
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
