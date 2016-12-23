@@ -9,8 +9,6 @@
 -module(kzd_fax).
 
 -export([new/0
-        ,fetch/2
-        ,fetch_from_modb/2
         ,type/0
         ,owner_id/1, owner_id/2
         ,faxbox_id/1, faxbox_id/2
@@ -67,26 +65,6 @@
 -spec new() -> doc().
 new() ->
     kz_json:from_list([{<<"pvt_type">>, type()}]).
-
--spec fetch(api_binary(), api_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch(Account, Id) ->
-    AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    case kz_datamgr:open_cache_doc(AccountDb, {<<"fax">>, Id}) of
-        {'ok', JObj} ->
-            {'ok', JObj};
-        {'error', _E} ->
-            fetch_from_modb(Account, Id)
-    end.
-
--spec fetch_from_modb(api_binary(), api_binary()) -> {'ok', doc()} | {'error', any()}.
-fetch_from_modb(Account, Id) ->
-    case kazoo_modb:open_doc(Account, {<<"fax">>, Id}) of
-        {'ok', JObj} ->
-            {'ok', JObj};
-        {'error', E} ->
-            lager:debug("failed to find fax ~s: ~p", [Id, E]),
-            {'error', E}
-    end.
 
 -spec type() -> ne_binary().
 type() -> ?PVT_TYPE.
