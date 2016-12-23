@@ -26,7 +26,8 @@
 -define(PVT_CREATED, <<"pvt_created">>).
 -define(PVT_DB_NAME, <<"pvt_db_name">>).
 -define(PVT_FEATURES, <<"pvt_features">>).
--define(PVT_FEATURES_AVAILABLE, <<"pvt_features_available">>).
+-define(PVT_FEATURES_ALLOWED, <<"pvt_features_allowed">>).
+-define(PVT_FEATURES_DENIED, <<"pvt_features_denied">>).
 -define(PVT_IS_BILLABLE, <<"pvt_is_billable">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).
@@ -75,14 +76,22 @@
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
 
--define(LOCAL_FEATURES, [?FEATURE_FAILOVER
-                        ,?FEATURE_FORCE_OUTBOUND
-                        ,?FEATURE_LOCAL
-                        ,?FEATURE_PREPEND
-                        ,?FEATURE_RINGBACK
-                        ]).
--define(LOCAL_FEATURES(Features),
-        lists:usort(?LOCAL_FEATURES ++ Features)).
+-define(LEGACY_DASH_E911, <<"dash_e911">>).
+-define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
+-define(LEGACY_VITELITY_E911, <<"vitelity_e911">>).
+
+-define(KAZOO_NUMBER_FEATURES, [?FEATURE_FAILOVER
+                               ,?FEATURE_FORCE_OUTBOUND
+                               ,?FEATURE_PREPEND
+                               ,?FEATURE_RINGBACK
+                               ]).
+
+-define(EXTERNAL_NUMBER_FEATURES, [?FEATURE_CNAM
+                                  ,?FEATURE_CNAM_INBOUND
+                                  ,?FEATURE_CNAM_OUTBOUND
+                                  ,?FEATURE_E911
+                                  ,?FEATURE_PORT
+                                  ]).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).

@@ -29,8 +29,9 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
-        ,features/1, features_available/1, features_list/1, set_features/2
+        ,features/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
+        ,features_allowed/1, features_denied/1
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
@@ -56,6 +57,9 @@
 -include("knm.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
+-define(DEFAULT_FEATURES_ALLOWED, []).
+-define(DEFAULT_FEATURES_DENIED, []).
+
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()
                           ,assign_to :: api_ne_binary()
@@ -78,6 +82,8 @@
                           ,created :: gregorian_seconds()
                           ,is_billable = undefined :: api_boolean()
                           ,is_dirty = 'false' :: boolean()
+                          ,features_allowed = ?DEFAULT_FEATURES_ALLOWED :: ne_binaries()
+                          ,features_denied = ?DEFAULT_FEATURES_DENIED :: ne_binaries()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -139,11 +145,25 @@ fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
     handle_fetched_result(?BW_EXISTING_JSON, Options);
+fetch(?TEST_TELNYX_NUM, Options) ->
+    handle_fetched_result(?TELNY_NUMBER, Options);
 fetch(?TEST_OLD_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
     handle_fetched_result(JObj, Options);
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD3_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD4_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD5_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
+    handle_fetched_result(JObj, Options);
+fetch(?TEST_OLD6_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
     handle_fetched_result(JObj, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
@@ -284,7 +304,9 @@ authorized_release(PhoneNumber) ->
 
 %%--------------------------------------------------------------------
 %% @public
-%% @doc Returns same fields view phone_numbers.json returns.
+%% @doc
+%% Returns same fields view phone_numbers.json returns.
+%% @end
 %%--------------------------------------------------------------------
 -spec to_public_json(knm_phone_number()) -> kz_json:object().
 to_public_json(Number) ->
@@ -300,7 +322,9 @@ to_public_json(Number) ->
             ,State
             ,UsedBy
             ,Features
-            ,{<<"features_available">>, features_available(Number)}
+            ,{<<"features_available">>, knm_providers:available_features(Number)}
+            ,{<<"features_allowed">>, features_allowed(Number)}
+            ,{<<"features_denied">>, features_denied(Number)}
             ])
          ),
     Values = props:filter_empty(
@@ -337,7 +361,8 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
             ,{?PVT_USED_BY, used_by(N)}
             ,{?PVT_FEATURES, features(N)}
-            ,{?PVT_FEATURES_AVAILABLE, features_available(N)}
+            ,{?PVT_FEATURES_ALLOWED, features_allowed(N)}
+            ,{?PVT_FEATURES_DENIED, features_denied(N)}
             ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
             ,{?PVT_CARRIER_DATA, carrier_data(N)}
             ,{?PVT_REGION, region(N)}
@@ -350,12 +375,12 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
-from_json(JObj) ->
+from_json(JObj0) ->
+    JObj = maybe_update_rw_features(JObj0),
     Features =
-        case kz_json:get_value(?PVT_FEATURES, JObj) of
+        case kz_json:get_ne_value(?PVT_FEATURES, JObj) of
             'undefined' -> kz_json:new();
-            FeaturesList when is_list(FeaturesList) ->
-                lists:foldl(fun (F, A) -> features_fold(F, A, JObj) end, kz_json:new(), FeaturesList);
+            FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
@@ -366,7 +391,7 @@ from_json(JObj) ->
                 [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
                 ,{fun set_assigned_to/3, kz_json:get_value(?PVT_ASSIGNED_TO, JObj), UsedBy}
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_features/2, Features}
+                ,{fun set_features/2, maybe_rename_features(Features)}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
@@ -377,10 +402,40 @@ from_json(JObj) ->
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
                 ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
                 ,{fun set_created/2, kz_doc:created(JObj, Now)}
+                ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
+                ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
                 ]),
     PhoneNumber.
 
+%% Handle moving away from provider-specific E911
+maybe_rename_features(Features) ->
+    Fs = kz_json:delete_keys([?LEGACY_DASH_E911, ?LEGACY_VITELITY_E911], Features),
+    case {kz_json:get_ne_value(?LEGACY_DASH_E911, Features)
+         ,kz_json:get_ne_value(?LEGACY_VITELITY_E911, Features)
+         }
+    of
+        {undefined, undefined} -> Features;
+        {Dash, undefined} -> kz_json:set_value(?FEATURE_E911, Dash, Fs);
+        {undefined, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, Fs);
+        {_Dash, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, Fs)
+    end.
+
+maybe_update_rw_features(JObj) ->
+    case {kz_json:get_ne_value(?LEGACY_DASH_E911, JObj)
+         ,kz_json:get_ne_value(?LEGACY_VITELITY_E911, JObj)
+         }
+    of
+        {undefined, undefined} -> JObj;
+        {Dash, undefined} -> kz_json:set_value(?FEATURE_E911, Dash, JObj);
+        {undefined, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, JObj);
+        {_Dash, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, JObj)
+    end.
+
 %% Handle 3.22 -> 4.0 features migration.
+migrate_features(FeaturesList, JObj) ->
+    F = fun (Feature, A) -> features_fold(Feature, A, JObj) end,
+    lists:foldl(F, kz_json:new(), FeaturesList).
+
 %% Note: if a feature matches here that means it was enabled in 3.22.
 features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
     Data = kz_json:is_true(?FEATURE_FORCE_OUTBOUND, JObj),
@@ -394,7 +449,7 @@ features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
     kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
 features_fold(?FEATURE_PREPEND, Acc, JObj) ->
     Name = kz_json:get_ne_value([?FEATURE_PREPEND, <<"name">>], JObj),
-    Data = kz_json:from_list([{<<"enabled">>, true}
+    Data = kz_json:from_list([{<<"enabled">>, kz_json:is_true([?FEATURE_PREPEND, <<"enabled">>], JObj)}
                              ,{<<"name">>, Name}
                              ]),
     kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
@@ -405,16 +460,20 @@ features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
 features_fold(?CNAM_INBOUND_LOOKUP, Acc, _) ->
     Data = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
     kz_json:set_value(?FEATURE_CNAM_INBOUND, Data, Acc);
-features_fold(<<"dash_e911">>=Feature, Acc, JObj) ->
+features_fold(?LEGACY_DASH_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
     kz_json:set_value(?FEATURE_E911, Data, Acc);
-features_fold(<<"vitelity_e911">>=Feature, Acc, JObj) ->
+features_fold(?LEGACY_VITELITY_E911=Feature, Acc, JObj) ->
+    Data = kz_json:get_value(Feature, JObj),
+    kz_json:set_value(?FEATURE_E911, Data, Acc);
+features_fold(?LEGACY_TELNYX_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
     kz_json:set_value(?FEATURE_E911, Data, Acc);
 features_fold(FeatureKey, Acc, JObj) ->
     %% Encompasses at least:
     %%   ?FEATURE_PORT & ?FEATURE_FAILOVER
     Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
+    lager:debug("emcompassed ~s", [FeatureKey, kz_json:encode(Data)]),
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%--------------------------------------------------------------------
@@ -447,8 +506,7 @@ from_json_with_options(JObj, PhoneNumber) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec new() -> knm_phone_number().
-new() ->
-    #knm_phone_number{}.
+new() -> #knm_phone_number{}.
 
 -spec is_phone_number(any()) -> boolean().
 is_phone_number(#knm_phone_number{}) -> 'true';
@@ -633,10 +691,6 @@ features(#knm_phone_number{features=Features}) -> Features.
 features_list(N) ->
     sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
 
--spec features_available(knm_phone_number()) -> ne_binaries().
-features_available(N) ->
-    knm_providers:allowed_features(N).
-
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
@@ -654,9 +708,53 @@ feature(Number, Feature) ->
 
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
-set_feature(N, Feature=?NE_BINARY, Data) ->
-    Features = kz_json:set_value(Feature, Data, features(N)),
-    set_features(N, Features). %% Sets is_dirty.
+set_feature(N0, Feature=?NE_BINARY, Data) ->
+    Features = kz_json:set_value(Feature, Data, features(N0)),
+    N = set_features(N0, Features),
+    N#knm_phone_number.is_dirty
+        andalso lager:debug("setting ~s feature ~s: ~s", [number(N), Feature, kz_json:encode(Data)]),
+    N.
+
+
+-spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_allowed(N, Features) ->
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
+    case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
+        true -> N;
+        false ->
+            N#knm_phone_number{is_dirty = true
+                              ,features_allowed = Features
+                              }
+    end.
+
+-spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_denied(N, Features) ->
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
+    case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
+        true -> N;
+        false ->
+            N#knm_phone_number{is_dirty = true
+                              ,features_denied = Features
+                              }
+    end.
+
+-spec features_allowed(knm_phone_number()) -> ne_binaries().
+-ifdef(TEST).
+features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
+    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>, <<"prepend">>, <<"ringback">>];
+features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
+-else.
+features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
+-endif.
+
+-spec features_denied(knm_phone_number()) -> ne_binaries().
+-ifdef(TEST).
+features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
+    [<<"port">>, <<"failover">>];
+features_denied(#knm_phone_number{features_denied = Features}) -> Features.
+-else.
+features_denied(#knm_phone_number{features_denied = Features}) -> Features.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -798,7 +896,10 @@ set_module_name(N0, Name, IsBillable)
                               }
     end;
 set_module_name(N0, Name, 'undefined') ->
-    set_module_name(N0, Name).
+    N = set_module_name(N0, Name),
+    N#knm_phone_number{is_dirty = true
+                      ,is_billable = knm_carriers:is_number_billable(N)
+                      }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -948,7 +1049,7 @@ update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
 reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
     Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), kz_json:private_fields(Doc)),
-    Data = kz_json:delete_key(<<"id">>, Updated),
+    Data = maybe_update_rw_features(kz_json:delete_key(<<"id">>, Updated)),
     case kz_json:are_equal(Data, N#knm_phone_number.doc) of
         true -> N;
         false ->
@@ -977,7 +1078,8 @@ set_modified(PN, Modified)
 %% @end
 %%--------------------------------------------------------------------
 -spec created(knm_phone_number()) -> gregorian_seconds().
-created(#knm_phone_number{created=Created}) -> Created.
+created(#knm_phone_number{created = undefined}) -> kz_util:current_tstamp();
+created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
 set_created(PN, Created)

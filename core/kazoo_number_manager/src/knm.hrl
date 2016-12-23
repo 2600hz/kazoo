@@ -64,6 +64,11 @@
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 -define(TEST_OLD_NUM, <<"+15045551226">>).
 -define(TEST_OLD2_NUM, <<"+12014370855">>).
+-define(TEST_OLD3_NUM, <<"+14082141750">>).
+-define(TEST_OLD4_NUM, <<"+14242424247">>).
+-define(TEST_OLD5_NUM, <<"+19377038880">>).
+-define(TEST_OLD6_NUM, <<"+12156774700">>).
+-define(TEST_TELNYX_NUM, <<"+14352154006">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -148,6 +153,23 @@
           ,{?PVT_CREATED, 63565934344}
           ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
+          ]
+         )
+       ).
+
+-define(TELNY_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_TELNYX_NUM}
+          ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
+          ,{?PVT_MODIFIED, 63565934349}
+          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, <<"knm_telnyx">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1435">>}
+          ,{?PVT_CREATED, 63565934344}
+          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ]
          )
        ).
