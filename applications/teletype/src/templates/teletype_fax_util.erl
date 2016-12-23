@@ -61,7 +61,7 @@ get_fax_doc(DataJObj) ->
 
 get_fax_doc(DataJObj, 'true') ->
     FaxId   = kz_json:get_value(<<"fax_id">>, DataJObj),
-    Account = teletype_util:find_account_db(<<"fax">>, DataJObj),
+    Account = teletype_util:find_account_id(DataJObj),
 
     case kzd_fax:fetch(Account, FaxId) of
         {'ok', JObj} ->
@@ -72,7 +72,7 @@ get_fax_doc(DataJObj, 'true') ->
 
 get_fax_doc(DataJObj, 'false') ->
     FaxId   = kz_json:get_value(<<"fax_id">>, DataJObj),
-    Account = teletype_util:find_account_db(<<"fax">>, DataJObj),
+    Account = teletype_util:find_account_id(DataJObj),
 
     case kzd_fax:fetch(Account, FaxId) of
         {'ok', JObj} ->
