@@ -14,7 +14,6 @@
 -export([save/1]).
 -export([delete/1]).
 -export([available_features/1, available_features/5
-        ,allowed_features/1, denied_features/1
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -86,32 +85,6 @@ available_features(PhoneNumber) ->
 -spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
 available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
     list_available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
-
--spec allowed_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-allowed_features(PhoneNumber) ->
-    Features = list_allowed_features(feature_parameters(PhoneNumber)),
-    case knm_phone_number:assigned_to(PhoneNumber) of
-        ?RESELLER_ACCOUNT_ID -> [?FEATURE_E911, ?FEATURE_CNAM] ++ Features;
-        _ -> Features
-    end.
--else.
-allowed_features(PhoneNumber) ->
-    list_allowed_features(feature_parameters(PhoneNumber)).
--endif.
-
--spec denied_features(knm_phone_number:knm_phone_number()) -> ne_binaries().
--ifdef(TEST).
-denied_features(PhoneNumber) ->
-    Features = list_denied_features(feature_parameters(PhoneNumber)),
-    case knm_phone_number:assigned_to(PhoneNumber) of
-        ?RESELLER_ACCOUNT_ID -> Features -- [?FEATURE_E911, ?FEATURE_CNAM];
-        _ -> Features
-    end.
--else.
-denied_features(PhoneNumber) ->
-    list_denied_features(feature_parameters(PhoneNumber)).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -309,7 +282,7 @@ provider_module(?FEATURE_PORT, _) ->
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(Other, _) ->
-    lager:warning("unmatched feature provider '~s', allowing", [Other]),
+    lager:warning("unmatched feature provider ~p, allowing", [Other]),
     Other.
 
 -ifdef(TEST).

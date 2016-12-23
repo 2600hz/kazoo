@@ -73,7 +73,7 @@ matcher(Dialcode, Prefix) ->
     end.
 
 acquire_number_test_() ->
-    N = <<"+14352154006">>,
+    N = ?TEST_TELNYX_NUM,
     PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Result = knm_telnyx:acquire_number(Number),
@@ -95,7 +95,7 @@ e911_test_() ->
               ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
-    {'ok', N1} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
+    {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN1 = knm_number:phone_number(N1),
     PN2 = knm_number:phone_number(N2),
@@ -128,7 +128,7 @@ cnam_test_() ->
               ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
-    {'ok', N1} = knm_number:create(?TEST_AVAILABLE_NUM, Options),
+    {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     {'ok', N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN1 = knm_number:phone_number(N1),
     PN2 = knm_number:phone_number(N2),

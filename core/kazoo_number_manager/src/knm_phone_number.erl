@@ -145,6 +145,8 @@ fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
     handle_fetched_result(?BW_EXISTING_JSON, Options);
+fetch(?TEST_TELNYX_NUM, Options) ->
+    handle_fetched_result(?TELNY_NUMBER, Options);
 fetch(?TEST_OLD_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
     handle_fetched_result(JObj, Options);
@@ -715,10 +717,6 @@ set_feature(N0, Feature=?NE_BINARY, Data) ->
 
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
-set_features_allowed(N, ?DEFAULT_FEATURES_ALLOWED) ->
-    N#knm_phone_number{is_dirty = true
-                      ,features_allowed = knm_providers:allowed_features(N)
-                      };
 set_features_allowed(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
@@ -730,10 +728,6 @@ set_features_allowed(N, Features) ->
     end.
 
 -spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
-set_features_denied(N, ?DEFAULT_FEATURES_DENIED) ->
-    N#knm_phone_number{is_dirty = true
-                      ,features_denied = knm_providers:denied_features(N)
-                      };
 set_features_denied(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
@@ -745,10 +739,22 @@ set_features_denied(N, Features) ->
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
+-ifdef(TEST).
+features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
+    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>, <<"prepend">>, <<"ringback">>];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
+-else.
+features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
+-endif.
 
 -spec features_denied(knm_phone_number()) -> ne_binaries().
+-ifdef(TEST).
+features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
+    [<<"port">>, <<"failover">>];
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
+-else.
+features_denied(#knm_phone_number{features_denied = Features}) -> Features.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
