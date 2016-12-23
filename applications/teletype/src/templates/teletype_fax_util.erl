@@ -60,23 +60,23 @@ get_fax_doc(DataJObj) ->
     get_fax_doc(DataJObj, teletype_util:is_preview(DataJObj)).
 
 get_fax_doc(DataJObj, 'true') ->
-    FaxId = kz_json:get_value(<<"fax_id">>, DataJObj),
-    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
-        {'ok', JObj} -> JObj;
-        {'error', _E} -> kz_json:new()
-    end;
-get_fax_doc(DataJObj, 'false') ->
-    FaxId = kz_json:get_value(<<"fax_id">>, DataJObj),
-    case teletype_util:open_doc(<<"fax">>, FaxId, DataJObj) of
-        {'ok', JObj} -> JObj;
-        {'error', _E} -> get_fax_doc_from_modb(DataJObj, FaxId)
-    end.
+    FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
+    AccountDb = kapi_fax:account_db(DataJObj),
 
--spec get_fax_doc_from_modb(kz_json:object(), ne_binary()) -> kz_json:object().
-get_fax_doc_from_modb(DataJObj, FaxId) ->
-    AccountId = teletype_util:find_account_id(DataJObj),
-    case kazoo_modb:open_doc(AccountId, {<<"fax">>, FaxId}) of
-        {'ok', FaxJObj} -> FaxJObj;
+    case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
+        {'ok', JObj} ->
+            JObj;
+        {'error', _E} ->
+            kz_json:new()
+    end;
+
+get_fax_doc(DataJObj, 'false') ->
+    FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
+    AccountDb = kapi_fax:account_db(DataJObj),
+
+    case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
+        {'ok', JObj} ->
+            JObj;
         {'error', _E} ->
             lager:debug("failed to find fax ~s: ~p", [FaxId, _E]),
             teletype_util:send_update(DataJObj, <<"failed">>, <<"Fax-ID was invalid">>),
@@ -189,7 +189,7 @@ get_attachment(ContentType, Bin) ->
 
 -spec fax_db(kz_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
-    case teletype_util:find_account_db(DataJObj) of
+    case kapi_fax:account_db(DataJObj) of
         'undefined' -> ?KZ_FAXES_DB;
         Db -> Db
     end.

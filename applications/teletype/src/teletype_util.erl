@@ -20,7 +20,7 @@
         ,find_account_admin_email/1
         ,find_account_admin/1
         ,find_account_id/1
-        ,find_account_db/1, find_account_db/2
+        ,find_account_db/2
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
 
@@ -450,18 +450,10 @@ find_account_id(JObj) ->
 -spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
 find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
-find_account_db(<<"fax">>, JObj) -> find_account_db(JObj);
+find_account_db(<<"fax">>, JObj) -> kapi_fax:account_db(JObj);
 find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> find_account_db_from_id(JObj).
-
--spec find_account_db(kz_json:object()) -> api_binary().
-find_account_db(JObj) ->
-    PossibleDbs = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
-    case kz_json:get_first_defined(PossibleDbs, JObj) of
-        'undefined' -> find_account_db_from_id(JObj);
-        Db -> Db
-    end.
 
 -spec find_account_db_from_id(kz_json:object()) -> api_binary().
 find_account_db_from_id(JObj) ->

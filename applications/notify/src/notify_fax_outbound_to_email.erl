@@ -35,12 +35,21 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 
-    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = kapi_fax:account_db(JObj),
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
-    lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
-    {'ok', FaxDoc} = kz_datamgr:open_doc(?KZ_FAXES_DB, JobId),
+    lager:debug("account-db: ~s, fax-id: ~s", [AccountDb, JobId]),
 
+    case kz_datamgr:open_cache_doc(AccountDb, JobId) of
+        {'ok', FaxDoc} ->
+            process_req(FaxDoc, JObj, _Props);
+        {'error', Err} ->
+            lager:error("could not load fax document: ~p", [Err])
+    end.
+
+-spec process_req(kzd_fax:doc(), kz_json:object(), kz_proplist()) -> any().
+process_req(FaxDoc, JObj, _Props) ->
     Emails = kz_json:get_value([<<"notifications">>,<<"email">>,<<"send_to">>], FaxDoc, []),
+    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
 
     {'ok', AcctObj} = kz_account:fetch(AccountId),
     Docs = [FaxDoc, JObj, AcctObj],
