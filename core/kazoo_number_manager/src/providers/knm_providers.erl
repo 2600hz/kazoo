@@ -89,22 +89,6 @@ available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% List features an account is allowed by its reseller to enable on numbers.
-%% @end
-%%--------------------------------------------------------------------
--spec available_features(api_ne_binary()) -> ne_binaries().
-available_features(undefined) -> [];
-available_features(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    lists:usort(
-      kapps_account_config:get_from_reseller(AccountId
-                                            ,?KNM_CONFIG_CAT
-                                            ,<<"allowed_features">>
-                                            ,?DEFAULT_ALLOWED_FEATURES
-                                            )).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
 %% The name of the billable service associated with a feature.
 %% @end
 %%--------------------------------------------------------------------
