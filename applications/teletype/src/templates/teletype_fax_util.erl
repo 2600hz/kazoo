@@ -60,10 +60,10 @@ get_fax_doc(DataJObj) ->
     get_fax_doc(DataJObj, teletype_util:is_preview(DataJObj)).
 
 get_fax_doc(DataJObj, 'true') ->
-    FaxId   = kz_json:get_value(<<"fax_id">>, DataJObj),
-    Account = teletype_util:find_account_id(DataJObj),
+    FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
+    AccountDb = kapi_fax:account_db(DataJObj),
 
-    case kzd_fax:fetch(Account, FaxId) of
+    case kz_datamgr:fetch_cache_doc(AccountDb, FaxId) of
         {'ok', JObj} ->
             JObj;
         {'error', _E} ->
@@ -71,10 +71,10 @@ get_fax_doc(DataJObj, 'true') ->
     end;
 
 get_fax_doc(DataJObj, 'false') ->
-    FaxId   = kz_json:get_value(<<"fax_id">>, DataJObj),
-    Account = teletype_util:find_account_id(DataJObj),
+    FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
+    AccountDb = kapi_fax:account_db(DataJObj),
 
-    case kzd_fax:fetch(Account, FaxId) of
+    case kz_datamgr:fetch_cache_doc(AccountDb, FaxId) of
         {'ok', JObj} ->
             JObj;
         {'error', _E} ->
@@ -189,7 +189,7 @@ get_attachment(ContentType, Bin) ->
 
 -spec fax_db(kz_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
-    case teletype_util:find_account_db(DataJObj) of
+    case kapi_fax:account_db(DataJObj) of
         'undefined' -> ?KZ_FAXES_DB;
         Db -> Db
     end.

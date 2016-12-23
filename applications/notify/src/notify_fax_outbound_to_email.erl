@@ -35,11 +35,11 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new outbound fax left, sending to email if enabled"),
 
-    AccountId = kz_json:get_value(<<"Account-ID">>, JObj),
+    AccountDb = kapi_fax:account_db(JObj),
     JobId = kz_json:get_value(<<"Fax-JobId">>, JObj),
-    lager:debug("account-id: ~s, fax-id: ~s", [AccountId, JobId]),
+    lager:debug("account-db: ~s, fax-id: ~s", [AccountDb, JobId]),
 
-    case kzd_fax:fetch(AccountId, JobId) of
+    case kz_datamgr:open_cache_doc(AccountDb, JobId) of
         {'ok', FaxDoc} ->
             process_req(FaxDoc, JObj, _Props);
         {'error', Err} ->
