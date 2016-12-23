@@ -8,7 +8,12 @@
 %%%-------------------------------------------------------------------
 -module(kapi_fax).
 
--export([account_id/1, job_id/1, to_number/1, state/1]).
+-export([account_id/1
+        ,job_id/1
+        ,to_number/1
+        ,state/1
+        ,account_db/1
+        ]).
 
 -export([req/1, req_v/1
         ,query_status/1, query_status_v/1
@@ -87,6 +92,16 @@
                               ,{<<"Event-Name">>, <<"job">>}
                               ]).
 -define(FAX_START_JOB_TYPES, []).
+
+-spec account_db(kz_json:object()) -> api_binary().
+account_db(JObj) ->
+    Check = [<<"account_db">>, <<"pvt_account_db">>, <<"Account-DB">>],
+    case kz_json:get_first_defined(Check, JObj) of
+        'undefined' ->
+            kz_util:format_account_id(account_id(JObj), 'encoded');
+        Value ->
+            Value
+    end.
 
 -spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 req(Prop) when is_list(Prop) ->
