@@ -1090,13 +1090,11 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj}=Services) ->
 
 calculate_services_charges(#kz_services{jobj=ServiceJObj
                                        ,updates=UpdatesJObj
-                                       ,cascade_quantities=CascadeQuantities
-                                       }
+                                       }=Service
                           ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
-    UpdatesWithCascade = apply_cascade_quantities(UpdatesJObj, CascadeQuantities),
-    UpdatedQuantities = kz_json:merge_jobjs(UpdatesWithCascade, CurrentQuantities),
+    UpdatedQuantities = kz_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
                                                     ,UpdatedQuantities
@@ -1106,29 +1104,15 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     UpdatedItems = kz_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
     Changed = kz_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
+    lager:debug("current items: ~p items after update: ~p service diff quantities: ~p"
+               ,[kz_service_items:public_json(ExistingItems)
+                ,kz_service_items:public_json(UpdatedItems)
+                ,diff_quantities(Service)
+                ]
+               ),
+
     lager:debug("computed service charges"),
     {'ok', kz_service_items:public_json(Changed)}.
-
--spec apply_cascade_quantities(kz_json:object(), kz_json:object()) ->
-                                      kz_json:object().
-apply_cascade_quantities(Quantities, CascadeQuantities) ->
-    kz_json:map(fun(CategoryId, ItemsJObj) ->
-                        {CategoryId, apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities)}
-                end
-               ,Quantities
-               ).
-
--spec apply_cascade_categories(ne_binary(), kz_json:object(), kz_json:object()) ->
-                                      kz_json:object().
-apply_cascade_categories(CategoryId, ItemsJObj, CascadeQuantities) ->
-    kz_json:map(fun(ItemId, ItemQuantity) ->
-                        Key = [CategoryId, ItemId],
-                        CascadeQuantity = kz_json:get_integer_value(Key, CascadeQuantities, 0),
-                        lager:debug("incrementing update ~p:~p with cascade ~p", [Key, ItemQuantity, CascadeQuantity]),
-                        {ItemId, ItemQuantity + CascadeQuantity}
-                end
-               ,ItemsJObj
-               ).
 
 %%--------------------------------------------------------------------
 %% @private
