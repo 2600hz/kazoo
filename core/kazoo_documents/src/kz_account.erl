@@ -455,7 +455,7 @@ notification_preference(_JObj, []) ->
     'undefined';
 
 notification_preference(JObj, [H|T]) ->
-    case kz_json:get_value(H, JObj) of
+    case kz_json:get_ne_value(H, JObj) of
         'undefined' ->
             notification_preference(JObj, T);
         Value ->
