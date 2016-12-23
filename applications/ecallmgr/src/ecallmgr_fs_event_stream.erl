@@ -367,6 +367,12 @@ process_stream(<<"sofia::intercepted">> = EventName, UUID, Props, Node) ->
             ecallmgr_fs_command:set(Node, InterceptedBy, Vars);
         _ -> 'ok'
     end,
+    ChannelUUID = props:get_value(<<"Channel-Call-UUID">>, Props),
+    Updates = props:filter_undefined(
+                [{<<"Caller-Callee-ID-Name">>, props:get_value(<<"Caller-Callee-ID-Name">>, Props)}
+                ,{<<"Caller-Callee-ID-Number">>, props:get_value(<<"Caller-Callee-ID-Number">>, Props)}
+                ]),
+    ecallmgr_fs_command:set(Node, ChannelUUID, Updates),
     maybe_send_event(EventName, UUID, Props, Node),
     process_event(EventName, UUID, Props, Node);
 process_stream(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
@@ -374,6 +380,7 @@ process_stream(<<"CHANNEL_HOLD">> = EventName, UUID, Props, Node) ->
 process_stream(<<"CHANNEL_UNHOLD">> = EventName, UUID, Props, Node) ->
     gproc:send({'p', 'l', ?FS_EVENT_REG_MSG(Node, EventName)}, {'event', [UUID | Props]});
 process_stream(EventName, UUID, EventProps, Node) ->
+    kz_util:put_callid(UUID),
     maybe_send_event(EventName, UUID, EventProps, Node),
     process_event(EventName, UUID, EventProps, Node).
 

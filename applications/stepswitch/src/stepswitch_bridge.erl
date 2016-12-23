@@ -367,6 +367,7 @@ build_bridge(#state{endpoints=Endpoints
         kz_json:set_values(props:filter_undefined([{<<"Ignore-Display-Updates">>, <<"true">>}
                                                   ,{<<"Account-ID">>, AccountId}
                                                   ,{<<"From-URI">>, bridge_from_uri(Number, OffnetReq)}
+                                                  ,{<<"Realm">>, stepswitch_util:default_realm(OffnetReq)}
                                                   ,{<<"Reseller-ID">>, kz_services:find_reseller_id(AccountId)}
                                                   ])
                           ,kapi_offnet_resource:custom_channel_vars(OffnetReq, kz_json:new())

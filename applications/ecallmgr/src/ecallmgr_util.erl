@@ -178,15 +178,25 @@ get_interface_properties(Node, Interface) ->
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to(kz_proplist()) -> ne_binary().
 get_sip_to(Props) ->
-    get_sip_to(Props, kzd_freeswitch:call_direction(Props)).
+    get_sip_to(Props, kzd_freeswitch:original_call_direction(Props)).
 
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
-        'undefined' -> get_sip_request(Props);
+        'undefined' ->
+            Number = props:get_first_defined([<<"Other-Leg-ANI">>
+                                             ,<<"Other-Leg-Callee-ID-Number">>
+                                             ,<<"variable_sip_to_user">>
+                                             ], Props, <<"nouser">>),
+            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                            ,<<"variable_sip_to_host">>
+                                            ], Props, ?DEFAULT_REALM),
+            <<Number/binary, "@", Realm/binary>>;
         PresenceId -> PresenceId
     end;
 get_sip_to(Props, _) ->
-    case props:get_value(<<"variable_sip_to_uri">>, Props) of
+    case props:get_first_defined([<<"variable_sip_to_uri">>
+                                 ,<<"variable_sip_req_uri">>
+                                 ], Props) of
         'undefined' -> get_sip_request(Props);
         ToUri -> ToUri
     end.
@@ -195,47 +205,29 @@ get_sip_to(Props, _) ->
 -spec get_sip_from(kz_proplist()) -> ne_binary().
 -spec get_sip_from(kz_proplist(), api_binary()) -> ne_binary().
 get_sip_from(Props) ->
-    get_sip_from(Props, kzd_freeswitch:call_direction(Props)).
+    get_sip_from(Props, kzd_freeswitch:original_call_direction(Props)).
 
 get_sip_from(Props, <<"outbound">>) ->
+    Num = props:get_first_defined([<<"Other-Leg-RDNIS">>
+                                  ,<<"Other-Leg-Caller-ID-Number">>
+                                  ,<<"variable_sip_from_user">>
+                                  ,<<"variable_sip_from_uri">>
+                                  ], Props, <<"nouser">>),
+    [Number | _] = binary:split(Num, <<"@">>, ['global']),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                    ,<<"variable_sip_invite_domain">>
                                     ,<<"variable_sip_auth_realm">>
-                                    ,<<"variable_sip_to_host">>
                                     ], Props, ?DEFAULT_REALM),
-    User = props:get_first_defined([?GET_CCV(<<"Username">>)
-                                   ,<<"Hunt-Callee-ID-Number">>
-                                   ,<<"variable_sip_contact_user">>
-                                   ,<<"Other-Leg-Callee-ID-Number">>
-                                   ,<<"Caller-Callee-ID-Number">>
-                                   ,<<"variable_sip_from_user">>
-                                   ], Props, <<"nouser">>),
-    props:get_first_defined([<<"variable_presence_id">>
-                            ,<<"variable_sip_req_uri">>
-                            ,<<"variable_sip_from_uri">>
-                            ]
-                           ,Props
-                           ,<<User/binary, "@", Realm/binary>>
-                           );
+    <<Number/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
-    Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"nouser">>))/binary
+    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
                 ,"@"
                 ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
                                           ,<<"variable_sip_from_host">>
                                           ,<<"sip_from_host">>
-                                          ]
-                                         ,Props
-                                         ,?DEFAULT_REALM
-                                         )
-                 )/binary
+                                          ], Props, ?DEFAULT_REALM))/binary
               >>,
-    props:get_first_defined([<<"Channel-Presence-ID">>
-                            ,<<"variable_presence_id">>
-                            ,<<"variable_sip_from_uri">>
-                            ]
-                           ,Props
-                           ,Default
-                           ).
+    props:get_first_defined([<<"variable_sip_from_uri">>
+                            ], Props, Default).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_proplist()) -> ne_binary().
@@ -243,26 +235,16 @@ get_sip_request(Props) ->
     [User | _] = binary:split(
                    props:get_first_defined(
                      [<<"Hunt-Destination-Number">>
-                     ,<<"Caller-Destination-Number">>
-                     ,<<"variable_sip_to_user">>
                      ,<<"variable_sip_req_uri">>
                      ,<<"variable_sip_loopback_req_uri">>
-                     ,<<"sip_req_uri">>
-                     ,<<"sip_to_user">>
+                     ,<<"Caller-Destination-Number">>
+                     ,<<"variable_sip_to_user">>
                      ], Props, <<"nouser">>), <<"@">>, ['global']),
-    Realm = lists:last(binary:split(
-                         props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                                 ,<<"variable_sip_auth_realm">>
-                                                 ,<<"variable_sip_to_host">>
-                                                 ,<<"sip_auth_realm">>
-                                                 ,<<"sip_to_host">>
-                                                 ,<<"variable_sip_req_host">>
-                                                 ,<<"sip_req_host">>
-                                                 ,<<"variable_sip_req_uri">>
-                                                 ,<<"sip_req_uri">>
-                                                 ,<<"variable_sip_loopback_req_uri">>
-                                                 ,<<"sip_loopback_req_uri">>
-                                                 ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
+    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                    ,<<"variable_sip_auth_realm">>
+                                    ,<<"variable_sip_to_host">>
+                                    ,<<"variable_sip_req_host">>
+                                    ], Props, ?DEFAULT_REALM),
     <<User/binary, "@", Realm/binary>>.
 
 -spec get_orig_ip(kz_proplist()) -> api_binary().
@@ -538,6 +520,7 @@ get_fs_kv(Key, Val, _) ->
 
 -spec get_fs_key(ne_binary()) -> binary().
 get_fs_key(<<?CHANNEL_VAR_PREFIX, Key/binary>>) -> get_fs_key(Key);
+get_fs_key(<<"X-", _/binary>>=Key) -> <<"sip_h_", Key/binary>>;
 get_fs_key(Key) ->
     case lists:keyfind(Key, 1, ?SPECIAL_CHANNEL_VARS) of
         'false' -> <<?CHANNEL_VAR_PREFIX, Key/binary>>;

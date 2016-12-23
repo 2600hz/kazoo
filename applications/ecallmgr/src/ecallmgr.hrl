@@ -177,6 +177,7 @@
 -define(SET_CCV(Key, Value), <<?CHANNEL_VAR_PREFIX, Key/binary, "=", Value/binary>>).
 -define(GET_CCV_HEADER(Key), <<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>).
 -define(GET_CUSTOM_HEADER(Key), <<"variable_sip_h_X-", Key/binary>>).
+-define(CUSTOM_HEADER(Key), <<"sip_h_X-", Key/binary>>).
 -define(GET_VAR(Key), <<"variable_", Key/binary>>).
 
 -define(CREDS_KEY(Realm, Username), {'authn', Username, Realm}).
@@ -198,6 +199,10 @@
                               ,{<<"Caller-ID-Number">>, <<"effective_caller_id_number">>}
                               ,{<<"Callee-ID-Name">>, <<"effective_callee_id_name">>}
                               ,{<<"Callee-ID-Number">>, <<"effective_callee_id_number">>}
+                              ,{<<"Caller-Callee-ID-Name">>, <<"caller_callee_id_name">>}
+                              ,{<<"Caller-Callee-ID-Number">>, <<"caller_callee_id_number">>}
+                              ,{<<"Caller-Caller-ID-Name">>, <<"caller_caller_id_name">>}
+                              ,{<<"Caller-Caller-ID-Number">>, <<"caller_caller_id_number">>}
 
                               ,{<<"Progress-Timeout">>, <<"progress_timeout">>}
                               ,{<<"Ignore-Early-Media">>, <<"ignore_early_media">>}
@@ -289,6 +294,7 @@
                               ,{<<"To-URI">>, <<"sip_to_uri">>}
                               ,{<<"Request-URI">>, <<"sip_req_uri">>}
                               ,{<<"Loopback-Request-URI">>, <<"sip_loopback_req_uri">>}
+                              ,{<<"Loopback-Export">>, <<"loopback_export">>}
                               ,{<<"Hold-Media">>, <<"hold_music">>}
                               ,{<<"Diversions">>, <<"sip_h_Diversion">>}
                               ,{<<"Bridge-Execute-On-Answer">>, <<"execute_on_answer">>}
