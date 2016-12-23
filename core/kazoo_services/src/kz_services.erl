@@ -1104,7 +1104,7 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     UpdatedItems = kz_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
     Changed = kz_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
-    lager:debug("existing items: ~p updated items: ~p diff ~p"
+    lager:debug("current items: ~p items after update: ~p service diff quantities: ~p"
                ,[kz_service_items:public_json(ExistingItems)
                 ,kz_service_items:public_json(UpdatedItems)
                 ,diff_quantities(Service)
