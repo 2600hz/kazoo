@@ -41,6 +41,8 @@
 -export([set_caller_id_number/2, caller_id_number/1]).
 -export([set_callee_id_name/2, callee_id_name/1]).
 -export([set_callee_id_number/2, callee_id_number/1]).
+-export([set_callee_id/3, callee_id/1]).
+-export([set_caller_id/3, caller_id/1]).
 
 -export([set_request/2, request/1, request_user/1, request_realm/1]).
 -export([set_from/2, from/1, from_user/1, from_realm/1]).
@@ -640,6 +642,31 @@ maybe_append_caller_id(CallerId, Suffix) ->
     lager:info("appending cid with ~s~n", [BinSuffix]),
     <<CallerId/binary, BinSuffix/binary>>.
 
+-spec set_caller_id(ne_binary(), ne_binary(), call()) -> call().
+-ifdef(TEST).
+set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
+  when is_binary(CIDNumber)
+  andalso is_binary(CIDName) ->
+    Call#kapps_call{caller_id_number=CIDNumber
+                   ,callee_id_name=CIDName
+                   }.
+-else.
+set_caller_id(CIDNumber, CIDName, #kapps_call{}=Call)
+  when is_binary(CIDNumber)
+  andalso is_binary(CIDName) ->
+    JObj = kz_json:from_list([{<<"Caller-ID-Number">>, CIDNumber}
+                             ,{<<"Caller-ID-Name">>, CIDName}
+                             ]),
+    kapps_call_command:set(JObj, 'undefined', Call),
+    Call#kapps_call{caller_id_number=CIDNumber
+                   ,callee_id_name=CIDName
+                   }.
+-endif.
+
+-spec caller_id(call()) -> {ne_binary(), ne_binary()}.
+caller_id(Call) ->
+    {caller_id_number(Call), caller_id_name(Call)}.
+
 -spec set_caller_id_name(ne_binary(), call()) -> call().
 -ifdef(TEST).
 set_caller_id_name(CIDName, Call) ->
@@ -674,13 +701,37 @@ caller_id_number(#kapps_call{caller_id_number=CIDNumber}) ->
         'false' -> CIDNumber
     end.
 
+-spec set_callee_id(ne_binary(), ne_binary(), call()) -> call().
+-ifdef(TEST).
+set_callee_id(CIDNumber, CIDName, #kapps_call{}=Call)
+  when is_binary(CIDNumber)
+  andalso is_binary(CIDName) ->
+    Call#kapps_call{callee_id_number=CIDNumber
+                   ,callee_id_name=CIDName
+                   }.
+-else.
+set_callee_id(CIDNumber, CIDName, #kapps_call{}=Call)
+  when is_binary(CIDNumber)
+  andalso is_binary(CIDName) ->
+    kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Number">>, CIDNumber}
+                                             ,{<<"Callee-ID-Name">>, CIDName}
+                                             ]), 'undefined', Call),
+    Call#kapps_call{callee_id_number=CIDNumber
+                   ,callee_id_name=CIDName
+                   }.
+-endif.
+
+-spec callee_id(call()) -> {ne_binary(), ne_binary()}.
+callee_id(Call) ->
+    {callee_id_number(Call), callee_id_name(Call)}.
+
 -spec set_callee_id_name(ne_binary(), call()) -> call().
 -ifdef(TEST).
 set_callee_id_name(CIDName, Call) ->
     Call#kapps_call{callee_id_name=CIDName}.
 -else.
 set_callee_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
-    kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Number">>, CIDName}]), 'undefined', Call),
+    kapps_call_command:set(kz_json:from_list([{<<"Callee-ID-Name">>, CIDName}]), 'undefined', Call),
     Call#kapps_call{callee_id_name=CIDName}.
 -endif.
 
