@@ -29,11 +29,6 @@ is_dirty1_test_() ->
                   ,kz_json:get_value(<<"pvt_db_name">>, JObj)
                   )
 
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
-
     ,?_assertEqual(kz_json:get_value(<<"pvt_module_name">>, NewJObj)
                   ,kz_json:get_value(<<"pvt_module_name">>, JObj)
                   )
@@ -142,11 +137,6 @@ is_dirty2_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
-
     ,?_assertEqual(<<"wnm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
     ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, NewJObj))
@@ -227,11 +217,6 @@ is_dirty3_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
-
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, NewJObj))
@@ -308,11 +293,6 @@ is_dirty4_test_() ->
     ,?_assertEqual(kz_json:get_value(<<"_id">>, OldJObj)
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
-
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"wnm_local">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
@@ -411,11 +391,6 @@ is_dirty5_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
-
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, NewJObj))
@@ -496,11 +471,6 @@ is_dirty6_test_() ->
     ,?_assertEqual(kz_json:get_value(<<"_id">>, OldJObj)
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
-
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_allowed">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_allowed">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_features_denied">>, JObj)
-                  ,kz_json:get_value(<<"pvt_features_denied">>, NewJObj))
 
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
     ,?_assertEqual(<<"knm_local">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
