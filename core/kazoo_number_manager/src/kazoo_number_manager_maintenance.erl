@@ -90,14 +90,9 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
             ],
     {Classifications, Regexs} = lists:unzip(Pairs),
     MapView = number_services_map(Classifications, Regexs),
-    RedView = number_services_red(),
     ViewName = <<"_design/numbers">>,
     {ok, View} = kz_datamgr:open_doc(AccountDb, ViewName),
-    NewView = kz_json:set_values([{[<<"views">>, <<"reconcile_services">>, <<"map">>], MapView}
-                                 ,{[<<"views">>, <<"reconcile_services">>, <<"reduce">>], RedView}
-                                 ]
-                                ,View
-                                ),
+    NewView = kz_json:set_value([<<"views">>, <<"reconcile_services">>, <<"map">>], MapView, View),
     case kz_json:are_identical(View, NewView) of
         true -> ?LOG("View is up to date.", []);
         false ->
@@ -257,36 +252,6 @@ number_services_map(Classifications, Regexs) ->
        "  var resM = {};"
        "  resM[doc.pvt_module_name] = 1;"
        "  emit(doc._id, {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM});"
-       "}"
-      ]).
-
-number_services_red() ->
-    iolist_to_binary(
-      ["function(Keys, Values, _Rereduce) {"
-       "  var incr = function (o, k, v) {"
-       "    if (o[k] === undefined)"
-       "      o[k] = v;"
-       "    else"
-       "      o[k] += v;"
-       "    return o;"
-       "  };"
-       "  var acc = function (Oout, Oin) {"
-       "    for (var Ofield in Oin)"
-       "      if (Oin.hasOwnProperty(Ofield))"
-       "        Oout = incr(Oout, Ofield, Oin[Ofield]);"
-       "    return Oout;"
-       "  };"
-       "  var resCB = {}, resCnB = {};"
-       "  var resF = {};"
-       "  var resM = {};"
-       "  for (var i in Values) {"
-       "    var Value = Values[i];"
-       "    resCB = acc(resCB, Value['classifications']['billable'] || {});"
-       "    resCnB = acc(resCnB, Value['classifications']['non_billable'] || {});"
-       "    resF = acc(resF, Value['features'] || {});"
-       "    resM = acc(resM, Value['modules'] || {});"
-       "  }"
-       "  return {'classifications':{'billable':resCB, 'non_billable':resCnB}, 'features':resF, 'modules':resM};"
        "}"
       ]).
 
