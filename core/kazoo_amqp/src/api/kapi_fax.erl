@@ -13,7 +13,7 @@
         ,to_number/1
         ,state/1
         ,account_db/1
-]).
+        ]).
 
 -export([req/1, req_v/1
         ,query_status/1, query_status_v/1
