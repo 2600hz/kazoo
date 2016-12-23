@@ -421,7 +421,9 @@ delete(Context, Number) ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
+%% @doc
+%% Lists number on GET /v2/accounts/{{ACCOUNT_ID}}/phone_numbers/{{DID}}
+%% @end
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context(), ne_binary()) -> cb_context:context().
 summary(Context, Number) ->
@@ -500,7 +502,7 @@ view_account_phone_numbers(Context) ->
                                      ,rename_qs_filters(Context)
                                      ,fun normalize_view_results/2
                                      ),
-    ListOfNumProps = lists:map(fun maybe_fix_available/1, cb_context:resp_data(Context1)),
+    ListOfNumProps = lists:map(fun fix_available/1, cb_context:resp_data(Context1)),
     PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
@@ -510,17 +512,17 @@ view_account_phone_numbers(Context) ->
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
-maybe_fix_available(NumJObj) ->
+-spec fix_available(kz_json:object()) -> kz_json:object().
+fix_available(NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
-    FAs = kz_json:get_ne_value(<<"features_available">>, JObj, []),
-    NewJObj =
-        case lists:member(<<"local">>, FAs) of
-            false -> JObj;
-            true ->
-                Fs = kz_json:get_ne_value(<<"features">>, JObj, []),
-                NewFAs = ?LOCAL_FEATURES(FAs) -- lists:usort(Fs),
-                kz_json:set_value(<<"features_available">>, NewFAs, JObj)
-        end,
+    IsLocal = lists:member(?FEATURE_LOCAL, kz_json:get_list_value(<<"features">>, JObj, [])),
+    Allowed = knm_providers:available_features(IsLocal
+                                              ,kz_json:get_ne_binary_value(<<"assigned_to">>, JObj)
+                                              ,kz_json:get_ne_binary_value(<<"used_by">>, JObj)
+                                              ,kz_json:get_list_value(<<"features_allowed">>, JObj, [])
+                                              ,kz_json:get_list_value(<<"features_denied">>, JObj, [])
+                                              ),
+    NewJObj = kz_json:set_value(<<"features_available">>, Allowed, JObj),
     kz_json:from_list([{Num, NewJObj}]).
 
 %% @private
