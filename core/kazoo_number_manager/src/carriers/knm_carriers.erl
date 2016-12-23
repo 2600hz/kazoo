@@ -290,10 +290,11 @@ available_carriers(Options) ->
 
 -spec get_available_carriers(options()) -> atoms().
 get_available_carriers(Options) ->
-    case account_id(Options) of
-        'undefined' ->
-            keep_only_reachable(?CARRIER_MODULES);
-        _AccountId ->
+    case account_id(Options) =:= undefined
+        orelse reseller_id(Options) =:= undefined
+    of
+        true -> keep_only_reachable(?CARRIER_MODULES);
+        false ->
             ResellerId = reseller_id(Options),
             First = [?CARRIER_RESERVED, ?CARRIER_RESERVED_RESELLER, ?CARRIER_LOCAL],
             keep_only_reachable(First ++ (?CARRIER_MODULES(ResellerId) -- First))
@@ -406,7 +407,7 @@ blocks(Options) ->
 account_id(Options) ->
     props:get_value('account_id', Options).
 
--spec reseller_id(options()) -> ne_binary().
+-spec reseller_id(options()) -> api_ne_binary().
 reseller_id(Options) ->
     props:get_value('reseller_id', Options).
 
