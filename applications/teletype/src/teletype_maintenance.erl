@@ -12,6 +12,7 @@
         ,restore_system_templates/0
         ,restore_system_template/1
         ]).
+-export([renderer_status/0]).
 
 -include("teletype.hrl").
 
@@ -104,3 +105,20 @@ list_system_templates() ->
             io:format("failed to query existing notifications: ~p~n", [_E]),
             []
     end.
+
+-spec renderer_status() -> 'no_return'.
+renderer_status() ->
+    Workers = [{Pid, process_info(Pid, 'message_queue_len')}
+               || {_, Pid, _, _} <- gen_server:call(teletype_sup:render_farm_name(), 'get_all_workers')
+              ],
+    {StateName, TotalWorkers, TotalOverflow, TotalInUse} = poolboy:status(teletype_sup:render_farm_name()),
+    io:format("Renderer Pool~n", []),
+    io:format("  State           : ~s~n", [StateName]),
+    io:format("  Total Workers   : ~p~n", [TotalWorkers]),
+    io:format("  Overflow Workers: ~p~n", [TotalOverflow]),
+    io:format("  Busy Workers    : ~p~n", [TotalInUse]),
+    io:format("Renderer Workers~n", []),
+    _ = [io:format("  ~p has ~p pending jobs~n", [Pid, QueueLength])
+         || {Pid, {_, QueueLength}} <- Workers
+        ],
+    'no_return'.
