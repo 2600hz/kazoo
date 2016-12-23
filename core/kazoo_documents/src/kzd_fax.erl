@@ -70,7 +70,8 @@ new() ->
 
 -spec fetch(api_binary(), api_binary()) -> {'ok', doc()} | {'error', any()}.
 fetch(Account, Id) ->
-    case kz_datamgr:open_cache_doc(Account, {<<"fax">>, Id}) of
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    case kz_datamgr:open_cache_doc(AccountDb, {<<"fax">>, Id}) of
         {'ok', JObj} ->
             {'ok', JObj};
         {'error', _E} ->
