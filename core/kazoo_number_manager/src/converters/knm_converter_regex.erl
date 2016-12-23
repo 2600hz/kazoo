@@ -11,19 +11,19 @@
 -include("knm.hrl").
 
 -export([normalize/1, normalize/2, normalize/3
-         ,to_npan/1
-         ,to_1npan/1
+        ,to_npan/1
+        ,to_1npan/1
         ]).
 
--define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>
-                                   ,kz_json:from_list([{<<"prefix">>, <<"+1">>}])
+-define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>
+                                  ,kz_json:from_list([{<<"prefix">>, <<"+1">>}])
                                   }
-                                  ,{<<"^011(\\d*)$|^00(\\d*)$">>
-                                    ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
-                                   }
-                                  ,{<<"^[2-9]\\d{7,}$">>
-                                    ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
-                                   }
+                                 ,{<<"^011(\\d*)$|^00(\\d*)\$">>
+                                  ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
+                                  }
+                                 ,{<<"^[2-9]\\d{7,}\$">>
+                                  ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
+                                  }
                                  ]).
 
 -define(KEY_E164_CONVERTERS, <<"e164_converters">>).
@@ -57,7 +57,7 @@ normalize(?NE_BINARY = Num, AccountId, DialPlan) ->
 %%--------------------------------------------------------------------
 -spec to_npan(ne_binary()) -> ne_binary().
 to_npan(Num) ->
-    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [1], 'binary'}]) of
+    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{'capture', [1], 'binary'}]) of
         'nomatch' -> Num;
         {'match', [NPAN]} -> NPAN
     end.
@@ -69,7 +69,7 @@ to_npan(Num) ->
 %%--------------------------------------------------------------------
 -spec to_1npan(ne_binary()) -> ne_binary().
 to_1npan(Num) ->
-    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})$">>, [{'capture', [1], 'binary'}]) of
+    case re:run(Num, <<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{'capture', [1], 'binary'}]) of
         'nomatch' -> Num;
         {'match', [NPAN]} -> <<$1, NPAN/binary>>
     end.
@@ -110,9 +110,9 @@ to_e164_from_account_dialplan(Number, AccountId, 'undefined') ->
     to_e164_from_account(Number, AccountId);
 to_e164_from_account_dialplan(Number, AccountId, DialPlan) ->
     to_e164_from_account_dialplan_regexes(Number
-                                          ,AccountId
-                                          ,DialPlan
-                                          ,kz_json:get_keys(DialPlan)
+                                         ,AccountId
+                                         ,DialPlan
+                                         ,kz_json:get_keys(DialPlan)
                                          ).
 
 to_e164_from_account_dialplan_regexes(Number, AccountId, _DialPlan, []) ->
@@ -148,9 +148,9 @@ get_e164_converters() ->
 get_e164_converters() ->
     Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
     try kapps_config:get(?KNM_CONFIG_CAT
-                          ,?KEY_E164_CONVERTERS
-                          ,Default
-                         )
+                        ,?KEY_E164_CONVERTERS
+                        ,Default
+                        )
     catch
         _:_ -> Default
     end.
@@ -160,10 +160,10 @@ get_e164_converters() ->
 get_e164_converters(AccountId) ->
     Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
     try kapps_account_config:get_global(AccountId
-                                         ,?KNM_CONFIG_CAT
-                                         ,?KEY_E164_CONVERTERS
-                                         ,Default
-                                        )
+                                       ,?KNM_CONFIG_CAT
+                                       ,?KEY_E164_CONVERTERS
+                                       ,Default
+                                       )
     catch
         _:_ -> Default
     end.

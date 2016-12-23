@@ -4,12 +4,14 @@
     "pvt_authorizing_account": "system",
     "pvt_created": 63637990840,
     "pvt_db_name": "numbers%2F%2B1201",
-    "pvt_features_available": [
-        "cnam",
-        "e911",
+    "pvt_features_allowed": [
         "failover",
-        "port",
-        "prepend"
+        "force_outbound",
+        "prepend",
+        "ringback"
+    ],
+    "pvt_features_denied": [
+        "failover"
     ],
     "pvt_is_billable": true,
     "pvt_modified": 63637990854,
