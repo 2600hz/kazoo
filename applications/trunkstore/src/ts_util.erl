@@ -167,7 +167,9 @@ lookup_user_flags('undefined', _, AccountId, DID) ->
                        ]),
             {'ok', kz_json:from_list(
                      [{<<"server">>, Server}
-                     ,{<<"account">>, kz_json:get_value(<<"account">>, JObj, kz_json:new())}
+                     ,{<<"account">>,
+                       merge_account_attributes(AccountId, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                      }
                      ,{<<"call_restriction">>, kz_json:new()}
                      ])
             }
@@ -200,7 +202,12 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
 
                     {'ok', AccountJObj} = kz_account:fetch(AccountId),
                     Restriction = kz_json:get_value(<<"call_restriction">>, AccountJObj, kz_json:new()),
-                    FlagsJObj = kz_json:set_value(<<"call_restriction">>, Restriction, JObj),
+                    Props = [{<<"call_restriction">>, Restriction}
+                            ,{<<"account">>
+                             ,merge_account_attributes(AccountJObj, kz_json:get_value(<<"account">>, JObj, kz_json:new()))
+                             }
+                            ],
+                    FlagsJObj = kz_json:set_values(Props, JObj),
                     kz_cache:store_local(?CACHE_NAME
                                         ,{'lookup_user_flags', Realm, Name, AccountId}
                                         ,FlagsJObj
@@ -208,6 +215,20 @@ lookup_user_flags(Name, Realm, AccountId, _) ->
                     {'ok', FlagsJObj}
             end
     end.
+
+-spec merge_account_attributes(ne_binary() | kz_json:object(), kz_json:object()) -> kz_json:object().
+merge_account_attributes(?NE_BINARY=AccountId, JObj) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', Account} -> merge_account_attributes(Account, JObj);
+        {'error', _} -> JObj
+    end;
+merge_account_attributes(Account, JObj) ->
+    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, Account),
+    Props = props:filter_undefined(
+              [{<<"caller_id_options">>, CidOptions}
+              ]
+             ),
+    kz_json:set_values(Props, JObj).
 
 -spec get_call_duration(kz_json:object()) -> integer().
 get_call_duration(JObj) ->

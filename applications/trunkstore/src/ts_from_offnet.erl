@@ -362,7 +362,8 @@ routing_data(ToDID, AccountId, Settings) ->
         'true' -> 'ok'
     end,
 
-    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, SrvOptions),
+    AcctCidOptions = kz_json:get_ne_value(<<"caller_id_options">>, AcctStuff),
+    CidOptions = kz_json:get_ne_value(<<"caller_id_options">>, SrvOptions, AcctCidOptions),
 
     InboundFormat = kz_json:get_value(<<"inbound_format">>, SrvOptions, <<"npan">>),
     {CalleeName, CalleeNumber} = callee_id([kz_json:get_value(<<"caller_id">>, DIDOptions)

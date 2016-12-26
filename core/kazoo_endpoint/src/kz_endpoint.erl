@@ -568,18 +568,9 @@ build(Endpoint, Properties, Call) ->
                             {'ok', kz_json:objects()} |
                             {'error', build_errors()}.
 build_endpoint(Endpoint, Properties, Call) ->
-    Call1 = maybe_rewrite_caller_id(Endpoint, Call),
-    case should_create_endpoint(Endpoint, Properties, Call1) of
-        'ok' -> create_endpoints(Endpoint, Properties, Call1);
+    case should_create_endpoint(Endpoint, Properties, Call) of
+        'ok' -> create_endpoints(Endpoint, Properties, Call);
         {'error', _}=E -> E
-    end.
-
--spec maybe_rewrite_caller_id(kz_json:object(), kapps_call:call()) -> kapps_call:call().
-maybe_rewrite_caller_id(Endpoint, Call) ->
-    case kz_json:get_ne_value(<<"caller_id_options">>, Endpoint) of
-        'undefined' -> Call;
-        CidOptions  ->
-            kapps_call:maybe_format_caller_id(Call, kz_json:get_value(<<"format">>, CidOptions))
     end.
 
 -spec should_create_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
