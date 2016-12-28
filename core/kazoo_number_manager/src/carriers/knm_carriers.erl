@@ -361,14 +361,14 @@ acquire(Number, ?NE_BINARY=Mod, 'false') ->
 %%--------------------------------------------------------------------
 -spec disconnect(knm_number:knm_number()) -> knm_number:knm_number().
 disconnect(Number) ->
-    case knm_phone_number:module_name(knm_number:phone_number(Number)) of
-        ?NE_BINARY=Mod ->
-            apply(Mod, disconnect_number, [Number]);
-        _Mod ->
-            lager:debug("non-existant carrier module ~p, allowing disconnect", [_Mod]),
+    Module = knm_phone_number:module_name(knm_number:phone_number(Number)),
+    try apply(Module, disconnect_number, [Number]) of
+        Result -> Result
+    catch
+        'error':'undef' ->
+            lager:debug("non-existant carrier module ~p, allowing disconnect", [Module]),
             Number
     end.
-
 
 -spec quantity(options()) -> pos_integer().
 quantity(Options) ->
