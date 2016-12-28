@@ -691,6 +691,16 @@ connect_leg(Node, UUID, JObj) ->
                          {'error', ne_binary()}.
 prepare_app(Node, UUID, JObj) ->
     Target = kz_json:get_value(<<"Target-Call-ID">>, JObj),
+    prepare_app(Target, Node, UUID, JObj).
+
+-spec prepare_app(ne_binary(), atom(), ne_binary(), kz_json:object() ) ->
+                         {ne_binary(), ne_binary()} |
+                         {'execute', atom(), ne_binary(), kz_json:object(), ne_binary()} |
+                         {'return', ne_binary()} |
+                         {'error', ne_binary()}.
+prepare_app(Target, _Node, Target, _JObj) ->
+    {'error', <<"intercept target is the same as the caller">>};
+prepare_app(Target, Node, UUID, JObj) ->
     case ecallmgr_fs_channel:fetch(Target, 'record') of
         {'ok', #channel{node=Node
                        ,answered=IsAnswered
