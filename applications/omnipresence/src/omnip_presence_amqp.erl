@@ -230,11 +230,11 @@ presence_event(JObj) ->
 
 -spec maybe_handle_presence_state(kz_json:object(), api_binary()) -> 'ok'.
 maybe_handle_presence_state(JObj, <<"online">>=State) ->
-    handle_update(JObj, State, 0);
+    handle_update(JObj, State, ?OTHER_TIME);
 maybe_handle_presence_state(JObj, <<"offline">>=State) ->
-    handle_update(JObj, State, 0);
+    handle_update(JObj, State, ?OTHER_TIME);
 maybe_handle_presence_state(JObj, State) ->
-    handle_update(kz_json:delete_keys([<<"From">>, <<"To">>], JObj), State, 0).
+    handle_update(kz_json:delete_keys([<<"From">>, <<"To">>], JObj), State, ?OTHER_TIME).
 
 -spec handle_update(kz_json:object(), ne_binary()) -> 'ok'.
 handle_update(JObj, ?PRESENCE_HANGUP) ->
