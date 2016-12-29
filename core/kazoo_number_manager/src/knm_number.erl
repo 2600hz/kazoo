@@ -906,6 +906,8 @@ attempt(Fun, Args) ->
     catch
         'throw':{'error', Reason} ->
             {'error', knm_errors:to_json(Reason)};
+        'throw':{'error', Reason, Message} when is_list(Message) ->
+            {'error', knm_errors:to_json(Reason, Message)};
         'throw':{'error', Reason, Number} ->
             {'error', knm_errors:to_json(Reason, num_to_did(Number))};
         'throw':{'error', Reason, Number, Cause} ->
