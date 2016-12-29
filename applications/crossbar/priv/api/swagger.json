@@ -1097,6 +1097,9 @@
                 "action": {
                     "description": ""
                 },
+                "caller_id": {
+                    "description": ""
+                },
                 "enforce_call_restriction": {
                     "default": true,
                     "description": "",
@@ -1112,7 +1115,13 @@
                     "description": "",
                     "type": "integer"
                 },
+                "max_digits": {
+                    "description": ""
+                },
                 "media_id": {
+                    "description": ""
+                },
+                "min_digits": {
                     "description": ""
                 }
             },
@@ -7572,6 +7581,17 @@
                     "default": 3,
                     "description": "callflow.call_forward minimum callfwd number length",
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.callflow.dynamic_cid": {
+            "description": "Schema for callflow.dynamic_cid system_config",
+            "properties": {
+                "reject_prompt": {
+                    "default": "dynamic-cid-invalid_using_default",
+                    "description": "callflow.dynamic_cid reject prompt",
+                    "type": "string"
                 }
             },
             "type": "object"
