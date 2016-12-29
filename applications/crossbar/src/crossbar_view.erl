@@ -22,8 +22,8 @@ load(Context, ViewName, Options) ->
     KeyMap = map_keymap(props:get_value(keymap, Options, fun kz_util:identity/1)),
     AccountId = cb_context:account_id(Context),
     ModbViewOptions = [{mapper, build_filter_with_qs(Context, ResultMapper)}
-              ,{couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
-              ],
+                      ,{couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
+                      ],
     {StartKey, EndKey} = get_range(Context, KeyMap),
     case is_paged(Context) of
         true ->
