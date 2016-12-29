@@ -115,7 +115,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
                  ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
                   | fax_values(kz_json:get_value(<<"Fax-Info">>, Event))
                  ]}
-    ,{<<"account_db">>, kz_doc:account_db(Account)}
+    ,{<<"account_db">>, kapi_fax:account_db(Event)}
     ].
 
 fax_values(Event) ->
