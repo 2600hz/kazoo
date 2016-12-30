@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(notify_fax_util).
 
--export([get_attachment/2]).
+-export([get_attachment/2, get_attachment/3]).
 
 -include("notify.hrl").
 
