@@ -98,26 +98,20 @@ handle_cast({'gen_listener',{'created_queue',_Queue}}, State) ->
 handle_cast({'gen_listener',{'is_consuming',_IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast({'omnipresence',{'channel_event', JObj}}, State) ->
-    kz_util:put_callid(JObj),
-    EventType = kz_json:get_value(<<"Event-Name">>, JObj),
-    _ = kz_util:spawn(fun channel_event/2, [EventType, JObj]),
+    _ = kz_util:spawn(fun channel_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_update', JObj}}, State) ->
-    kz_util:put_callid(JObj),
     _ = kz_util:spawn(fun presence_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'mwi_update', JObj}}, State) ->
-    kz_util:put_callid(JObj),
     _ = kz_util:spawn(fun mwi_event/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'presence_reset', JObj}}, State) ->
-    kz_util:put_callid(JObj),
     _ = kz_util:spawn(fun presence_reset/1, [JObj]),
     {'noreply', State};
 handle_cast({'omnipresence',{'probe', <<"dialog">> = Package, User,
-                             #omnip_subscription{call_id=CallId}=_Subscription
+                             #omnip_subscription{}=_Subscription
                             }}, State) ->
-    kz_util:put_callid(CallId),
     omnip_util:request_probe(Package, User),
     {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
@@ -183,6 +177,12 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec channel_event(kz_json:object()) -> 'ok'.
+channel_event(JObj) ->
+    'true' = kapi_call:event_v(JObj),
+    kz_util:put_callid(JObj),
+    EventType = kz_json:get_value(<<"Event-Name">>, JObj),
+    channel_event(EventType, JObj).
 
 -spec channel_event(ne_binary(), kz_json:object()) -> 'ok'.
 channel_event(<<"CHANNEL_CREATE">>, JObj) -> handle_new_channel(JObj);
@@ -194,29 +194,21 @@ channel_event(_, _JObj) -> 'ok'.
 
 -spec handle_new_channel(kz_json:object()) -> 'ok'.
 handle_new_channel(JObj) ->
-    'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
     lager:debug("received channel create, checking for dialog subscribers"),
     handle_update(JObj, ?PRESENCE_RINGING).
 
 -spec handle_answered_channel(kz_json:object()) -> 'ok'.
 handle_answered_channel(JObj) ->
-    'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
     lager:debug("received channel answer, checking for subscribers"),
     handle_update(JObj, ?PRESENCE_ANSWERED).
 
 -spec handle_destroyed_channel(kz_json:object()) -> 'ok'.
 handle_destroyed_channel(JObj) ->
-    'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
     lager:debug("received channel destroy, checking for dialog subscribers"),
     handle_update(JObj, ?PRESENCE_HANGUP).
 
 -spec handle_disconnected_channel(kz_json:object()) -> 'ok'.
 handle_disconnected_channel(JObj) ->
-    'true' = kapi_call:event_v(JObj),
-    kz_util:put_callid(JObj),
     lager:debug("channel has been disconnected, checking status of channel on the cluster"),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     case kapps_call_command:b_channel_status(CallId) of
@@ -374,12 +366,7 @@ maybe_send_update(User, Props) ->
 
 -spec send_update(binaries(), kz_proplist()) -> 'ok'.
 send_update(Stalkers, Props) ->
-    lager:debug("sending amqp dialog update state ~p for ~s/~s to ~p",
-                [props:get_value(<<"State">>, Props)
-                ,props:get_value(<<"From-User">>, Props)
-                ,props:get_value(<<"To-User">>, Props)
-                ,Stalkers
-                ]),
+    _ = log_send_update(Stalkers, Props),
     {'ok', Worker} = kz_amqp_worker:checkout_worker(),
     _ = [kz_amqp_worker:cast(Props
                             ,fun(P) -> kapi_omnipresence:publish_update(S, P) end
@@ -388,6 +375,18 @@ send_update(Stalkers, Props) ->
          || S <- Stalkers
         ],
     kz_amqp_worker:checkin_worker(Worker).
+
+-spec log_send_update(binaries(), kz_proplist()) -> 'ok'.
+log_send_update([], _) -> 'ok';
+log_send_update([Stalker|Stalkers], Props) ->
+    lager:debug("sending amqp dialog update state ~s for ~s/~s to ~s with message id ~s",
+                [props:get_value(<<"State">>, Props)
+                ,props:get_value(<<"From">>, Props)
+                ,props:get_value(<<"To">>, Props)
+                ,Stalker
+                ,props:get_value(<<"Msg-ID">>, Props)
+                ]),
+    log_send_update(Stalkers, Props).
 
 -spec presence_reset(kz_json:object()) -> any().
 presence_reset(JObj) ->
