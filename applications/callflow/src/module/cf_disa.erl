@@ -136,7 +136,10 @@ collect_destination_number(Call, Data, Interdigit) ->
 try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout) ->
     case kapps_call_command:collect_digits(MaxDigits, Timeout, Interdigit, Call) of
         {'ok', <<>>} -> try_collect_destination_number(Call, Interdigit, MaxDigits, Timeout);
-        {'ok', Digits} -> knm_converters:normalize(Digits)
+        {'ok', Digits} -> knm_converters:normalize(Digits);
+        {'error', _E} ->
+            lager:info("caller hungup while collecting destination number"),
+            cf_exe:stop(Call)
     end.
 
 %%--------------------------------------------------------------------
