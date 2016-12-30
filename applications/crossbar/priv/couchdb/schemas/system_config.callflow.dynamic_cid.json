@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.callflow.dynamic_cid",
+    "description": "Schema for callflow.dynamic_cid system_config",
+    "properties": {
+        "reject_prompt": {
+            "default": "dynamic-cid-invalid_using_default",
+            "description": "callflow.dynamic_cid reject prompt",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

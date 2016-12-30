@@ -46,6 +46,7 @@
     "callflow.default_pin_length": "callflow default pin length",
     "callflow.default_use_account_caller_id": "callflow default use account caller id",
     "callflow.delete_after_notify": "callflow delete after notify",
+    "callflow.dynamic_cid.reject_prompt": "callflow.dynamic_cid reject prompt",
     "callflow.ensure_valid_caller_id": "callflow ensure valid caller id",
     "callflow.extension": "callflow extension",
     "callflow.fax_detect_duration_s": "callflow fax detect duration in seconds",

@@ -6,6 +6,9 @@
         "action": {
             "description": ""
         },
+        "caller_id": {
+            "description": ""
+        },
         "enforce_call_restriction": {
             "default": true,
             "description": "",
@@ -21,7 +24,13 @@
             "description": "",
             "type": "integer"
         },
+        "max_digits": {
+            "description": ""
+        },
         "media_id": {
+            "description": ""
+        },
+        "min_digits": {
             "description": ""
         }
     },
