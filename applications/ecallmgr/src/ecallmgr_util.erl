@@ -226,7 +226,8 @@ get_sip_from(Props, _) ->
                                           ,<<"sip_from_host">>
                                           ], Props, ?DEFAULT_REALM))/binary
               >>,
-    props:get_first_defined([<<"variable_sip_from_uri">>
+    props:get_first_defined([<<"Channel-Presence-ID">>
+                            ,<<"variable_sip_from_uri">>
                             ], Props, Default).
 
 %% retrieves the sip address for the 'request' field
