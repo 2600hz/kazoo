@@ -31,7 +31,7 @@ test:
       if [[ ! -z "$($CHANGED)" ]]; then
         TO_FMT="$(echo $($CHANGED))" make fmt
       fi
-    - make bump-copyright
+    - if [[ "$CIRCLE_BRANCH" = 'master' ]]; then make bump-copyright; fi
     - . ~/.kerl/$OTP_VERSION/activate && make
     - . ~/.kerl/$OTP_VERSION/activate && make code_checks
     - ./scripts/validate-js.sh $($CHANGED)
