@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2016, 2600Hz
+%%% @copyright (C) 2013-2017, 2600Hz
 %%% @doc
 %%% Handlers for various AMQP payloads
 %%% @end
@@ -118,7 +118,7 @@ bucket_cost(Flow) ->
 
 -spec send_route_response(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 send_route_response(_Flow, JObj, Call) ->
-    lager:info("doodle knows how to route the message! sending sms response"),   
+    lager:info("doodle knows how to route the message! sending sms response"),
     Resp = props:filter_undefined([{?KEY_MSG_ID, kz_api:msg_id(JObj)}
                                   ,{?KEY_MSG_REPLY_ID, kapi_route:fetch_id(JObj)}
                                   ,{<<"Routes">>, []}

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -32,14 +32,16 @@ delete_modbs(Period) ->
             io:format("period '~s' does not match YYYYMM format~n", [Period])
     end.
 
-delete_modbs(<<_/binary>> = Year, Month) ->
+delete_modbs(?NE_BINARY=Year, Month) ->
     delete_modbs(kz_util:to_integer(Year), Month);
-delete_modbs(Year, <<_/binary>> = Month) ->
+delete_modbs(Year, ?NE_BINARY=Month) ->
     delete_modbs(Year, kz_util:to_integer(Month));
 delete_modbs(Year, Month) when is_integer(Year),
                                is_integer(Month),
-                               Year > 2000 andalso Year < 2999,
-                               Month > 0 andalso Month < 13 ->
+                               Year > 2000,
+                               Year < 2999,
+                               Month > 0,
+                               Month < 13 ->
     case erlang:date() of
         {Year, Month, _} ->
             io:format("request to delete the current MODB (~p~p) denied~n", [Year, Month]);
