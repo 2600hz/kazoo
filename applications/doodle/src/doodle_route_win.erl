@@ -173,9 +173,13 @@ get_callee_extension_info(Call) ->
     FirstModule = kz_json:get_value(<<"module">>, Flow),
     FirstId = kz_json:get_value([<<"data">>, <<"id">>], Flow),
     SecondModule = kz_json:get_value([<<"_">>, <<"module">>], Flow),
-    case (FirstModule =:= <<"device">> orelse FirstModule =:= <<"user">>)
+    case (FirstModule =:= <<"device">>
+              orelse
+          FirstModule =:= <<"user">>)
         andalso
-        (SecondModule =:= <<"voicemail">> orelse SecondModule =:= 'undefined')
+        (SecondModule =:= <<"voicemail">>
+             orelse
+         SecondModule =:= 'undefined')
         andalso
         FirstId =/= 'undefined'
     of
