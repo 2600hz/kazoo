@@ -59,18 +59,18 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_numbers:collection()) -> knm_numbers:collection().
 save(Number) ->
-    exec(Number, 'save').
+    do_exec(Number, 'save').
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) -> knm_number:knm_number().
+-spec delete(knm_numbers:collection()) -> knm_numbers:collection().
 delete(Number) ->
-    exec(Number, 'delete').
+    do_exec(Number, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -305,8 +305,18 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 %% @end
 %%--------------------------------------------------------------------
 -type exec_action() :: 'save' | 'delete'.
--spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number();
-          (knm_numbers:collection(), exec_action()) -> knm_numbers:collection().
+
+-spec do_exec(knm_numbers:collection(), exec_action()) -> knm_numbers:collection().
+do_exec(T0=#{todo := Ns}, Action) ->
+    F = fun (N, T) ->
+                case knm_number:attempt(fun exec/2, [N, Action]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} -> knm_numbers:ko(N, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns).
+
+-spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number().
 -spec exec(knm_number:knm_number(), exec_action(), ne_binaries()) ->
                   knm_number:knm_number().
 
