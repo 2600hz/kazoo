@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2016, 2600Hz
+%%% @copyright (C) 2013-2017, 2600Hz
 %%% @doc
 %%% Implementation of a token bucket as gen_server
 %%%   https://en.wikipedia.org/wiki/Token_bucket#The_token_bucket_algorithm

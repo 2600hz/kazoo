@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% When implementing provider modules, these callbacks are a must!

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%% Shared token auth module, this module validates the token
 %%% against a trusted central token server.  If the token

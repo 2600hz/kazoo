@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz INC
+%%% @copyright (C) 2017, 2600Hz INC
 %%% @doc
 %%% Schedule one-off tasks only once per cluster
 %%% @end

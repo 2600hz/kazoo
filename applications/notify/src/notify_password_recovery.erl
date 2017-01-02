@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%% Renders a custom account email template, or the system default,
 %%% and sends the email with voicemail attachment to the user.

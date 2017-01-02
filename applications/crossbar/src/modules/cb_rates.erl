@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2016, 2600Hz INC
+%%% @copyright (C) 2012-2017, 2600Hz INC
 %%% @doc
 %%% Upload a rate deck, query rates for a given DID
 %%% @end

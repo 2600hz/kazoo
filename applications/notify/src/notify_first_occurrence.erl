@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%% Notification for 'first' registration and call
 %%% @end

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz INC
+%%% @copyright (C) 2017, 2600Hz INC
 %%% @doc
 %%% Receives HOLD/UNHOLD CHANNEL event
 %%% @end
