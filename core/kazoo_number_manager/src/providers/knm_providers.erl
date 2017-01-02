@@ -177,7 +177,7 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->
-            lager:debug("allowed number features set on reseller for ~s", [AccountId]),
+            lager:debug("allowed number features set on reseller for ~s: ~p", [AccountId, Providers]),
             Providers
     end.
 
@@ -191,7 +191,7 @@ system_allowed_features() ->
 
 -spec number_allowed_features(feature_parameters()) -> ne_binaries().
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    lager:debug("allowed number features set on number document"),
+    lager:debug("allowed number features set on number document: ~p", [AllowedFeatures]),
     AllowedFeatures.
 
 -spec list_denied_features(feature_parameters()) -> ne_binaries().
@@ -211,7 +211,7 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
         Providers ->
-            lager:debug("denied number features set on reseller for ~s", [AccountId]),
+            lager:debug("denied number features set on reseller for ~s: ~p", [AccountId, Providers]),
             Providers
     end.
 
@@ -229,7 +229,7 @@ used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    lager:debug("denied number features set on number document"),
+    lager:debug("denied number features set on number document: ~p", [DeniedFeatures]),
     DeniedFeatures.
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
