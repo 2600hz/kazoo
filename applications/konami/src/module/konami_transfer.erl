@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014-2016, 2600Hz
+%%% @copyright (C) 2014-2017, 2600Hz
 %%% @doc
 %%% Transfers caller to the extension extracted in the regex
 %%% Data = {

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2016, 2600Hz INC
+%%% @copyright (C) 2010-2017, 2600Hz INC
 %%% @doc
 %%% Preforms maintenance operations against the stepswitch dbs
 %%% @end
