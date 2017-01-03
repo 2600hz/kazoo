@@ -114,8 +114,24 @@ relay_stream_attachment(Caller, Ref, Msg) ->
 -spec do_put_attachment(couchbeam_db(), ne_binary(), ne_binary(), ne_binary(), kz_proplist()) ->
                                {'ok', kz_json:object()} |
                                couchbeam_error().
-do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
+do_put_attachment(#db{}=Db, DocId, AName, Contents0, Options0) ->
+    Contents = {fun stream_att/1, Contents0},
+    Options = [{send_timeout, 20000}
+              ,{headers, [{<<"Transfer-Encoding">>, <<"chunked">>}
+                         ,{<<"Expect">>, <<"100-Continue">>}
+                         ]}
+              ,{content_length, erlang:byte_size(Contents0)}
+              | Options0
+              ],
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
+
+-spec stream_att(binary()) -> {'ok', binary(), binary()} | 'eof'.
+stream_att(<<Data:16384/binary, Rest/binary>>) ->
+    {'ok', Data, Rest};
+stream_att(<<>>) ->
+    'eof';
+stream_att(Data) ->
+    {'ok', Data, <<>>}.
 
 -spec do_del_attachment(couchbeam_db(), ne_binary(), ne_binary(), kz_proplist()) ->
                                {'ok', kz_json:object()} |
