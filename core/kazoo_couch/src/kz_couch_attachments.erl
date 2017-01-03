@@ -121,7 +121,7 @@ do_put_attachment(#db{}=Db, DocId, AName, Contents0, Options0) ->
                          ,{<<"Expect">>, <<"100-Continue">>}
                          ]}
               ,{content_length, erlang:byte_size(Contents0)}
-              | Options0
+               | Options0
               ],
     ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
 
