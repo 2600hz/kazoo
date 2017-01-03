@@ -410,8 +410,7 @@ maybe_reconcile_numbers(Context) ->
             Set1 = sets:from_list(kz_json:get_value(<<"numbers">>, CurrentJObj, [])),
             Set2 = sets:from_list(kz_json:get_value(<<"numbers">>, cb_context:doc(Context), [])),
             NewNumbers = sets:to_list(sets:subtract(Set2, Set1)),
-            Options = [{'auth_by', cb_context:auth_account_id(Context)}
-                      ,{'assign_to', cb_context:account_id(Context)}
+            Options = [{'assign_to', cb_context:account_id(Context)}
                       ,{'dry_run', not cb_context:accepting_charges(Context)}
                       ],
             _ = knm_numbers:reconcile(NewNumbers, Options),
