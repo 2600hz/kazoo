@@ -186,7 +186,7 @@ activate_phone_number(Number, BillingId, Units) ->
             Message = io_lib:format("not enough credit to activate number for $~p"
                                    ,[wht_util:units_to_dollars(Units)]),
             lager:error(Message),
-            knm_errors:service_restriction(Message);
+            knm_errors:service_restriction(iolist_to_binary(Message));
         'true' ->
             Transaction = create_transaction(Number, Units),
 
