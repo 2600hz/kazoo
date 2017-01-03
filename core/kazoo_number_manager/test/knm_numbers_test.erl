@@ -63,13 +63,14 @@ create_test_e911() ->
       ]).
 
 create_test_() ->
+    Num = ?TEST_TELNYX_NUM,
     E911 = create_test_e911(),
     JObj = kz_json:from_list([{?FEATURE_E911, E911}]),
     Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
               ,{'assign_to', ?RESELLER_ACCOUNT_ID}
               ,{<<"auth_by_account">>, kz_json:new()}
               ],
-    Ret = knm_numbers:create([?TEST_AVAILABLE_NUM], [{'public_fields', JObj}|Options]),
+    Ret = knm_numbers:create([Num], [{'public_fields', JObj}|Options]),
     [?_assertEqual(#{}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
     ,?_assertEqual(true, knm_number:is_number(n_x(1, Ret)))
@@ -87,7 +88,7 @@ create_test_() ->
                             }
                     ,ok := [_]
                     }
-                  ,knm_numbers:create([?TEST_AVAILABLE_NUM, ?NOT_NUM, ?TEST_CREATE_NUM], Options)
+                  ,knm_numbers:create([Num, ?NOT_NUM, ?TEST_CREATE_NUM], Options)
                   )
     ].
 
