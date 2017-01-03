@@ -519,8 +519,6 @@ get_ne_json_object_test_() ->
                    }).
 
 to_map_test_() ->
-    io:format(user, "\n>1> ~p\n", [kz_json:to_map(?MAP_JSON)]),
-    io:format(user, "\n>2> ~p\n", [kz_json:from_map(?JSON_MAP)]),
     [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
     ,?_assertEqual(?MAP_JSON, kz_json:from_map(?JSON_MAP))
     ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
