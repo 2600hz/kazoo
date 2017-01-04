@@ -15,7 +15,7 @@ def find_schema(txt):
     return found[0]
 
 def public_doc(ref_path):
-    doc_root = os.path.dirname(ref_path)
+    doc_root = os.path.dirname(os.path.dirname(ref_path))
     ref_name = os.path.basename(ref_path)
     ref_to_doc = {
         'api_auth.md': 'api_authentication.md',
@@ -37,8 +37,8 @@ for fname in sys.argv[1::]:
         continue
 
     if not os.path.isfile(docname):
-        print('Doc does not exist, skipping', docname, file=sys.stderr)
-        # errors += 1
+        print('Doc does not exist, please create', docname, file=sys.stderr)
+        errors += 1
         continue
 
     with open(docname, 'r') as f:

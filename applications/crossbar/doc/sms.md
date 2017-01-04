@@ -1,0 +1,27 @@
+### Sms
+
+#### About Sms
+
+#### Schema
+
+sms document
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`body` | text message | `string(1..700)` |   | `true`
+`from` | caller-id-number, taken from user if absent | `string` |   | `false`
+`scheduled` | The timestamp to start delivering the message | `integer` |   | `false`
+`to` | callee-id-number | `string` |   | `true`
+
+
+
+
+#### List items
+
+> GET /v2/accounts/{ACCOUNT_ID}/sms
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/sms
+```
