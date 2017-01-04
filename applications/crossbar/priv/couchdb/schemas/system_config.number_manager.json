@@ -103,6 +103,11 @@
             "description": "maximum number of returned DIDs in search query",
             "type": "integer"
         },
+        "number_search_timeout_ms": {
+            "default": 5000,
+            "description": "number manager number search timeout in milliseconds",
+            "type": "integer"
+        },
         "porting_module_name": {
             "default": "knm_local",
             "description": "number manager porting module name",
