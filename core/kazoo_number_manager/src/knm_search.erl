@@ -57,6 +57,8 @@
 
 -define(POLLING_INTERVAL, 5000).
 
+-define(NUMBER_SEARCH_TIMEOUT, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5000)).
+
 -define(EOT, '$end_of_table').
 
 -type state() :: #{}.
@@ -309,8 +311,8 @@ wait_for_search(N, Options) ->
         _Other ->
             lager:debug("unexpected search result ~p", [_Other]),
             wait_for_search(N - 1, Options)
-    after 5000 ->
-            lager:debug("timeout (~B) collecting responses from search providers", [5000]),
+    after ?NUMBER_SEARCH_TIMEOUT ->
+            lager:debug("timeout (~B) collecting responses from search providers", [?NUMBER_SEARCH_TIMEOUT]),
             wait_for_search(N - 1, Options)
     end.
 
