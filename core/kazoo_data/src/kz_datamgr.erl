@@ -1039,13 +1039,11 @@ attachment_options(DbName, DocId, Options, RequiredOptions) ->
                    end
           end,
     case maybe_add_required_options(Options, RequiredOptions, Fun) of
-        {'ok', _} = Ok -> Ok;
-        {'error', _} = Error -> log_attachment_options(Error)
+        {'ok', _}=Ok -> Ok;
+        {'error', _Missing}=Error ->
+            lager:error("missing required options: ~p", [_Missing]),
+            Error
     end.
-
-log_attachment_options({'error', Missing}=Error) ->
-    lager:error("missing required options : ~p", [Missing]),
-    Error.
 
 maybe_add_required_options(Options, RequiredOptions, Fun) ->
     case has_required_options(Options, RequiredOptions) of
