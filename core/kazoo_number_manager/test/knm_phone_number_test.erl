@@ -71,10 +71,6 @@ is_dirty1_test_() ->
                   ,kz_json:get_value(<<"_id">>, JObj)
                   )
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
-
     ,?_assertEqual(<<"undefined">>, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_created">>, NewJObj))
@@ -148,10 +144,6 @@ is_dirty2_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_number_state">>, OldJObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
 
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, JObj))
@@ -229,10 +221,6 @@ is_dirty3_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
-
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_created">>, NewJObj))
@@ -305,10 +293,6 @@ is_dirty4_test_() ->
     ,?_assertEqual(<<"reserved">>, kz_json:get_value(<<"pvt_number_state">>, OldJObj))
     ,?_assertEqual(<<"reserved">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"reserved">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
 
     ,?_assertEqual(63627551737, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63627551737, kz_json:get_value(<<"pvt_created">>, JObj))
@@ -404,10 +388,6 @@ is_dirty5_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
 
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(true, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
-
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_created">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_created">>, NewJObj)))
@@ -483,10 +463,6 @@ is_dirty6_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, OldJObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_is_billable">>, OldJObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, JObj))
-    ,?_assertEqual(false, kz_json:get_value(<<"pvt_is_billable">>, NewJObj))
 
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, JObj))
