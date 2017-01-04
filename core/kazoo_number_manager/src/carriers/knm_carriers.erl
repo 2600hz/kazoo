@@ -365,7 +365,7 @@ disconnect(Number) ->
     try apply(Module, disconnect_number, [Number]) of
         Result -> Result
     catch
-        'error':'undef' ->
+        'error':_ ->
             lager:debug("non-existant carrier module ~p, allowing disconnect", [Module]),
             Number
     end.
