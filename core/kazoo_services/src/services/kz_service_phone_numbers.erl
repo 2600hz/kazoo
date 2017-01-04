@@ -151,7 +151,7 @@ update_number_quantities(Services, PN) ->
 %% @private
 -spec is_number_billable(pn()) -> boolean().
 is_number_billable(PN) ->
-    IsBillable = knm_phone_number:is_billable(PN),
+    IsBillable = knm_carriers:is_number_billable(PN),
     lager:debug("is ~s's ~s billable: ~p", [knm_phone_number:module_name(PN)
                                            ,knm_phone_number:number(PN)
                                            ,IsBillable

@@ -28,7 +28,6 @@
 -define(PVT_FEATURES, <<"pvt_features">>).
 -define(PVT_FEATURES_ALLOWED, <<"pvt_features_allowed">>).
 -define(PVT_FEATURES_DENIED, <<"pvt_features_denied">>).
--define(PVT_IS_BILLABLE, <<"pvt_is_billable">>).
 -define(PVT_MODIFIED, <<"pvt_modified">>).
 -define(PVT_MODULE_NAME, <<"pvt_module_name">>).
 -define(PVT_PORTED_IN, <<"pvt_ported_in">>).
