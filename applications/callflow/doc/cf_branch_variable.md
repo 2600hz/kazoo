@@ -45,15 +45,26 @@ If you want to conditinally record outbound calls in `no_match` callflow dependi
 ```json
 ...
 {
-"data": {
-    "scope": "user",
-    "variable": "x_user_record_outbound" //name of the property defined in user's document
- },
- "children":{
-	"true": { ... } //if the above variable is set to the "true"
-    ,"false" { ... } //if the above variable is set to the "false"
-	,"_" : { ... } //if the above variable is not defined or has a different value
- }
+	"data": {
+    	"scope": "user",
+    	"variable": "x_user_record_outbound"
+ 	},
+ 	"children":{
+		"true": { },
+    	"false": { },
+		"_" : { }
+ 	}
 }
 ...
 ```
+
+The name of the property that is been looked is set on the `"variable"`. Property name of the each children is the value of the variable the has been found.
+
+`"true"`
+:  If the variable is set to the `true`
+
+`"false"`
+:  If the variable is set to `false`
+
+`"_"`
+:  If the variable is not defined or has a different value
