@@ -61,7 +61,7 @@ get_fax_doc(DataJObj) ->
 
 get_fax_doc(DataJObj, 'true') ->
     FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
-    AccountDb = kapi_fax:account_db(DataJObj),
+    AccountDb = kapi_notifications:account_db(DataJObj),
 
     case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
         {'ok', JObj} ->
@@ -72,7 +72,7 @@ get_fax_doc(DataJObj, 'true') ->
 
 get_fax_doc(DataJObj, 'false') ->
     FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
-    AccountDb = kapi_fax:account_db(DataJObj),
+    AccountDb = kapi_notifications:account_db(DataJObj),
 
     case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
         {'ok', JObj} ->
@@ -189,7 +189,7 @@ get_attachment(ContentType, Bin) ->
 
 -spec fax_db(kz_json:object()) -> ne_binary().
 fax_db(DataJObj) ->
-    case kapi_fax:account_db(DataJObj) of
+    case kapi_notifications:account_db(DataJObj) of
         'undefined' -> ?KZ_FAXES_DB;
         Db -> Db
     end.

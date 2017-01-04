@@ -450,7 +450,7 @@ find_account_id(JObj) ->
 -spec find_account_db(ne_binary(), kz_json:object()) -> api_binary().
 find_account_db(<<"account">>, JObj) -> find_account_db_from_id(JObj);
 find_account_db(<<"user">>, JObj) -> find_account_db_from_id(JObj);
-find_account_db(<<"fax">>, JObj) -> kapi_fax:account_db(JObj);
+find_account_db(<<"fax">>, JObj) -> kapi_notifications:account_db(JObj);
 find_account_db(<<"port_request">>, _JObj) -> ?KZ_PORT_REQUESTS_DB;
 find_account_db(<<"webhook">>, _JObj) -> ?KZ_WEBHOOKS_DB;
 find_account_db(_, JObj) -> find_account_db_from_id(JObj).
