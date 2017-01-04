@@ -3,8 +3,15 @@
     "_id": "callflows.branch_variable",
     "description": "Validator for the branch_variable callflow's data object",
     "properties": {
+        "scope": {
+            "default": "custom_channel_vars",
+            "description": "",
+            "type": "string"
+        },
         "variable": {
-            "description": ""
+            "default": "",
+            "description": "",
+            "type": "string"
         }
     },
     "required": true,
