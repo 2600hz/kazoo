@@ -845,20 +845,12 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    case N#knm_phone_number.is_billable of
-        undefined ->
+    case N0#knm_phone_number.module_name =:= Name of
+        'true' -> N;
+        'false' ->
             N#knm_phone_number{is_dirty = true
                               ,module_name = Name
-                              ,is_billable = false
-                              };
-        _ ->
-            case N0#knm_phone_number.module_name =:= Name of
-                true -> N;
-                false ->
-                    N#knm_phone_number{is_dirty = true
-                                      ,module_name = Name
-                                      }
-            end
+                              }
     end;
 %% knm_bandwidth is deprecated, updating to the new module
 set_module_name(N, <<"wnm_bandwidth">>) ->
