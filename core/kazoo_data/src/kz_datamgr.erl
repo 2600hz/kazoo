@@ -38,6 +38,7 @@
         ,flush_cache_docs/0, flush_cache_docs/1
         ,add_to_doc_cache/3
         ,open_doc/2,open_doc/3
+        ,open_docs/2, open_docs/3
         ,del_doc/2, del_docs/2
         ,del_doc/3, del_docs/3
         ,lookup_doc_rev/2, lookup_doc_rev/3
@@ -655,6 +656,31 @@ open_doc(DbName, DocId, Options) ->
         {'ok', Db} -> open_doc(Db, DocId, Options);
         {'error', _}=E -> E
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Open documents given doc ids returns an error tuple or the json.
+%% Each returned JObj contains either an <<"doc">> or <<"error">> field.
+%% So: match both error tuple & each JSON of the list.
+%% @end
+%%--------------------------------------------------------------------
+-spec open_docs(text(), docids()) ->
+                       {'ok', kz_json:objects()} |
+                       data_error() |
+                       {'error', 'not_found'}.
+-spec open_docs(text(), docids(), kz_proplist()) ->
+                       {'ok', kz_json:objects()} |
+                       data_error() |
+                       {'error', 'not_found'}.
+
+open_docs(DbName, DocIds) ->
+    open_docs(DbName, DocIds, []).
+
+open_docs(DbName, DocIds, Options) ->
+    NewOptions = [{keys, DocIds}, include_docs | Options],
+    all_docs(DbName, NewOptions).
+
 
 -spec all_docs(text()) ->
                       {'ok', kz_json:objects()} |
