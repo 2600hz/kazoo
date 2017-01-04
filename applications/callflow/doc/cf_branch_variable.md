@@ -8,7 +8,7 @@ The `branch_variable` callflow enables you to branch based on value of some fiel
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`variable` | Name of variable/property that we are looking for | `string` | | `true`
+`variable` | Name of variable/property that we are looking for | `string` or a json path | | `true`
 `scope` | the place which the variable should be looked for (`custome_channel_vars`, `device`, `user`, `account`) | `string` | `"cunstom_channel_vars"` | `false`
 
 #### Description
@@ -19,11 +19,30 @@ The place that this variable would be looked for is configurable by `scope`. By 
 
 Other possible locations for which the variable would be looked up are: user's document, device's document and account's document. If you set scope to other values than these, the endpoint would be fetched and since the endpoint has merged value of some of the important attributes (like `call_forwad`, `call_restriction`, `record_call`, etc...) from account, user, device, it would be used to look up the desire variable's value.
 
+#### Variable
+
+Variable is the name of the variable or property that should be look for in the specified scope. It must be a valid JSON key, e.g. a single string or a list of string which is a path to deep nested JSON objects.
+
+For example, if you set `scope` to `merged`, this module tries to use endpoint which has the merged value of user, device and account document. The endpoint has `record_call` attribute which is JSON object:
+
+```json
+...
+{
+	"record_call": {
+		"action": "start",
+		"record_call": true
+	}
+}
+...
+```
+
+If you want to record the calls based on the merged value inside the endpoint then the variable should be set to `["record_call", "record_call"]`. This will result the value `'true'`' of the inner attribute of the JSON object been fetched.
+
 #### Example
 
 If you want to conditinally record outbound calls in `no_match` callflow depending on a property sets for users inside their documents:
 
-```
+```json
 ...
 {
 "data": {
@@ -38,5 +57,3 @@ If you want to conditinally record outbound calls in `no_match` callflow dependi
 }
 ...
 ```
-
-If you want to look for variables defined in CCVs, remove `scope` and set `variable` to appropriate value.
