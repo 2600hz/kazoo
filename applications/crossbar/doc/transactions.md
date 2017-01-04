@@ -114,7 +114,7 @@ curl -v -X GET \
 
 Only for super duper admins and resellers.
 
-Super admin can add `"credit_type": "free"` field to avoid bookkeeper and add credit "for free".
+Super admin can add `"credit_type": "free"` field and change`"reason": "admin discretion"`to avoid bookkeeper and add credit "for free".
 
 ```shell
 curl -v -X PUT \
