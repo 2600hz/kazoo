@@ -5,7 +5,7 @@
     "properties": {
         "allow_prepay": {
             "default": true,
-            "description": "Determines if the account would like to allow per-minute calls if they have credit",
+            "description": "Determines if the account would like to allow per-minute calls if they have no available credit",
             "required": false,
             "type": "boolean"
         },
