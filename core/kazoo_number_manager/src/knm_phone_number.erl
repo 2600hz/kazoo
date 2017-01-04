@@ -139,6 +139,8 @@ fetch(?TEST_CREATE_NUM, _Options) ->
     {'error', 'not_found'};
 fetch(?TEST_AVAILABLE_NUM, Options) ->
     handle_fetched_result(?AVAILABLE_NUMBER, Options);
+fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
+    handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
