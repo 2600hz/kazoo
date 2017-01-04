@@ -129,9 +129,5 @@
 
 -define(MAX_BULK_INSERT, 2000).
 
--define(VALID_DBNAME, is_binary(DbName)
-        andalso byte_size(DbName) > 0
-       ).
-
 -define(KZ_DATA_HRL, 'true').
 -endif.
