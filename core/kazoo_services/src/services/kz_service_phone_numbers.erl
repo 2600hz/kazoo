@@ -16,19 +16,18 @@
 
 -define(NUMBER_SERVICES, <<"number_services">>).
 -define(PHONE_NUMBERS, <<"phone_numbers">>).
--define(PHONE_NUMBERS_NON_BILLABLE, <<"phone_numbers_non_billable">>).
+-define(NUMBER_CARRIERS, <<"number_carriers">>).
 
 -define(KEY_VALUE, <<"value">>).
--define(BILLABLE, [?KEY_VALUE, <<"classifications">>, <<"billable">>]).
--define(NON_BILLABLE, [?KEY_VALUE, <<"classifications">>, <<"non_billable">>]).
+-define(CLASSIFICATIONS, [?KEY_VALUE, <<"classifications">>]).
 -define(FEATURES, [?KEY_VALUE, <<"features">>]).
 
--define(MAP_CATEGORIES, #{?BILLABLE => ?PHONE_NUMBERS
-                         ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
+-define(MAP_CATEGORIES, #{?CLASSIFICATIONS => ?PHONE_NUMBERS
                          ,?FEATURES => ?NUMBER_SERVICES
                          }).
 
--define(DEFAULT_RESET_CATEGORIES, maps:keys(?MAP_CATEGORIES)).
+%% ?NUMBER_CARRIERS is nested under ?CLASSIFICATIONS, so we add it "manually".
+-define(DEFAULT_RESET_CATEGORIES, [?NUMBER_CARRIERS | maps:keys(?MAP_CATEGORIES)]).
 
 -type pn() :: knm_phone_number:knm_phone_number().
 -type pns() :: [pn()].
@@ -50,7 +49,7 @@ reconcile(Services) ->
         {ok, []} -> reset(Services);
         {ok, [JObj]} ->
             F = fun (Path, Cat, S) -> update_categories_fold(Path, Cat, S, JObj) end,
-            maps:fold(F, Services, ?MAP_CATEGORIES)
+            maps:fold(F, reset(Services), ?MAP_CATEGORIES)
     end.
 
 reconcile(Services, PNs) ->
@@ -106,9 +105,17 @@ update_quantities_fold(Feature, Count, Services, ?NUMBER_SERVICES=Category) ->
     Name = knm_providers:service_name(Feature, kz_services:account_id(Services)),
     Quantity = kz_services:updated_quantity(Category, Name, Services),
     kz_services:update(Category, Name, Quantity + Count, Services);
-update_quantities_fold(SubCategory, Count, Services, Category) ->
-    Quantity = kz_services:updated_quantity(Category, SubCategory, Services),
-    kz_services:update(Category, SubCategory, Quantity + Count, Services).
+
+update_quantities_fold(Classification, Carriers, Services, ?PHONE_NUMBERS=Category) ->
+    CountPerClass = kz_json:foldl(fun (_Carrier, Count, Sum) -> Count + Sum end, 0, Carriers),
+    Quantity = kz_services:updated_quantity(Category, Classification, Services),
+    S0 = kz_services:update(Category, Classification, Quantity + CountPerClass, Services),
+    kz_json:foldl(fun manually_update_nested_quantities_fold/3, S0, Carriers).
+
+manually_update_nested_quantities_fold(Carrier, Count, S) ->
+    Cat = ?NUMBER_CARRIERS,
+    Q = kz_services:updated_quantity(Cat, Carrier, S),
+    kz_services:update(Cat, Carrier, Q + Count, S).
 
 %% @private
 -spec update_numbers(kz_services:services(), pns()) -> kz_services:services().
