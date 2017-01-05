@@ -21,11 +21,12 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 dep_jiffy = hex 0.14.7
 dep_nklib = git https://github.com/NetComposer/nklib
 
-dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
-###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.1
-### waiting for pull request
-### https://github.com/benoitc/couchbeam/pull/149
-### after that one is merged, another will follow
+dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
+###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
+### waiting for pull requests
+### https://github.com/benoitc/couchbeam/pull/158
+### https://github.com/benoitc/couchbeam/pull/164
+### https://github.com/benoitc/couchbeam/pull/165
 
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
