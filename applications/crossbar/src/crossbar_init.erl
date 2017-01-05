@@ -192,6 +192,7 @@ maybe_start_plaintext(Dispatch) ->
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try
                 IP = get_binding_ip(),
+                lager:info("trying to bind to ~p:~b", [IP, Port]),
                 cowboy:start_http('api_resource', Workers
                                  ,[{'ip', IP}
                                   ,{'port', Port}
@@ -226,15 +227,19 @@ get_binding_ip() ->
     case inet:parse_ipv6strict_address(IP) of
         {'ok', IPv6} -> IPv6;
         {'error', 'einval'} ->
-            {'ok', IPv4} = inet:parse_ipv4strict_address(IP),
-            IPv4
+            case inet:parse_ipv4strict_address(IP) of
+                {'ok', IPv4} -> IPv4;
+                {'error', R} ->
+                    lager:error("ip ~p is not a valid ipv6 or ipv4 address: ~p", [IP, R]),
+                    throw(R)
+            end
     end.
 
 -spec is_ipv6_supported() -> boolean().
 is_ipv6_supported() ->
     try inet:getaddr("localhost", 'inet6') of
         {'ok', _} -> 'true';
-        _ -> 'false'
+        {'error', _} -> 'false'
     catch
         _:_ ->
             'false'
