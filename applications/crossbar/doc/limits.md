@@ -8,7 +8,7 @@ Limit an account's ability to place concurrent calls using flat rate trunks
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`allow_prepay` | Determines if the account would like to allow per-minute calls if they have credit | `boolean` | `true` | `false`
+`allow_prepay` | Determines if the account would like to allow per-minute calls if they have no available credit | `boolean` | `true` | `false`
 `burst_trunks` | The number of two-way, flat-rate trunks used only if no other trunks are available | `integer` |   | `false`
 `calls` | A hard limit for the total number calls | `integer` |   | `false`
 `inbound_trunks` | The number of inbound, flat-rate trunks | `integer` |   | `false`
