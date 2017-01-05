@@ -14,22 +14,21 @@
 -include("kazoo_services.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 
+-define(NUMBER_SERVICES, <<"number_services">>).
 -define(PHONE_NUMBERS, <<"phone_numbers">>).
 -define(PHONE_NUMBERS_NON_BILLABLE, <<"phone_numbers_non_billable">>).
--define(NUMBER_SERVICES, <<"number_services">>).
--define(NUMBER_CARRIERS, <<"number_carriers">>).
 
 -define(KEY_VALUE, <<"value">>).
 -define(BILLABLE, [?KEY_VALUE, <<"classifications">>, <<"billable">>]).
 -define(NON_BILLABLE, [?KEY_VALUE, <<"classifications">>, <<"non_billable">>]).
 -define(FEATURES, [?KEY_VALUE, <<"features">>]).
--define(MODULES, [?KEY_VALUE, <<"modules">>]).
 
--define(DEFAULT_RESET_CATEGORIES, [?PHONE_NUMBERS
-                                  ,?NUMBER_SERVICES
-                                  ,?PHONE_NUMBERS_NON_BILLABLE
-                                  ,?NUMBER_CARRIERS
-                                  ]).
+-define(MAP_CATEGORIES, #{?BILLABLE => ?PHONE_NUMBERS
+                         ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
+                         ,?FEATURES => ?NUMBER_SERVICES
+                         }).
+
+-define(DEFAULT_RESET_CATEGORIES, maps:keys(?MAP_CATEGORIES)).
 
 -type pn() :: knm_phone_number:knm_phone_number().
 -type pns() :: [pn()].
@@ -50,13 +49,8 @@ reconcile(Services) ->
             Services;
         {ok, []} -> reset(Services);
         {ok, [JObj]} ->
-            Categories = #{?BILLABLE => ?PHONE_NUMBERS
-                          ,?NON_BILLABLE => ?PHONE_NUMBERS_NON_BILLABLE
-                          ,?FEATURES => ?NUMBER_SERVICES
-                          ,?MODULES => ?NUMBER_CARRIERS
-                          },
-            F = fun (P, C, S) -> update_categories_fold(P, C, S, JObj) end,
-            maps:fold(F, Services, Categories)
+            F = fun (Path, Cat, S) -> update_categories_fold(Path, Cat, S, JObj) end,
+            maps:fold(F, Services, ?MAP_CATEGORIES)
     end.
 
 reconcile(Services, PNs) ->
@@ -118,8 +112,7 @@ update_quantities_fold(SubCategory, Count, Services, Category) ->
 
 %% @private
 -spec update_numbers(kz_services:services(), pns()) -> kz_services:services().
-update_numbers(Services, []) ->
-    Services;
+update_numbers(Services, []) -> Services;
 update_numbers(Services, [PN|PNs]) ->
     case knm_converters:is_reconcilable(knm_phone_number:number(PN)) of
         'false' -> Services;
