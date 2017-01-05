@@ -192,7 +192,7 @@ maybe_start_plaintext(Dispatch) ->
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
             try
                 IP = get_binding_ip(),
-                lager:info("trying to bind to ~p:~b", [IP, Port]),
+                lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
                 cowboy:start_http('api_resource', Workers
                                  ,[{'ip', IP}
                                   ,{'port', Port}
@@ -263,8 +263,15 @@ start_ssl(Dispatch) ->
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
-            try cowboy:start_https('api_resource_ssl', Workers
-                                  ,SSLOpts
+            try
+                IP = get_binding_ip(),
+                lager:info("trying to bind SSL API server to address ~s port ~b"
+                          ,[inet:ntoa(IP)
+                           ,props:get_value('port', SSLOpts)
+                           ]
+                          ),
+                cowboy:start_https('api_resource_ssl', Workers
+                                  ,[{'ip', IP} | SSLOpts]
                                   ,[{'env', [{'dispatch', Dispatch}
                                             ,{'timeout', ReqTimeout}
                                             ]}
