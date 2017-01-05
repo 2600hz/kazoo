@@ -154,6 +154,9 @@ filter(W) ->
         %% More ETS false positives, from applications/
         {warn_matching, {"src/ecallmgr_fs_channels.erl",_}, {pattern_match,["pattern <{[Channel = {'channel', CallId, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _"++_,_]}} -> 'false';
 
+        %% Dialyzer on 18 & 19 "such contracts are currently unsupported and are simply ignored"
+        {warn_contract_types, _, {overlapping_contract,_}} -> 'false';
+
         _ ->
             %% io:format("W = ~p\n", [W]),
             'true'

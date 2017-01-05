@@ -13,7 +13,7 @@
         ,number_exists/1
         ,invalid_state_transition/3
         ,no_change_required/1
-        ,service_restriction/1
+        ,service_restriction/2
         ,carrier_not_specified/1
         ,not_enough_credit/2
         ,invalid/2
@@ -64,24 +64,20 @@ unauthorized() ->
 number_exists(DID) ->
     throw({'error', 'number_exists', DID}).
 
--spec invalid_state_transition(kn() | kpn(), ne_binary(), ne_binary()) ->
-                                      no_return().
+-spec invalid_state_transition(kn() | kpn(), api_ne_binary(), ne_binary()) -> no_return().
+invalid_state_transition(Number, undefined, ToState) ->
+    invalid_state_transition(Number, <<"(nothing)">>, ToState);
 invalid_state_transition(Number, FromState, ToState) ->
-    throw({'error'
-          ,'invalid_state_transition'
-          ,Number
-          ,iolist_to_binary(["from ", FromState
-                            ," to ", ToState
-                            ])
-          }).
+    Reason = <<"from ", FromState/binary, " to ", ToState/binary>>,
+    throw({'error', 'invalid_state_transition', Number, Reason}).
 
 -spec no_change_required(kn()) -> no_return().
 no_change_required(Number) ->
     throw({'error', 'no_change_required', Number}).
 
--spec service_restriction(ne_binary()) -> no_return().
-service_restriction(Message) ->
-    throw({'error', 'service_restriction', Message}).
+-spec service_restriction(kn(), ne_binary()) -> no_return().
+service_restriction(Number, Message) ->
+    throw({'error', 'service_restriction', Number, Message}).
 
 -spec carrier_not_specified(kn()) -> no_return().
 carrier_not_specified(Number) ->
@@ -99,19 +95,13 @@ invalid(Number, Reason) ->
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
 
--spec assign_failure(knm_phone_number:knm_phone_number(), any()) ->
-                            no_return().
+-spec assign_failure(knm_phone_number:knm_phone_number(), any()) -> no_return().
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 
--spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) ->
-                            no_return().
+-spec database_error(kz_data:data_errors(), knm_phone_number:knm_phone_number()) -> no_return().
 database_error(E, PhoneNumber) ->
-    throw({'error'
-          ,'database_error'
-          ,PhoneNumber
-          ,E
-          }).
+    throw({'error', 'database_error', PhoneNumber, E}).
 
 -spec number_is_porting(ne_binary()) -> no_return().
 number_is_porting(Num) ->
@@ -156,14 +146,17 @@ to_json('not_reconcilable', Num=?NE_BINARY, _) ->
 to_json('unauthorized', _, Cause) ->
     Message = <<"requestor is unauthorized to perform operation">>,
     build_error(403, 'forbidden', Message, Cause);
-to_json('service_restriction', Message, Cause) ->
-    build_error(402, 'service_restriction', Message, Cause);
+to_json('service_restriction', Num=?NE_BINARY, Cause) ->
+    build_error(402, 'service_restriction', Cause, Num);
 to_json('no_change_required', _, Cause) ->
     Message = <<"no change required">>,
     build_error(400, 'no_change_required', Message, Cause);
 to_json('invalid_state_transition', _, Cause) ->
     Message = <<"invalid state transition">>,
     build_error(400, 'invalid_state_transition', Message, Cause);
+to_json('assign_failure', _, Cause) ->
+    Message = <<"invalid account to assign to">>,
+    build_error(400, 'assign_failure', Message, Cause);
 to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);

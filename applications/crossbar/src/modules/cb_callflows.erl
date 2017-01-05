@@ -413,7 +413,7 @@ maybe_reconcile_numbers(Context) ->
             Options = [{'assign_to', cb_context:account_id(Context)}
                       ,{'dry_run', not cb_context:accepting_charges(Context)}
                       ],
-            _ = knm_numbers:reconcile(lists:filter(fun knm_converters:is_reconcilable/1, NewNumbers), Options),
+            _ = knm_numbers:reconcile(NewNumbers, Options),
             Context
     end.
 
@@ -430,8 +430,8 @@ track_assignment('post', Context) ->
 
     Unassigned = [{Num, 'undefined'}
                   || Num <- OldNums,
-                     not lists:member(Num, NewNums)
-                         andalso Num =/= <<"undefined">>
+                     not lists:member(Num, NewNums),
+                     Num =/= <<"undefined">>
                  ],
     Assigned =  [{Num, kzd_callflow:type()}
                  || Num <- NewNums,

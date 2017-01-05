@@ -106,21 +106,32 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new(ne_binary()) -> knm_phone_number().
+-spec new(ne_binary()) -> knm_phone_number();
+         (knm_numbers:collection()) -> knm_numbers:collection().
+new(T=#{todo := Nums, options := Options}) ->
+    Setters = new_setters(Options),
+    PNs = [do_new(DID, Setters) || DID <- Nums],
+    knm_numbers:ok(PNs, T);
 new(DID) ->
     new(DID, knm_number_options:default()).
 
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
-new(DID, Options0) ->
-    Options = case knm_number_options:state(Options0) of
-                  ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORTING_MODULE_NAME} | Options0];
-                  _ -> Options0
-              end,
-    {'ok', PhoneNumber} =
-        setters(new(),
-                [{fun set_number/2, knm_converters:normalize(DID)}
-                 | knm_number_options:to_phone_number_setters(Options)
-                ]),
+new(DID, Options) ->
+    do_new(DID, new_setters(Options)).
+
+-spec new_setters(knm_number_options:options()) -> set_functions().
+new_setters(Options) ->
+    knm_number_options:to_phone_number_setters(
+      case knm_number_options:state(Options) of
+          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORTING_MODULE_NAME} | Options];
+          _ -> Options
+      end
+     ).
+
+-spec do_new(ne_binary(), set_functions()) -> knm_phone_number().
+do_new(DID, Setters0) ->
+    Setters = [{fun set_number/2, knm_converters:normalize(DID)} | Setters0],
+    {ok, PhoneNumber} = setters(new(), Setters),
     PhoneNumber.
 
 %%--------------------------------------------------------------------
@@ -128,11 +139,21 @@ new(DID, Options0) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(ne_binary()) -> knm_phone_number_return().
+-spec fetch(ne_binary()) -> knm_phone_number_return();
+           (knm_numbers:collection()) -> knm_numbers:collection().
 -spec fetch(ne_binary(), knm_number_options:options()) -> knm_phone_number_return().
 
-fetch(Num) ->
-    fetch(Num, knm_number_options:default()).
+fetch(?NE_BINARY=Num) ->
+    fetch(Num, knm_number_options:default());
+fetch(T) ->
+    Options = knm_numbers:options(T),
+    Fetch = fun (Num, Acc) ->
+                    case knm_number:attempt(fun fetch/2, [Num, Options]) of
+                        {ok, PN} -> knm_numbers:ok(PN, Acc);
+                        {error, R} -> knm_numbers:ko(Num, R, Acc)
+                    end
+            end,
+    lists:foldl(Fetch, T, knm_numbers:todo(T)).
 
 -ifdef(TEST).
 fetch(?TEST_CREATE_NUM, _Options) ->
@@ -143,6 +164,8 @@ fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_NUMBER, Options);
+fetch(?TEST_IN_SERVICE_MDN, Options) ->
+    handle_fetched_result(?IN_SERVICE_MDN, Options);
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
@@ -201,12 +224,24 @@ handle_fetched_result(JObj, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number()) -> knm_phone_number().
-save(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
-    lager:debug("dry_run-ing btw"),
-    PhoneNumber;
+-spec save(knm_phone_number()) -> knm_phone_number();
+          (knm_numbers:collection()) -> knm_numbers:collection().
+save(T0=#{todo := PNs, options := Options}) ->
+    case knm_number_options:dry_run(Options) of
+        true ->
+            lager:debug("dry_run-ing btw"),
+            knm_numbers:ok(PNs, T0);
+        false ->
+            F = fun (PN, T) ->
+                        case knm_number:attempt(fun save/1, [PN]) of
+                            {error, R} -> knm_numbers:ko(number(PN), R, T);
+                            NewPN -> knm_numbers:ok(NewPN, T)
+                        end
+                end,
+            lists:foldl(F, T0, PNs)
+    end;
 save(#knm_phone_number{is_dirty = false}=PhoneNumber) ->
-    lager:debug("not dirty: skipping save"),
+    lager:debug("not dirty: skip saving ~s", [number(PhoneNumber)]),
     PhoneNumber;
 save(PhoneNumber) ->
     Routines = [fun save_to_number_db/1
@@ -218,13 +253,25 @@ save(PhoneNumber) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% To call only from knm_number:delete/2 (only for sysadmins).
+%% To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> knm_phone_number().
-delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
-    lager:debug("dry_run-ing btw"),
-    PhoneNumber;
+-spec delete(knm_phone_number()) -> knm_phone_number();
+            (knm_numbers:collection()) -> knm_numbers:collection().
+delete(T0=#{todo := PNs, options := Options}) ->
+    case knm_number_options:dry_run(Options) of
+        true ->
+            lager:debug("dry_run-ing btw"),
+            knm_numbers:ok(PNs, T0);
+        false ->
+            F = fun (PN, T) ->
+                        case knm_number:attempt(fun delete/1, [PN]) of
+                            {error, R} -> knm_numbers:ko(number(PN), R, T);
+                            NewPN -> knm_numbers:ok(NewPN, T)
+                        end
+                end,
+            lists:foldl(F, T0, PNs)
+    end;
 delete(PhoneNumber) ->
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
@@ -249,8 +296,17 @@ try_maybe_remove_number_from_account(PN) ->
             {'ok', PN}
     end.
 
--spec release(knm_phone_number()) -> knm_phone_number().
+-spec release(knm_phone_number()) -> knm_phone_number();
+             (knm_numbers:collection()) -> knm_numbers:collection().
 -spec release(knm_phone_number(), ne_binary()) -> knm_phone_number().
+release(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
+                case knm_number:attempt(fun release/1, [PN]) of
+                    {error, Reason} -> knm_numbers:ko(number(PN), Reason, T);
+                    NewPN -> knm_numbers:ok(NewPN, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs);
 release(PhoneNumber) ->
     release(PhoneNumber, state(PhoneNumber)).
 
@@ -298,7 +354,7 @@ authorized_release(PhoneNumber) ->
     Routines = [{fun set_features/2, kz_json:new()}
                ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
                ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
-               ,{fun set_assigned_to/2, 'undefined'}
+               ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, ReleasedState}
                ],
     {'ok', NewPhoneNumber} = setters(PhoneNumber, Routines),
@@ -519,20 +575,36 @@ is_phone_number(_) -> 'false'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return().
-setters(Number, Routines) ->
-    try lists:foldl(fun setters_fold/2, Number, Routines) of
+-spec setters(knm_phone_number(), set_functions()) -> knm_phone_number_return();
+             (knm_numbers:collection(), set_functions()) -> knm_numbers:collection().
+setters(T0=#{todo := PNs}, Routines) ->
+    F = fun (PN, T) ->
+                case setters(PN, Routines) of
+                    {ok, NewPN} -> knm_numbers:ok(NewPN, T);
+                    {error, R} -> knm_numbers:ko(number(PN), R, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs);
+setters(PN, Routines) ->
+    try lists:foldl(fun setters_fold/2, PN, Routines) of
         {'ok', _N}=Ok -> Ok;
         {'error', _R}=Error -> Error;
         Result -> {'ok', Result}
     catch
         'throw':{'stop', Error} -> Error;
         'error':'function_clause' ->
-            {_M, FName, [_PhoneNumber,Arg|_], _Info} = hd(erlang:get_stacktrace()),
+            ST = erlang:get_stacktrace(),
+            {FName, Arg} =
+                case ST of
+                    [{lists, foldl, [Name|_PhoneNumber], Arg2}|_] -> {Name, Arg2};
+                    [{_M, Name, [_PhoneNumber,Arg2|_], _Info}|_] -> {Name, Arg2}
+                end,
             lager:error("~s failed, argument: ~p", [FName, Arg]),
-            kz_util:log_stacktrace(),
+            kz_util:log_stacktrace(ST),
             {'error', FName};
-        'error':Reason -> {'error', Reason}
+        'error':Reason ->
+            kz_util:log_stacktrace(),
+            {'error', Reason}
     end.
 
 -type set_function() :: fun((knm_phone_number()) -> setter_acc()) |
@@ -677,6 +749,7 @@ set_used_by(N, UsedBy='undefined') ->
                       ,used_by = UsedBy
                       };
 set_used_by(N, UsedBy=?NE_BINARY) ->
+    lager:debug("assigning ~s to ~s", [number(N), UsedBy]),
     N#knm_phone_number{is_dirty = true
                       ,used_by = UsedBy
                       }.
@@ -797,7 +870,8 @@ set_reserve_history(N, History) when is_list(History) ->
     Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
     lists:foldr(Cons, N#knm_phone_number{reserve_history=[]}, History).
 
--spec add_reserve_history(knm_phone_number(), ne_binary()) -> knm_phone_number().
+-spec add_reserve_history(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
+add_reserve_history(N, undefined) -> N;
 add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
                    ,?MATCH_ACCOUNT_RAW(AccountId)
                    ) ->
@@ -809,7 +883,11 @@ add_reserve_history(#knm_phone_number{reserve_history=ReserveHistory}=N
                       ,reserve_history=[AccountId | ReserveHistory]
                       }.
 
--spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number().
+-spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
+                            (knm_numbers:collection()) -> knm_numbers:collection().
+unwind_reserve_history(T=#{todo := PNs}) ->
+    NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
+    knm_numbers:ok(NewPNs, T);
 unwind_reserve_history(PN) ->
     ReserveHistory = PN#knm_phone_number.reserve_history,
     case lists:delete(prev_assigned_to(PN), reserve_history(PN)) of
@@ -1317,6 +1395,9 @@ get_number_in_account(AccountId, Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+delete_number_doc(Number) -> {ok, Number}.
+-else.
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -1324,6 +1405,7 @@ delete_number_doc(Number) ->
         {'error', _R}=E -> E;
         {'ok', _} -> {'ok', Number}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1331,6 +1413,9 @@ delete_number_doc(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+maybe_remove_number_from_account(Number) -> {ok, Number}.
+-else.
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case kz_util:is_empty(AssignedTo) of
@@ -1343,6 +1428,7 @@ maybe_remove_number_from_account(Number) ->
                 {'ok', _} -> {'ok', Number}
             end
     end.
+-endif.
 
 -ifndef(TEST).
 %%--------------------------------------------------------------------

@@ -528,4 +528,32 @@ to_map_test_() ->
 are_equal_test_() ->
     JObj = kz_json:from_map(kz_json:to_map(?MAP_JSON)),
     [?_assertEqual(true, kz_json:are_equal(?MAP_JSON, JObj))
+    ,?_assertEqual(true, kz_json:are_equal(JObj, ?MAP_JSON))
+    ,?_assertEqual(true, kz_json:are_equal(undefined, undefined))
+    ,?_assertEqual(false, kz_json:are_equal(undefined, kz_json:new()))
+    ,?_assertEqual(false, kz_json:are_equal(kz_json:new(), undefined))
+    ].
+
+-define(CHARGES_SIMPLE,
+        kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"category\":\"phone_numbers\",\"item\":\"did_us\",\"name\":\"US DID\",\"quantity\":1,\"rate\":1.0,\"single_discount\":true,\"single_discount_rate\":0.0,\"cumulative_discount\":1,\"cumulative_discount_rate\":0.5,\"activation_charge\":2.0,\"minimum\":0,\"exceptions\":[],\"activation_charges\":2.0}},\"activation_charges\":2.0}">>)).
+-define(CHARGES_DOUBLE,
+        kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"category\":\"phone_numbers\",\"item\":\"did_us\",\"name\":\"US DID\",\"quantity\":2,\"rate\":2.0,\"single_discount\":true,\"single_discount_rate\":0.0,\"cumulative_discount\":2,\"cumulative_discount_rate\":1.0,\"activation_charge\":4.0,\"minimum\":0,\"exceptions\":[],\"activation_charges\":4.0}},\"activation_charges\":4.0}">>)).
+
+sum_test_() ->
+    E = kz_json:new(),
+    A42 = kz_json:from_list([{<<"a">>, 42}]),
+    A40 = kz_json:from_list([{<<"a">>, 40}]),
+    A2 = kz_json:from_list([{<<"a">>, 2}]),
+    A42Bhi = kz_json:from_list([{<<"a">>, 42}, {<<"b">>, <<"hi">>}]),
+    A2Bhi = kz_json:from_list([{<<"a">>, 2}, {<<"b">>, <<"hi">>}]),
+    [?_assertEqual(E, kz_json:sum(E, E))
+    ,?_assertEqual(A42, kz_json:sum(A42, E))
+    ,?_assertEqual(A42, kz_json:sum(E, A42))
+    ,?_assertEqual(A42Bhi, kz_json:sum(A42Bhi, E))
+    ,?_assertEqual(A42Bhi, kz_json:sum(E, A42Bhi))
+    ,?_assertEqual(A42, kz_json:sum(A40, A2))
+    ,?_assertEqual(A42, kz_json:sum(A2, A40))
+    ,?_assertEqual(A42Bhi, kz_json:sum(A40, A2Bhi))
+    ,?_assertEqual(A42Bhi, kz_json:sum(A2Bhi, A40))
+    ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum(?CHARGES_SIMPLE, ?CHARGES_SIMPLE))
     ].

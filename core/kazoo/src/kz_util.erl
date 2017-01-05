@@ -175,12 +175,19 @@ log_stacktrace(ST) ->
         ],
     'ok'.
 
+-ifdef(TEST).
+log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
+    io:format(user, "st: ~s:~s/~b at (~b)\n", [M, F, Arity, props:get_value('line', Info, 0)]);
+log_stacktrace_mfa(M, F, Args, Info) ->
+    io:format(user, "st: ~s:~s at ~p\n", [M, F, props:get_value('line', Info, 0)]),
+    lists:foreach(fun (Arg) -> io:format(user, "args: ~p\n", [Arg]) end, Args).
+-else.
 log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
     lager:error("st: ~s:~s/~b at (~b)", [M, F, Arity, props:get_value('line', Info, 0)]);
 log_stacktrace_mfa(M, F, Args, Info) ->
     lager:error("st: ~s:~s at ~p", [M, F, props:get_value('line', Info, 0)]),
-    _ = [lager:error("args: ~p", [Arg]) || Arg <- Args],
-    'ok'.
+    lists:foreach(fun (Arg) -> lager:error("args: ~p", [Arg]) end, Args).
+-endif.
 
 -define(LOG_LEVELS, ['emergency'
                     ,'alert'

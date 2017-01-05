@@ -59,18 +59,18 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_number:knm_number()) -> knm_number:knm_number().
+-spec save(knm_numbers:collection()) -> knm_numbers:collection().
 save(Number) ->
-    exec(Number, 'save').
+    do_exec(Number, 'save').
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_number:knm_number()) -> knm_number:knm_number().
+-spec delete(knm_numbers:collection()) -> knm_numbers:collection().
 delete(Number) ->
-    exec(Number, 'delete').
+    do_exec(Number, 'delete').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -177,7 +177,7 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->
-            lager:debug("allowed number features set on reseller for ~s", [AccountId]),
+            lager:debug("allowed number features set on reseller for ~s: ~p", [AccountId, Providers]),
             Providers
     end.
 
@@ -191,7 +191,7 @@ system_allowed_features() ->
 
 -spec number_allowed_features(feature_parameters()) -> ne_binaries().
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    lager:debug("allowed number features set on number document"),
+    lager:debug("allowed number features set on number document: ~p", [AllowedFeatures]),
     AllowedFeatures.
 
 -spec list_denied_features(feature_parameters()) -> ne_binaries().
@@ -211,7 +211,7 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
         Providers ->
-            lager:debug("denied number features set on reseller for ~s", [AccountId]),
+            lager:debug("denied number features set on reseller for ~s: ~p", [AccountId, Providers]),
             Providers
     end.
 
@@ -229,7 +229,7 @@ used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    lager:debug("denied number features set on number document"),
+    lager:debug("denied number features set on number document: ~p", [DeniedFeatures]),
     DeniedFeatures.
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
@@ -305,8 +305,18 @@ cnam_provider(AccountId) -> ?CNAM_PROVIDER(AccountId).
 %% @end
 %%--------------------------------------------------------------------
 -type exec_action() :: 'save' | 'delete'.
--spec exec(knm_number:knm_number(), exec_action()) ->
-                  knm_number:knm_number().
+
+-spec do_exec(knm_numbers:collection(), exec_action()) -> knm_numbers:collection().
+do_exec(T0=#{todo := Ns}, Action) ->
+    F = fun (N, T) ->
+                case knm_number:attempt(fun exec/2, [N, Action]) of
+                    {ok, NewN} -> knm_numbers:ok(NewN, T);
+                    {error, R} -> knm_numbers:ko(N, R, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns).
+
+-spec exec(knm_number:knm_number(), exec_action()) -> knm_number:knm_number().
 -spec exec(knm_number:knm_number(), exec_action(), ne_binaries()) ->
                   knm_number:knm_number().
 

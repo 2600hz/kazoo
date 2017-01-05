@@ -13,16 +13,12 @@
 
 release_unknown_number_test_() ->
     [{"verfiy missing numbers return errors"
-     ,?_assertMatch(
-         {'error', 'not_found'}
-                   ,knm_number:release(?TEST_CREATE_NUM)
-        )
+     ,?_assertMatch({'error', 'not_found'}, knm_number:release(?TEST_CREATE_NUM))
      }
     ].
 
 release_available_number_test_() ->
     {'error', Error} = knm_number:release(?TEST_AVAILABLE_NUM),
-
     [{"Verify error code for releasing available number"
      ,?_assertEqual(400, knm_errors:code(Error))
      }
@@ -46,7 +42,7 @@ release_in_service_number_test_() ->
     {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_NUM),
     PhoneNumber = knm_number:phone_number(Released),
     [{"verify number state is changed"
-     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
+     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PhoneNumber))
      }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PhoneNumber))
@@ -73,4 +69,13 @@ release_for_hard_delete_test_() ->
     [{"verify number state is moved to DELETED"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
      }
+    ].
+
+release_mdn_test_() ->
+    {'ok', Deleted} = knm_number:release(?TEST_IN_SERVICE_MDN),
+    PhoneNumber = knm_number:phone_number(Deleted),
+    [{"verify number state is moved to DELETED"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
+     }
+    ,?_assertEqual(?CARRIER_MDN, knm_phone_number:module_name(PhoneNumber))
     ].

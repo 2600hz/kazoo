@@ -15,7 +15,7 @@
         ,is_npan/1, to_npan/1
         ,is_1npan/1, to_1npan/1
         ,to_db/1
-        ,is_reconcilable/1, is_reconcilable/2
+        ,is_reconcilable/1, is_reconcilable/2, are_reconcilable/1
         ,classify/1, available_classifiers/0
         ,available_converters/0
         ,default_converter/0
@@ -167,6 +167,16 @@ to_db(<<"+", NumPrefix:4/binary, _/binary>>) ->
     kz_http_util:urlencode(<<?KNM_DB_PREFIX, NumPrefix/binary>>);
 to_db(_) ->
     'undefined'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns `{Reconcilables, NotReconcilables}'.
+%% @end
+%%--------------------------------------------------------------------
+-spec are_reconcilable(ne_binaries()) -> {ne_binaries(), ne_binaries()}.
+are_reconcilable(Nums) ->
+    lists:partition(fun is_reconcilable/1, Nums).
 
 %%--------------------------------------------------------------------
 %% @public

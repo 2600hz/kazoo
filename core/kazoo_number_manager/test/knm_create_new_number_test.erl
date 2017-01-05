@@ -181,27 +181,12 @@ create_new_port_in_test_() ->
     ].
 
 create_existing_in_service_test_() ->
-    InServicePN =
-        knm_phone_number:set_state(knm_phone_number:from_json(?AVAILABLE_NUMBER)
-                                  ,?NUMBER_STATE_IN_SERVICE
-                                  ),
-    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
-            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{'dry_run', 'false'}
-            ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
-             }
-            ],
-    Resp = knm_number:attempt(fun knm_number:create_or_load/3
-                             ,[?TEST_AVAILABLE_NUM
-                              ,Props
-                              ,{'ok', InServicePN}
-                              ]
-                             ),
+    Options = [{assign_to, ?RESELLER_ACCOUNT_ID} | knm_number_options:default()],
+    Resp = knm_number:create(?TEST_IN_SERVICE_NUM, Options),
     [{"Verifying that IN SERVICE numbers can't be created"
      ,?_assertMatch({'error', _}, Resp)
      }
-     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_AVAILABLE_NUM)
+     | check_error_response(Resp, 409, <<"number_exists">>, ?TEST_IN_SERVICE_NUM)
     ].
 
 create_dry_run_test_() ->
@@ -218,7 +203,7 @@ create_dry_run_test_() ->
      ,?_assertEqual(0, Charges)
      }
     ,{"Verify services for dry_run"
-     ,?_assertEqual('undefined', Services)
+     ,?_assertEqual(true, Services =:= kz_services:new())
      }
     ].
 
@@ -228,9 +213,7 @@ create_checks_test_() ->
 
 load_existing_checks() ->
     PN = knm_phone_number:from_json(?AVAILABLE_NUMBER),
-    [existing_in_state(knm_phone_number:set_state(PN, State)
-                      ,IsAllowed
-                      )
+    [existing_in_state(knm_phone_number:set_state(PN, State), IsAllowed)
      || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
                               ,{?NUMBER_STATE_DELETED, 'false'}
                               ,{?NUMBER_STATE_DISCONNECTED, 'false'}
@@ -245,9 +228,7 @@ load_existing_checks() ->
 
 existing_in_state(PN, 'false') ->
     State = kz_util:to_list(knm_phone_number:state(PN)),
-    Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1
-                             ,[PN]
-                             ),
+    Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1, [PN]),
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
      ,?_assertMatch({'error', _}, Resp)
      }

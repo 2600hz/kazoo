@@ -98,9 +98,10 @@ find_more(_, _, _, _, _Enough, _, Numbers) ->
     {'ok', Numbers}.
 
 format_numbers(QID, JObjs) ->
+    Nums = [kz_doc:id(JObj) || JObj <- JObjs],
+    #{ok := Ns} = knm_numbers:get(Nums),
     [{QID, {knm_phone_number:number(PN), knm_phone_number:module_name(PN), knm_phone_number:state(PN), knm_phone_number:carrier_data(PN)}}
-     || JObj <- JObjs,
-        {ok, N} <- [knm_number:get(kz_doc:id(JObj))],
+     || N <- Ns,
         PN <- [knm_number:phone_number(N)]
     ].
 
