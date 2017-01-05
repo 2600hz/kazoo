@@ -33,6 +33,7 @@
 -export([save_doc/2, save_doc/3
         ,save_docs/2, save_docs/3
         ,open_cache_doc/2, open_cache_doc/3
+        ,open_cache_docs/2, open_cache_docs/3
         ,update_cache_doc/3
         ,flush_cache_doc/2, flush_cache_doc/3
         ,flush_cache_docs/0, flush_cache_docs/1
@@ -680,6 +681,36 @@ open_docs(DbName, DocIds) ->
 open_docs(DbName, DocIds, Options) ->
     NewOptions = [{keys, DocIds}, include_docs | Options],
     all_docs(DbName, NewOptions).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Open documents given doc ids returns an error tuple or the json.
+%% Attempts to fetch from cache before making an ad-hoc bulk read.
+%% Each returned JObj contains either an <<"doc">> or <<"error">> field.
+%% So: match both error tuple & each JSON of the list.
+%% Note: no guaranty on order of results is provided.
+%% @end
+%%--------------------------------------------------------------------
+-spec open_cache_docs(text(), docids()) ->
+                             {'ok', kz_json:objects()} |
+                             data_error() |
+                             {'error', 'not_found'}.
+-spec open_cache_docs(text(), docids(), kz_proplist()) ->
+                             {'ok', kz_json:objects()} |
+                             data_error() |
+                             {'error', 'not_found'}.
+
+open_cache_docs(DbName, DocIds) ->
+    open_cache_docs(DbName, DocIds, []).
+
+open_cache_docs(DbName, DocIds, Options) when ?VALID_DBNAME(DbName) ->
+    kzs_cache:open_cache_docs(DbName, DocIds, Options);
+open_cache_docs(DbName, DocIds, Options) ->
+    case maybe_convert_dbname(DbName) of
+        {'ok', Db} -> open_cache_docs(Db, DocIds, Options);
+        {'error', _}=E -> E
+    end.
 
 
 -spec all_docs(text()) ->
