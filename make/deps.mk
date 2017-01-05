@@ -26,6 +26,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ### waiting for pull requests
 ### https://github.com/benoitc/couchbeam/pull/158
 ### https://github.com/benoitc/couchbeam/pull/164
+### https://github.com/benoitc/couchbeam/pull/165
 
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
