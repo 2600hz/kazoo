@@ -35,7 +35,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ## there are some commits after 1.4.0 that will go into 1.5.0
 ## that break a loot of stuff. please be careful if updating to 1.5.0
 ## from for-GET/jesse
-dep_jesse = git https://github.com/lazedo/jesse master
+dep_jesse = git https://github.com/2600hz/jesse 1.4.4
 
 dep_lager = git https://github.com/erlang-lager/lager 3.2.1
 dep_trie = git https://github.com/okeuday/trie v1.5.4

@@ -109,10 +109,15 @@ action_failure_test_() ->
     Doc = kz_json:from_list([{?FLOW, kz_json:new()}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
-    [?_assertEqual(1, length(Errors))
+    [?_assertEqual(2, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,_Data
+                    ,<<"module">>
+                    ,[]
+                    }
+                   ,{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"data">>
                     ,[]
                     }
                    ]
@@ -131,11 +136,38 @@ child_action_failure_test_() ->
     Doc = kz_json:from_list([{?FLOW, Child}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
+    [?_assertEqual(2, length(Errors))
+    ,?_assertMatch([{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"module">>
+                    ,[<<"ca1">>, <<"children">>]
+                    }
+                   ,{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"data">>
+                    ,[<<"ca1">>, <<"children">>]
+                    }
+                   ]
+                  ,Errors
+                  )
+    ].
+
+child_action_failure_data_test_() ->
+    Children = kz_json:from_list([{<<"ca2">>, kz_json:from_list([{<<"module">>, <<"child_test">>}])}]),
+
+    Child = kz_json:from_list([{<<"module">>, <<"test">>}
+                              ,{<<"data">>, kz_json:new()}
+                              ,{<<"children">>, Children}
+                              ]),
+
+    Doc = kz_json:from_list([{?FLOW, Child}]),
+    {'error', Errors} = kzd_callflow:validate_flow(Doc),
+
     [?_assertEqual(1, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,_Data
-                    ,[<<"ca1">>, <<"children">>]
+                    ,<<"data">>
+                    ,[<<"ca2">>, <<"children">>]
                     }
                    ]
                   ,Errors
@@ -159,16 +191,26 @@ multiple_child_action_failures_test_() ->
     Doc = kz_json:from_list([{?FLOW, Child}]),
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
 
-    [?_assertEqual(2, length(Errors))
+    [?_assertEqual(4, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,_Data
+                    ,<<"module">>
+                    ,[<<"mp1">>, <<"children">>]
+                    }
+                   ,{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"data">>
+                    ,[<<"mp1">>, <<"children">>]
+                    }
+                   ,{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"module">>
                     ,[<<"mp2">>, <<"children">>]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,_Data
-                    ,[<<"mp1">>, <<"children">>]
+                    ,<<"data">>
+                    ,[<<"mp2">>, <<"children">>]
                     }
                    ]
                   ,Errors
