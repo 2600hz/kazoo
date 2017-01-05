@@ -160,20 +160,21 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
                     cb_context:add_system_error('bad_identifier', ErrorCause, Context)
             end
     end;
+
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
-load([_|_]=IDs, Context, Opts, _RespStatus) ->
-    Opts1 = [{'keys', IDs}, 'include_docs' | Opts],
-    case kz_datamgr:all_docs(cb_context:account_db(Context), Opts1) of
+load([_|_]=IDs, Context, Options, _RespStatus) ->
+    OpenFun = get_bulk_open_function(Options),
+    case OpenFun(cb_context:account_db(Context), IDs, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
-            Docs = extract_included_docs(JObjs),
-            case check_document_type(Context, Docs, Opts) of
+            {Docs, Context1} = extract_included_docs(Context, JObjs),
+            case check_document_type(Context1, Docs, Options) of
                 'true' ->
-                    cb_context:store(handle_datamgr_success(Docs, Context), 'db_doc', Docs);
+                    cb_context:store(handle_datamgr_success(Docs, Context1), 'db_doc', Docs);
                 'false' ->
                     ErrorCause = kz_json:from_list([{<<"cause">>, IDs}]),
-                    cb_context:add_system_error('bad_identifier', ErrorCause, Context)
+                    cb_context:add_system_error('bad_identifier', ErrorCause, Context1)
             end
     end.
 
@@ -182,6 +183,13 @@ get_open_function(Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
         'true' ->  fun kz_datamgr:open_cache_doc/3;
         'false' -> fun kz_datamgr:open_doc/3
+    end.
+
+-spec get_bulk_open_function(kz_proplist()) -> function().
+get_bulk_open_function(Options) ->
+    case props:get_is_true('use_cache', Options, 'true') of
+        'true' ->  fun kz_datamgr:open_cache_docs/3;
+        'false' -> fun kz_datamgr:open_docs/3
     end.
 
 %%--------------------------------------------------------------------
@@ -1147,7 +1155,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_datamgr_errors(kazoo_data:data_errors(), api_binary() | api_binaries(), cb_context:context()) ->
+-spec handle_datamgr_errors(kazoo_data:data_errors(), api_ne_binary() | api_ne_binaries(), cb_context:context()) ->
                                    cb_context:context().
 handle_datamgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
@@ -1268,9 +1276,20 @@ add_pvt_auth(JObj, Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec extract_included_docs(kz_json:objects()) -> kz_json:objects().
-extract_included_docs(JObjs) ->
-    [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs].
+-spec extract_included_docs(cb_context:context(), kz_json:objects()) ->
+                                   {kz_json:objects(), cb_context:context()}.
+extract_included_docs(Context, JObjs) ->
+    lists:foldl(fun extract_included_docs_fold/2, {[], Context}, JObjs).
+
+extract_included_docs_fold(JObj, {Docs, Context}) ->
+    case kz_json:get_ne_value(<<"doc">>, JObj) of
+        undefined ->
+            Reason = kz_json:get_ne_value(<<"error">>, JObj),
+            ID = kz_json:get_ne_value(<<"key">>, JObj),
+            {Docs, handle_datamgr_errors(kz_util:to_atom(Reason,true), ID, Context)};
+        Doc ->
+            {[Doc|Docs], Context}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1281,9 +1300,7 @@ extract_included_docs(JObjs) ->
 %%--------------------------------------------------------------------
 -spec has_qs_filter(cb_context:context()) -> boolean().
 has_qs_filter(Context) ->
-    kz_json:any(fun is_filter_key/1
-               ,cb_context:query_string(Context)
-               ).
+    kz_json:any(fun is_filter_key/1, cb_context:query_string(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
