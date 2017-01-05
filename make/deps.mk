@@ -21,11 +21,12 @@ dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1ae
 dep_jiffy = hex 0.14.7
 dep_nklib = git https://github.com/NetComposer/nklib
 
-dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
-###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.3.1
-### waiting for pull request
-### https://github.com/benoitc/couchbeam/pull/149
-### after that one is merged, another will follow
+dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
+###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
+### waiting for pull requests
+### https://github.com/benoitc/couchbeam/pull/158
+### https://github.com/benoitc/couchbeam/pull/164
+### https://github.com/benoitc/couchbeam/pull/165
 
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
@@ -34,7 +35,7 @@ dep_couchbeam = git https://github.com/lazedo/couchbeam 1.3.1.2
 ## there are some commits after 1.4.0 that will go into 1.5.0
 ## that break a loot of stuff. please be careful if updating to 1.5.0
 ## from for-GET/jesse
-dep_jesse = git https://github.com/lazedo/jesse 1.4.3
+dep_jesse = git https://github.com/2600hz/jesse 1.4.4
 
 dep_lager = git https://github.com/erlang-lager/lager 3.2.1
 dep_trie = git https://github.com/okeuday/trie v1.5.4
