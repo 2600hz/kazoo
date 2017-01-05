@@ -38,9 +38,12 @@
 -define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
 -define(CB_INTERACTION_LIST_BY_USER, <<"cdrs/interaction_listing_by_owner">>).
 -define(CB_INTERACTION_LIST_BY_ID, <<"cdrs/interaction_listing_by_id">>).
+-define(CB_SUMMARY_VIEW, <<"cdrs/summarize_cdrs">>).
+-define(CB_SUMMARY_LIST, <<"format_summary">>).
 
 -define(PATH_INTERACTION, <<"interaction">>).
 -define(PATH_LEGS, <<"legs">>).
+-define(PATH_SUMMARY, <<"summary">>).
 
 -define(KEY_CCV, <<"custom_channel_vars">>).
 
@@ -194,6 +197,8 @@ allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(?PATH_INTERACTION) ->
     [?HTTP_GET];
+allowed_methods(?PATH_SUMMARY) ->
+    [?HTTP_GET];
 allowed_methods(_CDRId) ->
     [?HTTP_GET].
 allowed_methods(?PATH_LEGS, _InteractionId) ->
@@ -246,6 +251,8 @@ validate(Context) ->
 
 validate(Context, ?PATH_INTERACTION) ->
     load_interaction_cdr_summary(Context, cb_context:req_nouns(Context));
+validate(Context, ?PATH_SUMMARY) ->
+    load_cdr_summary(Context);
 validate(Context, CDRId) ->
     load_cdr(CDRId, Context).
 
@@ -320,6 +327,69 @@ load_interaction_cdr_summary(Context, _Nouns) ->
     lager:debug("invalid URL chain for interaction cdr summary request"),
     cb_context:add_system_error('faulty_request', Context).
 
+-spec load_cdr_summary(cb_context:context()) -> cb_context:context().
+load_cdr_summary(Context) ->
+    lager:debug("loading cdr summary for account ~s"
+               ,[cb_context:account_id(Context)]
+               ),
+    case create_view_options('undefined'
+                            ,fun create_summary_view_options/4
+                            ,Context
+                            )
+    of
+        {'ok', ViewOptions} ->
+            AccountId = cb_context:account_id(Context),
+            DBs = chunked_dbs(AccountId, ViewOptions, fun view_option/2),
+            load_cdr_summary(Context, ViewOptions, DBs);
+        ErrorContext -> ErrorContext
+    end.
+
+-spec load_cdr_summary(cb_context:context(), kz_proplist(), ne_binaries()) -> cb_context:context().
+load_cdr_summary(Context, _, []) ->
+    cb_context:set_resp_status(Context, 'success');
+load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
+    Context1 = cb_context:set_account_db(Context, Db),
+    Context2 = crossbar_doc:load_view(
+                 ?CB_SUMMARY_VIEW
+                                     ,ViewOptions
+                                     ,Context1
+                                     ,fun normalize_summary_results/2
+                ),
+    case cb_context:resp_status(Context2) of
+        'success' ->
+            load_cdr_summary(
+              combine_cdr_summary(Context, Context2)
+                            ,ViewOptions
+                            ,Dbs
+             );
+        _Else -> Context2
+    end.
+
+-spec combine_cdr_summary(cb_context:context(), cb_context:context()) -> cb_context:context().
+combine_cdr_summary(Context1, Context2) ->
+    JObj1 = cb_context:resp_data(Context1),
+    [JObj2|_] = cb_context:doc(Context2),
+    cb_context:set_resp_data(Context1, merge_cdr_summary(JObj1, JObj2)).
+
+-spec merge_cdr_summary(api_object(), kz_json:object()) -> kz_json:object().
+merge_cdr_summary('undefined', JObj2) ->
+    merge_cdr_summary(kz_json:new(), JObj2);
+merge_cdr_summary(JObj1, JObj2) ->
+    kz_json:foldl(fun(Key2, Value2, JObj) ->
+                          case kz_json:get_value(Key2, JObj1) of
+                              'undefined' -> kz_json:set_value(Key2, Value2, JObj);
+                              Value1 when is_integer(Value1) ->
+                                  kz_json:set_value(Key2, Value1 + Value2, JObj);
+                              Value1 ->
+                                  Value = merge_cdr_summary(Value1, Value2),
+                                  kz_json:set_value(Key2, Value, JObj)
+                          end
+                  end, JObj1, JObj2).
+
+-spec normalize_summary_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+normalize_summary_results(JObj, Acc) ->
+    [JObj | Acc].
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -378,6 +448,15 @@ create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
            ,{'group', 'true'}
            ,{'group_level', 3}
            ,{'reduce', 'true'}
+           ,'descending'
+           ]}.
+
+-spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
+                                         {'ok', crossbar_doc:view_options()}.
+create_summary_view_options(_, _, CreatedFrom, CreatedTo) ->
+    {'ok', [{'startkey', CreatedTo}
+           ,{'endkey', CreatedFrom}
+           ,{'list', ?CB_SUMMARY_LIST}
            ,'descending'
            ]}.
 

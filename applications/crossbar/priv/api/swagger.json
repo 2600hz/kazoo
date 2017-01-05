@@ -14482,6 +14482,19 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/cdrs/summary": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/cdrs/{CDR_ID}": {
             "get": {
                 "parameters": [
