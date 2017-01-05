@@ -625,11 +625,7 @@ load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
             'true' -> {Ids, []};
             'false' -> lists:split(?MAX_BULK, Ids)
         end,
-    ViewOptions = [{'keys', BulkIds}
-                  ,{'doc_type', <<"cdr">>}
-                  ,'include_docs'
-                  ],
-    case kz_datamgr:all_docs(Db, ViewOptions) of
+    case kz_datamgr:open_cache_docs(Db, BulkIds, [{'doc_type', <<"cdr">>}]) of
         {'ok', Results} ->
             HasQSFilter = crossbar_doc:has_qs_filter(Context),
             JObjs = [kz_json:get_value(<<"doc">>, Result)

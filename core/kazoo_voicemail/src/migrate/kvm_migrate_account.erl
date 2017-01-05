@@ -211,11 +211,8 @@ update_mailboxes(AccountId, ViewResults) ->
     Failed = dict:from_list(get_stats(?FAILED)),
     BoxIds = lists:usort([kz_doc:id(B) || B <- ViewResults]),
 
-    ViewOpts = [{'keys', BoxIds}
-               ,'include_docs'
-               ],
     Db = kvm_util:get_db(AccountId),
-    case kz_datamgr:all_docs(Db, ViewOpts) of
+    case kz_datamgr:open_cache_docs(Db, BoxIds) of
         {'ok', BoxJObjs} ->
             NewBoxJObjs = update_mailbox_jobjs(BoxJObjs, MODbFailed, Failed),
             case kz_datamgr:save_docs(Db, NewBoxJObjs) of
@@ -277,14 +274,8 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
 %%--------------------------------------------------------------------
 -spec get_messages_from_vmboxes(ne_binary(), ne_binaries()) -> db_ret().
 get_messages_from_vmboxes(AccountId, ExpectedBoxIds) ->
-    Db = kz_util:format_account_db(AccountId),
-    ViewOpts = props:filter_empty(
-                 [{'keys', ExpectedBoxIds}
-                 ,'include_docs'
-                 ]),
-    case kz_datamgr:all_docs(Db, ViewOpts) of
-        {'ok', JObjs} ->
-            {'ok', normalize_mailbox_results(JObjs)};
+    case kz_datamgr:open_cache_docs(kz_util:format_account_db(AccountId), ExpectedBoxIds) of
+        {'ok', JObjs} -> {'ok', normalize_mailbox_results(JObjs)};
         {'error', _E} = Error ->
             ?ERROR("    [~s] failed to open mailbox(es)", [AccountId]),
             Error

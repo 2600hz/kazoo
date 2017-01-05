@@ -7,10 +7,9 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_cache).
 
-
-
 %% Doc related
 -export([open_cache_doc/3, open_cache_doc/4
+        ,open_cache_docs/3
         ,add_to_doc_cache/3
         ,flush_cache_doc/2
         ,flush_cache_doc/3
@@ -51,15 +50,15 @@ open_cache_doc(DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)) of
-                {'error', _}=E ->
-                    maybe_cache_failure(DbName, DocId, Options, E),
-                    E;
-                {'ok', JObj}=Ok ->
-                    add_to_doc_cache(DbName, DocId, JObj),
-                    Ok
-            end
+            R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
+            _ = maybe_cache(DbName, DocId, Options, R),
+            R
     end.
+
+maybe_cache(DbName, DocId, Options, {error, _}=E) ->
+    maybe_cache_failure(DbName, DocId, Options, E);
+maybe_cache(DbName, DocId, _, {ok, JObj}) ->
+    add_to_doc_cache(DbName, DocId, JObj).
 
 -spec open_cache_doc(map(), text(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
@@ -70,15 +69,74 @@ open_cache_doc(Server, DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)) of
-                {'error', _}=E ->
-                    maybe_cache_failure(DbName, DocId, Options, E),
-                    E;
-                {'ok', JObj}=Ok ->
-                    add_to_doc_cache(DbName, DocId, JObj),
-                    Ok
-            end
+            R = kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)),
+            _ = maybe_cache(DbName, DocId, Options, R),
+            R
     end.
+
+-spec open_cache_docs(text(), ne_binaries(), kz_proplist()) ->
+                             {'ok', kz_json:objects()} |
+                             data_error().
+open_cache_docs(DbName, DocIds, Options) ->
+    {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
+    lager:debug("misses ~p", [MissedDocIds]),
+    JObjs1 = assemble_jobjs(Cached),
+    case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
+        {error, _}=E -> E;
+        {ok, JObjs} ->
+            JObjs2 = assemble_jobjs(JObjs1, disassemble_jobjs(DbName, Options, JObjs)),
+            {ok, JObjs2}
+    end.
+
+fetch_locals(DbName, DocIds) ->
+    F = fun (DocId, {Cached, Missed}) ->
+                case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
+                    {error, not_found} -> {Cached, [DocId|Missed]};
+                    {ok, {error, Reason}} ->
+                        {[{DocId, error, Reason}|Cached], Missed};
+                    {ok, Doc} ->
+                        {[{DocId, ok, Doc}|Cached], Missed}
+                end
+        end,
+    lists:foldl(F, {[], []}, DocIds).
+
+-type docs_returned() :: [{ne_binary(), ok, kz_json:object()} |
+                          {ne_binary(), error, ne_binary()}
+                         ].
+-spec disassemble_jobjs(ne_binary(), kz_proplist(), kz_json:objects()) -> docs_returned().
+disassemble_jobjs(DbName, Options, JObjs) ->
+    [case kz_json:get_ne_value(<<"doc">>, JObj) of
+         undefined ->
+             Reason = kz_json:get_ne_value(<<"error">>, JObj),
+             _ = maybe_cache_failure(DbName, DocId, Options, {error, Reason}),
+             {DocId, error, Reason};
+         Doc ->
+             _ = add_to_doc_cache(DbName, DocId, Doc),
+             {DocId, ok, Doc}
+     end
+     || JObj <- JObjs,
+        DocId <- [kz_json:get_ne_value(<<"key">>, JObj)]
+    ].
+
+-spec assemble_jobjs(docs_returned()) -> kz_json:objects().
+-spec assemble_jobjs(kz_json:objects(), docs_returned()) -> kz_json:objects().
+assemble_jobjs(DocsReturned) ->
+    assemble_jobjs([], DocsReturned).
+assemble_jobjs(JObjs, DocsReturned) ->
+    [case Returned of
+         {DocId, ok, Doc} ->
+             kz_json:from_list(
+               [{<<"key">>, DocId}
+               ,{<<"doc">>, Doc}
+               ]);
+         {DocId, error, Reason} ->
+             kz_json:from_list(
+               [{<<"key">>, DocId}
+               ,{<<"error">>, kz_util:to_atom(Reason, true)}
+               ])
+     end
+     || Returned <- DocsReturned
+    ] ++ JObjs.
 
 -spec remove_cache_options(kz_proplist()) -> kz_proplist().
 remove_cache_options(Options) ->
@@ -119,11 +177,11 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
     %%   and therefore no doc change notice is pushed.  This results in the
-    %%   doc cache containing a document tha thas no attachements (or the wrong
-    %%   attachments).  What needs to happen is a change notice get sent on the
+    %%   doc cache containing a document that has no attachements (or the wrong
+    %%   attachments). What needs to happen is a change notice get sent on the
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
-                                                %    which is not currently the case...)
+    %%   which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
         andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
