@@ -38,13 +38,19 @@ load(Schema) -> load(kz_util:to_binary(Schema)).
                                        {'error', any()}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
-    io:format("loading schema ~s~n", [Schema]),
-    Path = <<"/opt/kazoo/applications/crossbar/priv/couchdb/schemas/", Schema/binary, ".json">>,
-    case file:read_file(Path) of
-        {'error', _E}=E -> E;
-        {'ok', Bin} -> {'ok', kz_json:insert_value(<<"id">>, Schema, kz_json:decode(Bin))}
-    end;
+    PrivDir = code:priv_dir('crossbar'),
+    SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
+    {'ok', SchemaJSON} = file:read_file(SchemaPath),
+    SchemaJObj = kz_json:decode(SchemaJSON),
+    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)};
 fload(Schema) -> fload(kz_util:to_binary(Schema)).
+
+-spec maybe_add_ext(ne_binary()) -> ne_binary().
+maybe_add_ext(Schema) ->
+    case filename:extension(Schema) of
+        <<".json">> -> Schema;
+        _Ext -> <<Schema/binary, ".json">>
+    end.
 
 -spec flush() -> 'ok'.
 -spec flush(ne_binary()) -> 'ok'.
