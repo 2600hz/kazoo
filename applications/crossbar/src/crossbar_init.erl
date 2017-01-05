@@ -190,8 +190,10 @@ maybe_start_plaintext(Dispatch) ->
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-            try cowboy:start_http('api_resource', Workers
-                                 ,[{'ip', {0,0,0,0,0,0,0,0}}
+            try
+                IP = get_binding_ip(),
+                cowboy:start_http('api_resource', Workers
+                                 ,[{'ip', IP}
                                   ,{'port', Port}
                                   ]
                                  ,[{'env', [{'dispatch', Dispatch}
@@ -201,7 +203,8 @@ maybe_start_plaintext(Dispatch) ->
                                   ,{'onresponse', fun on_response/4}
                                   ,{'compress', ?USE_COMPRESSION}
                                   ]
-                                 ) of
+                                 )
+            of
                 {'ok', _} ->
                     lager:info("started plaintext API server");
                 {'error', {'already_started', _P}} ->
@@ -211,6 +214,32 @@ maybe_start_plaintext(Dispatch) ->
                     lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
             end
     end.
+
+-spec get_binding_ip() -> string().
+get_binding_ip() ->
+    Default = case is_ipv6_supported() of
+                  'true' -> <<"::">>;
+                  'false' -> <<"0.0.0.0">>
+              end,
+    %% expilicty convert to list to allow save the default value in human readable value
+    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, Default)),
+    case inet:parse_ipv6strict_address(IP) of
+        {'ok', IPv6} -> IPv6;
+        {'error', 'einval'} ->
+            {'ok', IPv4} = inet:parse_ipv4strict_address(IP),
+            IPv4
+    end.
+
+-spec is_ipv6_supported() -> boolean().
+is_ipv6_supported() ->
+    try inet:getaddr("localhost", 'inet6') of
+        {'ok', _} -> 'true';
+        _ -> 'false'
+    catch
+        _:_ ->
+            'false'
+    end.
+
 
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_ssl(Dispatch) ->
