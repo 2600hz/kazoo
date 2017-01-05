@@ -1000,10 +1000,11 @@ fix_start_key([StartKey|_T]) -> StartKey.
 -spec load_account_tree(cb_context:context()) -> cb_context:context().
 load_account_tree(Context) ->
     Tree = get_authorized_account_tree(Context),
-    Options = [{'keys', Tree}, 'include_docs'],
-    case kz_datamgr:all_docs(?KZ_ACCOUNTS_DB, Options) of
+    case kz_datamgr:open_cache_docs(?KZ_ACCOUNTS_DB, Tree) of
         {'error', R} -> crossbar_doc:handle_datamgr_errors(R, ?KZ_ACCOUNTS_DB, Context);
-        {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
+        {'ok', JObjs} ->
+            %%FIXME: extract & handle errors from JObjs
+            format_account_tree_results(Context, JObjs)
     end.
 
 -spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().
