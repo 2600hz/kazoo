@@ -7,8 +7,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_cache).
 
-
-
 %% Doc related
 -export([open_cache_doc/3, open_cache_doc/4
         ,add_to_doc_cache/3
@@ -51,15 +49,15 @@ open_cache_doc(DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)) of
-                {'error', _}=E ->
-                    maybe_cache_failure(DbName, DocId, Options, E),
-                    E;
-                {'ok', JObj}=Ok ->
-                    add_to_doc_cache(DbName, DocId, JObj),
-                    Ok
-            end
+            R = kz_datamgr:open_doc(DbName, DocId, remove_cache_options(Options)),
+            _ = maybe_cache(DbName, DocId, Options, R),
+            R
     end.
+
+maybe_cache(DbName, DocId, Options, {error, _}=E) ->
+    maybe_cache_failure(DbName, DocId, Options, E);
+maybe_cache(DbName, DocId, _, {ok, JObj}) ->
+    add_to_doc_cache(DbName, DocId, JObj).
 
 -spec open_cache_doc(map(), text(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
@@ -70,14 +68,9 @@ open_cache_doc(Server, DbName, DocId, Options) ->
         {'ok', {'error', _}=E} -> E;
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} ->
-            case kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)) of
-                {'error', _}=E ->
-                    maybe_cache_failure(DbName, DocId, Options, E),
-                    E;
-                {'ok', JObj}=Ok ->
-                    add_to_doc_cache(DbName, DocId, JObj),
-                    Ok
-            end
+            R = kzs_doc:open_doc(Server, DbName, DocId, remove_cache_options(Options)),
+            _ = maybe_cache(DbName, DocId, Options, R),
+            R
     end.
 
 -spec remove_cache_options(kz_proplist()) -> kz_proplist().
@@ -119,11 +112,11 @@ cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
     %%   and therefore no doc change notice is pushed.  This results in the
-    %%   doc cache containing a document tha thas no attachements (or the wrong
-    %%   attachments).  What needs to happen is a change notice get sent on the
+    %%   doc cache containing a document that has no attachements (or the wrong
+    %%   attachments). What needs to happen is a change notice get sent on the
     %%   message bus anytime a http_put is issued (or maybe if the store
     %%   url is built in media IF everything uses that helper function,
-                                                %    which is not currently the case...)
+    %%   which is not currently the case...)
     case kzs_util:db_classification(DbName) =/= 'system'
         andalso lists:member(kz_doc:type(CacheValue), ?NO_CACHING_TYPES) of
         'true' -> 'ok';
