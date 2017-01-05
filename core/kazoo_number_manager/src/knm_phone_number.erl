@@ -45,7 +45,6 @@
         ,doc/1, update_doc/2, reset_doc/2
         ,modified/1, set_modified/2
         ,created/1, set_created/2
-        ,is_billable/1
         ]).
 
 -export([list_attachments/2]).
@@ -80,7 +79,6 @@
                           ,doc = kz_json:new() :: kz_json:object()
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
-                          ,is_billable = undefined :: api_boolean()
                           ,is_dirty = 'false' :: boolean()
                           ,features_allowed = ?DEFAULT_FEATURES_ALLOWED :: ne_binaries()
                           ,features_denied = ?DEFAULT_FEATURES_DENIED :: ne_binaries()
@@ -408,7 +406,6 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
       ,{?PVT_MODULE_NAME, module_name(N)}
       ,{?PVT_MODIFIED, modified(N)}
       ,{?PVT_CREATED, created(N)}
-      ,{?PVT_IS_BILLABLE, is_billable(N)}
       ,{?PVT_TYPE, <<"number">>}
        | kz_json:to_proplist(sanitize_public_fields(JObj))
       ]
@@ -442,7 +439,6 @@ from_json(JObj0) ->
             FeaturesJObj -> FeaturesJObj
         end,
     Now = kz_util:current_tstamp(),
-    IsBillable = kz_json:is_true(?PVT_IS_BILLABLE, JObj, 'undefined'),
     UsedBy = kz_json:get_value(?PVT_USED_BY, JObj),
     {'ok', PhoneNumber} =
         setters(new(),
@@ -453,7 +449,7 @@ from_json(JObj0) ->
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
-                ,{fun set_module_name/3, kz_json:get_value(?PVT_MODULE_NAME, JObj), IsBillable}
+                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
@@ -927,58 +923,27 @@ set_module_name(N0, ?CARRIER_LOCAL=Name) ->
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    case N#knm_phone_number.is_billable of
-        undefined ->
+    case N0#knm_phone_number.module_name =:= Name of
+        true -> N;
+        false ->
             N#knm_phone_number{is_dirty = true
                               ,module_name = Name
-                              ,is_billable = false
-                              };
-        _ ->
-            case N0#knm_phone_number.module_name =:= Name of
-                true -> N;
-                false ->
-                    N#knm_phone_number{is_dirty = true
-                                      ,module_name = Name
-                                      }
-            end
+                              }
     end;
 %% knm_bandwidth is deprecated, updating to the new module
 set_module_name(N, <<"wnm_bandwidth">>) ->
     set_module_name(N, <<"knm_bandwidth2">>);
 set_module_name(N, <<"wnm_", Name/binary>>) ->
     set_module_name(N, <<"knm_", Name/binary>>);
-set_module_name(N, Name=?NE_BINARY) ->
-    IsBillable = knm_carriers:is_number_billable(N#knm_phone_number{module_name = Name}),
-    case {N#knm_phone_number.module_name, N#knm_phone_number.is_billable} of
-        {Name, IsBillable} -> N;
-        _ ->
-            N#knm_phone_number{is_dirty = true
-                              ,module_name = Name
-                              ,is_billable = IsBillable
-                              }
-    end.
-
--spec set_module_name(knm_phone_number(), ne_binary(), api_boolean()) -> knm_phone_number().
 %% Some old docs have these as module name
-set_module_name(N, <<"undefined">>, IsBillable) ->
-    set_module_name(N, ?CARRIER_LOCAL, IsBillable);
-set_module_name(N, 'undefined', IsBillable) ->
-    set_module_name(N, ?CARRIER_LOCAL, IsBillable);
-set_module_name(N0, Name, IsBillable)
-  when is_boolean(IsBillable) ->
-    N = set_module_name(N0, Name),
-    %% Do not override is_billable when field is already set on doc.
-    case N#knm_phone_number.is_billable of
-        IsBillable -> N;
-        _ ->
-            N#knm_phone_number{is_dirty = true
-                              ,is_billable = IsBillable
-                              }
-    end;
-set_module_name(N0, Name, 'undefined') ->
-    N = set_module_name(N0, Name),
+set_module_name(N, <<"undefined">>) ->
+    set_module_name(N, ?CARRIER_LOCAL);
+set_module_name(N, 'undefined') ->
+    set_module_name(N, ?CARRIER_LOCAL);
+set_module_name(N=#knm_phone_number{module_name = Name}, Name=?NE_BINARY) -> N;
+set_module_name(N, Name) ->
     N#knm_phone_number{is_dirty = true
-                      ,is_billable = knm_carriers:is_number_billable(N)
+                      ,module_name = Name
                       }.
 
 %%--------------------------------------------------------------------
@@ -1165,14 +1130,6 @@ created(#knm_phone_number{created = Created}) -> Created.
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created=Created}.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec is_billable(knm_phone_number()) -> api_boolean().
-is_billable(#knm_phone_number{is_billable = IsBillable}) -> IsBillable.
 
 %%--------------------------------------------------------------------
 %% @public
