@@ -216,7 +216,7 @@ maybe_start_plaintext(Dispatch) ->
             end
     end.
 
--spec get_binding_ip() -> string().
+-spec get_binding_ip() -> inet:ip_address().
 get_binding_ip() ->
     Default = case is_ipv6_supported() of
                   'true' -> <<"::">>;
