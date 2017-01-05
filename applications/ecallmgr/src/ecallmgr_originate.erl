@@ -692,9 +692,9 @@ maybe_fix_fs_auto_answer_bug(Export) ->
 -spec maybe_fix_caller_id(strings(), kz_json:object()) -> string().
 maybe_fix_caller_id(Export, JObj) ->
     Fix = [
-        {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "effective_caller_id_name"}
-        ,{lists:member("origination_callee_id_number", Export), kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj), "effective_caller_id_number"}
-    ],
+           {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "effective_caller_id_name"}
+          ,{lists:member("origination_callee_id_number", Export), kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj), "effective_caller_id_number"}
+          ],
     string:join([ "^export:" ++ Key ++ "=" ++ erlang:binary_to_list(Value) || {IsTrue, Value, Key} <- Fix, IsTrue ], ":").
 
 -spec publish_error(ne_binary(), created_uuid() | api_binary(), kz_json:object(), api_binary()) -> 'ok'.
