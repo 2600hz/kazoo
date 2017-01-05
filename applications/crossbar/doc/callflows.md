@@ -27,9 +27,9 @@ Call flows describe steps to take in order to process a phone call. They are tre
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`children` | Children callflows | `object` | `{}` | `false`
+`children` | Children callflows | `object` |   | `false`
 `children./.+/` |   | [#/definitions/callflows.action](#callflowsaction) |   | `false`
-`data` | The data/arguments of the callflow module | `object` | `{}` | `true`
+`data` | The data/arguments of the callflow module | `object` |   | `true`
 `module` | The name of the callflow module to excute at this node | `string(1..64)` |   | `true`
 
 ##### metaflow
