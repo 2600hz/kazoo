@@ -363,7 +363,14 @@ originate_quickcall(Endpoints, Call, Context) ->
           ,{<<"Dial-Endpoint-Method">>, <<"simultaneous">>}
           ,{<<"Continue-On-Fail">>, 'false'}
           ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
-          ,{<<"Export-Custom-Channel-Vars">>, [<<"Account-ID">>, <<"Retain-CID">>, <<"Authorizing-ID">>, <<"Authorizing-Type">>]}
+          ,{<<"Export-Custom-Channel-Vars">>, [
+                <<"Account-ID">>
+                , <<"Retain-CID">>
+                , <<"Authorizing-ID">>
+                , <<"Authorizing-Type">>
+                , <<"Outbound-Callee-ID-Number">>
+                , <<"Outbound-Callee-ID-Name">>
+            ]}
            | kz_api:default_headers(<<"resource">>, <<"originate_req">>, ?APP_NAME, ?APP_VERSION)
           ]),
     kz_amqp_worker:cast(Request, fun kapi_resource:publish_originate_req/1),
