@@ -23,7 +23,7 @@
 -include("kz_data.hrl").
 
 -type copy_function() :: fun((map(), ne_binary(), kz_json:object(), kz_proplist()) ->
-                                    {'ok', kz_json:object()} | data_error()).
+                                    {'ok', kz_json:object()} | kz_data:error()).
 -export_type([copy_function/0]).
 -define(COPY_DOC_OVERRIDE_PROPERTY, 'override_existing_document').
 -define(COPY_TRANSFORM, 'transform').
@@ -32,13 +32,13 @@
 
 -spec open_doc(map(), ne_binary(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      data_error().
+                      kz_data:error().
 open_doc(#{server := {App, Conn}}, DbName, DocId, Options) ->
     App:open_doc(Conn, DbName, DocId, Options).
 
 -spec save_doc(map(), ne_binary(), kz_json:object(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      data_error().
+                      kz_data:error().
 save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:save_doc(Conn, DbName, PreparedDoc, Options) of
@@ -54,7 +54,7 @@ save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
 
 -spec save_docs(map(), ne_binary(), kz_json:objects(), kz_proplist()) ->
                        {'ok', kz_json:objects()} |
-                       data_error().
+                       kz_data:error().
 save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
@@ -67,13 +67,13 @@ save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
 
 -spec lookup_doc_rev(map(), ne_binary(), ne_binary()) ->
                             {'ok', ne_binary()} |
-                            data_error().
+                            kz_data:error().
 lookup_doc_rev(#{server := {App, Conn}}, DbName, DocId) ->
     App:lookup_doc_rev(Conn, DbName, DocId).
 
 -spec ensure_saved(map(), ne_binary(), kz_json:object(), kz_proplist()) ->
                           {'ok', kz_json:object()} |
-                          data_error().
+                          kz_data:error().
 ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
@@ -100,7 +100,7 @@ maybe_ensure_saved_others(_, _, _, _, _) -> 'ok'.
 
 -spec del_doc(map(), ne_binary(), kz_json:object() | ne_binary(), kz_proplist()) ->
                      {'ok', kz_json:object()} |
-                     data_error().
+                     kz_data:error().
 del_doc(Server, DbName, DocId, Options)
   when is_binary(DocId) ->
     case open_doc(Server, DbName, DocId, Options) of
@@ -122,7 +122,7 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
 
 -spec del_docs(map(), ne_binary(), kz_json:objects() | ne_binaries(), kz_proplist()) ->
                       {'ok', kz_json:objects()} |
-                      data_error().
+                      kz_data:error().
 del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
@@ -199,7 +199,7 @@ default_copy_function('false') -> fun save_doc/4.
 
 -spec copy_doc(map(), map(), copy_doc(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      data_error().
+                      kz_data:error().
 copy_doc(Src, Dst, CopySpec, Options) ->
     SaveFun = default_copy_function(props:is_defined(?COPY_DOC_OVERRIDE_PROPERTY, Options)),
     copy_doc(Src, Dst, CopySpec, SaveFun, props:delete(?COPY_DOC_OVERRIDE_PROPERTY, Options)).
@@ -207,7 +207,7 @@ copy_doc(Src, Dst, CopySpec, Options) ->
 
 -spec copy_doc(map(), map(), copy_doc(), copy_function(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      data_error().
+                      kz_data:error().
 copy_doc(Src, Dst, CopySpec, CopyFun, Opts) ->
     #copy_doc{source_dbname = SourceDbName
              ,source_doc_id = SourceDocId
@@ -273,7 +273,7 @@ maybe_set_account_db(_1, _, _) -> [].
 
 -spec move_doc(map(), map(), copy_doc(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      data_error().
+                      kz_data:error().
 move_doc(Src, Dst, CopySpec, Options) ->
     #copy_doc{source_dbname = SourceDbName
              ,source_doc_id = SourceDocId

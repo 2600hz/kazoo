@@ -10,15 +10,40 @@
 -include("kz_data.hrl").
 
 -type connection() :: server() | any().
--type option() :: {atom(), term()}.
+-type option() :: {atom(), any()}.
 -type options() :: [option()].
 -type document() :: kz_json:object().
 -type documents() :: [document()].
+
+-type errors() :: 'conflict' |
+                  'db_not_found' |
+                  'db_not_reachable' |
+                  'failed' |
+                  'gateway_timeout' |
+                  'invalid_db_name' |
+                  'invalid_view_name' |
+                  'not_found' |
+                  'precondition_failed' |
+                  'req_timedout' |
+                  'retry_later' |
+                  'sel_conn_closed' |
+                  'unknown_req_id' |
+                  'worker_is_dead' |
+                  'resource_not_available' |
+                  integer() |
+                  {'EXIT', _} |
+                  {'conn_failed', _} |
+                  {'ok', string(), _, _} |
+                  {'url_parsing_failed', _} |
+                  {integer(), _}. % {error_code, body}
+
+-type error() :: {'error', kz_data:errors()}.
 
 -export_type([connection/0
              ,option/0, options/0
              ,document/0
              ,documents/0
+             ,error/0, errors/0
              ]).
 
 -callback new_connection(map()) -> connection().

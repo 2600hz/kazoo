@@ -43,7 +43,7 @@
 
 -spec open_cache_doc(text(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
-                            data_error() |
+                            kz_data:error() |
                             {'error', 'not_found'}.
 open_cache_doc(DbName, DocId, Options) ->
     case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
@@ -62,7 +62,7 @@ maybe_cache(DbName, DocId, _, {ok, JObj}) ->
 
 -spec open_cache_doc(map(), text(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
-                            data_error() |
+                            kz_data:error() |
                             {'error', 'not_found'}.
 open_cache_doc(Server, DbName, DocId, Options) ->
     case kz_cache:fetch_local(?CACHE_NAME, {?MODULE, DbName, DocId}) of
@@ -76,7 +76,7 @@ open_cache_doc(Server, DbName, DocId, Options) ->
 
 -spec open_cache_docs(text(), ne_binaries(), kz_proplist()) ->
                              {'ok', kz_json:objects()} |
-                             data_error().
+                             kz_data:error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
     lager:debug("misses ~p", [MissedDocIds]),
@@ -142,8 +142,8 @@ assemble_jobjs(JObjs, DocsReturned) ->
 remove_cache_options(Options) ->
     props:delete_keys(['cache_failures'], Options).
 
--spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error()) -> 'ok'.
--spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), data_error(), atoms()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), kz_data:error()) -> 'ok'.
+-spec maybe_cache_failure(ne_binary(), ne_binary(), kz_proplist(), kz_data:error(), atoms()) -> 'ok'.
 maybe_cache_failure(DbName, DocId, Options, Error) ->
     case props:get_value('cache_failures', Options) of
         ErrorCodes when is_list(ErrorCodes) ->
@@ -159,7 +159,7 @@ maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCo
         'false' -> 'ok'
     end.
 
--spec add_to_doc_cache(ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
+-spec add_to_doc_cache(ne_binary(), ne_binary(), kz_json:object() | kz_data:error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->
     kz_cache:erase_local(?CACHE_NAME, {?MODULE, DbName, DocId}),
     CacheProps = [{'origin', {'db', DbName, DocId}}
@@ -172,7 +172,7 @@ add_to_doc_cache(DbName, DocId, CacheValue) ->
             kz_cache:store_local(?CACHE_NAME, {?MODULE, DbName, DocId}, CacheValue, CacheProps)
     end.
 
--spec cache_if_not_media(kz_proplist(), ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
+-spec cache_if_not_media(kz_proplist(), ne_binary(), ne_binary(), kz_json:object() | kz_data:error()) -> 'ok'.
 cache_if_not_media(CacheProps, DbName, DocId, CacheValue) ->
     %% NOTE: this is currently necessary because when a http_put is issued to
     %%   freeswitch and the media is uploaded it goes directly to bigcouch
