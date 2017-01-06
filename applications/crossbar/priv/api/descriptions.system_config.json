@@ -134,6 +134,7 @@
     "crossbar.freeswitch.templates_to_process": "crossbar.freeswitch templates to process",
     "crossbar.freeswitch.work_dir": "crossbar.freeswitch work dir",
     "crossbar.freeswitch.{Module}": "crossbar.freeswitch {Module}",
+    "crossbar.ip": "crossbar ip",
     "crossbar.local_resources.allow_peers": "crossbar.local_resources allow peers",
     "crossbar.magic_path_patterns": "crossbar magic path patterns",
     "crossbar.max_upload_size": "crossbar maximum upload size",

@@ -190,8 +190,11 @@ maybe_start_plaintext(Dispatch) ->
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"workers">>, 100),
 
             %% Name, NbAcceptors, Transport, TransOpts, Protocol, ProtoOpts
-            try cowboy:start_http('api_resource', Workers
-                                 ,[{'ip', {0,0,0,0,0,0,0,0}}
+            try
+                IP = get_binding_ip(),
+                lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
+                cowboy:start_http('api_resource', Workers
+                                 ,[{'ip', IP}
                                   ,{'port', Port}
                                   ]
                                  ,[{'env', [{'dispatch', Dispatch}
@@ -201,7 +204,8 @@ maybe_start_plaintext(Dispatch) ->
                                   ,{'onresponse', fun on_response/4}
                                   ,{'compress', ?USE_COMPRESSION}
                                   ]
-                                 ) of
+                                 )
+            of
                 {'ok', _} ->
                     lager:info("started plaintext API server");
                 {'error', {'already_started', _P}} ->
@@ -210,6 +214,56 @@ maybe_start_plaintext(Dispatch) ->
                 _E:_R ->
                     lager:warning("crashed starting API server: ~s: ~p", [_E, _R])
             end
+    end.
+
+-spec get_binding_ip() -> inet:ip_address().
+get_binding_ip() ->
+    IsIPv6Enabled = is_ip_family_supported("localhost", 'inet6'),
+    IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
+
+    %% expilicty convert to list to allow save the default value in human readable value
+    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+
+    {'ok', DefaultIP} = inet:parse_address(kz_util:to_list(default_ip(IsIPv6Enabled))),
+    {'ok', DefaultIPv4} = inet:parse_address(kz_util:to_list(default_ip('false'))),
+    {'ok', DefaultIPv6} = inet:parse_address(kz_util:to_list(default_ip('true'))),
+
+    case inet:parse_ipv6strict_address(IP) of
+        {'ok', IPv6} when IsIPv6Enabled -> IPv6;
+        {'ok', _} when IsIPv4Enabled ->
+            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ipv4 ~s"
+                         ,[IP, inet:ntoa(DefaultIPv4)]
+                         ),
+            DefaultIPv4;
+        {'error', 'einval'} ->
+            case inet:parse_ipv4strict_address(IP) of
+                {'ok', IPv4} when IsIPv4Enabled -> IPv4;
+                {'ok', _} when IsIPv6Enabled->
+                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ipv6 ~s"
+                                 ,[IP, inet:ntoa(DefaultIPv6)]
+                                 ),
+                    DefaultIPv6;
+                {'error', 'einval'} ->
+                    lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
+                                 ,[IP, inet:ntoa(DefaultIP)]
+                                 ),
+                    DefaultIP
+            end
+    end.
+
+-spec default_ip() -> ne_binary().
+default_ip() ->
+    default_ip(is_ip_family_supported("localhost", 'inet6')).
+
+-spec default_ip(boolean()) -> ne_binary().
+default_ip('true') -> <<"::">>;
+default_ip('false') -> <<"0.0.0.0">>.
+
+-spec is_ip_family_supported(string(), inet:address_family()) -> boolean().
+is_ip_family_supported(Host, Family) ->
+    case inet:getaddr(Host, Family) of
+        {'ok', _} -> 'true';
+        {'error', _} -> 'false'
     end.
 
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
@@ -229,8 +283,15 @@ start_ssl(Dispatch) ->
             ReqTimeout = kapps_config:get_integer(?CONFIG_CAT, <<"request_timeout_ms">>, 10 * ?MILLISECONDS_IN_SECOND),
             Workers = kapps_config:get_integer(?CONFIG_CAT, <<"ssl_workers">>, 100),
 
-            try cowboy:start_https('api_resource_ssl', Workers
-                                  ,SSLOpts
+            try
+                IP = get_binding_ip(),
+                lager:info("trying to bind SSL API server to address ~s port ~b"
+                          ,[inet:ntoa(IP)
+                           ,props:get_value('port', SSLOpts)
+                           ]
+                          ),
+                cowboy:start_https('api_resource_ssl', Workers
+                                  ,[{'ip', IP} | SSLOpts]
                                   ,[{'env', [{'dispatch', Dispatch}
                                             ,{'timeout', ReqTimeout}
                                             ]}
