@@ -143,10 +143,10 @@ do_new(DID, Setters0) ->
 
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
-fetch(T0=#{todo := Nums}) ->
+fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
     F = fun ({NumberDb, NormalizedNums}, T) ->
-                case fetch_in(NumberDb, NormalizedNums) of
+                case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
                         lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
@@ -157,7 +157,7 @@ fetch(T0=#{todo := Nums}) ->
     lists:foldl(F, T0, Pairs).
 
 -ifdef(TEST).
-fetch_in(NumberDb, Nums) ->
+fetch_in(NumberDb, Nums, _Options) ->
     true = lists:all(fun (Num) -> NumberDb =:= knm_converters:to_db(Num) end, Nums),
     {ok, [test_fetch_in(Num) || Num <- Nums]}.
 
@@ -168,10 +168,13 @@ test_fetch_in(Num) ->
            end,
     kz_json:from_list([{<<"key">>, Num}, Data]).
 -else.
-fetch_in(NumberDb, [Num]) ->
-    kz_datamgr:open_cache_doc(NumberDb, Num);
-fetch_in(NumberDb, Nums) ->
-    kz_datamgr:open_cache_docs(NumberDb, Nums).
+fetch_in(NumberDb, [Num], Options) ->
+    fetch(NumberDb, Num, Options);
+fetch_in(NumberDb, Nums, Options) ->
+    case knm_number_options:batch_run(Options) of
+        true -> kz_datamgr:open_docs(NumberDb, Nums);
+        false -> kz_datamgr:open_cache_docs(NumberDb, Nums)
+    end.
 -endif.
 
 bulk_fetch(T0, JObjs) ->
