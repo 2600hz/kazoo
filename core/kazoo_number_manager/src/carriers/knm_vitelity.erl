@@ -54,6 +54,8 @@ check_numbers(_Numbers) -> {error, not_implemented}.
 -spec find_numbers(ne_binary(), pos_integer(), knm_carriers:options()) ->
                           {'ok', knm_number:knm_numbers()} |
                           {'error', any()}.
+find_numbers(<<"+1",Prefix/binary>>, Quantity, Options) ->
+    find_numbers(Prefix, Quantity, Options);
 find_numbers(Prefix, Quantity, Options) ->
     case props:is_true(tollfree, Options, 'false') of
         'false' -> classify_and_find(Prefix, Quantity, Options);
