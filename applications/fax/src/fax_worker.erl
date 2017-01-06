@@ -939,7 +939,7 @@ fetch_document_from_url(JObj) ->
 prepare_contents(JobId, RespHeaders, RespContent) ->
     lager:debug("preparing fax contents", []),
     TmpDir = kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-    case fax_util:normalize_content_type(props:get_value("Content-Type", RespHeaders, <<"application/octet-stream">>)) of
+    case fax_util:normalize_content_type(props:get_value("content-type", RespHeaders, <<"application/octet-stream">>)) of
         <<"image/tiff">> ->
             OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
             kz_util:write_file(OutputFile, RespContent),
