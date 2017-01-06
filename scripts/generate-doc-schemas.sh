@@ -29,16 +29,16 @@ def public_doc(ref_path):
 errors = 0
 for fname in sys.argv[1::]:
     docname = public_doc(fname)
+    if not os.path.isfile(docname):
+        print('Doc does not exist, please create', docname, file=sys.stderr)
+        errors += 1
+        continue
+
     try:
         with open(fname, 'r') as f:
             schemas = find_schema(f.read())
     except IndexError:
         # print('No schemas found, ignoring', fname)
-        continue
-
-    if not os.path.isfile(docname):
-        print('Doc does not exist, please create', docname, file=sys.stderr)
-        errors += 1
         continue
 
     with open(docname, 'r') as f:
