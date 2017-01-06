@@ -41,6 +41,10 @@
             "description": "crossbar expiry percentage",
             "type": "integer"
         },
+        "ip": {
+            "description": "crossbar ip",
+            "type": "string"
+        },
         "magic_path_patterns": {
             "default": [
                 "/:version/accounts/:account_id/vmboxes/:box_id/messages/:message_id/raw",
