@@ -36,7 +36,8 @@ process_module(Module, Acc) ->
     case kz_ast_util:module_ast(Module) of
         'undefined' -> Acc;
         {M, AST} ->
-            Fs = kz_ast_util:add_module_ast([], M, AST),
+            #module_ast{functions=Fs
+                       } = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
             process_functions(M, Fs, Acc)
     end.
 

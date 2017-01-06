@@ -1,6 +1,20 @@
 -ifndef(KZ_AST_HRL).
 
+-record(module_ast, {functions = []
+                    ,records = []
+                    }).
+
+-type module_ast() :: #module_ast{}.
+
 %% Helper macros for processing Erlang AST forms
+
+-define(AST_FUNCTION(Name, Arity, Clauses)
+       ,{'function', _, F, Arity, Clauses}
+       ).
+
+-define(AST_RECORD(Name, Fields)
+       ,{'attribute', _, 'record', {Name, Fields}}
+       ).
 
 -define(CLAUSE(Args, Guards, Body)
        ,{'clause', _, Args, Guards, Body}
@@ -42,8 +56,11 @@
 -define(RECORD_FIELD_REST
        ,{'record_field', _, ?VAR('_'), ?ATOM('_')}
        ).
+-define(RECORD_FIELD(Key)
+       ,{'record_field', _, ?ATOM(Key)}
+       ).
 -define(RECORD_FIELD_BIND(Key, Value)
-       ,{'record_field', _,?ATOM(Key),Value}
+       ,{'record_field', _, ?ATOM(Key), Value}
        ).
 -define(RECORD_FIELD_ACCESS(RecordName, Name, Value)
        ,?GEN_RECORD_FIELD_ACCESS(?VAR(Name), RecordName, Value)
@@ -51,6 +68,9 @@
 -define(RECORD(Name, Fields), {'record', _, Name, Fields}).
 -define(GEN_RECORD(NameExpr, RecName, Fields)
        ,{'record', _, NameExpr, RecName, Fields}
+       ).
+-define(TYPED_RECORD_FIELD(RecordField, Type)
+       ,{'typed_record_field', RecordField, Type}
        ).
 
 -define(RECORD_VAR(VarName, RecName, Fields)
