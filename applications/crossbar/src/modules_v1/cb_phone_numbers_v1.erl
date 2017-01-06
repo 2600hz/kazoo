@@ -54,6 +54,8 @@
 
 -define(PREFIX, <<"prefix">>).
 -define(COUNTRY, <<"country">>).
+-define(OFFSET, <<"offset">>).
+-define(QUANTITY, <<"quantity">>).
 
 %%%===================================================================
 %%% API
@@ -385,14 +387,31 @@ read(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    Options = get_find_numbers_req(Context),
+    AccountId = cb_context:auth_account_id(Context),
+    QS = cb_context:query_string(Context),
+    Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
+    Prefix = kz_util:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
+    Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
+    Token = cb_context:auth_token(Context),
+    HashKey = <<AccountId/binary, "-", Token/binary>>,
+    Hash = kz_base64url:encode(crypto:hash(sha, HashKey)),
+    QueryId = list_to_binary([Country, "-", Prefix, "-", Hash]),
+    Dialcode = knm_util:prefix_for_country(Country),
+    NormalizedPrefix = <<Dialcode/binary, Prefix/binary>>,
+    Options = props:filter_undefined(
+                [{'quantity', max(1, kz_json:get_integer_value(?QUANTITY, QS, 1))}
+                ,{'prefix', Prefix}
+                ,{'normalized_prefix', NormalizedPrefix}
+                ,{'country', Country}
+                ,{'dialcode', Dialcode}
+                ,{'offset', Offset}
+                ,{'account_id', AccountId}
+                ,{'reseller_id', cb_context:reseller_id(Context)}
+                ,{'query_id', QueryId}
+                ]),
     OnSuccess =
         fun(C) ->
-                lager:debug("carriers find: ~p", [Options]),
-                Found =
-                    [kz_json:get_value(<<"number">>, JObj)
-                     || JObj <- knm_carriers:find(knm_carriers:prefix(Options), Options)
-                    ],
+                Found = knm_search:find(Options),
                 cb_context:setters(C
                                   ,[{fun cb_context:set_resp_data/2, Found}
                                    ,{fun cb_context:set_resp_status/2, 'success'}
@@ -401,17 +420,6 @@ find_numbers(Context) ->
     Schema = kz_json:decode(?FIND_NUMBER_SCHEMA),
     Context1 = cb_context:set_req_data(Context, knm_carriers:options_to_jobj(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
-
--spec get_find_numbers_req(cb_context:context()) -> kz_proplist().
-get_find_numbers_req(Context) ->
-    QS = cb_context:query_string(Context),
-    [{'quantity', kz_json:get_ne_value(<<"quantity">>, QS, 1)}
-    ,{'prefix', kz_json:get_ne_value(?PREFIX, QS)}
-    ,{'country', kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY)}
-    ,{'offset', kz_json:get_integer_value(<<"offset">>, QS, 0)}
-    ,{'account_id', cb_context:auth_account_id(Context)}
-    ,{'reseller_id', cb_context:reseller_id(Context)}
-    ].
 
 %%--------------------------------------------------------------------
 %% @private
