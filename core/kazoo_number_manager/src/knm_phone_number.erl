@@ -171,7 +171,7 @@ test_fetch_in(Num) ->
 fetch_in(NumberDb, [Num]) ->
     kz_datamgr:open_cache_doc(NumberDb, Num);
 fetch_in(NumberDb, Nums) ->
-    kz_datamgr:all_docs(NumberDb, [{keys, Nums}, include_docs]).
+    kz_datamgr:open_cache_docs(NumberDb, Nums).
 -endif.
 
 bulk_fetch(T0, JObjs) ->
