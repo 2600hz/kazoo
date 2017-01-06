@@ -164,7 +164,6 @@
     },
     "required": [
         "autoload_modules",
-        "ip",
         "ssl_ca_cert"
     ],
     "type": "object"

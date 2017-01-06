@@ -218,33 +218,53 @@ maybe_start_plaintext(Dispatch) ->
 
 -spec get_binding_ip() -> inet:ip_address().
 get_binding_ip() ->
-    Default = case is_ipv6_supported() of
-                  'true' -> <<"::">>;
-                  'false' -> <<"0.0.0.0">>
-              end,
+    IsIPv6Enabled = is_ip_family_supported("localhost", 'inet6'),
+    IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
+
     %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, Default)),
+    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+
+    {'ok', DefaultIP} = inet:parse_address(kz_util:to_list(default_ip(IsIPv6Enabled))),
+    {'ok', DefaultIPv4} = inet:parse_address(kz_util:to_list(default_ip('false'))),
+    {'ok', DefaultIPv6} = inet:parse_address(kz_util:to_list(default_ip('true'))),
+
     case inet:parse_ipv6strict_address(IP) of
-        {'ok', IPv6} -> IPv6;
+        {'ok', IPv6} when IsIPv6Enabled -> IPv6;
+        {'ok', _} when IsIPv4Enabled ->
+            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ipv4 ~s"
+                         ,[IP, inet:ntoa(DefaultIPv4)]
+                         ),
+            DefaultIPv4;
         {'error', 'einval'} ->
             case inet:parse_ipv4strict_address(IP) of
-                {'ok', IPv4} -> IPv4;
-                {'error', R} ->
-                    lager:error("ip ~p is not a valid ipv6 or ipv4 address: ~p", [IP, R]),
-                    throw(R)
+                {'ok', IPv4} when IsIPv4Enabled -> IPv4;
+                {'ok', _} when IsIPv6Enabled->
+                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ipv6 ~s"
+                                 ,[IP, inet:ntoa(DefaultIPv6)]
+                                 ),
+                    DefaultIPv6;
+                {'error', 'einval'} ->
+                    lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
+                                 ,[IP, inet:ntoa(DefaultIP)]
+                                 ),
+                    DefaultIP
             end
     end.
 
--spec is_ipv6_supported() -> boolean().
-is_ipv6_supported() ->
-    try inet:getaddr("localhost", 'inet6') of
+-spec default_ip() -> ne_binary().
+default_ip() ->
+    default_ip(is_ip_family_supported("localhost", 'inet6')).
+
+-spec default_ip(boolean()) -> ne_binary().
+default_ip('true') -> <<"::">>;
+default_ip('false') -> <<"0.0.0.0">>.
+
+-spec is_ip_family_supported(string(), inet:address_family()) -> boolean().
+is_ip_family_supported(Host, Family) ->
+    case inet:getaddr(Host, Family) of
         {'ok', _} -> 'true';
         {'error', _} -> 'false'
-    catch
-        _:_ ->
-            'false'
     end.
-
 
 -spec maybe_start_ssl(cowboy_router:dispatch_rules()) -> 'ok'.
 maybe_start_ssl(Dispatch) ->
