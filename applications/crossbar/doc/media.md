@@ -195,6 +195,8 @@ A response:
 
 #### Remove metadata
 
+Optional Parameter: "hard_delete": true - will perform a hard delete of the document (default is soft delete)
+
 > DELETE /v2/accounts/{ACCOUNT_ID}/media/{MEDIA_ID}
 
 ```shell
