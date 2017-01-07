@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(notify_fax_util).
 
--export([get_attachment/2]).
+-export([get_attachment/2, get_attachment/3]).
 
 -include("notify.hrl").
 
@@ -42,7 +42,18 @@ get_file_name(Props, Ext) ->
                             {ne_binary(), ne_binary(), ne_binary()} |
                             {'error', any()}.
 get_attachment(Category, Props) ->
-    {'ok', AttachmentBin, ContentType} = raw_attachment_binary(Props),
+    UseDb = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
+    get_attachment(UseDb, Category, Props).
+
+-spec get_attachment(ne_binary(), ne_binary(), kz_proplist()) ->
+                            {ne_binary(), ne_binary(), ne_binary()} |
+                            {'error', any()}.
+get_attachment(UseDb, Category, Props) ->
+    Fax   = props:get_value(<<"fax">>, Props),
+    FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
+
+    {'ok', AttachmentBin, ContentType} = raw_attachment_binary(UseDb, FaxId),
+
     case kapps_config:get_binary(Category, <<"attachment_format">>, <<"pdf">>) of
         <<"pdf">> -> convert_to_pdf(AttachmentBin, Props, ContentType);
         _Else -> convert_to_tiff(AttachmentBin, Props, ContentType)
@@ -54,23 +65,16 @@ get_attachment(Category, Props) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec raw_attachment_binary(kz_proplist()) ->
-                                   {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary()) ->
                                    {'ok', ne_binary(), ne_binary()}.
 -spec raw_attachment_binary(ne_binary(), ne_binary(), non_neg_integer()) ->
                                    {'ok', ne_binary(), ne_binary()}.
-raw_attachment_binary(Props) ->
-    Fax = props:get_value(<<"fax">>, Props),
-    FaxId = props:get_first_defined([<<"fax_jobid">>, <<"fax_id">>], Fax),
-    Db = props:get_value(<<"account_db">>, Props, ?KZ_FAXES_DB),
-    lager:debug("raw attachment ~s / ~s", [Db, FaxId]),
-    raw_attachment_binary(Db, FaxId).
-
 raw_attachment_binary(Db, FaxId) ->
     raw_attachment_binary(Db, FaxId, 2).
 
 raw_attachment_binary(Db, FaxId, Retries) when Retries > 0 ->
+    lager:debug("get raw attachment ~s / ~s", [Db, FaxId]),
+
     case kz_datamgr:open_doc(Db, FaxId) of
         {'error','not_found'} when Db =/= ?KZ_FAXES_DB ->
             raw_attachment_binary(?KZ_FAXES_DB, FaxId, Retries);
