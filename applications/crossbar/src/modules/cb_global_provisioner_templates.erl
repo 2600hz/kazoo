@@ -17,6 +17,7 @@
 %%%   Jon Blanton
 %%%   Karl Anderson
 %%%   James Aimonetti
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(cb_global_provisioner_templates).
 
@@ -52,6 +53,7 @@
 
 -spec init() -> ok.
 init() ->
+    init_db(),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.global_provisioner_templates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.global_provisioner_templates">>, ?MODULE, 'content_types_accepted'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.global_provisioner_templates">>, ?MODULE, 'allowed_methods'),
@@ -61,6 +63,11 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.global_provisioner_templates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.global_provisioner_templates">>, ?MODULE, 'delete'),
     _ = crossbar_bindings:bind(<<"*.finish_request.put.devices">>, ?MODULE, 'device_updated'),
+    ok.
+
+init_db() ->
+    _ = kz_datamgr:db_create(?KZ_PROVISIONER_DB),
+    _ = kz_datamgr:revise_doc_from_file(?KZ_PROVISIONER_DB, 'crossbar', <<"account/provisioner_templates.json">>),
     ok.
 
 %%--------------------------------------------------------------------
