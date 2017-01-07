@@ -65,11 +65,13 @@ process_req(FaxDoc, JObj, _Props) ->
                                                <<"outbound_fax_to_email">>,
                                                <<"email_subject_template">>], AcctObj),
 
+    AccountDb = kapi_notifications:account_db(JObj),
+
     {'ok', TxtBody} = notify_util:render_template(CustomTxtTemplate, ?DEFAULT_TEXT_TMPL, Props),
     {'ok', HTMLBody} = notify_util:render_template(CustomHtmlTemplate, ?DEFAULT_HTML_TMPL, Props),
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
-    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props)) of
+    try build_and_send_email(TxtBody, HTMLBody, Subject, Emails, props:filter_empty(Props), AccountDb) of
         _ -> lager:debug("built and sent")
     catch
         C:R ->
@@ -129,14 +131,14 @@ fax_values(Event) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist()) -> any().
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To) ->
-    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To];
-build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) ->
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | ne_binaries(), kz_proplist(), ne_binary()) -> any().
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, AccountDb) when is_list(To) ->
+    _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props, AccountDb) || T <- To];
+build_and_send_email(TxtBody, HTMLBody, Subject, To, Props, AccountDb) ->
     Service = props:get_value(<<"service">>, Props),
     From = props:get_value(<<"send_from">>, Service),
 
-    {ContentType, AttachmentFileName, AttachmentBin} = notify_fax_util:get_attachment(?MOD_CONFIG_CAT, Props),
+    {ContentType, AttachmentFileName, AttachmentBin} = notify_fax_util:get_attachment(AccountDb, ?MOD_CONFIG_CAT, Props),
     [ContentTypeA,ContentTypeB] = binary:split(ContentType,<<"/">>),
 
     {ContentTypeParams, CharsetString} = notify_util:get_charset_params(Service),
