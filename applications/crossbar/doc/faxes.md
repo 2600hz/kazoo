@@ -376,10 +376,10 @@ curl -v -X DELETE \
 
 ### Receiving Inbound Faxes
 
-#### Fetch
+#### List incoming fax jobs
 
 Retrieve a list of faxes that are currently being received or attempted to be received.
-NOTE: THIS FUNCTION DOES NOT WORK YET AS OF THE WRITING OF THIS DOCUMENT. We'll update this doc once this function is complete. Ticket #
+NOTE: THIS FUNCTION DOES NOT WORK YET AS OF THE WRITING OF THIS DOCUMENT. We'll update this doc once this function is complete.
 
 > GET /v2/accounts/{ACCOUNT_ID}/faxes/incoming
 
