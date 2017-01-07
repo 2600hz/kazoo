@@ -195,14 +195,14 @@ download_file(URL, Authorization) ->
     Headers = [?GPC_PROXY_HEADER , {"Authorization",Authorization}],
     case kz_http:get(kz_util:to_list(URL), Headers) of
         {'ok', 200, RespHeaders, RespBody} ->
-            CT = kz_util:to_binary(props:get_value("Content-Type", RespHeaders)),
+            CT = kz_util:to_binary(props:get_value("content-type", RespHeaders)),
             Ext = kz_mime:to_extension(CT),
             FileName = <<"/tmp/fax_printer_"
                          ,(kz_util:to_binary(kz_util:current_tstamp()))/binary
                          ,"."
                          ,Ext/binary
                        >>,
-            case file:write_file(FileName,RespBody) of
+            case file:write_file(FileName, RespBody) of
                 'ok' -> {'ok', CT, RespBody};
                 {'error', _}=Error ->
                     lager:debug("error writing file ~s from ~s : ~p", [URL, FileName, Error]),
@@ -403,7 +403,7 @@ check_registration(AppId, <<"registered">>, JObj) ->
         {'ok', 200, _RespHeaders, RespXML} ->
             JObjPool = kz_json:decode(RespXML),
             Result = kz_json:get_value(<<"success">>, JObjPool, 'false'),
-            process_registration_result(Result, AppId, JObj,JObjPool );
+            process_registration_result(Result, AppId, JObj, JObjPool);
         _A ->
             lager:debug("unexpected result checking registration of printer ~s: ~p", [PrinterId, _A])
     end;
