@@ -110,6 +110,13 @@
                         "type": "integer"
                     }
                 },
+                "max_login_attempts": {
+                    "properties": {
+                        "default": 3,
+                        "description": "callflow max login attempts",
+                        "type": "integer"
+                    }
+                },
                 "max_message_count": {
                     "properties": {
                         "default": 100,
@@ -149,6 +156,13 @@
                     "properties": {
                         "default": 2000,
                         "description": "callflow migrate maximum bulk insert",
+                        "type": "integer"
+                    }
+                },
+                "migrate_max_worker": {
+                    "properties": {
+                        "default": 10,
+                        "description": "callflow migrate max worker",
                         "type": "integer"
                     }
                 },

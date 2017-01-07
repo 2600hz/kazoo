@@ -27,7 +27,7 @@
             "type": "string"
         },
         "asr_url": {
-            "default": "http://api.ispeech.org/api/json",
+            "default": "http://api.ispeech.org/api/rest",
             "description": "speech asr url",
             "type": "string"
         },

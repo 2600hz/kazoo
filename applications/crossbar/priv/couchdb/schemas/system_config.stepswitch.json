@@ -64,7 +64,6 @@
             "type": "array"
         },
         "default_weight": {
-            "default": 1,
             "description": "stepswitch default weight",
             "type": "integer"
         },
@@ -117,7 +116,8 @@
     "required": [
         "default_emergency_cid_number",
         "default_formatters",
-        "default_route"
+        "default_route",
+        "default_weight"
     ],
     "type": "object"
 }

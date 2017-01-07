@@ -37,9 +37,16 @@ add_module_ast(ModAST, Module, {'raw_abstract_v1', Attributes}) ->
 
 -spec add_module_ast_fold(ast(), module(), ast()) -> module_ast().
 add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functions=Fs}=Acc) ->
-    Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
+    %% FIXME: prepending vs. appending. For example in extracting system_config params
+    %% the last function that is calling kapps_config replacing precending founded default parameter's value
+    %% (look at kapps_controller kapps for example, or speech asr_url)
+
+    %%Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
+
+    Acc#module_ast{functions=Fs ++ [{Module, F, Arity, Clauses}]};
 add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=Acc) ->
-    Acc#module_ast{records=[{Name, Fields}|Rs]};
+    %%Acc#module_ast{records=[{Name, Fields}|Rs]};
+    Acc#module_ast{records=Rs ++ [{Name, Fields}]};
 add_module_ast_fold(_Other, _Module, Acc) ->
     Acc.
 

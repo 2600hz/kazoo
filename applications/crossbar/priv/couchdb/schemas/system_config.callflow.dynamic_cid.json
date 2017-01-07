@@ -3,9 +3,34 @@
     "_id": "system_config.callflow.dynamic_cid",
     "description": "Schema for callflow.dynamic_cid system_config",
     "properties": {
+        "accept_prompt": {
+            "default": "tone_stream://%(250,50,440)",
+            "description": "callflow.dynamic_cid accept prompt",
+            "type": "string"
+        },
+        "default_prompt": {
+            "default": "dynamic-cid-enter_cid",
+            "description": "callflow.dynamic_cid default prompt",
+            "type": "string"
+        },
+        "max_digits": {
+            "default": 10,
+            "description": "callflow.dynamic_cid max digits",
+            "type": "integer"
+        },
+        "min_digits": {
+            "default": 10,
+            "description": "callflow.dynamic_cid min digits",
+            "type": "integer"
+        },
         "reject_prompt": {
             "default": "dynamic-cid-invalid_using_default",
             "description": "callflow.dynamic_cid reject prompt",
+            "type": "string"
+        },
+        "whitelist_regex": {
+            "default": "\\d+",
+            "description": "callflow.dynamic_cid whitelist regex",
             "type": "string"
         }
     },

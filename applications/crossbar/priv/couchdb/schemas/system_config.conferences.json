@@ -3,6 +3,14 @@
     "_id": "system_config.conferences",
     "description": "Schema for conferences system_config",
     "properties": {
+        "bridge_password": {
+            "description": "conferences bridge password",
+            "type": "string"
+        },
+        "bridge_username": {
+            "description": "conferences bridge username",
+            "type": "string"
+        },
         "profiles": {
             "properties": {
                 "default": {
