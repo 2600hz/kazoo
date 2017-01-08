@@ -1,7 +1,0 @@
-### Killio
-
-#### About Killio
-
-#### Schema
-
-

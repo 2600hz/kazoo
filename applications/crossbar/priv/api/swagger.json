@@ -16267,30 +16267,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/killio/call": {
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/ledgers": {
             "get": {
                 "parameters": [
