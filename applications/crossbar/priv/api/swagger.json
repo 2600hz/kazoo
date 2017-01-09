@@ -16267,30 +16267,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/killio/call": {
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/ledgers": {
             "get": {
                 "parameters": [
@@ -19716,49 +19692,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/templates": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/templates/{TEMPLATE_NAME}": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/template_name"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/template_name"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/temporal_rules": {
             "get": {
                 "parameters": [
@@ -21392,6 +21325,25 @@
                     },
                     {
                         "$ref": "#/parameters/node"
+                    }
+                ]
+            }
+        },
+        "/templates": {
+            "get": {}
+        },
+        "/templates/{TEMPLATE_NAME}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/template_name"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/template_name"
                     }
                 ]
             }

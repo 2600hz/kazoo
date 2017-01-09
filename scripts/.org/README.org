@@ -332,7 +332,6 @@ Undocumented API endpoints:
 > PUT /v2/accounts/{ACCOUNT_ID}/local_provisioner_templates
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}/welcome
 > GET /v2/accounts/{ACCOUNT_ID}/global_provisioner_templates/{TEMPLATE_ID}/image
-> POST /v2/accounts/{ACCOUNT_ID}/killio/call
 > POST /v2/accounts/{ACCOUNT_ID}/resource_selectors/resource/{RESOURCE_ID}/name/{SELECTOR_NAME}
 > GET /v2/accounts/{ACCOUNT_ID}/hotdesks
 > GET /v2/accounts/{ACCOUNT_ID}/temporal_rules
@@ -371,7 +370,6 @@ Undocumented API endpoints:
 > DELETE /v2/accounts/{ACCOUNT_ID}/connectivity/{CONNECTIVITY_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/agents
 > POST /v2/accounts/{ACCOUNT_ID}/storage
-> PUT /v2/accounts/{ACCOUNT_ID}/killio/call
 > GET /v2/accounts/{ACCOUNT_ID}/alerts/{ALERT_ID}
 > GET /v2/accounts/{ACCOUNT_ID}/connectivity
 > GET /v2/accounts/{ACCOUNT_ID}/whitelabel/{WHITELABEL_DOMAIN}

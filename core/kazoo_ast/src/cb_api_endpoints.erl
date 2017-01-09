@@ -687,18 +687,19 @@ path_name(Module) ->
         {'match', [<<"about">>=Name]} -> Name;
         {'match', [<<"accounts">>=Name]} -> Name;
         {'match', [<<"api_auth">>=Name]} -> Name;
+        {'match', [<<"auth">>=Name]} -> Name;
         {'match', [<<"basic_auth">>=Name]} -> Name;
         {'match', [<<"google_auth">>=Name]} -> Name;
         {'match', [<<"ip_auth">>=Name]} -> Name;
+        {'match', [<<"rates">>=Name]} -> Name;
         {'match', [<<"schemas">>=Name]} -> Name;
         {'match', [<<"shared_auth">>=Name]} -> Name;
         {'match', [<<"sup">>=Name]} -> Name;
         {'match', [<<"system_configs">>=Name]} -> Name;
+        {'match', [<<"templates">>=Name]} -> Name;
         {'match', [<<"token_auth">>=Name]} -> Name;
         {'match', [<<"ubiquiti_auth">>=Name]} -> Name;
         {'match', [<<"user_auth">>=Name]} -> Name;
-        {'match', [<<"auth">>=Name]} -> Name;
-        {'match', [<<"rates">>=Name]} -> Name;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', _M} ->

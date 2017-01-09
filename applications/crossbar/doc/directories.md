@@ -47,17 +47,7 @@ curl -v -X GET \
 }
 ```
 
-#### Create
-
-> PUT /v2/accounts/{ACCOUNT_ID}/directories
-
-```shell
-curl -v -X PUT \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories
-```
-
-#### Remove
+#### Remove a directory
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
 
@@ -114,23 +104,3 @@ Streams back a PDF document.
 ```
 
 If your client does not support setting the `Accept` header, you can append `?accept=pdf` to the URI and Kazoo will pretend you sent the proper `Accept` header.
-
-#### Patch
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-```
-
-#### Change
-
-> POST /v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-
-```shell
-curl -v -X POST \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/directories/{DIRECTORY_ID}
-```

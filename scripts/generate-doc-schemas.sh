@@ -1,14 +1,13 @@
 #!/usr/bin/env python2
 
-# print 'Usage: ' + sys.argv[0] + ' doc/ref/*.md'
-
 from __future__ import print_function
 import os
 import re
 import sys
 
 if len(sys.argv) < 2:
-    pass
+    print('Usage: ' + sys.argv[0] + ' applications/crossbar/doc/ref/*.md', file=sys.stderr)
+    sys.exit(1)
 
 def find_schema(txt):
     found = re.findall('#### Schema\n\n[^>]*\n\n\n', txt, re.MULTILINE | re.DOTALL)
@@ -27,18 +26,18 @@ def public_doc(ref_path):
     return os.path.join(doc_root, ref_to_doc.get(ref_name, ref_name))
 
 errors = 0
-for fname in sys.argv[1::]:
-    docname = public_doc(fname)
-    try:
-        with open(fname, 'r') as f:
-            schemas = find_schema(f.read())
-    except IndexError:
-        # print('No schemas found, ignoring', fname)
+for refname in sys.argv[1::]:
+    docname = public_doc(refname)
+    if not os.path.isfile(docname):
+        print('Doc does not exist, please create', docname, '(from', refname, ')', file=sys.stderr)
+        errors += 1
         continue
 
-    if not os.path.isfile(docname):
-        print('Doc does not exist, please create', docname, file=sys.stderr)
-        errors += 1
+    try:
+        with open(refname, 'r') as f:
+            schemas = find_schema(f.read())
+    except IndexError:
+        # print('No schemas found, ignoring', refname)
         continue
 
     with open(docname, 'r') as f:
