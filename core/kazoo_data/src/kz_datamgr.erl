@@ -867,6 +867,9 @@ save_docs(DbName, [Doc|_]=Docs, Options)
     Result = kzs_doc:save_docs(kzs_plan:plan(DbName, Doc), DbName, Docs, Options),
     maybe_revert_publish(OldSetting),
     Result;
+save_docs(DbName, []=Docs, _Options)
+  when is_list(Docs), ?VALID_DBNAME(DbName) ->
+    {'ok', Docs};
 save_docs(DbName, Docs, Options) when is_list(Docs) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> save_docs(Db, Docs, Options);
