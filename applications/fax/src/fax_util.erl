@@ -130,11 +130,13 @@ save_fax_attachment(JObj, FileContents, CT, Name, Count) ->
     end.
 
 -spec attempt_save(kz_json:object(), binary(), ne_binary(), ne_binary()) ->
-                          {'ok', kz_json:object()} |
-                          kz_data:data_error().
+                          {'ok', kz_json:objcet()} |
+                          kz_datamgr:data_error().
 attempt_save(JObj, FileContents, CT, Name) ->
-    Options = [{'content_type', CT}],
-    kz_datamgr:put_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), Name, FileContents, Options).
+    Opts = [{'content_type', CT}
+           ],
+
+    kz_datamgr:put_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), Name, FileContents, Opts).
 
 -spec check_fax_attachment(ne_binary(), ne_binary())->
                                   {'ok', kz_json:object()} |

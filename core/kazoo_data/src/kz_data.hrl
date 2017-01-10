@@ -38,6 +38,30 @@
                   }).
 -type copy_doc() :: #copy_doc{}.
 
+-type data_errors() :: 'conflict' |
+                       'db_not_found' |
+                       'db_not_reachable' |
+                       'failed' |
+                       'gateway_timeout' |
+                       'invalid_db_name' |
+                       'invalid_view_name' |
+                       'not_found' |
+                       'precondition_failed' |
+                       'req_timedout' |
+                       'retry_later' |
+                       'sel_conn_closed' |
+                       'unknown_req_id' |
+                       'worker_is_dead' |
+                       'resource_not_available' |
+                       integer() |
+                       {'EXIT', _} |
+                       {'conn_failed', _} |
+                       {'ok', string(), _, _} |
+                       {'url_parsing_failed', _} |
+                       {integer(), _}. % {error_code, body}
+
+-type data_error() :: {'error', data_errors()}.
+
 -type stale() :: 'ok' | 'update_after'.
 
 -type key_range() :: integer() | binary() | [integer() | binary() | kz_json:object()].
@@ -82,7 +106,8 @@
 -type docid() :: ne_binary() | {ne_binary(), ne_binary()}.
 -type docids() :: [docid()].
 
--type get_results_return() :: {'ok', kz_json:objects() | kz_json:path()} | kz_data:error().
+-type get_results_return() :: {'ok', kz_json:objects() | kz_json:path()} |
+                              data_error().
 
 -define(DEFAULT_DATA_SECTION, [{'local', 'bigcouch'}]).
 -define(MERGE_PROPS, [{'driver', 'kazoo_couch'}
