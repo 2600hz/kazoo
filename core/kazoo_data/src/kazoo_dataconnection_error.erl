@@ -59,108 +59,135 @@
         ,all_docs/3
         ]).
 
--type conn_error(Type) :: {'error', Type}.
--type conn_error() :: conn_error('resource_not_available').
+-type error(Type) :: {'error', Type}.
+-type error() :: error('resource_not_available').
 
 %% Server operations
--spec new_connection(map()) -> conn_error().
-new_connection(_Map) -> conn_error().
+-spec new_connection(map()) -> error().
+new_connection(_Map) ->
+    {'error', 'resource_not_available'}.
 
--spec format_error(conn_error(A)) -> conn_error(A).
-format_error(Error) -> Error.
+-spec format_error(error(A)) -> error(A).
+format_error(Error) ->
+    Error.
 
 %% Connection operations
--spec get_db(kz_data:connection(), ne_binary()) -> conn_error().
-get_db(_, _) -> conn_error().
+-spec get_db(kz_data:connection(), ne_binary()) -> error().
+get_db(_, _) ->
+    {'error', 'resource_not_available'}.
 
--spec server_url(kz_data:connection()) -> conn_error().
-server_url(_Server) -> conn_error().
+-spec server_url(kz_data:connection()) -> error().
+server_url(_Server) ->
+    {'error', 'resource_not_available'}.
 
--spec db_url(kz_data:connection(), ne_binary()) -> conn_error().
-db_url(_Server, _DbName) -> conn_error().
+-spec db_url(kz_data:connection(), ne_binary()) -> error().
+db_url(_Server, _DbName) ->
+    {'error', 'resource_not_available'}.
 
--spec server_info(kz_data:connection()) -> conn_error().
-server_info(_Server) -> conn_error().
+-spec server_info(kz_data:connection()) -> error().
+server_info(_Server) ->
+    {'error', 'resource_not_available'}.
 
 %% DB operations
--spec db_create(kz_data:connection(), ne_binary(), kz_data:options()) -> conn_error().
-db_create(_Server, _DbName, _Options) -> conn_error().
+-spec db_create(kz_data:connection(), ne_binary(), kz_data:options()) -> error().
+db_create(_Server, _DbName, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec db_delete(kz_data:connection(), ne_binary()) -> conn_error().
-db_delete(_Server, _DbName) -> conn_error().
+-spec db_delete(kz_data:connection(), ne_binary()) -> error().
+db_delete(_Server, _DbName) ->
+    {'error', 'resource_not_available'}.
 
--spec db_view_cleanup(kz_data:connection(), ne_binary()) -> conn_error().
-db_view_cleanup(_Server, _DbName) -> conn_error().
+-spec db_view_cleanup(kz_data:connection(), ne_binary()) -> error().
+db_view_cleanup(_Server, _DbName) ->
+    {'error', 'resource_not_available'}.
 
--spec db_info(kz_data:connection()) -> conn_error().
-db_info(_Server) -> conn_error().
+-spec db_info(kz_data:connection()) -> error().
+db_info(_Server) ->
+    {'error', 'resource_not_available'}.
 
--spec db_info(kz_data:connection(), ne_binary()) -> conn_error().
-db_info(_Server, _DbName) -> conn_error().
+-spec db_info(kz_data:connection(), ne_binary()) -> error().
+db_info(_Server, _DbName) ->
+    {'error', 'resource_not_available'}.
 
--spec db_exists(kz_data:connection(), ne_binary()) -> conn_error().
-db_exists(_Server, _DbName) -> conn_error().
+-spec db_exists(kz_data:connection(), ne_binary()) -> error().
+db_exists(_Server, _DbName) ->
+    {'error', 'resource_not_available'}.
 
--spec db_archive(kz_data:connection(), ne_binary(), ne_binary()) -> conn_error().
-db_archive(_Server, _DbName, _Filename) -> conn_error().
+-spec db_archive(kz_data:connection(), ne_binary(), ne_binary()) -> error().
+db_archive(_Server, _DbName, _Filename) ->
+    {'error', 'resource_not_available'}.
 
--spec db_list(kz_data:connection(), kz_data:options()) -> conn_error().
-db_list(_Server, _Options) -> conn_error().
+-spec db_list(kz_data:connection(), kz_data:options()) -> error().
+db_list(_Server, _Options) ->
+    {'error', 'resource_not_available'}.
 
 %% Document operations
--spec open_doc(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-open_doc(_Server, _DbName, _DocId, _Options) -> conn_error().
+-spec open_doc(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+open_doc(_Server, _DbName, _DocId, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec lookup_doc_rev(kz_data:connection(), ne_binary(), ne_binary()) -> conn_error().
-lookup_doc_rev(_Server, _DbName, _DocId) -> conn_error().
+-spec lookup_doc_rev(kz_data:connection(), ne_binary(), ne_binary()) -> error().
+lookup_doc_rev(_Server, _DbName, _DocId) ->
+    {'error', 'resource_not_available'}.
 
--spec save_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> conn_error().
-save_doc(_Server, _DbName, _Doc, _Options) -> conn_error().
+-spec save_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> error().
+save_doc(_Server, _DbName, _Doc, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec save_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> conn_error().
-save_docs(_Server, _DbName, _Docs, _Options) -> conn_error().
+-spec save_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> error().
+save_docs(_Server, _DbName, _Docs, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> conn_error().
-del_doc(_Server, _DbName, _Doc, _Options) -> conn_error().
+-spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> error().
+del_doc(_Server, _DbName, _Doc, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec del_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> conn_error().
-del_docs(_Server, _DbName, _Docs, _Options) -> conn_error().
+-spec del_docs(kz_data:connection(), ne_binary(), kz_data:documents(), kz_data:options()) -> error().
+del_docs(_Server, _DbName, _Docs, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec ensure_saved(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> conn_error().
-ensure_saved(_Server, _DbName, _Doc, _Options) -> conn_error().
+-spec ensure_saved(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> error().
+ensure_saved(_Server, _DbName, _Doc, _Options) ->
+    {'error', 'resource_not_available'}.
 
 %% Attachment-related
--spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> conn_error().
-fetch_attachment(_Server, _DbName, _DocId, _AName) -> conn_error().
+-spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) -> error().
+fetch_attachment(_Server, _DbName, _DocId, _AName) ->
+    {'error', 'resource_not_available'}.
 
--spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) -> conn_error().
-stream_attachment(_Server, _DbName, _DocId, _AName, _Caller) -> conn_error().
+-spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) -> error().
+stream_attachment(_Server, _DbName, _DocId, _AName, _Caller) ->
+    {'error', 'resource_not_available'}.
 
--spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-put_attachment(_Server, _DbName, _DocId, _AName, _Contents, _Options) -> conn_error().
+-spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+put_attachment(_Server, _DbName, _DocId, _AName, _Contents, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec delete_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-delete_attachment(_Server, _DbName, _DocId, _AName, _Options) -> conn_error().
+-spec delete_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+delete_attachment(_Server, _DbName, _DocId, _AName, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec attachment_url(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-attachment_url(_Server, _DbName, _DocId, _AName, _Options) -> conn_error().
+-spec attachment_url(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+attachment_url(_Server, _DbName, _DocId, _AName, _Options) ->
+    {'error', 'resource_not_available'}.
 
 %% View-related
--spec design_info(kz_data:connection(), ne_binary(), ne_binary()) -> conn_error().
-design_info(_Server, _DBName, _Design) -> conn_error().
+-spec design_info(kz_data:connection(), ne_binary(), ne_binary()) -> error().
+design_info(_Server, _DBName, _Design) ->
+    {'error', 'resource_not_available'}.
 
--spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> conn_error().
-all_design_docs(_Server, _DBName, _Options) -> conn_error().
+-spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> error().
+all_design_docs(_Server, _DBName, _Options) ->
+    {'error', 'resource_not_available'}.
 
--spec get_results(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-get_results(_Server, _DbName, _DesignDoc, _ViewOptions) -> conn_error().
+-spec get_results(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+get_results(_Server, _DbName, _DesignDoc, _ViewOptions) ->
+    {'error', 'resource_not_available'}.
 
--spec get_results_count(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> conn_error().
-get_results_count(_Server, _DbName, _DesignDoc, _ViewOptions) -> conn_error().
+-spec get_results_count(kz_data:connection(), ne_binary(), ne_binary(), kz_data:options()) -> error().
+get_results_count(_Server, _DbName, _DesignDoc, _ViewOptions) ->
+    {'error', 'resource_not_available'}.
 
--spec all_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> conn_error().
-all_docs(_Server, _DbName, _Options) -> conn_error().
-
-
--spec conn_error() -> conn_error().
-conn_error() -> {error, resource_not_available}.
+-spec all_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> error().
+all_docs(_Server, _DbName, _Options) ->
+    {'error', 'resource_not_available'}.
