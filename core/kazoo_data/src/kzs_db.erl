@@ -67,7 +67,7 @@ do_db_delete(#{server := {App, Conn}}, DbName) ->
 
 -spec db_replicate(map(), kz_json:object() | kz_proplist()) ->
                           {'ok', kz_json:object()} |
-                          kz_data:error().
+                          error().
 db_replicate(#{server := {App, Conn}}, Prop) ->
     App:db_replicate(Conn,Prop).
 
@@ -83,10 +83,10 @@ db_view_cleanup(#{}=Map, DbName) ->
 do_db_view_cleanup(#{server := {App, Conn}}, DbName) ->
     App:db_view_cleanup(Conn, DbName).
 
--spec db_info(map()) -> {'ok', ne_binaries()} | kz_data:error().
+-spec db_info(map()) -> {'ok', ne_binaries()} | error().
 db_info(#{server := {App, Conn}}) -> App:db_info(Conn).
 
--spec db_info(map(), ne_binary()) -> {'ok', kz_json:object()} | kz_data:error().
+-spec db_info(map(), ne_binary()) -> {'ok', kz_json:object()} | error().
 db_info(#{server := {App, Conn}}, DbName) -> App:db_info(Conn, DbName).
 
 -spec db_exists(map(), ne_binary()) -> boolean().
@@ -116,21 +116,21 @@ db_exists_others(_, []) -> 'true';
 db_exists_others(DbName, Others) ->
     lists:all(fun({_Tag, M}) -> db_exists(#{server => M}, DbName) end, Others).
 
--spec db_archive(map(), ne_binary(), ne_binary()) -> 'ok' | kz_data:error().
+-spec db_archive(map(), ne_binary(), ne_binary()) -> 'ok' | error().
 db_archive(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_archive(Conn, DbName, Filename);
         'false' -> 'ok'
     end.
 
--spec db_import(map(), ne_binary(), ne_binary()) -> 'ok' | kz_data:error().
+-spec db_import(map(), ne_binary(), ne_binary()) -> 'ok' | error().
 db_import(#{server := {App, Conn}}=Server, DbName, Filename) ->
     case db_exists(Server, DbName) of
         'true' -> App:db_import(Conn, DbName, Filename);
         'false' -> 'ok'
     end.
 
--spec db_list(map(), view_options()) -> {'ok', ne_binaries()} | kz_data:error().
+-spec db_list(map(), view_options()) -> {'ok', ne_binaries()} | error().
 db_list(#{server := {App, Conn}}=Map, Options) ->
     db_list_all(App:db_list(Conn, Options), Options, maps:get('others', Map, [])).
 
