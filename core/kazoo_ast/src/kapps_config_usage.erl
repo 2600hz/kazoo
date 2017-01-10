@@ -92,7 +92,7 @@ module_to_schema(Module, Schemas) ->
                       ,{fun records_to_schema/3, Rs}
                       ],
             lists:foldl(fun({Fun, Arg}, Acc) ->
-                            erlang:apply(Fun, [M, Arg, Acc])
+                                erlang:apply(Fun, [M, Arg, Acc])
                         end
                        ,Schemas
                        ,Routins
@@ -263,6 +263,8 @@ config_to_schema('flush', _Args, Schemas) ->
     Schemas;
 config_to_schema('migrate', _Args, Schemas) ->
     Schemas;
+config_to_schema('get_node_value', _Args, Schemas) ->
+    Schemas;
 config_to_schema(F, [Cat, K], Schemas) ->
     config_to_schema(F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
@@ -320,7 +322,6 @@ guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('get_current', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
-guess_type('get_node_value', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_json', _Default) -> <<"object">>;

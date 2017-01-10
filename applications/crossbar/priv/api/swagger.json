@@ -9302,12 +9302,30 @@
             "description": "Schema for kapps_controller system_config",
             "properties": {
                 "kapps": {
-                    "description": "kapps_controller kapps"
+                    "default": [
+                        "blackhole",
+                        "callflow",
+                        "cdr",
+                        "conference",
+                        "crossbar",
+                        "fax",
+                        "hangups",
+                        "media_mgr",
+                        "milliwatt",
+                        "omnipresence",
+                        "pivot",
+                        "registrar",
+                        "reorder",
+                        "stepswitch",
+                        "sysconf",
+                        "teletype",
+                        "trunkstore",
+                        "webhooks"
+                    ],
+                    "description": "kapps_controller kapps",
+                    "type": "array"
                 }
             },
-            "required": [
-                "kapps"
-            ],
             "type": "object"
         },
         "system_config.kapps_maintenance": {
@@ -11068,6 +11086,11 @@
                     "description": "speech asr content types",
                     "type": "array"
                 },
+                "asr_freeform_url": {
+                    "default": "http://api.ispeech.org/api/rest",
+                    "description": "speech asr freeform url",
+                    "type": "string"
+                },
                 "asr_prefered_content_type": {
                     "default": "application/mpeg",
                     "description": "speech asr prefered content type",
@@ -11079,7 +11102,7 @@
                     "type": "string"
                 },
                 "asr_url": {
-                    "default": "http://api.ispeech.org/api/rest",
+                    "default": "http://api.ispeech.org/api/json",
                     "description": "speech asr url",
                     "type": "string"
                 },
@@ -11210,6 +11233,7 @@
                     "type": "array"
                 },
                 "default_weight": {
+                    "default": 3,
                     "description": "stepswitch default weight",
                     "type": "integer"
                 },
@@ -11262,8 +11286,7 @@
             "required": [
                 "default_emergency_cid_number",
                 "default_formatters",
-                "default_route",
-                "default_weight"
+                "default_route"
             ],
             "type": "object"
         },

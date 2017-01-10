@@ -560,6 +560,7 @@
     "smtp_client.username": "smtp_client username",
     "speech.asr_api_key": "speech asr api key",
     "speech.asr_content_types": "speech asr content types",
+    "speech.asr_freeform_url": "speech asr freeform url",
     "speech.asr_prefered_content_type": "speech asr prefered content type",
     "speech.asr_provider": "speech asr provider",
     "speech.asr_url": "speech asr url",

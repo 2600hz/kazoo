@@ -4,11 +4,29 @@
     "description": "Schema for kapps_controller system_config",
     "properties": {
         "kapps": {
-            "description": "kapps_controller kapps"
+            "default": [
+                "blackhole",
+                "callflow",
+                "cdr",
+                "conference",
+                "crossbar",
+                "fax",
+                "hangups",
+                "media_mgr",
+                "milliwatt",
+                "omnipresence",
+                "pivot",
+                "registrar",
+                "reorder",
+                "stepswitch",
+                "sysconf",
+                "teletype",
+                "trunkstore",
+                "webhooks"
+            ],
+            "description": "kapps_controller kapps",
+            "type": "array"
         }
     },
-    "required": [
-        "kapps"
-    ],
     "type": "object"
 }

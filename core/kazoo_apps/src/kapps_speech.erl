@@ -245,7 +245,7 @@ attempt_asr_freeform(Content, ContentType, Locale, Options) ->
 attempt_asr_freeform(_, <<>>, _, _, _) -> {'error', 'no_content'};
 attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
     BaseUrl = kapps_config:get_string(?MOD_CONFIG_CAT
-                                     ,<<"asr_url">>
+                                     ,<<"asr_freeform_url">>
                                      ,<<"http://api.ispeech.org/api/rest">>
                                      ),
     lager:debug("sending request to ~s", [BaseUrl]),
