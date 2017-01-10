@@ -37,7 +37,7 @@
                   {'url_parsing_failed', _} |
                   {integer(), _}. % {error_code, body}
 
--type error() :: {'error', errors()}.
+-type error() :: {'error', kz_data:errors()}.
 
 -export_type([connection/0
              ,option/0, options/0
