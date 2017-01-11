@@ -136,7 +136,9 @@ update_services(T=#{todo := Ns, options := Options}) ->
             AssignedTo = knm_numbers:assigned_to(T),
             _ = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
             PrevAssignedTo = knm_numbers:prev_assigned_to(T),
-            _ = kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+            _ = PrevAssignedTo =/= undefined
+                andalso PrevAssignedTo =/= AssignedTo
+                andalso kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
             Services = do_fetch_services(AssignedTo),
             _ = 'undefined' =/= AssignedTo
                 andalso kz_services:commit_transactions(Services, knm_numbers:transactions(T)),
