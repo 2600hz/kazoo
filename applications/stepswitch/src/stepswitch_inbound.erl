@@ -228,7 +228,8 @@ maybe_add_prepend(NumberProps, JObj) ->
 
 -spec maybe_block_call(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
 maybe_block_call(_, JObj) ->
-    case is_blacklisted(JObj) orelse block_anonymous(JObj) of
+    case is_blacklisted(JObj)
+        orelse block_anonymous(JObj) of
         true -> JObj;
         false -> relay_request(JObj)
     end,
@@ -294,17 +295,19 @@ transition_port_in(Number, JObj) ->
 is_zero(Number) when is_binary(Number) ->
     case re:run(erlang:binary_to_list(Number), "^\\+?00+$", [global]) of
         {match, _} -> true;
-        _ -> false
-    end;
-is_zero(_) -> false.
+                    _ -> false
+               end;
+                    is_zero(_) -> false.
 
-% true if we think call is anonymous
+%%% true if we think call is anonymous
 -spec is_anonymous(kz_json:object()) -> boolean().
 is_anonymous(JObj) ->
     IsPrivacyNumber = kz_json:is_true(?CCV(<<"Caller-Privacy-Number">>), JObj, false),
     IsPrivacyName = kz_json:is_true(?CCV(<<"Caller-Privacy-Name">>), JObj, false),
     IsCallerNumberZero = is_zero(kz_json:get_value(<<"Caller-ID-Number">>, JObj)),
-    IsCallerNumberZero orelse IsPrivacyName orelse IsPrivacyNumber.
+    IsCallerNumberZero
+        orelse IsPrivacyName
+        orelse IsPrivacyNumber.
 
 -spec is_blacklisted(kz_json:object()) -> boolean().
 is_blacklisted(JObj) ->
