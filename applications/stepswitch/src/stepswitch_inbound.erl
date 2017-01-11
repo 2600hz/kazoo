@@ -293,11 +293,11 @@ transition_port_in(Number, JObj) ->
 %% string: two or more zeros -> true
 -spec is_zero(binary() | undefined) -> boolean().
 is_zero(Number) when is_binary(Number) ->
-    case re:run(erlang:binary_to_list(Number), "^\\+?00+$", [global]) of
+    case re:run(erlang:binary_to_list(Number), "^\\+?00+\$", [global]) of
         {match, _} -> true;
-                    _ -> false
-               end;
-                    is_zero(_) -> false.
+        _ -> false
+    end;
+is_zero(_) -> false.
 
 %%% true if we think call is anonymous
 -spec is_anonymous(kz_json:object()) -> boolean().
