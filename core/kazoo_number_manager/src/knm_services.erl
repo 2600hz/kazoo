@@ -278,7 +278,6 @@ create_transaction(Number, Feature, Units) ->
                ,kz_transaction:debit(LedgerId, Units)
                ,Routines
                ).
--endif.
 
 %% @private
 -spec set_feature_description(kz_transaction:transaction(), ne_binary()) ->
@@ -286,6 +285,7 @@ create_transaction(Number, Feature, Units) ->
 set_feature_description(T, Feature) ->
     Description = <<"number feature activation for ", Feature/binary>>,
     kz_transaction:set_description(Description, T).
+-endif.
 
 -spec set_activation_reason(kz_transaction:transaction(), ne_binary(), ne_binary(), ne_binary()) ->
                                    kz_transaction:transaction().
