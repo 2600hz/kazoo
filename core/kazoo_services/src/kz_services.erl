@@ -1096,20 +1096,15 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
     UpdatedQuantities = kz_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
 
-    UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
-                                                    ,UpdatedQuantities
-                                                    ),
+    UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj, UpdatedQuantities),
 
     ExistingItems = kz_service_plans:create_items(ServiceJObj, ServicePlans),
     UpdatedItems = kz_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
     Changed = kz_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
-    lager:debug("current items: ~p items after update: ~p service diff quantities: ~p"
-               ,[kz_service_items:public_json(ExistingItems)
-                ,kz_service_items:public_json(UpdatedItems)
-                ,diff_quantities(Service)
-                ]
-               ),
+    lager:debug("current items: ~s", [kz_json:encode(kz_service_items:public_json(ExistingItems))]),
+    lager:debug("items after update: ~s", [kz_json:encode(kz_service_items:public_json(UpdatedItems))]),
+    lager:debug("service diff quantities: ~s", [kz_json:encode(diff_quantities(Service))]),
 
     lager:debug("computed service charges"),
     {'ok', kz_service_items:public_json(Changed)}.
