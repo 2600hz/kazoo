@@ -187,6 +187,7 @@ filter_numbers(Number) ->
 
 -spec is_valid_caller_id(api_binary(), ne_binary()) -> boolean().
 is_valid_caller_id('undefined', _) -> 'false';
+is_valid_caller_id(<<>>, _) -> 'false';
 is_valid_caller_id(Number, AccountId) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} -> 'true';
