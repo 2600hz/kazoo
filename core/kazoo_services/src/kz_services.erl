@@ -538,12 +538,14 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates=JObj}=Services)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) ->
+-spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary() | kz_service_plans:plans()) ->
                                 number().
 activation_charges(CategoryId, ItemId, #kz_services{jobj=ServicesJObj}) ->
     Plans = kz_service_plans:from_service_json(ServicesJObj),
     kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
-activation_charges(CategoryId, ItemId, <<_/binary>> = Account) ->
+activation_charges(CategoryId, ItemId, Plans=[_|_]) ->
+    kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
+activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
     activation_charges(CategoryId, ItemId, fetch(Account)).
 
 %%--------------------------------------------------------------------
@@ -1176,11 +1178,10 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
         _OldQuantity ->
-            ServicesJObj = to_json(Services),
-            Plans = kz_service_plans:from_service_json(ServicesJObj),
+            Plans = kz_service_plans:from_service_json(to_json(Services)),
+            Charges = activation_charges(CategoryId, ItemId, Plans),
             ServicePlan = kz_service_plans:public_json(Plans),
             ItemPlan = get_item_plan(CategoryId, ItemId, ServicePlan),
-            Charges = activation_charges(CategoryId, ItemId, Services),
             [kz_json:from_list(
                [{<<"category">>, CategoryId}
                ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
