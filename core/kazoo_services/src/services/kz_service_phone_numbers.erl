@@ -27,7 +27,7 @@
                          }).
 
 %% ?NUMBER_CARRIERS is nested under ?CLASSIFICATIONS, so we add it "manually".
--define(DEFAULT_RESET_CATEGORIES, [?NUMBER_CARRIERS | maps:keys(?MAP_CATEGORIES)]).
+-define(DEFAULT_RESET_CATEGORIES, [?NUMBER_CARRIERS | maps:values(?MAP_CATEGORIES)]).
 
 -type pn() :: knm_phone_number:knm_phone_number().
 -type pns() :: [pn()].
@@ -159,10 +159,6 @@ is_number_billable(PN) ->
     IsBillable.
 
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
 -spec update_feature_quantities(ne_binaries(), kz_services:services()) -> kz_services:services().
 update_feature_quantities([], Services) -> Services;
 update_feature_quantities([Feature|Features], Services) ->

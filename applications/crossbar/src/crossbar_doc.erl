@@ -148,8 +148,7 @@ load(DocId, Context, Options) ->
 
 load(_DocId, Context, _Options, 'error') -> Context;
 load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
-    OpenFun = get_open_function(Options),
-    case OpenFun(cb_context:account_db(Context), DocId, Options) of
+    case maybe_open_cache_doc(cb_context:account_db(Context), DocId, Options) of
         {'error', Error} ->
             handle_datamgr_errors(Error, DocId, Context);
         {'ok', JObj} ->
@@ -164,8 +163,7 @@ load(DocId, Context, Options, _RespStatus) when is_binary(DocId) ->
 load([], Context, _Options, _RespStatus) ->
     cb_context:add_system_error('bad_identifier',  Context);
 load([_|_]=IDs, Context, Options, _RespStatus) ->
-    OpenFun = get_bulk_open_function(Options),
-    case OpenFun(cb_context:account_db(Context), IDs, Options) of
+    case maybe_open_cache_docs(cb_context:account_db(Context), IDs, Options) of
         {'error', Error} -> handle_datamgr_errors(Error, IDs, Context);
         {'ok', JObjs} ->
             {Docs, Context1} = extract_included_docs(Context, JObjs),
@@ -178,18 +176,20 @@ load([_|_]=IDs, Context, Options, _RespStatus) ->
             end
     end.
 
--spec get_open_function(kz_proplist()) -> function().
-get_open_function(Options) ->
+-spec maybe_open_cache_doc(ne_binary(), kazoo_data:docid(), kz_proplist()) ->
+                                  {ok, kz_json:object()} | kz_datamgr:error().
+maybe_open_cache_doc(DbName, DocId, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        'true' ->  fun kz_datamgr:open_cache_doc/3;
-        'false' -> fun kz_datamgr:open_doc/3
+        true -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
+        false -> kz_datamgr:open_doc(DbName, DocId, Options)
     end.
 
--spec get_bulk_open_function(kz_proplist()) -> function().
-get_bulk_open_function(Options) ->
+-spec maybe_open_cache_docs(ne_binary(), kazoo_data:docids(), kz_proplist()) ->
+                                   {ok, kz_json:objects()} | kz_datamgr:error().
+maybe_open_cache_docs(DbName, DocIds, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
-        'true' ->  fun kz_datamgr:open_cache_docs/3;
-        'false' -> fun kz_datamgr:open_docs/3
+        true -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
+        false -> kz_datamgr:open_docs(DbName, DocIds, Options)
     end.
 
 %%--------------------------------------------------------------------
@@ -206,12 +206,10 @@ get_bulk_open_function(Options) ->
 %%--------------------------------------------------------------------
 -spec check_document_type(cb_context:context(), kz_json:object() | kz_json:objects(), kz_proplist()) ->
                                  boolean().
-check_document_type(_Context, [], _Options) ->
-    'true';
+check_document_type(_Context, [], _Options) -> true;
 check_document_type(Context, [_|_]=JObjs, Options) ->
-    lists:all(fun(JObj) -> check_document_type(Context, JObj, Options) end
-             ,JObjs
-             );
+    F = fun(JObj) -> check_document_type(Context, JObj, Options) end,
+    lists:all(F, JObjs);
 check_document_type(Context, JObj, Options) ->
     JObjType = kz_doc:type(JObj),
     ExpectedType = props:get_value(?OPTION_EXPECTED_TYPE, Options),

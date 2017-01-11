@@ -195,7 +195,7 @@
          )
        ).
 
--define(TELNY_NUMBER
+-define(TELNYX_NUMBER
        ,kz_json:from_list(
           [{<<"_id">>, ?TEST_TELNYX_NUM}
           ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}

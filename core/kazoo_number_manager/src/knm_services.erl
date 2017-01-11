@@ -22,6 +22,7 @@
 -include("knm.hrl").
 
 -define(KEY_NUMBER_ACTIVATION_CHARGES, <<"number_activation_charges">>).
+-define(KEY_NUMBERS_ACTIVATION_CHARGES, <<"numbers_activation_charges">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -135,7 +136,9 @@ update_services(T=#{todo := Ns, options := Options}) ->
             AssignedTo = knm_numbers:assigned_to(T),
             _ = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
             PrevAssignedTo = knm_numbers:prev_assigned_to(T),
-            _ = kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
+            _ = PrevAssignedTo =/= undefined
+                andalso PrevAssignedTo =/= AssignedTo
+                andalso kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
             Services = do_fetch_services(AssignedTo),
             _ = 'undefined' =/= AssignedTo
                 andalso kz_services:commit_transactions(Services, knm_numbers:transactions(T)),
@@ -155,20 +158,23 @@ activate_phone_number(T=#{services := undefined}) ->
 activate_phone_number(T0=#{todo := Ns, services := Services}) ->
     AssignedTo = knm_numbers:assigned_to(T0),
     BillingId = fetch_billing_id(T0),
-    F = fun (N, T) ->
+    F = fun (N, {ToActivate, T}) ->
                 Num = knm_phone_number:number(knm_number:phone_number(N)),
                 case kz_service_phone_numbers:phone_number_activation_charge(Services, Num) of
                     0 ->
                         lager:debug("no activation charge for ~s", [Num]),
-                        knm_numbers:ok(N, T);
+                        {ToActivate, knm_numbers:ok(N, T)};
                     Units ->
-                        T1 = do_activate(T, Num, Units, BillingId, AssignedTo),
-                        knm_numbers:ok(N, T1)
+                        {[{Num, N, Units}|ToActivate], T}
                 end
         end,
-    lists:foldl(F, T0, Ns).
+    {ToActivate, T} = lists:foldl(F, {[], T0}, Ns),
+    do_activate(T, ToActivate, BillingId, AssignedTo).
 
-do_activate(T, Num, Units, BillingId, AssignedTo) ->
+do_activate(T, [], _, _) -> T;
+do_activate(T, ToActivate, BillingId, AssignedTo) ->
+    {Nums, Ns, ListOfUnits} = lists:unzip3(ToActivate),
+    Units = lists:sum(ListOfUnits),
     TotalCharges = activation_charges(T) + Units,
     case kz_services:check_bookkeeper(BillingId, TotalCharges) of
         false ->
@@ -178,13 +184,12 @@ do_activate(T, Num, Units, BillingId, AssignedTo) ->
                                ,[wht_util:units_to_dollars(Units)])),
             lager:error(Message),
             Error = knm_errors:to_json(service_restriction, undefined, Message),
-            knm_numbers:ko(Num, Error, T);
+            knm_numbers:ko(Ns, Error, T);
         true ->
-            Transaction = create_transaction(Num, Units, BillingId, AssignedTo),
-            knm_numbers:charge(?KEY_NUMBER_ACTIVATION_CHARGES
-                              ,TotalCharges
-                              ,knm_numbers:transaction(Transaction, T)
-                              )
+            Transaction = create_numbers_transaction(Nums, Units, BillingId, AssignedTo),
+            T1 = knm_numbers:transaction(Transaction, T),
+            Key = ?KEY_NUMBERS_ACTIVATION_CHARGES,
+            knm_numbers:charge(Key, TotalCharges, knm_numbers:add_oks(Ns, T1))
     end.
 
 %% @public
@@ -209,11 +214,9 @@ do_fetch_services(?MATCH_ACCOUNT_RAW(_)) -> kz_services:new().
 fetch_services(Number) ->
     case knm_number:services(Number) of
         'undefined' ->
-            do_fetch_services(
-              knm_phone_number:assigned_to(
-                knm_number:phone_number(Number)));
-        Services ->
-            Services
+            AssignedTo = knm_phone_number:assigned_to(knm_number:phone_number(Number)),
+            do_fetch_services(AssignedTo);
+        Services -> Services
     end.
 
 do_fetch_services(undefined) -> kz_services:new();
@@ -237,13 +240,20 @@ fetch_billing_id(Number) ->
 -endif.
 
 %% @private
-create_transaction(Num, Units, BillingId, AccountId) ->
+-spec create_numbers_transaction(ne_binaries(), pos_integer(), ne_binary(), ne_binary()) ->
+                                        kz_transaction:transaction().
+create_numbers_transaction(Nums=[_|_], Units, BillingId, AccountId) ->
     LedgerId = kz_util:format_account_id(BillingId),
-    Fs = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"number">>) end
-         ,fun(T) -> kz_transaction:set_number(Num, T) end
-         ,fun(T) -> set_feature_description(T, kz_util:to_binary(Num)) end
+    Description =
+        iolist_to_binary(
+          ["numbers activation ", integer_to_list(length(Nums)), $:
+          ,[[$\n, Num] || Num <- Nums]
+          ]),
+    Fs = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"numbers">>) end
+         ,fun(T) -> kz_transaction:set_numbers(Nums, T) end
+         ,fun(T) -> kz_transaction:set_description(Description, T) end
          ],
-    lager:debug("staging number activation charge $~p for ~s via billing account ~s"
+    lager:debug("staging numbers activation charge $~p for ~s via billing account ~s"
                ,[wht_util:units_to_dollars(Units), AccountId, LedgerId]),
     T0 = kz_transaction:debit(LedgerId, Units),
     lists:foldl(fun(F, T) -> F(T) end, T0, Fs).
@@ -270,18 +280,14 @@ create_transaction(Number, Feature, Units) ->
                ,kz_transaction:debit(LedgerId, Units)
                ,Routines
                ).
--endif.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec set_feature_description(kz_transaction:transaction(), ne_binary()) ->
                                      kz_transaction:transaction().
 set_feature_description(T, Feature) ->
     Description = <<"number feature activation for ", Feature/binary>>,
     kz_transaction:set_description(Description, T).
+-endif.
 
 -spec set_activation_reason(kz_transaction:transaction(), ne_binary(), ne_binary(), ne_binary()) ->
                                    kz_transaction:transaction().

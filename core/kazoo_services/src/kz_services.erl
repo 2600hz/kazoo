@@ -538,12 +538,14 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates=JObj}=Services)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary()) ->
+-spec activation_charges(ne_binary(), ne_binary(), services() | ne_binary() | kz_service_plans:plans()) ->
                                 number().
 activation_charges(CategoryId, ItemId, #kz_services{jobj=ServicesJObj}) ->
     Plans = kz_service_plans:from_service_json(ServicesJObj),
     kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
-activation_charges(CategoryId, ItemId, <<_/binary>> = Account) ->
+activation_charges(CategoryId, ItemId, Plans=[_|_]) ->
+    kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
+activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
     activation_charges(CategoryId, ItemId, fetch(Account)).
 
 %%--------------------------------------------------------------------
@@ -1046,7 +1048,7 @@ is_reseller(ServicesJObj) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-
+%%
 %% @end
 %%--------------------------------------------------------------------
 -spec dry_run(services()) -> kz_json:object().
@@ -1096,20 +1098,15 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
     UpdatedQuantities = kz_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
 
-    UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj
-                                                    ,UpdatedQuantities
-                                                    ),
+    UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj, UpdatedQuantities),
 
     ExistingItems = kz_service_plans:create_items(ServiceJObj, ServicePlans),
     UpdatedItems = kz_service_plans:create_items(UpdatedServiceJObj, ServicePlans),
     Changed = kz_service_items:get_updated_items(UpdatedItems, ExistingItems),
 
-    lager:debug("current items: ~p items after update: ~p service diff quantities: ~p"
-               ,[kz_service_items:public_json(ExistingItems)
-                ,kz_service_items:public_json(UpdatedItems)
-                ,diff_quantities(Service)
-                ]
-               ),
+    lager:debug("current items: ~s", [kz_json:encode(kz_service_items:public_json(ExistingItems))]),
+    lager:debug("items after update: ~s", [kz_json:encode(kz_service_items:public_json(UpdatedItems))]),
+    lager:debug("service diff quantities: ~s", [kz_json:encode(diff_quantities(Service))]),
 
     lager:debug("computed service charges"),
     {'ok', kz_service_items:public_json(Changed)}.
@@ -1181,11 +1178,10 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
         _OldQuantity ->
-            ServicesJObj = to_json(Services),
-            Plans = kz_service_plans:from_service_json(ServicesJObj),
+            Plans = kz_service_plans:from_service_json(to_json(Services)),
+            Charges = activation_charges(CategoryId, ItemId, Plans),
             ServicePlan = kz_service_plans:public_json(Plans),
             ItemPlan = get_item_plan(CategoryId, ItemId, ServicePlan),
-            Charges = activation_charges(CategoryId, ItemId, Services),
             [kz_json:from_list(
                [{<<"category">>, CategoryId}
                ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}

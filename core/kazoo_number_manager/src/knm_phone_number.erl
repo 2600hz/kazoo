@@ -143,59 +143,109 @@ do_new(DID, Setters0) ->
 
 fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
-fetch(T) ->
-    Options = knm_numbers:options(T),
-    Fetch = fun (Num, Acc) ->
-                    case knm_number:attempt(fun fetch/2, [Num, Options]) of
-                        {ok, PN} -> knm_numbers:ok(PN, Acc);
-                        {error, R} -> knm_numbers:ko(Num, R, Acc)
-                    end
-            end,
-    lists:foldl(Fetch, T, knm_numbers:todo(T)).
+fetch(T0=#{todo := Nums, options := Options}) ->
+    Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
+    F = fun ({NumberDb, NormalizedNums}, T) ->
+                case fetch_in(NumberDb, NormalizedNums, Options) of
+                    {error, R} ->
+                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        knm_numbers:ko(NormalizedNums, R, T);
+                    {ok, JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
+                    {ok, JObj} -> do_handle_fetch(T, JObj)
+                end
+        end,
+    lists:foldl(F, T0, Pairs).
 
 -ifdef(TEST).
-fetch(?TEST_CREATE_NUM, _Options) ->
-    {'error', 'not_found'};
-fetch(?TEST_AVAILABLE_NUM, Options) ->
-    handle_fetched_result(?AVAILABLE_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_NUMBER, Options);
-fetch(?TEST_IN_SERVICE_MDN, Options) ->
-    handle_fetched_result(?IN_SERVICE_MDN, Options);
-fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
-fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetched_result(?BW_EXISTING_JSON, Options);
-fetch(?TEST_TELNYX_NUM, Options) ->
-    handle_fetched_result(?TELNY_NUMBER, Options);
-fetch(?TEST_OLD_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(?TEST_OLD2_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(?TEST_OLD3_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(?TEST_OLD4_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(?TEST_OLD5_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(?TEST_OLD6_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
-    handle_fetched_result(JObj, Options);
-fetch(_DID, _Options) ->
-    {'error', 'not_found'}.
+fetch_in(NumberDb, Nums, _Options) ->
+    true = lists:all(fun (Num) -> NumberDb =:= knm_converters:to_db(Num) end, Nums),
+    {ok, [test_fetch_in(Num) || Num <- Nums]}.
+
+test_fetch_in(Num) ->
+    Data = case test_fetch(Num) of
+               {error, not_found} -> {<<"error">>, <<"not_found">>};
+               {ok, JObj} -> {<<"doc">>, JObj}
+           end,
+    kz_json:from_list([{<<"key">>, Num}, Data]).
 -else.
+fetch_in(NumberDb, [Num], Options) ->
+    fetch(NumberDb, Num, Options);
+fetch_in(NumberDb, Nums, Options) ->
+    case knm_number_options:batch_run(Options) of
+        true -> kz_datamgr:open_docs(NumberDb, Nums);
+        false -> kz_datamgr:open_cache_docs(NumberDb, Nums)
+    end.
+-endif.
+
+bulk_fetch(T0, JObjs) ->
+    F = fun (JObj, T) ->
+                Num = kz_json:get_ne_value(<<"key">>, JObj),
+                case kz_json:get_ne_value(<<"doc">>, JObj) of
+                    undefined ->
+                        R = kz_json:get_ne_value(<<"error">>, JObj),
+                        knm_numbers:ko(Num, kz_util:to_atom(R, true), T);
+                    Doc ->
+                        do_handle_fetch(T, Doc)
+                end
+        end,
+    lists:foldl(F, T0, JObjs).
+
+do_handle_fetch(T=#{options := Options}, Doc) ->
+    case knm_number:attempt(fun handle_fetch/2, [Doc, Options]) of
+        {ok, PN} -> knm_numbers:ok(PN, T);
+        {error, R} -> knm_numbers:ko(kz_doc:id(Doc), R, T)
+    end.
+
+group_by_db(Nums) ->
+    F = fun (Num, M) ->
+                Key = knm_converters:to_db(Num),
+                M#{Key => [Num | maps:get(Key, M, [])]}
+        end,
+    maps:to_list(lists:foldl(F, #{}, Nums)).
+
+-ifdef(TEST).
 fetch(Num, Options) ->
+    case test_fetch(Num) of
+        {error, _}=E -> E;
+        {ok, JObj} -> handle_fetch(JObj, Options)
+    end.
+
+test_fetch(?TEST_CREATE_NUM) ->
+    {error, not_found};
+test_fetch(?TEST_AVAILABLE_NUM) ->
+    {ok, ?AVAILABLE_NUMBER};
+test_fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM) ->
+    {ok, ?IN_SERVICE_BAD_CARRIER_NUMBER};
+test_fetch(?TEST_IN_SERVICE_NUM) ->
+    {ok, ?IN_SERVICE_NUMBER};
+test_fetch(?TEST_IN_SERVICE_MDN) ->
+    {ok, ?IN_SERVICE_MDN};
+test_fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM) ->
+    {ok, ?IN_SERVICE_WITH_HISTORY_NUMBER};
+test_fetch(?BW_EXISTING_DID) ->
+    {ok, ?BW_EXISTING_JSON};
+test_fetch(?TEST_TELNYX_NUM) ->
+    {ok, ?TELNYX_NUMBER};
+test_fetch(?TEST_OLD_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json")))};
+test_fetch(?TEST_OLD2_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json")))};
+test_fetch(?TEST_OLD3_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json")))};
+test_fetch(?TEST_OLD4_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json")))};
+test_fetch(?TEST_OLD5_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json")))};
+test_fetch(?TEST_OLD6_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json")))};
+test_fetch(_DID=?NE_BINARY) ->
+    {error, not_found}.
+-else.
+fetch(Num=?NE_BINARY, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     case fetch(NumberDb, NormalizedNum, Options) of
-        {'ok', JObj} -> handle_fetched_result(JObj, Options);
+        {'ok', JObj} -> handle_fetch(JObj, Options);
         {'error', _R}=Error ->
             lager:debug("failed to open ~s in ~s: ~p", [NormalizedNum, NumberDb, _R]),
             Error
@@ -208,9 +258,8 @@ fetch(NumberDb, NormalizedNum, Options) ->
     end.
 -endif.
 
--spec handle_fetched_result(kz_json:object(), knm_number_options:options()) ->
-                                   {'ok', knm_phone_number()}.
-handle_fetched_result(JObj, Options) ->
+-spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {'ok', knm_phone_number()}.
+handle_fetch(JObj, Options) ->
     PhoneNumber = from_json_with_options(JObj, Options),
     case is_authorized(PhoneNumber) of
         'true' -> {'ok', PhoneNumber};

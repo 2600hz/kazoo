@@ -17,6 +17,7 @@
 -export([set_sub_account_info/2]).
 -export([event/1, set_event/2]).
 -export([number/1, set_number/2]).
+-export([numbers/1, set_numbers/2]).
 -export([feature/1, set_feature/2]).
 -export([bookkeeper_info/1, set_bookkeeper_info/2]).
 -export([metadata/1, set_metadata/2]).
@@ -56,8 +57,9 @@
                         ,sub_account_id :: ne_binary()
                         ,sub_account_name :: api_binary()
                         ,event :: api_binary()
-                        ,number :: api_binary()
-                        ,feature :: api_binary()
+                        ,number :: api_ne_binary()
+                        ,numbers :: api_ne_binaries()
+                        ,feature :: api_ne_binary()
                         ,bookkeeper_info :: api_object()
                         ,metadata :: api_object()
                         ,pvt_status :: api_binary()
@@ -119,6 +121,10 @@ event(#kz_transaction{event=Event}) ->
 -spec number(transaction()) -> ne_binary().
 number(#kz_transaction{number=Number}) ->
     Number.
+
+-spec numbers(transaction()) -> ne_binaries().
+numbers(#kz_transaction{numbers=Numbers}) ->
+    Numbers.
 
 -spec feature(transaction()) -> ne_binary().
 feature(#kz_transaction{feature=Feature}) ->
@@ -261,6 +267,10 @@ set_event(Event, Transaction) ->
 set_number(Number, Transaction) ->
     Transaction#kz_transaction{number=Number}.
 
+-spec set_numbers(ne_binaries(), transaction()) -> transaction().
+set_numbers(Numbers, Transaction) ->
+    Transaction#kz_transaction{numbers=Numbers}.
+
 -spec set_feature(ne_binary(), transaction()) -> transaction().
 set_feature(Feature, Transaction) ->
     Transaction#kz_transaction{feature=Feature}.
@@ -377,6 +387,7 @@ to_json(#kz_transaction{}=T) ->
             ,{<<"sub_account_name">>, T#kz_transaction.sub_account_name}
             ,{<<"event">>, T#kz_transaction.event}
             ,{<<"number">>, T#kz_transaction.number}
+            ,{<<"numbers">>, T#kz_transaction.numbers}
             ,{<<"feature">>, T#kz_transaction.feature}
             ,{<<"bookkeeper_info">>, T#kz_transaction.bookkeeper_info}
             ,{<<"metadata">>, T#kz_transaction.metadata}
@@ -480,6 +491,7 @@ from_json(JObj) ->
                    ,sub_account_name = kz_json:get_ne_value(<<"sub_account_name">>, JObj)
                    ,event = kz_json:get_ne_value(<<"event">>, JObj)
                    ,number = kz_json:get_ne_value(<<"number">>, JObj)
+                   ,numbers = kz_json:get_ne_value(<<"numbers">>, JObj)
                    ,feature = kz_json:get_ne_value(<<"feature">>, JObj)
                    ,bookkeeper_info = kz_json:get_ne_value(<<"bookkeeper_info">>, JObj)
                    ,metadata = kz_json:get_ne_value(<<"metadata">>, JObj)
@@ -614,6 +626,10 @@ prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
        orelse ?CODE_SUB_ACCOUNT_NUMBER_ACTIVATION =:= Code ->
     prepare_number_activation_transaction(Transaction);
 prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
+  when ?CODE_NUMBERS_ACTIVATION =:= Code;
+       ?CODE_SUB_ACCOUNT_NUMBERS_ACTIVATION =:= Code ->
+    prepare_numbers_activation_transaction(Transaction);
+prepare_transaction(#kz_transaction{pvt_code=Code}=Transaction)
   when ?CODE_MANUAL_ADDITION =:= Code
        orelse ?CODE_SUB_ACCOUNT_MANUAL_ADDITION =:= Code ->
     prepare_manual_addition_transaction(Transaction);
@@ -670,6 +686,18 @@ prepare_number_activation_transaction(#kz_transaction{sub_account_id='undefined'
                                                      }) ->
     {'error', 'sub_account_id_missing'};
 prepare_number_activation_transaction(Transaction) ->
+    Transaction.
+
+-spec prepare_numbers_activation_transaction(transaction()) ->
+                                                    transaction() |
+                                                    {'error', any()}.
+prepare_numbers_activation_transaction(#kz_transaction{numbers='undefined'}) ->
+    {'error', 'numbers_missing'};
+prepare_numbers_activation_transaction(#kz_transaction{sub_account_id='undefined'
+                                                      ,pvt_code=?CODE_SUB_ACCOUNT_NUMBERS_ACTIVATION
+                                                      }) ->
+    {'error', 'sub_account_id_missing'};
+prepare_numbers_activation_transaction(Transaction) ->
     Transaction.
 
 -spec prepare_manual_addition_transaction(transaction()) ->
