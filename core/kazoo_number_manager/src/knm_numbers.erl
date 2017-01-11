@@ -18,6 +18,7 @@
         ,charges/1, charges/2, charge/2, charge/3
         ]).
 -export([ok/2, ko/3]).
+-export([add_oks/2]).
 -export([assigned_to/1
         ,prev_assigned_to/1
         ,to_json/1
@@ -194,9 +195,15 @@ charge(K, V, T=#{charges := Vs}) -> T#{charges => [{K, V} | Vs]}.
 
 %% @public
 -spec ok(ok() | oks(), t()) -> t().
-ok(Numbers, T) when is_list(Numbers) ->
-    T#{ok => Numbers};
-ok(Number, T) -> T#{ok => [Number | maps:get(ok, T)]}.
+ok(Numbers, T) when is_list(Numbers) -> T#{ok => Numbers};
+ok(Number, T) when not is_list(Number) ->
+    T#{ok => [Number | maps:get(ok, T)]}.
+
+%% @public
+-spec add_oks(oks(), t()) -> t().
+%%FIXME: unify with ok/2.
+add_oks(Numbers, T=#{ok := OKs}) when is_list(Numbers) ->
+    T#{ok => Numbers ++ OKs}.
 
 %% @public
 -spec ko(num() | knm_number:knm_number() | nums(), ko(), t()) -> t().
