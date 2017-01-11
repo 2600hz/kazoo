@@ -26,14 +26,22 @@ module_ast(M) ->
             {Module, AST}
     end.
 
--spec add_module_ast(list(), module(), {'raw_abstract_v1',ast()}) -> ast().
-add_module_ast(Fs, Module, AST) ->
-    ast_functions(Module, AST) ++ Fs.
+-spec add_module_ast(module_ast(), module(), {'raw_abstract_v1',ast()}) -> ast().
+add_module_ast(ModAST, Module, {'raw_abstract_v1', Attributes}) ->
+    lists:foldl(fun(A, Acc) ->
+                        add_module_ast_fold(A, Module, Acc)
+                end
+               ,ModAST
+               ,Attributes
+               ).
 
-ast_functions(Module, {'raw_abstract_v1', Attributes}) ->
-    [{Module, F, Arity, Clauses}
-     || {'function', _Line, F, Arity, Clauses} <- Attributes
-    ].
+-spec add_module_ast_fold(ast(), module(), ast()) -> module_ast().
+add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functions=Fs}=Acc) ->
+    Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
+add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=Acc) ->
+    Acc#module_ast{records=[{Name, Fields}|Rs]};
+add_module_ast_fold(_Other, _Module, Acc) ->
+    Acc.
 
 -spec binary_match_to_binary(ast()) -> binary().
 binary_match_to_binary(?ATOM(A)) -> kz_util:to_binary(A);

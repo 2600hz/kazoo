@@ -85,13 +85,41 @@ module_to_schema(Module, Schemas) ->
     case kz_ast_util:module_ast(Module) of
         'undefined' -> 'undefined';
         {M, AST} ->
-            Fs = kz_ast_util:add_module_ast([], M, AST),
-            functions_to_schema(Fs, Schemas)
+            #module_ast{functions=Fs
+                       ,records=Rs
+                       } = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
+            Routins = [{fun functions_to_schema/3, Fs}
+                      ,{fun records_to_schema/3, Rs}
+                      ],
+            lists:foldl(fun({Fun, Arg}, Acc) ->
+                                erlang:apply(Fun, [M, Arg, Acc])
+                        end
+                       ,Schemas
+                       ,Routins
+                       )
     end.
 
-functions_to_schema(Fs, Schemas) ->
+%% look inside functions
+functions_to_schema(_Module, Fs, Schemas) ->
     lists:foldl(fun function_to_schema/2, Schemas, Fs).
 
+%% look inside records
+records_to_schema(_Module, Rs, Schemas) ->
+    lists:foldl(fun record_fields_to_schema/2, Schemas, Rs).
+
+%% look inside record's fields
+record_fields_to_schema({_RecName, Fields}, Schemas) ->
+    lists:foldl(fun record_field_to_schema/2, Schemas, Fields).
+
+%% look inside a single record field
+record_field_to_schema(?RECORD_FIELD(_Key), Schemas) ->
+    Schemas;
+record_field_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
+    expression_to_schema(Value, Schemas);
+record_field_to_schema(?TYPED_RECORD_FIELD(RecordField, _Type), Schemas) ->
+    record_field_to_schema(RecordField, Schemas).
+
+%% look inside a single function
 function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
     clauses_to_schema(Clauses, Schemas).
 
@@ -235,6 +263,8 @@ config_to_schema('flush', _Args, Schemas) ->
     Schemas;
 config_to_schema('migrate', _Args, Schemas) ->
     Schemas;
+config_to_schema('get_node_value', _Args, Schemas) ->
+    Schemas;
 config_to_schema(F, [Cat, K], Schemas) ->
     config_to_schema(F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
@@ -292,7 +322,6 @@ guess_type('get', Default) -> guess_type_by_default(Default);
 guess_type('get_current', Default) -> guess_type_by_default(Default);
 guess_type('fetch', Default) -> guess_type_by_default(Default);
 guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
-guess_type('get_node_value', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_json', _Default) -> <<"object">>;
@@ -328,7 +357,8 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>.
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', _Args)) -> <<"string">>.
 
 guess_properties(Document, Key, Type, Default)
   when is_binary(Key) ->

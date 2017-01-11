@@ -64,7 +64,7 @@
             "type": "array"
         },
         "default_weight": {
-            "default": 1,
+            "default": 3,
             "description": "stepswitch default weight",
             "type": "integer"
         },

@@ -7495,6 +7495,13 @@
                                 "type": "integer"
                             }
                         },
+                        "max_login_attempts": {
+                            "properties": {
+                                "default": 3,
+                                "description": "callflow max login attempts",
+                                "type": "integer"
+                            }
+                        },
                         "max_message_count": {
                             "properties": {
                                 "default": 100,
@@ -7537,6 +7544,13 @@
                                 "type": "integer"
                             }
                         },
+                        "migrate_max_worker": {
+                            "properties": {
+                                "default": 10,
+                                "description": "callflow migrate max worker",
+                                "type": "integer"
+                            }
+                        },
                         "min_message_size": {
                             "properties": {
                                 "default": 500,
@@ -7570,6 +7584,24 @@
                     "description": "callflow.call_forward callfwd number timeout",
                     "type": "integer"
                 },
+                "keys": {
+                    "properties": {
+                        "menu_change_number": {
+                            "properties": {
+                                "default": "2",
+                                "description": "callflow.call_forward menu change number",
+                                "type": "string"
+                            }
+                        },
+                        "menu_toggle_option": {
+                            "properties": {
+                                "default": "1",
+                                "description": "callflow.call_forward menu toggle option",
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
                 "max_callfwd_number_length": {
                     "default": 20,
                     "description": "callflow.call_forward maximum callfwd number length",
@@ -7581,14 +7613,42 @@
                     "type": "integer"
                 }
             },
+            "required": [
+                "keys"
+            ],
             "type": "object"
         },
         "system_config.callflow.dynamic_cid": {
             "description": "Schema for callflow.dynamic_cid system_config",
             "properties": {
+                "accept_prompt": {
+                    "default": "tone_stream://%(250,50,440)",
+                    "description": "callflow.dynamic_cid accept prompt",
+                    "type": "string"
+                },
+                "default_prompt": {
+                    "default": "dynamic-cid-enter_cid",
+                    "description": "callflow.dynamic_cid default prompt",
+                    "type": "string"
+                },
+                "max_digits": {
+                    "default": 10,
+                    "description": "callflow.dynamic_cid max digits",
+                    "type": "integer"
+                },
+                "min_digits": {
+                    "default": 10,
+                    "description": "callflow.dynamic_cid min digits",
+                    "type": "integer"
+                },
                 "reject_prompt": {
                     "default": "dynamic-cid-invalid_using_default",
                     "description": "callflow.dynamic_cid reject prompt",
+                    "type": "string"
+                },
+                "whitelist_regex": {
+                    "default": "\\d+",
+                    "description": "callflow.dynamic_cid whitelist regex",
                     "type": "string"
                 }
             },
@@ -7768,6 +7828,14 @@
         "system_config.conferences": {
             "description": "Schema for conferences system_config",
             "properties": {
+                "bridge_password": {
+                    "description": "conferences bridge password",
+                    "type": "string"
+                },
+                "bridge_username": {
+                    "description": "conferences bridge username",
+                    "type": "string"
+                },
                 "profiles": {
                     "properties": {
                         "default": {
@@ -11018,6 +11086,11 @@
                     "description": "speech asr content types",
                     "type": "array"
                 },
+                "asr_freeform_url": {
+                    "default": "http://api.ispeech.org/api/rest",
+                    "description": "speech asr freeform url",
+                    "type": "string"
+                },
                 "asr_prefered_content_type": {
                     "default": "application/mpeg",
                     "description": "speech asr prefered content type",
@@ -11160,7 +11233,7 @@
                     "type": "array"
                 },
                 "default_weight": {
-                    "default": 1,
+                    "default": 3,
                     "description": "stepswitch default weight",
                     "type": "integer"
                 },
