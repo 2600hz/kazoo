@@ -291,7 +291,7 @@ transition_port_in(Number, JObj) ->
 %%--------------------------------------------------------------------
 
 %% string: two or more zeros -> true
--spec is_zero(binary() | undefined) -> boolean().
+-spec is_zero(api_ne_binary()) -> boolean().
 is_zero(Number) when is_binary(Number) ->
     case re:run(erlang:binary_to_list(Number), "^\\+?00+\$", [global]) of
         {match, _} -> true;
