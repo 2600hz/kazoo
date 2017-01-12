@@ -1040,8 +1040,10 @@ reset_category(CategoryId, #kz_services{updates=JObj}=Services) ->
 is_reseller(#kz_services{jobj=ServicesJObj}) ->
     kzd_services:is_reseller(ServicesJObj);
 is_reseller(<<_/binary>> = Account) ->
-    {'ok', ServicesJObj} = fetch_services_doc(Account),
-    kzd_services:is_reseller(ServicesJObj);
+    case fetch_services_doc(Account) of
+        {'ok', ServicesJObj} -> kzd_services:is_reseller(ServicesJObj);
+        _ -> 'false'
+    end;
 is_reseller(ServicesJObj) ->
     kzd_services:is_reseller(ServicesJObj).
 
