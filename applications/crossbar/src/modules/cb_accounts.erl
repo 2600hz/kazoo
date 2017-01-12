@@ -1002,9 +1002,7 @@ load_account_tree(Context) ->
     Tree = get_authorized_account_tree(Context),
     case kz_datamgr:open_cache_docs(?KZ_ACCOUNTS_DB, Tree) of
         {'error', R} -> crossbar_doc:handle_datamgr_errors(R, ?KZ_ACCOUNTS_DB, Context);
-        {'ok', JObjs} ->
-            %%FIXME: extract & handle errors from JObjs
-            format_account_tree_results(Context, JObjs)
+        {'ok', JObjs} -> format_account_tree_results(Context, JObjs)
     end.
 
 -spec get_authorized_account_tree(cb_context:context()) -> ne_binaries().

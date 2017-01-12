@@ -359,6 +359,7 @@ id(JObj, Default) ->
                                    ,<<"id">>
                                    ,<<"ID">>
                                    ,[<<"value">>, <<"id">>]
+                                   ,[<<"doc">>, <<"_id">>]
                                    ]
                                   ,JObj
                                   ,Default
