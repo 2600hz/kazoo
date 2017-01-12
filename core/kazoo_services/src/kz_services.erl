@@ -1128,7 +1128,7 @@ calculate_transactions_charges(PlansCharges, JObjs) ->
                                                 kz_json:object().
 calculate_transactions_charge_fold(JObj, PlanCharges) ->
     Amount = kz_json:get_value(<<"amount">>, JObj, 0),
-    Quantity = kz_json:get_value(<<"quantity">>, JObj, 0),
+    Quantity = kz_json:get_value(<<"activate_quantity">>, JObj, 0),
     SubTotal = kz_json:get_value(<<"activation_charges">>, PlanCharges, 0),
 
     case SubTotal + (Amount * Quantity) of
@@ -1140,7 +1140,7 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
             ItemId = kz_json:get_value(<<"item">>, JObj),
             Props = [{<<"activation_charges">>, Total}
                     ,{[CategoryId, ItemId, <<"activation_charges">>], Amount}
-                    ,{[CategoryId, ItemId, <<"quantity">>], Quantity}
+                    ,{[CategoryId, ItemId, <<"activate_quantity">>], Quantity}
                     ],
             kz_json:set_values(Props, PlanCharges)
     end.
@@ -1179,7 +1179,7 @@ dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
 dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}=Services, JObjs) ->
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
-        _OldQuantity ->
+        OldQuantity ->
             Plans = kz_service_plans:from_service_json(to_json(Services)),
             Charges = activation_charges(CategoryId, ItemId, Plans),
             ServicePlan = kz_service_plans:public_json(Plans),
@@ -1189,6 +1189,7 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
                ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
                ,{<<"amount">>, Charges}
                ,{<<"quantity">>, Quantity}
+               ,{<<"activate_quantity">>, Quantity - OldQuantity}
                ])
              |JObjs
             ]

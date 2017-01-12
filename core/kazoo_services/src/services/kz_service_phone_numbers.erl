@@ -53,7 +53,7 @@ reconcile(Services) ->
     end.
 
 reconcile(Services, PNs) ->
-    update_numbers(reset(Services), PNs).
+    update_numbers(Services, PNs).
 
 -spec reset(kz_services:services()) -> kz_services:services().
 reset(Services) ->
