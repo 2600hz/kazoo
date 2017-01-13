@@ -179,7 +179,6 @@ dry_run(Services) ->
 calc_service_updates(Context, <<"device">>) ->
     DeviceType = kz_device:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
-
     kz_service_devices:reconcile(Services, DeviceType);
 calc_service_updates(Context, <<"user">>) ->
     Services = fetch_service(Context),
