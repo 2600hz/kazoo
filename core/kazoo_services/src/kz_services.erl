@@ -543,7 +543,8 @@ update(CategoryId, ItemId, Quantity, #kz_services{updates=JObj}=Services)
 activation_charges(CategoryId, ItemId, #kz_services{jobj=ServicesJObj}) ->
     Plans = kz_service_plans:from_service_json(ServicesJObj),
     kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
-activation_charges(CategoryId, ItemId, Plans=[_|_]) ->
+activation_charges(CategoryId, ItemId, Plans)
+  when is_list(Plans) ->
     kz_service_plans:activation_charges(CategoryId, ItemId, Plans);
 activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
     activation_charges(CategoryId, ItemId, fetch(Account)).

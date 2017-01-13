@@ -145,14 +145,11 @@ plan_summary(ServicesJObj) ->
 %%--------------------------------------------------------------------
 -spec activation_charges(ne_binary(), ne_binary(), plans()) -> float().
 activation_charges(Category, Item, ServicePlans) ->
-    Plans = [Plan
-             || ServicePlan <- ServicePlans,
-                Plan <- ServicePlan#kz_service_plans.plans
-            ],
-    lists:foldl(fun(Plan, Charges) ->
-                        kz_service_plan:activation_charges(Category, Item, Plan)
-                            + Charges
-                end, 0.0, Plans).
+    lists:sum(
+      [kz_service_plan:activation_charges(Category, Item, Plan)
+       || ServicePlan <- ServicePlans,
+          Plan <- ServicePlan#kz_service_plans.plans
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
