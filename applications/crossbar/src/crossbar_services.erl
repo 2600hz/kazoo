@@ -262,7 +262,7 @@ reconcile(Context) ->
         'true' ->
             AccountId = cb_context:account_id(Context),
             lager:debug("maybe reconciling services for account ~s", [AccountId]),
-            Services = kz_services:reconcile(AccountId),
+            Services = kz_services:reconcile_only(AccountId),
             _ = kz_services:save_as_dirty(Services),
             Context
     end.
