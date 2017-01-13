@@ -929,9 +929,9 @@ maybe_update_diff(_Key, _ItemQuantity, 'undefined', Updates) ->
 maybe_update_diff(_Key, 0, 0, Updates) ->
     lager:debug("not updating ~p", [_Key]),
     Updates;
-maybe_update_diff(Key, _ItemQuantity, UpdateQuantity, Updates) ->
-    lager:debug("updating ~p from ~p to ~p", [Key, _ItemQuantity, UpdateQuantity]),
-    kz_json:set_value(Key, UpdateQuantity, Updates).
+maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
+    lager:debug("updating ~p from ~p to ~p", [Key, ItemQuantity, UpdateQuantity]),
+    kz_json:set_value(Key, UpdateQuantity - ItemQuantity, Updates).
 
 -spec diff_quantity(ne_binary(), ne_binary(), services()) -> integer().
 diff_quantity(_, _, #kz_services{deleted='true'}) -> 0;
