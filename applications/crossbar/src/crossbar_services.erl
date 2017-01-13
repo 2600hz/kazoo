@@ -122,7 +122,7 @@ extract_item_from_category(CategoryKey, ItemKey, ItemJObj, Acc) ->
                          ,kz_transaction:transactions()
                          ,integer()) -> kz_transaction:transactions().
 create_transactions(Context, Item, Acc) ->
-    Quantity = kz_json:get_integer_value(<<"quantity">>, Item, 0),
+    Quantity = kz_json:get_integer_value(<<"activate_quantity">>, Item, 0),
     create_transactions(Context, Item, Acc, Quantity).
 
 create_transactions(_Context, _Item, Acc, 0) -> Acc;
@@ -133,18 +133,12 @@ create_transactions(Context, Item, Acc, Quantity) ->
     Routines = [fun set_meta_data/3
                ,fun set_event/3
                ],
-    Transaction =
-        lists:foldl(
-          fun(F, T) -> F(Context, Item, T) end
-                   ,kz_transaction:debit(AccountId, Units)
-                   ,Routines
-         ),
-    [Transaction|Acc].
+    App = fun(F, T) -> F(Context, Item, T) end,
+    Debit = kz_transaction:debit(AccountId, Units),
+    [lists:foldl(App, Debit, Routines) | Acc].
 
--spec set_meta_data(cb_context:context()
-                   ,kz_json:object()
-                   ,kz_transaction:transaction()
-                   ) -> kz_transaction:transaction().
+-spec set_meta_data(cb_context:context(), kz_json:object(), kz_transaction:transaction()) ->
+                           kz_transaction:transaction().
 set_meta_data(Context, Item, Transaction) ->
     MetaData =
         kz_json:from_list(
@@ -154,8 +148,8 @@ set_meta_data(Context, Item, Transaction) ->
           ]),
     kz_transaction:set_metadata(MetaData, Transaction).
 
--spec set_event(cb_context:context() ,kz_json:object()
-               ,kz_transaction:transaction()) -> kz_transaction:transaction().
+-spec set_event(cb_context:context(), kz_json:object(), kz_transaction:transaction()) ->
+                       kz_transaction:transaction().
 set_event(_Context, Item, Transaction) ->
     ItemValue = kz_json:get_value(<<"item">>, Item, <<>>),
     Event = <<"Activation charges for ", ItemValue/binary>>,
@@ -179,7 +173,6 @@ dry_run(Services) ->
 calc_service_updates(Context, <<"device">>) ->
     DeviceType = kz_device:device_type(cb_context:doc(Context)),
     Services = fetch_service(Context),
-
     kz_service_devices:reconcile(Services, DeviceType);
 calc_service_updates(Context, <<"user">>) ->
     Services = fetch_service(Context),
@@ -260,29 +253,28 @@ reconcile(Context) ->
     of
         'false' -> Context;
         'true' ->
-            lager:debug("maybe reconciling services for account ~s"
-                       ,[cb_context:account_id(Context)]
-                       ),
-            _ = kz_services:save_as_dirty(cb_context:account_id(Context)),
+            AccountId = cb_context:account_id(Context),
+            lager:debug("maybe reconciling services for account ~s", [AccountId]),
+            Services = kz_services:reconcile_only(AccountId),
+            _ = kz_services:save_as_dirty(Services),
             Context
     end.
 
--spec base_audit_log(cb_context:context(), kz_services:services()) ->
-                            kz_json:object().
+-spec base_audit_log(cb_context:context(), kz_services:services()) -> kz_json:object().
 base_audit_log(Context, Services) ->
+    AccountId = cb_context:account_id(Context),
     AccountJObj = cb_context:account_doc(Context),
-    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
+    Tree = kz_account:tree(AccountJObj) ++ [AccountId],
 
     lists:foldl(fun base_audit_log_fold/2
                ,kzd_audit_log:new()
                ,[{fun kzd_audit_log:set_tree/2, Tree}
                 ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
                 ,{fun kzd_audit_log:set_audit_account/3
-                 ,cb_context:account_id(Context)
+                 ,AccountId
                  ,base_audit_account(Context, Services)
                  }
-                ]
-               ).
+                ]).
 
 -type audit_log_fun_2() :: {fun((kzd_audit_log:doc(), Term) -> kzd_audit_log:doc()), Term}.
 -type audit_log_fun_3() :: {fun((kzd_audit_log:doc(), Term1, Term2) -> kzd_audit_log:doc()), Term1, Term2}.

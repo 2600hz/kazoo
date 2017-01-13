@@ -32,24 +32,25 @@
 -type set_feature() :: {ne_binary(), kz_json:object()}.
 -spec activate_feature(knm_number:knm_number(), set_feature() | ne_binary()) ->
                               knm_number:knm_number().
+-spec do_activate_feature(knm_number:knm_number(), set_feature()) ->
+                                 knm_number:knm_number().
+
 activate_feature(Number, Feature=?NE_BINARY) ->
     activate_feature(Number, {Feature, kz_json:new()});
-activate_feature(Number, FeatureToSet) ->
-    BillingId = fetch_billing_id(Number),
-    activate_feature(Number, FeatureToSet, BillingId).
+activate_feature(Number, FeatureToSet={?NE_BINARY,_}) ->
+    do_activate_feature(Number, FeatureToSet).
 
 -ifdef(TEST).
-activate_feature(Number, {Feature,FeatureData}, _) ->
+do_activate_feature(Number, {Feature,FeatureData}) ->
     %% Adding feature regardless of service plan
     PN = knm_phone_number:set_feature(knm_number:phone_number(Number), Feature, FeatureData),
     knm_number:set_phone_number(Number, PN).
 -else.
-activate_feature(Number, FeatureToSet, BillingId) ->
+do_activate_feature(Number, FeatureToSet) ->
     Services = fetch_services(Number),
+    BillingId = kz_services:get_billing_id(Services),
     activate_feature(Number, FeatureToSet, BillingId, Services).
 
--spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary()) ->
-                              knm_number:knm_number().
 -spec activate_feature(knm_number:knm_number(), set_feature(), ne_binary(), kz_services:services()) ->
                               knm_number:knm_number().
 activate_feature(Number, {Feature,FeatureData}, BillingId, Services) ->
@@ -130,7 +131,8 @@ update_services(T=#{todo := Ns, options := Options}) ->
             lager:debug("somewhat dry_run-ing btw"),
             PNs = [knm_number:phone_number(N) || N <- Ns],
             AssignedTo = knm_numbers:assigned_to(T),
-            Services = kz_service_phone_numbers:reconcile(do_fetch_services(AssignedTo), PNs),
+            S = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
+            Services = kz_service_phone_numbers:reconcile(S, PNs),
             knm_numbers:ok(Ns, T#{services => Services});
         {_, false} ->
             AssignedTo = knm_numbers:assigned_to(T),
@@ -153,11 +155,11 @@ update_services(T=#{todo := Ns, options := Options}) ->
 %%--------------------------------------------------------------------
 -spec activate_phone_number(knm_numbers:collection()) -> knm_numbers:collection().
 activate_phone_number(T=#{services := undefined}) ->
-    AssignedTo = knm_numbers:assigned_to(T),
-    activate_phone_number(T#{services => do_fetch_services(AssignedTo)});
+    Services = do_fetch_services(knm_numbers:assigned_to(T)),
+    activate_phone_number(T#{services => Services});
 activate_phone_number(T0=#{todo := Ns, services := Services}) ->
     AssignedTo = knm_numbers:assigned_to(T0),
-    BillingId = fetch_billing_id(T0),
+    BillingId = kz_services:get_billing_id(Services),
     F = fun (N, {ToActivate, T}) ->
                 Num = knm_phone_number:number(knm_number:phone_number(N)),
                 case kz_service_phone_numbers:phone_number_activation_charge(Services, Num) of
@@ -223,22 +225,6 @@ do_fetch_services(undefined) -> kz_services:new();
 do_fetch_services(?MATCH_ACCOUNT_RAW(AssignedTo)) -> kz_services:fetch(AssignedTo).
 -endif.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec fetch_billing_id(knm_number:knm_number()) -> api_ne_binary();
-                      (knm_numbers:collection()) -> api_ne_binary().
--ifdef(TEST).
-fetch_billing_id(_Number) -> ?RESELLER_ACCOUNT_ID.
--else.
-fetch_billing_id(#{services := Services}) ->
-    kz_services:get_billing_id(Services);
-fetch_billing_id(Number) ->
-    kz_services:get_billing_id(fetch_services(Number)).
--endif.
-
 %% @private
 -spec create_numbers_transaction(ne_binaries(), pos_integer(), ne_binary(), ne_binary()) ->
                                         kz_transaction:transaction().
@@ -262,31 +248,21 @@ create_numbers_transaction(Nums=[_|_], Units, BillingId, AccountId) ->
 -spec create_transaction(knm_number:knm_number(), ne_binary(), integer()) ->
                                 kz_transaction:transaction().
 create_transaction(Number, Feature, Units) ->
-    BillingId = fetch_billing_id(Number),
+    BillingId = kz_services:get_billing_id(fetch_services(Number)),
+    LedgerId = kz_util:format_account_id(BillingId),
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    LedgerId = kz_util:format_account_id(BillingId),
     Num = knm_phone_number:number(PhoneNumber),
-
+    Description = <<"number feature activation for ", Feature/binary>>,
     Routines = [fun(T) -> set_activation_reason(T, LedgerId, AccountId, <<"feature">>) end
                ,fun(T) -> kz_transaction:set_feature(Feature, T) end
                ,fun(T) -> kz_transaction:set_number(Num, T) end
-               ,fun(T) -> set_feature_description(T, kz_util:to_binary(Feature)) end
+               ,fun(T) -> kz_transaction:set_description(Description, T) end
                ],
     lager:debug("staging feature '~s' activation charge $~p for ~s via billing account ~s"
                ,[Feature, wht_util:units_to_dollars(Units), AccountId, LedgerId]),
-
-    lists:foldl(fun(F, T) -> F(T) end
-               ,kz_transaction:debit(LedgerId, Units)
-               ,Routines
-               ).
-
-%% @private
--spec set_feature_description(kz_transaction:transaction(), ne_binary()) ->
-                                     kz_transaction:transaction().
-set_feature_description(T, Feature) ->
-    Description = <<"number feature activation for ", Feature/binary>>,
-    kz_transaction:set_description(Description, T).
+    T0 = kz_transaction:debit(LedgerId, Units),
+    lists:foldl(fun(F, T) -> F(T) end, T0, Routines).
 -endif.
 
 -spec set_activation_reason(kz_transaction:transaction(), ne_binary(), ne_binary(), ne_binary()) ->
@@ -294,6 +270,5 @@ set_feature_description(T, Feature) ->
 set_activation_reason(Transaction, LedgerId, LedgerId, Key) ->
     kz_transaction:set_reason(<<Key/binary, "_activation">>, Transaction);
 set_activation_reason(Transaction, _LedgetId, AccountId, Key) ->
-    kz_transaction:set_reason(<<"sub_account_", Key/binary, "_activation">>
-                             ,kz_transaction:set_sub_account_info(AccountId, Transaction)
-                             ).
+    T = kz_transaction:set_sub_account_info(AccountId, Transaction),
+    kz_transaction:set_reason(<<"sub_account_", Key/binary, "_activation">>, T).
