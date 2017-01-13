@@ -929,9 +929,9 @@ maybe_update_diff(_Key, _ItemQuantity, 'undefined', Updates) ->
 maybe_update_diff(_Key, 0, 0, Updates) ->
     lager:debug("not updating ~p", [_Key]),
     Updates;
-maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
-    lager:debug("updating ~p from ~p to ~p", [Key, ItemQuantity, UpdateQuantity]),
-    kz_json:set_value(Key, UpdateQuantity + ItemQuantity, Updates).
+maybe_update_diff(Key, _ItemQuantity, UpdateQuantity, Updates) ->
+    lager:debug("updating ~p from ~p to ~p", [Key, _ItemQuantity, UpdateQuantity]),
+    kz_json:set_value(Key, UpdateQuantity, Updates).
 
 -spec diff_quantity(ne_binary(), ne_binary(), services()) -> integer().
 diff_quantity(_, _, #kz_services{deleted='true'}) -> 0;
@@ -1179,7 +1179,7 @@ dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
 dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}=Services, JObjs) ->
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
         Quantity -> JObjs;
-        OldQuantity ->
+        _OldQuantity ->
             Plans = kz_service_plans:from_service_json(to_json(Services)),
             Charges = activation_charges(CategoryId, ItemId, Plans),
             ServicePlan = kz_service_plans:public_json(Plans),
@@ -1188,7 +1188,7 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
                [{<<"category">>, CategoryId}
                ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
                ,{<<"amount">>, Charges}
-               ,{<<"quantity">>, Quantity + OldQuantity}
+               ,{<<"quantity">>, Quantity}
                ])
              |JObjs
             ]
