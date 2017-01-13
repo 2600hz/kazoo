@@ -260,29 +260,27 @@ reconcile(Context) ->
     of
         'false' -> Context;
         'true' ->
-            lager:debug("maybe reconciling services for account ~s"
-                       ,[cb_context:account_id(Context)]
-                       ),
-            _ = kz_services:save_as_dirty(cb_context:account_id(Context)),
+            AccountId = cb_context:account_id(Context),
+            lager:debug("maybe reconciling services for account ~s", [AccountId]),
+            _ = kz_services:save_as_dirty(AccountId),
             Context
     end.
 
--spec base_audit_log(cb_context:context(), kz_services:services()) ->
-                            kz_json:object().
+-spec base_audit_log(cb_context:context(), kz_services:services()) -> kz_json:object().
 base_audit_log(Context, Services) ->
+    AccountId = cb_context:account_id(Context),
     AccountJObj = cb_context:account_doc(Context),
-    Tree = kz_account:tree(AccountJObj) ++ [cb_context:account_id(Context)],
+    Tree = kz_account:tree(AccountJObj) ++ [AccountId],
 
     lists:foldl(fun base_audit_log_fold/2
                ,kzd_audit_log:new()
                ,[{fun kzd_audit_log:set_tree/2, Tree}
                 ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
                 ,{fun kzd_audit_log:set_audit_account/3
-                 ,cb_context:account_id(Context)
+                 ,AccountId
                  ,base_audit_account(Context, Services)
                  }
-                ]
-               ).
+                ]).
 
 -type audit_log_fun_2() :: {fun((kzd_audit_log:doc(), Term) -> kzd_audit_log:doc()), Term}.
 -type audit_log_fun_3() :: {fun((kzd_audit_log:doc(), Term1, Term2) -> kzd_audit_log:doc()), Term1, Term2}.
