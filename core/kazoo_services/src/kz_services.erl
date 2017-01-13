@@ -1128,8 +1128,7 @@ calculate_transactions_charges(PlansCharges, JObjs) ->
                                                 kz_json:object().
 calculate_transactions_charge_fold(JObj, PlanCharges) ->
     Amount = kz_json:get_value(<<"amount">>, JObj, 0),
-    Keys = [<<"activate_quantity">>, <<"quantity">>],
-    Quantity = kz_json:get_first_defined(Keys, JObj, 0),
+    Quantity = kz_json:get_value(<<"activate_quantity">>, JObj, 0),
     SubTotal = kz_json:get_value(<<"activation_charges">>, PlanCharges, 0),
 
     case SubTotal + (Amount * Quantity) of
