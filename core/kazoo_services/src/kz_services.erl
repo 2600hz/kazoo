@@ -294,7 +294,7 @@ delete_service_plan(PlanId, #kz_services{jobj=JObj}=Services) ->
 %%--------------------------------------------------------------------
 -spec save_as_dirty(ne_binary() | services()) -> services().
 -spec save_as_dirty(ne_binary() | services(), pos_integer()) -> services().
-save_as_dirty(<<_/binary>> = Account) ->
+save_as_dirty(Account=?NE_BINARY) ->
     save_as_dirty(fetch(Account));
 save_as_dirty(#kz_services{}=Services) ->
     save_as_dirty(Services, ?BASE_BACKOFF).
@@ -798,11 +798,11 @@ move_to_good_standing(<<_/binary>> = AccountId) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec reconcile_only(api_binary() | services()) -> 'false' | services().
--spec reconcile(api_binary() | services()) -> 'false' | services().
+-spec reconcile_only(api_ne_binary() | services()) -> 'false' | services().
+-spec reconcile(api_ne_binary() | services()) -> 'false' | services().
 
 reconcile_only('undefined') -> 'false';
-reconcile_only(<<_/binary>> = Account) ->
+reconcile_only(Account=?NE_BINARY) ->
     reconcile_only(fetch(Account));
 reconcile_only(#kz_services{account_id=AccountId}=Services) ->
     lager:debug("reconcile all services for ~s", [AccountId]),
