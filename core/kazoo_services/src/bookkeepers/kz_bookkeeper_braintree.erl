@@ -152,6 +152,7 @@ subscriptions(AccountId) ->
 -spec commit_transactions(ne_binary(),kz_transactions:kz_transactions()) -> 'ok' | 'error'.
 -spec commit_transactions(ne_binary(), kz_transactions:kz_transactions(), integer()) -> 'ok' | 'error'.
 commit_transactions(BillingId, Transactions) ->
+    _ = kz_transactions:save(Transactions),
     commit_transactions(BillingId, Transactions, 3).
 
 commit_transactions(BillingId, Transactions, Try) when Try > 0 ->
