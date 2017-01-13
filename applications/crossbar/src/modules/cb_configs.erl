@@ -145,6 +145,9 @@ patch(Context, _) ->
 delete(Context, _) ->
     crossbar_doc:delete(Context).
 
+-spec make_schema_name(api_ne_binary()) -> ne_binary().
+make_schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -159,7 +162,7 @@ create(Config, Context) ->
         {'error', _} ->
             JObj = kz_doc:set_id(cb_context:req_data(Context), Id),
             Context1 = cb_context:set_req_data(Context, JObj),
-            cb_context:validate_request_data(<<"configs">>, Context1)
+            cb_context:validate_request_data(make_schema_name(Config), Context1)
     end.
 
 %%--------------------------------------------------------------------
@@ -171,7 +174,7 @@ create(Config, Context) ->
 -spec read(ne_binary(), cb_context:context()) -> cb_context:context().
 read(Config, Context) ->
     Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)).
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -204,6 +207,6 @@ validate_patch(Config, Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec validate_request_data(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_request_data(Id, Context) ->
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(<<"config">>)) end,
-    cb_context:validate_request_data(<<"configs">>, Context, OnSuccess).
+validate_request_data(<<"configs_", Config/binary>> = Id, Context) ->
+    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(<<"account_config">>)) end,
+    cb_context:validate_request_data(make_schema_name(Config), Context, OnSuccess).
