@@ -3,8 +3,6 @@
 -define(KNM_VITELITY_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".vitelity">>).
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
 -define(PREFIX_SEARCH_CMD, <<"listnpa">>).
 -define(PREFIX_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listnpa.xml"))).
 
@@ -13,18 +11,13 @@
 
 -define(TOLLFREE_SEARCH_CMD, <<"listtollfree">>).
 -define(TOLLFREE_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listtollfree.xml"))).
+-endif.
 
--define(VITELITY_URI, <<"http://api.vitelity.net/api.php">>).
-
--else.
-
--define(VITELITY_URI
-       ,kapps_config:get(?KNM_VITELITY_CONFIG_CAT
+-define(VITELITY_URI,
+        kapps_config:get(?KNM_VITELITY_CONFIG_CAT
                         ,<<"api_uri">>
                         ,<<"http://api.vitelity.net/api.php">>
-                        )
-       ).
--endif.
+                        )).
 
 %% <<"yes">> or <<"no">>
 -type yes_or_no() :: <<_:16>> | <<_:24>>.
