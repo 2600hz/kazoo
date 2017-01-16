@@ -148,8 +148,7 @@ save_doc(Server, DbName, Doc, Options) ->
 save_docs(Server, DbName, Docs, Options) ->
     kz_couch_doc:save_docs(Server, DbName, Docs, Options).
 
--spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) ->
-                     any().
+-spec del_doc(kz_data:connection(), ne_binary(), kz_data:document(), kz_data:options()) -> any().
 del_doc(Server, DbName, Doc, Options) ->
     kz_couch_doc:del_doc(Server, DbName, Doc, Options).
 
