@@ -89,7 +89,7 @@ get_results_count(#server{}=Conn, DbName, DesignDoc, ViewOptions) ->
                               couchbeam_error().
 do_fetch_results(Db, DesignDoc, Options)
   when is_binary(DesignDoc) ->
-    [DesignName, ViewName | _] = binary:split(DesignDoc, <<"/">>, ['global']),
+    [DesignName, ViewName|_] = binary:split(DesignDoc, <<"/">>, ['global']),
     do_fetch_results(Db, {DesignName, ViewName}, map_options(Options));
 do_fetch_results(Db, DesignDoc, Options) ->
     ?RETRY_504(
@@ -107,7 +107,7 @@ do_fetch_results(Db, DesignDoc, Options) ->
 map_options(Options) ->
     [map_view_option(O) || O <- Options].
 
--spec map_view_option(term()) -> term().
+-spec map_view_option(any()) -> any().
 map_view_option({K, V})
   when is_binary(K) ->
     {kz_term:to_atom(K, 'true'), V};

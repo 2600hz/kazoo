@@ -50,8 +50,6 @@
 -define(PHONE_NUMBERS_CONFIG_CAT, <<"crossbar.phone_numbers">>).
 -define(FIND_NUMBER_SCHEMA, "{\"$schema\": \"http://json-schema.org/draft-03/schema#\", \"id\": \"http://json-schema.org/draft-03/schema#\", \"properties\": {\"prefix\": {\"required\": \"true\", \"type\": \"string\", \"minLength\": 3, \"maxLength\": 10}, \"quantity\": {\"default\": 1, \"type\": \"integer\", \"minimum\": 1}}}").
 
--define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
-
 -define(PREFIX, <<"prefix">>).
 -define(COUNTRY, <<"country">>).
 -define(OFFSET, <<"offset">>).
