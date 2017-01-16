@@ -15,14 +15,12 @@
 
 -compile({no_auto_import,[apply/3]}).
 
--export([find/1, find/2
-        ,check/1
+-export([check/1
         ,available_carriers/1, all_modules/0
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
 
-        ,quantity/1
         ,prefix/1, prefix/2
         ,dialcode/1
         ,country/1
@@ -32,17 +30,19 @@
         ,reseller_id/1
 
         ,is_number_billable/1
+        ,is_local/1
         ]).
 
 -export([options_to_jobj/1]).
 
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
--ifdef(TEST).
--export([process_carrier_results/2
-        ,process_bulk_carrier_results/2
-        ]).
--endif.
+-define(DEFAULT_CARRIER_MODULE
+       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
+-define(CARRIER_MODULES
+       ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+-define(CARRIER_MODULES(AccountId)
+       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
 
 -ifdef(TEST).
 -type option() :: {'quantity', pos_integer()} |
@@ -74,162 +74,6 @@ options_to_jobj(Options) ->
 
 option_to_kv({K, V}, JObj) ->
     kz_json:set_value(kz_term:to_binary(K), V, JObj).
-
--define(DEFAULT_CARRIER_MODULE
-       ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
--define(CARRIER_MODULES
-       ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
--define(CARRIER_MODULES(AccountId)
-       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
-
--define(MAX_QUANTITY, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 50)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec find(ne_binary()) -> kz_json:objects().
--spec find(ne_binary(), options()) -> kz_json:objects().
-
-find(Prefix) ->
-    find(Prefix, []).
-
-find(Prefix, Options0) ->
-    Dialcode = knm_util:prefix_for_country(country(Options0)),
-    Options = [{'dialcode', Dialcode} | Options0],
-    NormalizedPrefix = <<Dialcode/binary, (prefix(Options, Prefix))/binary>>,
-    Quantity = quantity(Options),
-    Carriers = available_carriers(Options),
-    lager:debug("contacting, in order: ~p", [Carriers]),
-    Acc0 = #{found => []
-            ,count => 0
-            ,left => Quantity
-            ,should_continue => 'true'
-            },
-    #{found := Found
-     ,count := _Count
-     } =
-        lists:foldl(fun(Carrier, Acc) ->
-                            find_fold(Carrier, NormalizedPrefix, Options, Acc)
-                    end
-                   ,Acc0
-                   ,Carriers
-                   ),
-    lager:debug("~s found ~p/~p numbers", [NormalizedPrefix, _Count, Quantity]),
-    lists:sort(fun sort_find_result/2, Found).
-
--type find_acc() :: #{found => kz_json:objects()
-                     ,count => non_neg_integer()
-                     ,left => pos_integer()
-                     ,should_continue => boolean()
-                     }.
--spec find_fold(atom(), ne_binary(), options(), find_acc()) -> find_acc().
-find_fold(_Carrier, _, _, Acc=#{should_continue := ShouldContinue
-                               ,count := _Count
-                               ,left := Left
-                               })
-  when ShouldContinue == 'false'; Left < 1 ->
-    lager:debug("stopping ~s with ~p (~p) numbers found", [_Carrier, _Count, Left]),
-    Acc;
-find_fold(Carrier, Prefix, Options, Acc=#{left := Quantity}) ->
-    try apply(Carrier, find_numbers, [Prefix, Quantity, Options]) of
-        {'ok', []} -> Acc;
-        {'ok', Numbers} -> process_carrier_results(Numbers, Acc);
-        {'bulk', []} -> Acc;
-        {'bulk', Numbers} -> process_bulk_carrier_results(Numbers, Acc);
-        {'stopping_here', Numbers} ->
-            NewAcc = process_carrier_results(Numbers, Acc),
-            NewAcc#{should_continue => 'false'};
-        {'error', _R} ->
-            lager:debug("skipping carrier ~s: ~p", [Carrier, _R]),
-            Acc
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            ?LOG_WARN("failed to query carrier ~s for ~p numbers: ~s: ~p"
-                     ,[Carrier, Quantity, _E, _R]),
-            kz_util:log_stacktrace(ST),
-            Acc
-    end.
-
--spec process_bulk_carrier_results(knm_number:knm_numbers(), find_acc()) -> find_acc().
-process_bulk_carrier_results(Numbers, Acc) ->
-    acc_found(Acc, [found_number_to_jobj(Number) || Number <- Numbers]).
-
--spec process_carrier_results(knm_number:knm_numbers(), find_acc()) -> find_acc().
-process_carrier_results(Numbers, Acc) ->
-    acc_found(Acc, [process_number_result(Number) || Number <- Numbers]).
-
--spec acc_found(find_acc(), kz_json:objects()) -> find_acc().
-acc_found(Acc=#{found := Found
-               ,count := Count
-               ,left := Left
-               }, NewNumbers) ->
-    NewNumbersCount = length(NewNumbers),
-    Acc#{found => Found ++ NewNumbers
-        ,count => Count + NewNumbersCount
-        ,left => Left - NewNumbersCount
-        }.
-
--spec process_number_result(knm_number:knm_number()) -> kz_json:object().
-process_number_result(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    Carrier = knm_phone_number:module_name(PhoneNumber),
-    case is_local(Carrier) of
-        'true' -> found_number_to_jobj(Number);
-        'false' ->
-            DID = knm_phone_number:number(PhoneNumber),
-            check_for_existing_did(Number, Carrier, knm_phone_number:fetch(DID))
-    end.
-
--spec check_for_existing_did(knm_number:knm_number(), ne_binary(), knm_phone_number_return()) -> kz_json:object().
-check_for_existing_did(Number, _Carrier, {'error', 'not_found'}) ->
-    %% This case is only possible for -dTEST: tests don't save to DB (yet)
-    %% and we make sure that non-local carriers save discovered numbers to DB.
-    io:format(user, "number ~s was not in db\n"
-             ,[knm_phone_number:number(knm_number:phone_number(Number))]),
-    found_number_to_jobj(Number);
-check_for_existing_did(Number, Carrier, {'ok', ExistingPhoneNumber}) ->
-    case knm_phone_number:module_name(ExistingPhoneNumber) of
-        Carrier -> found_number_to_jobj(Number);
-        _OtherCarrier ->
-            transition_existing_to_discovery(Number, ExistingPhoneNumber)
-    end.
-
--spec transition_existing_to_discovery(knm_number:knm_number(), knm_phone_number:knm_phone_number()) ->
-                                              kz_json:object().
-transition_existing_to_discovery(Number, ExistingPhoneNumber) ->
-    PhoneNumber0 = knm_number:phone_number(Number),
-    Setters = [{fun knm_phone_number:set_module_name/2, knm_phone_number:module_name(PhoneNumber0)}
-              ,{fun knm_phone_number:set_carrier_data/2, knm_phone_number:carrier_data(PhoneNumber0)}
-              ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_DISCOVERY}
-              ],
-    {'ok', PhoneNumber} = knm_phone_number:setters(ExistingPhoneNumber, Setters),
-    found_number_to_jobj(
-      knm_number:set_phone_number(Number, knm_phone_number:save(PhoneNumber))).
-
--spec found_number_to_jobj(knm_number:knm_number()) -> kz_json:object().
-found_number_to_jobj(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    DID = knm_phone_number:number(PhoneNumber),
-    kz_json:from_list(
-      props:filter_undefined(
-        [{<<"number">>, DID}
-        ,{<<"activation_charge">>, activation_charge(DID, knm_phone_number:assign_to(PhoneNumber))}
-        ,{<<"state">>, knm_phone_number:state(PhoneNumber)}
-        ])).
-
--spec activation_charge(ne_binary(), api_binary()) -> api_number().
--ifdef(TEST).
-activation_charge(?START_BLOCK, _AccountId) -> 5.0;
-activation_charge(?END_BLOCK, _AccountId) -> 'undefined';
-activation_charge(_Number, _AccountId) -> 1.0.
--else.
-activation_charge(_DID, 'undefined') -> 'undefined';
-activation_charge(DID, AccountId) ->
-    kz_services:activation_charges(<<"phone_numbers">>, knm_converters:classify(DID), AccountId).
--endif.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -383,11 +227,6 @@ disconnect(Number) ->
             Number
     end.
 
--spec quantity(options()) -> pos_integer().
-quantity(Options) ->
-    Quantity = props:get_integer_value('quantity', Options, 1),
-    min(Quantity, ?MAX_QUANTITY).
-
 -spec prefix(options()) -> ne_binary().
 -spec prefix(options(), ne_binary()) -> ne_binary().
 prefix(Options) ->
@@ -442,16 +281,6 @@ is_number_billable(PhoneNumber) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Sort whole number search result
-%% @end
-%%--------------------------------------------------------------------
--spec sort_find_result(kz_json:object(), kz_json:object()) -> boolean().
-sort_find_result(A, B) ->
-    kz_json:get_value(<<"number">>, A) =< kz_json:get_value(<<"number">>, B).
 
 %%--------------------------------------------------------------------
 %% @private
