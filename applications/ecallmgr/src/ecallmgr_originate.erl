@@ -695,7 +695,7 @@ maybe_fix_caller_id(Export, JObj) ->
            {lists:member("origination_callee_id_name", Export), kz_json:get_value(<<"Outbound-Callee-ID-Name">>, JObj), "effective_caller_id_name"}
           ,{lists:member("origination_callee_id_number", Export), kz_json:get_value(<<"Outbound-Callee-ID-Number">>, JObj), "effective_caller_id_number"}
           ],
-    string:join([ "^export:" ++ Key ++ "=" ++ erlang:binary_to_list(Value) || {IsTrue, Value, Key} <- Fix, IsTrue ], ":").
+    string:join([ "^set:" ++ Key ++ "=" ++ erlang:binary_to_list(Value) || {IsTrue, Value, Key} <- Fix, IsTrue ], ":").
 
 -spec publish_error(ne_binary(), created_uuid() | api_binary(), kz_json:object(), api_binary()) -> 'ok'.
 publish_error(_, _, _, 'undefined') -> 'ok';
