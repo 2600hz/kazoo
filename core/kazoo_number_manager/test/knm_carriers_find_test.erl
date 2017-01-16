@@ -40,12 +40,7 @@ check_test_() ->
 
 find_local_test_() ->
     [{"Finding local numbers not supported"
-     ,?_assertMatch({'error', 'not_available'}
-                   ,knm_local:find_numbers(<<"415">>, 1, [])
-                   )
-     }
-    ,{"Finding local numbers returns empty list"
-     ,?_assertEqual([], knm_carriers:find(<<"415">>))
+     ,?_assertMatch({'error', 'not_available'}, knm_local:find_numbers(<<"415">>, 1, []))
      }
     ].
 
