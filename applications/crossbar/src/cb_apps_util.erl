@@ -26,12 +26,11 @@
 %%--------------------------------------------------------------------
 -spec allowed_apps(ne_binary()) -> kz_json:objects().
 allowed_apps(AccountId) ->
-    ServicePlan = kz_services:service_plan_json(AccountId),
-    case has_all_apps_in_service_plan(ServicePlan) of
-        'true' ->
+    case find_service_plan_with_apps(AccountId) of
+        'undefined' ->
             DefaultApps = load_default_apps(),
             filter_apps(AccountId, DefaultApps);
-        'false' ->
+        ServicePlan ->
             Apps = find_enabled_apps(get_plan_apps(ServicePlan)),
             filter_apps(AccountId, Apps)
     end.
@@ -144,17 +143,62 @@ get_user_priv_level(AccountId, UserId) ->
             kz_json:get_value(<<"priv_level">>, JObj)
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec has_all_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
-has_all_apps_in_service_plan(ServicePlan) ->
+%% @doc Find the first Service plan in Account or Account's reseller
+%% hierarchy which has ui_apps or has ui_apps._all
+-spec find_service_plan_with_apps(ne_binary()) -> api_object().
+find_service_plan_with_apps(AccountId) ->
+    ResellerId = kz_services:find_reseller_id(AccountId),
+    find_service_plan_with_apps(AccountId, ResellerId).
+
+-spec find_service_plan_with_apps(ne_binary(), api_binary()) -> api_object().
+find_service_plan_with_apps(AccountId, 'undefined') ->
+    lager:debug("reseller account is undefined, checking account ~s service plan", [AccountId]),
+    check_service_plan(AccountId);
+find_service_plan_with_apps(ResellerId, ResellerId) ->
+    lager:debug("reached to top level reseller ~s", [ResellerId]),
+    check_service_plan(ResellerId);
+find_service_plan_with_apps(AccountId, ResellerId) ->
+    ReResellerId = kz_services:find_reseller_id(ResellerId),
+
+    ServicePlan = kz_services:service_plan_json(AccountId),
+    case {has_apps_in_service_plan(ServicePlan)
+         ,is_all_in_apps_service_plan(ServicePlan)
+         }
+    of
+        {'true', _} ->
+            lager:debug("account ~s doesn't have apps in service plan, checking reseller ~s", [AccountId, ResellerId]),
+            find_service_plan_with_apps(ResellerId, ReResellerId);
+        {'false', 'true'} ->
+            lager:debug("service plan for ~s was set to show all apps", [AccountId]),
+            'undefined';
+        {'false', 'false'} ->
+            lager:debug("account ~s has apps in service plan", [AccountId]),
+            ServicePlan
+    end.
+
+-spec check_service_plan(ne_binary()) -> api_object().
+check_service_plan(AccountId) ->
+    ServicePlan = kz_services:service_plan_json(AccountId),
+    case has_all_or_apps_in_service_plan(ServicePlan) of
+        'true' -> 'undefined';
+        'false' -> ServicePlan
+    end.
+
+-spec has_all_or_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
+has_all_or_apps_in_service_plan(ServicePlan) ->
     %% If the "ui_apps" key is empty, return true
     %% else "ui_apps._all.enabled" == true
-    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY))
-        orelse kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
+    has_apps_in_service_plan(ServicePlan)
+        orelse is_all_in_apps_service_plan(ServicePlan).
+
+-spec has_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
+has_apps_in_service_plan(ServicePlan) ->
+    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY)).
+
+-spec is_all_in_apps_service_plan(kzd_service_plan:doc()) -> boolean().
+is_all_in_apps_service_plan(ServicePlan) ->
+    kzd_item_plan:is_enabled(kzd_service_plan:category_plan(ServicePlan, ?PLAN_CATEGORY)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,8 +333,9 @@ find_enabled_apps_fold(AppName, PlanApp, Acc) ->
     case kzd_item_plan:is_enabled(PlanApp)
         andalso find_app(AppId, PlanApp)
     of
-        TrueOrUndefined when TrueOrUndefined =:= 'true';
-                             TrueOrUndefined =:= 'undefined' ->
+        DisabledOrUndefined
+          when DisabledOrUndefined =:= 'false'
+               orelse DisabledOrUndefined =:= 'undefined' ->
             lager:debug("excluding app ~s(~s)", [AppName, AppId]),
             Acc;
         AppJObj ->
