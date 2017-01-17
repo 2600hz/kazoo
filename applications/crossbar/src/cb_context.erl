@@ -980,6 +980,7 @@ maybe_fix_js_types(Context, SchemaJObj, Errors) ->
 maybe_fix_js_type({'data_invalid', SchemaJObj, 'wrong_type', Value, Key}, JObj) ->
     case kz_json:get_value(<<"type">>, SchemaJObj) of
         <<"integer">> -> maybe_fix_js_integer(Key, Value, JObj);
+        <<"boolean">> -> maybe_fix_js_boolean(Key, Value, JObj);
         _Type -> JObj
     end;
 maybe_fix_js_type(_, JObj) -> JObj.
@@ -991,9 +992,18 @@ maybe_fix_js_integer(Key, Value, JObj) ->
         V -> kz_json:set_value(maybe_fix_index(Key), V, JObj)
     catch
         _E:_R ->
-            lager:debug("error converting value to integer ~p : ~p : ~p"
-                       ,[Value, _E, _R]
-                       ),
+            lager:debug("error converting ~p to integer ~p: ~p", [Value, _E, _R]),
+            JObj
+    end.
+
+-spec maybe_fix_js_boolean(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
+                                  kz_json:object().
+maybe_fix_js_boolean(Key, Value, JObj) ->
+    try kz_util:to_boolean(Value) of
+        V -> kz_json:set_value(maybe_fix_index(Key), V, JObj)
+    catch
+        _E:_R ->
+            lager:debug("error converting ~p to boolean ~p: ~p", [Value, _E, _R]),
             JObj
     end.
 
