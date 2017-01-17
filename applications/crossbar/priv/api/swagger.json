@@ -1629,7 +1629,15 @@
             "description": "Validator for the privacy callflow's data object",
             "properties": {
                 "mode": {
-                    "description": ""
+                    "default": "full",
+                    "description": "set caller privacy on calls, restricting the presentation some or full parts of Caller ID",
+                    "enum": [
+                        "full",
+                        "name",
+                        "number",
+                        "yes"
+                    ],
+                    "type": "string"
                 }
             },
             "required": true,
@@ -7439,14 +7447,6 @@
                     "description": "callflow post answer delay",
                     "type": "integer"
                 },
-                "privacy_name": {
-                    "description": "callflow privacy name",
-                    "type": "string"
-                },
-                "privacy_number": {
-                    "description": "callflow privacy number",
-                    "type": "string"
-                },
                 "ring_ready_offnet": {
                     "default": true,
                     "description": "callflow ring ready offnet",
@@ -7546,8 +7546,6 @@
             },
             "required": [
                 "call_recording",
-                "privacy_name",
-                "privacy_number",
                 "voicemail"
             ],
             "type": "object"
@@ -10720,6 +10718,32 @@
                     "default": 4000,
                     "description": "pivot tts texts size",
                     "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "system_config.privacy": {
+            "description": "Schema for privacy system_config",
+            "properties": {
+                "block_anonymous_caller_id": {
+                    "default": false,
+                    "description": "Controls blocking of anonymous calls",
+                    "type": "boolean"
+                },
+                "privacy_mode": {
+                    "default": "kazoo",
+                    "description": "Default privacy mode for anonymous calls",
+                    "type": "string"
+                },
+                "privacy_name": {
+                    "default": "anonymous",
+                    "description": "Default Caller ID Name should be shown for anonymous calls",
+                    "type": "string"
+                },
+                "privacy_number": {
+                    "default": "0000000000",
+                    "description": "Default Caller ID Number should be shown for anonymous calls",
+                    "type": "string"
                 }
             },
             "type": "object"

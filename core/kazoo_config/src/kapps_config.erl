@@ -692,7 +692,7 @@ get_category(Category, 'false') ->
 %%  In the event that both the source and destination exist but
 %%  have different values it will not make any change.  The parameter
 %%  is only removed from the source after a successsful save of the
-%%  the destiation.
+%%  the destination.
 %% @end
 %%--------------------------------------------------------------------
 -type migrate_setting() :: {ne_binary(), config_key()}.
@@ -813,6 +813,15 @@ get_category(Category, 'false') ->
          ,{<<"tasks">>, <<"unfinished_port_request_lifetime_s">>}
          }
 
+        ,{{<<"callflow">>, <<"privacy_name">>}
+         ,{<<"privacy">>, <<"privacy_name">>}
+         }
+        ,{{<<"callflow">>, <<"privacy_number">>}
+         ,{<<"privacy">>, <<"privacy_number">>}
+         }
+        ,{{<<"stepswitch">>, <<"block_anonymous_caller_id">>}
+         ,{<<"privacy">>, <<"block_anonymous_caller_id">>}
+         }
         ]).
 
 -spec migrate() -> 'ok'.

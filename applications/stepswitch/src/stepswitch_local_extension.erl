@@ -341,11 +341,11 @@ get_account_realm(AccountId) ->
 
 -spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
 local_extension_caller_id(JObj) ->
-    {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                               ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
-    ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
+    {kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                ,<<"Emergency-Caller-ID-Name">>
+                               ], JObj)
+    ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
+                               ,<<"Emergency-Caller-ID-Number">>
                                ], JObj)
     }.
 

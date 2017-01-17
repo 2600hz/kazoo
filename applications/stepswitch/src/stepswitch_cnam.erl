@@ -84,7 +84,7 @@ lookup(<<_/binary>> = Number) ->
                              )
           );
 lookup(JObj) ->
-    Number = kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_util:anonymous_caller_id_number()),
+    Number = kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_privacy:anonymous_caller_id_number()),
     Num = case ?DISABLE_NORMALIZE of
               'false' -> knm_converters:normalize(Number);
               'true'  -> Number

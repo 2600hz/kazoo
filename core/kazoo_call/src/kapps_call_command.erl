@@ -2086,12 +2086,12 @@ b_flush(Call) -> wait_for_noop(Call, flush(Call)).
 %% @end
 %%--------------------------------------------------------------------
 -spec privacy(kapps_call:call()) -> 'ok'.
--spec privacy(ne_binary(), kapps_call:call()) -> 'ok'.
+-spec privacy(api_ne_binary(), kapps_call:call()) -> 'ok'.
 
 -spec b_privacy(kapps_call:call()) ->
                        kapps_api_error() |
                        {'ok', kz_json:object()}.
--spec b_privacy(ne_binary(), kapps_call:call()) ->
+-spec b_privacy(api_ne_binary(), kapps_call:call()) ->
                        kapps_api_error() |
                        {'ok', kz_json:object()}.
 

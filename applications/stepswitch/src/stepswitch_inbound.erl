@@ -10,10 +10,6 @@
 
 -include("stepswitch.hrl").
 
--define(SHOULD_BLOCK_ANONYMOUS(AccountId)
-       ,kapps_account_config:get_global(AccountId, ?SS_CONFIG_CAT, <<"block_anonymous_caller_id">>, 'false')
-       ).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -57,7 +53,7 @@ maybe_relay_request(JObj) ->
                        ,fun maybe_set_transfer_media/2
                        ,fun maybe_lookup_cnam/2
                        ,fun maybe_add_prepend/2
-                       ,fun maybe_blacklisted/2
+                       ,fun maybe_block_call/2
                        ,fun maybe_transition_port_in/2
                        ],
             _ = lists:foldl(fun(F, J) -> F(NumberProps, J) end
@@ -226,21 +222,15 @@ maybe_add_prepend(NumberProps, JObj) ->
         Prepend -> kz_json:set_value(<<"Prepend-CID-Name">>, Prepend, JObj)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% relay a route request once populated with the new properties
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_blacklisted(knm_number_options:extra_options(), kz_json:object()) ->
-                               kz_json:object().
-maybe_blacklisted(_, JObj) ->
-    case is_blacklisted(JObj) of
-        'true' -> JObj;
-        'false' ->
-            _ = relay_request(JObj),
-            JObj
-    end.
+-spec maybe_block_call(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
+maybe_block_call(_, JObj) ->
+    case is_blacklisted(JObj)
+        orelse kz_privacy:should_block_anonymous(JObj)
+    of
+        true -> JObj;
+        false -> relay_request(JObj)
+    end,
+    JObj.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -291,31 +281,18 @@ is_blacklisted(JObj) ->
             'false';
         {'ok', Blacklists} ->
             Blacklist = get_blacklist(AccountId, Blacklists),
-            is_number_blacklisted(AccountId, Blacklist, kz_json:get_value(<<"Caller-ID-Number">>, JObj))
+            is_number_blacklisted(Blacklist, kz_json:get_value(<<"Caller-ID-Number">>, JObj))
     end.
 
--spec is_number_blacklisted(ne_binary(), kz_json:object(), ne_binary()) -> boolean().
-is_number_blacklisted(AccountId, Blacklist, Number) ->
+-spec is_number_blacklisted(kz_json:object(), ne_binary()) -> boolean().
+is_number_blacklisted(Blacklist, Number) ->
     Normalized = knm_converters:normalize(Number),
     case kz_json:get_value(Normalized, Blacklist) of
-        'undefined' ->
-            maybe_block_anonymous(AccountId, Number, kz_util:anonymous_caller_id_number());
+        'undefined' -> false;
         _Rule ->
             lager:info("~s(~s) is blacklisted", [Number, Normalized]),
             'true'
     end.
-
--spec maybe_block_anonymous(ne_binary(), ne_binary(), ne_binary()) -> boolean().
-maybe_block_anonymous(AccountId, Number, Number) ->
-    case ?SHOULD_BLOCK_ANONYMOUS(AccountId) of
-        'false' -> 'false';
-        'true' ->
-            lager:info("anonymous caller ids are blocked for account ~s", [AccountId]),
-            'true'
-    end;
-maybe_block_anonymous(_AccountId, _Number, _Anonymous) ->
-    lager:debug("~s is not blacklisted", [_Number]),
-    'false'.
 
 -spec get_blacklists(ne_binary()) ->
                             {'ok', ne_binaries()} |
