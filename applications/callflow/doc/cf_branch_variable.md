@@ -8,18 +8,26 @@ The `branch_variable` callflow enables you to branch based on value of some fiel
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`variable` | Name of variable/property that we are looking for | `string` or a json path | | `true`
-`scope` | the place which the variable should be looked for (`custome_channel_vars`, `device`, `user`, `account`) | `string` | `"cunstom_channel_vars"` | `false`
+`scope` | specifies where the variable is defined | `string` | `"cunstom_channel_vars"` | `false`
+`variable` | specifies the name of variable/property that should be looked up | `string` or a json path | | `true`
 
 #### Description
 
 The purpose of this callflow is to branch on value of some property so it may have children named after possible values of the property, e.g. branch on boolean value of a property with the name `"call_forward"`. For this, there should be three children on the callflow: `"true"`, `"false"` (and `"_"` for the case when property is not defined anywhere and it's value is unknown).
 
-The place that this variable would be looked for is configurable by `scope`. By default if the scope is not defined or if it sets to `"cunstom_channel_vars"`, it would look in the call's CCVs for getting the variable's value.
+##### Scope
 
-Other possible locations for which the variable would be looked up are: user's document, device's document and account's document. If you set scope to other values than these, the endpoint would be fetched and since the endpoint has merged value of some of the important attributes (like `call_forwad`, `call_restriction`, `record_call`, etc...) from account, user, device, it would be used to look up the desire variable's value.
+The place that the variable can be defined is configurable by `scope`. By default if the scope is not defined or if it sets to `"custom_channel_vars"`, call's CCVs would be looking for the variable's value.
 
-#### Variable
+Supported places for defining the variable:
+
+* `"accounts"`: in the account's document
+* `"custom_channel_vars"`: in the Call's Custom Channel Variables
+* `"device"`: in the device's documents
+* `"merged"`: in the endpoint object (the merge of device, user and account)
+* `"user"`: in the user's documents
+
+##### Variable
 
 Variable is the name of the variable or property that should be look for in the specified scope. It must be a valid JSON key, e.g. a single string or a list of string which is a path to deep nested JSON objects.
 

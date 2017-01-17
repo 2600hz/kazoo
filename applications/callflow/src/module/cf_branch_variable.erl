@@ -76,7 +76,7 @@ find_child_in_scope(Scope, Variable, Call) when Scope =:= <<"user">>;
             lager:debug("unsupported authorizing type: ~s", [_AuthType]),
             'undefined'
     end;
-find_child_in_scope(_Scope, Variable, Call) ->
+find_child_in_scope(<<"merged">>, Variable, Call) ->
     {'branch_keys', Keys} = cf_exe:get_branch_keys(Call),
     CCVsChild = kz_json:get_ne_value(Variable, kz_json:normalize(kapps_call:custom_channel_vars(Call))),
     case kz_endpoint:get(Call) of
