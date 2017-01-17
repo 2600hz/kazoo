@@ -22,9 +22,8 @@
         ]).
 -export([generate_numbers/4]).
 -export([delete/1]).
--export([purge_discovery/0
-        ,purge_discovery/1
-        ]).
+-export([purge_discovery/0, purge_discovery/1]).
+-export([purge_deleted/0, purge_deleted/1]).
 -export([update_number_services_view/1]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
@@ -111,6 +110,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
 fix_accounts_numbers(Accounts) ->
     AccountDbs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
     _ = purge_discovery(),
+    _ = purge_deleted(),
     foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, AccountDbs).
 
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
@@ -419,6 +419,7 @@ generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
     M:generate_numbers(AccountId, kz_util:to_integer(StartingNumber), kz_util:to_integer(Quantity)).
 
 
+%% @public
 -spec delete(ne_binary()) -> 'no_return'.
 delete(Num) ->
     case knm_number:delete(Num, knm_number_options:default()) of
@@ -428,12 +429,27 @@ delete(Num) ->
     'no_return'.
 
 
+%% @public
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
     lists:foreach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
+%% @public
+-spec purge_deleted(ne_binary()) -> 'no_return'.
+purge_deleted(Prefix) ->
+    purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DELETED),
+    'no_return'.
+
+%% @public
+-spec purge_deleted() -> 'no_return'.
+purge_deleted() ->
+    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
+    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    'no_return'.
+
+%% @public
 -spec purge_discovery(ne_binary()) -> 'no_return'.
 purge_discovery(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
