@@ -1,24 +1,21 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2014, 2600Hz
+%%% @copyright (C) 2013, 2600Hz
 %%% @doc
 %%%
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(konami_sup).
+-module(webseq_sup).
 
 -behaviour(supervisor).
 
 -export([start_link/0]).
 -export([init/1]).
 
--include("konami.hrl").
+-include("webseq.hrl").
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER('konami_listener')
-                   ,?WORKER('konami_event_listener')
-                   ,?WORKER('konami_init')
-                  ]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions

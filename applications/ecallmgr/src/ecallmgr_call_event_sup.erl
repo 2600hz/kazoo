@@ -30,15 +30,20 @@
 %% @end
 %%--------------------------------------------------------------------
 start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+    supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
 
+-spec start_proc(list()) -> sup_startchild_ret().
 start_proc([Node, CallId|_]=Args) ->
-    case gproc:lookup_pids({p, l, {call_events_process, Node, CallId}}) of
-        [] -> supervisor:start_child(?SERVER, Args);
-        [Pid] -> 
-            lager:debug("recycling existing call events worker ~p", [Pid]),
+    try gproc:lookup_value({'p', 'l', ?FS_CALL_EVENTS_PROCESS_REG(Node, CallId)}) of
+        Pid when is_pid(Pid) ->
+            lager:debug("recycling existing call events worker ~p for ~s", [Pid, CallId]),
             ecallmgr_call_events:update_node(Pid, Node),
-            {ok, Pid}
+            {'ok', Pid};
+        _V ->
+            lager:debug("unexpected event process: ~p", [_V])
+    catch
+        'error':'badarg' ->
+            supervisor:start_child(?SERVER, Args)
     end.
 
 %%%===================================================================
@@ -59,14 +64,8 @@ start_proc([Node, CallId|_]=Args) ->
 %% @end
 %%--------------------------------------------------------------------
 init([]) ->
-    Restart = transient,
-    Shutdown = 2000,
-    Type = worker,
-
-    AChild = {ecallmgr_call_events, {ecallmgr_call_events, start_link, []},
-              Restart, Shutdown, Type, [ecallmgr_call_events]},
-
-    {ok, {{simple_one_for_one, 5, 10}, [AChild]}}.
+    Child = ?WORKER_TYPE('ecallmgr_call_events', 'transient'),
+    {'ok', {{'simple_one_for_one', 5, 10}, [Child]}}.
 
 %%%===================================================================
 %%% Internal functions
