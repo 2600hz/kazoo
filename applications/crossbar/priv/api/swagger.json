@@ -777,12 +777,20 @@
             "properties": {
                 "scope": {
                     "default": "custom_channel_vars",
-                    "description": "",
+                    "description": "specifies where the variable is defined",
+                    "enum": [
+                        "account",
+                        "custom_channel_vars",
+                        "device",
+                        "merged",
+                        "user"
+                    ],
                     "type": "string"
                 },
                 "variable": {
                     "default": "",
-                    "description": "",
+                    "description": "specifies the name of variable/property that should be looked up",
+                    "required": true,
                     "type": "string"
                 }
             },

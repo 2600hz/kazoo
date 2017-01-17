@@ -18,8 +18,8 @@
         "variable": {
             "default": "",
             "description": "specifies the name of variable/property that should be looked up",
-            "type": "string",
-            "required": true
+            "required": true,
+            "type": "string"
         }
     },
     "required": true,
