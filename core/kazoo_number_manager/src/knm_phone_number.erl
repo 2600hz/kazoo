@@ -465,8 +465,6 @@ to_json(#knm_phone_number{doc=JObj}=N) ->
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
             ,{?PVT_USED_BY, used_by(N)}
             ,{?PVT_FEATURES, features(N)}
-            ,{?PVT_FEATURES_ALLOWED, features_allowed(N)}
-            ,{?PVT_FEATURES_DENIED, features_denied(N)}
             ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
             ,{?PVT_CARRIER_DATA, carrier_data(N)}
             ,{?PVT_REGION, region(N)}
