@@ -18,6 +18,11 @@
 
 -define(ADDRESS_ID, <<"address_id">>).
 
+-define(MOD_CONFIG_CAT, <<(?KNM_CONFIG_CAT)/binary, ".telnyx">>).
+
+-define(IS_SANDBOX_PROVISIONING_TRUE,
+        kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"sandbox_provisioning">>, 'false')).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -76,7 +81,8 @@ feature(Number) ->
 -spec maybe_update_e911(knm_number:knm_number(), boolean()) -> knm_number:knm_number().
 maybe_update_e911(Number) ->
     IsDryRun = knm_phone_number:dry_run(knm_number:phone_number(Number)),
-    maybe_update_e911(Number, IsDryRun).
+    maybe_update_e911(Number, (IsDryRun
+                               orelse ?IS_SANDBOX_PROVISIONING_TRUE)).
 
 maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),
