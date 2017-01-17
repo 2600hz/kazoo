@@ -320,6 +320,7 @@ delete(T0=#{todo := PNs, options := Options}) ->
             lists:foldl(F, T0, PNs)
     end;
 delete(PhoneNumber) ->
+    lager:debug("deleting permanently ~s", [number(PhoneNumber)]),
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
@@ -358,8 +359,6 @@ release(PhoneNumber) ->
     release(PhoneNumber, state(PhoneNumber)).
 
 release(PhoneNumber, ?NUMBER_STATE_RELEASED) ->
-    PhoneNumber;
-release(PhoneNumber, ?NUMBER_STATE_DELETED) ->
     PhoneNumber;
 release(PhoneNumber, ?NUMBER_STATE_RESERVED) ->
     authorize_release(PhoneNumber);
@@ -1405,9 +1404,7 @@ get_number_in_account(AccountId, Num) ->
 delete_number_doc(Number) -> {ok, Number}.
 -else.
 delete_number_doc(Number) ->
-    NumberDb = number_db(Number),
-    JObj = to_json(Number),
-    case kz_datamgr:del_doc(NumberDb, JObj) of
+    case kz_datamgr:del_doc(number_db(Number), number(Number)) of
         {'error', _R}=E -> E;
         {'ok', _} -> {'ok', Number}
     end.
@@ -1424,12 +1421,13 @@ maybe_remove_number_from_account(Number) -> {ok, Number}.
 -else.
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
+    Num = number(Number),
     case kz_util:is_empty(AssignedTo) of
         'true' ->
-            lager:debug("assigned_to is empty for ~s, ignoring", [number(Number)]),
+            lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
             {'ok', Number};
         'false' ->
-            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), to_json(Number)) of
+            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), Num) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', Number}
             end

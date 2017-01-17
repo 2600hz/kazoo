@@ -34,8 +34,6 @@ to_options_state(T=#{options := Options}) ->
 -spec change_state(t(), ne_binary()) -> t().
 change_state(T, ?NUMBER_STATE_RESERVED) ->
     to_reserved(T);
-change_state(T, ?NUMBER_STATE_DELETED) ->
-    to_deleted(T);
 change_state(T, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(T);
 change_state(T, ?NUMBER_STATE_AVAILABLE) ->
