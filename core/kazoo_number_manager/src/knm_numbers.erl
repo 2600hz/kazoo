@@ -662,7 +662,7 @@ reconcile_number(T0, Options) ->
     pipe(do_in_wrap(F1, T0), [fun save_phone_numbers/1]).
 
 do_move_not_founds(Nums, Options) ->
-    pipe(new(Options, Nums)
+    pipe(new([{state, ?NUMBER_STATE_IN_SERVICE} | Options], Nums)
         ,[fun knm_phone_number:new/1
          ,fun knm_number:new/1
          ]).

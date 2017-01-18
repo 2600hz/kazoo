@@ -808,24 +808,6 @@ maybe_add_mobile_mdn(Context) ->
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
     Normalized = get_mdn(Context),
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-              ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'module_name', ?CARRIER_MDN}
-              ],
-    case knm_number:create(Normalized, Options) of
-        {'error', Error} ->
-            lager:debug("unable to add mdn ~s to database: ~s"
-                       ,[Normalized, kz_json:encode(Error)]),
-            _ = crossbar_doc:delete(Context),
-            set_number_error_response(Error, Context);
-        _Else ->
-            lager:debug("created new mdn ~s", [Normalized]),
-            set_mobile_public_fields(Normalized, Context)
-    end.
-
--spec set_mobile_public_fields(ne_binary(), cb_context:context()) -> cb_context:context().
-set_mobile_public_fields(Normalized, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     MobileField =
         kz_json:from_list(
@@ -837,15 +819,16 @@ set_mobile_public_fields(Normalized, Context) ->
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
+              ,{'module_name', ?CARRIER_MDN}
               ],
     case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
         {'error', Error} ->
-            lager:debug("unable to update public fields on mdn ~s: ~s"
+            lager:debug("unable to add mdn ~s to database: ~s"
                        ,[Normalized, kz_json:encode(Error)]),
             _ = crossbar_doc:delete(Context),
             set_number_error_response(Error, Context);
         _Else ->
-            lager:debug("set public fields for new mdn ~s to ~s"
+            lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
     end.
@@ -880,15 +863,17 @@ remove_if_mobile(MDN, Context) ->
     Normalized = knm_converters:normalize(MDN),
     case knm_number:get(Normalized) of
         {'ok', Number} ->
+            PN = knm_number:phone_number(Number),
+            IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
             case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
-                'undefined' -> Context;
+                'undefined' when not IsMdnCarrier -> Context;
                 Mobile ->
-                    lager:debug("removing mdn ~s with mobile properties ~s"
+                    lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
                     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
                               ,{'dry_run', not cb_context:accepting_charges(Context)}
                               ],
-                    _ = knm_number:release(Normalized, Options),
+                    _ = knm_number:delete(Normalized, Options),
                     Context
             end;
         {'error', _R} ->
