@@ -42,6 +42,17 @@ release_in_service_bad_carrier_number_test_() ->
      }
     ].
 
+release_in_service_mdn_number_test_() ->
+    {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_MDN),
+    PhoneNumber = knm_number:phone_number(Released),
+    [{"verify number state is changed"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
+     }
+    ,{"verify reserve history is empty now"
+     ,?_assertEqual([], knm_phone_number:reserve_history(PhoneNumber))
+     }
+    ].
+
 release_in_service_number_test_() ->
     {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_NUM),
     PhoneNumber = knm_number:phone_number(Released),

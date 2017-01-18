@@ -139,6 +139,8 @@ fetch(?TEST_AVAILABLE_NUM, Options) ->
     handle_fetched_result(?AVAILABLE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
+fetch(?TEST_IN_SERVICE_MDN, Options) ->
+    handle_fetched_result(?IN_SERVICE_MDN, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
     handle_fetched_result(?IN_SERVICE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
@@ -224,6 +226,7 @@ delete(#knm_phone_number{dry_run='true'}=PhoneNumber) ->
     lager:debug("dry_run-ing btw"),
     PhoneNumber;
 delete(PhoneNumber) ->
+    lager:debug("deleting permanently ~s", [number(PhoneNumber)]),
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
@@ -253,8 +256,6 @@ release(PhoneNumber) ->
     release(PhoneNumber, state(PhoneNumber)).
 
 release(PhoneNumber, ?NUMBER_STATE_RELEASED) ->
-    PhoneNumber;
-release(PhoneNumber, ?NUMBER_STATE_DELETED) ->
     PhoneNumber;
 release(PhoneNumber, ?NUMBER_STATE_RESERVED) ->
     authorize_release(PhoneNumber);
@@ -1274,6 +1275,9 @@ get_number_in_account(AccountId, Num) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+delete_number_doc(Number) -> {ok, Number}.
+-else.
 delete_number_doc(Number) ->
     NumberDb = number_db(Number),
     JObj = to_json(Number),
@@ -1281,6 +1285,7 @@ delete_number_doc(Number) ->
         {'error', _R}=E -> E;
         {'ok', _} -> {'ok', Number}
     end.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1288,6 +1293,9 @@ delete_number_doc(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
+-ifdef(TEST).
+maybe_remove_number_from_account(Number) -> {ok, Number}.
+-else.
 maybe_remove_number_from_account(Number) ->
     AssignedTo = assigned_to(Number),
     case kz_util:is_empty(AssignedTo) of
@@ -1300,6 +1308,7 @@ maybe_remove_number_from_account(Number) ->
                 {'ok', _} -> {'ok', Number}
             end
     end.
+-endif.
 
 -ifndef(TEST).
 %%--------------------------------------------------------------------

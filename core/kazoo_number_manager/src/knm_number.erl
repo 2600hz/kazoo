@@ -513,9 +513,11 @@ unwind(Number, [NewAssignedTo|_]) ->
 
 -spec disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 disconnect(Number, Options) ->
+    ModuleName = knm_phone_number:module_name(phone_number(Number)),
     ShouldDelete = knm_config:should_permanently_delete(
                      knm_number_options:should_delete(Options))
-        orelse ?CARRIER_LOCAL =:= knm_phone_number:module_name(phone_number(Number)),
+        orelse ?CARRIER_LOCAL =:= ModuleName
+        orelse ?CARRIER_MDN =:= ModuleName,
     try knm_carriers:disconnect(Number) of
         N when ShouldDelete -> delete_phone_number(N);
         N -> maybe_age(N)
@@ -527,8 +529,8 @@ disconnect(Number, Options) ->
 
 -spec delete_phone_number(knm_number()) -> knm_number().
 delete_phone_number(Number) ->
-    lager:debug("deleting permanently"),
-    knm_number_states:to_deleted(Number).
+    PN = knm_phone_number:delete(phone_number(Number)),
+    set_phone_number(Number, PN).
 
 -spec maybe_age(knm_number()) -> knm_number().
 maybe_age(Number) ->

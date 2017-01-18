@@ -22,9 +22,8 @@
         ]).
 -export([generate_numbers/4]).
 -export([delete/1]).
--export([purge_discovery/0
-        ,purge_discovery/1
-        ]).
+-export([purge_discovery/0, purge_discovery/1]).
+-export([purge_deleted/0, purge_deleted/1]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
@@ -346,6 +345,17 @@ purge_discovery() ->
 -spec purge_discovery(ne_binary()) -> 'no_return'.
 purge_discovery(Prefix) ->
     purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DISCOVERY),
+    'no_return'.
+
+-spec purge_deleted() -> 'no_return'.
+purge_deleted() ->
+    Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
+    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    'no_return'.
+
+-spec purge_deleted(ne_binary()) -> 'no_return'.
+purge_deleted(Prefix) ->
+    purge_number_db(<<?KNM_DB_PREFIX_ENCODED, Prefix/binary>>, ?NUMBER_STATE_DELETED),
     'no_return'.
 
 -spec purge_number_db(ne_binary(), ne_binary()) -> 'ok'.
