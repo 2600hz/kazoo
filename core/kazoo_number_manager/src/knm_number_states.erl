@@ -1,4 +1,4 @@
-                                                %-------------------------------------------------------------------
+%%--------------------------------------------------------------------
 %%% @copyright (C) 2016, 2600Hz INC
 %%% @doc
 %%%
@@ -9,7 +9,6 @@
 -module(knm_number_states).
 
 -export([to_reserved/1
-        ,to_deleted/1
         ,to_in_service/1
         ,to_aging/1
         ,to_port_in/1
@@ -39,8 +38,6 @@ to_state(Number, ToState, _Options) ->
 -spec change_state(kn(), ne_binary()) -> kn().
 change_state(Number, ?NUMBER_STATE_RESERVED) ->
     to_reserved(Number);
-change_state(Number, ?NUMBER_STATE_DELETED) ->
-    to_deleted(Number);
 change_state(Number, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(Number);
 change_state(Number, ?NUMBER_STATE_AVAILABLE) ->
@@ -177,12 +174,6 @@ to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
 to_in_service(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_IN_SERVICE).
 
--spec to_deleted(kn()) -> kn().
-to_deleted(Number) ->
-    Routines = [fun move_to_deleted_state/1
-               ],
-    apply_transitions(Number, Routines).
-
 -spec authorize(kn()) -> kn().
 -spec authorize(kn(), api_binary()) -> kn().
 authorize(Number) ->
@@ -301,10 +292,6 @@ move_to_reserved_state(Number) ->
 -spec move_to_in_service_state(kn()) -> kn().
 move_to_in_service_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_IN_SERVICE).
-
--spec move_to_deleted_state(kn()) -> kn().
-move_to_deleted_state(Number) ->
-    move_number_to_state(Number, ?NUMBER_STATE_DELETED).
 
 -spec move_number_to_state(kn(), ne_binary()) -> kn().
 move_number_to_state(Number, ToState) ->

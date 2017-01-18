@@ -67,11 +67,8 @@ acquire_number(Number) -> Number.
 %% Release a number from the routing table
 %% @end
 %%--------------------------------------------------------------------
-
--spec disconnect_number(knm_number:knm_number()) ->
-                               knm_number:knm_number().
-disconnect_number(Number) ->
-    knm_number_states:to_deleted(Number).
+-spec disconnect_number(knm_number:knm_number()) -> knm_number:knm_number().
+disconnect_number(Number) -> Number.
 
 %%--------------------------------------------------------------------
 %% @public
