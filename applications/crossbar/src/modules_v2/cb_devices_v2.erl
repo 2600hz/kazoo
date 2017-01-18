@@ -822,26 +822,13 @@ add_mobile_mdn(Context) ->
               ,{'module_name', ?CARRIER_MDN}
               ],
     case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
-        {'error', Error} ->
-            lager:debug("unable to add mdn ~s to database: ~s"
-                       ,[Normalized, kz_json:encode(Error)]),
+        {'error', _}=Error ->
             _ = crossbar_doc:delete(Context),
-            set_number_error_response(Error, Context);
+            cb_phone_numbers_v2:set_response(Error, Context);
         _Else ->
             lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
-    end.
-
-set_number_error_response(Error, Context) ->
-    case kz_json:is_json_object(Error) of
-        'true' ->
-            Code = knm_errors:code(Error),
-            Msg = knm_errors:error(Error),
-            lager:debug("error ~p: ~p", [Code, Msg]),
-            cb_context:add_system_error(Code, Msg, Error, Context);
-        'false' ->
-            crossbar_util:response_400(<<"client error">>, kz_json:new(), Context)
     end.
 
 -spec maybe_remove_mobile_mdn(cb_context:context()) -> cb_context:context().
@@ -868,10 +855,12 @@ remove_if_mobile(MDN, Context) ->
             case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
                 'undefined' when not IsMdnCarrier -> Context;
                 Mobile ->
+                    %% mobile property found in the public fields or carrier is CARRIER_MDN,
+                    %% hard removing number
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
                     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                              ,{'dry_run', not cb_context:accepting_charges(Context)}
+                              ,{'dry_run', 'false'}
                               ],
                     _ = knm_number:delete(Normalized, Options),
                     Context
@@ -888,18 +877,19 @@ remove_if_mobile(MDN, Context) ->
 %%--------------------------------------------------------------------
 -spec get_mdn(cb_context:context()) -> api_binary().
 get_mdn(Context) ->
-    case cb_context:req_value(Context, ?KEY_MOBILE_MDN) of
-        'undefined' ->
+    ReqMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
+    case kz_util:is_empty(ReqMDN) of
+        'true' ->
             case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
                 'undefined' -> 'undefined';
                 MDN -> knm_converters:normalize(MDN)
             end;
-        <<>> -> 'undefined';
-        MDN -> knm_converters:normalize(MDN)
+        'false' -> knm_converters:normalize(ReqMDN)
     end.
 
 -spec has_mdn_changed(cb_context:context()) -> boolean().
 has_mdn_changed(Context) ->
+    %% This shouldn't be empty or undefined because the caller is already check that with get_mdn/1
     NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
     case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
         'undefined' -> 'true';
