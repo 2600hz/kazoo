@@ -811,9 +811,8 @@ add_mobile_mdn(Context) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'module_name', ?CARRIER_MDN}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ],
-    case knm_number:reconcile(Normalized, Options) of
+    case knm_number:create(Normalized, Options) of
         {'error', _R} ->
             lager:debug("unable to add mdn ~s to database: ~p", [Normalized, _R]),
             _ = crossbar_doc:delete(Context),
@@ -838,6 +837,7 @@ set_mobile_public_fields(Normalized, Context) ->
     Options = [{'auth_by', AuthAccountId}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
+              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ],
     case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
         {'error', _R} ->
