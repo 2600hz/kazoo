@@ -30,9 +30,6 @@
 -define(NUMBERS_TO_CRAWL,
         kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
 
--define(DELETED_EXPIRY,
-        kapps_config:get_integer(?CONFIG_CAT, <<"deleted_expiry_d">>, 90)).
-
 -define(DISCOVERY_EXPIRY,
         kapps_config:get_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)).
 
@@ -197,7 +194,7 @@ try_crawl_number_doc(PhoneNumber) ->
                                   knm_phone_number:knm_phone_number().
 maybe_remove_deleted(PhoneNumber) ->
     case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DELETED -> maybe_remove(PhoneNumber, ?DELETED_EXPIRY);
+        ?NUMBER_STATE_DELETED -> remove(PhoneNumber);
         _State -> PhoneNumber
     end.
 
@@ -227,11 +224,15 @@ is_old_enough(PhoneNumber, Expiry) ->
 maybe_remove(PhoneNumber, Expiry) ->
     case is_old_enough(PhoneNumber, Expiry) of
         'false' -> PhoneNumber;
-        'true' ->
-            lager:debug(" purging number '~s' from the sytem"
-                       ,[knm_phone_number:number(PhoneNumber)]),
-            knm_phone_number:delete(PhoneNumber)
+        'true' -> remove(PhoneNumber)
     end.
+
+-spec remove(knm_phone_number:knm_phone_number()) ->
+                    knm_phone_number:knm_phone_number().
+remove(PhoneNumber) ->
+    lager:debug(" purging number '~s' from the sytem"
+               ,[knm_phone_number:number(PhoneNumber)]),
+    knm_phone_number:delete(PhoneNumber).
 
 -spec maybe_update(knm_phone_number:knm_phone_number(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().

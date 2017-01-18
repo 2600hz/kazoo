@@ -34,8 +34,6 @@ to_options_state(T=#{options := Options}) ->
 -spec change_state(t(), ne_binary()) -> t().
 change_state(T, ?NUMBER_STATE_RESERVED) ->
     to_reserved(T);
-change_state(T, ?NUMBER_STATE_DELETED) ->
-    to_deleted(T);
 change_state(T, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(T);
 change_state(T, ?NUMBER_STATE_AVAILABLE) ->
@@ -160,10 +158,6 @@ to_in_service(T=#{todo := Ns}, ?NUMBER_STATE_IN_SERVICE) ->
     knm_numbers:merge_okkos(Ta, Tb);
 to_in_service(T, State) ->
     invalid_state_transition(T, State, ?NUMBER_STATE_IN_SERVICE).
-
--spec to_deleted(t()) -> t().
-to_deleted(T) ->
-    knm_numbers:pipe(T, [fun move_to_deleted_state/1]).
 
 -ifdef(TEST).
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
@@ -322,11 +316,6 @@ move_to_reserved_state(T) ->
 -spec move_to_in_service_state(t()) -> t().
 move_to_in_service_state(T) ->
     move_number_to_state(T, ?NUMBER_STATE_IN_SERVICE).
-
--spec move_to_deleted_state(kn()) -> kn();
-                           (t()) -> t().
-move_to_deleted_state(T) ->
-    move_number_to_state(T, ?NUMBER_STATE_DELETED).
 
 -spec move_number_to_state(kn(), ne_binary()) -> kn();
                           (t(), ne_binary()) -> t().

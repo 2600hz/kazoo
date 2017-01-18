@@ -28,11 +28,6 @@
             "description": "tasks cycle delay time in milliseconds",
             "type": "integer"
         },
-        "deleted_expiry_d": {
-            "default": 90,
-            "description": "tasks deleted expiry in days",
-            "type": "integer"
-        },
         "discovery_expiry_d": {
             "default": 1,
             "description": "tasks discovery expiry in days",
