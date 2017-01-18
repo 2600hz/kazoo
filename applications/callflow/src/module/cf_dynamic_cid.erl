@@ -278,7 +278,7 @@ collect_cid_number(Data, Call) ->
 
     Min = kz_json:get_ne_value(<<"min_digits">>, Data, DefaultMin),
     Max = kz_json:get_ne_value(<<"max_digits">>, Data, DefaultMax),
-    Regex = kz_json:get_ne_value(<<"min_digits">>, Data, DefaultRegex),
+    Regex = kz_json:get_ne_value(<<"whitelist_regex">>, Data, DefaultRegex),
 
     Interdigit = kz_json:get_integer_value(<<"interdigit_timeout">>
                                           ,Data
@@ -360,7 +360,7 @@ find_key_and_dest(ListJObj, Data, Call) ->
 
 -spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {binary(), binary()}.
 find_key_and_dest(ListJObj, Call) ->
-    LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj),
+    LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj, 2),
     lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
     <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
