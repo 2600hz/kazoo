@@ -70,13 +70,13 @@
 
 
 -define(TRY_CLAUSES(Num),
-        {_, #{ko := #{Num := Reason}}} ->
-               {error, Reason};
-            {false, #{ok := [Number]}} ->
+        {false, #{ok := [Number]}} ->
                {ok, Number};
             {true, T=#{ok := [_Number], services := Services}} ->
                Charges = knm_services:phone_number_activation_charges(T),
-               {dry_run, Services, Charges}).
+               {dry_run, Services, Charges};
+            {_, #{ko := ErrorM}} ->
+               {error, hd(maps:values(ErrorM))}).
 
 -define(TRY2(F, Num, Options),
         case {knm_number_options:dry_run(Options)
@@ -127,7 +127,7 @@ get(Num) ->
 get(Num, Options) ->
     case knm_numbers:get([Num], Options) of
         #{ok := [Number]} -> {ok, Number};
-        #{ko := #{Num := Reason}} -> {error, Reason}
+        #{ko := M} -> {error, hd(maps:values(M))}
     end.
 
 %%--------------------------------------------------------------------
