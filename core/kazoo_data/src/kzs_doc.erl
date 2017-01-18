@@ -51,15 +51,15 @@ save_doc(#{server := {App, Conn}}, DbName, Doc, Options) ->
     end.
 
 
-
 -spec save_docs(map(), ne_binary(), kz_json:objects(), kz_proplist()) ->
                        {'ok', kz_json:objects()} |
                        data_error().
 save_docs(#{server := {App, Conn}}, DbName, Docs, Options) ->
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- Docs]),
     try App:save_docs(Conn, DbName, PreparedDocs, Options) of
-        {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
-                            Ok;
+        {'ok', JObjs}=Ok ->
+            kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            Ok;
         Else -> Else
     catch
         _Ex:Er -> {'error', {_Ex, Er}}

@@ -239,6 +239,13 @@ group_by_db(Nums) ->
         end,
     maps:to_list(lists:foldl(F, #{}, Nums)).
 
+split_by_db(PNs) ->
+    F = fun (PN, M) ->
+                Key = knm_converters:to_db(number(PN)),
+                M#{Key => [PN | maps:get(Key, M, [])]}
+        end,
+    maps:to_list(lists:foldl(F, #{}, PNs)).
+
 -ifdef(TEST).
 fetch(Num, Options) ->
     case test_fetch(Num) of
