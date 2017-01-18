@@ -282,7 +282,7 @@ provider_module(?FEATURE_PORT, _) ->
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(Other, _) ->
-    lager:warning("unmatched feature provider ~p, allowing", [Other]),
+    lager:debug("unmatched feature provider ~p, allowing", [Other]),
     Other.
 
 -ifdef(TEST).
