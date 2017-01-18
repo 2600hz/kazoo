@@ -808,9 +808,8 @@ maybe_add_mobile_mdn(Context) ->
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
     Normalized = get_mdn(Context),
-    AuthAccountId = cb_context:auth_account_id(Context),
     Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', AuthAccountId}
+              ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'module_name', ?CARRIER_MDN}
               ],
@@ -835,7 +834,7 @@ set_mobile_public_fields(Normalized, Context) ->
           ,{<<"device-id">>, kz_doc:id(cb_context:doc(Context))}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Options = [{'auth_by', AuthAccountId}
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
               ],
