@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz INC
+%%% @copyright (C) 2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -64,16 +64,12 @@ unauthorized() ->
 number_exists(DID) ->
     throw({'error', 'number_exists', DID}).
 
--spec invalid_state_transition(kn() | kpn(), ne_binary(), ne_binary()) ->
-                                      no_return().
+-spec invalid_state_transition(kn() | kpn(), api_ne_binary(), ne_binary()) -> no_return().
+invalid_state_transition(Number, undefined, ToState) ->
+    invalid_state_transition(Number, <<"(nothing)">>, ToState);
 invalid_state_transition(Number, FromState, ToState) ->
-    throw({'error'
-          ,'invalid_state_transition'
-          ,Number
-          ,iolist_to_binary(["from ", FromState
-                            ," to ", ToState
-                            ])
-          }).
+    Reason = <<"from ", FromState/binary, " to ", ToState/binary>>,
+    throw({'error', 'invalid_state_transition', Number, Reason}).
 
 -spec no_change_required(kn()) -> no_return().
 no_change_required(Number) ->
