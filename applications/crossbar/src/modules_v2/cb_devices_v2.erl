@@ -808,22 +808,6 @@ maybe_add_mobile_mdn(Context) ->
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
     Normalized = knm_converters:normalize(get_mdn(Context)),
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'module_name', ?CARRIER_MDN}
-              ],
-    case knm_number:create(Normalized, Options) of
-        {'error', _R} ->
-            lager:debug("unable to add mdn ~s to database: ~p", [Normalized, _R]),
-            _ = crossbar_doc:delete(Context),
-            cb_context:add_system_error('datastore_fault', Context);
-        _Else ->
-            lager:debug("created new mdn ~s", [Normalized]),
-            set_mobile_public_fields(Normalized, Context)
-    end.
-
--spec set_mobile_public_fields(ne_binary(), cb_context:context()) -> cb_context:context().
-set_mobile_public_fields(Normalized, Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
     MobileField =
         kz_json:from_list(
@@ -835,18 +819,18 @@ set_mobile_public_fields(Normalized, Context) ->
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
     Options = [{'auth_by', AuthAccountId}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
+              ,{'module_name', ?CARRIER_MDN}
               ],
-    case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
+    case knm_number:create(Normalized, Options) of
         {'error', _R} ->
-            lager:debug("unable to update public fields on mdn ~s: ~p"
-                       ,[Normalized, _R]),
+            lager:debug("unable to add mdn ~s to database: ~p", [Normalized, _R]),
             _ = crossbar_doc:delete(Context),
             cb_context:add_system_error('datastore_fault', Context);
         _Else ->
-            lager:debug("set public fields for new mdn ~s to ~s"
+            lager:debug("created new mdn ~s with public fields ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
     end.
