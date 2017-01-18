@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2010-2016, 2600Hz
+%%% @copyright (C) 2010-2017, 2600Hz
 %%% @doc
 %%% Receive call events from freeSWITCH, publish to the call's event queue
 %%% @end
