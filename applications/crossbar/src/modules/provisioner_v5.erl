@@ -508,20 +508,18 @@ account_payload(JObj, AccountId) ->
     kz_json:from_list(
       [{<<"create_if_missing">>, 'true'}
       ,{<<"reseller_id">>, ResellerId}
-      ,{<<"merge">>, 'true'}
+      ,{<<"merge">>, false}
       ,{<<"data">>, JObj}
-      ]
-     ).
+      ]).
 
 -spec device_payload(kz_json:object()) -> kz_json:object().
 device_payload(JObj) ->
     kz_json:from_list(
       [{<<"create_if_missing">>, 'true'}
       ,{<<"generate">>, 'true'}
-      ,{<<"merge">>, 'true'}
+      ,{<<"merge">>, false}
       ,{<<"data">>, JObj}
-      ]
-     ).
+      ]).
 
 -spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}, _AccountId, _AuthToken) ->
