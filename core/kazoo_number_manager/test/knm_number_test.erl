@@ -52,3 +52,7 @@ get_unreconcilable_number_test_() ->
      ,?_assertMatch({'error', 'not_reconcilable'}, knm_number:get(<<"1000">>))
      }
     ].
+
+get_not_found_test_() ->
+    [?_assertEqual({error, not_found}, knm_number:get(<<"4156301234">>))
+    ].

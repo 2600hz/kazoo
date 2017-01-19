@@ -148,7 +148,7 @@ fetch(T0=#{todo := Nums, options := Options}) ->
     F = fun ({NumberDb, NormalizedNums}, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
-                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        lager:warning("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
                     {ok, JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
                     {ok, JObj} -> do_handle_fetch(T, JObj)
