@@ -859,10 +859,7 @@ remove_if_mobile(MDN, Context) ->
                     %% hard removing number
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
-                    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                              ,{'dry_run', 'false'}
-                              ],
-                    _ = knm_number:delete(Normalized, Options),
+                    _ = knm_number:delete(Normalized, knm_number_options:default()),
                     Context
             end;
         {'error', _R} ->
