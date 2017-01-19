@@ -304,8 +304,11 @@ move(Num, MoveTo) ->
 
 move(Num, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     Options = [{'assign_to', MoveTo} | Options0],
+    Updates = knm_number_options:to_phone_number_setters(Options),
     case get(Num, Options) of
-        {'ok', Number} -> attempt(fun move_to/1, [Number]);
+        {'ok', Number} ->
+            {'ok', PN} = knm_phone_number:setters(phone_number(Number), Updates),
+            attempt(fun move_to/1, [set_phone_number(Number, PN)]);
         {'error', 'not_found'} -> maybe_from_discovery(Num, Options);
         {'error', _R}=E -> E
     end.

@@ -79,7 +79,7 @@ default() ->
 to_phone_number_setters(Options) ->
     [case Option of
          'public_fields' ->
-             {fun knm_phone_number:update_doc/2, Value};
+             {fun knm_phone_number:reset_doc/2, Value};
          _ ->
              FName = kz_util:to_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
@@ -201,9 +201,9 @@ transfer_media_id(Props) when is_list(Props) ->
 -ifdef(TEST).
 
 to_phone_number_setters_test_() ->
-    A_1 = kz_json:from_list([{<<"a">>, 1}
-                            ]),
-    [?_assertEqual([{fun knm_phone_number:update_doc/2, A_1}]
+    A_1 = kz_json:from_list([{<<"a">>, 1}]),
+    M_1 = ?CARRIER_LOCAL,
+    [?_assertEqual([{fun knm_phone_number:reset_doc/2, A_1}]
                   ,to_phone_number_setters([{'public_fields', A_1}])
                   )
     ,?_assertEqual([{fun knm_phone_number:set_auth_by/2, ?KNM_DEFAULT_AUTH_BY}
@@ -216,6 +216,13 @@ to_phone_number_setters_test_() ->
                                            ,{'dry_run', [[[]]]}
                                            ])
                   )
+     %%FIXME: decide if below should turn into _assertEqual.
+    ,?_assertNotEqual([fun knm_phone_number:set_module_name/2, M_1]
+                     ,to_phone_number_setters([{module_name, M_1}
+                                              ,{module_name, <<"blaaa">>}
+                                              ,{module_name, ?CARRIER_MDN}
+                                              ])
+                     )
     ].
 
 -endif.
