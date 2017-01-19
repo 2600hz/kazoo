@@ -256,9 +256,10 @@ move_non_existing_mobile_number_test_() ->
      ,?_assertEqual(?CARRIER_MDN, knm_phone_number:module_name(PN))
      }
     ,{"Verify the mobile public fields is exists"
-     ,?_assertEqual('false', kz_json:is_empty(
-                               kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
-                              ))}
+     ,?_assertEqual(true, kz_json:are_equal(MobileField
+                                           ,kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
+                                           ))
+     }
     ].
 
 create_checks_test_() ->

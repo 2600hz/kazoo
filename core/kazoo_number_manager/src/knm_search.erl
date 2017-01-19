@@ -430,7 +430,7 @@ discovery(Num, Options) ->
 
 -spec local_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
-local_discovery(?TEST_CREATE_NUM, _Options) -> {'error', 'not_found'}.
+local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
 local_discovery(Num, Options) ->
     case ets:match_object(?ETS_DISCOVERY_CACHE, {'_', {Num, '_', ?NUMBER_STATE_DISCOVERY, '_'}}) of
@@ -441,7 +441,7 @@ local_discovery(Num, Options) ->
 
 -spec remote_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 -ifdef(TEST).
-remote_discovery(?TEST_CREATE_NUM, _Options) -> {'error', 'not_found'}.
+remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
 -else.
 remote_discovery(Number, Options) ->
     Payload = [{<<"Number">>, Number}
