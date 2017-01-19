@@ -321,7 +321,7 @@ maybe_from_discovery(Num, Options) ->
 
 -spec from_not_found(ne_binary(), knm_number_options:options()) -> knm_number_return().
 from_not_found(Num, Options) ->
-    PN = knm_phone_number:new(Num, Options),
+    PN = knm_phone_number:new(Num, [{'state', ?NUMBER_STATE_IN_SERVICE} | Options]),
     Number = set_phone_number(new(), PN),
     attempt(fun move_to/1, [Number]).
 

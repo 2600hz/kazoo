@@ -807,46 +807,26 @@ maybe_add_mobile_mdn(Context) ->
 
 -spec add_mobile_mdn(cb_context:context()) -> cb_context:context().
 add_mobile_mdn(Context) ->
-    Normalized = knm_converters:normalize(get_mdn(Context)),
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'module_name', ?CARRIER_MDN}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
-              ],
-    case knm_number:reconcile(Normalized, Options) of
-        {'error', _R} ->
-            lager:debug("unable to add mdn ~s to database: ~p", [Normalized, _R]),
-            _ = crossbar_doc:delete(Context),
-            cb_context:add_system_error('datastore_fault', Context);
-        _Else ->
-            lager:debug("created new mdn ~s", [Normalized]),
-            set_mobile_public_fields(Normalized, Context)
-    end.
-
--spec set_mobile_public_fields(ne_binary(), cb_context:context()) -> cb_context:context().
-set_mobile_public_fields(Normalized, Context) ->
+    Normalized = get_mdn(Context),
     AuthAccountId = cb_context:auth_account_id(Context),
     MobileField =
         kz_json:from_list(
           [{<<"provider">>, <<"tower-of-power">>}
-          ,{<<"authorizing">>, kz_json:from_list(
-                                 [{<<"account-id">>, AuthAccountId}
-                                 ])}
+          ,{<<"authorizing">>, kz_json:from_list([{<<"account-id">>, AuthAccountId}])}
           ,{<<"device-id">>, kz_doc:id(cb_context:doc(Context))}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Options = [{'auth_by', AuthAccountId}
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
+              ,{'module_name', ?CARRIER_MDN}
               ],
     case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
-        {'error', _R} ->
-            lager:debug("unable to update public fields on mdn ~s: ~p"
-                       ,[Normalized, _R]),
+        {'error', _}=Error ->
             _ = crossbar_doc:delete(Context),
-            cb_context:add_system_error('datastore_fault', Context);
+            cb_phone_numbers_v2:set_response(Error, Context);
         _Else ->
-            lager:debug("set public fields for new mdn ~s to ~s"
+            lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
     end.
@@ -870,15 +850,19 @@ remove_if_mobile(MDN, Context) ->
     Normalized = knm_converters:normalize(MDN),
     case knm_number:get(Normalized) of
         {'ok', Number} ->
+            PN = knm_number:phone_number(Number),
+            IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
             case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
-                'undefined' -> Context;
+                'undefined' when not IsMdnCarrier -> Context;
                 Mobile ->
-                    lager:debug("removing mdn ~s with mobile properties ~s"
+                    %% mobile property found in the public fields or carrier is CARRIER_MDN,
+                    %% hard removing number
+                    lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
                     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                              ,{'dry_run', not cb_context:accepting_charges(Context)}
+                              ,{'dry_run', 'false'}
                               ],
-                    _ = knm_number:release(Normalized, Options),
+                    _ = knm_number:delete(Normalized, Options),
                     Context
             end;
         {'error', _R} ->
@@ -893,14 +877,19 @@ remove_if_mobile(MDN, Context) ->
 %%--------------------------------------------------------------------
 -spec get_mdn(cb_context:context()) -> api_binary().
 get_mdn(Context) ->
-    case cb_context:req_value(Context, ?KEY_MOBILE_MDN) of
-        'undefined' ->
-            kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc'));
-        MDN -> MDN
+    ReqMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
+    case kz_util:is_empty(ReqMDN) of
+        'true' ->
+            case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
+                'undefined' -> 'undefined';
+                MDN -> knm_converters:normalize(MDN)
+            end;
+        'false' -> knm_converters:normalize(ReqMDN)
     end.
 
 -spec has_mdn_changed(cb_context:context()) -> boolean().
 has_mdn_changed(Context) ->
+    %% This shouldn't be empty or undefined because the caller is already check that with get_mdn/1
     NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
     case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
         'undefined' -> 'true';
