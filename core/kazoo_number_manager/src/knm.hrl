@@ -90,6 +90,7 @@
        ,kz_json:from_list(
           [{<<"_id">>, ?TEST_AVAILABLE_NUM}
           ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
+          ,{<<"my_key">>, <<"my string">>}
           ,{?PVT_MODIFIED, 63565934349}
           ,{?PVT_FEATURES, kz_json:new()}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
