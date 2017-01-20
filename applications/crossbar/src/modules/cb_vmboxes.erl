@@ -443,7 +443,7 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
        Filter =:= ?VM_FOLDER_SAVED;
        Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = should_filter_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
     case kzd_box_message:folder(Mess) of
         Filter when not QsFiltered -> filter_messages(Messages, Filter, Context, [Id|Selected]);
         _ -> filter_messages(Messages, Filter, Context, Selected)
@@ -452,9 +452,11 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
 filter_messages(_, [], _Context, Selected) -> Selected;
 filter_messages([Mess|Messages], Filters, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
-    QsFiltered = should_filter_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
-    case lists:member(Id, Filters) of
-        'true' when not QsFiltered -> filter_messages(Messages, Filters, Context, [Id|Selected]);
+    QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
+    case lists:member(Id, Filters)
+        orelse QsFiltered
+    of
+        'true' -> filter_messages(Messages, Filters, Context, [Id|Selected]);
         'false' -> filter_messages(Messages, Filters, Context, Selected)
     end.
 
@@ -937,9 +939,9 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
     Date = kz_util:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
 
--spec should_filter_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
-should_filter_by_qs(_, 'false', _Context) -> 'true';
-should_filter_by_qs(JObj, 'true', Context) ->
+-spec filtered_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().
+filtered_by_qs(_, 'false', _Context) -> 'false';
+filtered_by_qs(JObj, 'true', Context) ->
     crossbar_doc:filtered_doc_by_qs(JObj, Context).
 
 %%--------------------------------------------------------------------
