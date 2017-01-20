@@ -444,17 +444,20 @@ filter_messages([Mess|Messages], <<_/binary>> = Filter, Context, Selected)
        Filter =:= ?VM_FOLDER_DELETED ->
     Id = kzd_box_message:media_id(Mess),
     QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
-    case kzd_box_message:folder(Mess) of
-        Filter when not QsFiltered -> filter_messages(Messages, Filter, Context, [Id|Selected]);
-        _ -> filter_messages(Messages, Filter, Context, Selected)
+    case QsFiltered
+        orelse kzd_box_message:folder(Mess) =:= Filter
+    of
+        'true' -> filter_messages(Messages, Filter, Context, [Id|Selected]);
+        'false' -> filter_messages(Messages, Filter, Context, Selected)
     end;
 %% Filter by Ids
 filter_messages(_, [], _Context, Selected) -> Selected;
 filter_messages([Mess|Messages], Filters, Context, Selected) ->
     Id = kzd_box_message:media_id(Mess),
     QsFiltered = filtered_by_qs(Mess, crossbar_doc:has_qs_filter(Context), Context),
-    case lists:member(Id, Filters)
-        orelse QsFiltered
+
+    case QsFiltered
+        orelse lists:member(Id, Filters)
     of
         'true' -> filter_messages(Messages, Filters, Context, [Id|Selected]);
         'false' -> filter_messages(Messages, Filters, Context, Selected)
