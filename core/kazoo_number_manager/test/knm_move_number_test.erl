@@ -24,7 +24,7 @@ move_to_child() ->
     }.
 
 move_changing_public_fields_test_() ->
-	Key = <<"my_key">>,
+    Key = <<"my_key">>,
     Fields = [{<<"a">>, <<"bla">>}
              ,{Key, 42}
              ],
