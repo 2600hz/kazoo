@@ -17,7 +17,7 @@
         ]).
 
 -export([publish_subscribe/1, publish_subscribe/2
-        ,publish_update/2, publish_update/3
+        ,publish_update/1, publish_update/2, publish_update/3
         ,publish_notify/1, publish_notify/2
         ,publish_search_req/1, publish_search_req/2
         ,publish_search_partial_resp/2, publish_search_partial_resp/3
@@ -156,6 +156,11 @@ update(JObj) -> update(kz_json:to_proplist(JObj)).
 update_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?UPDATE_HEADERS, ?UPDATE_VALUES, ?UPDATE_TYPES);
 update_v(JObj) -> update_v(kz_json:to_proplist(JObj)).
+
+-spec publish_update(api_terms()) -> 'ok'.
+publish_update(Req) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Req, ?UPDATE_VALUES, fun update/1),
+    amqp_util:basic_publish(?OMNIPRESENCE_EXCHANGE, <<"presence.update">>, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_update(ne_binary(), api_terms()) -> 'ok'.
 -spec publish_update(ne_binary(), api_terms(), binary()) -> 'ok'.
