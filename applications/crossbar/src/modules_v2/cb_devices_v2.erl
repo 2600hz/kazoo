@@ -817,15 +817,16 @@ add_mobile_mdn(Context) ->
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
     Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+              ,{assign_to, cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
               ],
-    case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
-        {'error', _}=Error ->
+    case knm_number:create(Normalized, Options) of
+        {error, _}=Error ->
             _ = crossbar_doc:delete(Context),
             cb_phone_numbers_v2:set_response(Error, Context);
-        _Else ->
+        {ok, _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
