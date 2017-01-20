@@ -79,4 +79,7 @@ mdn_transitions_test_() ->
     ,{"Verify MDN creation forces state to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N4)))
      }
+    ,{"Verify MDN creation creates local feature"
+     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
+     }
     ].
