@@ -360,7 +360,7 @@ is_authorized_operation(CheckFor, InAccount) ->
 -spec invalid_state_transition(t(), api_ne_binary(), ne_binary()) -> t().
 invalid_state_transition(T=#{todo := Ns}, FromState, ToState) ->
     {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
-    {error, Reason} = knm_errors:to_json(A, B, C),
+    Reason = knm_errors:to_json(A, B, C),
     knm_numbers:ko(Ns, Reason, T).
 
 %% @private

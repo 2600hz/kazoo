@@ -337,6 +337,7 @@ next(Options) ->
 %% Create a number in a discovery state.
 %% @end
 %%--------------------------------------------------------------------
+-ifndef(TEST).
 -spec create_discovery(ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
@@ -353,7 +354,7 @@ create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
 create_discovery(JObj, Options) ->
     PhoneNumber = knm_phone_number:from_json_with_options(JObj, Options),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
-
+-endif.
 
 -spec quantity(options()) -> pos_integer().
 quantity(Options) ->
@@ -430,13 +431,21 @@ discovery(Num, Options) ->
     end.
 
 -spec local_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-ifdef(TEST).
+local_discovery(_Num, _Options) -> {'error', 'not_found'}.
+-else.
 local_discovery(Num, Options) ->
     case ets:match_object(?ETS_DISCOVERY_CACHE, {'_', {Num, '_', ?NUMBER_STATE_DISCOVERY, '_'}}) of
         [] -> {'error', 'not_found'};
-        [{_QID, {Num, Carrier, _, Data}} | _] -> {'ok', create_discovery(Num, Carrier, Data, Options)}
+        [{_QID, {Num, Carrier, _, Data}} | _] ->
+            {'ok', create_discovery(Num, Carrier, Data, Options)}
     end.
+-endif.
 
 -spec remote_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
+-ifdef(TEST).
+remote_discovery(_Num, _Options) -> {'error', 'not_found'}.
+-else.
 remote_discovery(Number, Options) ->
     Payload = [{<<"Number">>, Number}
               ,{<<"Account-ID">>, account_id(Options)}
@@ -452,6 +461,7 @@ remote_discovery(Number, Options) ->
             lager:debug("error requesting number from amqp : ~p", [_Error]),
             {'error', 'not_found'}
     end.
+-endif.
 
 %%%===================================================================
 %%% Internal functions

@@ -288,9 +288,11 @@ move(Nums, MoveTo) ->
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     Options = [{'assign_to', MoveTo} | Options0],
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
+    Updates = knm_number_options:to_phone_number_setters(Options0),
+    TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
     {TDiscovered, NotExisting} = take_not_founds(do(fun discover/1, new(Options, NotFounds))),
     TNew = do_move_not_founds(NotExisting, Options),
-    T = merge_okkos([TFound, TDiscovered, TNew]),
+    T = merge_okkos([TUpdated, TDiscovered, TNew]),
     ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
@@ -662,7 +664,7 @@ reconcile_number(T0, Options) ->
     pipe(do_in_wrap(F1, T0), [fun save_phone_numbers/1]).
 
 do_move_not_founds(Nums, Options) ->
-    pipe(new(Options, Nums)
+    pipe(new([{state, ?NUMBER_STATE_IN_SERVICE} | Options], Nums)
         ,[fun knm_phone_number:new/1
          ,fun knm_number:new/1
          ]).

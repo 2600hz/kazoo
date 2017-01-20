@@ -207,6 +207,49 @@ create_dry_run_test_() ->
      }
     ].
 
+move_non_existing_mobile_number_test_() ->
+    MobileField =
+        kz_json:from_list(
+          [{<<"provider">>, <<"tower-of-power">>}
+          ,{<<"authorizing">>, kz_json:from_list([{<<"account-id">>, ?MASTER_ACCOUNT_ID}])}
+          ,{<<"device-id">>, kz_util:rand_hex_binary(32)}
+          ]),
+    PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{'public_fields', PublicFields}
+            ,{'module_name', ?CARRIER_MDN}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             }
+            ],
+    {'ok', N} = knm_number:move(?TEST_CREATE_NUM, ?RESELLER_ACCOUNT_ID, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify phone number is assigned to reseller account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
+     }
+    ,{"Verify new phone number was authorized by master account"
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     }
+    ,{"Verify new phone number database is properly set"
+     ,?_assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN))
+     }
+    ,{"Verify new phone number is in service state"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN))
+     }
+    ,{"Verify reserve history is empty"
+     ,?_assertEqual([], knm_phone_number:reserve_history(PN))
+     }
+    ,{"Verify the mdn carrier module is being used"
+     ,?_assertEqual(?CARRIER_MDN, knm_phone_number:module_name(PN))
+     }
+    ,{"Verify the mobile public fields is exists"
+     ,?_assertEqual(true, kz_json:are_equal(MobileField
+                                           ,kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
+                                           ))
+     }
+    ].
+
 create_checks_test_() ->
     create_available_checks()
         ++ load_existing_checks().
