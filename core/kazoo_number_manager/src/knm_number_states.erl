@@ -37,18 +37,14 @@ to_state(Number, ToState, _Options) ->
 
 -spec change_state(kn(), ne_binary()) -> kn().
 change_state(Number, ?NUMBER_STATE_RESERVED) ->
-    _ = fail_if_mdn(Number, ?NUMBER_STATE_RESERVED),
     to_reserved(Number);
 change_state(Number, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(Number);
 change_state(Number, ?NUMBER_STATE_AVAILABLE) ->
-    _ = fail_if_mdn(Number, ?NUMBER_STATE_AVAILABLE),
     to_available(Number);
 change_state(Number, ?NUMBER_STATE_AGING) ->
-    _ = fail_if_mdn(Number, ?NUMBER_STATE_AGING),
     to_aging(Number);
 change_state(Number, ?NUMBER_STATE_PORT_IN) ->
-    _ = fail_if_mdn(Number, ?NUMBER_STATE_PORT_IN),
     to_port_in(Number);
 change_state(Number, State) ->
     lager:debug("unhandled state change to ~p", [State]),
@@ -57,6 +53,7 @@ change_state(Number, State) ->
 -spec to_port_in(kn()) -> kn().
 -spec to_port_in(kn(), ne_binary()) -> kn().
 to_port_in(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_PORT_IN),
     to_port_in(Number, number_state(Number)).
 
 to_port_in(Number, ?NUMBER_STATE_PORT_IN) ->
@@ -69,6 +66,7 @@ to_port_in(Number, State) ->
 -spec to_aging(kn()) -> kn().
 -spec to_aging(kn(), ne_binary()) -> kn().
 to_aging(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_AGING),
     to_aging(Number, number_state(Number)).
 
 to_aging(Number, ?NUMBER_STATE_AGING) ->
@@ -89,6 +87,7 @@ to_aging(Number, State) ->
 -spec to_available(kn()) -> kn().
 -spec to_available(kn(), ne_binary()) -> kn().
 to_available(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_AVAILABLE),
     to_available(Number, number_state(Number)).
 
 to_available(Number, ?NUMBER_STATE_AVAILABLE) ->
@@ -103,6 +102,7 @@ to_available(Number, State) ->
 -spec to_reserved(kn()) -> kn().
 -spec to_reserved(kn(), ne_binary()) -> kn().
 to_reserved(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_RESERVED),
     to_reserved(Number, number_state(Number)).
 
 to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
@@ -347,8 +347,15 @@ number_state(Number) ->
     knm_phone_number:state(
       knm_number:phone_number(Number)).
 
+is_mdn(N) ->
+    ?CARRIER_MDN =:= knm_phone_number:module_name(knm_number:phone_number(N)).
+
 fail_if_mdn(N, ToState) ->
-    knm_errors:invalid_state_transition(N, <<"'MDN'">>, ToState).
+    is_mdn(N)
+        andalso knm_errors:invalid_state_transition(N, <<"'MDN'">>, ToState),
+    N.
 
 fail_if_mdn(N, FromState, ToState) ->
-    knm_errors:invalid_state_transition(N, FromState, ToState).
+    is_mdn(N)
+        andalso knm_errors:invalid_state_transition(N, FromState, ToState),
+    N.
