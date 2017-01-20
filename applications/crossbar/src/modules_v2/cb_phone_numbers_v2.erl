@@ -22,6 +22,8 @@
         ,put/2, put/3
         ,post/2
         ,delete/2
+
+        ,set_response/2
         ]).
 
 -include("crossbar.hrl").
@@ -905,6 +907,7 @@ validate_delete(Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
+-spec set_response(result(), cb_context:context()) -> cb_context:context().
 set_response(Result, Context) ->
     set_response(Result, Context, fun() -> Context end).
 
