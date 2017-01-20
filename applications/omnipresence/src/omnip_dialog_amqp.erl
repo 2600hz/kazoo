@@ -357,12 +357,24 @@ to_uri_cookie(_State, _, From, _, _) ->
 
 -spec maybe_send_update(ne_binary(), kz_proplist()) -> 'ok'.
 maybe_send_update(User, Props) ->
+    State = props:get_value(<<"State">>, Props),
+    Broadcast = kapps_config:get_is_true(?CONFIG_CAT, [<<"broadcast_presence">>, State]),
+    maybe_send_update(Broadcast, User, Props).
+
+-spec maybe_send_update(api_boolean(), ne_binary(), kz_proplist()) -> 'ok'.
+maybe_send_update('false', User, Props) ->
     case omnip_subscriptions:get_stalkers(?DIALOG_EVENT, User) of
         {'ok', Stalkers} ->
             send_update(Stalkers, Props);
         {'error', 'not_found'} ->
             lager:debug("no ~s subscriptions for ~s",[?DIALOG_EVENT, User])
-    end.
+    end;
+maybe_send_update('true', User, Props) ->
+    _ = log_send_update([<<"BROADCAST">>], Props),
+    _ = kz_amqp_worker:cast(Props, fun kapi_omnipresence:publish_update/1),
+    maybe_send_update('false', User, Props);
+maybe_send_update('undefined', User, Props) ->
+    maybe_send_update('false', User, Props).
 
 -spec send_update(binaries(), kz_proplist()) -> 'ok'.
 send_update(Stalkers, Props) ->
