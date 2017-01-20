@@ -46,13 +46,14 @@ change_state(Number, ?NUMBER_STATE_AGING) ->
     to_aging(Number);
 change_state(Number, ?NUMBER_STATE_PORT_IN) ->
     to_port_in(Number);
-change_state(Number, _State) ->
-    lager:debug("unhandled state change to ~p", [_State]),
-    knm_errors:unspecified('invalid_state', Number).
+change_state(Number, State) ->
+    lager:debug("unhandled state change to ~p", [State]),
+    knm_errors:invalid_state_transition(Number, knm_phone_number:state(Number), State).
 
 -spec to_port_in(kn()) -> kn().
 -spec to_port_in(kn(), ne_binary()) -> kn().
 to_port_in(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_PORT_IN),
     to_port_in(Number, number_state(Number)).
 
 to_port_in(Number, ?NUMBER_STATE_PORT_IN) ->
@@ -65,6 +66,7 @@ to_port_in(Number, State) ->
 -spec to_aging(kn()) -> kn().
 -spec to_aging(kn(), ne_binary()) -> kn().
 to_aging(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_AGING),
     to_aging(Number, number_state(Number)).
 
 to_aging(Number, ?NUMBER_STATE_AGING) ->
@@ -85,6 +87,7 @@ to_aging(Number, State) ->
 -spec to_available(kn()) -> kn().
 -spec to_available(kn(), ne_binary()) -> kn().
 to_available(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_AVAILABLE),
     to_available(Number, number_state(Number)).
 
 to_available(Number, ?NUMBER_STATE_AVAILABLE) ->
@@ -99,6 +102,7 @@ to_available(Number, State) ->
 -spec to_reserved(kn()) -> kn().
 -spec to_reserved(kn(), ne_binary()) -> kn().
 to_reserved(Number) ->
+    _ = fail_if_mdn(Number, ?NUMBER_STATE_RESERVED),
     to_reserved(Number, number_state(Number)).
 
 to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
@@ -136,30 +140,6 @@ to_reserved(Number, State) ->
 to_in_service(Number) ->
     to_in_service(Number, number_state(Number)).
 
-to_in_service(Number, ?NUMBER_STATE_DISCOVERY) ->
-    Routines = [fun authorize/1
-               ,fun move_to_in_service_state/1
-               ,fun knm_services:activate_phone_number/1
-               ,fun knm_carriers:acquire/1
-               ],
-    apply_transitions(Number, Routines);
-to_in_service(Number, ?NUMBER_STATE_PORT_IN) ->
-    Routines = [fun authorize/1
-               ,fun move_to_in_service_state/1
-               ],
-    apply_transitions(Number, Routines);
-to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
-    Routines = [fun authorize/1
-               ,fun move_to_in_service_state/1
-               ,fun knm_services:activate_phone_number/1
-               ,fun knm_carriers:acquire/1
-               ],
-    apply_transitions(Number, Routines);
-to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
-    Routines = [fun in_service_from_reserved_authorize/1
-               ,fun move_to_in_service_state/1
-               ],
-    apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
@@ -171,6 +151,34 @@ to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
                        ],
             apply_transitions(Number, Routines)
     end;
+to_in_service(Number, ?NUMBER_STATE_DISCOVERY) ->
+    Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_DISCOVERY) end
+               ,fun authorize/1
+               ,fun move_to_in_service_state/1
+               ,fun knm_services:activate_phone_number/1
+               ,fun knm_carriers:acquire/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_PORT_IN) ->
+    Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_PORT_IN) end
+               ,fun authorize/1
+               ,fun move_to_in_service_state/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
+    Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_AVAILABLE) end
+               ,fun authorize/1
+               ,fun move_to_in_service_state/1
+               ,fun knm_services:activate_phone_number/1
+               ,fun knm_carriers:acquire/1
+               ],
+    apply_transitions(Number, Routines);
+to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
+    Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED) end
+               ,fun in_service_from_reserved_authorize/1
+               ,fun move_to_in_service_state/1
+               ],
+    apply_transitions(Number, Routines);
 to_in_service(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_IN_SERVICE).
 
@@ -338,3 +346,16 @@ is_authorized_operation(CheckFor, InAccount) ->
 number_state(Number) ->
     knm_phone_number:state(
       knm_number:phone_number(Number)).
+
+is_mdn(N) ->
+    ?CARRIER_MDN =:= knm_phone_number:module_name(knm_number:phone_number(N)).
+
+fail_if_mdn(N, ToState) ->
+    is_mdn(N)
+        andalso knm_errors:invalid_state_transition(N, <<"'MDN'">>, ToState),
+    N.
+
+fail_if_mdn(N, FromState, ToState) ->
+    is_mdn(N)
+        andalso knm_errors:invalid_state_transition(N, FromState, ToState),
+    N.

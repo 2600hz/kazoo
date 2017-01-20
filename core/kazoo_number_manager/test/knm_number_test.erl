@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2016, 2600Hz
+%%% @copyright (C) 2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -10,26 +10,17 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
-get_available_test_() ->
-    [fun available_as_owner/0
-    ,fun available_as_parent/0
-    ,fun available_as_rando/0
-    ].
-
-available_as_owner() ->
+available_as_owner_test_() ->
     available_as(?RESELLER_ACCOUNT_ID).
 
-available_as_parent() ->
+available_as_parent_test_() ->
     available_as(?MASTER_ACCOUNT_ID).
 
-available_as_rando() ->
+available_as_rando_test_() ->
     available_as(kz_util:rand_hex_binary(16)).
 
 available_as(AuthAccountId) ->
-    case knm_number:get(?TEST_AVAILABLE_NUM
-                       ,[{'auth_by', AuthAccountId}]
-                       )
-    of
+    case knm_number:get(?TEST_AVAILABLE_NUM, [{'auth_by', AuthAccountId}]) of
         {'ok', Number} -> available_tests(Number);
         {'error', Error} -> unavailable_tests(Error)
     end.
@@ -45,7 +36,6 @@ unavailable_tests(ErrorJObj) ->
 
 available_tests(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
-
     [{"Verify available phone number"
      ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PhoneNumber))
      }
@@ -59,8 +49,37 @@ available_tests(Number) ->
 
 get_unreconcilable_number_test_() ->
     [{"Verify non-reconcilable numbers result in errors"
-     ,?_assertMatch({'error', 'not_reconcilable'}
-                   ,knm_number:get(<<"1000">>)
-                   )
+     ,?_assertMatch({'error', 'not_reconcilable'}, knm_number:get(<<"1000">>))
+     }
+    ].
+
+get_not_found_test_() ->
+    [?_assertEqual({error, not_found}, knm_number:get(<<"4156301234">>))
+    ].
+
+mdn_transitions_test_() ->
+    Num = ?TEST_IN_SERVICE_MDN,
+    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID} | knm_number_options:default()],
+    {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID),
+    {ok, N2} = knm_number:release(Num),
+    {ok, N3} = knm_number:reconcile(Num, DefaultOptions),
+    {ok, N4} = knm_number:create(?TEST_CREATE_NUM, [{module_name,?CARRIER_MDN}|DefaultOptions]),
+    [{"Verify MDN can move from in_service to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N1)))
+     }
+    ,{"Verify releasing MDN results in deletion"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(knm_number:phone_number(N2)))
+     }
+    ,{"Verify MDN can reconcile from in_service to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N3)))
+     }
+    ,{"Verify MDN cannot be reserved"
+     ,?_assertMatch({error,_}, knm_number:reserve(Num, knm_number_options:default()))
+     }
+    ,{"Verify MDN creation forces state to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N4)))
+     }
+    ,{"Verify MDN creation creates local feature"
+     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
      }
     ].

@@ -839,20 +839,10 @@ set_ported_in(N, Ported) when is_boolean(Ported) ->
 module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
-set_module_name(N0, ?CARRIER_LOCAL=Name) ->
-    Feature =
-        case feature(N0, ?FEATURE_LOCAL) of
-            'undefined' -> kz_json:new();
-            LocalFeature -> LocalFeature
-        end,
-    N = set_feature(N0, ?FEATURE_LOCAL, Feature),
-    case N0#knm_phone_number.module_name =:= Name of
-        true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,module_name = Name
-                              }
-    end;
+set_module_name(N, ?CARRIER_LOCAL=Name) ->
+    set_module_name_local(N, Name);
+set_module_name(N, ?CARRIER_MDN=Name) ->
+    set_module_name_local(N, Name);
 %% knm_bandwidth is deprecated, updating to the new module
 set_module_name(N, <<"wnm_bandwidth">>) ->
     set_module_name(N, <<"knm_bandwidth2">>);
@@ -868,6 +858,21 @@ set_module_name(N, Name=?NE_BINARY) ->
     N#knm_phone_number{is_dirty = true
                       ,module_name = Name
                       }.
+
+set_module_name_local(N0, Name) ->
+    Feature =
+        case feature(N0, ?FEATURE_LOCAL) of
+            'undefined' -> kz_json:new();
+            LocalFeature -> LocalFeature
+        end,
+    N = set_feature(N0, ?FEATURE_LOCAL, Feature),
+    case N0#knm_phone_number.module_name =:= Name of
+        true -> N;
+        false ->
+            N#knm_phone_number{is_dirty = true
+                              ,module_name = Name
+                              }
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
