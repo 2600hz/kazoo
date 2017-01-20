@@ -385,10 +385,7 @@ fail_if_mdn(T=#{todo := Ns}, ToState) ->
         {[], _} -> knm_numbers:ok(Ns, T);
         {MDNs, OtherNs} ->
             Ta = knm_numbers:ok(OtherNs, T),
-            Message = <<"MDN cannot transition to ", ToState/binary>>,
-            {error,A,B} = (catch knm_errors:number_is_mdn(Message)),
-            Reason = knm_errors:to_json(A, B),
-            Tb = knm_numbers:ko(MDNs, Reason, T),
+            Tb = invalid_state_transition(T#{todo => MDNs}, <<"'MDN'">>, ToState),
             knm_numbers:merge_okkos(Ta, Tb)
     end.
 
@@ -397,10 +394,7 @@ fail_if_mdn(T=#{todo := Ns}, FromState, ToState) ->
         {[], _} -> knm_numbers:ok(Ns, T);
         {MDNs, OtherNs} ->
             Ta = knm_numbers:ok(OtherNs, T),
-            Message = <<"MDN cannot transition from ", FromState/binary, " to ", ToState/binary>>,
-            {error,A,B} = (catch knm_errors:number_is_mdn(Message)),
-            Reason = knm_errors:to_json(A, B),
-            Tb = knm_numbers:ko(MDNs, Reason, T),
+            Tb = invalid_state_transition(T#{todo => MDNs}, FromState, ToState),
             knm_numbers:merge_okkos(Ta, Tb)
     end.
 

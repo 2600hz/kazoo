@@ -21,7 +21,6 @@
         ,assign_failure/2
         ,database_error/2
         ,number_is_porting/1
-        ,number_is_mdn/1
         ,by_carrier/3
         ]).
 
@@ -108,10 +107,6 @@ database_error(E, PhoneNumber) ->
 number_is_porting(Num) ->
     throw({'error', 'number_is_porting', Num}).
 
--spec number_is_mdn(ne_binary()) -> no_return().
-number_is_mdn(Cause) ->
-    throw({'error', 'number_is_mdn', Cause}).
-
 -spec by_carrier(module(), ne_binary() | atom(), ne_binary() | kn()) -> no_return().
 by_carrier(Carrier, E, Num) when is_binary(Num) ->
     throw({'error', 'by_carrier', Num, {Carrier,E}});
@@ -151,9 +146,6 @@ to_json('not_reconcilable', Num=?NE_BINARY, _) ->
 to_json('unauthorized', _, Cause) ->
     Message = <<"requestor is unauthorized to perform operation">>,
     build_error(403, 'forbidden', Message, Cause);
-to_json('number_is_mdn', _, Cause) ->
-    Message = <<"number is an MDN">>,
-    build_error(403, 'number_is_mdn', Message, Cause);
 to_json('service_restriction', Num=?NE_BINARY, Cause) ->
     build_error(402, 'service_restriction', Cause, Num);
 to_json('no_change_required', _, Cause) ->
