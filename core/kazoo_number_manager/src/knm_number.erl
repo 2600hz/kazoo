@@ -144,10 +144,15 @@ create(Num, Options) ->
 -spec state_for_create(ne_binary(), knm_number_options:options()) -> ne_binary().
 -ifdef(TEST).
 state_for_create(AccountId, Options) ->
-    case {knm_number_options:state(Options), AccountId} of
-        {?NUMBER_STATE_PORT_IN=PortIn, _} -> PortIn;
-        {_, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
-        {_, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
+    case {knm_number_options:state(Options)
+         ,knm_number_options:module_name(Options)
+         ,AccountId
+         }
+    of
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
+        {_, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
+        {_, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
         _ -> ?NUMBER_STATE_IN_SERVICE
     end.
 -else.
@@ -155,12 +160,16 @@ state_for_create(AccountId, Options) ->
     case knm_number_options:state(Options) of
         ?NUMBER_STATE_PORT_IN=PortIn -> PortIn;
         _ ->
-            case kz_services:is_reseller(AccountId)
-                andalso kapps_util:get_master_account_id()
-            of
-                'false' -> ?NUMBER_STATE_IN_SERVICE;
-                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-                {'ok', _} -> ?NUMBER_STATE_RESERVED
+            case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
+                true -> ?NUMBER_STATE_IN_SERVICE;
+                _ ->
+                    case kz_services:is_reseller(AccountId)
+                        andalso kapps_util:get_master_account_id()
+                    of
+                        'false' -> ?NUMBER_STATE_IN_SERVICE;
+                        {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                        {'ok', _} -> ?NUMBER_STATE_RESERVED
+                    end
             end
     end.
 -endif.
