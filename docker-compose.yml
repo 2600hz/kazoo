@@ -1,0 +1,15 @@
+version: '2.1'
+
+services:
+  kazoo:
+    domainname: docker.local
+    image: debian:8
+    ports:
+      - 8000:8000
+      - 43690:4369
+      - 49000:49000
+    environment:
+      - TERM=xterm
+    volumes:
+      - ./_rel/kazoo:/opt/kazoo:rw
+    command: /bin/bash -c 'RELX_REPLACE_OS_VARS=true KZname="-name kazoo_apps@127.0.0.1 -kernel inet_dist_listen_min 49000 inet_dist_listen_max 49000" /opt/kazoo/bin/kazoo foreground "$$@"'
