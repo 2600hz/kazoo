@@ -55,10 +55,12 @@ Here is some sample PHP code for testing the collection of data on the bookkeepe
 ```php
 <?php
 
+require ('init.php')
+
 $auth = "123abc";
 $connection_ip = "xx.xx.xx.xx";
 
-/* Collect POST header */
+/* Collect POST header for no particular reason */
 $results = (apache_request_headers());
 file_put_contents('post_header.txt', print_r($results, true));
 
