@@ -24,7 +24,55 @@ The first [bookkeeper module](https://github.com/2600hz/kazoo/blob/master/core/k
 
 ## Define your own bookkeeper<a id="orgheadline2"></a>
 
-Now, it is possible to define your own bookkeeper service to interact with Kazoo. Kazoo will send your server a request via HTTP and, based on the response, update the requesting account accordingly. Let's take a look.
+Now, it is possible to define your own bookkeeper service to interact with Kazoo. Kazoo will send your server a request via HTTP and, based on the response, update the requesting account accordingly.
+
+Define HTTP bookkeeper by creating the following `system_config > services.http_sync` document in the DB.
+
+```json
+{
+   "_id": "services.http_sync",
+   "default": {
+       "authorization_header": "123abc",
+       "http_url": "http://my-bookeeper-url/"
+   }
+}
+```
+Assign the http bookkeeper to the master account in the `system_config > services` document
+
+```json
+"default": {
+       "sync_services": true,
+       "support_billing_id": true,
+       "should_save_master_audit_logs": false,
+       "master_account_bookkeeper": "kz_bookkeeper_http",
+       "scan_rate": 20000,
+       "sync_buffer_period": 600
+   },
+   ```
+After refreshing the db settings and adding a SIP device, Kazoo will try contact the remote bookkeeper with the updates after approximately 600 seconds. 
+   
+Here is some sample PHP code for testing the collection of data on the bookkeeper end.
+```php
+<?php
+
+$auth = "123abc";
+$connection_ip = "xx.xx.xx.xx";
+
+/* Collect POST header */
+$results = (apache_request_headers());
+file_put_contents('post_header.txt', print_r($results, true));
+
+/* Check Authorization and IP in received POST header via $_SERVER */
+if ($_SERVER['HTTP_AUTHORIZATION'] != $auth || $_SERVER['REMOTE_ADDR'] != $connection_ip) {
+    http_response_code(500);
+    exit();
+}
+
+// Authorized.  Now collect POST data
+file_put_contents('post_body.txt', file_get_contents('php://input'));
+
+/* Do something */
+```
 
 ## Syncing<a id="orgheadline3"></a>
 
