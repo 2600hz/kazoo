@@ -55,7 +55,7 @@ Here is some sample PHP code for testing the collection of data on the bookkeepe
 ```php
 <?php
 
-require ('init.php')
+require ('init.php');
 
 $auth = "123abc";
 $connection_ip = "xx.xx.xx.xx";
