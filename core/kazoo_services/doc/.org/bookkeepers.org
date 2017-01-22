@@ -1,7 +1,7 @@
 #+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline
 #+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
 #+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
-#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:nil todo:t |:t
 #+OPTIONS: ^:{}
 #+TITLE: bookkeepers
 #+DATE: <2016-09-06 Tue>
@@ -15,7 +15,61 @@ Bookkeepers provide a way for external bookkeeping services to reconcile service
 The first [[https://github.com/2600hz/kazoo/blob/master/core/kazoo_services/src/bookkeepers/kz_bookkeeper_braintree.erl][bookkeeper module]] was written to interface with Braintree but this was a tailored interface based on the needs of 2600Hz; most community members weren't working with Braintree for credit card processing.
 
 ** Define your own bookkeeper
-Now, it is possible to define your own bookkeeper service to interact with Kazoo. Kazoo will send your server a request via HTTP and, based on the response, update the requesting account accordingly. Let's take a look.
+
+Now, it is possible to define your own bookkeeper service to interact with Kazoo. Kazoo will send your server a request via HTTP and, based on the response, update the requesting account accordingly.
+
+Define HTTP bookkeeper by creating the following `system_config > services.http_sync` document in the DB.
+
+#+BEGIN_SRC json
+{
+    "_id": "services.http_sync",
+    "default": {
+        "authorization_header": "123abc",
+        "http_url": "http://my-bookeeper-url/"
+    }
+}
+#+END_SRC
+
+Assign the http bookkeeper to the master account in the `system_config > services` document
+
+#+BEGIN_SRC json
+"default": {
+    "sync_services": true,
+    "support_billing_id": true,
+    "should_save_master_audit_logs": false,
+    "master_account_bookkeeper": "kz_bookkeeper_http",
+    "scan_rate": 20000,
+    "sync_buffer_period": 600
+},
+#+END_SRC
+
+After adding a SIP device, Kazoo will contact the remote bookkeeper with the new information.
+
+Here is some sample PHP code for testing the collection of data on the bookkeeper end.
+
+#+BEGIN_SRC php
+<?php
+
+require ('init.php');
+
+$auth = "123abc";
+$connection_ip = "xx.xx.xx.xx";
+
+/* Collect POST header for no particular reason */
+$results = (apache_request_headers());
+file_put_contents('post_header.txt', print_r($results, true));
+
+/* Check Authorization and IP in received POST header via $_SERVER */
+if ($_SERVER['HTTP_AUTHORIZATION'] != $auth || $_SERVER['REMOTE_ADDR'] != $connection_ip) {
+    http_response_code(500);
+    exit();
+}
+
+// Authorized.  Now collect POST data
+file_put_contents('post_body.txt', file_get_contents('php://input'));
+
+/* Do something */
+#+END_SRC
 
 ** Syncing
 Kazoo is configured to periodically (20s by default) look for accounts which are marked *dirty*. These are accounts that have changes to billable things that have not successfully synced to the configured bookkeeper. Kazoo will take these unsynced updates, apply the service plan(s) of the account, and create a full list of service items in the account. These are then sent to the bookkeeper for reconciliation.
@@ -42,39 +96,39 @@ The request payload will be composed of objects with the following fields:
 | exceptions               | Service items that are excepted from the service plan  | array(string()) | false    |
 *** Example:
 applications.
-#+BEGIN_SRC js2
-  {
-      "devices":{
-          "sip_device":{
-              "category":"devices"
-              ,"item":"sip_device"
-              ,"quantity": 4
-              ,"rate": 29.99
-          }
-          ,"softphone":{
-              "category":"devices"
-              ,"item":"softphone"
-              ,"quantity":2
-              ,"rate":0
-          }
-      }
-      ,"ui_apps": {
-          "numbers": {
-              "category": "ui_apps",
-              "item": "numbers",
-              "quantity": 1,
-              "rate": 2.0,
-              "activation_charge": 1.0
-          }
-          ,"accounts": {
-              "category": "ui_apps",
-              "item": "accounts",
-              "quantity": 1,
-              "rate": 5.0,
-              "activation_charge": 4.0
-          }
-      }
-  }
+#+BEGIN_SRC json
+{
+    "devices":{
+        "sip_device":{
+            "category":"devices"
+            ,"item":"sip_device"
+            ,"quantity": 4
+            ,"rate": 29.99
+        }
+        ,"softphone":{
+            "category":"devices"
+            ,"item":"softphone"
+            ,"quantity":2
+            ,"rate":0
+        }
+    }
+    ,"ui_apps": {
+        "numbers": {
+            "category": "ui_apps",
+            "item": "numbers",
+            "quantity": 1,
+            "rate": 2.0,
+            "activation_charge": 1.0
+        }
+        ,"accounts": {
+            "category": "ui_apps",
+            "item": "accounts",
+            "quantity": 1,
+            "rate": 5.0,
+            "activation_charge": 4.0
+        }
+    }
+}
 #+END_SRC
 ** The Response
 The HTTP response code will be used to determine how Kazoo proceeds with the update.
