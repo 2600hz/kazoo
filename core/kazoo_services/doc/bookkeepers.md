@@ -49,7 +49,7 @@ Assign the http bookkeeper to the master account in the `system_config > service
        "sync_buffer_period": 600
    },
    ```
-After refreshing the db settings and adding a SIP device, Kazoo will try contact the remote bookkeeper with the updates after approximately 600 seconds. 
+After refreshing the db settings and adding a SIP device, Kazoo will eventually try contact the remote bookkeeper with the new information. 
    
 Here is some sample PHP code for testing the collection of data on the bookkeeper end.
 ```php
