@@ -275,13 +275,15 @@ is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
     true;
 is_mdn_for_mdn_run(PN, Options) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
-    %% Equal to: IsMDN xnor IsMDNRun
     case knm_number_options:mdn_run(Options) of
-        false -> not IsMDN;
         true ->
-            _ = IsMDN
-                andalso lager:debug("~s is an mdn", [number(PN)]),
-            IsMDN
+            lager:debug("~s mdn:~s, mdn_run-ing", [number(PN), IsMDN]),
+            true;
+        false ->
+            R = not IsMDN,
+            _ = R
+                orelse lager:debug("mdn ~s needs mdn_run to be true", [number(PN)]),
+            R
     end.
 
 %%--------------------------------------------------------------------

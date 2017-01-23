@@ -431,9 +431,7 @@ delete(Context, Number) ->
 summary(Context, Number) ->
     IncludePorts =
         kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>, 'false')),
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
-    case knm_number:get(Number, Options) of
+    case knm_number:get(Number, [{auth_by, cb_context:auth_account_id(Context)}]) of
         {'ok', KNMNumber} ->
             crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
         {'error', _JObj} ->
