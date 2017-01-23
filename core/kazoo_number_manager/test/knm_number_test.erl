@@ -59,9 +59,12 @@ get_not_found_test_() ->
 
 mdn_transitions_test_() ->
     Num = ?TEST_IN_SERVICE_MDN,
-    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID} | knm_number_options:default()],
-    {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID),
-    {ok, N2} = knm_number:release(Num),
+    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID}
+                     ,{mdn_run, true}
+                      |knm_number_options:default()
+                     ],
+    {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID, DefaultOptions),
+    {ok, N2} = knm_number:release(Num, DefaultOptions),
     {ok, N3} = knm_number:reconcile(Num, DefaultOptions),
     {ok, N4} = knm_number:create(?TEST_CREATE_NUM, [{module_name,?CARRIER_MDN}|DefaultOptions]),
     [{"Verify MDN can move from in_service to in_service"
