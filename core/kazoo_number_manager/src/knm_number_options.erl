@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number_options).
 
@@ -12,6 +13,7 @@
         ,auth_by/1, auth_by/2
         ,dry_run/1, dry_run/2
         ,batch_run/1, batch_run/2
+        ,mdn_run/1
         ,module_name/1
         ,ported_in/1, ported_in/2
         ,public_fields/1
@@ -44,6 +46,7 @@
                   {'auth_by', ne_binary()} |
                   {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
+                  {mdn_run, boolean()} |
                   {'module_name', ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
@@ -73,6 +76,7 @@ default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
     ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
+    ,{mdn_run, false}
     ].
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
@@ -104,7 +108,17 @@ dry_run(Options, Default) ->
 batch_run(Options) ->
     batch_run(Options, 'false').
 batch_run(Options, Default) ->
-    props:get_is_true('batch_run', Options, Default).
+    R = props:get_is_true(batch_run, Options, Default),
+    _ = R
+        andalso lager:debug("batch_run-ing btw"),
+    R.
+
+-spec mdn_run(options()) -> boolean().
+mdn_run(Options) ->
+    R = props:get_is_true(mdn_run, Options, false),
+    _ = R
+        andalso lager:debug("mdn_run-ing btw"),
+    R.
 
 -spec assign_to(options()) -> api_binary().
 -spec assign_to(options(), Default) -> ne_binary() | Default.
