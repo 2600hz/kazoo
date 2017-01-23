@@ -448,18 +448,16 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
        is_binary(RoutingKey),
        is_binary(ContentType),
        is_list(Props) ->
-    BP = #'basic.publish'{
-            exchange = Exchange
+    BP = #'basic.publish'{exchange = Exchange
                          ,routing_key = RoutingKey
                          ,mandatory = ?P_GET('mandatory', Props, 'false')
                          ,immediate = ?P_GET('immediate', Props, 'false')
-           },
+                         },
 
     %% Add the message to the publish, converting to binary
     %% See http://www.rabbitmq.com/amqp-0-9-1-reference.html#class.basic
     MsgProps =
-        #'P_basic'{
-           content_type = ContentType % MIME content type
+        #'P_basic'{content_type = ContentType % MIME content type
                   ,content_encoding = ?P_GET('content_encoding', Props) % MIME encoding
                   ,headers = ?P_GET('headers', Props) % message headers
                   ,delivery_mode = ?P_GET('delivery_mode', Props) % persistent(2) or not(1)
@@ -467,7 +465,7 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
                   ,correlation_id = ?P_GET('correlation_id', Props) % correlation identifier
                   ,reply_to = ?P_GET('reply_to', Props) % address to reply to
 
-           %% TODO:: new rabbit wants an integer...
+                   %% TODO:: new rabbit wants an integer...
                   ,expiration = ?P_GET('expiration', Props) % expires time
 
                   ,message_id = ?P_GET('message_id', Props) % app message id
@@ -476,12 +474,11 @@ basic_publish(Exchange, RoutingKey, ?NE_BINARY = Payload, ContentType, Props)
                   ,user_id = ?P_GET('user_id', Props) % creating user
                   ,app_id = ?P_GET('app_id', Props) % creating app
                   ,cluster_id = ?P_GET('cluster_id', Props) % cluster
-          },
+                  },
 
-    AM = #'amqp_msg'{
-            payload = Payload
+    AM = #'amqp_msg'{payload = Payload
                     ,props = MsgProps
-           },
+                    },
 
     case ?P_GET('maybe_publish', Props, 'false') of
         'true' -> kz_amqp_channel:maybe_publish(BP, AM);

@@ -11,6 +11,7 @@
                  , kazoo_amqp
                  , kazoo_data
                  , kazoo_web
+                 , kazoo_workers
 
                  , lager
                  ]}

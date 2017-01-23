@@ -7,10 +7,11 @@
   {applications, [ kernel
                  , stdlib
 
-                 , kazoo_data
-                 , kazoo_config
-                 , kazoo_modb
                  , braintree
+                 , kazoo_config
+                 , kazoo_data
+                 , kazoo_modb
+                 , kazoo_workers
 
                  , lager
                  ]}

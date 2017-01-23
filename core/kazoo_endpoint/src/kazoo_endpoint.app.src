@@ -9,6 +9,7 @@
                  , crypto
 
                  , kazoo_data
+                 , kazoo_workers
 
                  , lager
                  ]}

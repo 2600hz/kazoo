@@ -9,6 +9,8 @@
                  , crypto
 
                  , kazoo
+                 , kazoo_workers
+
                  , erlydtl
                  , lager
                  ]}

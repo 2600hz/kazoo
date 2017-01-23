@@ -7,7 +7,9 @@
   {applications, [kernel
                  ,stdlib
 
-                 ,kazoo_apps
+                 , kazoo_apps
+                 , kazoo_templates
+                 , kazoo_workers
 
                  ,lager
                  ]},

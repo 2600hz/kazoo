@@ -9,6 +9,7 @@
                  , crypto
 
                  , kazoo_apps
+                 , kazoo_workers
 
                  , lager
                  , gproc

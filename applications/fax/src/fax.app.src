@@ -12,10 +12,12 @@
 
                  , kazoo
                  , kazoo_amqp
-                 , kazoo_data
                  , kazoo_apps
+                 , kazoo_data
                  , kazoo_modb
                  , kazoo_oauth
+                 , kazoo_templates
+                 , kazoo_workers
 
                  , lager
                  , ranch

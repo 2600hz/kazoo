@@ -50,7 +50,10 @@
         ,code_change/3
         ]).
 
--include("amqp_util.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-include_lib("amqp_client/include/amqp_client.hrl").
+-include_lib("kazoo/include/kz_log.hrl").
+-include_lib("kazoo/include/kz_api_literals.hrl").
 
 -define(SERVER, ?MODULE).
 

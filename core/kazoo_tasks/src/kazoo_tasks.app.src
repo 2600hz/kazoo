@@ -8,5 +8,6 @@
                  , stdlib
 
                  , kazoo
+                 , kazoo_workers
                  ]}
  ]}.

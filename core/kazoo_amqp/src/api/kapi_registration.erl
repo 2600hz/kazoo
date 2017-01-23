@@ -27,7 +27,7 @@
         ,publish_query_resp/2, publish_query_resp/3
         ,publish_query_err/2, publish_query_err/3
         ,publish_flush/1, publish_flush/2
-        ,publish_sync/0, publish_sync/1, publish_sync/2
+        ,publish_sync/1, publish_sync/2
         ]).
 
 -include("amqp_util.hrl").
@@ -334,11 +334,8 @@ publish_query_err(Queue, Resp, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Resp, ?REG_QUERY_ERR_VALUES, fun query_err/1),
     amqp_util:targeted_publish(Queue, Payload, ContentType).
 
--spec publish_sync() -> 'ok'.
 -spec publish_sync(api_terms()) -> 'ok'.
 -spec publish_sync(api_terms(), ne_binary()) -> 'ok'.
-publish_sync() ->
-    kz_amqp_worker:cast(kz_api:default_headers(<<"KAPI">>, <<"1.0">>), fun publish_sync/1).
 publish_sync(JObj) ->
     publish_sync(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_sync(API, ContentType) ->
