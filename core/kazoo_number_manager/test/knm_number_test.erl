@@ -86,3 +86,21 @@ mdn_transitions_test_() ->
      ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
      }
     ].
+
+is_mdn_for_mdn_run_test_() ->
+    Run = {mdn_run, true},
+    Base = knm_number_options:default(),
+    Fs = [{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"*">>,42}])}],
+    [{"Verify an mdn_run && knm_mdn number can be updated"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
+     }
+    ,{"Verify an mdn_run && !knm_mdn number cannot be updated"
+     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
+     }
+    ,{"Verify a !mdn_run && knm_mdn number cannot be updated"
+     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Base))
+     }
+    ,{"Verify a !mdn_run && !knm_mdn number can be updated"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Base))
+     }
+    ].
