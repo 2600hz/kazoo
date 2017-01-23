@@ -270,9 +270,9 @@ handle_fetch(JObj, Options) ->
         false -> knm_errors:unauthorized()
     end.
 
-%% is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
-%%     lager:debug("mdn check disabled by auth_by"),
-%%     true;
+is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
+    lager:debug("mdn check disabled by auth_by"),
+    true;
 is_mdn_for_mdn_run(PN, Options) ->
     IsMDN = ?CARRIER_MDN =:= module_name(PN),
     %% Equal to: IsMDN xnor IsMDNRun
