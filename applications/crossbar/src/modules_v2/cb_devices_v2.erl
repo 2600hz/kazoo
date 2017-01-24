@@ -406,7 +406,7 @@ check_mdn_taken(DeviceId, Context) ->
     MDN = get_mdn(Context),
     case knm_number:get(MDN, knm_number_options:mdn_options()) of
         {error, not_found} ->
-            lager:debug("endpoint mdn ~s is not taken: ~p", [MDN, _Otherwise]),
+            lager:debug("endpoint mdn ~s is not taken", [MDN]),
             check_mdn_registered(DeviceId, Context);
         {ok, _Number} ->
             lager:debug("mdn ~s taken", [MDN]),
