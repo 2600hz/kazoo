@@ -231,8 +231,8 @@ ko(N, Reason, T) ->
 %%--------------------------------------------------------------------
 -spec get(ne_binaries()) -> ret().
 -spec get(ne_binaries(), knm_number_options:options()) -> ret().
-get(Nums) -> get(Nums, [{mdn_run,true} | knm_number_options:default()]).
-get(Nums, Options) -> ret(do_get(Nums, [{mdn_run,true} | Options])).
+get(Nums) -> get(Nums, knm_number_options:default()).
+get(Nums, Options) -> ret(do_get(Nums, Options)).
 
 -spec do_get(ne_binaries(), knm_number_options:options()) -> t().
 do_get(Nums, Options) ->

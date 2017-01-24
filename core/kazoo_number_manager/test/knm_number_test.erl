@@ -94,8 +94,8 @@ is_mdn_for_mdn_run_test_() ->
     [{"Verify an mdn_run && knm_mdn number can be updated"
      ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
      }
-    ,{"Verify an mdn_run && !knm_mdn number can be updated"
-     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
+    ,{"Verify an mdn_run && !knm_mdn number cannot be updated"
+     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
      }
     ,{"Verify a !mdn_run && knm_mdn number cannot be updated"
      ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Base))
