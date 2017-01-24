@@ -21,6 +21,7 @@
         ,should_delete/1, should_delete/2
 
         ,default/0
+        ,mdn_options/0
 
         ,to_phone_number_setters/1
         ]).
@@ -77,6 +78,12 @@ default() ->
     ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
     ,{mdn_run, false}
+    ].
+
+-spec mdn_options() -> options().
+mdn_options() ->
+    [{mdn_run, true}
+     |default()
     ].
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().

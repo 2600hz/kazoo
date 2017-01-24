@@ -60,8 +60,7 @@ get_not_found_test_() ->
 mdn_transitions_test_() ->
     Num = ?TEST_IN_SERVICE_MDN,
     DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID}
-                     ,{mdn_run, true}
-                      |knm_number_options:default()
+                      |knm_number_options:mdn_options()
                      ],
     {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID, DefaultOptions),
     {ok, N2} = knm_number:release(Num, DefaultOptions),
@@ -89,7 +88,7 @@ mdn_transitions_test_() ->
 
 is_mdn_for_mdn_run_test_() ->
     Run = {mdn_run, true},
-    Base = [{auth_by,?MASTER_ACCOUNT_ID}, {dry_run,false}],
+    Base = [{auth_by,?MASTER_ACCOUNT_ID}],
     Sudo = knm_number_options:default(),
     Fs = [{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"*">>,42}])}],
     [{"Verify an mdn_run && knm_mdn number can be updated"

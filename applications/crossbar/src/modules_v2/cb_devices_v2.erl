@@ -404,9 +404,8 @@ error_mdn_changed(Context) ->
 -spec check_mdn_taken(api_binary(), cb_context:context()) -> cb_context:context().
 check_mdn_taken(DeviceId, Context) ->
     MDN = get_mdn(Context),
-    case knm_number:get(MDN, [{mdn_run,true} | knm_number_options:default()]) of
-        {'ok', _Number} -> error_mdn_taken(MDN, Context);
-        _Otherwise ->
+    case knm_number:get(MDN, knm_number_options:mdn_options()) of
+        {error, not_found} ->
             lager:debug("endpoint mdn ~s is not taken: ~p", [MDN, _Otherwise]),
             check_mdn_registered(DeviceId, Context)
     end.
@@ -818,10 +817,9 @@ add_mobile_mdn(Context) ->
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
     Options = [{assign_to, cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{mdn_run, true}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
-               |knm_number_options:default()
+               |knm_number_options:mdn_options()
               ],
     case knm_number:create(Normalized, Options) of
         {error, _}=Error ->
@@ -850,8 +848,7 @@ remove_mobile_mdn(Context) ->
 -spec remove_if_mobile(ne_binary(), cb_context:context()) -> cb_context:context().
 remove_if_mobile(MDN, Context) ->
     Normalized = knm_converters:normalize(MDN),
-    BaseOptions = [{mdn_run,true} | knm_number_options:default()],
-    case knm_number:get(Normalized, BaseOptions) of
+    case knm_number:get(Normalized, knm_number_options:mdn_options()) of
         {'ok', Number} ->
             PN = knm_number:phone_number(Number),
             IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
@@ -862,7 +859,7 @@ remove_if_mobile(MDN, Context) ->
                     %% hard removing number
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
-                    _ = knm_number:delete(Normalized, BaseOptions),
+                    _ = knm_number:delete(Normalized, knm_number_options:mdn_options()),
                     Context
             end;
         {'error', _R} ->
