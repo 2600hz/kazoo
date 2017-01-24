@@ -860,7 +860,7 @@ remove_if_mobile(MDN, Context) ->
             IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
             case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
                 'undefined' when not IsMdnCarrier ->
-                    lager:debug("not removing number ~s: somehow not an mdn", [Normalized]),
+                    lager:error("not removing number ~s: somehow not an mdn", [Normalized]),
                     Context;
                 Mobile ->
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
