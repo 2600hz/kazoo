@@ -816,7 +816,10 @@ leak_trial_time_left(Context) ->
     leak_trial_time_left(Context, JObj, kz_account:trial_expiration(JObj)).
 
 leak_trial_time_left(Context, _JObj, 'undefined') ->
-    Context;
+    RespData = kz_json:delete_key(<<"trial_time_left">>
+                                 ,cb_context:resp_data(Context)
+                                 ),
+    cb_context:set_resp_data(Context, RespData);
 leak_trial_time_left(Context, JObj, _Expiration) ->
     RespData = kz_json:set_value(<<"trial_time_left">>
                                 ,kz_account:trial_time_left(JObj)
