@@ -56,6 +56,7 @@ Key | Description | Type | Default | Required
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
+`password` | The GUI login password | `string` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `priv_level` | The privilege level of the user | `string('user', 'admin')` | `user` | `false`
 `profile` | User's profile data | `object` | `{}` | `false`

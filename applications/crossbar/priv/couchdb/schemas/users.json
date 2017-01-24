@@ -351,6 +351,11 @@
             "required": false,
             "type": "object"
         },
+        "password": {
+            "description": "The GUI login password",
+            "required": false,
+            "type": "string"
+        },
         "presence_id": {
             "description": "Static presence ID (used instead of SIP username)",
             "required": false,
