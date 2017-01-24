@@ -209,11 +209,11 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
     lager:debug("found ~p numbers", [length(DIDs)]),
     {'ok',
      [ kz_json:from_list(
-         [{<<"e164">>, knm_converters:normalize(kz_util:get_xml_value("//tn/text()", DID))}
-         ,{<<"rate_center">>, kz_util:get_xml_value("//rateCenter/text()", DID)}
-         ,{<<"state">>, kz_util:get_xml_value("//state/text()", DID)}
-         ,{<<"cnam">>, kz_util:is_true(kz_util:get_xml_value("//outboundCNAM/text()", DID))}
-         ,{<<"t38">>, kz_util:is_true(kz_util:get_xml_value("//t38/text()", DID))}
+         [{<<"e164">>, knm_converters:normalize(kz_xml:get_value("//tn/text()", DID))}
+         ,{<<"rate_center">>, kz_xml:get_value("//rateCenter/text()", DID)}
+         ,{<<"state">>, kz_xml:get_value("//state/text()", DID)}
+         ,{<<"cnam">>, kz_util:is_true(kz_xml:get_value("//outboundCNAM/text()", DID))}
+         ,{<<"t38">>, kz_util:is_true(kz_xml:get_value("//t38/text()", DID))}
          ])
        || DID=#xmlElement{} <- lists:sublist(DIDs, Quantity)
      ]
@@ -222,11 +222,11 @@ to_json('find_numbers', Quantity, {'ok', Xml}) ->
 to_json('acquire_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("assignDID", ["DIDs", "DID"]),
     [JObj] = [ begin
-                   Code = kz_util:get_xml_value("//statusCode/text()", DID),
+                   Code = kz_xml:get_value("//statusCode/text()", DID),
                    lager:debug("acquire ~s: ~s:~s",
-                               [kz_util:get_xml_value("//tn/text()", DID)
+                               [kz_xml:get_value("//tn/text()", DID)
                                ,Code
-                               ,kz_util:get_xml_value("//status/text()", DID)
+                               ,kz_xml:get_value("//status/text()", DID)
                                ]),
                    kz_json:from_list([{<<"code">>, Code}])
                end
@@ -238,9 +238,9 @@ to_json('acquire_number', _Numbers, {'ok', Xml}) ->
 to_json('disconnect_number', _Numbers, {'ok', Xml}) ->
     XPath = xpath("releaseDID", ["DIDs", "DID"]),
     [JObj] = [ begin
-                   N = kz_util:get_xml_value("//tn/text()", DID),
-                   Msg = kz_util:get_xml_value("//status/text()", DID),
-                   Code = kz_util:get_xml_value("//statusCode/text()", DID),
+                   N = kz_xml:get_value("//tn/text()", DID),
+                   Msg = kz_xml:get_value("//status/text()", DID),
+                   Code = kz_xml:get_value("//statusCode/text()", DID),
                    lager:debug("disconnect ~s: ~s:~s", [N, Code, Msg]),
                    kz_json:from_list(
                      [{<<"code">>, Code}
@@ -381,8 +381,8 @@ handle_response({'error', _}=E) ->
 
 -spec verify_response(xml_el()) -> soap_response().
 verify_response(Xml) ->
-    RespCode = kz_util:get_xml_value("//responseCode/text()", Xml),
-    RespMsg = kz_util:get_xml_value("//responseMessage/text()", Xml),
+    RespCode = kz_xml:get_value("//responseCode/text()", Xml),
+    RespMsg = kz_xml:get_value("//responseMessage/text()", Xml),
     lager:debug("carrier response: ~s ~s", [RespCode, RespMsg]),
     case RespCode of
         ?API_SUCCESS ->

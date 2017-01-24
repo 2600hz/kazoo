@@ -12,6 +12,9 @@
         ,texts_to_binary/1, texts_to_binary/2
         ,attributes_to_proplist/1
         ,filter_empty_text/1
+
+        ,get_value/2
+        ,extract_values/1
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -52,3 +55,49 @@ filter_empty_text([_|_]=Els) ->
 -spec is_empty_text(xml_text() | xml_el()) -> boolean().
 is_empty_text(#xmlText{value=" "}) -> 'true';
 is_empty_text(_El) -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Generic helper to get the text value of a XML path
+%% @end
+%%--------------------------------------------------------------------
+-spec get_value(kz_deeplist(), xml_el() | string()) -> api_binary().
+get_value(Paths, Xml) ->
+    Path = lists:flatten(Paths),
+    try xmerl_xpath:string(Path, Xml) of
+        Elements when is_list(Elements) -> extract_values(Elements);
+        _Else -> 'undefined'
+    catch
+        _E:_R ->
+            lager:debug("~s getting value of '~s': ~p", [_E, Path, _R]),
+            'undefined'
+    end.
+
+
+%% @private
+-spec extract_values(xml_els()) -> api_ne_binary().
+extract_values([]) -> 'undefined';
+extract_values(Elements) ->
+    Values = [case Element of
+                  #xmlText{value = Value} -> Value;
+                  #xmlAttribute{value = Value} -> Value;
+                  _ -> <<>> %% Important as xmerl only handles strings
+              end
+              || Element <- Elements
+             ],
+    case iolist_to_binary(Values) of
+        <<>> ->
+            %% Note: here we make sure that Values were all either xmlText
+            %%  or xmlAttribute. Thus, if Values is a list of only empty binaries
+            %%  it means that no value field was extracted.
+            %% On the flip side, a "" present in Values means
+            %%  that at least one extracted value was ""
+            %%  and we should return <<>> instead of 'undefined'.
+            IsEmptyBinary = fun (<<>>) -> 'true'; (_) -> 'false' end,
+            case lists:all(IsEmptyBinary, Values) of
+                'true' -> 'undefined';
+                'false' -> <<>>
+            end;
+        Bin -> Bin
+    end.

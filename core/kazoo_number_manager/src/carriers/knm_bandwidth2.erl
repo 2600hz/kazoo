@@ -214,8 +214,8 @@ acquire_number(Number) ->
                     knm_errors:by_carrier(?MODULE, Error, Num);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
-                    OrderId = kz_util:get_xml_value(?BW_ORDER_ID_XPATH, Xml),
-                    OrderStatus = kz_util:get_xml_value(?BW_ORDER_STATUS_XPATH, Xml),
+                    OrderId = kz_xml:get_value(?BW_ORDER_ID_XPATH, Xml),
+                    OrderStatus = kz_xml:get_value(?BW_ORDER_STATUS_XPATH, Xml),
                     check_order(OrderId, OrderStatus, Response, PhoneNumber, Number)
             end
     end.
@@ -231,7 +231,7 @@ check_order(OrderId, <<"RECEIVED">>, _Response, PhoneNumber, Number) ->
             knm_errors:by_carrier(?MODULE, Error, Num);
         {'ok', Xml} ->
             Response = xmerl_xpath:string("Order", Xml),
-            OrderStatus = kz_util:get_xml_value(?BW_ORDER_STATUS_XPATH, Xml),
+            OrderStatus = kz_xml:get_value(?BW_ORDER_STATUS_XPATH, Xml),
             check_order(OrderId, OrderStatus, Response, PhoneNumber, Number)
     end;
 
@@ -281,8 +281,8 @@ sites() ->
 
 -spec process_site(xml_el()) -> 'ok'.
 process_site(Site) ->
-    Id   = kz_util:get_xml_value("Id/text()", Site),
-    Name = kz_util:get_xml_value("Name/text()", Site),
+    Id   = kz_xml:get_value("Id/text()", Site),
+    Name = kz_xml:get_value("Name/text()", Site),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %% @public
@@ -296,8 +296,8 @@ peers(SiteId) ->
 
 -spec process_peer(xml_el()) -> 'ok'.
 process_peer(Peer) ->
-    Id   = kz_util:get_xml_value("PeerId/text()", Peer),
-    Name = kz_util:get_xml_value("PeerName/text()", Peer),
+    Id   = kz_xml:get_value("PeerId/text()", Peer),
+    Name = kz_xml:get_value("PeerName/text()", Peer),
     io:format("Id: ~p Name: ~p~n", [Id, Name]).
 
 %%% Internals
@@ -436,11 +436,11 @@ number_order_response_to_json([]) ->
 number_order_response_to_json([Xml]) ->
     number_order_response_to_json(Xml);
 number_order_response_to_json(Xml) ->
-    Num = from_bandwidth2(kz_util:get_xml_value(?ORDER_NUMBER_XPATH, Xml)),
+    Num = from_bandwidth2(kz_xml:get_value(?ORDER_NUMBER_XPATH, Xml)),
     kz_json:from_list(
       props:filter_empty(
-        [{<<"order_id">>, kz_util:get_xml_value(?CUSTOMER_ORDER_ID_XPATH, Xml)}
-        ,{<<"order_name">>, kz_util:get_xml_value(?ORDER_NAME_XPATH, Xml)}
+        [{<<"order_id">>, kz_xml:get_value(?CUSTOMER_ORDER_ID_XPATH, Xml)}
+        ,{<<"order_name">>, kz_xml:get_value(?ORDER_NAME_XPATH, Xml)}
         ,{<<"number">>, Num}
         ]
        )
@@ -451,7 +451,7 @@ number_order_response_to_json(Xml) ->
 search_response_to_KNM([Xml], QID) ->
     search_response_to_KNM(Xml, QID);
 search_response_to_KNM(Xml, QID) ->
-    Num = from_bandwidth2(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
+    Num = from_bandwidth2(kz_xml:get_value("//TelephoneNumber/text()", Xml)),
     JObj = kz_json:from_list(
              props:filter_empty(
                [{<<"rate_center">>, rate_center_to_json(Xml)}
@@ -462,7 +462,7 @@ search_response_to_KNM(Xml, QID) ->
 %% @private
 -spec tollfree_search_response_to_KNM(xml_el(), ne_binary()) -> tuple().
 tollfree_search_response_to_KNM(Xml, QID) ->
-    Num = from_bandwidth2(kz_util:get_xml_value("//TelephoneNumber/text()", Xml)),
+    Num = from_bandwidth2(kz_xml:get_value("//TelephoneNumber/text()", Xml)),
     {QID, {Num, ?MODULE, ?NUMBER_STATE_DISCOVERY, kz_json:new()}}.
 
 %%--------------------------------------------------------------------
@@ -479,9 +479,9 @@ rate_center_to_json([Xml]) ->
 rate_center_to_json(Xml) ->
     kz_json:from_list(
       props:filter_empty(
-        [{<<"name">>, kz_util:get_xml_value("//RateCenter/text()", Xml)}
-        ,{<<"lata">>, kz_util:get_xml_value("//LATA/text()", Xml)}
-        ,{<<"state">>, kz_util:get_xml_value("//State/text()", Xml)}
+        [{<<"name">>, kz_xml:get_value("//RateCenter/text()", Xml)}
+        ,{<<"lata">>, kz_xml:get_value("//LATA/text()", Xml)}
+        ,{<<"state">>, kz_xml:get_value("//State/text()", Xml)}
         ]
        )
      ).
@@ -504,14 +504,14 @@ verify_response(Xml) ->
         orelse validate_xpath_value(xmerl_xpath:string(TollFreePath, Xml))
         orelse validate_xpath_value(xmerl_xpath:string(SitesPath, Xml))
         orelse validate_xpath_value(xmerl_xpath:string(PeersPath, Xml))
-        orelse validate_xpath_value(kz_util:get_xml_value("//OrderStatus/text()", Xml))
+        orelse validate_xpath_value(kz_xml:get_value("//OrderStatus/text()", Xml))
     of
         'true' ->
             lager:debug("request was successful"),
             {'ok', Xml};
         'false' ->
             ErrorPath = "//ErrorList/Error/Description/text()",
-            Reason = case kz_util:get_xml_value(ErrorPath, Xml) of
+            Reason = case kz_xml:get_value(ErrorPath, Xml) of
                          'undefined' -> <<"Number not found">>;
                          R -> R
                      end,

@@ -159,7 +159,7 @@ prop_pretty_print_bytes() ->
 
 proper_test_() ->
     {"Runs the module's PropEr tests during eunit testing",
-     {'timeout', 15000,
+     {'timeout', 20000,
       [
        ?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}]))
       ]}}.

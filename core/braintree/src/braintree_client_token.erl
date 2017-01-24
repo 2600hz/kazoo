@@ -38,4 +38,4 @@ get_client_token(<<_/binary>> = CustomerId) ->
             ],
     Request = braintree_util:make_doc_xml(Props, 'client_token'),
     Xml = braintree_request:post(Url, Request),
-    kz_util:get_xml_value(["/client-token", "/value/text()"], Xml).
+    kz_xml:get_value(["/client-token", "/value/text()"], Xml).
