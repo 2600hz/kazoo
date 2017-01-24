@@ -89,7 +89,8 @@ mdn_transitions_test_() ->
 
 is_mdn_for_mdn_run_test_() ->
     Run = {mdn_run, true},
-    Base = knm_number_options:default(),
+    Base = [{auth_by,?MASTER_ACCOUNT_ID}, {dry_run,false}],
+    Sudo = knm_number_options:default(),
     Fs = [{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"*">>,42}])}],
     [{"Verify an mdn_run && knm_mdn number can be updated"
      ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
@@ -102,5 +103,17 @@ is_mdn_for_mdn_run_test_() ->
      }
     ,{"Verify a !mdn_run && !knm_mdn number can be updated"
      ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Base))
+     }
+    ,{"Verify sudo can update mdn_run && knm_mdn number"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Sudo]))
+     }
+    ,{"Verify sudo can update mdn_run && !knm_mdn number"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Sudo]))
+     }
+    ,{"Verify sudo can update !mdn_run && knm_mdn number"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Sudo))
+     }
+    ,{"Verify sudo can update !mdn_run && !knm_mdn number"
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Sudo))
      }
     ].
