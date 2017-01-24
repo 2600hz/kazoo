@@ -70,7 +70,6 @@
 -export([uri_encode/1
         ,uri_decode/1
         ,resolve_uri/2
-        ,safe_urlencode/1
         ]).
 
 -export([uri/2]).
@@ -996,12 +995,6 @@ uri(BaseUrl, Tokens) ->
     [Pro, Url] = binary:split(BaseUrl, <<"://">>),
     Uri = filename:join([Url | Tokens]),
     <<Pro/binary, "://", Uri/binary>>.
-
-
--spec safe_urlencode(binary() | number()) -> binary().
-safe_urlencode(V) when is_binary(V)
-                       orelse is_number(V) ->
-    kz_http_util:urlencode(to_binary(V)).
 
 -spec to_integer(string() | binary() | integer() | float()) -> integer().
 -spec to_integer(string() | binary() | integer() | float(), 'strict' | 'notstrict') -> integer().
