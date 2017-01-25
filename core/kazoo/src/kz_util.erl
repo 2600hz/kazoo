@@ -1748,6 +1748,7 @@ application_version(Application) ->
 %% Like lists:usort/1 but preserves original ordering.
 %% Time: O(nlog(n)).
 %% @end
+-spec uniq([kz_proplist()]) -> kz_proplist().
 uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
 uniq([], _, L) -> lists:reverse(L);
 uniq([{K,_}=KV|Rest], S, L) ->
