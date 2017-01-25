@@ -30,23 +30,16 @@ handle(Data, Call) ->
 
 -spec update_call(ne_binary(), {'ok', kapps_call:call()}) -> 'ok'.
 update_call(CaptureGroup, {'ok', Call}) ->
+    CCVs = [{<<"Caller-Screen-Bit">>, 'true'}
+           ,{<<"Caller-Privacy-Hide-Number">>, 'true'}
+           ,{<<"Caller-Privacy-Hide-Name">>, 'true'}
+           ],
+    Normalize = knm_converters:normalize(CaptureGroup),
     Routines = [{fun kapps_call:set_request/2
-                ,<<CaptureGroup/binary, "@"
+                ,<<Normalize/binary, "@"
                    ,(kapps_call:request_realm(Call))/binary
                  >>
                 }
-               ,{fun kapps_call:kvs_store/3, ?MODULE, 'true'}
-               ,{fun kapps_call:set_caller_id_name/2
-                ,kapps_config:get_non_empty(?CF_CONFIG_CAT
-                                           ,<<"privacy_name">>
-                                           ,kz_util:anonymous_caller_id_name()
-                                           )
-                }
-               ,{fun kapps_call:set_caller_id_number/2
-                ,kapps_config:get_non_empty(?CF_CONFIG_CAT
-                                           ,<<"privacy_number">>
-                                           ,kz_util:anonymous_caller_id_number()
-                                           )
-                }
+               ,{fun kapps_call:set_custom_channel_vars/2, CCVs}
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).

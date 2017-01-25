@@ -25,12 +25,6 @@
 
 -include("kazoo_endpoint.hrl").
 
--define(CALLER_PRIVACY(CCVs)
-       ,(kz_json:is_true(<<"Caller-Privacy-Number">>, CCVs, 'false')
-         orelse kz_json:is_true(<<"Caller-Privacy-Name">>, CCVs, 'false')
-        )
-       ).
-
 -type cid() :: {api_binary(), api_binary()}.
 
 %%-----------------------------------------------------------------------------
@@ -216,30 +210,11 @@ maybe_ensure_cid_valid(Number, Name, 'true', <<"external">>, Call) ->
         'true' -> ensure_valid_caller_id(Number, Name, Call);
         'false' ->
             lager:info("determined external caller id is <~s> ~s", [Name, Number]),
-            maybe_cid_privacy(Number, Name, Call)
+            {Number, Name}
     end;
-maybe_ensure_cid_valid(Number, Name, _, Attribute, Call) ->
+maybe_ensure_cid_valid(Number, Name, _, Attribute, _Call) ->
     lager:info("determined ~s caller id is <~s> ~s", [Attribute, Name, Number]),
-    maybe_cid_privacy(Number, Name, Call).
-
--spec maybe_cid_privacy(api_binary(), api_binary(), kapps_call:call()) -> cid().
-maybe_cid_privacy(Number, Name, Call) ->
-    case kz_term:is_true(kapps_call:kvs_fetch('cf_privacy', Call))
-        orelse ?CALLER_PRIVACY(kapps_call:custom_channel_vars(Call))
-    of
-        'true' ->
-            lager:info("overriding caller id to maintain privacy"),
-            {kapps_config:get_non_empty(<<"callflow">>
-                                       ,<<"privacy_number">>
-                                       ,kz_util:anonymous_caller_id_number()
-                                       )
-            ,kapps_config:get_non_empty(<<"callflow">>
-                                       ,<<"privacy_name">>
-                                       ,kz_util:anonymous_caller_id_name()
-                                       )
-            };
-        'false' -> {Number, Name}
-    end.
+    {Number, Name}.
 
 -spec ensure_valid_caller_id(ne_binary(), ne_binary(), kapps_call:call()) -> cid().
 ensure_valid_caller_id(Number, Name, Call) ->

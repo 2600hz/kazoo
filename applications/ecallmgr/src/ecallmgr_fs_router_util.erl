@@ -16,20 +16,6 @@
 -include_lib("kazoo_sip/include/kzsip_uri.hrl").
 -include("ecallmgr.hrl").
 
--define(CALLER_PRIVACY(Props)
-       ,props:is_true(<<"Caller-Screen-Bit">>, Props, 'false')
-       ).
-
--define(CALLER_PRIVACY_NUMBER(Props)
-       ,?CALLER_PRIVACY(Props)
-        andalso props:is_true(<<"Caller-Privacy-Hide-Number">>, Props, 'false')
-       ).
-
--define(CALLER_PRIVACY_NAME(Props)
-       ,?CALLER_PRIVACY(Props)
-        andalso props:is_true(<<"Caller-Privacy-Hide-Name">>, Props, 'false')
-       ).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -126,13 +112,14 @@ route_resp_xml(_, Section, JObj, Props) ->
 
 -spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
 route_req(CallId, FetchId, Props, Node) ->
+    io:format("is caller privacy name ~p~n", [kz_privacy:has_flags(Props)]),
     props:filter_empty(
       [{<<"Msg-ID">>, FetchId}
       ,{<<"Call-ID">>, CallId}
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-      ,{<<"Caller-ID-Name">>, caller_id_name(Props)}
-      ,{<<"Caller-ID-Number">>, caller_id_number(Props)}
+      ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name())}
+      ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number())}
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
       ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}
@@ -163,9 +150,7 @@ route_req_ccvs(FetchId, Props) ->
       ,{<<"Fetch-ID">>, FetchId}
       ,{<<"Redirected-By">>, RedirectedBy}
       ,{<<"Redirected-Reason">>, RedirectedReason}
-      ,{<<"Caller-Privacy-Number">>, ?CALLER_PRIVACY_NUMBER(Props)}
-      ,{<<"Caller-Privacy-Name">>, ?CALLER_PRIVACY_NAME(Props)}
-       | props:delete(<<?CALL_INTERACTION_ID>>, CCVs)
+       | props:delete(<<?CALL_INTERACTION_ID>>, CCVs) ++ kz_privacy:privacy_flags(Props)
       ]
      ).
 
@@ -190,26 +175,6 @@ get_redirected(Props) ->
             end;
         _ -> {'undefined' , 'undefined'}
     end.
-
--spec caller_id_name(kz_proplist()) -> ne_binary().
-caller_id_name(Props) ->
-    caller_id_name(?CALLER_PRIVACY_NAME(Props), Props).
-
--spec caller_id_name(boolean(), kz_proplist()) -> ne_binary().
-caller_id_name('true', _Props) ->
-    kz_util:anonymous_caller_id_name();
-caller_id_name('false', Props) ->
-    kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name()).
-
--spec caller_id_number(kz_proplist()) -> ne_binary().
-caller_id_number(Props) ->
-    caller_id_number(?CALLER_PRIVACY_NUMBER(Props), Props).
-
--spec caller_id_number(boolean(), kz_proplist()) -> ne_binary().
-caller_id_number('true', _Props) ->
-    kz_util:anonymous_caller_id_number();
-caller_id_number('false', Props) ->
-    kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number()).
 
 -spec register_bindings(atom(), atom(), ne_binaries()) -> boolean().
 register_bindings(Node, Section, Bindings) ->

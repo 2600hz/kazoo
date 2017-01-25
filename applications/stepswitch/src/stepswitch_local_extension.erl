@@ -341,13 +341,17 @@ get_account_realm(AccountId) ->
 
 -spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
 local_extension_caller_id(JObj) ->
-    {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                               ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
-    ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
-                               ,<<"Emergency-Caller-ID-Name">>
-                               ], JObj)
-    }.
+    CCVs = kz_json:set_value(<<"Account-ID">>
+                            ,kz_json:get_value(<<"Account-ID">>, JObj)
+                            ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
+                            ),
+    DefaultName = kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
+                                            ,<<"Emergency-Caller-ID-Name">>
+                                            ], JObj),
+    DefaultNumber = kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
+                                              ,<<"Emergency-Caller-ID-Number">>
+                                              ], JObj),
+    kz_privacy:maybe_cid_privacy('undefined', CCVs, {DefaultName, DefaultNumber}).
 
 -spec local_extension_callee_id(kz_json:object(), ne_binary()) -> {api_binary(), api_binary()}.
 local_extension_callee_id(JObj, Number) ->
