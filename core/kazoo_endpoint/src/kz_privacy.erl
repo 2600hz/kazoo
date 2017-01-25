@@ -40,7 +40,9 @@
 %% caller id or both or bot hiding at all.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_cid_privacy(api_binary(), kz_json:object(), cid()) -> cid().
+-spec maybe_cid_privacy(api_binary(), kz_proplist() | kz_json:object(), cid()) -> cid().
+maybe_cid_privacy(PrivacyMode, CCVs, Default) when is_list(CCVs) ->
+    maybe_cid_privacy(PrivacyMode, kz_json:from_list(CCVs), Default);
 maybe_cid_privacy(PrivacyMode, CCVs, Default) ->
     %%io:format("PrivacyMode ~p~n CCVs ~p~n~n", [PrivacyMode, CCVs]),
     case caller_privacy_mode(CCVs) of

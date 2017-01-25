@@ -112,7 +112,6 @@ route_resp_xml(_, Section, JObj, Props) ->
 
 -spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
 route_req(CallId, FetchId, Props, Node) ->
-    io:format("is caller privacy name ~p~n", [kz_privacy:has_flags(Props)]),
     props:filter_empty(
       [{<<"Msg-ID">>, FetchId}
       ,{<<"Call-ID">>, CallId}
