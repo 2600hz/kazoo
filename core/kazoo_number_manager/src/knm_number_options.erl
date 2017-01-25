@@ -84,24 +84,10 @@ to_phone_number_setters(Options) ->
              FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
      end
-     || {Option, Value} <- uniq(Options),
+     || {Option, Value} <- kz_util:uniq(Options),
         is_atom(Option),
         Option =/= 'should_delete'
     ].
-
-%% @doc
-%% Like lists:usort/1 but preserves original ordering.
-%% Time: O(nlog(n)).
-%% @end
-uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
-uniq([], _, L) -> lists:reverse(L);
-uniq([{K,_}=KV|Rest], S, L) ->
-    case sets:is_element(K, S) of
-        true -> uniq(Rest, S, L);
-        false ->
-            NewS = sets:add_element(K, S),
-            uniq(Rest, NewS, [KV|L])
-    end.
 
 -spec dry_run(options()) -> boolean().
 -spec dry_run(options(), Default) -> boolean() | Default.
