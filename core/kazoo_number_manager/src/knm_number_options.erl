@@ -101,9 +101,7 @@ uniq([{K,_}=KV|Rest], S, L) ->
         false ->
             NewS = sets:add_element(K, S),
             uniq(Rest, NewS, [KV|L])
-    end;
-uniq([_|Rest], S, L) ->
-    uniq(Rest, S, L).
+    end.
 
 -spec dry_run(options()) -> boolean().
 -spec dry_run(options(), Default) -> boolean() | Default.
@@ -227,8 +225,8 @@ to_phone_number_setters_test_() ->
                    ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
                    ]
                   ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                                           ,<<"coucou">>
                                            ,{'ported_in', 'false'}
+                                           ,{<<"batch_run">>, 'false'}
                                            ,{'dry_run', [[[]]]}
                                            ])
                   )
