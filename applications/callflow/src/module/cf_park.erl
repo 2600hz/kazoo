@@ -232,7 +232,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             %% Caller parked in slot number...
             _ = kapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             _ = kapps_call_command:b_say(kz_util:to_binary(SlotNumber), Call),
-            timer:apply_after(?PARK_DELAY_CHECK_TIME, ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
+            _ = timer:apply_after(?PARK_DELAY_CHECK_TIME, ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
             cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
