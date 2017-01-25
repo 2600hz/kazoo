@@ -645,10 +645,16 @@ gateway_to_endpoint(DestinationNumber
 
 -spec gateway_cid(kapi_offnet_resource:req(), api_binary(), api_binary()) -> {ne_binary(), ne_binary()}.
 gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
-    DefaultCID = default_gateway_cid(OffnetJObj, IsEmergency),
     CCVs = kz_json:get_ne_value(<<"Custom-Channel-Vars">>, OffnetJObj, kz_json:new()),
     AccountId = kapi_offnet_resource:hunt_account_id(OffnetJObj, kapi_offnet_resource:account_id(OffnetJObj)),
-    kz_privacy:maybe_cid_privacy(PrivacyMode, kz_json:set_value(<<"Account-ID">>, AccountId, CCVs), DefaultCID).
+    DefaultCID = default_gateway_cid(OffnetJObj, IsEmergency),
+    kz_privacy:maybe_cid_privacy(kz_json:set_values([{<<"Account-ID">>, AccountId}
+                                                    ,{<<"Privacy-Mode">>, PrivacyMode}
+                                                    ]
+                                                    ,CCVs
+                                                    )
+                                , DefaultCID
+                                ).
 
 -spec default_gateway_cid(kapi_offnet_resource:req(), api_binary()) -> {ne_binary(), ne_binary()}.
 default_gateway_cid(OffnetJObj, 'undefined') ->

@@ -125,7 +125,7 @@ get_channel_vars(Call) ->
 -spec add_privacy_flags(kapps_call:call(), kz_proplist()) -> kz_proplist().
 add_privacy_flags(Call, Acc) ->
     CCVs = kapps_call:custom_channel_vars(Call),
-    kz_privacy:privacy_flags(CCVs) ++ Acc.
+    kz_privacy:flags(CCVs) ++ Acc.
 
 -spec maybe_add_endpoint(kapps_call:call(), kz_proplist()) -> kz_proplist().
 maybe_add_endpoint(Call, Acc) ->

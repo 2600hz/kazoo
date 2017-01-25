@@ -116,7 +116,7 @@ send_bridge(State, Command) ->
 
 -spec maybe_send_privacy(ts_callflow:state()) -> 'ok'.
 maybe_send_privacy(State) ->
-    case kz_privacy:has_privacy(ts_callflow:get_custom_channel_vars(State)) of
+    case kz_privacy:has_flags(ts_callflow:get_custom_channel_vars(State)) of
         'false' -> 'ok';
         'true' -> send_privacy(State)
     end.
@@ -448,7 +448,7 @@ callee_id([JObj | T]) ->
 maybe_anonymize_caller_id(State, DefaultCID, CidFormat) ->
     AccountId = ts_callflow:get_account_id(State),
     CCVs = ts_callflow:get_custom_channel_vars(State),
-    {Name, Number} = kz_privacy:maybe_cid_privacy('undefined', kz_json:set_value(<<"Account-ID">>, AccountId, CCVs), DefaultCID),
+    {Name, Number} = kz_privacy:maybe_cid_privacy(kz_json:set_value(<<"Account-ID">>, AccountId, CCVs), DefaultCID),
     [{<<"Outbound-Caller-ID-Number">>, kapps_call:maybe_format_caller_id_str(Number, CidFormat)}
     ,{<<"Outbound-Caller-ID-Name">>, Name}
     ].

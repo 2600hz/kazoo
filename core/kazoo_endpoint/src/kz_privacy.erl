@@ -8,9 +8,9 @@
 %%%-------------------------------------------------------------------
 -module(kz_privacy).
 
--export([maybe_cid_privacy/3
-        ,privacy_flags/1
-        ,has_privacy/1
+-export([maybe_cid_privacy/2
+        ,flags/1
+        ,has_flags/1
         ]).
 
 -include("kazoo_endpoint.hrl").
@@ -40,11 +40,11 @@
 %% caller id or both or bot hiding at all.
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_cid_privacy(api_binary(), kz_proplist() | kz_json:object(), cid()) -> cid().
-maybe_cid_privacy(PrivacyMode, CCVs, Default) when is_list(CCVs) ->
-    maybe_cid_privacy(PrivacyMode, kz_json:from_list(CCVs), Default);
-maybe_cid_privacy(PrivacyMode, CCVs, Default) ->
-    %%io:format("PrivacyMode ~p~n CCVs ~p~n~n", [PrivacyMode, CCVs]),
+-spec maybe_cid_privacy(kz_proplist() | kz_json:object(), cid()) -> cid().
+maybe_cid_privacy(CCVs, Default) when is_list(CCVs) ->
+    maybe_cid_privacy(kz_json:from_list(CCVs), Default);
+maybe_cid_privacy(CCVs, Default) ->
+    PrivacyMode = kz_json:get_ne_binary_value(<<"Privacy-Mode">>, CCVs),
     case caller_privacy_mode(CCVs) of
         ?NO_HIDE_MODE -> Default;
         HideMode ->
@@ -52,19 +52,19 @@ maybe_cid_privacy(PrivacyMode, CCVs, Default) ->
             maybe_anonymize_cid(PrivacyMode, HideMode, CCVs, Default)
     end.
 
--spec privacy_flags(kz_proplist() | kz_json:object()) -> kz_proplist().
-privacy_flags(Props) when is_list(Props) ->
-    privacy_flags(kz_json:from_list(Props));
-privacy_flags(JObj) ->
+-spec flags(kz_proplist() | kz_json:object()) -> kz_proplist().
+flags(Props) when is_list(Props) ->
+    flags(kz_json:from_list(Props));
+flags(JObj) ->
     [{?CALLER_SCREEN_BIT, caller_screen_bit(JObj)}
     ,{?CALLER_PRIVACY_NAME, caller_privacy_name(JObj)}
     ,{?CALLER_PRIVACY_NUMBER, caller_privacy_number(JObj)}
     ].
 
--spec has_privacy(kz_proplist() | kz_json:object()) -> boolean().
-has_privacy(Props) when is_list(Props) ->
-    has_privacy(kz_json:from_list(Props));
-has_privacy(JObj) ->
+-spec has_flags(kz_proplist() | kz_json:object()) -> boolean().
+has_flags(Props) when is_list(Props) ->
+    has_flags(kz_json:from_list(Props));
+has_flags(JObj) ->
     caller_screen_bit(JObj)
         andalso (caller_privacy_name(JObj)
                      orelse caller_privacy_number(JObj)

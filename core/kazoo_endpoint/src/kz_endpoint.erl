@@ -983,7 +983,7 @@ get_clid(Endpoint, Properties, Call, Type) ->
 maybe_privacy_cid(#clid{caller_name=CallerName
                        ,caller_number=CallerNumber
                        }=Clid, Call) ->
-    {Name, Number} = kz_privacy:maybe_cid_privacy('undefined', kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}),
+    {Name, Number} = kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}),
     Clid#clid{caller_name=Name
              ,caller_number=Number
              }.
