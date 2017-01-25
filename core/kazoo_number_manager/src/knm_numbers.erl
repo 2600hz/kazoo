@@ -339,13 +339,21 @@ release(Nums) ->
     release(Nums, knm_number_options:default()).
 
 release(Nums, Options) ->
-    ret(pipe(do_get_pn(Nums, Options)
-            ,[fun knm_phone_number:release/1
-             ,fun knm_number:new/1
-             ,fun knm_providers:delete/1
-             ,fun unwind_or_disconnect/1
-             ,fun save_phone_numbers/1
-             ])).
+    T=#{ok := Ns} = pipe(do_get_pn(Nums, Options)
+                        ,[fun knm_phone_number:release/1
+                         ,fun knm_number:new/1
+                         ,fun knm_providers:delete/1
+                         ,fun unwind_or_disconnect/1
+                         ]),
+    {Deleted, Remaining} = lists:partition(fun is_state_deleted/1, Ns),
+    %% Only do save_phone_numbers/1 on non-deleted numbers, otherwise they
+    %% come back as pvt_state "deleted"
+    Ta = pipe(T#{todo => Remaining
+                ,ok => []
+                }
+             ,[fun save_phone_numbers/1]),
+    Tb = T#{ok => Deleted},
+    ret(merge_okkos(Ta, Tb)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -752,3 +760,6 @@ is_history_empty(N) ->
 
 is_state_available(N) ->
     ?NUMBER_STATE_AVAILABLE =:= knm_phone_number:state(knm_number:phone_number(N)).
+
+is_state_deleted(N) ->
+    ?NUMBER_STATE_DELETED =:= knm_phone_number:state(knm_number:phone_number(N)).
