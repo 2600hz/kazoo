@@ -481,6 +481,7 @@
     "number_manager.other.default_country": "number_manager.other default country",
     "number_manager.other.endpoints": "number_manager.other endpoints",
     "number_manager.other.phonebook_url": "number_manager.other phonebook url",
+    "number_manager.port_in_module_name": "the kazoo number manager module name that completed port request numbers should be created with",
     "number_manager.porting_module_name": "number manager porting module name",
     "number_manager.providers": "Number features sub accounts are allowed to enable or disable",
     "number_manager.reconcile_regex": "number_manager reconcile regex",

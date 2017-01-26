@@ -337,10 +337,11 @@ completed_port(PortReq) ->
 %%--------------------------------------------------------------------
 -spec transition_numbers(kz_json:object()) -> transition_response().
 transition_numbers(PortReq) ->
+    ModuleName = kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL),
     PortReqId = kz_doc:id(PortReq),
     Options = [{'assign_to', kz_json:get_value(?PVT_ACCOUNT_ID, PortReq)}
               ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-              ,{'module_name', ?CARRIER_LOCAL}
+              ,{'module_name', ModuleName}
               ,{'ported_in', 'true'}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
               ,{'state', ?NUMBER_STATE_IN_SERVICE}
