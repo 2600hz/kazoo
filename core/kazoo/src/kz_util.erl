@@ -144,6 +144,13 @@
 -export([uniq/1]).
 -export([iolist_join/2]).
 
+-ifdef(TEST).
+-export([to_lower_char/1, to_upper_char/1]).
+-export([resolve_uri_path/2]).
+-export([weekday/1, month/1]).
+-export([unitfy_seconds/1]).
+-endif.
+
 -include_lib("kernel/include/inet.hrl").
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -169,10 +176,8 @@ log_stacktrace() ->
 
 log_stacktrace(ST) ->
     lager:error("stacktrace:"),
-    _ = [log_stacktrace_mfa(M, F, A, Info)
-         || {M, F, A, Info} <- ST
-        ],
-    'ok'.
+    Printer = fun ({M, F, A, Info}) -> log_stacktrace_mfa(M, F, A, Info) end,
+    lists:foreach(Printer, ST).
 
 -ifdef(TEST).
 log_stacktrace_mfa(M, F, Arity, Info) when is_integer(Arity) ->
@@ -685,14 +690,16 @@ get_account_realm(Db, AccountId) ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_module(string() | binary()) -> atom() | 'false'.
+-spec try_load_module(atom() | string() | binary()) -> atom() | false.
+try_load_module(undefined) -> false;
+try_load_module("undefined") -> false;
+try_load_module(<<"undefined">>) -> false;
 try_load_module(Name) ->
     Module = to_atom(Name, 'true'),
-    try Module:module_info('exports') of
-        _ when Module =:= 'undefined' -> 'false';
-        _ ->
-            {'module', Module} = code:ensure_loaded(Module),
-            Module
+    try
+        Module:module_info('exports'),
+        {'module', Module} = code:ensure_loaded(Module),
+        Module
     catch
         'error':'undef' ->
             lager:debug("module ~s not found", [Name]),
@@ -918,7 +925,7 @@ from_hex_string([Div, Rem | T], Acc) ->
     from_hex_string(T, [Sum|Acc]).
 
 -spec hex_char_to_binary(pos_integer()) -> pos_integer().
-hex_char_to_binary(B) when B < 58 ->
+hex_char_to_binary(B) when B =< $9 ->
     (to_lower_char(B) - $0);
 hex_char_to_binary(B) ->
     to_lower_char(B) - ($a - 10).
@@ -926,8 +933,7 @@ hex_char_to_binary(B) ->
 -spec rand_hex_binary(pos_integer() | ne_binary()) -> ne_binary().
 rand_hex_binary(Size) when not is_integer(Size) ->
     rand_hex_binary(to_integer(Size));
-rand_hex_binary(Size) when is_integer(Size)
-                           andalso Size > 0 ->
+rand_hex_binary(Size) when is_integer(Size), Size > 0 ->
     to_hex_binary(rand_hex(Size)).
 
 -spec rand_hex(pos_integer()) -> ne_binary().
@@ -954,14 +960,12 @@ uri_encode(String) when is_list(String) ->
 uri_encode(Atom) when is_atom(Atom) ->
     to_atom(http_uri:encode(to_list(Atom)), 'true').
 
--spec resolve_uri(nonempty_string() | api_binary(), nonempty_string() | ne_binary()) -> ne_binary().
+-spec resolve_uri(nonempty_string() | ne_binary(), nonempty_string() | api_ne_binary()) -> ne_binary().
 resolve_uri(Raw, 'undefined') -> to_binary(Raw);
 resolve_uri(_Raw, <<"http", _/binary>> = Abs) -> Abs;
 resolve_uri(<<_/binary>> = RawPath, <<_/binary>> = Relative) ->
-    join_binary(
-      resolve_uri_path(RawPath, Relative)
-               ,<<"/">>
-     );
+    Path = resolve_uri_path(RawPath, Relative),
+    join_binary(Path, <<"/">>);
 resolve_uri(RawPath, Relative) ->
     resolve_uri(to_binary(RawPath), to_binary(Relative)).
 
@@ -969,7 +973,6 @@ resolve_uri(RawPath, Relative) ->
 resolve_uri_path(RawPath, Relative) ->
     PathTokensRev = lists:reverse(binary:split(RawPath, <<"/">>, ['global'])),
     UrlTokens = binary:split(Relative, <<"/">>, ['global']),
-
     lists:reverse(
       lists:foldl(fun resolve_uri_fold/2, PathTokensRev, UrlTokens)
      ).
@@ -979,8 +982,7 @@ resolve_uri_fold(<<"..">>, []) -> [];
 resolve_uri_fold(<<"..">>, [_ | PathTokens]) -> PathTokens;
 resolve_uri_fold(<<".">>, PathTokens) -> PathTokens;
 resolve_uri_fold(<<>>, PathTokens) -> PathTokens;
-resolve_uri_fold(Segment, [<<>>|DirTokens]) ->
-    [Segment|DirTokens];
+resolve_uri_fold(Segment, [<<>>|DirTokens]) -> [Segment|DirTokens];
 resolve_uri_fold(Segment, [LastToken|DirTokens]=PathTokens) ->
     case filename:extension(LastToken) of
         <<>> ->
@@ -1057,6 +1059,7 @@ to_binary(X) when is_binary(X) -> X.
 -spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
 to_atom(X) when is_atom(X) -> X;
 to_atom(X) when is_list(X) -> list_to_existing_atom(X);
+to_atom(X) when is_binary(X) -> binary_to_existing_atom(X, utf8);
 to_atom(X) -> to_atom(to_list(X)).
 
 %% only if you're really sure you want this
@@ -1119,10 +1122,9 @@ is_false(_) -> 'false'.
 -spec always_false(any()) -> 'false'.
 always_false(_) -> 'false'.
 
--spec is_ne_binary(binary()) -> boolean().
-is_ne_binary(V) ->
-    is_binary(V)
-        andalso is_not_empty(V).
+-spec is_ne_binary(any()) -> boolean().
+is_ne_binary(?NE_BINARY) -> true;
+is_ne_binary(_) -> false.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';
@@ -1156,7 +1158,7 @@ is_empty(MaybeJObj) ->
     end.
 
 -spec is_not_empty(any()) -> boolean().
-is_not_empty(Term) -> (not is_empty(Term)).
+is_not_empty(Term) -> not is_empty(Term).
 
 -spec is_proplist(any()) -> boolean().
 is_proplist(Term) when is_list(Term) ->
@@ -1624,8 +1626,6 @@ anonymous_caller_id_name() ->
 anonymous_caller_id_number() ->
     <<"0000000000">>.
 
-%% for core apps that want to know which app is calling
-
 -spec process_fold([tuple()], atom()) -> tuple() | atom().
 process_fold([], App) -> App;
 process_fold([{M, _, _, _}=Mod | Others], App) ->
@@ -1640,6 +1640,9 @@ process_fold(App, App, _, Others) ->
     process_fold(Others, App);
 process_fold(App, _, M, _) -> {App, M}.
 
+%% @doc
+%% For core apps that want to know which app is calling.
+%% @end
 -spec calling_app() -> ne_binary().
 calling_app() ->
     Modules = erlang:process_info(self(),current_stacktrace),
@@ -1738,17 +1741,3 @@ iolist_join_prepend(Sep, [H|T]) ->
 -spec binary_reverse(binary()) -> binary().
 binary_reverse(Bin) ->
     to_binary(lists:reverse(to_list(Bin))).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-resolve_uri_test_() ->
-    RawPath = <<"http://pivot/script.php">>,
-    Relative = <<"script2.php">>,
-    RawPathList = [<<"http:">>, <<>>, <<"pivot">>, <<"script2.php">>],
-
-    [?_assertEqual(RawPathList, resolve_uri_path(RawPath, Relative))
-    ,?_assertEqual(RawPathList, resolve_uri_path(RawPath, <<"/", Relative/binary>>))
-    ].
-
--endif.
