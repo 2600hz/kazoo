@@ -107,7 +107,10 @@ handle_inbound_cnam(Number) ->
     Doc = knm_phone_number:doc(PhoneNumber),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
-        'false' -> knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
+        false ->
+            knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                                     ,?CNAM_INBOUND_LOOKUP
+                                                     ]);
         'true' ->
             case kz_json:is_true(?CNAM_INBOUND_LOOKUP, Feature) of
                 'true' -> Number;
