@@ -496,7 +496,7 @@ from_json(JObj0) ->
                 ,{fun set_features/2, maybe_rename_features(Features)}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
-                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, 'false')}
+                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj)}
                 ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}

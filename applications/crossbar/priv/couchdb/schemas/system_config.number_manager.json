@@ -108,6 +108,11 @@
             "description": "number manager number search timeout in milliseconds",
             "type": "integer"
         },
+        "port_in_module_name": {
+            "default": "knm_local",
+            "description": "the kazoo number manager module name that completed port request numbers should be created with",
+            "type": "string"
+        },
         "porting_module_name": {
             "default": "knm_local",
             "description": "number manager porting module name",
