@@ -203,7 +203,7 @@ bootstrap_callflow_executer(_JObj, Call) ->
 -spec store_owner_id(whapps_call:call()) -> whapps_call:call().
 store_owner_id(Call) ->
     OwnerId = cf_attributes:owner_id(Call),
-    whapps_call:kvs_store('owner_id', OwnerId, Call).
+    whapps_call:set_owner_id(OwnerId, whapps_call:kvs_store('owner_id', OwnerId, Call)).
 
 %%-----------------------------------------------------------------------------
 %% @private
