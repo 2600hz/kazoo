@@ -166,8 +166,8 @@ ref_table_to_doc(RefTable) ->
 
 -define(TABLE_ROW(Key, Description, Type, Default, Required)
        ,[kz_binary:join([Key, Description, Type, Default, Required]
-                            ,<<" | ">>
-                            )
+                       ,<<" | ">>
+                       )
         ,$\n
         ]
        ).

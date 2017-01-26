@@ -48,7 +48,7 @@ make_api_token(ProviderId, Timestamp, Salt, Secret) ->
       ,TimestampHex
       ,auth_hash(ProviderId, TimestampHex, Salt, Secret)
       ]
-                       ,<<":">>
+                  ,<<":">>
      ).
 
 -spec encode_timestamp(integer()) -> ne_binary().

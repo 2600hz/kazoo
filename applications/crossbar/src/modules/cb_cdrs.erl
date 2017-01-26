@@ -685,7 +685,7 @@ normalize_cdr_to_csv(JObj, Context) ->
 
     CSV = kz_binary:join(
             [F(JObj, Timestamp) || {_, F} <- csv_rows(Context)]
-                             ,<<",">>
+                        ,<<",">>
            ),
     <<CSV/binary, "\r\n">>.
 
@@ -694,7 +694,7 @@ normalize_cdr_to_csv_header(_JObj, Context) ->
     CSV =
         kz_binary:join(
           [K || {K, _Fun} <- csv_rows(Context)]
-                           ,<<",">>
+                      ,<<",">>
          ),
 
     <<CSV/binary, "\r\n">>.

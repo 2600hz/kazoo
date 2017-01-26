@@ -1593,7 +1593,7 @@ tone_frequencies(Tone) ->
       [kz_term:to_binary(V)
        || V <- kz_json:get_value(<<"Frequencies">>, Tone, [])
       ]
-                       ,<<",">>
+                  ,<<",">>
      ).
 
 -spec tone_duration_on(kz_json:object()) -> ne_binary().

@@ -139,10 +139,10 @@ card_field(Key = <<"FN">>, JObj) ->
     MiddleName = kz_json:get_value(<<"middle_name">>, JObj),
     {Key
     ,kz_binary:join([X || X <- [FirstName, MiddleName, LastName],
-                               not kz_term:is_empty(X)
-                         ]
-                        ,<<" ">>
-                        )
+                          not kz_term:is_empty(X)
+                    ]
+                   ,<<" ">>
+                   )
     };
 card_field(Key = <<"N">>, JObj) ->
     FirstName = kz_json:get_value(<<"first_name">>, JObj),

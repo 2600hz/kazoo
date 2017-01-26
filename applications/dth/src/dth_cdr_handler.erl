@@ -147,7 +147,7 @@ get_from_user(JObj) ->
 get_account_code(JObj) ->
     AccountID = kz_binary:truncate_left(
                   kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)
-                                            ,17
+                                       ,17
                  ),
     case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception">>], JObj) of
         'undefined' -> AccountID;

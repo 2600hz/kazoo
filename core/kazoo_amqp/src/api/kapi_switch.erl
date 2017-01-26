@@ -64,11 +64,11 @@
 -define(CHECK_SYNC_TYPES, []).
 -define(CHECK_SYNC_KEY(Realm, Username)
        ,kz_binary:join([<<"switch.check_sync">>
-                            ,amqp_util:encode(Realm)
-                            ,amqp_util:encode(Username)
-                            ]
-                           ,<<".">>
-                           )
+                       ,amqp_util:encode(Realm)
+                       ,amqp_util:encode(Username)
+                       ]
+                      ,<<".">>
+                      )
        ).
 
 %% request fs command
