@@ -66,3 +66,10 @@ Using a not up-to-date Dialyzer may give a lot of false positives:
 To remove these there are filters implemented under `script/check-dialyzer.escript`.
 This `escript` is what is behind the scenes of `make dialyze`.
 One can call it directly and give it paths in place of using `make` and passing the `TO_DIALYZE` variable.
+
+## Scripts to use
+
+Other ways to use Dialyzer include:
+
+- `scripts/dialyze-changed.bash`: dialyzes the changed erl files as compared to `origin/master`. You can supply additional beam files as arguments to the script as well.
+- `scripts/dialyze-usage.bash': given a module name (like `kz_json`), find all modules that use the supplied module and dialyze them together. This should suss out any modules that use the supplied module in an incorrect way (as well as plenty of other issues too, probably)

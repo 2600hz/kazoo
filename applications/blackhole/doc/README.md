@@ -1,8 +1,6 @@
 
 # Blackhole *Realtime HTTP Websocket Events*
 
-
-
 ## Setting up
 
 1. Start the Blackhole Crossbar module
