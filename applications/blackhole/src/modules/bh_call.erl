@@ -41,7 +41,7 @@ validate(Context, #{keys := [Event, _]
         'false' -> bh_context:add_error(Context, <<"event ", Event/binary, " not supported">>)
     end;
 validate(Context, #{keys := Keys}) ->
-    bh_context:add_error(Context, <<"invalid format for call subscription : ", (kz_util:join_binary(Keys))/binary>>).
+    bh_context:add_error(Context, <<"invalid format for call subscription : ", (kz_binary:join(Keys))/binary>>).
 
 
 -spec bindings(bh_context:context(), map()) -> map().

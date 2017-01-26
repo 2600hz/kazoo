@@ -174,7 +174,7 @@ post(Context, _Id, Node) ->
                     cb_context:context().
 delete(Context, _Id) ->
     Context1 =
-        case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
+        case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
             'false' -> crossbar_doc:delete(Context);
             'true' -> crossbar_doc:delete(Context, 'permanent')
         end,

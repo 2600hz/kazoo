@@ -415,8 +415,8 @@ is_assigned_to(AccountDb, DID, AccountId) ->
 
 -spec generate_numbers(ne_binary(), ne_binary(), pos_integer(), non_neg_integer()) -> 'ok'.
 generate_numbers(Type, AccountId, StartingNumber, Quantity) ->
-    M = kz_util:to_atom(<<"knm_", Type/binary>>, 'true'),
-    M:generate_numbers(AccountId, kz_util:to_integer(StartingNumber), kz_util:to_integer(Quantity)).
+    M = kz_term:to_atom(<<"knm_", Type/binary>>, 'true'),
+    M:generate_numbers(AccountId, kz_term:to_integer(StartingNumber), kz_term:to_integer(Quantity)).
 
 
 %% @public

@@ -58,7 +58,7 @@ to_querystring_test_() ->
             ,{[{<<"Msg-ID">>, <<"123-abc">>}], <<"Msg-ID=123-abc">>}
             ,{[{<<"url">>, <<"http://user:pass@host:port/">>}], <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
             ],
-    [?_assertEqual(QS, kz_util:to_binary(props:to_querystring(Props)))
+    [?_assertEqual(QS, kz_term:to_binary(props:to_querystring(Props)))
      || {Props, QS} <- Tests
     ].
 

@@ -30,7 +30,7 @@
                     ,bindings = [] :: ne_binaries() | '_'
                     ,websocket_session_id :: api_binary() | '_'
                     ,websocket_pid :: api_pid() | '_'
-                    ,req_id = kz_util:rand_hex_binary(16) :: ne_binary() | '_'
+                    ,req_id = kz_binary:rand_hex(16) :: ne_binary() | '_'
                     ,timestamp :: gregorian_seconds() | '_'
                     ,name :: api_binary() | '_'
                     ,metadata :: any() | '_'

@@ -59,9 +59,9 @@ get_atom(Section, Key, Default) ->
     case get(Section, Key, Default) of
         Default -> Default;
         [_|_]=Values ->
-            [kz_util:to_atom(Value, 'true') || Value <- Values];
+            [kz_term:to_atom(Value, 'true') || Value <- Values];
         Value ->
-            [kz_util:to_atom(Value, 'true')]
+            [kz_term:to_atom(Value, 'true')]
     end.
 
 -spec get_boolean(section(), atom()) -> boolean().
@@ -72,7 +72,7 @@ get_boolean(Section, Key) ->
 get_boolean(Section, Key, Default) ->
     case get(Section, Key, Default) of
         Default -> Default;
-        [Value] -> kz_util:is_true(Value)
+        [Value] -> kz_term:is_true(Value)
     end.
 
 %%--------------------------------------------------------------------
@@ -89,8 +89,8 @@ get_integer(Section, Key) ->
 get_integer(Section, Key, Default) ->
     case get(Section, Key, Default) of
         Default -> Default;
-        [_|_]=Values -> [kz_util:to_integer(Value) || Value <- Values];
-        Value -> [kz_util:to_integer(Value)]
+        [_|_]=Values -> [kz_term:to_integer(Value) || Value <- Values];
+        Value -> [kz_term:to_integer(Value)]
     end.
 
 %%--------------------------------------------------------------------
@@ -107,8 +107,8 @@ get_string(Section, Key) ->
 get_string(Section, Key, Default) ->
     case get(Section, Key, Default) of
         Default -> Default;
-        [_|_]=Values -> [kz_util:to_lower_string(Value) || Value <- Values];
-        Value -> [kz_util:to_lower_string(Value)]
+        [_|_]=Values -> [kz_term:to_lower_string(Value) || Value <- Values];
+        Value -> [kz_term:to_lower_string(Value)]
     end.
 
 -spec get_raw_string(section(), atom()) -> [string(),...] | ?DEFAULT_DEFAULTS.
@@ -131,9 +131,9 @@ get_raw_string(Section, Key, Default) ->
 %%--------------------------------------------------------------------
 -spec get_node_section_name() -> atom().
 get_node_section_name() ->
-    Node = kz_util:to_binary(node()),
+    Node = kz_term:to_binary(node()),
     case binary:split(Node, <<"@">>) of
-        [Name, _] -> kz_util:to_atom(Name, 'true');
+        [Name, _] -> kz_term:to_atom(Name, 'true');
         _Else -> node()
     end.
 
@@ -221,7 +221,7 @@ format_sections([Section | T], ZoneFilter, Acc) ->
         'zone' ->
             format_zone_section(Section, T, ZoneFilter, Acc);
         Host ->
-            format_sections(T, ZoneFilter, [{kz_util:to_binary(Host), Section} | Acc])
+            format_sections(T, ZoneFilter, [{kz_term:to_binary(Host), Section} | Acc])
     end.
 
 -spec format_zone_section(kz_proplist(), kz_proplist(), atom(), kz_proplist()) ->
@@ -231,7 +231,7 @@ format_zone_section(Section, Sections, ZoneFilter, Acc) ->
         'generic' ->
             format_sections(Sections, ZoneFilter, [{'generic', Section} | Acc]);
         Zone ->
-            format_sections(Sections, ZoneFilter, [{{'zone', kz_util:to_atom(Zone, 'true')}, Section} | Acc])
+            format_sections(Sections, ZoneFilter, [{{'zone', kz_term:to_atom(Zone, 'true')}, Section} | Acc])
     end.
 
 %%--------------------------------------------------------------------
@@ -279,7 +279,7 @@ is_local_section({{'zone', Zone}, _}) ->
         'false' -> {'false', Zone}
     end;
 is_local_section({SectionHost, _}) ->
-    LocalHost = kz_util:to_binary(kz_network_utils:get_hostname()),
+    LocalHost = kz_term:to_binary(kz_network_utils:get_hostname()),
     case SectionHost =:= LocalHost of
         'true' -> {'true', LocalHost};
         'false' -> {'false', SectionHost}
@@ -324,12 +324,12 @@ zone() ->
     case application:get_env(?APP_NAME_ATOM, 'zone') of
         'undefined' ->
             [Local] = get(get_node_section_name(), 'zone', ['local']),
-            Zone = kz_util:to_atom(Local, 'true'),
+            Zone = kz_term:to_atom(Local, 'true'),
             application:set_env(?APP_NAME_ATOM, 'zone', Zone),
             Zone;
         {'ok', Zone} -> Zone
     end.
 
 -spec zone(atom()) -> ne_binary() | atom().
-zone('binary') -> kz_util:to_binary(zone());
+zone('binary') -> kz_term:to_binary(zone());
 zone(_) -> zone().

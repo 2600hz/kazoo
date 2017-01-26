@@ -445,7 +445,7 @@ maybe_load_user_doc_via_reset_id(Context) ->
 reset_id(?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM)) ->
     <<Y1:1/binary, Y2:1/binary, Y3:1/binary, Y4:1/binary>> = YYYY,
     <<M1:1/binary, M2:1/binary>> = MM,
-    SomeNoise = kz_util:rand_hex_binary((?RESET_ID_SIZE - (32 + 4 + 2 + 3 + 1)) div 2),
+    SomeNoise = kz_binary:rand_hex((?RESET_ID_SIZE - (32 + 4 + 2 + 3 + 1)) div 2),
     <<N1:1/binary, N2:1/binary, N3:1/binary, Noise/binary>> = SomeNoise,
     <<(?MATCH_ACCOUNT_RAW(A, B, Rest))/binary,
       N1/binary, Y1/binary, Y4/binary,
@@ -459,7 +459,7 @@ reset_id(<<AccountId:32/binary,
            _N3:1/binary, Y3:1/binary, M1:1/binary,
            _Noi:8, _se/binary
          >>) ->
-    ?MATCH_ACCOUNT_RAW(A, B, Rest) = kz_util:to_lower_binary(AccountId),
+    ?MATCH_ACCOUNT_RAW(A, B, Rest) = kz_term:to_lower_binary(AccountId),
     YYYY = <<Y1/binary, Y2/binary, Y3/binary, Y4/binary>>,
     MM = <<M1/binary, M2/binary>>,
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM).

@@ -52,7 +52,7 @@
                }).
 -type state() :: #state{}.
 
--define(NAME(P), kz_util:to_atom(P, 'true')).
+-define(NAME(P), kz_term:to_atom(P, 'true')).
 
 %%-define(SERVER(P), {{'via', 'kz_globals', {'xmpp', P}}).
 -define(SERVER(P), {'via', 'kz_globals', ?NAME(P)}).
@@ -276,7 +276,7 @@ wait_for_success(Username, Conn) ->
 -spec start_all_printers() -> 'ok'.
 start_all_printers() ->
     {'ok', Results} = kz_datamgr:get_results(?KZ_FAXES_DB, <<"faxbox/cloud">>),
-    List = kz_util:shuffle_list(
+    List = kz_term:shuffle_list(
              [ {crypto:rand_uniform(2000, 6000), Id, Jid}
                || {Id, Jid, <<"claimed">>}
                       <- [{kz_doc:id(Result)

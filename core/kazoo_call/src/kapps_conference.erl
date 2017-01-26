@@ -69,8 +69,8 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--define(BRIDGE_USER, kapps_config:get(<<"conferences">>, <<"bridge_username">>, kz_util:rand_hex_binary(12))).
--define(BRIDGE_PWD, kapps_config:get(<<"conferences">>, <<"bridge_password">>, kz_util:rand_hex_binary(12))).
+-define(BRIDGE_USER, kapps_config:get(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
+-define(BRIDGE_PWD, kapps_config:get(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
 
 
 %%%% conference record %%%%%%%%
@@ -525,19 +525,19 @@ set_conference_doc(JObj, Conference) ->
 
 -spec kvs_append(any(), any(), conference()) -> conference().
 kvs_append(Key, Value, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:append(kz_util:to_binary(Key), Value, Dict)}.
+    Conference#kapps_conference{kvs=orddict:append(kz_term:to_binary(Key), Value, Dict)}.
 
 -spec kvs_append_list(any(), [any(),...], conference()) -> conference().
 kvs_append_list(Key, ValList, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:append_list(kz_util:to_binary(Key), ValList, Dict)}.
+    Conference#kapps_conference{kvs=orddict:append_list(kz_term:to_binary(Key), ValList, Dict)}.
 
 -spec kvs_erase(any(), conference()) -> conference().
 kvs_erase(Key, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:erase(kz_util:to_binary(Key), Dict)}.
+    Conference#kapps_conference{kvs=orddict:erase(kz_term:to_binary(Key), Dict)}.
 
 -spec kvs_fetch(any(), conference()) -> any().
 kvs_fetch(Key, #kapps_conference{kvs=Dict}) ->
-    try orddict:fetch(kz_util:to_binary(Key), Dict)
+    try orddict:fetch(kz_term:to_binary(Key), Dict)
     catch
         'error':'function_clause' -> 'undefined'
     end.
@@ -552,7 +552,7 @@ kvs_filter(Pred, #kapps_conference{kvs=Dict}=Conference) ->
 
 -spec kvs_find(any(), conference()) -> {'ok', any()} | 'error'.
 kvs_find(Key, #kapps_conference{kvs=Dict}) ->
-    orddict:find(kz_util:to_binary(Key), Dict).
+    orddict:find(kz_term:to_binary(Key), Dict).
 
 -spec kvs_fold(fun((any(), any(), any()) -> any()), any(), conference()) -> conference().
 kvs_fold(Fun, Acc0, #kapps_conference{kvs=Dict}) ->
@@ -560,12 +560,12 @@ kvs_fold(Fun, Acc0, #kapps_conference{kvs=Dict}) ->
 
 -spec kvs_from_proplist(kz_proplist(), conference()) -> conference().
 kvs_from_proplist(List, #kapps_conference{kvs=Dict}=Conference) ->
-    L = orddict:from_list([{kz_util:to_binary(K), V} || {K, V} <- List]),
+    L = orddict:from_list([{kz_term:to_binary(K), V} || {K, V} <- List]),
     Conference#kapps_conference{kvs=orddict:merge(fun(_, V, _) -> V end, L, Dict)}.
 
 -spec kvs_is_key(any(), conference()) -> boolean().
 kvs_is_key(Key, #kapps_conference{kvs=Dict}) ->
-    orddict:is_key(kz_util:to_binary(Key), Dict).
+    orddict:is_key(kz_term:to_binary(Key), Dict).
 
 -spec kvs_map(fun((any(), any()) -> any()), conference()) -> conference().
 kvs_map(Pred, #kapps_conference{kvs=Dict}=Conference) ->
@@ -573,12 +573,12 @@ kvs_map(Pred, #kapps_conference{kvs=Dict}=Conference) ->
 
 -spec kvs_store(any(), any(), conference()) -> conference().
 kvs_store(Key, Value, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:store(kz_util:to_binary(Key), Value, Dict)}.
+    Conference#kapps_conference{kvs=orddict:store(kz_term:to_binary(Key), Value, Dict)}.
 
 -spec kvs_store_proplist(kz_proplist(), conference()) -> conference().
 kvs_store_proplist(List, #kapps_conference{kvs=Dict}=Conference) ->
     Conference#kapps_conference{kvs=lists:foldr(fun({K, V}, D) ->
-                                             orddict:store(kz_util:to_binary(K), V, D)
+                                             orddict:store(kz_term:to_binary(K), V, D)
                                      end, Dict, List)}.
 
 -spec kvs_to_proplist(conference()) -> kz_proplist().
@@ -587,15 +587,15 @@ kvs_to_proplist(#kapps_conference{kvs=Dict}) ->
 
 -spec kvs_update(any(), fun((any()) -> any()), conference()) -> conference().
 kvs_update(Key, Fun, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:update(kz_util:to_binary(Key), Fun, Dict)}.
+    Conference#kapps_conference{kvs=orddict:update(kz_term:to_binary(Key), Fun, Dict)}.
 
 -spec kvs_update(any(), fun((any()) -> any()), any(), conference()) -> conference().
 kvs_update(Key, Fun, Initial, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:update(kz_util:to_binary(Key), Fun, Initial, Dict)}.
+    Conference#kapps_conference{kvs=orddict:update(kz_term:to_binary(Key), Fun, Initial, Dict)}.
 
 -spec kvs_update_counter(any(), number(), conference()) -> conference().
 kvs_update_counter(Key, Number, #kapps_conference{kvs=Dict}=Conference) ->
-    Conference#kapps_conference{kvs=orddict:update_counter(kz_util:to_binary(Key), Number, Dict)}.
+    Conference#kapps_conference{kvs=orddict:update_counter(kz_term:to_binary(Key), Number, Dict)}.
 
 -spec flush() -> 'ok'.
 flush() -> kz_cache:flush_local(?KAPPS_CALL_CACHE).
@@ -626,8 +626,8 @@ set_call(Call, Conference) ->
 %% @private
 -spec get_tone(any()) -> tone().
 get_tone(Thing) ->
-    case kz_util:is_boolean(Thing) of
-        'true' -> kz_util:is_true(Thing);
+    case kz_term:is_boolean(Thing) of
+        'true' -> kz_term:is_true(Thing);
         'false' -> case is_binary(Thing) of
                        'true' -> Thing;
                        'false' -> 'true'

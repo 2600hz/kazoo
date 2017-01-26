@@ -16,7 +16,7 @@
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 -include_lib("kazoo_documents/include/doc_types.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"object">>).
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 

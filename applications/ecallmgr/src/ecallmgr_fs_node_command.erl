@@ -87,8 +87,8 @@ send_http(Node, Version, File, Url, Method, JObj, DeleteOnSuccess) ->
     lager:debug("processing http_send command : ~s / ~s", [File, Url]),
     Args = <<Url/binary, " ", File/binary>>,
     {Api, Fun} = send_http_api_and_callback_funs(Version),
-    M = kz_util:to_atom(Method, 'true'),
-    A = kz_util:to_list(Args),
+    M = kz_term:to_atom(Method, 'true'),
+    A = kz_term:to_list(Args),
     case Api(Node, M, A, Fun, [JObj, DeleteOnSuccess, File, Node]) of
         {'error', _} -> reply_error(<<"failure">>, JObj);
         {'ok', JobId} -> lager:debug("send_http command started ~p", [JobId])

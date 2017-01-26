@@ -48,7 +48,7 @@ format_key(Key)
   when is_binary(Key) -> Key;
 format_key(Keys)
   when is_list(Keys) ->
-    kz_util:join_binary(Keys, <<".">>).
+    kz_binary:join(Keys, <<".">>).
 
 -spec get_value(ne_binary(), ne_binary() | ne_binaries(), any(), ne_binary()) -> any().
 get_value(_, <<"acls">>, _, Node) ->

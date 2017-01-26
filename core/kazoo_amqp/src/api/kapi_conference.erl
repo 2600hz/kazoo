@@ -109,8 +109,8 @@
 -define(DISCOVERY_REQ_VALUES, [{<<"Event-Category">>, <<"conference">>}
                               ,{<<"Event-Name">>, <<"discovery_req">>}
                               ]).
--define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun kz_util:is_boolean/1}
-                             ,{<<"Play-Welcome">>, fun kz_util:is_boolean/1}
+-define(DISCOVERY_REQ_TYPES, [{<<"Moderator">>, fun kz_term:is_boolean/1}
+                             ,{<<"Play-Welcome">>, fun kz_term:is_boolean/1}
                              ]).
 
 %% Conference Discovery Request
@@ -406,7 +406,7 @@
                                    ]).
 
 -spec focus_queue_name(atom()) -> ne_binary().
-focus_queue_name(Focus) -> <<(kz_util:to_binary(Focus))/binary, "_conference">>.
+focus_queue_name(Focus) -> <<(kz_term:to_binary(Focus))/binary, "_conference">>.
 
 %%--------------------------------------------------------------------
 %% @doc Create a tone on the channel - see wiki

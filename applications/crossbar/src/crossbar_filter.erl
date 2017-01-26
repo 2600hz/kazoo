@@ -75,13 +75,13 @@ filter_prop(Doc, <<"key_missing">>, Key) ->
 filter_prop(Doc, <<"has_value">>, Key) ->
     has_value(Doc, Key);
 filter_prop(Doc, <<"created_from">>, Val) ->
-    lowerbound(kz_doc:created(Doc), kz_util:to_integer(Val));
+    lowerbound(kz_doc:created(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"created_to">>, Val) ->
-    upperbound(kz_doc:created(Doc), kz_util:to_integer(Val));
+    upperbound(kz_doc:created(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"modified_from">>, Val) ->
-    lowerbound(kz_doc:modified(Doc), kz_util:to_integer(Val));
+    lowerbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
 filter_prop(Doc, <<"modified_to">>, Val) ->
-    upperbound(kz_doc:modified(Doc), kz_util:to_integer(Val));
+    upperbound(kz_doc:modified(Doc), kz_term:to_integer(Val));
 filter_prop(_, _, _) ->
     'undefined'.
 
@@ -111,7 +111,7 @@ should_filter(Doc, Key, Val) ->
     Keys = binary_key_to_json_key(Key),
     should_filter(
       kz_json:get_binary_value(Keys, Doc, <<>>)
-                 ,kz_util:to_binary(Val)
+                 ,kz_term:to_binary(Val)
      ).
 
 -spec has_key(kz_json:object(), ne_binary()) -> boolean().

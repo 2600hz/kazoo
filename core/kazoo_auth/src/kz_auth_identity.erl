@@ -34,7 +34,7 @@ sign(Claims)
         #{identity_secret := IdentitySecret
          ,auth_id := Identity
          } ->
-            HashMethod = kz_util:to_atom(Hash, 'true'),
+            HashMethod = kz_term:to_atom(Hash, 'true'),
             CryptoKey = <<IdentitySecret/binary, ServerSecret/binary>>,
             {'ok', crypto:hmac(HashMethod, CryptoKey, Identity)};
         #{} -> {'error', 'no_identity_secret'};
@@ -179,7 +179,7 @@ check_kazoo_secret(#{user_doc := JObj}=Token) ->
 
 -spec update_kazoo_secret(map()) -> map() | {'error', any()}.
 update_kazoo_secret(Token) ->
-    update_kazoo_secret(Token, kz_util:rand_hex_binary(16)).
+    update_kazoo_secret(Token, kz_binary:rand_hex(16)).
 
 -spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
 update_kazoo_secret(#{auth_db := Db
@@ -204,7 +204,7 @@ token(#{auth_provider := #{name := <<"kazoo">>
          ,auth_id := Identity
          } = Token1 ->
             IdentitySignature = kz_base64url:decode(IdentitySig),
-            HashMethod = kz_util:to_atom(Hash, 'true'),
+            HashMethod = kz_term:to_atom(Hash, 'true'),
             CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
             Token1#{identify_verified => IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity)};
         #{} = Token1 -> Token1#{identify_verified => 'false'};
@@ -224,7 +224,7 @@ token(#{payload := Payload
          } = Token1 when IdentitySig =/= 'undefined' ->
             lager:debug("verifying key for identity '~s'", [Identity]),
             IdentitySignature = kz_base64url:decode(IdentitySig),
-            HashMethod = kz_util:to_atom(Hash, 'true'),
+            HashMethod = kz_term:to_atom(Hash, 'true'),
             CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
             case IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity) of
                 'true' ->  Token1#{identify_verified => 'true'};

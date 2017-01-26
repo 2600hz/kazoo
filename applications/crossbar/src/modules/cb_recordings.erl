@@ -141,12 +141,12 @@ recording_summary(Context) ->
 
 -spec load_recording_doc(cb_context:context(), ne_binary()) -> cb_context:context().
 load_recording_doc(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = RecordingId) ->
-    Ctx = cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    Ctx = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
 
 -spec load_recording_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 load_recording_binary(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
-    do_load_recording_binary(cb_context:set_account_modb(Context, kz_util:to_integer(Year), kz_util:to_integer(Month)), DocId).
+    do_load_recording_binary(cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)), DocId).
 
 -spec do_load_recording_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 do_load_recording_binary(Context, DocId) ->

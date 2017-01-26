@@ -67,7 +67,7 @@ send_cdr('undefined', _JObj, _Retries) ->
 send_cdr(Url, _JObj, 0) ->
     lager:debug("trying to send cdr to ~s failed retry count", [Url]);
 send_cdr(Url, JObj, Retries) ->
-    case kz_http:post(kz_util:to_list(Url)
+    case kz_http:post(kz_term:to_list(Url)
                      ,[{"Content-Type", "application/json"}]
                      , kz_json:encode(JObj)
                      ,[{'timeout', 1000}]
@@ -101,7 +101,7 @@ agent_devices(AcctDb, AgentId) ->
 -spec get_endpoints(kapps_call:call(), ne_binary() | kazoo_data:get_results_return()) ->
                            kz_json:objects().
 get_endpoints(Call, ?NE_BINARY = AgentId) ->
-    Params = kz_json:from_list([{<<"source">>, kz_util:to_binary(?MODULE)}]),
+    Params = kz_json:from_list([{<<"source">>, kz_term:to_binary(?MODULE)}]),
     kz_endpoints:by_owner_id(AgentId, Params, Call).
 
 %% Handles subscribing/unsubscribing from call events
@@ -132,4 +132,4 @@ unbind_from_call_events(Call, Pid) -> unbind_from_call_events(kapps_call:call_id
 -spec proc_id(pid(), atom() | ne_binary()) -> ne_binary().
 proc_id() -> proc_id(self()).
 proc_id(Pid) -> proc_id(Pid, node()).
-proc_id(Pid, Node) -> list_to_binary([kz_util:to_binary(Node), "-", pid_to_list(Pid)]).
+proc_id(Pid, Node) -> list_to_binary([kz_term:to_binary(Node), "-", pid_to_list(Pid)]).

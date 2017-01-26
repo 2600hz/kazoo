@@ -47,7 +47,7 @@ get_db(AccountId, Doc) ->
     get_db(AccountId, kz_doc:id(Doc)).
 
 get_db(AccountId, Year, Month) ->
-    kazoo_modb:get_modb(AccountId, kz_util:to_integer(Year), kz_util:to_integer(Month)).
+    kazoo_modb:get_modb(AccountId, kz_term:to_integer(Year), kz_term:to_integer(Month)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,7 +152,7 @@ maybe_set_deleted_by_retention(JObj) ->
 
 maybe_set_deleted_by_retention(JObj, Timestamp) ->
     TsTampPath = [<<"utc_seconds">>, <<"timestamp">>],
-    MsgTstamp = kz_util:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
+    MsgTstamp = kz_term:to_integer(kz_json:get_first_defined(TsTampPath, JObj, 0)),
     case MsgTstamp =/= 0
         andalso MsgTstamp < Timestamp
     of
@@ -187,8 +187,8 @@ get_caller_id_name(Call) ->
     case kapps_call:kvs_fetch('prepend_cid_name', Call) of
         'undefined' -> CallerIdName;
         Prepend ->
-            Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdName/binary>>,
-            kz_util:truncate_right_binary(Pre, kzd_schema_caller_id:external_name_max_length())
+            Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdName/binary>>,
+            kz_binary:truncate_right(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
 
 %%--------------------------------------------------------------------
@@ -202,8 +202,8 @@ get_caller_id_number(Call) ->
     case kapps_call:kvs_fetch('prepend_cid_number', Call) of
         'undefined' -> CallerIdNumber;
         Prepend ->
-            Pre = <<(kz_util:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
-            kz_util:truncate_right_binary(Pre, kzd_schema_caller_id:external_name_max_length())
+            Pre = <<(kz_term:to_binary(Prepend))/binary, CallerIdNumber/binary>>,
+            kz_binary:truncate_right(Pre, kzd_schema_caller_id:external_name_max_length())
     end.
 
 %%%===================================================================

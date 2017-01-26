@@ -236,8 +236,8 @@ query_vitelity(Prefix, Quantity, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     {'ok'
     ,{'http', [], _Host, _Port, _Path, [$? | QueryString]}
-    } = http_uri:parse(kz_util:to_list(URI)),
-    Options = cow_qs:parse_qs(kz_util:to_binary(QueryString)),
+    } = http_uri:parse(kz_term:to_list(URI)),
+    Options = cow_qs:parse_qs(kz_term:to_binary(QueryString)),
     XML =
         case props:get_value(<<"cmd">>, Options) of
             ?PREFIX_SEARCH_CMD -> ?PREFIX_SEARCH_RESP;
@@ -250,7 +250,7 @@ query_vitelity(Prefix, Quantity, QOptions) ->
 query_vitelity(Prefix, Quantity, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     lager:debug("querying ~s", [URI]),
-    case kz_http:post(kz_util:to_list(URI)) of
+    case kz_http:post(kz_term:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             lager:debug("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Prefix, Quantity, RespXML);
@@ -448,7 +448,7 @@ get_routesip() ->
 query_vitelity(Number, QOptions) ->
     URI = knm_vitelity_util:build_uri(QOptions),
     ?LOG_DEBUG("querying ~s", [URI]),
-    case kz_http:post(kz_util:to_list(URI)) of
+    case kz_http:post(kz_term:to_list(URI)) of
         {'ok', _RespCode, _RespHeaders, RespXML} ->
             ?LOG_DEBUG("recv ~p: ~s", [_RespCode, RespXML]),
             process_xml_resp(Number, RespXML);

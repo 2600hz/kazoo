@@ -249,8 +249,8 @@
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
-       ,<<(kz_util:to_binary(kz_util:current_tstamp()))/binary
-          ,"-", (kz_util:rand_hex_binary(4))/binary
+       ,<<(kz_term:to_binary(kz_util:current_tstamp()))/binary
+          ,"-", (kz_binary:rand_hex(4))/binary
         >>).
 
 -define(BRIDGE_DEFAULT_SYSTEM_TIMEOUT_S, 20).

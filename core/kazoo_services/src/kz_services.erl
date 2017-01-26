@@ -525,7 +525,7 @@ get_billing_id(<<_/binary>> = Account) ->
 %%--------------------------------------------------------------------
 -spec update(ne_binary(), ne_binary(), integer(), services()) -> services().
 update(CategoryId, ItemId, Quantity, Services) when not is_integer(Quantity) ->
-    update(CategoryId, ItemId, kz_util:to_integer(Quantity), Services);
+    update(CategoryId, ItemId, kz_term:to_integer(Quantity), Services);
 update(CategoryId, ItemId, Quantity, #kz_services{updates=JObj}=Services)
   when is_binary(CategoryId),
        is_binary(ItemId) ->
@@ -737,7 +737,7 @@ maybe_follow_billing_id(AccountId, ServicesJObj) ->
 maybe_allow_updates(AccountId, ServicesJObj) ->
     StatusGood = ?STATUS_GOOD,
     Plans = kz_service_plans:plan_summary(ServicesJObj),
-    case kz_util:is_empty(Plans)
+    case kz_term:is_empty(Plans)
         orelse kzd_services:status(ServicesJObj)
     of
         'true' ->
@@ -764,7 +764,7 @@ maybe_bookkeeper_allow_updates(AccountId, Status) ->
             lager:debug("denying update request for services ~s due to status ~s", [AccountId, Status]),
             Reason = io_lib:format("Unable to continue due to billing account ~s status is ~s", [AccountId, Status]),
             Error = kz_json:from_list([{<<"error">>, <<"bad_status">>}
-                                      ,{<<"message">>, kz_util:to_binary(Reason)}
+                                      ,{<<"message">>, kz_term:to_binary(Reason)}
                                       ]),
             throw({<<"account_billing_invalid">>, Error})
     end.
@@ -777,7 +777,7 @@ default_maybe_allow_updates(AccountId) ->
             lager:debug("denying update request, ~s.default_allow_updates is false", [?WHS_CONFIG_CAT]),
             Reason = io_lib:format("Service updates are disallowed by default for billing account ~s", [AccountId]),
             Error = kz_json:from_list([{<<"error">>, <<"updates_disallowed">>}
-                                      ,{<<"message">>, kz_util:to_binary(Reason)}
+                                      ,{<<"message">>, kz_term:to_binary(Reason)}
                                       ]),
             throw({<<"account_billing_invalid">>, Error})
     end.
@@ -872,7 +872,7 @@ services_json(#kz_services{jobj=JObj}) ->
 
 -spec is_dirty(services()) -> boolean().
 is_dirty(#kz_services{dirty=IsDirty}) ->
-    kz_util:is_true(IsDirty).
+    kz_term:is_true(IsDirty).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1215,7 +1215,7 @@ get_service_modules() ->
         'undefined' -> ?SERVICE_MODULES;
         ConfModules ->
             lager:debug("configured service modules: ~p", [ConfModules]),
-            [kz_util:to_atom(Mod, 'true') || Mod <- ConfModules]
+            [kz_term:to_atom(Mod, 'true') || Mod <- ConfModules]
     end.
 
 -spec default_service_modules() -> atoms().
@@ -1239,12 +1239,12 @@ default_service_modules() ->
 %%--------------------------------------------------------------------
 -spec get_service_module(text()) -> atom() | 'false'.
 get_service_module(Module) when not is_binary(Module) ->
-    get_service_module(kz_util:to_binary(Module));
+    get_service_module(kz_term:to_binary(Module));
 get_service_module(<<?SERVICE_MODULE_PREFIX, _/binary>> = Module) ->
     ServiceModules = get_service_modules(),
     case [M
           || M <- ServiceModules,
-             kz_util:to_binary(M) =:= Module
+             kz_term:to_binary(M) =:= Module
          ]
     of
         [M] -> M;
@@ -1385,8 +1385,8 @@ maybe_augment_with_plan(ResellerId, JObj, PlanId) ->
 incorporate_depreciated_service_plans(Plans, JObj) ->
     PlanIds = kz_json:get_value(<<"pvt_service_plans">>, JObj),
     ResellerId = kzd_services:reseller_id(JObj),
-    case kz_util:is_empty(PlanIds)
-        orelse kz_util:is_empty(ResellerId)
+    case kz_term:is_empty(PlanIds)
+        orelse kz_term:is_empty(ResellerId)
     of
         'true' -> Plans;
         'false' ->

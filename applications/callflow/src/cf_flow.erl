@@ -38,7 +38,7 @@ lookup(Call) ->
 
 -spec lookup(ne_binary(), ne_binary()) -> lookup_ret().
 lookup(Number, AccountId) when not is_binary(Number) ->
-    lookup(kz_util:to_binary(Number), AccountId);
+    lookup(kz_term:to_binary(Number), AccountId);
 lookup(<<>>, _) ->
     {'error', 'invalid_number'};
 lookup(Number, AccountId) ->
@@ -101,7 +101,7 @@ cache_callflow_number(Number, AccountId, Flow) ->
 maybe_use_nomatch(<<"+", Number/binary>>, AccountId) ->
     maybe_use_nomatch(Number, AccountId);
 maybe_use_nomatch(Number, AccountId) ->
-    case lists:all(fun is_digit/1, kz_util:to_list(Number)) of
+    case lists:all(fun is_digit/1, kz_term:to_list(Number)) of
         'true' -> lookup(?NO_MATCH_CF, AccountId);
         'false' ->
             lager:info("can't use no_match: number not all digits: ~s", [Number]),

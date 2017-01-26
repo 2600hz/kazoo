@@ -138,7 +138,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not kz_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -152,7 +152,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> kz_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -184,7 +184,7 @@ is_cb_module(<<"cb_", _/binary>>) -> 'true';
 is_cb_module(<<"crossbar_", _/binary>>) -> 'true';
 is_cb_module(<<_/binary>>) -> 'false';
 is_cb_module(Mod) ->
-    is_cb_module(kz_util:to_binary(Mod)).
+    is_cb_module(kz_term:to_binary(Mod)).
 
 -spec start_link() -> 'ignore'.
 start_link() ->

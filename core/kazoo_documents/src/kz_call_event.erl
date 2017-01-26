@@ -103,7 +103,7 @@ authorizing_type(JObj) ->
 
 -spec is_authorized(doc()) -> boolean().
 is_authorized(JObj) ->
-    kz_util:is_true(
+    kz_term:is_true(
       custom_channel_var(JObj, <<"Channel-Authorized">>)
      ).
 
@@ -189,7 +189,7 @@ is_call_forwarded(JObj, Default) ->
     case custom_channel_var(JObj, <<"Call-Forward">>, Default) of
         'undefined' -> Default;
         Default -> Default;
-        IsForwarded -> kz_util:is_true(IsForwarded)
+        IsForwarded -> kz_term:is_true(IsForwarded)
     end.
 
 -spec error_message(doc()) -> api_binary().

@@ -37,21 +37,21 @@ flush(Account, DocId) ->
 
 -spec trace_module(ne_binary()) -> 'ok'.
 trace_module(Module) ->
-    start_trace([{'module', kz_util:to_atom(Module)}]).
+    start_trace([{'module', kz_term:to_atom(Module)}]).
 
 -spec trace_function(ne_binary()) -> 'ok'.
 -spec trace_function(ne_binary(), ne_binary()) -> 'ok'.
 trace_function(Function) ->
-    start_trace([{'function', kz_util:to_atom(Function)}]).
+    start_trace([{'function', kz_term:to_atom(Function)}]).
 
 trace_function(Module, Function) ->
-    start_trace([{'module', kz_util:to_atom(Module)}
-                ,{'function', kz_util:to_atom(Function)}
+    start_trace([{'module', kz_term:to_atom(Module)}
+                ,{'function', kz_term:to_atom(Function)}
                 ]).
 
 -spec trace_pid(ne_binary()) -> 'ok'.
 trace_pid(Pid) ->
-    start_trace([{'pid', kz_util:to_list(Pid)}]).
+    start_trace([{'pid', kz_term:to_list(Pid)}]).
 
 -spec start_trace(kz_data_tracing:filters()) -> 'ok'.
 start_trace(Filters) ->

@@ -298,7 +298,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec build_bridge_request(ne_binary(), kapps_call:call(), ne_binary()) -> kz_proplist().
 build_bridge_request(ParkedCallId, Call, Q) ->
     CIDNumber = kapps_call:kvs_fetch('cf_capture_group', Call),
-    MsgId = kz_util:rand_hex_binary(6),
+    MsgId = kz_binary:rand_hex(6),
     PresenceId = kz_attributes:presence_id(Call),
     AcctId = kapps_call:account_id(Call),
     {'ok', EP} = kz_endpoint:build(kapps_call:authorizing_id(Call)
@@ -349,10 +349,10 @@ handle_originate_ready(JObj, Props) ->
 build_offnet_request(Exten, Call, Q) ->
     {ECIDNum, ECIDName} = kz_attributes:caller_id(<<"emergency">>, Call),
     {CIDNumber, CIDName} = kz_attributes:caller_id(<<"external">>, Call),
-    MsgId = kz_util:rand_hex_binary(6),
+    MsgId = kz_binary:rand_hex(6),
     PresenceId = kz_attributes:presence_id(Call),
     AcctId = kapps_call:account_id(Call),
-    CallId = kz_util:rand_hex_binary(8),
+    CallId = kz_binary:rand_hex(8),
     props:filter_undefined([{<<"Resource-Type">>, <<"originate">>}
                            ,{<<"Application-Name">>, <<"park">>}
                            ,{<<"Emergency-Caller-ID-Name">>, ECIDName}

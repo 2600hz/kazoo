@@ -286,7 +286,7 @@ category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
     kz_ast_util:binary_match_to_binary(Cat).
 
-key_to_key_path(?ATOM(A)) -> [kz_util:to_binary(A)];
+key_to_key_path(?ATOM(A)) -> [kz_term:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
@@ -395,9 +395,9 @@ default_value('undefined') -> 'undefined';
 default_value(?ATOM('true')) -> 'true';
 default_value(?ATOM('false')) -> 'false';
 default_value(?ATOM('undefined')) -> 'undefined';
-default_value(?ATOM(V)) -> kz_util:to_binary(V);
+default_value(?ATOM(V)) -> kz_term:to_binary(V);
 default_value(?VAR(_)) -> 'undefined';
-default_value(?STRING(S)) -> kz_util:to_binary(S);
+default_value(?STRING(S)) -> kz_term:to_binary(S);
 default_value(?INTEGER(I)) -> I;
 default_value(?FLOAT(F)) -> F;
 default_value(?BINARY_OP(Op, Arg1, Arg2)) ->

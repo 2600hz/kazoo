@@ -98,7 +98,7 @@ get_hostname() ->
 %%--------------------------------------------------------------------
 -spec is_ipv4(text()) -> boolean().
 is_ipv4(Address) when is_binary(Address) ->
-    is_ipv4(kz_util:to_list(Address));
+    is_ipv4(kz_term:to_list(Address));
 is_ipv4(Address) when is_list(Address) ->
     case inet_parse:ipv4strict_address(Address) of
         {'ok', _} -> 'true';
@@ -107,7 +107,7 @@ is_ipv4(Address) when is_list(Address) ->
 
 -spec is_ipv6(text()) -> boolean().
 is_ipv6(Address) when is_binary(Address) ->
-    is_ipv6(kz_util:to_list(Address));
+    is_ipv6(kz_term:to_list(Address));
 is_ipv6(Address) when is_list(Address) ->
     case inet_parse:ipv6strict_address(Address) of
         {'ok', _} -> 'true';
@@ -130,12 +130,12 @@ to_cidr(IP) -> to_cidr(IP, <<"32">>).
 
 -spec to_cidr(ne_binary(), ne_binary()) -> ne_binary().
 to_cidr(IP, Prefix) when not is_binary(IP) ->
-    to_cidr(kz_util:to_binary(IP), Prefix);
+    to_cidr(kz_term:to_binary(IP), Prefix);
 to_cidr(IP, Prefix) when not is_binary(Prefix) ->
-    to_cidr(IP, kz_util:to_binary(Prefix));
+    to_cidr(IP, kz_term:to_binary(Prefix));
 to_cidr(IP, Prefix) ->
     case is_ipv4(IP)
-        andalso kz_util:to_integer(Prefix) =< 32
+        andalso kz_term:to_integer(Prefix) =< 32
     of
         'true' ->
             lager:debug("adjusting ip from ~s to ~s/~s~n", [IP, IP, Prefix]),
@@ -146,9 +146,9 @@ to_cidr(IP, Prefix) ->
 
 -spec verify_cidr(text(), text()) -> boolean().
 verify_cidr(IP, CIDR) when is_binary(IP) ->
-    verify_cidr(kz_util:to_list(IP), CIDR);
+    verify_cidr(kz_term:to_list(IP), CIDR);
 verify_cidr(IP, CIDR) when is_binary(CIDR) ->
-    verify_cidr(IP, kz_util:to_list(CIDR));
+    verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
     Block = inet_cidr:parse(CIDR),
     inet_cidr:contains(Block, inet:parse_address(IP)).
@@ -165,15 +165,15 @@ verify_cidr(IP, CIDR) ->
 
 %% -spec expand_cidr(text()) -> ne_binaries().
 %% expand_cidr(CIDR) when is_binary(CIDR) ->
-%%     expand_cidr(kz_util:to_list(CIDR));
+%%     expand_cidr(kz_term:to_list(CIDR));
 %% expand_cidr(CIDR) ->
 %%     %% EXTREMELY wastefull/naive approach, should never be used, but if you
 %%     %% must we keep it in a class C
 %%     case orber_acl:range(CIDR, 'inet') of
 %%         {'error', _} -> [];
 %%         {'ok', Start, End} ->
-%%             [A1, B1, C1, D1] = lists:map(fun kz_util:to_integer/1, string:tokens(Start, ".")),
-%%             [A2, B2, C2, D2] = lists:map(fun kz_util:to_integer/1, string:tokens(End, ".")),
+%%             [A1, B1, C1, D1] = lists:map(fun kz_term:to_integer/1, string:tokens(Start, ".")),
+%%             [A2, B2, C2, D2] = lists:map(fun kz_term:to_integer/1, string:tokens(End, ".")),
 %%             'true' = ((A2 + B2 + C2 + D2) - (A1 + B1 + C1 + D1)) =< 510,
 %%             [iptuple_to_binary({A,B,C,D})
 %%              || A <- lists:seq(A1, A2),
@@ -207,7 +207,7 @@ find_nameservers(Domain) ->
 
 -spec find_nameservers(ne_binary(), options()) -> [string()].
 find_nameservers(Domain, Options) ->
-    case inet_res:lookup(kz_util:to_list(Domain), 'in', 'ns', Options) of
+    case inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options) of
         [] ->
             find_nameservers_parent(
               binary:split(Domain, <<".">>, ['global'])
@@ -220,16 +220,16 @@ find_nameservers(Domain, Options) ->
 find_nameservers_parent([], _) -> [];
 find_nameservers_parent([_, _]=Parts, Options) ->
     Domain =
-        kz_util:to_list(
-          kz_util:join_binary(Parts, <<".">>)
+        kz_term:to_list(
+          kz_binary:join(Parts, <<".">>)
          ),
-    inet_res:lookup(kz_util:to_list(Domain), 'in', 'ns', Options);
+    inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options);
 find_nameservers_parent([_|Parts], Options) ->
     Domain =
-        kz_util:to_list(
-          kz_util:join_binary(Parts, <<".">>)
+        kz_term:to_list(
+          kz_binary:join(Parts, <<".">>)
          ),
-    case inet_res:lookup(kz_util:to_list(Domain), 'in', 'ns', Options) of
+    case inet_res:lookup(kz_term:to_list(Domain), 'in', 'ns', Options) of
         [] -> find_nameservers_parent(Parts, Options);
         Nameservers -> Nameservers
     end.
@@ -261,7 +261,7 @@ maybe_is_ip(Address, Options) ->
 -spec maybe_resolve_srv_records(ne_binary(), options()) -> ne_binaries().
 maybe_resolve_srv_records(Address, Options) ->
     Domain = <<"_sip._udp.", Address/binary>>,
-    case inet_res:lookup(kz_util:to_list(Domain), 'in', 'srv', Options) of
+    case inet_res:lookup(kz_term:to_list(Domain), 'in', 'srv', Options) of
         [] -> maybe_resolve_a_records([Address], Options);
         SRVs -> maybe_resolve_a_records([D || {_, _, _, D} <- SRVs], Options)
     end.
@@ -276,7 +276,7 @@ maybe_resolve_a_records(Domains, Options) ->
 maybe_resolve_fold(Domain, IPs, Options) ->
     case is_ip(Domain) of
         'true' -> [Domain];
-        'false' -> resolve_a_record(kz_util:to_list(Domain), IPs, Options)
+        'false' -> resolve_a_record(kz_term:to_list(Domain), IPs, Options)
     end.
 
 -spec resolve_a_record(string(), ne_binaries(), options()) -> ne_binaries().
@@ -301,40 +301,40 @@ resolve_a_record_fold(IPTuple, I) ->
 %%--------------------------------------------------------------------
 -spec iptuple_to_binary(inet:ip4_address() | inet:ipv6_address()) -> ne_binary().
 iptuple_to_binary({A,B,C,D}) ->
-    <<(kz_util:to_binary(A))/binary, "."
-      ,(kz_util:to_binary(B))/binary, "."
-      ,(kz_util:to_binary(C))/binary, "."
-      ,(kz_util:to_binary(D))/binary
+    <<(kz_term:to_binary(A))/binary, "."
+      ,(kz_term:to_binary(B))/binary, "."
+      ,(kz_term:to_binary(C))/binary, "."
+      ,(kz_term:to_binary(D))/binary
     >>;
 iptuple_to_binary({_I1, _I2, _I3, _I4, _I5, _I6, _I7, _I8}=T) ->
-    kz_util:join_binary([to_hex(I) || I <- tuple_to_list(T)], <<":">>).
+    kz_binary:join([to_hex(I) || I <- tuple_to_list(T)], <<":">>).
 
 -spec to_hex(integer()) -> binary().
 to_hex(I) ->
-    kz_util:to_lower_binary(integer_to_binary(I, 16)).
+    kz_term:to_lower_binary(integer_to_binary(I, 16)).
 
 -spec srvtuple_to_binary(srvtuple()) -> ne_binary().
 srvtuple_to_binary({Priority, Weight, Port, Domain}) ->
-    <<(kz_util:to_binary(Priority))/binary, " "
-      ,(kz_util:to_binary(Weight))/binary, " "
-      ,(kz_util:to_binary(Port))/binary, " "
-      ,(kz_util:strip_right_binary(kz_util:to_binary(Domain), $.))/binary
+    <<(kz_term:to_binary(Priority))/binary, " "
+      ,(kz_term:to_binary(Weight))/binary, " "
+      ,(kz_term:to_binary(Port))/binary, " "
+      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec naptrtuple_to_binary(naptrtuple()) -> ne_binary().
 naptrtuple_to_binary({Order, Preference, Flags, Services, Regexp, Domain}) ->
-    <<(kz_util:to_binary(Order))/binary, " "
-      ,(kz_util:to_binary(Preference))/binary, " "
-      ,"\"", (kz_util:to_upper_binary(Flags))/binary, "\" "
-      ,"\"", (kz_util:to_upper_binary(Services))/binary, "\" "
-      ,"\"", (kz_util:to_binary(Regexp))/binary, "\" "
-      ,(kz_util:strip_right_binary(kz_util:to_binary(Domain), $.))/binary
+    <<(kz_term:to_binary(Order))/binary, " "
+      ,(kz_term:to_binary(Preference))/binary, " "
+      ,"\"", (kz_term:to_upper_binary(Flags))/binary, "\" "
+      ,"\"", (kz_term:to_upper_binary(Services))/binary, "\" "
+      ,"\"", (kz_term:to_binary(Regexp))/binary, "\" "
+      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 -spec mxtuple_to_binary(mxtuple()) -> ne_binary().
 mxtuple_to_binary({Priority, Domain}) ->
-    <<(kz_util:to_binary(Priority))/binary, " "
-      ,(kz_util:strip_right_binary(kz_util:to_binary(Domain), $.))/binary
+    <<(kz_term:to_binary(Priority))/binary, " "
+      ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
 
 %%--------------------------------------------------------------------
@@ -371,7 +371,7 @@ lookup_dns(Hostname, Type) ->
 -spec lookup_dns(ne_binary(), atom(), options()) ->
                         {'ok', [inet_res:dns_data()]}.
 lookup_dns(Hostname, Type, Options) ->
-    {'ok', inet_res:lookup(kz_util:to_list(Hostname), 'in', Type, Options)}.
+    {'ok', inet_res:lookup(kz_term:to_list(Hostname), 'in', Type, Options)}.
 
 %%--------------------------------------------------------------------
 %% @public

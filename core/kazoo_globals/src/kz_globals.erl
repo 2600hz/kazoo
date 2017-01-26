@@ -379,7 +379,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), kz_proplist()) -> gen_listener:handle_event_return().
 handle_event(JObj, State) ->
-    case kz_api:node(JObj) =:= kz_util:to_binary(node()) of
+    case kz_api:node(JObj) =:= kz_term:to_binary(node()) of
         'true' -> 'ignore';
         'false' ->
             {'reply', [{'state', State}
@@ -422,7 +422,7 @@ get_zone(JObj, State) ->
     case kz_json:get_first_defined([<<"Zone">>, <<"AMQP-Broker-Zone">>], JObj) of
         'undefined' ->
             get_zone_from_broker(JObj, State);
-        Zone -> kz_util:to_atom(Zone, 'true')
+        Zone -> kz_term:to_atom(Zone, 'true')
     end.
 
 -spec get_zone_from_broker(kz_json:object(), globals_state()) -> atom().
@@ -434,7 +434,7 @@ get_zone_from_broker(JObj, #state{zones=Zones
         Broker ->
             case props:get_value(Broker, Zones) of
                 'undefined' -> LocalZone;
-                Zone -> kz_util:to_atom(Zone, 'true')
+                Zone -> kz_term:to_atom(Zone, 'true')
             end
     end.
 

@@ -275,7 +275,7 @@ maybe_fix_js_type(_Error, Acc) -> Acc.
 -spec maybe_fix_js_integer(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                                   {boolean(), kz_json:object()}.
 maybe_fix_js_integer(Key, Value, Data) ->
-    try kz_util:to_integer(Value) of
+    try kz_term:to_integer(Value) of
         V -> {'true', kz_json:set_value(maybe_fix_index(Key), V, Data)}
     catch
         _E:_R ->

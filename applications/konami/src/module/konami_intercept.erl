@@ -138,7 +138,7 @@ build_originate(Endpoints, CallId, UnbridgedOnly, Call) ->
       ,{<<"Endpoints">>, Endpoints}
       ,{<<"Existing-Call-ID">>, CallId}
       ,{<<"Intercept-Unbridged-Only">>, UnbridgedOnly}
-      ,{<<"Outbound-Call-ID">>, <<(kz_util:rand_hex_binary(18))/binary, "-intercept">>}
+      ,{<<"Outbound-Call-ID">>, <<(kz_binary:rand_hex(18))/binary, "-intercept">>}
       ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
       ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
       ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}

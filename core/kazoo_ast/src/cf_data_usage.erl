@@ -30,7 +30,7 @@ to_schema_doc(M) ->
     to_schema_doc(M, process(M)).
 
 to_schema_doc(M, Usage) ->
-    <<"cf_", Base/binary>> = kz_util:to_binary(M),
+    <<"cf_", Base/binary>> = kz_term:to_binary(M),
     Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
     kz_ast_util:ensure_file_exists(Schema),
     update_schema(Base, Schema, Usage).

@@ -146,7 +146,7 @@ billing(Context, _, [{<<"phone_numbers">>, _}|_]) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 billing(Context, _Verb, _Nouns) ->
     Context.
@@ -355,7 +355,7 @@ identify(Context, Number) ->
                                        ,Context
              );
         {'error', E} ->
-            set_response({kz_util:to_binary(E), <<>>}, Number, Context);
+            set_response({kz_term:to_binary(E), <<>>}, Number, Context);
         {'ok', AccountId, Options} ->
             JObj = kz_json:set_values([{<<"account_id">>, AccountId}
                                       ,{<<"number">>, knm_number_options:number(Options)}
@@ -390,7 +390,7 @@ find_numbers(Context) ->
     AccountId = cb_context:auth_account_id(Context),
     QS = cb_context:query_string(Context),
     Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
-    Prefix = kz_util:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
+    Prefix = kz_binary:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
     Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
     Token = cb_context:auth_token(Context),
     HashKey = <<AccountId/binary, "-", Token/binary>>,
@@ -481,7 +481,7 @@ set_response({'error', Data}, _, Context) ->
             crossbar_util:response_400(<<"client error">>, Data, Context)
     end;
 set_response({Error, Reason}, _, Context) ->
-    crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context);
+    crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
 set_response(_Else, _, Context) ->
     lager:debug("unexpected response: ~p", [_Else]),
     cb_context:add_system_error('unspecified_fault', Context).

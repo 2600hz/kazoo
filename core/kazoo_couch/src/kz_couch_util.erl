@@ -59,7 +59,7 @@ retry504s(Fun, Cnt) ->
             retry504s(Fun, Cnt+1);
         {'error', {'ok', ErrCode, _Hdrs, _Body}} ->
             kazoo_stats:increment_counter(<<"bigcouch-other-error">>),
-            {'error', kz_util:to_integer(ErrCode)};
+            {'error', kz_term:to_integer(ErrCode)};
 %%% couchbeam doesn't pass 202 as acceptable
         {'error', {'bad_response',{202, _Headers, Body}}} ->
             {'ok', kz_json:decode(Body)};
@@ -123,7 +123,7 @@ convert_options(Options) ->
 
 convert_option({K, V} = KV) ->
     case lists:member(K, ?ATOM_OPTIONS) of
-        'true' -> {K, kz_util:to_atom(V, 'true')};
+        'true' -> {K, kz_term:to_atom(V, 'true')};
         'false' when is_map(V) -> {K, maps:to_list(V)};
         'false' -> KV
     end.
@@ -170,7 +170,7 @@ connect(#kz_couch_connection{host=Host
                ,options => Options
                },
     Opts = [{'connection_map', ConnMap} | maybe_add_auth(User, Pass, check_options(Options))],
-    Conn = couchbeam:server_connection(kz_util:to_list(Host), Port, "", Opts),
+    Conn = couchbeam:server_connection(kz_term:to_list(Host), Port, "", Opts),
     lager:debug("new connection to host ~s:~b, testing: ~p", [Host, Port, Conn]),
     case connection_info(Conn) of
         {'ok', Server} ->
@@ -267,7 +267,7 @@ maybe_add_rev(#db{name=_Name}=Db, DocId, Options) ->
                           ne_binary() |
                           couchbeam_error().
 do_fetch_rev(#db{}=Db, DocId) ->
-    case kz_util:is_empty(DocId) of
+    case kz_term:is_empty(DocId) of
         'true' -> {'error', 'empty_doc_id'};
         'false' -> ?RETRY_504(couchbeam:lookup_doc_rev(Db, DocId))
     end.
@@ -293,7 +293,7 @@ start_compactor(#{options := Options
     AdminUser = props:get_value('admin_username', Options, User),
     AdminPass = props:get_value('admin_password', Options, Pass),
     AdminOptions = maybe_add_auth(AdminUser, AdminPass, props:delete('basic_auth', Opts)),
-    AdminConn = couchbeam:server_connection(kz_util:to_list(Host), AdminPort, "", AdminOptions),
+    AdminConn = couchbeam:server_connection(kz_term:to_list(Host), AdminPort, "", AdminOptions),
     Compact = props:is_defined('compact_automatically', Options),
     case connection_info(AdminConn) of
         {'ok', AdminServer} ->
@@ -302,8 +302,8 @@ start_compactor(#{options := Options
             {'ok', NodeAdminPort} = couchbeam:get_config(AdminServer, <<"httpd">>, <<"port">>),
             NewServerOpts = props:set_values(
                               [{'admin_connection', AdminServer}
-                              ,{'node_ports', {kz_util:to_integer(NodeUserPort)
-                                              ,kz_util:to_integer(NodeAdminPort)
+                              ,{'node_ports', {kz_term:to_integer(NodeUserPort)
+                                              ,kz_term:to_integer(NodeAdminPort)
                                               }
                                }
                               ], Opts),

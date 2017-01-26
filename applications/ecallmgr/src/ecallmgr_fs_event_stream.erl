@@ -65,7 +65,7 @@ start_link(Node, Bindings, Subclasses) ->
 -spec init([atom() | bindings()]) -> {'ok', state()} | {'stop', any()}.
 init([Node, Bindings, Subclasses]) ->
     process_flag('trap_exit', 'true'),
-    kz_util:put_callid(list_to_binary([kz_util:to_binary(Node), <<"-eventstream">>])),
+    kz_util:put_callid(list_to_binary([kz_term:to_binary(Node), <<"-eventstream">>])),
     request_event_stream(#state{node=Node
                                ,bindings=Bindings
                                ,subclasses=Subclasses
@@ -204,7 +204,7 @@ handle_fs_props(UUID, Props, Node, SwitchURI, SwitchURL) ->
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     EventProps = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                         ,{<<"Switch-URI">>, SwitchURI}
-                                        ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+                                        ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
                                         ]
                                        )
         ++ Props ,
@@ -255,11 +255,11 @@ request_event_stream(#state{node=Node}=State) ->
         {'ok', {IP, Port}} ->
             {'ok', IPAddress} = inet_parse:address(IP),
             gen_server:cast(self(), 'connect'),
-            kz_util:put_callid(list_to_binary([kz_util:to_binary(Node)
-                                              ,$-, kz_util:to_binary(IP)
-                                              ,$:, kz_util:to_binary(Port)
+            kz_util:put_callid(list_to_binary([kz_term:to_binary(Node)
+                                              ,$-, kz_term:to_binary(IP)
+                                              ,$:, kz_term:to_binary(Port)
                                               ])),
-            {'ok', State#state{ip=IPAddress, port=kz_util:to_integer(Port)}};
+            {'ok', State#state{ip=IPAddress, port=kz_term:to_integer(Port)}};
         {'EXIT', ExitReason} ->
             {'stop', {'shutdown', ExitReason}};
         {'error', ErrorReason} ->
@@ -283,7 +283,7 @@ get_event_bindings(#state{bindings='undefined'
     ['HEARTBEAT' | Acc];
 get_event_bindings(#state{subclasses=Subclasses}=State, Acc) when is_list(Subclasses) ->
     get_event_bindings(State#state{subclasses='undefined'}
-                      ,[kz_util:to_atom(Subclass, 'true') || Subclass <- Subclasses] ++ Acc
+                      ,[kz_term:to_atom(Subclass, 'true') || Subclass <- Subclasses] ++ Acc
                       );
 get_event_bindings(#state{subclasses=Subclass}=State, Acc)
   when is_atom(Subclass),
@@ -291,11 +291,11 @@ get_event_bindings(#state{subclasses=Subclass}=State, Acc)
     get_event_bindings(State#state{subclasses='undefined'}, [Subclass | Acc]);
 get_event_bindings(#state{subclasses=Subclass}=State, Acc) when is_binary(Subclass) ->
     get_event_bindings(State#state{subclasses='undefined'}
-                      ,[kz_util:to_atom(Subclass, 'true') | Acc]
+                      ,[kz_term:to_atom(Subclass, 'true') | Acc]
                       );
 get_event_bindings(#state{bindings=Bindings}=State, Acc) when is_list(Bindings) ->
     get_event_bindings(State#state{bindings='undefined'}
-                      ,[kz_util:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc
+                      ,[kz_term:to_atom(Binding, 'true') || Binding <- Bindings] ++ Acc
                       );
 get_event_bindings(#state{bindings=Binding}=State, Acc)
   when is_atom(Binding),
@@ -303,7 +303,7 @@ get_event_bindings(#state{bindings=Binding}=State, Acc)
     get_event_bindings(State#state{bindings='undefined'}, [Binding | Acc]);
 get_event_bindings(#state{bindings=Binding}=State, Acc) when is_binary(Binding) ->
     get_event_bindings(State#state{bindings='undefined'}
-                      ,[kz_util:to_atom(Binding, 'true') | Acc]
+                      ,[kz_term:to_atom(Binding, 'true') | Acc]
                       ).
 
 -spec maybe_bind(atom(), atoms()) ->
@@ -467,7 +467,7 @@ maybe_send_event(<<"CHANNEL_DESTROY">> = EventName, UUID, Props, Node) ->
     end;
 maybe_send_event(EventName, UUID, Props, Node) ->
     kz_util:put_callid(UUID),
-    case kz_util:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
+    case kz_term:is_true(props:get_value(<<"variable_channel_is_moving">>, Props)) of
         'true' -> 'ok';
         'false' ->
             send_event(EventName, UUID, Props, Node)

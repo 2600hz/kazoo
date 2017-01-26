@@ -23,7 +23,7 @@ migrate(Account) when is_binary(Account) ->
         {'error', _R}=Error -> Error;
         {'ok', JObj} ->
             CurrentApps = kzd_apps_store:apps(JObj),
-            case kz_util:is_empty(CurrentApps) of
+            case kz_term:is_empty(CurrentApps) of
                 'true' -> {'error', 'migrated'};
                 'false' ->
                     Doc = kzd_apps_store:new(Account),

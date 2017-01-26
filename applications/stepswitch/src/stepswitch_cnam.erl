@@ -135,7 +135,7 @@ flush_entries(_, _) -> 'false'.
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    TemplateName = kz_util:to_atom(kz_datamgr:get_uuid(), 'true'),
+    TemplateName = kz_term:to_atom(kz_datamgr:get_uuid(), 'true'),
     {'ok', TemplateName}.
 
 %%--------------------------------------------------------------------
@@ -264,7 +264,7 @@ normalize_proplist_element(Else) ->
 
 -spec normalize_value(binary()) -> binary().
 normalize_value(Value) ->
-    binary:replace(kz_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
+    binary:replace(kz_term:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
 -spec cache_key(ne_binary()) -> {'cnam', ne_binary()}.
 cache_key(Number) -> ?CACHE_KEY(Number).
@@ -289,7 +289,7 @@ make_request(Number, JObj) ->
 
 -spec request(ne_binary(), kz_json:object()) -> api_binary().
 request(Number, JObj) ->
-    Url = kz_util:to_list(get_http_url(JObj)),
+    Url = kz_term:to_list(get_http_url(JObj)),
     case kz_http:req(get_http_method()
                     ,Url
                     ,get_http_headers()
@@ -305,7 +305,7 @@ request(Number, JObj) ->
             'undefined';
         {'ok', Status, _, ResponseBody} when size(ResponseBody) > 18 ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
-            kz_util:truncate_right_binary(ResponseBody, 18);
+            kz_binary:truncate_right(ResponseBody, 18);
         {'ok', Status, _, ResponseBody} ->
             lager:debug("cnam lookup for ~s returned ~p: ~s", [Number, Status, ResponseBody]),
             ResponseBody;
@@ -334,7 +334,7 @@ get_http_url(JObj) ->
 -spec get_http_body(kz_json:object()) -> list().
 get_http_body(JObj) ->
     Template = kapps_config:get_binary(?CONFIG_CAT, <<"http_body">>, ?DEFAULT_CONTENT),
-    case kz_util:is_empty(Template) of
+    case kz_term:is_empty(Template) of
         'true' -> [];
         'false' ->
             {'ok', Body} = render(JObj, Template),
@@ -366,8 +366,8 @@ maybe_enable_ssl(_Url, Props) -> Props.
 maybe_enable_auth(Props) ->
     Username = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_username">>, <<>>),
     Password = kapps_config:get_string(?CONFIG_CAT, <<"http_basic_auth_password">>, <<>>),
-    case kz_util:is_empty(Username)
-        orelse kz_util:is_empty(Password)
+    case kz_term:is_empty(Username)
+        orelse kz_term:is_empty(Password)
     of
         'true' -> Props;
         'false' -> [basic_auth(Username, Password) | Props]

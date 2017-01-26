@@ -156,7 +156,7 @@ generate_numbers(?MATCH_ACCOUNT_RAW(AccountId), Number, Quantity)
   when Quantity > 0
        andalso is_integer(Number)
        andalso is_integer(Quantity) ->
-    {'ok', _JObj} = save_doc(AccountId, <<"+",(kz_util:to_binary(Number))/binary>>),
+    {'ok', _JObj} = save_doc(AccountId, <<"+",(kz_term:to_binary(Number))/binary>>),
     generate_numbers(AccountId, Number+1, Quantity-1).
 
 -spec import_numbers(ne_binary(), ne_binaries()) -> kz_json:object().
@@ -204,7 +204,7 @@ save_doc(JObj) ->
 update_doc(Number, UpdateProps) ->
     PhoneNumber = knm_number:phone_number(Number),
     Num = knm_phone_number:number(PhoneNumber),
-    case kz_datamgr:update_doc(?KZ_MANAGED, Num, [{?PVT_MODULE_NAME, kz_util:to_binary(?MODULE)}
+    case kz_datamgr:update_doc(?KZ_MANAGED, Num, [{?PVT_MODULE_NAME, kz_term:to_binary(?MODULE)}
                                                   | UpdateProps
                                                  ])
     of

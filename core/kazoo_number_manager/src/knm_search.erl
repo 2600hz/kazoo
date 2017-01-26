@@ -113,7 +113,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
-    {'ok', #{node => kz_util:to_binary(node())
+    {'ok', #{node => kz_term:to_binary(node())
             ,cache => ets:new(?ETS_DISCOVERY_CACHE, ?ETS_DISCOVERY_CACHE_OPTIONS)
             }, ?POLLING_INTERVAL}.
 
@@ -341,7 +341,7 @@ next(Options) ->
 -spec create_discovery(ne_binary(), module(), kz_json:object(), knm_carriers:options()) -> knm_number:knm_number().
 create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
     Options = [{'state', ?NUMBER_STATE_DISCOVERY}
-              ,{'module_name', kz_util:to_binary(Carrier)}
+              ,{'module_name', kz_term:to_binary(Carrier)}
                | Options0
               ],
     {'ok', PhoneNumber} =

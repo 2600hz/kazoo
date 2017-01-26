@@ -38,14 +38,14 @@ current_subscriptions() ->
 current_subscriptions(Realm) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
-        omnip_subscriptions:search_for_subscriptions('_', kz_util:to_binary(Realm))
+        omnip_subscriptions:search_for_subscriptions('_', kz_term:to_binary(Realm))
        )).
 
 current_subscriptions(Realm, User) ->
     print_subscriptions(
       omnip_subscriptions:subscriptions_to_json(
         omnip_subscriptions:search_for_subscriptions(
-          '_', kz_util:to_binary(Realm), kz_util:to_binary(User)
+          '_', kz_term:to_binary(Realm), kz_term:to_binary(User)
          ))).
 
 print_subscriptions([]) ->
@@ -65,7 +65,7 @@ print_subscription(JObj, Now) ->
     io:format(?SUBSCRIPTION_FORMAT_STR
              ,[[kz_json:get_value(<<"username">>, JObj), "@", kz_json:get_value(<<"realm">>, JObj)]
               ,kz_json:get_value(<<"from">>, JObj)
-              ,kz_util:to_binary(ExpiresIn)
+              ,kz_term:to_binary(ExpiresIn)
               ,kz_json:get_value(<<"event">>, JObj)
               ]).
 
@@ -94,13 +94,13 @@ subscribe(Realm, User) ->
 
 -spec send_mwi_update(ne_binary(), ne_binary() | integer(), ne_binary() | integer() ) -> 'ok'.
 send_mwi_update(User, New, Saved) when is_binary(New) ->
-    send_mwi_update(User, kz_util:to_integer(New), Saved);
+    send_mwi_update(User, kz_term:to_integer(New), Saved);
 send_mwi_update(User, New, Saved) when is_binary(Saved) ->
-    send_mwi_update(User, New, kz_util:to_integer(Saved));
+    send_mwi_update(User, New, kz_term:to_integer(Saved));
 send_mwi_update(User, New, Saved) ->
     Command = [{<<"Messages-New">>, New}
               ,{<<"Messages-Saved">>, Saved}
-              ,{<<"Call-ID">>, kz_util:rand_hex_binary(16) }
+              ,{<<"Call-ID">>, kz_binary:rand_hex(16) }
               ,{<<"To">>, User}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],

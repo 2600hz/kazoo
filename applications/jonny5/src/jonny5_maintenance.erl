@@ -107,7 +107,7 @@ authz_details_duration(Key, Props, Timestamp) ->
     case props:get_integer_value(Key, Props) of
         'undefined' -> "0s";
         Created ->
-            [kz_util:to_list(Timestamp - Created), "s"]
+            [kz_term:to_list(Timestamp - Created), "s"]
     end.
 
 -spec limits_summary() -> 'no_return'.
@@ -163,7 +163,7 @@ limits_summary_prepay(Limit) ->
         'false' -> "disabled";
         'true' ->
             AccountId = j5_limits:account_id(Limit),
-            kz_util:to_list(
+            kz_term:to_list(
               wht_util:units_to_dollars(
                 wht_util:current_balance(AccountId)
                )
@@ -175,7 +175,7 @@ limits_summary_postpay(Limit) ->
     case j5_limits:allow_postpay(Limit) of
         'false' -> "disabled";
         'true' ->
-            kz_util:to_list(
+            kz_term:to_list(
               wht_util:units_to_dollars(
                 j5_limits:max_postpay(Limit)
                )
@@ -192,7 +192,7 @@ limit_summary_header() ->
 
 -spec limits_details(atom() | string() | ne_binary()) -> 'no_return'.
 limits_details(Account) when not is_binary(Account) ->
-    limits_details(kz_util:to_binary(Account));
+    limits_details(kz_term:to_binary(Account));
 limits_details(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Props = j5_limits:to_props(j5_limits:get(AccountId)),

@@ -416,7 +416,7 @@ handle_call_start_task(Task=#{id := TaskId
         Pid ->
             Task1 = Task#{started => kz_util:current_tstamp()
                          ,worker_pid => Pid
-                         ,worker_node => kz_util:to_binary(node())
+                         ,worker_node => kz_term:to_binary(node())
                          },
             {'ok', JObj} = update_task(Task1),
             State1 = add_task(Task1, State),

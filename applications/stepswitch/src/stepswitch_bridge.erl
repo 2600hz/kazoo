@@ -207,7 +207,7 @@ handle_event(JObj, #state{request_handler=RequestHandler
         {<<"error">>, _, _} ->
             <<"bridge">> = kz_json:get_value([<<"Request">>, <<"Application-Name">>], JObj),
             lager:debug("channel execution error while waiting for bridge: ~s"
-                       ,[kz_util:to_binary(kz_json:encode(JObj))]
+                       ,[kz_term:to_binary(kz_json:encode(JObj))]
                        ),
             gen_listener:cast(RequestHandler, {'bridge_result', bridge_error(JObj, OffnetReq)});
         {<<"call_event">>, <<"CHANNEL_TRANSFEROR">>, _} ->
@@ -516,7 +516,7 @@ bridge_timeout(OffnetReq) ->
 
 -spec bridge_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 bridge_error(JObj, OffnetReq) ->
-    lager:debug("error during outbound request: ~s", [kz_util:to_binary(kz_json:encode(JObj))]),
+    lager:debug("error during outbound request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}

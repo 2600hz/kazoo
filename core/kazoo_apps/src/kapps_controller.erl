@@ -49,7 +49,7 @@ start_app(App) when is_atom(App) ->
             E
     end;
 start_app(App) ->
-    start_app(kz_util:to_atom(App, 'true')).
+    start_app(kz_term:to_atom(App, 'true')).
 
 -spec stop_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 stop_app(App) when is_atom(App) ->
@@ -64,7 +64,7 @@ stop_app(App) when is_atom(App) ->
             Err
     end;
 stop_app(App) ->
-    stop_app(kz_util:to_atom(App)).
+    stop_app(kz_term:to_atom(App)).
 
 -spec restart_app(atom() | nonempty_string() | ne_binary()) -> 'ok' | {'error', any()}.
 restart_app(App) when is_atom(App) ->
@@ -72,7 +72,7 @@ restart_app(App) when is_atom(App) ->
     _ = stop_app(App),
     start_app(App);
 restart_app(App) ->
-    restart_app(kz_util:to_atom(App, 'true')).
+    restart_app(kz_term:to_atom(App, 'true')).
 
 -spec running_apps() -> atoms() | string().
 -spec running_apps(boolean()) -> atoms() | string().
@@ -80,7 +80,7 @@ running_apps() ->
     running_apps('false').
 
 running_apps(Verbose) ->
-    case kz_util:is_true(Verbose) of
+    case kz_term:is_true(Verbose) of
         'true' -> running_apps_verbose();
         'false' -> running_apps_list()
     end.
@@ -91,7 +91,7 @@ running_apps_verbose() ->
         [] -> "kapps have not started yet, check that rabbitmq and bigcouch/haproxy are running at the configured addresses";
         Resp ->
             lists:sort(
-              [kz_util:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
+              [kz_term:to_binary(io_lib:format("~s(~s): ~s~n", [App, Vsn, Desc]))
                || {App, Desc, Vsn} <- Resp
               ]
              )
@@ -116,7 +116,7 @@ initialize_kapps() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
         orelse kapps_maintenance:refresh(),
-    ToStart = [kz_util:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
+    ToStart = [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
     Started = [KApp || KApp <- lists:sort(fun sysconf_first/2, ToStart),
                        {'ok',_} <- [start_app(KApp)]
               ],
@@ -162,7 +162,7 @@ maybe_start_from_node_config() ->
         'undefined' -> 'false';
         KazooApps ->
             lager:info("starting applications configured specifically for this node: ~s"
-                      ,[kz_util:join_binary(KazooApps, <<", ">>)]),
+                      ,[kz_binary:join(KazooApps, <<", ">>)]),
             KazooApps
     end.
 
@@ -173,7 +173,7 @@ start_from_default_config() ->
 
 -spec kapp_from_node_name() -> atom().
 kapp_from_node_name() ->
-    kz_util:to_atom(hd(binary:split(kz_util:to_binary(node()), <<$@>>)), 'true').
+    kz_term:to_atom(hd(binary:split(kz_term:to_binary(node()), <<$@>>)), 'true').
 
 -spec sysconf_first(atom(), atom()) -> boolean().
 sysconf_first('sysconf', _) -> 'true';

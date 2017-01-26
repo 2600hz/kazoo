@@ -311,7 +311,7 @@ set_amount(Amount, Transaction) when Amount < 0 ->
                               ,pvt_type= <<"debit">>
                               };
 set_amount(Amount, Transaction) when is_binary(Amount) ->
-    set_amount(kz_util:to_integer(Amount), Transaction);
+    set_amount(kz_term:to_integer(Amount), Transaction);
 set_amount(Amount, Transaction) ->
     Transaction#kz_transaction{pvt_amount=Amount}.
 
@@ -657,9 +657,9 @@ prepare_call_transaction(#kz_transaction{call_id=CallId
                                         ,event=Event
                                         }=Transaction) ->
     Transaction#kz_transaction{id = <<CallId/binary, "-"
-                                      ,(kz_util:to_upper_binary(Event))/binary
+                                      ,(kz_term:to_upper_binary(Event))/binary
                                     >>
-                              ,event=kz_util:to_lower_binary(Event)
+                              ,event=kz_term:to_lower_binary(Event)
                               }.
 
 -spec prepare_feature_activation_transaction(transaction()) ->
@@ -744,8 +744,8 @@ create(Ledger, Amount, Type) ->
 -spec modb_doc_id() -> ne_binary().
 modb_doc_id() ->
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
-    <<(kz_util:to_binary(Year))/binary
+    <<(kz_term:to_binary(Year))/binary
       ,(kz_util:pad_month(Month))/binary
       ,"-"
-      ,(kz_util:rand_hex_binary(16))/binary
+      ,(kz_binary:rand_hex(16))/binary
     >>.

@@ -71,7 +71,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
     Headers = profile_authorization_headers(Token, AccessToken),
     URL = profile_url(Token),
     lager:debug("getting profile from ~s", [URL]),
-    case kz_http:get(kz_util:to_list(URL), Headers) of
+    case kz_http:get(kz_term:to_list(URL), Headers) of
         {'ok', 200, _RespHeaders, RespXML} ->
             Token#{profile => kz_json:decode(RespXML)};
         {'ok', 401, _RespHeaders, _RespXML} ->
@@ -109,7 +109,7 @@ profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
 profile_authorization_headers(Provider, AccessToken) ->
     case profile_authorization(Provider, AccessToken) of
         <<>> -> [];
-        Authorization -> [{"Authorization",kz_util:to_list(Authorization)}]
+        Authorization -> [{"Authorization",kz_term:to_list(Authorization)}]
     end.
 
 -spec profile_url(map()) -> binary().
@@ -203,11 +203,11 @@ ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
             case Missing -- kz_json:get_keys(Doc) of
                 [] -> do_update_user(DocId, Props, Token);
                 _StillMissing ->
-                    lager:debug("missing properties when updating user : ~p", [kz_util:join_binary(_StillMissing)]),
+                    lager:debug("missing properties when updating user : ~p", [kz_binary:join(_StillMissing)]),
                     Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
             end;
         _ ->
-            lager:debug("missing properties when updating user : ~p", [kz_util:join_binary(Missing)]),
+            lager:debug("missing properties when updating user : ~p", [kz_binary:join(Missing)]),
             Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
     end.
 
@@ -261,7 +261,7 @@ maybe_required_properties_missing(#{auth_provider := #{profile_required_props :=
                                      ,user_map => kz_json:to_map(JObj)
                                      }, kz_doc:id(JObj));
         Missing ->
-            lager:debug("missing properties when checking user : ~p", [kz_util:join_binary(Missing)]),
+            lager:debug("missing properties when checking user : ~p", [kz_binary:join(Missing)]),
             Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
     end;
 maybe_required_properties_missing(Token, _Props, JObj) ->
@@ -304,7 +304,7 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
     MapFields = maps:fold(fun(K, V, Acc) ->
                                   case kz_json:get_value(V, Profile) of
                                       'undefined' -> Acc;
-                                      Value -> [{kz_util:to_binary(K), Value} | Acc]
+                                      Value -> [{kz_term:to_binary(K), Value} | Acc]
                                   end
                           end, [], Mapping),
 

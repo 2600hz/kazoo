@@ -143,7 +143,7 @@ check_failures(Failures) ->
 
 -spec check_failure(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
 check_failure(AccountId, HookId, Count) ->
-    try kz_util:to_integer(kapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
+    try kz_term:to_integer(kapps_account_config:get_global(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, 6)) of
         N when N =< Count ->
             disable_hook(AccountId, HookId);
         _ -> 'ok'

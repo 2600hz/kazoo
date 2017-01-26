@@ -43,7 +43,7 @@ print_receipt({{'receipt', Receipt}
                              }}
              ,Count
              ) ->
-    io:format(?RECEIPT_FORMAT, [kz_util:to_binary(Count)
+    io:format(?RECEIPT_FORMAT, [kz_term:to_binary(Count)
                                ,CallId
                                ,receipt_for_printing(Receipt)
                                ,convert_for_printing(To)
@@ -54,7 +54,7 @@ print_receipt({{'receipt', Receipt}
 
 -spec convert_for_printing(ne_binary() | ne_binaries()) -> ne_binary().
 convert_for_printing(<<_/binary>>=V) -> V;
-convert_for_printing([_|_]=Vs) -> kz_util:join_binary(Vs, <<",">>).
+convert_for_printing([_|_]=Vs) -> kz_binary:join(Vs, <<",">>).
 
 -spec receipt_for_printing(ne_binary()) -> ne_binary().
 receipt_for_printing(Receipt) ->
@@ -69,7 +69,7 @@ receipt_for_printing(Receipt) ->
     end.
 
 default_receipt_printing(Receipt) ->
-    kz_util:strip_binary(Receipt, [$\n, $\r]).
+    kz_binary:strip(Receipt, [$\n, $\r]).
 
 -spec restore_system_templates() -> ok.
 restore_system_templates() ->
@@ -87,7 +87,7 @@ restore_system_template(TemplateId) ->
     {'ok', _Deleted} = kz_datamgr:del_doc(?KZ_CONFIG_DB, TemplateDoc),
     io:format("  deleted ~s~n", [TemplateId]),
 
-    Mod = kz_util:to_atom(<<"teletype_", ModId/binary>>, 'true'),
+    Mod = kz_term:to_atom(<<"teletype_", ModId/binary>>, 'true'),
     io:format("  re-initializing template ~s~n", [ModId]),
     catch(Mod:init()),
     io:format("  finished~n").

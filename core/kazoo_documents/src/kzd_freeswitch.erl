@@ -177,7 +177,7 @@ is_consuming_global_resource(Props) ->
     is_consuming_global_resource(Props, 'undefined').
 
 is_consuming_global_resource(Props, Default) ->
-    kz_util:is_true(ccv(Props, <<"Global-Resource">>, Default)).
+    kz_term:is_true(ccv(Props, <<"Global-Resource">>, Default)).
 
 -spec resource_id(data()) -> api_binary().
 resource_id(Props) ->

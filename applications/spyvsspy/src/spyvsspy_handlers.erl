@@ -24,7 +24,7 @@ handle_eavesdrop_req(JObj, _Props) ->
                       )
     of
         {'ok', EPs} -> send_eavesdrop(JObj, EPs, AccountId);
-        {'error', E} -> respond_error(JObj, kz_util:to_binary(E))
+        {'error', E} -> respond_error(JObj, kz_term:to_binary(E))
     end.
 
 -spec get_endpoints(ne_binary(), ne_binary()) ->
@@ -61,7 +61,7 @@ send_eavesdrop(JObj, EPs, AccountId) ->
     {CallerIdName, CallerIdNumber} = find_caller_id(JObj),
 
     Prop = props:filter_undefined(
-             [{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+             [{<<"Msg-ID">>, kz_binary:rand_hex(6)}
              ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
              ,{<<"Timeout">>, Timeout}
              ,{<<"Endpoints">>, [kz_json:set_values([{<<"Endpoint-Timeout">>, Timeout}

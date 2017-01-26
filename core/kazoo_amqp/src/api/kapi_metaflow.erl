@@ -337,4 +337,4 @@ binding_v(JObj) -> binding_v(kz_json:to_proplist(JObj)).
 
 -spec binding_digit_timeout_v(any()) -> boolean().
 binding_digit_timeout_v(X) ->
-    is_integer(kz_util:to_integer(X)).
+    is_integer(kz_term:to_integer(X)).

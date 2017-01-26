@@ -231,7 +231,7 @@ encode_call_id(JObj) ->
 
 -spec handle_hook_event(ne_binary(), ne_binary(), kz_json:object()) -> any().
 handle_hook_event(AccountId, EventType, JObj) ->
-    RK = kz_util:join_binary([<<"call">>
+    RK = kz_binary:join([<<"call">>
                              ,AccountId
                              ,EventType
                              ,encode_call_id(JObj)

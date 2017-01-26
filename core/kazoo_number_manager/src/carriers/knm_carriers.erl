@@ -73,7 +73,7 @@ options_to_jobj(Options) ->
     lists:foldl(fun option_to_kv/2, kz_json:new(), Options).
 
 option_to_kv({K, V}, JObj) ->
-    kz_json:set_value(kz_util:to_binary(K), V, JObj).
+    kz_json:set_value(kz_term:to_binary(K), V, JObj).
 
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).

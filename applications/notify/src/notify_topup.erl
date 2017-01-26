@@ -77,7 +77,7 @@ create_template_props(_, AccountJObj) ->
 %%--------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> ne_binary().
 pretty_print_dollars(Amount) ->
-    kz_util:to_binary(io_lib:format("$~.2f", [Amount])).
+    kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @private

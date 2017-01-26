@@ -49,7 +49,7 @@ maybe_collect_conference_id(Call, Srv, DiscoveryJObj) ->
     case kz_json:get_value(<<"Conference-Doc">>, DiscoveryJObj) of
         'undefined' -> collect_conference_id(Call, Srv, DiscoveryJObj);
         Doc ->
-            N = kz_json:get_value(<<"name">>, Doc, kz_util:rand_hex_binary(8)),
+            N = kz_json:get_value(<<"name">>, Doc, kz_binary:rand_hex(8)),
             lager:debug("conf doc (~s) set instead of conf id", [N]),
             Conference0 = kapps_conference:set_id(N, create_conference(Doc, <<"none">>, Call)),
             Conference = maybe_set_conference_tones(Conference0, DiscoveryJObj),  %% MAY remove this line
@@ -90,8 +90,8 @@ maybe_collect_conference_pin(Conference, Call, Srv) ->
 
 -spec maybe_collect_pin(kapps_conference:conference(), kapps_call:call(), pid()) -> 'ok'.
 maybe_collect_pin(Conference, Call, Srv) ->
-    case kz_util:is_empty(kapps_conference:moderator_pins(Conference))
-        andalso kz_util:is_empty(kapps_conference:member_pins(Conference))
+    case kz_term:is_empty(kapps_conference:moderator_pins(Conference))
+        andalso kz_term:is_empty(kapps_conference:member_pins(Conference))
     of
         'false' ->
             collect_conference_pin('undefined', Conference, Call, Srv);

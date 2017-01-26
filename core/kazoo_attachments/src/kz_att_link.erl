@@ -30,7 +30,7 @@ put_attachment(_Params, _DbName, _DocId, _AName, _Contents, Options) ->
               ]),
     case ?REQUIRED_PROPS -- props:get_keys(Props) of
         [] -> {'ok', [{'attachment', Props}]};
-        Missing -> {'error', <<"missing required : ", (kz_util:join_binary(Missing, <<",">>))/binary>>}
+        Missing -> {'error', <<"missing required : ", (kz_binary:join(Missing, <<",">>))/binary>>}
     end.
 
 

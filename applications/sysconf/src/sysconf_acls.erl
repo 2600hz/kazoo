@@ -125,7 +125,7 @@ resolve_hostname(Collector, ResolveMe, JObj, ACLBuilderFun) ->
             maybe_capture_ip(Collector, ResolveMe, JObj, ACLBuilderFun);
         IPs ->
             ACLBuilderFun(Collector, JObj, IPs),
-            lager:debug("resolved '~s' (~s) for ~p: '~s'", [StrippedHost, ResolveMe, Collector, kz_util:join_binary(IPs, <<"','">>)])
+            lager:debug("resolved '~s' (~s) for ~p: '~s'", [StrippedHost, ResolveMe, Collector, kz_binary:join(IPs, <<"','">>)])
     end.
 
 -spec maybe_capture_ip(pid(), ne_binary(), kz_json:object(), fun()) -> 'ok'.

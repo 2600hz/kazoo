@@ -59,7 +59,7 @@ unbind(App, Module, Function)
     end.
 
 routing_key(App) ->
-    <<"kz_nodes.request.", (kz_util:to_binary(App))/binary>>.
+    <<"kz_nodes.request.", (kz_term:to_binary(App))/binary>>.
 
 -spec request(atom()) -> kazoo_bindings:fold_results().
 request(App) when is_atom(App) ->

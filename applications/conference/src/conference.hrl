@@ -19,7 +19,7 @@
 -define(EXIT_TONE(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"exit_tone">>, ?DEFAULT_EXIT_TONE)).
 -define(MOD_EXIT_TONE(AccountId), kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"moderator_exit_tone">>, ?DEFAULT_EXIT_TONE)).
 
--define(SUPPORT_NAME_ANNOUNCEMENT(AccountId), kz_util:is_true(kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"support_name_announcement">>, 'true'))).
+-define(SUPPORT_NAME_ANNOUNCEMENT(AccountId), kz_term:is_true(kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"support_name_announcement">>, 'true'))).
 
 -define(DEFAULT_PROFILE_CONFIG, [{<<"rate">>, 8000}
                                 ,{<<"caller-controls">>, <<"default">>}

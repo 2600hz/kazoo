@@ -829,7 +829,7 @@ migrate_template_attachment(MasterAccountDb, Id, AName, AMeta, Context) ->
         {'ok', Bin} ->
             ContentType = kz_json:get_value(<<"content_type">>, AMeta),
             lager:debug("saving attachment for ~s(~s): ~s", [Id, AName, ContentType]),
-            Opts = [{'content_type', kz_util:to_list(ContentType)}],
+            Opts = [{'content_type', kz_term:to_list(ContentType)}],
             crossbar_doc:save_attachment(Id
                                         ,attachment_name_by_content_type(ContentType)
                                         ,Bin
@@ -942,7 +942,7 @@ update_template(Context, Id, FileJObj) ->
     CT = kz_json:get_value([<<"headers">>, <<"content_type">>], FileJObj),
     lager:debug("file content type for ~s: ~s", [DbId, CT]),
 
-    Opts = [{'content_type', kz_util:to_list(CT)}],
+    Opts = [{'content_type', kz_term:to_list(CT)}],
 
     case kz_template:compile(Contents, template_module_name(Id, Context, CT)) of
         {'ok', _} ->
@@ -970,7 +970,7 @@ attachment_name_by_media_type(CT) ->
 template_module_name(Id, Context, CT) ->
     AccountId = cb_context:account_db(Context),
     [_C, Type] = binary:split(CT, <<"/">>),
-    kz_util:to_atom(
+    kz_term:to_atom(
       <<AccountId/binary
         ,"_"
         ,Id/binary
@@ -1247,8 +1247,8 @@ leak_attachments_fold(_Attachment, Props, Acc) ->
 
 -spec load_smtp_log_doc(ne_binary(), cb_context:context()) -> cb_context:context().
 load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     crossbar_doc:load(Id
                      ,cb_context:set_account_modb(Context, Year, Month)
                      ,?TYPE_CHECK_OPTION(?PVT_TYPE_SMTPLOG)).

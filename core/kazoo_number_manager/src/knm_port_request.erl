@@ -426,9 +426,9 @@ maybe_send_request(JObj, Url)->
 -spec send_request(kz_json:object(), ne_binary()) -> 'error' | 'ok'.
 send_request(JObj, Url) ->
     Headers = [{"Content-Type", "application/json"}
-              ,{"User-Agent", kz_util:to_list(node())}
+              ,{"User-Agent", kz_term:to_list(node())}
               ],
-    Uri = kz_util:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
+    Uri = kz_term:to_list(<<Url/binary, "/", (kz_doc:id(JObj))/binary>>),
     Remove = [?PVT_REV
              ,<<"ui_metadata">>
              ,<<"_attachments">>
@@ -494,10 +494,10 @@ fetch_and_send(Url, JObj) ->
                              'error' | 'ok'.
 send_attachment(Url, Id, Name, Options, Attachment) ->
     ContentType = kz_json:get_value(<<"content_type">>, Options),
-    Headers = [{"Content-Type", kz_util:to_list(ContentType)}
-              ,{"User-Agent", kz_util:to_list(node())}
+    Headers = [{"Content-Type", kz_term:to_list(ContentType)}
+              ,{"User-Agent", kz_term:to_list(node())}
               ],
-    Uri = kz_util:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
+    Uri = kz_term:to_list(<<Url/binary, "/", Id/binary, "/", Name/binary>>),
     case kz_http:post(Uri, Headers, Attachment) of
         {'ok', 200, _Headers, _Resp} ->
             lager:debug("attachment ~s for submitted_port_request successfully sent", [Name]);

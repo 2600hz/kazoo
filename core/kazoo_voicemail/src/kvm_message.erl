@@ -250,7 +250,7 @@ copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
 copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
     case fetch(AccountId, Id, OldBoxId) of
         {'error', Error} ->
-            Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
+            Failed = kz_json:from_list([{Id, kz_term:to_binary(Error)}]),
             kz_json:from_list([{<<"failed">>, [Failed]}]);
         {'ok', JObj} ->
             Results = copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, dict:new()),
@@ -276,7 +276,7 @@ copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], CopiedDict) ->
                             NewId = kz_doc:id(CopiedJObj),
                             dict:append(<<"succeeded">>, NewId, CopiedDict);
                         {'error', R} ->
-                            Failed = kz_json:from_list([{Id, kz_util:to_binary(R)}]),
+                            Failed = kz_json:from_list([{Id, kz_term:to_binary(R)}]),
                             dict:append(<<"failed">>, Failed, CopiedDict)
                     end,
     copy_to_vmboxes(AccountId, JObj, OldBoxId, NBIds, NewCopiedDict).
@@ -288,10 +288,10 @@ do_copy(AccountId, JObj, Funs) ->
     FromDb = kazoo_modb:get_modb(AccountId, Year, Month),
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId),
-    ToId = <<(kz_util:to_binary(Year))/binary
+    ToId = <<(kz_term:to_binary(Year))/binary
              ,(kz_util:pad_month(Month))/binary
              ,"-"
-             ,(kz_util:rand_hex_binary(16))/binary
+             ,(kz_binary:rand_hex(16))/binary
            >>,
 
     TransformFuns = [fun(DestDoc) -> kzd_box_message:update_media_id(ToId, DestDoc) end
@@ -416,7 +416,7 @@ store_recording(AttachmentName, Url, Call, MessageId) ->
 check_attachment_exists(Call, MessageId) ->
     case fetch(kapps_call:account_id(Call), MessageId) of
         {'ok', JObj} ->
-            case kz_util:is_empty(kz_doc:attachments(JObj)) of
+            case kz_term:is_empty(kz_doc:attachments(JObj)) of
                 'true' ->
                     {'error', Call};
                 'false' ->
@@ -488,13 +488,13 @@ prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     {'ok', OrigPath} = write_attachment_to_file(AccountId, OrigMsgId),
     {'ok', OrigSampleRate} = kz_media_util:detect_file_sample_rate(OrigPath),
 
-    TonePath = kz_util:join_binary([<<"/tmp/">>, <<(kz_util:rand_hex_binary(16))/binary, ".wav">>], <<>>),
+    TonePath = kz_binary:join([<<"/tmp/">>, <<(kz_binary:rand_hex(16))/binary, ".wav">>], <<>>),
     kz_media_util:synthesize_tone(OrigSampleRate, <<"440">>, <<"0.5">>, TonePath),
 
     lager:debug("joining prepend to original message"),
     case kz_media_util:join_media_files([TmpPath, TonePath, OrigPath], [{sample_rate, OrigSampleRate}]) of
         {'ok', FileContents} ->
-            JoinFilename = <<(kz_util:rand_hex_binary(16))/binary, ".mp3">>,
+            JoinFilename = <<(kz_binary:rand_hex(16))/binary, ".mp3">>,
             _ = [kz_util:delete_file(F) || F <- [TmpPath, OrigPath, TonePath]],
             %%TODO: update forwarded doc with lenght and media_filename
             kz_datamgr:put_attachment(kvm_util:get_db(AccountId, ForwardId), ForwardId, JoinFilename, FileContents);
@@ -517,7 +517,7 @@ write_attachment_to_file(AccountId, MessageId) ->
 write_attachment_to_file(AccountId, MessageId, [AttachmentId]) ->
     Db = kvm_util:get_db(AccountId, MessageId),
     {'ok', AttachmentBin} = kz_datamgr:fetch_attachment(Db, MessageId, AttachmentId),
-    FilePath = kz_util:join_binary([<<"/tmp/_">>, AttachmentId], <<>>),
+    FilePath = kz_binary:join([<<"/tmp/_">>, AttachmentId], <<>>),
     kz_util:write_file(FilePath, AttachmentBin, ['write', 'binary']),
     {'ok', FilePath}.
 

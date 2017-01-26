@@ -79,7 +79,7 @@ continuous(Srv) -> gen_server:call(Srv, 'continuous').
 -spec init(list()) -> {'ok', state()} |
                       {'stop', any()}.
 init([Db, Id, Attachment, CallId]) ->
-    case kz_util:is_empty(CallId) of
+    case kz_term:is_empty(CallId) of
         'true' -> kz_util:put_callid(?LOG_SYSTEM_ID);
         'false' -> kz_util:put_callid(CallId)
     end,

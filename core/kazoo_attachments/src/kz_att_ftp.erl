@@ -27,7 +27,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Fields = maps:get('field_list', Params, default_format()),
     FieldSeparator = maps:get('field_separator', Params, <<"/">>),
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
-    BaseUrl = kz_util:strip_right_binary(BaseUrlParam, $/),
+    BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
 
     case send_request(Url, Contents) of
@@ -45,7 +45,7 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
 
 -spec send_request(ne_binary(), ne_binary()) -> 'ok' | {'error', any()}.
 send_request(Url, Contents) ->
-    case http_uri:parse(kz_util:to_list(Url)) of
+    case http_uri:parse(kz_term:to_list(Url)) of
         {'ok',{'ftp', UserPass, Host, Port, FullPath,_Query}} ->
             send_request(Host, Port, UserPass, FullPath, Contents);
         _ -> {'error', <<"error parsing url : ", Url/binary>>}
@@ -92,7 +92,7 @@ ftp_cmds([Fun|Funs]) ->
 
 -spec ftp_anonymous_user_pass() -> {string(), string()}.
 ftp_anonymous_user_pass() ->
-    Domain = kz_util:to_list(kz_util:node_hostname()),
+    Domain = kz_term:to_list(kz_util:node_hostname()),
     {"anonymous", "kazoo@" ++ Domain}.
 
 url_fields('undefined', Url) ->
@@ -112,8 +112,8 @@ fetch_attachment(HandlerProps, _DbName, _DocId, _AName) ->
 -spec fetch_attachment(ne_binary()) -> {'ok', binary()} | {'error', any()}.
 fetch_attachment(Url) ->
     {_, Host, File, _, _} = kz_http_util:urlsplit(Url),
-    try ftp:open(kz_util:to_list(Host)) of
-        {'ok', Pid} -> handle_fetch(Pid, ftp:recv_bin(Pid, kz_util:to_list(File)));
+    try ftp:open(kz_term:to_list(Host)) of
+        {'ok', Pid} -> handle_fetch(Pid, ftp:recv_bin(Pid, kz_term:to_list(File)));
         {'error', _Reason}=Err ->
             lager:debug("error '~p' opening ftp connection to ~s for saving ~s", [_Reason, Host, File]),
             Err
@@ -140,7 +140,7 @@ format_url(Fields, JObj, Args, Separator) ->
                                  ,Fields
                                  ),
     Reversed = lists:reverse(FormattedFields),
-    kz_util:join_binary(Reversed, Separator).
+    kz_binary:join(Reversed, Separator).
 
 format_url_field(JObj, Args, Fields, Acc)
   when is_list(Fields) ->

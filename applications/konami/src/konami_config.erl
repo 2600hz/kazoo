@@ -87,7 +87,7 @@ timeout(Account) ->
     case konami_doc(Account) of
         'undefined' -> timeout();
         KonamiDoc ->
-            get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun kz_util:to_integer/1)
+            get_attribute(KonamiDoc, <<"digit_timeout_ms">>, fun timeout/0, fun kz_term:to_integer/1)
     end.
 
 -spec listen_on() -> 'a' | 'b' | 'ab'.

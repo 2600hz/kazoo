@@ -187,7 +187,7 @@ maybe_create_credit_tansaction(CreditType, Context) ->
               'transaction_failed'
                                        ,kz_json:from_list(
                                           [{<<"message">>, <<"failed to create credit transaction">>}
-                                          ,{<<"cause">>, kz_util:error_to_binary(Error)}
+                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
                                           ])
                                        ,Context
              );
@@ -268,7 +268,7 @@ maybe_create_debit_tansaction(Context) ->
               'transaction_failed'
                                        ,kz_json:from_list(
                                           [{<<"message">>, <<"failed to create debit transaction">>}
-                                          ,{<<"cause">>, kz_util:error_to_binary(Error)}
+                                          ,{<<"cause">>, kz_term:error_to_binary(Error)}
                                           ])
                                        ,Context
              );

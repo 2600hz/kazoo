@@ -143,7 +143,7 @@ maybe_handle_bypass_media(DP, Node, UUID, Channel, JObj) ->
 
 -spec handle_bypass_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_bypass_media(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
-    BridgeProfile = kz_util:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
+    BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
     case kz_json:get_value(<<"Media">>, JObj) of
         <<"process">> ->
             lager:debug("bridge will process media through host switch"),
@@ -183,7 +183,7 @@ handle_ccvs(DP, Node, UUID, _Channel, JObj) ->
 -spec handle_loopback_key(boolean(), ne_binary(), kz_json:object()) -> kz_proplist().
 handle_loopback_key('false', _Key, _JObj) -> [];
 handle_loopback_key('true', Key, JObj) ->
-    V = kz_util:to_binary(kz_json:is_false(Key, JObj, 'false')),
+    V = kz_term:to_binary(kz_json:is_false(Key, JObj, 'false')),
     K = ecallmgr_util:get_fs_key(Key),
     [{"application", <<"export ", K/binary, "=", V/binary>>}].
 
@@ -223,7 +223,7 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
 -spec create_command(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     BypassAfterBridge = ?BYPASS_MEDIA_AFTER_BRIDGE,
-    BridgeProfile = kz_util:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
+    BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
     EPs = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
     BridgeCmd = list_to_binary(["bridge "

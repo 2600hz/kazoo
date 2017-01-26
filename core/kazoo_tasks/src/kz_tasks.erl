@@ -31,7 +31,7 @@
 -include("kazoo_tasks.hrl").
 
 -define(TASK_ID_SIZE, 15).
--define(A_TASK_ID, kz_util:rand_hex_binary(?TASK_ID_SIZE)).
+-define(A_TASK_ID, kz_binary:rand_hex(?TASK_ID_SIZE)).
 -type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
@@ -139,9 +139,9 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                     JObj = kz_json:from_list(props:filter_empty(maps:to_list(Errors))),
                     {'error', JObj};
                 _ ->
-                    InputName = case kz_util:is_empty(CSVName) of
+                    InputName = case kz_term:is_empty(CSVName) of
                                     'true' -> 'undefined';
-                                    'false' -> kz_util:to_binary(CSVName)
+                                    'false' -> kz_term:to_binary(CSVName)
                                 end,
                     lager:debug("creating ~s.~s task (~p)", [Category, Action, TotalRows]),
                     lager:debug("using auth ~s and account ~s", [AuthAccountId, AccountId]),
@@ -188,7 +188,7 @@ help(Category, Action) ->
     of
         {'ok', JObj} ->
             Help = kz_json:get_value([<<"Help">>, Category, Action], JObj),
-            case kz_util:is_empty(Help) of
+            case kz_term:is_empty(Help) of
                 false -> Help;
                 true -> {error, unknown_category_action}
             end;

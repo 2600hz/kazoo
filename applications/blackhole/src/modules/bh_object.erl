@@ -50,7 +50,7 @@ validate(Context, #{keys := [Action, Type]
         'false' -> bh_context:add_error(Context, <<"event ", Action/binary, ".", Type/binary, " not supported">>)
     end;
 validate(Context, #{keys := Keys}) ->
-    bh_context:add_error(Context, <<"invalid format for object subscription : ", (kz_util:join_binary(Keys))/binary>>).
+    bh_context:add_error(Context, <<"invalid format for object subscription : ", (kz_binary:join(Keys))/binary>>).
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId

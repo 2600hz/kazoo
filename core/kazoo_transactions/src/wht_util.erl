@@ -88,7 +88,7 @@ reasons(Min, Max, [_ | T], Acc) ->
 dollars_to_units(Dollars) when is_number(Dollars) ->
     round(Dollars * ?DOLLAR_TO_UNIT);
 dollars_to_units(Dollars) ->
-    dollars_to_units(kz_util:to_float(Dollars)).
+    dollars_to_units(kz_term:to_float(Dollars)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -100,12 +100,12 @@ dollars_to_units(Dollars) ->
 units_to_dollars(Units) when is_number(Units) ->
     trunc(Units) / ?DOLLAR_TO_UNIT;
 units_to_dollars(Units) ->
-    units_to_dollars(kz_util:to_integer(Units)).
+    units_to_dollars(kz_term:to_integer(Units)).
 
 %% @public
 -spec pretty_print_dollars(dollars()) -> ne_binary().
 pretty_print_dollars(Amount) ->
-    kz_util:to_binary(io_lib:format("$~.2f", [Amount])).
+    kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -346,7 +346,7 @@ get_integer_value(Key, JObj) ->
 -spec get_integer_value(ne_binary(), kz_json:object(), any()) -> integer().
 get_integer_value(Key, JObj, Default) ->
     Keys = [Key, kz_json:normalize_key(Key)],
-    kz_util:to_integer(kz_json:get_first_defined(Keys, JObj, Default)).
+    kz_term:to_integer(kz_json:get_first_defined(Keys, JObj, Default)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -399,8 +399,8 @@ calculate_call(R, RI, RM, Sur, Secs) ->
         'true' ->
             {RM, trunc(Sur + ((RM / 60) * R))};
         'false' ->
-            {kz_util:ceiling( Secs / RI ) * RI
-            ,trunc(Sur + ((RM / 60) * R) + (kz_util:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
+            {kz_term:ceiling( Secs / RI ) * RI
+            ,trunc(Sur + ((RM / 60) * R) + (kz_term:ceiling((Secs - RM) / RI) * ((RI / 60) * R)))
             }
     end.
 

@@ -212,7 +212,7 @@ move_non_existing_mobile_number_test_() ->
         kz_json:from_list(
           [{<<"provider">>, <<"tower-of-power">>}
           ,{<<"authorizing">>, kz_json:from_list([{<<"account-id">>, ?MASTER_ACCOUNT_ID}])}
-          ,{<<"device-id">>, kz_util:rand_hex_binary(32)}
+          ,{<<"device-id">>, kz_binary:rand_hex(32)}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
     Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
@@ -270,7 +270,7 @@ load_existing_checks() ->
     ].
 
 existing_in_state(PN, 'false') ->
-    State = kz_util:to_list(knm_phone_number:state(PN)),
+    State = kz_term:to_list(knm_phone_number:state(PN)),
     Resp = knm_number:attempt(fun knm_number:ensure_can_load_to_create/1, [PN]),
     [{lists:flatten(["Ensure number in ", State, " cannot be 'created'"])
      ,?_assertMatch({'error', _}, Resp)
@@ -279,7 +279,7 @@ existing_in_state(PN, 'false') ->
     ];
 
 existing_in_state(PN, 'true') ->
-    State = kz_util:to_list(knm_phone_number:state(PN)),
+    State = kz_term:to_list(knm_phone_number:state(PN)),
     [{lists:flatten(["Ensure number in ", State, " can be 'created'"])
      ,?_assert(knm_number:ensure_can_load_to_create(PN))
      }].

@@ -88,8 +88,8 @@ summary(Context) ->
     Req = [{<<"Category">>, ?ECALLMGR}
           ,{<<"Key">>, ?ECALLMGR_ACLS}
           ,{<<"Default">>, kz_json:new()}
-          ,{<<"Node">>, kz_util:to_binary(node())}
-          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+          ,{<<"Node">>, kz_term:to_binary(node())}
+          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     lager:debug("looking up acls from sysconf", []),

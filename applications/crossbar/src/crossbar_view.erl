@@ -17,9 +17,9 @@
 
 -spec load(cb_context:context(), ne_binary(), kz_proplist()) -> cb_context:context().
 load(Context, ViewName, Options) ->
-    ResultMapper = props:get_value(mapper, Options, fun kz_util:identity/1),
+    ResultMapper = props:get_value(mapper, Options, fun kz_term:identity/1),
     CouchOptions = props:get_value(couch_options, Options, []),
-    KeyMap = map_keymap(props:get_value(keymap, Options, fun kz_util:identity/1)),
+    KeyMap = map_keymap(props:get_value(keymap, Options, fun kz_term:identity/1)),
     AccountId = cb_context:account_id(Context),
     ModbViewOptions = [{mapper, build_filter_with_qs(Context, ResultMapper)}
                       ,{couch_options, make_unique(build_qs_filter_options(Context) ++ CouchOptions)}
@@ -67,7 +67,7 @@ one_of(_, [], Default) -> Default;
 one_of(Context, [Value|Values], Default) ->
     case cb_context:req_value(Context, Value) of
         undefined -> one_of(Context, Values, Default);
-        ReqValue -> kz_util:to_integer(ReqValue)
+        ReqValue -> kz_term:to_integer(ReqValue)
     end.
 
 -spec start_key(cb_context:context()) -> integer().
@@ -99,7 +99,7 @@ page_size(_Context, ?VERSION_1) -> undefined;
 page_size(Context, _Version) ->
     case cb_context:req_value(Context, <<"page_size">>) of
         undefined -> page_size();
-        V -> kz_util:to_integer(V)
+        V -> kz_term:to_integer(V)
     end.
 
 -spec add_paging(integer(), integer(), integer(), kz_json:object()) -> kz_json:object().
@@ -128,7 +128,7 @@ format_response(Context, StartKey, NextStartKey, PageSize, JObjs) ->
 build_qs_filter_mapper(Context) ->
     case crossbar_filter:is_defined(Context) of
         true -> fun(JObjDoc) -> kz_json:get_value(<<"doc">>, JObjDoc) end;
-        false -> fun kz_util:identity/1
+        false -> fun kz_term:identity/1
     end.
 
 -spec build_qs_filter_options(cb_context:context()) -> [include_docs] | [].

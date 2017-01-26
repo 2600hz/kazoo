@@ -45,7 +45,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                [{<<"account_id">>, AccountId}
                ,{<<"owner_id">>, OwnerId}
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
-               ,{<<"method">>, kz_util:to_binary(AuthModule)}
+               ,{<<"method">>, kz_term:to_binary(AuthModule)}
                ,{<<"exp">>, Expiration}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),

@@ -62,7 +62,7 @@ trace_file() ->
     trace_file([{'function', '*'}]).
 
 trace_file(Filters) ->
-    trace_file(Filters, <<"/tmp/", (kz_util:rand_hex_binary(16))/binary, ".log">>).
+    trace_file(Filters, <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".log">>).
 
 trace_file(Filters, Filename) ->
     trace_file(Filters, Filename, ?DEFAULT_TRACE_PROPS).
@@ -91,7 +91,7 @@ handle_call({'trace_file', Filters, Filename, Format}
            ) ->
     case start_trace(Filters, Filename, Format) of
         {'ok', TraceResult} ->
-            Ref = kz_util:rand_hex_binary(6),
+            Ref = kz_binary:rand_hex(6),
             {'reply', {'ok', Ref}, State#state{traces=[{Ref, Filename, TraceResult}|Traces]}};
         Result ->
             {'reply', Result, State}
@@ -136,7 +136,7 @@ stop_trace_file(Trace) ->
                          {'ok', trace_result()} |
                          {'error', trace_error()}.
 start_trace(Filters, Filename, Format) ->
-    lager:trace_file(kz_util:to_list(Filename)
+    lager:trace_file(kz_term:to_list(Filename)
                     ,[{'sink', 'data_lager_event'} | Filters]
                     ,'debug'
                     ,Format

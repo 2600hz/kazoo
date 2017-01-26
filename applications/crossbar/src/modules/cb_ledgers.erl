@@ -276,7 +276,7 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 read_ledgers(Context) ->
     case kz_ledgers:get(cb_context:account_id(Context)) of
         {'error', Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Reason), Context);
+            crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'ok', Ledgers} ->
             crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
     end.
@@ -379,8 +379,8 @@ maybe_set_doc_modb_prefix(JObj) ->
     case kz_doc:id(JObj) of
         ?MATCH_MODB_PREFIX(_,_,_) -> JObj;
         _ ->
-            {Year, Month, _} = kz_util:to_date(kz_doc:created(JObj)),
-            Id = <<(kz_util:to_binary(Year))/binary
+            {Year, Month, _} = kz_term:to_date(kz_doc:created(JObj)),
+            Id = <<(kz_term:to_binary(Year))/binary
                    ,(kz_util:pad_month(Month))/binary
                    ,"-"
                    ,(kz_doc:id(JObj))/binary
@@ -396,8 +396,8 @@ maybe_set_doc_modb_prefix(JObj) ->
 %%--------------------------------------------------------------------
 -spec read_ledger_doc(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 read_ledger_doc(Context, Ledger, ?MATCH_MODB_PREFIX(YYYY, MM, SimpleId) = Id) ->
-    Year  = kz_util:to_integer(YYYY),
-    Month = kz_util:to_integer(MM),
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
     Options = ?TYPE_CHECK_OPTION([<<"ledger">>, ?DEBIT, ?CREDIT]),
     Ctx = crossbar_doc:load(Id, cb_context:set_account_modb(Context, Year, Month), Options),
     case cb_context:resp_status(Ctx) =:= 'success'

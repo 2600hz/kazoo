@@ -25,12 +25,12 @@ get_file_name(Props, Ext) ->
     Fax = props:get_value(<<"fax">>, Props),
     CallerID = case {props:get_value(<<"caller_id_name">>, Fax), props:get_value(<<"caller_id_number">>, Fax)} of
                    {'undefined', 'undefined'} -> <<"Unknown">>;
-                   {'undefined', Num} -> kz_util:to_binary(Num);
-                   {Name, _} -> kz_util:to_binary(Name)
+                   {'undefined', Num} -> kz_term:to_binary(Num);
+                   {Name, _} -> kz_term:to_binary(Name)
                end,
     LocalDateTime = props:get_value(<<"date_called">>, Fax, <<"0000-00-00_00-00-00">>),
     FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Ext]),
-    re:replace(kz_util:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
+    re:replace(kz_term:to_lower_binary(FName), <<"\\s+">>, <<"_">>, [{'return', 'binary'}, 'global']).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -139,4 +139,4 @@ convert_to_pdf(AttachmentBin, Props, _ContentType) ->
 %%--------------------------------------------------------------------
 -spec tmp_file_name(ne_binary()) -> string().
 tmp_file_name(Ext) ->
-    kz_util:to_list(<<"/tmp/", (kz_util:rand_hex_binary(10))/binary, "_notify_fax.", Ext/binary>>).
+    kz_term:to_list(<<"/tmp/", (kz_binary:rand_hex(10))/binary, "_notify_fax.", Ext/binary>>).

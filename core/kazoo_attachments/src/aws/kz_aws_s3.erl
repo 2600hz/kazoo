@@ -432,7 +432,7 @@ get_bucket_attribute(BucketName, AttributeName, Config)
   when is_list(BucketName), is_atom(AttributeName) ->
     Attr = case AttributeName of
                'request_payment' -> "requestPayment";
-               AN -> kz_util:to_list(AN)
+               AN -> kz_term:to_list(AN)
            end,
 
     Doc = s3_xml_request(Config, 'get', BucketName, "/", Attr, [], <<>>, []),
@@ -1311,4 +1311,4 @@ default_config() -> kz_aws:default_config().
 port_spec(#aws_config{s3_port=80}) ->
     "";
 port_spec(#aws_config{s3_port=Port}) ->
-    [":", kz_util:to_list(Port)].
+    [":", kz_term:to_list(Port)].

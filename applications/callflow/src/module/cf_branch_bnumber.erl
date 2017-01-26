@@ -18,7 +18,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(_Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
-    NumberToBranch = case kz_util:is_empty(Number) of
+    NumberToBranch = case kz_term:is_empty(Number) of
                          'true' -> kapps_call:request_user(Call);
                          'false' -> Number
                      end,

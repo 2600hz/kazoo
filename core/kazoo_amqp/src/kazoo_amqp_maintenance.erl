@@ -42,9 +42,9 @@ add_broker(Broker) ->
 
 -spec add_broker(ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_broker(Broker, Zone) when not is_binary(Broker) ->
-    add_broker(kz_util:to_binary(Broker), Zone);
+    add_broker(kz_term:to_binary(Broker), Zone);
 add_broker(Broker, Zone) when not is_atom(Zone) ->
-    add_broker(Broker, kz_util:to_atom(Zone, 'true'));
+    add_broker(Broker, kz_term:to_atom(Zone, 'true'));
 add_broker(Broker, Zone) ->
     case kz_amqp_connections:new(Broker, Zone) of
         {'error', 'exists'} ->
@@ -71,7 +71,7 @@ add_broker(Broker, Zone) ->
 %%--------------------------------------------------------------------
 -spec remove_broker(ne_binary()) -> 'ok'.
 remove_broker(Broker) when not is_binary(Broker) ->
-    remove_broker(kz_util:to_binary(Broker));
+    remove_broker(kz_term:to_binary(Broker));
 remove_broker(Broker) ->
     kz_amqp_connections:remove(Broker).
 
@@ -87,9 +87,9 @@ add_connection(Broker) ->
 
 -spec add_connection(ne_binary(), atom()) -> 'ok' | 'no_return'.
 add_connection(Broker, Zone) when not is_binary(Broker) ->
-    add_connection(kz_util:to_binary(Broker), Zone);
+    add_connection(kz_term:to_binary(Broker), Zone);
 add_connection(Broker, Zone) when not is_atom(Zone) ->
-    add_connection(Broker, kz_util:to_atom(Zone, 'true'));
+    add_connection(Broker, kz_term:to_atom(Zone, 'true'));
 add_connection(Broker, Zone) ->
     case kz_amqp_connections:add(Broker, Zone) of
         {'error', Reason} ->
@@ -449,14 +449,14 @@ consumer_details(ProcessUpper) ->
 
 -spec consumer_details(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(NodeNumber) ->
-    consumer_details(kz_util:to_binary(NodeNumber), ProcessUpper, ProcessLower);
+    consumer_details(kz_term:to_binary(NodeNumber), ProcessUpper, ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessUpper) ->
-    consumer_details(NodeNumber, kz_util:to_binary(ProcessUpper), ProcessLower);
+    consumer_details(NodeNumber, kz_term:to_binary(ProcessUpper), ProcessLower);
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) when not is_binary(ProcessLower) ->
-    consumer_details(NodeNumber, ProcessUpper, kz_util:to_binary(ProcessLower));
+    consumer_details(NodeNumber, ProcessUpper, kz_term:to_binary(ProcessLower));
 consumer_details(NodeNumber, ProcessUpper, ProcessLower) ->
     Pid = list_to_pid(
-            kz_util:to_list(
+            kz_term:to_list(
               <<"<", NodeNumber/binary
                 ,".", ProcessUpper/binary
                 ,".", ProcessLower/binary

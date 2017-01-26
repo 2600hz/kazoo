@@ -89,7 +89,7 @@
                                                              end, 'true', Fs);
                                             (_) -> 'false'
                                          end}
-                         ,{<<"Count-Only">>, fun(N) -> kz_util:to_boolean(N) end}
+                         ,{<<"Count-Only">>, fun(N) -> kz_term:to_boolean(N) end}
                          ]).
 
 %% Registration Query Response

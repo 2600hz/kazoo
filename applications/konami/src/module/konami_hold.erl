@@ -55,7 +55,7 @@ number_builder(DefaultJObj) ->
 
     {'ok', [Number]} = io:fread("What number should invoke 'hold'? ", "~d"),
 
-    K = [<<"numbers">>, kz_util:to_binary(Number)],
+    K = [<<"numbers">>, kz_term:to_binary(Number)],
 
     case number_builder_check(kz_json:get_value(K, DefaultJObj)) of
         'undefined' -> kz_json:delete_key(K, DefaultJObj);
@@ -101,4 +101,4 @@ metaflow_jobj(NumberJObj, MOH) ->
 moh_data("n") ->
     kz_json:new();
 moh_data(MOH) ->
-    kz_json:from_list([{<<"moh">>, kz_util:to_binary(MOH)}]).
+    kz_json:from_list([{<<"moh">>, kz_term:to_binary(MOH)}]).

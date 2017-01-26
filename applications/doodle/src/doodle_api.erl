@@ -17,7 +17,7 @@ handle_api_sms(Db, Id) ->
     {'ok', Doc} = kz_datamgr:open_doc(Db, Id),
     Status = kz_json:get_value(<<"pvt_status">>, Doc),
     Origin = kz_json:get_value(<<"pvt_origin">>, Doc),
-    FetchId = kz_util:rand_hex_binary(16),
+    FetchId = kz_binary:rand_hex(16),
     maybe_handle_sms_document(Status, Origin, FetchId, Id, Doc).
 
 -spec maybe_handle_sms_document(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> 'ok'.
@@ -56,7 +56,7 @@ send_route_win(FetchId, CallId, JObj) ->
 route_req(FetchId, CallId, JObj) ->
     [{<<"Msg-ID">>, FetchId}
     ,{<<"Call-ID">>, CallId}
-    ,{<<"Message-ID">>, kz_json:get_value(<<"Message-ID">>, JObj, kz_util:rand_hex_binary(16))}
+    ,{<<"Message-ID">>, kz_json:get_value(<<"Message-ID">>, JObj, kz_binary:rand_hex(16))}
     ,{<<"Caller-ID-Name">>, kz_json:get_value(<<"from_user">>, JObj)}
     ,{<<"Caller-ID-Number">>, kz_json:get_value(<<"from_user">>, JObj)}
     ,{<<"To">>, kz_json:get_value(<<"to">>, JObj)}

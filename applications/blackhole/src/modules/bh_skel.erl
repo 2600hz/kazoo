@@ -27,7 +27,7 @@ validate(Context, #{keys := [<<"whatever_comes_after_skel.">>, _]
                    }) ->
     Context;
 validate(Context, #{keys := Keys}) ->
-    bh_context:add_error(Context, <<"invalid format for skel subscription : ", (kz_util:join_binary(Keys))/binary>>).
+    bh_context:add_error(Context, <<"invalid format for skel subscription : ", (kz_binary:join(Keys))/binary>>).
 
 -spec bindings(bh_context:context(), map()) -> map().
 bindings(_Context, #{account_id := AccountId

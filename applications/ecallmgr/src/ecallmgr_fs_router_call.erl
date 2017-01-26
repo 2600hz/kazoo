@@ -173,7 +173,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec process_route_req(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> 'ok'.
 process_route_req(Section, Node, FetchId, CallId, Props) ->
     kz_util:put_callid(CallId),
-    case kz_util:is_true(props:get_value(<<"variable_recovered">>, Props)) of
+    case kz_term:is_true(props:get_value(<<"variable_recovered">>, Props)) of
         'false' -> do_process_route_req(Section, Node, FetchId, CallId, Props);
         'true' ->
             lager:debug("recovered channel already exists on ~s, park it", [Node]),

@@ -12,7 +12,7 @@
 
 -include("webhooks.hrl").
 
--define(ID, kz_util:to_binary(?MODULE)).
+-define(ID, kz_term:to_binary(?MODULE)).
 -define(NAME, <<"channel_answer">>).
 -define(DESC, <<"Events for when the channel is answered by the endpoint">>).
 -define(METADATA

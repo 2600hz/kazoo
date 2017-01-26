@@ -102,7 +102,7 @@ get_cookie(Options, Node) ->
             {_, [C]} -> C;
             {"", []} -> print_no_setcookie()
         end,
-    Cookie = kz_util:to_atom(CookieStr, 'true'),
+    Cookie = kz_term:to_atom(CookieStr, 'true'),
     'true' = erlang:set_cookie(node(), Cookie),
     Cookie.
 

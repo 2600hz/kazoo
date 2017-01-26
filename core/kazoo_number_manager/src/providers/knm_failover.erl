@@ -68,7 +68,7 @@ update_failover(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Failover = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
     NotChanged = kz_json:are_equal(CurrentFailover, Failover),
-    case kz_util:is_empty(Failover) of
+    case kz_term:is_empty(Failover) of
         'true' ->
             knm_services:deactivate_feature(Number, ?KEY);
         'false' when NotChanged ->

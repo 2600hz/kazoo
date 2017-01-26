@@ -72,7 +72,7 @@ check(Account)
             lager:warning("unable to open account definition for ~s: ~p", [AccountId, _R])
     end;
 check(Account) ->
-    check(kz_util:to_binary(Account)).
+    check(kz_term:to_binary(Account)).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -131,7 +131,7 @@ handle_info({timeout, Ref, _Msg}, #state{cleanup_ref = Ref
                       ],
                 lager:debug("beginning crawling accounts"),
                 State#state{cleanup_ref = cleanup_timer()
-                           ,account_ids = kz_util:shuffle_list(IDs)
+                           ,account_ids = kz_term:shuffle_list(IDs)
                            };
             {error, _R} ->
                 lager:warning("unable to list all docs in ~s: ~p", [?KZ_ACCOUNTS_DB, _R]),

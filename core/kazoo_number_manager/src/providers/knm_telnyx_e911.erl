@@ -88,7 +88,7 @@ maybe_update_e911(Number, 'true') ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("dry run: information has been removed, updating upstream"),
             knm_services:deactivate_feature(Number, ?FEATURE_E911);
@@ -103,7 +103,7 @@ maybe_update_e911(Number, 'false') ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             {'ok', NewNumber} = remove_number(Number),
@@ -178,7 +178,7 @@ assign_address(Number, AddressId) ->
             ST = erlang:get_stacktrace(),
             lager:error("~p ~p", [_T, E]),
             kz_util:log_stacktrace(ST),
-            {'error', kz_util:to_binary(E)}
+            {'error', kz_term:to_binary(E)}
     end.
 
 toogle('true') -> "enable";
@@ -243,7 +243,7 @@ e911_address(Number, JObj) ->
 -spec cleanse(api_ne_binary()) -> api_binary().
 cleanse('undefined') -> 'undefined';
 cleanse(NEBin) ->
-    Upper = kz_util:to_upper_binary(NEBin),
+    Upper = kz_term:to_upper_binary(NEBin),
     << <<C>> || <<C>> <= Upper, is_ALnum_or_space(C)>>.
 
 -spec is_ALnum_or_space(char()) -> boolean().

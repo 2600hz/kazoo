@@ -255,7 +255,7 @@ handle_cast({'cdr', JObj}
 
     maybe_debug_req(Call, Url, 'post', Headers, Body, Debug),
 
-    case kz_http:post(kz_util:to_list(Url), Headers, Body) of
+    case kz_http:post(kz_term:to_list(Url), Headers, Body) of
         {'ok', RespCode, RespHeaders, RespBody} ->
             maybe_debug_resp(Debug, Call, integer_to_binary(RespCode), RespHeaders, RespBody),
             lager:debug("recv ~p from cdr url ~s", [RespCode, Url]);
@@ -351,7 +351,7 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
   when (StatusCode - 400) < 100 ->
     lager:info("recv client failure status code ~p", [StatusCode]),
     publish_failed(Call, RequesterQ),
-    maybe_debug_resp(ShouldDebug, Call, kz_util:to_binary(StatusCode), RespHeaders, RespBody),
+    maybe_debug_resp(ShouldDebug, Call, kz_term:to_binary(StatusCode), RespHeaders, RespBody),
     {'stop', 'normal', State};
 handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
            ,#state{request_id=ReqId
@@ -362,7 +362,7 @@ handle_info({'http', {ReqId, {{_, StatusCode, _}, RespHeaders, RespBody}}}
   when (StatusCode - 500) < 100 ->
     lager:info("recv server failure status code ~p", [StatusCode]),
     publish_failed(Call, RequesterQ),
-    maybe_debug_resp(ShouldDebug, Call, kz_util:to_binary(StatusCode), RespHeaders, RespBody),
+    maybe_debug_resp(ShouldDebug, Call, kz_term:to_binary(StatusCode), RespHeaders, RespBody),
     {'stop', 'normal', State};
 
 handle_info({'DOWN', Ref, 'process', Pid, 'normal'}
@@ -467,7 +467,7 @@ send(Call, Uri, Method, ReqHdrs, ReqBody, Debug) ->
 
 -spec normalize_resp_headers(kz_proplist()) -> kz_proplist().
 normalize_resp_headers(Headers) ->
-    [{kz_util:to_lower_binary(K), kz_util:to_binary(V)} || {K, V} <- Headers].
+    [{kz_term:to_lower_binary(K), kz_term:to_binary(V)} || {K, V} <- Headers].
 
 -spec handle_resp(api_binary(), kapps_call:call(), ne_binary(), binary()) -> 'ok'.
 handle_resp(RequesterQ, Call, CT, <<_/binary>> = RespBody) ->
@@ -552,7 +552,7 @@ uri(URI, QueryString) ->
 
 -spec req_params(ne_binary(), kapps_call:call()) -> kz_proplist().
 req_params(Format, Call) ->
-    FmtAtom = kz_util:to_atom(<<"kzt_", Format/binary>>, 'true'),
+    FmtAtom = kz_term:to_atom(<<"kzt_", Format/binary>>, 'true'),
     try FmtAtom:req_params(Call) of
         Result ->
             lager:debug("get req params from ~s", [FmtAtom]),
@@ -566,7 +566,7 @@ maybe_debug_req(_Call, _Uri, _Method, _ReqHdrs, _ReqBody, 'false') -> 'ok';
 maybe_debug_req(Call, Uri, Method, ReqHdrs, ReqBody, 'true') ->
     Headers = kz_json:from_list([{fix_value(K), fix_value(V)} || {K, V} <- ReqHdrs]),
     store_debug(Call, [{<<"uri">>, iolist_to_binary(Uri)}
-                      ,{<<"method">>, kz_util:to_binary(Method)}
+                      ,{<<"method">>, kz_term:to_binary(Method)}
                       ,{<<"req_headers">>, Headers}
                       ,{<<"req_body">>, iolist_to_binary(ReqBody)}
                       ]).
@@ -634,4 +634,4 @@ store_debug(Call, DebugJObj) ->
 
 -spec fix_value(number() | list()) -> number() | ne_binary().
 fix_value(N) when is_number(N) -> N;
-fix_value(O) -> kz_util:to_lower_binary(O).
+fix_value(O) -> kz_term:to_lower_binary(O).

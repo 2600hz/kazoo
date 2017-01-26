@@ -290,7 +290,7 @@ sync_services(AccountId, ServicesJObj, ServiceItems) ->
     catch
         'throw':{Reason, _}=_R ->
             lager:info("bookkeeper error: ~p", [_R]),
-            _ = mark_clean_and_status(kz_util:to_binary(Reason), ServicesJObj),
+            _ = mark_clean_and_status(kz_term:to_binary(Reason), ServicesJObj),
             maybe_sync_reseller(AccountId, ServicesJObj);
         _E:R ->
             lager:info("unable to sync services(~p): ~p", [_E, R]),

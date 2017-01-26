@@ -52,7 +52,7 @@ plan(DbName, 'undefined')  ->
     plan(DbName);
 plan(DbName, DocType)
   when is_atom(DocType) ->
-    plan(DbName, kz_util:to_binary(DocType)).
+    plan(DbName, kz_term:to_binary(DocType)).
 
 -spec plan(ne_binary(), api_binary(), api_binary()) -> map().
 plan(DbName, 'undefined', 'undefined') ->
@@ -185,7 +185,7 @@ dataplan_match(Classification, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-            AttHandler = kz_util:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
+            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, CAtt, #{})),
 
             #{tag => Tag
@@ -233,7 +233,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
                                 ,<<"settings">> := AttSettings
                                 }
              } = GAtt,
-            AttHandler = kz_util:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
+            AttHandler = kz_term:to_atom(<<"kz_att_", AttHandlerBin/binary>>,'true'),
             Params = maps:merge(AttSettings, maps:get(<<"params">>, TypeAttMap, #{})),
             #{tag => Tag
              ,server => Server
@@ -322,7 +322,7 @@ default_dataplan() ->
 -spec maybe_start_connection(atom() | ne_binary(), map()) -> {atom(), server()}.
 maybe_start_connection(Connection, Params)
   when is_binary(Connection) ->
-    maybe_start_connection(kz_util:to_atom(Connection, 'true'), Params);
+    maybe_start_connection(kz_term:to_atom(Connection, 'true'), Params);
 maybe_start_connection(Tag, Params) ->
     case kz_dataconnections:get_server(Tag) of
         'undefined' -> start_connection(Tag, Params);

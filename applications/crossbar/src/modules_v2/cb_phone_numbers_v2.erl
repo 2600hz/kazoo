@@ -215,7 +215,7 @@ maybe_allow_updates(Context, [{<<"phone_numbers">>, _}|_], _Verb) ->
         'true' -> Context
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 maybe_allow_updates(Context, _Nouns, _Verb) -> Context.
 
@@ -524,7 +524,7 @@ fix_available(NumJObj) ->
     kz_json:from_list([{Num, NewJObj}]).
 
 should_include_ports(Context) ->
-    kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>)).
+    kz_term:is_true(cb_context:req_value(Context, <<"include_ports">>)).
 
 %% @private
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
@@ -611,7 +611,7 @@ maybe_find_numbers(Context) ->
 find_numbers(Context, AccountId, ResellerId) ->
     QS = cb_context:query_string(Context),
     Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
-    Prefix = kz_util:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
+    Prefix = kz_binary:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
     Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
     Token = cb_context:auth_token(Context),
     HashKey = <<AccountId/binary, "-", Token/binary>>,
@@ -1006,7 +1006,7 @@ numbers_action(Context, ?HTTP_DELETE, Numbers) ->
 -spec pick_release_or_delete(cb_context:context(), knm_number_options:options()) -> 'release' | 'delete'.
 pick_release_or_delete(Context, Options) ->
     AuthBy = knm_number_options:auth_by(Options),
-    Pick = case kz_util:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
+    Pick = case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false'))
                andalso kz_util:is_system_admin(AuthBy)
            of
                'false' -> 'release';

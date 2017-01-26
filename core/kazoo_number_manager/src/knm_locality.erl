@@ -50,7 +50,7 @@ prefix(Url, Country, City) ->
         {'ok', _Status, _Headers, Body} ->
             {'error', kz_json:decode(Body)};
         {'error', Reason} ->
-            JObj = kz_json:from_list([{<<"unknown error">>, kz_util:to_binary(Reason)}]),
+            JObj = kz_json:from_list([{<<"unknown error">>, kz_term:to_binary(Reason)}]),
             {'error', JObj}
     end.
 

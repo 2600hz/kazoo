@@ -137,8 +137,8 @@ add_pvt_type(JObj, _, Options) ->
 -spec add_pvt_node(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
 add_pvt_node(JObj, _, Options) ->
     case props:get_value('node', Options) of
-        'undefined' -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(node()), JObj);
-        Node -> kz_json:set_value(?KEY_NODE, kz_util:to_binary(Node), JObj)
+        'undefined' -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(node()), JObj);
+        Node -> kz_json:set_value(?KEY_NODE, kz_term:to_binary(Node), JObj)
     end.
 
 -spec add_pvt_created(kz_json:object(), api_binary(), kz_proplist()) -> kz_json:object().
@@ -364,7 +364,7 @@ id(JObj, Default) ->
                                   ,JObj
                                   ,Default
                                   ),
-    case kz_util:is_empty(Id) of
+    case kz_term:is_empty(Id) of
         'true' -> Default;
         'false' -> Id
     end.
@@ -386,7 +386,7 @@ set_type(JObj, Type) ->
 
 -spec set_soft_deleted(kz_json:object(), boolean()) -> kz_json:object().
 set_soft_deleted(JObj, IsSoftDeleted) ->
-    kz_json:set_value(?KEY_SOFT_DELETED, kz_util:is_true(IsSoftDeleted), JObj).
+    kz_json:set_value(?KEY_SOFT_DELETED, kz_term:is_true(IsSoftDeleted), JObj).
 
 -spec is_soft_deleted(kz_json:object()) -> boolean().
 is_soft_deleted(JObj) ->

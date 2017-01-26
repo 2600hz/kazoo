@@ -223,7 +223,7 @@ ref_to_id(Ref) ->
 
 -spec browse_dbs_for_triggers(atom() | reference()) -> 'ok'.
 browse_dbs_for_triggers(Ref) ->
-    kz_util:put_callid(<<"cleanup_pass_", (kz_util:rand_hex_binary(4))/binary>>),
+    kz_util:put_callid(<<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>),
     {'ok', Dbs} = kz_datamgr:db_info(),
     lager:debug("starting cleanup pass of databases"),
     lists:foreach(fun cleanup_pass/1, Dbs),

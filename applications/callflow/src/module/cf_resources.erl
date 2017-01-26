@@ -98,7 +98,7 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_IGNORE_EARLY_MEDIA, get_ignore_early_media(Data)}
       ,{?KEY_INCEPTION, get_inception(Call)}
       ,{?KEY_MEDIA, kz_json:get_first_defined([<<"media">>, <<"Media">>], Data)}
-      ,{?KEY_MSG_ID, kz_util:rand_hex_binary(6)}
+      ,{?KEY_MSG_ID, kz_binary:rand_hex(6)}
       ,{?KEY_OUTBOUND_CALLER_ID_NAME, CIDName}
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
       ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
@@ -251,7 +251,7 @@ get_sip_headers(Data, Call) ->
     Headers = kz_json:merge_jobjs(AuthEndCSH, CSH),
 
     JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
-    case kz_util:is_empty(JObj) of
+    case kz_term:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
     end.
@@ -277,7 +277,7 @@ maybe_emit_account_id(JObj, Data, Call) ->
 
 -spec get_ignore_early_media(kz_json:object()) -> api_binary().
 get_ignore_early_media(Data) ->
-    kz_util:to_binary(kz_json:is_true(<<"ignore_early_media">>, Data, 'false')).
+    kz_term:to_binary(kz_json:is_true(<<"ignore_early_media">>, Data, 'false')).
 
 -spec get_t38_enabled(kapps_call:call()) -> api_boolean().
 get_t38_enabled(Call) ->
@@ -377,14 +377,14 @@ get_account_dynamic_flags(_, Call, Flags) ->
                                    ne_binaries().
 process_dynamic_flags([], Flags, _) -> Flags;
 process_dynamic_flags([<<"zone">>|DynamicFlags], Flags, Call) ->
-    Zone = kz_util:to_binary(kz_nodes:local_zone()),
+    Zone = kz_term:to_binary(kz_nodes:local_zone()),
     lager:debug("adding dynamic flag ~s", [Zone]),
     process_dynamic_flags(DynamicFlags, [Zone|Flags], Call);
 process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
     case is_flag_exported(DynamicFlag) of
         'false' -> process_dynamic_flags(DynamicFlags, Flags, Call);
         'true' ->
-            Fun = kz_util:to_atom(DynamicFlag),
+            Fun = kz_term:to_atom(DynamicFlag),
             process_dynamic_flags(DynamicFlags, [kapps_call:Fun(Call)|Flags], Call)
     end.
 
@@ -394,7 +394,7 @@ is_flag_exported(Flag) ->
 
 is_flag_exported(_, []) -> 'false';
 is_flag_exported(Flag, [{F, 1}|Funs]) ->
-    kz_util:to_binary(F) =:= Flag
+    kz_term:to_binary(F) =:= Flag
         orelse is_flag_exported(Flag, Funs);
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 

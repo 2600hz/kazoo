@@ -256,10 +256,10 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
                   case {M, F} of
                       {'true', _} ->
                           Error = dict:fetch(MsgId, MODbFailed),
-                          [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
+                          [kz_json:set_value(<<"migration_error">>, kz_term:to_binary(Error), Msg) | Acc];
                       {_, 'true'} ->
                           Error = dict:fetch(MsgId, Failed),
-                          [kz_json:set_value(<<"migration_error">>, kz_util:to_binary(Error), Msg) | Acc];
+                          [kz_json:set_value(<<"migration_error">>, kz_term:to_binary(Error), Msg) | Acc];
                       _ -> Acc
                   end
           end,
@@ -414,7 +414,7 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
     Timestamp = kz_json:get_value(<<"timestamp">>, Metadata),
 
     %% setting a db_link as attachment
-    AttName = <<(kz_util:rand_hex_binary(16))/binary, ".", DefaultExt/binary>>,
+    AttName = <<(kz_binary:rand_hex(16))/binary, ".", DefaultExt/binary>>,
     AttHandlerProps = [{<<"att_dbname">>, kz_util:format_account_db(AccountId)}
                       ,{<<"att_docid">>, kzd_box_message:media_id(Metadata)}
                       ],

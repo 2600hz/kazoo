@@ -29,19 +29,19 @@ json_test_() ->
 reorder_dialog_1_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
     reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_util:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_util:shuffle_list(Chunks)).
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_2_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_2()),
     reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, kz_util:shuffle_list(Chunks)).
+        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_3_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_3()),
     reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_util:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_util:shuffle_list(Chunks)).
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_4_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),

@@ -248,7 +248,7 @@ response_redirect(Context, RedirectUrl, JObj, Redirect) ->
 -spec response_bad_identifier(atom() | ne_binary(), cb_context:context()) ->
                                      cb_context:context().
 response_bad_identifier(Id, Context) when is_atom(Id) ->
-    response('error', <<"bad identifier">>, 404, [kz_util:to_binary(Id)], Context);
+    response('error', <<"bad identifier">>, 404, [kz_term:to_binary(Id)], Context);
 response_bad_identifier(?NE_BINARY = Id, Context) ->
     response('error', <<"bad identifier">>, 404, [Id], Context).
 
@@ -952,7 +952,7 @@ create_auth_token(Context, AuthModule, JObj) ->
               ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
               ,{<<"api_key">>, kz_json:get_value(<<"api_key">>, Data)}
               ,{<<"restrictions">>, get_token_restrictions(AuthModule, AccountId, OwnerId)}
-              ,{<<"method">>, kz_util:to_binary(AuthModule)}
+              ,{<<"method">>, kz_term:to_binary(AuthModule)}
               ]),
     JObjToken = kz_doc:update_pvt_parameters(kz_json:from_list(Token)
                                             ,kz_util:format_account_id(AccountId, 'encoded')
@@ -1011,7 +1011,7 @@ get_account_token_restrictions(AccountId, AuthModule) ->
     case kz_datamgr:open_cache_doc(AccountDB, ?CB_ACCOUNT_TOKEN_RESTRICTIONS) of
         {'error', _} -> 'undefined';
         {'ok', RestrictionsDoc} ->
-            kz_json:get_first_defined([[<<"restrictions">>, kz_util:to_binary(AuthModule)]
+            kz_json:get_first_defined([[<<"restrictions">>, kz_term:to_binary(AuthModule)]
                                       ,[<<"restrictions">>, ?CATCH_ALL]
                                       ]
                                      ,RestrictionsDoc
@@ -1340,7 +1340,7 @@ maybe_validate_quickcall(Context) ->
 maybe_validate_quickcall(Context, 'success') ->
     AllowAnon = kz_json:get_value(<<"allow_anonymous_quickcalls">>, cb_context:doc(Context)),
 
-    case kz_util:is_true(AllowAnon)
+    case kz_term:is_true(AllowAnon)
         orelse cb_context:is_authenticated(Context)
         orelse (AllowAnon =:= 'undefined'
                 andalso kapps_config:get_is_true(?CONFIG_CAT, <<"default_allow_anonymous_quickcalls">>, 'true')

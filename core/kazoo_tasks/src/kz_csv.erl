@@ -183,7 +183,7 @@ row_to_iolist(Row=[_|_]) ->
 -spec json_to_iolist(nonempty_list(kz_json:object())) -> iodata().
 json_to_iolist(Records)
   when is_list(Records) ->
-    Tmp = <<"/tmp/json_", (kz_util:rand_hex_binary(11))/binary, ".csv">>,
+    Tmp = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
     Fields = kz_json:get_keys(hd(Records)),
     'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->

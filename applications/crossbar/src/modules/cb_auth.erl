@@ -218,7 +218,7 @@ ensure_auth_id(Claims, Context) ->
                       ],
             cb_context:setters(Context, Setters);
         Missing ->
-            Message = <<"missing provider properties ", (kz_util:join_binary(Missing))/binary>>,
+            Message = <<"missing provider properties ", (kz_binary:join(Missing))/binary>>,
             cb_context:add_system_error(<<"missing properties">>, Message, Context)
     end.
 

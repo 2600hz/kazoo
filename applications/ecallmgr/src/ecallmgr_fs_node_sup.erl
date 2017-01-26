@@ -120,7 +120,7 @@ init([Node, Options]) ->
 
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
-    NodeB = kz_util:to_binary(Node),
+    NodeB = kz_term:to_binary(Node),
     Args = [Node, Options],
     M = kazoo_bindings:map(<<"freeswitch.node.modules">>, []),
     Modules = lists:foldl(fun(A, B) -> A ++ B end, [], M),
@@ -133,19 +133,19 @@ init([Node, Options]) ->
 
 -spec child_name(binary(), list(), binary(), binary()) -> any().
 child_name(NodeB, Args, Module, <<"supervisor">>) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_term:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_term:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?SUPER_NAME_ARGS(Mod, Name, Args);
 child_name(NodeB, Args, Module, <<"worker">>) ->
-    Name = kz_util:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
-    Mod = kz_util:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
+    Name = kz_term:to_atom(<<NodeB/binary, "_", Module/binary>>, 'true'),
+    Mod = kz_term:to_atom(<<"ecallmgr_fs_", Module/binary>>, 'true'),
     ?WORKER_NAME_ARGS_TYPE(Name, Mod, Args, 'transient').
 
 -spec srv([{atom(), pid(), any(), any()}] | tuple(), list()) -> api_pid().
 srv([], _) -> 'undefined';
 srv([{Name, Pid, _, _} | Children], Suffix) ->
     %% FIXME: use lists:suffix
-    case lists:prefix(Suffix, lists:reverse(kz_util:to_list(Name))) of
+    case lists:prefix(Suffix, lists:reverse(kz_term:to_list(Name))) of
         'true' -> Pid;
         'false' -> srv(Children, Suffix)
     end;
@@ -171,7 +171,7 @@ maybe_module_deprecated(Mod) -> Mod.
 -spec fix_module(ne_binary() | string()) -> {ne_binary(), kz_json:object()}.
 fix_module(Mod)
   when not is_binary(Mod)->
-    fix_module(kz_util:to_binary(Mod));
+    fix_module(kz_term:to_binary(Mod));
 fix_module(Mod) ->
     Module = maybe_module_deprecated(Mod),
     ModInv = list_to_binary(lists:reverse(binary_to_list(Module))),

@@ -220,7 +220,7 @@ send_command([_|_]=Command, Conference) ->
     Prop = Command ++ [{<<"Conference-ID">>, ConferenceId}
                        | kz_api:default_headers(Q, <<"conference">>, <<"command">>, AppName, AppVersion)
                       ],
-    case kz_util:is_empty(Focus) of
+    case kz_term:is_empty(Focus) of
         'true' -> kz_amqp_worker:cast(Prop, fun(P) -> kapi_conference:publish_command(ConferenceId, P) end);
         'false' -> kz_amqp_worker:cast(Prop, fun(P) -> kapi_conference:publish_targeted_command(Focus, P) end)
     end;
@@ -231,7 +231,7 @@ play_macro(Macro, Conference) ->
     Values = [{<<"Event-Category">>, <<"conference">>}
              ,{<<"Event-Name">>, <<"command">>}
              ,{<<"Conference-ID">>, kapps_conference:id(Conference)}
-             ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+             ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
     Prop = [{<<"Application-Name">>, <<"play_macro">>}

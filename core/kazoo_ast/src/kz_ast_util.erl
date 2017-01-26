@@ -44,9 +44,9 @@ add_module_ast_fold(_Other, _Module, Acc) ->
     Acc.
 
 -spec binary_match_to_binary(ast()) -> binary().
-binary_match_to_binary(?ATOM(A)) -> kz_util:to_binary(A);
+binary_match_to_binary(?ATOM(A)) -> kz_term:to_binary(A);
 binary_match_to_binary(?BINARY_STRING(V)) ->
-    kz_util:to_binary(V);
+    kz_term:to_binary(V);
 binary_match_to_binary(?BINARY_MATCH(Match)) ->
     binary_match_to_binary(Match);
 binary_match_to_binary(Match) when is_list(Match) ->
@@ -98,7 +98,7 @@ siblings_of(App) ->
     ].
 
 dir_to_app_name(Dir) ->
-    kz_util:to_atom(filename:basename(Dir), 'true').
+    kz_term:to_atom(filename:basename(Dir), 'true').
 
 -spec app_modules(atom()) -> [atom()].
 app_modules(App) ->

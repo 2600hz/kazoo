@@ -73,7 +73,7 @@
 -define(MAX_WAIT_FOR_COMPACTION_PIDS,
         case kapps_config:get(?CONFIG_CAT, <<"max_wait_for_compaction_pids">>, 360 * ?MILLISECONDS_IN_SECOND) of
             <<"infinity">> -> 'infinity';
-            N -> kz_util:to_integer(N)
+            N -> kz_term:to_integer(N)
         end
        ).
 
@@ -1235,7 +1235,7 @@ code_change(_OldVsn, StateName, State, _Extra) ->
 -spec get_nodes(server()) -> ne_binaries().
 get_nodes(Server) ->
     case kz_couch_view:all_docs(Server, <<"nodes">>, []) of
-        {'ok', Nodes} ->  kz_util:shuffle_list([kz_doc:id(Node) || Node <- Nodes]);
+        {'ok', Nodes} ->  kz_term:shuffle_list([kz_doc:id(Node) || Node <- Nodes]);
         _ -> []
     end.
 
@@ -1243,7 +1243,7 @@ get_nodes(Server) ->
 get_nodes(Server, Database) ->
     case kz_couch_doc:open_doc(Server, <<"dbs">>, Database) of
         {'ok', DbDoc} ->
-            kz_util:shuffle_list(kz_json:get_keys(kz_json:get_value(<<"by_node">>, DbDoc)));
+            kz_term:shuffle_list(kz_json:get_keys(kz_json:get_value(<<"by_node">>, DbDoc)));
         {'error', 'not_found'} ->
             lager:debug("database '~s' not found", [Database]),
             [];
@@ -1263,7 +1263,7 @@ encode_design_doc(Design) ->
 -spec node_dbs(server()) -> {'ok', ne_binaries()}.
 node_dbs(AdminConn) ->
     {'ok', Dbs} = kz_couch_view:all_docs(AdminConn, <<"dbs">>, []),
-    {'ok', kz_util:shuffle_list([<<"dbs">> | [kz_doc:id(Db) || Db <- Dbs]])}.
+    {'ok', kz_term:shuffle_list([<<"dbs">> | [kz_doc:id(Db) || Db <- Dbs]])}.
 
 -spec db_shards(server(), ne_binary(), ne_binary()) -> ne_binaries().
 db_shards(AdminConn, N, D) ->
@@ -1271,7 +1271,7 @@ db_shards(AdminConn, N, D) ->
         {'ok', Doc} ->
             Suffix = kz_json:get_value(<<"shard_suffix">>, Doc),
             Ranges = kz_json:get_value([<<"by_node">>, N], Doc, []),
-            [cow_qs:urlencode(<<"shards/", Range/binary, "/", D/binary, (kz_util:to_binary(Suffix))/binary>>)
+            [cow_qs:urlencode(<<"shards/", Range/binary, "/", D/binary, (kz_term:to_binary(Suffix))/binary>>)
              || Range <- Ranges
             ];
         {'error', 'not_found'} ->
@@ -1494,7 +1494,7 @@ get_node_connections({N, _Opts}, Server) ->
     get_node_connections(N, Server);
 get_node_connections(N, #server{options=Options}) ->
     [_, Host] = binary:split(N, <<"@">>),
-    Hostname = kz_util:to_list(Host),
+    Hostname = kz_term:to_list(Host),
     #server{options=AdminOptions} = props:get_value('admin_connection', Options),
     {NodeUserPort, NodeAdminPort} = props:get_value('node_ports', Options),
     AdminAuth = [KV || {'basic_auth', _}=KV <- AdminOptions],

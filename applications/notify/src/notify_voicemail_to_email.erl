@@ -251,15 +251,15 @@ get_file_name(MediaJObj, Props) ->
              }
         of
             {'undefined', 'undefined'} -> <<"Unknown">>;
-            {'undefined', Num} -> knm_util:pretty_print(kz_util:to_binary(Num));
-            {Name, _} -> knm_util:pretty_print(kz_util:to_binary(Name))
+            {'undefined', Num} -> knm_util:pretty_print(kz_term:to_binary(Num));
+            {Name, _} -> knm_util:pretty_print(kz_term:to_binary(Name))
         end,
 
     LocalDateTime = props:get_value(<<"date_called">>, Voicemail, <<"0000-00-00_00-00-00">>),
     Extension = get_extension(MediaJObj),
     FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
 
-    binary:replace(kz_util:to_lower_binary(FName), <<" ">>, <<"_">>).
+    binary:replace(kz_term:to_lower_binary(FName), <<" ">>, <<"_">>).
 
 -spec get_extension(kz_json:object()) -> ne_binary().
 get_extension(MediaJObj) ->
@@ -299,6 +299,6 @@ preaty_print_length('undefined') ->
 preaty_print_length(Milliseconds) when is_integer(Milliseconds) ->
     Seconds = round(Milliseconds / ?MILLISECONDS_IN_SECOND) rem 60,
     Minutes = trunc(Milliseconds / ?MILLISECONDS_IN_MINUTE) rem 60,
-    kz_util:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
+    kz_term:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
 preaty_print_length(Event) ->
     preaty_print_length(kz_json:get_integer_value(<<"Voicemail-Length">>, Event)).

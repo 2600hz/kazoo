@@ -167,7 +167,7 @@ print_summary({[#webhook{uri=URI
               }
              ,Count) ->
     io:format(?FORMAT_STRING_SUMMARY
-             ,[URI, Verb, Event, kz_util:to_binary(Retries), AccountId]
+             ,[URI, Verb, Event, kz_term:to_binary(Retries), AccountId]
              ),
     print_summary(ets:select(Continuation), Count+1).
 

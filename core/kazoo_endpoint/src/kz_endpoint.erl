@@ -310,7 +310,7 @@ merge_attribute(Key, Account, Endpoint, Owner) ->
     EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
     OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
     Merged = kz_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]
-                                    ,fun(_, V) -> not kz_util:is_empty(V) end
+                                    ,fun(_, V) -> not kz_term:is_empty(V) end
                                     ),
     kz_json:set_value(Key, Merged, Endpoint).
 
@@ -321,7 +321,7 @@ merge_attribute_caller_id(AccountJObj, AccountJAttr, UserJAttr, EndpointJAttr) -
             'true' -> [AccountJAttr, UserJAttr, EndpointJAttr];
             'false' -> [AccountJAttr, EndpointJAttr, UserJAttr]
         end,
-    kz_json:merge_recursive(Merging, fun(_, V) -> not kz_util:is_empty(V) end).
+    kz_json:merge_recursive(Merging, fun(_, V) -> not kz_term:is_empty(V) end).
 
 -spec get_record_call_properties(kz_json:object()) -> kz_json:object().
 get_record_call_properties(JObj) ->
@@ -329,7 +329,7 @@ get_record_call_properties(JObj) ->
     case kz_json:is_json_object(RecordCall) of
         'true' -> RecordCall;
         'false' ->
-            case kz_util:is_true(RecordCall) of
+            case kz_term:is_true(RecordCall) of
                 'false' -> kz_json:new();
                 'true' ->
                     kz_json:from_list(
@@ -855,7 +855,7 @@ is_call_forward_enabled(Endpoint, Properties) ->
     Source = kz_json:get_value(<<"source">>, Properties),
     Number = kz_json:get_value(<<"number">>, CallForwarding),
     kz_json:is_true(<<"enabled">>, CallForwarding)
-        andalso not kz_util:is_empty(Number)
+        andalso not kz_term:is_empty(Number)
         andalso (kz_json:is_false(<<"direct_calls_only">>, CallForwarding, 'true')
                  orelse (not lists:member(Source, ?NON_DIRECT_MODULES))
                 ).
@@ -872,7 +872,7 @@ maybe_create_endpoint(<<"skype">>, Endpoint, Properties, Call) ->
     lager:info("building a Skype endpoint"),
     create_skype_endpoint(Endpoint, Properties, Call);
 maybe_create_endpoint(UnknownType, _, _, _) ->
-    {'error', <<"unknown endpoint type ", (kz_util:to_binary(UnknownType))/binary>>}.
+    {'error', <<"unknown endpoint type ", (kz_term:to_binary(UnknownType))/binary>>}.
 
 -spec maybe_create_mobile_endpoint(kz_json:object(), kz_json:object(), kapps_call:call()) ->
                                           kz_json:object() |
@@ -993,7 +993,7 @@ maybe_record_call(Endpoint, Call) ->
 
 -spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 maybe_start_call_recording(RecordCall, Call) ->
-    case kz_util:is_empty(RecordCall) of
+    case kz_term:is_empty(RecordCall) of
         'true' -> Call;
         'false' -> kapps_call:start_recording(RecordCall, Call)
     end.
@@ -1049,7 +1049,7 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Metaflows">>, kz_json:get_value(<<"metaflows">>, Endpoint)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
-    maybe_format_endpoint(SIPEndpoint, kz_util:is_empty(kz_json:get_value(<<"formatters">>, Endpoint))).
+    maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_value(<<"formatters">>, Endpoint))).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_proplist().
 maybe_get_t38(Endpoint, Call) ->
@@ -1073,7 +1073,7 @@ maybe_build_failover(Endpoint, Clid, Call) ->
     CallForward = kz_json:get_value(<<"call_forward">>, Endpoint),
     Number = kz_json:get_value(<<"number">>, CallForward),
     case kz_json:is_true(<<"failover">>, CallForward)
-        andalso not kz_util:is_empty(Number)
+        andalso not kz_term:is_empty(Number)
     of
         'false' -> maybe_build_push_failover(Endpoint, Clid, Call);
         'true' -> create_call_fwd_endpoint(Endpoint, kz_json:new(), Call)
@@ -1302,7 +1302,7 @@ build_mobile_route(MDN) ->
 -spec maybe_add_mobile_path(ne_binary()) -> ne_binary().
 maybe_add_mobile_path(Route) ->
     Path = kapps_config:get_binary(?MOBILE_CONFIG_CAT, <<"path">>, ?DEFAULT_MOBILE_PATH),
-    case kz_util:is_empty(Path) of
+    case kz_term:is_empty(Path) of
         'false' -> <<Route/binary, ";fs_path=sip:", Path/binary>>;
         'true' -> Route
     end.
@@ -1595,14 +1595,14 @@ get_to_username(SIPJObj) ->
 -spec get_timeout(kz_json:object()) -> api_binary().
 get_timeout(JObj) ->
     case kz_json:get_integer_value(<<"timeout">>, JObj, 0) of
-        Timeout when Timeout > 0 -> kz_util:to_binary(Timeout);
+        Timeout when Timeout > 0 -> kz_term:to_binary(Timeout);
         _Else -> 'undefined'
     end.
 
 -spec get_delay(kz_json:object()) -> api_binary().
 get_delay(JObj) ->
     case kz_json:get_integer_value(<<"delay">>, JObj, 0) of
-        Delay when Delay > 0 -> kz_util:to_binary(Delay);
+        Delay when Delay > 0 -> kz_term:to_binary(Delay);
         _Else -> 'undefined'
     end.
 
@@ -1613,7 +1613,7 @@ get_outbound_flags(JObj) ->
 -spec get_progress_timeout(kz_json:object()) -> api_binary().
 get_progress_timeout(JObj) ->
     case kz_json:get_integer_value([<<"media">>, <<"progress_timeout">>], JObj, 0) of
-        Timeout when Timeout > 0 -> kz_util:to_binary(Timeout);
+        Timeout when Timeout > 0 -> kz_term:to_binary(Timeout);
         _Else -> 'undefined'
     end.
 
@@ -1648,7 +1648,7 @@ get_ignore_completed_elsewhere(JObj) ->
                                    ], JObj)
     of
         'undefined' -> kapps_config:get_is_true(?CONFIG_CAT, <<"default_ignore_completed_elsewhere">>, 'true');
-        IgnoreCompletedElsewhere -> kz_util:is_true(IgnoreCompletedElsewhere)
+        IgnoreCompletedElsewhere -> kz_term:is_true(IgnoreCompletedElsewhere)
     end.
 
 -spec is_sms(kapps_call:call()) -> boolean().

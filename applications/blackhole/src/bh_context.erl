@@ -82,7 +82,7 @@ from_json(JObj) ->
     from_json(new(), JObj).
 
 from_json(Context, JObj) ->
-    Rand = kz_util:rand_hex_binary(16),
+    Rand = kz_binary:rand_hex(16),
     Setters = [{fun set_auth_token/2, kz_json:get_value(<<"auth_token">>, JObj)}
               ,{fun set_req_id/2, kz_json:get_ne_binary_value(<<"request_id">>, JObj, Rand)}
               ,{fun set_name/2, kz_json:get_value(<<"name">>, JObj)}
@@ -344,7 +344,7 @@ add_error(Context, Error) ->
 
 -spec add_error(context(), 'ok' | 'error' | 'shutdown', text()) -> context().
 add_error(#bh_context{errors=Errors}=Context, Result, Error) ->
-    Context#bh_context{result=Result, errors=[kz_util:to_binary(Error) | Errors]}.
+    Context#bh_context{result=Result, errors=[kz_term:to_binary(Error) | Errors]}.
 
 -spec add_listeners(context(), list()) -> context().
 add_listeners(#bh_context{listeners=BListeners}=Context, Listeners) ->

@@ -94,7 +94,7 @@ create_template_props(<<"v2">>, NotifyJObj, AccountJObj) ->
     PortData = notify_util:json_to_template_props(kz_doc:public_fields(PortDoc)),
     [Number|_]=Numbers = find_numbers(PortData, NotifyJObj),
 
-    NumberString = kz_util:join_binary(Numbers, <<" ">>),
+    NumberString = kz_binary:join(Numbers, <<" ">>),
 
     Request = [{<<"port">>
                ,[{<<"service_provider">>, kz_json:get_value(<<"carrier">>, PortDoc)}
@@ -156,7 +156,7 @@ get_admin_send_from(Admin) ->
 
 -spec get_default_from() -> ne_binary().
 get_default_from() ->
-    DefaultFrom = kz_util:to_binary(node()),
+    DefaultFrom = kz_term:to_binary(node()),
     kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_from">>, DefaultFrom).
 
 -spec find_numbers(kz_proplist(), kz_json:object()) -> ne_binaries().
@@ -294,6 +294,6 @@ create_attachment(AttachmentName, AttachmentJObj, AttachmentBin) ->
 %%--------------------------------------------------------------------
 -spec fix_attachment_name(ne_binary() | list()) -> ne_binary().
 fix_attachment_name(Name) when is_binary(Name) ->
-    fix_attachment_name(kz_util:to_list(Name));
+    fix_attachment_name(kz_term:to_list(Name));
 fix_attachment_name(Name) ->
-    kz_util:to_binary(http_uri:encode(Name)).
+    kz_term:to_binary(http_uri:encode(Name)).

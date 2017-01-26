@@ -114,10 +114,10 @@ get_results_missing_db(Account, View, ViewOptions, Retry) ->
                       {'ok', kz_json:object()} |
                       {'error', atom()}.
 open_doc(Account, {_, ?MATCH_MODB_PREFIX(Year,Month,_)} = DocId) ->
-    AccountMODb = get_modb(Account, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    AccountMODb = get_modb(Account, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     couch_open(AccountMODb, DocId);
 open_doc(Account, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId) ->
-    AccountMODb = get_modb(Account, kz_util:to_integer(Year), kz_util:to_integer(Month)),
+    AccountMODb = get_modb(Account, kz_term:to_integer(Year), kz_term:to_integer(Month)),
     couch_open(AccountMODb, DocId);
 open_doc(Account, DocId) ->
     AccountMODb = get_modb(Account),
@@ -270,7 +270,7 @@ get_modb(Account, Year, Month) ->
 -spec maybe_create_current_modb(ne_binary()) -> boolean().
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
     {Y, M, _} = erlang:date(),
-    case {kz_util:to_binary(Y), kz_util:pad_month(M)} of
+    case {kz_term:to_binary(Y), kz_util:pad_month(M)} of
         {Year, Month} ->
             maybe_create(AccountMODb),
             'true';
@@ -360,12 +360,12 @@ create_routines(AccountMODb) ->
 
 -spec run_routine(ne_binary(), ne_binary()) -> any().
 run_routine(AccountMODb, Routine) ->
-    Module = kz_util:to_atom(Routine),
+    Module = kz_term:to_atom(Routine),
     _ = Module:modb(AccountMODb).
 
 -spec add_routine(ne_binary() | atom()) -> 'ok'.
 add_routine(Module) ->
-    Routine = kz_util:to_binary(Module),
+    Routine = kz_term:to_binary(Module),
     Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
     case add_migrate_routines(Routines, Routine) of
         Routines -> 'ok';

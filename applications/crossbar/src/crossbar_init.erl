@@ -36,7 +36,7 @@ api_version_constraint() ->
 
 -spec api_version_constraint(ne_binary()) -> boolean().
 api_version_constraint(<<"v", ApiVersion/binary>>) ->
-    try kz_util:to_integer(ApiVersion) of
+    try kz_term:to_integer(ApiVersion) of
         _Int -> lager:debug("routing to version ~b", [_Int]), 'true'
     catch
         _:_ -> lager:debug("not routing to version ~s", [ApiVersion]), 'false'
@@ -76,7 +76,7 @@ is_versioned_module(Module) ->
 start_mod(CBMod) when is_binary(CBMod) ->
     case is_versioned_module(CBMod) of
         'true' -> {'error', 'version_supplied'};
-        'false' -> start_mod(kz_util:to_atom(CBMod, 'true'))
+        'false' -> start_mod(kz_term:to_atom(CBMod, 'true'))
     end;
 start_mod(CBMod) when is_atom(CBMod) ->
     try CBMod:init() of
@@ -87,7 +87,7 @@ start_mod(CBMod) when is_atom(CBMod) ->
             maybe_start_mod_versions(?VERSION_SUPPORTED, CBMod)
     end;
 start_mod(CBMod) ->
-    start_mod(kz_util:to_binary(CBMod)).
+    start_mod(kz_term:to_binary(CBMod)).
 
 -spec maybe_start_mod_versions(ne_binaries(), ne_binary() | atom()) -> 'ok'.
 maybe_start_mod_versions(Versions, Mod) ->
@@ -98,10 +98,10 @@ maybe_start_mod_versions(Versions, Mod) ->
 
 -spec start_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
 start_mod_version(Version, Mod) ->
-    Module = <<(kz_util:to_binary(Mod))/binary
-               , "_", (kz_util:to_binary(Version))/binary
+    Module = <<(kz_term:to_binary(Mod))/binary
+               , "_", (kz_term:to_binary(Version))/binary
              >>,
-    CBMod = kz_util:to_atom(Module, 'true'),
+    CBMod = kz_term:to_atom(Module, 'true'),
     try CBMod:init() of
         _ ->
             lager:debug("module ~s version ~s successfully loaded", [Mod, Version]),
@@ -117,7 +117,7 @@ start_mod_version(Version, Mod) ->
 %%--------------------------------------------------------------------
 -spec stop_mod(atom() | string() | binary()) -> 'ok'.
 stop_mod(CBMod) when not is_atom(CBMod) ->
-    stop_mod(kz_util:to_atom(CBMod, 'true'));
+    stop_mod(kz_term:to_atom(CBMod, 'true'));
 stop_mod(CBMod) ->
     crossbar_bindings:flush_mod(CBMod),
     case erlang:function_exported(CBMod, 'stop', 0) of
@@ -143,10 +143,10 @@ maybe_stop_mod_versions(Versions, Mod) ->
 
 -spec stop_mod_version(ne_binary(), ne_binary() | atom()) -> boolean().
 stop_mod_version(Version, Mod) ->
-    Module = <<(kz_util:to_binary(Mod))/binary
-               , "_", (kz_util:to_binary(Version))/binary
+    Module = <<(kz_term:to_binary(Mod))/binary
+               , "_", (kz_term:to_binary(Version))/binary
              >>,
-    CBMod = kz_util:to_atom(Module, 'true'),
+    CBMod = kz_term:to_atom(Module, 'true'),
     crossbar_bindings:flush_mod(CBMod),
     try CBMod:stop() of
         _ ->
@@ -222,11 +222,11 @@ get_binding_ip() ->
     IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
 
     %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
 
-    {'ok', DefaultIP} = inet:parse_address(kz_util:to_list(default_ip(IsIPv6Enabled))),
-    {'ok', DefaultIPv4} = inet:parse_address(kz_util:to_list(default_ip('false'))),
-    {'ok', DefaultIPv6} = inet:parse_address(kz_util:to_list(default_ip('true'))),
+    {'ok', DefaultIP} = inet:parse_address(kz_term:to_list(default_ip(IsIPv6Enabled))),
+    {'ok', DefaultIPv4} = inet:parse_address(kz_term:to_list(default_ip('false'))),
+    {'ok', DefaultIPv6} = inet:parse_address(kz_term:to_list(default_ip('true'))),
 
     case inet:parse_ipv6strict_address(IP) of
         {'ok', IPv6} when IsIPv6Enabled -> IPv6;

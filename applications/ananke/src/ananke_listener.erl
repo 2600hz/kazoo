@@ -249,8 +249,8 @@ parse_time_token(TokenName, Schedule, Default) ->
     case kz_json:get_value(TokenName, Schedule, Default) of
         <<"all">> -> 'all';
         'all' -> 'all';
-        Tokens when is_list(Tokens) -> [kz_util:to_integer(X) || X <- Tokens];
-        Token -> kz_util:to_integer(Token)
+        Tokens when is_list(Tokens) -> [kz_term:to_integer(X) || X <- Tokens];
+        Token -> kz_term:to_integer(Token)
     end.
 
 -spec action_fun(ne_binary(), kz_json:object()) -> amqp_cron_callback().
@@ -266,7 +266,7 @@ action_fun(Type, _JObj) ->
 -spec action_name(ne_binary(), kz_json:object(), time()) -> ne_binary().
 action_name(ActionType, Action, Times) ->
     ActionSuffix = action_suffixes(ActionType, Action),
-    kz_util:join_binary([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
+    kz_binary:join([ActionType | ActionSuffix] ++ [time_suffix(Times)], "-").
 
 -spec action_suffixes(ne_binary(), kz_json:object()) -> ne_binaries().
 action_suffixes(<<"check_voicemail">>, JObj) ->
@@ -276,17 +276,17 @@ action_suffixes(_Type, _JObj) -> [].
 -spec time_suffix(time()) -> ne_binary().
 time_suffix({'cron', {Minutes, Hours, MDays, Months, Weekdays}}) ->
     Time = [time_tokens_to_binary(T) || T <- [Minutes, Hours, MDays, Months, Weekdays]],
-    kz_util:join_binary(Time, "-");
+    kz_binary:join(Time, "-");
 time_suffix({'oneshot', {{Year, Month, Day}, {Hour, Minute, Second}}}) ->
-    Time = [kz_util:to_binary(B) || B <- [Year, Month, Day, Hour, Minute, Second]],
-    kz_util:join_binary(Time,  "-");
+    Time = [kz_term:to_binary(B) || B <- [Year, Month, Day, Hour, Minute, Second]],
+    kz_binary:join(Time,  "-");
 time_suffix({'sleeper', MilliSeconds}) ->
-    kz_util:to_binary(MilliSeconds).
+    kz_term:to_binary(MilliSeconds).
 
 -spec time_tokens_to_binary(time_token_value()) -> ne_binary().
 time_tokens_to_binary('all') -> <<"all">>;
 time_tokens_to_binary(Tokens) when is_list(Tokens) ->
-    kz_util:join_binary([kz_util:to_binary(X) || X <- Tokens], ",").
+    kz_binary:join([kz_term:to_binary(X) || X <- Tokens], ",").
 
 -spec unknown_type(api_binary()) -> 'ok'.
 unknown_type(Type) ->

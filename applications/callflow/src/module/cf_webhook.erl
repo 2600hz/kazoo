@@ -53,7 +53,7 @@ set_hook(Data, CallJObj) ->
     Now = calendar:datetime_to_gregorian_seconds(calendar:local_time()),
     kz_json:from_list(
       props:filter_undefined(
-        [{<<"_id">>, kz_util:to_binary(Now)}
+        [{<<"_id">>, kz_term:to_binary(Now)}
         ,{<<"uri">>, kz_json:get_binary_value(<<"uri">>, Data)}
         ,{<<"hook">>, <<"callflow">>}
         ,{<<"http_verb">>, kz_json:get_binary_value(<<"http_verb">>, Data)}

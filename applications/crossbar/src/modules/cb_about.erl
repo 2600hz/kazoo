@@ -85,6 +85,6 @@ display_version(Context) ->
              ,{<<"used_memory">>, erlang:memory('total')}
              ,{<<"processes">>, erlang:system_info('process_count')}
              ,{<<"ports">>, length(erlang:ports())}
-             ,{<<"erlang_version">>, kz_util:to_binary(erlang:system_info('otp_release'))}
+             ,{<<"erlang_version">>, kz_term:to_binary(erlang:system_info('otp_release'))}
              ]),
     crossbar_util:response(JObj, Context).

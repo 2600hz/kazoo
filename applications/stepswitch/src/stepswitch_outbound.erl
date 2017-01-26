@@ -77,7 +77,7 @@ handle_originate_req(Number, JObj) ->
 
 -spec maybe_add_call_id(api_binary(), kz_json:object()) -> kz_json:object().
 maybe_add_call_id('undefined', JObj) ->
-    kz_json:set_value(<<"Outbound-Call-ID">>, kz_util:rand_hex_binary(8), JObj);
+    kz_json:set_value(<<"Outbound-Call-ID">>, kz_binary:rand_hex(8), JObj);
 maybe_add_call_id(_, JObj) -> JObj.
 
 -spec maybe_force_originate_outbound(knm_number_options:extra_options(), kz_json:object()) -> any().
