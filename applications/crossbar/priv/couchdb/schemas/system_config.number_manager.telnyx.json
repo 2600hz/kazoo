@@ -13,9 +13,19 @@
             "description": "number_manager.telnyx enable provisioning",
             "type": "boolean"
         },
+        "monthly_recurring_cost": {
+            "default": 1.0,
+            "description": "number_manager.telnyx monthly recurring cost",
+            "type": "number"
+        },
         "sandbox_provisioning": {
             "default": false,
             "description": "number_manager.telnyx sandbox provisioning",
+            "type": "boolean"
+        },
+        "should_filter_rates": {
+            "default": false,
+            "description": "number_manager.telnyx should filter rates",
             "type": "boolean"
         },
         "should_keep_best_effort": {
@@ -26,6 +36,11 @@
         "token": {
             "description": "number_manager.telnyx token",
             "type": "string"
+        },
+        "upfront_cost": {
+            "default": 1.0,
+            "description": "number_manager.telnyx upfront cost",
+            "type": "number"
         },
         "user": {
             "description": "number_manager.telnyx user",

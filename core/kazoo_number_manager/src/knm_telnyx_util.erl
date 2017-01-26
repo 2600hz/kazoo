@@ -39,6 +39,9 @@
 -define(SHOULD_KEEP_BEST_EFFORT,
         kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_keep_best_effort">>, 'false')).
 
+-define(SHOULD_FILTER_RATES,
+        kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"should_filter_rates">>, 'false')).
+
 
 %%--------------------------------------------------------------------
 %% @public
@@ -129,8 +132,12 @@ http_options() ->
 -spec rep(kz_http:ret()) -> kz_json:object().
 rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
+
+    Routines = [fun(JObj) -> maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, JObj) end
+               ,fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end],
+
     maybe_apply_limit(
-      maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, kz_json:decode(Response))
+      lists:foldl(fun(F, J) -> F(J) end, kz_json:decode(Response), Routines)
      );
 rep({'ok', Code, _Headers, _Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, _Response]),
@@ -162,6 +169,18 @@ maybe_remove_best_effort('false', JObj) ->
                       ],
             kz_json:set_value(<<"result">>, Results, JObj)
     end.
+
+-spec maybe_filter_rates(boolean(), kz_json:object()) -> kz_json:object().
+maybe_filter_rates('false', JObj) -> JObj;
+maybe_filter_rates('true', JObj) ->
+    UpfrontCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"upfront_cost">>, 1.0),
+    MonthlyRecurringCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"monthly_recurring_cost">>, 1.0),
+    Results = [Result
+               || Result <- kz_json:get_value(<<"result">>, JObj, [])
+                      ,(kz_json:get_float_value(<<"upfront_cost">>, Result) == UpfrontCost)
+                      and (kz_json:get_float_value(<<"monthly_recurring_cost">>, Result) == MonthlyRecurringCost)
+              ],
+    kz_json:set_value(<<"result">>, Results, JObj).
 
 -spec maybe_apply_limit(kz_json:object()) -> kz_json:object().
 -spec maybe_apply_limit(kz_json:object(), ne_binary()) -> kz_json:object().
