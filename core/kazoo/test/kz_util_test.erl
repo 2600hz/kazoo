@@ -446,3 +446,14 @@ runs_in_test_() ->
     [?_assertEqual(timeout, kz_util:runs_in(1, fun timer:sleep/1, [10]))
     ,?_assertEqual({ok,ok}, kz_util:runs_in(10, fun timer:sleep/1, [1]))
     ].
+
+
+uniq_test_() ->
+    [?_assertEqual([], kz_util:uniq([]))
+    ,?_assertEqual([{module_name, <<"my_module">>}]
+                  ,kz_util:uniq([{module_name, <<"my_module">>}
+                                ,{module_name, <<"blaaa">>}
+                                ,{module_name, false}
+                                ])
+                  )
+    ].

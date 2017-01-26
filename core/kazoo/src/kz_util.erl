@@ -141,6 +141,7 @@
 
 -export([application_version/1]).
 
+-export([uniq/1]).
 -export([iolist_join/2]).
 
 -include_lib("kernel/include/inet.hrl").
@@ -1695,6 +1696,22 @@ get_app(AppName) ->
 application_version(Application) ->
     {'ok', Vsn} = application:get_key(Application, 'vsn'),
     to_binary(Vsn).
+
+
+%% @doc
+%% Like lists:usort/1 but preserves original ordering.
+%% Time: O(nlog(n)).
+%% @end
+-spec uniq([kz_proplist()]) -> kz_proplist().
+uniq(KVs) when is_list(KVs) -> uniq(KVs, sets:new(), []).
+uniq([], _, L) -> lists:reverse(L);
+uniq([{K,_}=KV|Rest], S, L) ->
+    case sets:is_element(K, S) of
+        true -> uniq(Rest, S, L);
+        false ->
+            NewS = sets:add_element(K, S),
+            uniq(Rest, NewS, [KV|L])
+    end.
 
 
 %% @public
