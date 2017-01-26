@@ -46,6 +46,7 @@ maybe_cid_privacy(CCVs, Default) when is_list(CCVs) ->
 maybe_cid_privacy(CCVs, Default) ->
     PrivacyMode = kz_json:get_ne_binary_value(<<"Privacy-Mode">>, CCVs),
     case caller_privacy_mode(CCVs) of
+        'false' -> Default;
         ?NO_HIDE_MODE -> Default;
         HideMode ->
             lager:debug("caller privacy flags are set, maybe overriding caller id"),
@@ -85,7 +86,7 @@ caller_privacy_number(JObj) -> kz_json:is_true(?CALLER_PRIVACY_NUMBER, JObj, 'fa
 %% Check CCVs for screen bits and caller id hide parameters
 %% @end
 %%--------------------------------------------------------------------
--spec caller_privacy_mode(kz_json:object()) -> ne_binary().
+-spec caller_privacy_mode(kz_json:object()) -> ne_binary() | 'false'.
 caller_privacy_mode(CCVs) ->
     caller_screen_bit(CCVs)
         andalso caller_privacy_mode(caller_privacy_name(CCVs), caller_privacy_number(CCVs)).
