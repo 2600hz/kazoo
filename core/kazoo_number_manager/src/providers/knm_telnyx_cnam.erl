@@ -45,6 +45,7 @@ save(Number, _State) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
+    _ = disable_inbound(Number),
     knm_services:deactivate_features(Number
                                     ,[?FEATURE_CNAM_INBOUND
                                      ,?FEATURE_CNAM_OUTBOUND
@@ -102,7 +103,9 @@ handle_inbound_cnam(Number) ->
         false when NotChanged -> Number;
         false ->
             _ = disable_inbound(Number),
-            knm_services:deactivate_feature(Number, ?CNAM_INBOUND_LOOKUP);
+            knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                                     ,?CNAM_INBOUND_LOOKUP
+                                                     ]);
         true when NotChanged -> Number;
         true ->
             _ = enable_inbound(Number),
