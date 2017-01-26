@@ -15,6 +15,7 @@
 
 -export([handle/2]).
 -export([update_presence/3]).
+-export([maybe_cleanup_slot/3]).
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
 
@@ -26,6 +27,7 @@
 -define(SYSTEM_PARKED_TYPE, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?DEFAULT_PARKED_TYPE)).
 -define(ACCOUNT_PARKED_TYPE(A), kapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?SYSTEM_PARKED_TYPE)).
 -define(PRESENCE_TYPE_KEY, <<"Presence-Type">>).
+-define(PARK_DELAY_CHECK_TIME, ?MILLISECONDS_IN_SECOND * 10).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -230,6 +232,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             %% Caller parked in slot number...
             _ = kapps_call_command:b_prompt(<<"park-call_placed_in_spot">>, Call),
             _ = kapps_call_command:b_say(kz_util:to_binary(SlotNumber), Call),
+            _ = timer:apply_after(?PARK_DELAY_CHECK_TIME, ?MODULE, 'maybe_cleanup_slot', [SlotNumber, Call, cf_exe:callid(Call)]),
             cf_exe:transfer(Call);
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
@@ -556,6 +559,28 @@ fetch_parked_calls(AccountDb, AccountId) ->
             lager:info("unable to get parked calls: ~p", [_R]),
             E
     end.
+
+-spec maybe_cleanup_slot(ne_binary(), kapps_call:call(), ne_binary()) -> 'ok'.
+maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
+    ParkedCalls = get_parked_calls(Call),
+    AccountDb   = kapps_call:account_db(Call),
+
+    lager:info("maybe cleaning up parking slot ~p with old call-id ~p", [SlotNumber, OldCallId]),
+    case kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
+        'undefined' ->
+            lager:info("slot not found, not doing anything");
+        Slot ->
+            ParkedCallId = kz_json:get_ne_value(<<"Call-ID">>, Slot),
+            maybe_cleanup_slot(SlotNumber, OldCallId, ParkedCallId, AccountDb)
+    end.
+
+-spec maybe_cleanup_slot(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+maybe_cleanup_slot(SlotNumber, CallId, CallId, AccountDb) ->
+    lager:info("callid (~p) in parking slot ~p has not changed, cleaning up...", [CallId, SlotNumber]),
+    cleanup_slot(SlotNumber, CallId, AccountDb);
+
+maybe_cleanup_slot(_SlotNumber, _OldCallId, _NewCallId, _AccountDb) ->
+    lager:info("parking slot ~p call-id changed from ~p to ~p, not cleaning.", [_SlotNumber, _OldCallId, _NewCallId]).
 
 %%--------------------------------------------------------------------
 %% @private
