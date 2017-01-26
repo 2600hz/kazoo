@@ -103,7 +103,6 @@
 -export([iolist_join/2]).
 
 -ifdef(TEST).
--export([to_lower_char/1, to_upper_char/1]).
 -export([resolve_uri_path/2]).
 -export([weekday/1, month/1]).
 -export([unitfy_seconds/1]).
