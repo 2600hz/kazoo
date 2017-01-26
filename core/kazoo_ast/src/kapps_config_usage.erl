@@ -294,10 +294,10 @@ key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail
     ,?FIELD_PROPERTIES
      | key_to_key_path(Tail)
     ];
-key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)]), _Tail)) ->
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kz_term', 'to_binary', [?VAR(_Name)]), _Tail)) ->
     'undefined';
 
-key_to_key_path(?MOD_FUN_ARGS('kz_util', 'to_binary', [?VAR(_Name)])) ->
+key_to_key_path(?MOD_FUN_ARGS('kz_term', 'to_binary', [?VAR(_Name)])) ->
     'undefined';
 
 key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
@@ -357,8 +357,8 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'to_integer', _Args)) -> <<"integer">>;
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', _Args)) -> <<"string">>.
+guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
 guess_properties(Document, Key, Type, Default)
   when is_binary(Key) ->
@@ -418,9 +418,9 @@ default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
     default_value(kz_util:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
     default_value(kz_util:anonymous_caller_id_name());
-default_value(?MOD_FUN_ARGS('kz_util', 'to_binary', [Arg])) ->
+default_value(?MOD_FUN_ARGS('kz_term', 'to_binary', [Arg])) ->
     default_value(Arg);
-default_value(?MOD_FUN_ARGS('kz_util', 'to_integer', [Arg])) ->
+default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->
     default_value(Arg);
 default_value(?MOD_FUN_ARGS(M, 'type', [])) ->
     default_value(M:type());
