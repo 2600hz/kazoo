@@ -67,7 +67,7 @@ has_flags(Props) when is_list(Props) ->
 has_flags(JObj) ->
     caller_screen_bit(JObj)
         andalso (caller_privacy_name(JObj)
-                     orelse caller_privacy_number(JObj)
+                 orelse caller_privacy_number(JObj)
                 ).
 
 -spec caller_screen_bit(kz_json:object()) -> boolean().
@@ -158,8 +158,8 @@ get_default_privacy_mode(CCVs) ->
         'undefined' ->
             kapps_account_config:get_global(AccountId
                                            ,?PRIVACY_CAT
-                                           ,?KEY_PRIVACY_MODE,
-                                           ?HIDE_BOTH
+                                           ,?KEY_PRIVACY_MODE
+                                           ,?HIDE_BOTH
                                            );
         ?HIDE_BOTH -> ?HIDE_BOTH;
         _Other -> ?NO_HIDE_MODE

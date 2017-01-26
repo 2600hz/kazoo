@@ -651,8 +651,8 @@ gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
     kz_privacy:maybe_cid_privacy(kz_json:set_values([{<<"Account-ID">>, AccountId}
                                                     ,{<<"Privacy-Mode">>, PrivacyMode}
                                                     ]
-                                                    ,CCVs
-                                                    )
+                                                   ,CCVs
+                                                   )
                                 , DefaultCID
                                 ).
 
