@@ -182,7 +182,7 @@ assign_to_app_test_() ->
 
 release_test_() ->
     Ret = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_WITH_HISTORY_NUM]),
-    Ret1 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_MDN]),
+    Ret1 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_MDN], knm_number_options:mdn_options()),
     Ret2 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_BAD_CARRIER_NUM]),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))

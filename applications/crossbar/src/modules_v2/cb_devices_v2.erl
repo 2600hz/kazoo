@@ -404,11 +404,16 @@ error_mdn_changed(Context) ->
 -spec check_mdn_taken(api_binary(), cb_context:context()) -> cb_context:context().
 check_mdn_taken(DeviceId, Context) ->
     MDN = get_mdn(Context),
-    case knm_number:get(MDN) of
-        {'ok', _Number} -> error_mdn_taken(MDN, Context);
-        _Otherwise ->
-            lager:debug("endpoint mdn ~s is not taken: ~p", [MDN, _Otherwise]),
-            check_mdn_registered(DeviceId, Context)
+    case knm_number:get(MDN, knm_number_options:mdn_options()) of
+        {error, not_found} ->
+            lager:debug("endpoint mdn ~s is not taken", [MDN]),
+            check_mdn_registered(DeviceId, Context);
+        {ok, _Number} ->
+            lager:debug("mdn ~s taken", [MDN]),
+            error_mdn_taken(MDN, Context);
+        {error, _R} ->
+            lager:debug("number ~s taken: ~p", [MDN, _R]),
+            error_mdn_taken(MDN, Context)
     end.
 
 -spec error_mdn_taken(ne_binary(), cb_context:context()) -> cb_context:context().
@@ -816,16 +821,17 @@ add_mobile_mdn(Context) ->
           ,{<<"device-id">>, kz_doc:id(cb_context:doc(Context))}
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
-    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+    Options = [{assign_to, cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
+               |knm_number_options:mdn_options()
               ],
-    case knm_number:move(Normalized, cb_context:account_id(Context), Options) of
-        {'error', _}=Error ->
+    case knm_number:create(Normalized, Options) of
+        {error, _}=Error ->
             _ = crossbar_doc:delete(Context),
             cb_phone_numbers_v2:set_response(Error, Context);
-        _Else ->
+        {ok, _} ->
             lager:debug("created new mdn ~s with public fields set to ~s"
                        ,[Normalized, kz_json:encode(PublicFields)]),
             maybe_remove_mobile_mdn(Context)
@@ -848,18 +854,18 @@ remove_mobile_mdn(Context) ->
 -spec remove_if_mobile(ne_binary(), cb_context:context()) -> cb_context:context().
 remove_if_mobile(MDN, Context) ->
     Normalized = knm_converters:normalize(MDN),
-    case knm_number:get(Normalized) of
+    case knm_number:get(Normalized, knm_number_options:mdn_options()) of
         {'ok', Number} ->
             PN = knm_number:phone_number(Number),
             IsMdnCarrier = ?CARRIER_MDN =:= knm_phone_number:module_name(PN),
             case kz_json:get_ne_value(<<"mobile">>, knm_number:to_public_json(Number)) of
-                'undefined' when not IsMdnCarrier -> Context;
+                'undefined' when not IsMdnCarrier ->
+                    lager:error("not removing number ~s: somehow not an mdn", [Normalized]),
+                    Context;
                 Mobile ->
-                    %% mobile property found in the public fields or carrier is CARRIER_MDN,
-                    %% hard removing number
                     lager:debug("hard removing old mdn ~s with mobile properties ~s"
                                ,[Normalized, kz_json:encode(Mobile)]),
-                    _ = knm_number:delete(Normalized, knm_number_options:default()),
+                    _ = knm_number:release(Normalized, knm_number_options:mdn_options()),
                     Context
             end;
         {'error', _R} ->
@@ -875,18 +881,17 @@ remove_if_mobile(MDN, Context) ->
 -spec get_mdn(cb_context:context()) -> api_binary().
 get_mdn(Context) ->
     ReqMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
-    case kz_util:is_empty(ReqMDN) of
-        'true' ->
-            case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
-                'undefined' -> 'undefined';
-                MDN -> knm_converters:normalize(MDN)
-            end;
-        'false' -> knm_converters:normalize(ReqMDN)
+    case kz_util:is_empty(ReqMDN)
+        andalso kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc'))
+    of
+        false -> knm_converters:normalize(ReqMDN);
+        undefined -> undefined;
+        MDN -> knm_converters:normalize(MDN)
     end.
 
 -spec has_mdn_changed(cb_context:context()) -> boolean().
 has_mdn_changed(Context) ->
-    %% This shouldn't be empty or undefined because the caller is already check that with get_mdn/1
+    %% This shouldn't be empty or undefined because caller already checked that with get_mdn/1
     NewMDN = cb_context:req_value(Context, ?KEY_MOBILE_MDN),
     case kz_json:get_ne_value(?KEY_MOBILE_MDN, cb_context:fetch(Context, 'db_doc')) of
         'undefined' -> 'true';

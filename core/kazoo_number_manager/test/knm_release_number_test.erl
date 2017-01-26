@@ -72,7 +72,8 @@ release_for_hard_delete_test_() ->
     ].
 
 release_mdn_test_() ->
-    {'ok', Deleted} = knm_number:release(?TEST_IN_SERVICE_MDN),
+    BaseOptions = knm_number_options:mdn_options(),
+    {'ok', Deleted} = knm_number:release(?TEST_IN_SERVICE_MDN, BaseOptions),
     PhoneNumber = knm_number:phone_number(Deleted),
     [{"verify number state is moved to DELETED"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))

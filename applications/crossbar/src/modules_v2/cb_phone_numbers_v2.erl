@@ -429,15 +429,11 @@ delete(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec summary(cb_context:context(), ne_binary()) -> cb_context:context().
 summary(Context, Number) ->
-    IncludePorts =
-        kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>, 'false')),
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}
-              ],
-    case knm_number:get(Number, Options) of
+    case knm_number:get(Number, [{auth_by, cb_context:auth_account_id(Context)}]) of
         {'ok', KNMNumber} ->
             crossbar_util:response(knm_number:to_public_json(KNMNumber), Context);
         {'error', _JObj} ->
-            maybe_find_port_number(Context, Number, IncludePorts)
+            maybe_find_port_number(Context, Number, should_include_ports(Context))
     end.
 
 
@@ -527,12 +523,14 @@ fix_available(NumJObj) ->
     NewJObj = kz_json:set_value(<<"features_available">>, Allowed, JObj),
     kz_json:from_list([{Num, NewJObj}]).
 
+should_include_ports(Context) ->
+    kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>)).
+
 %% @private
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
 -spec maybe_add_port_request_numbers(cb_context:context(), boolean()) -> kz_json:object().
 maybe_add_port_request_numbers(Context) ->
-    IncludePorts = cb_context:req_value(Context, <<"include_ports">>, 'false'),
-    maybe_add_port_request_numbers(Context, kz_util:is_true(IncludePorts)).
+    maybe_add_port_request_numbers(Context, should_include_ports(Context)).
 
 maybe_add_port_request_numbers(_Context, 'false') -> kz_json:new();
 maybe_add_port_request_numbers(Context, 'true') ->

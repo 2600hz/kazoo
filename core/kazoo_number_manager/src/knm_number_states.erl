@@ -33,15 +33,27 @@ to_options_state(T=#{options := Options}) ->
 
 -spec change_state(t(), ne_binary()) -> t().
 change_state(T, ?NUMBER_STATE_RESERVED) ->
-    to_reserved(T);
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_RESERVED) end
+                     ,fun to_reserved/1
+                     ]);
 change_state(T, ?NUMBER_STATE_IN_SERVICE) ->
     to_in_service(T);
 change_state(T, ?NUMBER_STATE_AVAILABLE) ->
-    to_available(T);
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_AVAILABLE) end
+                     ,fun to_available/1
+                     ]);
 change_state(T, ?NUMBER_STATE_AGING) ->
-    to_aging(T);
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_AGING) end
+                     ,fun to_aging/1
+                     ]);
 change_state(T, ?NUMBER_STATE_PORT_IN) ->
-    to_port_in(T);
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_PORT_IN) end
+                     ,fun to_port_in/1
+                     ]);
 change_state(T=#{todo := Ns}, _State) ->
     lager:debug("unhandled state change to ~p", [_State]),
     Error = knm_errors:to_json(invalid_state),
@@ -124,30 +136,6 @@ to_reserved(T, State) ->
 -spec to_in_service(t()) -> t().
 to_in_service(T0) -> ?TO_STATE2(to_in_service, T0).
 
-to_in_service(T, ?NUMBER_STATE_DISCOVERY) ->
-    knm_numbers:pipe(T
-                    ,[fun authorize/1
-                     ,fun move_to_in_service_state/1
-                     ,fun knm_services:activate_phone_number/1
-                     ,fun knm_carriers:acquire/1
-                     ]);
-to_in_service(T, ?NUMBER_STATE_PORT_IN) ->
-    knm_numbers:pipe(T
-                    ,[fun authorize/1
-                     ,fun move_to_in_service_state/1
-                     ]);
-to_in_service(T, ?NUMBER_STATE_AVAILABLE) ->
-    knm_numbers:pipe(T
-                    ,[fun authorize/1
-                     ,fun move_to_in_service_state/1
-                     ,fun knm_services:activate_phone_number/1
-                     ,fun knm_carriers:acquire/1
-                     ]);
-to_in_service(T, ?NUMBER_STATE_RESERVED) ->
-    knm_numbers:pipe(T
-                    ,[fun in_service_from_reserved_authorize/1
-                     ,fun move_to_in_service_state/1
-                     ]);
 to_in_service(T=#{todo := Ns}, ?NUMBER_STATE_IN_SERVICE) ->
     {Yes, No} = lists:partition(fun is_assigned_to_assignto/1, Ns),
     Ta = knm_numbers:ok(Yes, T),
@@ -156,6 +144,34 @@ to_in_service(T=#{todo := Ns}, ?NUMBER_STATE_IN_SERVICE) ->
                           ,fun move_to_in_service_state/1
                           ]),
     knm_numbers:merge_okkos(Ta, Tb);
+to_in_service(T, ?NUMBER_STATE_DISCOVERY) ->
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_DISCOVERY) end
+                     ,fun authorize/1
+                     ,fun move_to_in_service_state/1
+                     ,fun knm_services:activate_phone_number/1
+                     ,fun knm_carriers:acquire/1
+                     ]);
+to_in_service(T, ?NUMBER_STATE_PORT_IN) ->
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_PORT_IN) end
+                     ,fun authorize/1
+                     ,fun move_to_in_service_state/1
+                     ]);
+to_in_service(T, ?NUMBER_STATE_AVAILABLE) ->
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_AVAILABLE) end
+                     ,fun authorize/1
+                     ,fun move_to_in_service_state/1
+                     ,fun knm_services:activate_phone_number/1
+                     ,fun knm_carriers:acquire/1
+                     ]);
+to_in_service(T, ?NUMBER_STATE_RESERVED) ->
+    knm_numbers:pipe(T
+                    ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED) end
+                     ,fun in_service_from_reserved_authorize/1
+                     ,fun move_to_in_service_state/1
+                     ]);
 to_in_service(T, State) ->
     invalid_state_transition(T, State, ?NUMBER_STATE_IN_SERVICE).
 
@@ -362,6 +378,29 @@ invalid_state_transition(T=#{todo := Ns}, FromState, ToState) ->
     {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
     Reason = knm_errors:to_json(A, B, C),
     knm_numbers:ko(Ns, Reason, T).
+
+%% @private
+fail_if_mdn(T=#{todo := Ns}, ToState) ->
+    case lists:partition(fun is_mdn/1, Ns) of
+        {[], _} -> knm_numbers:ok(Ns, T);
+        {MDNs, OtherNs} ->
+            Ta = knm_numbers:ok(OtherNs, T),
+            Tb = invalid_state_transition(T#{todo => MDNs}, <<"'MDN'">>, ToState),
+            knm_numbers:merge_okkos(Ta, Tb)
+    end.
+
+fail_if_mdn(T=#{todo := Ns}, FromState, ToState) ->
+    case lists:partition(fun is_mdn/1, Ns) of
+        {[], _} -> knm_numbers:ok(Ns, T);
+        {MDNs, OtherNs} ->
+            Ta = knm_numbers:ok(OtherNs, T),
+            Tb = invalid_state_transition(T#{todo => MDNs}, FromState, ToState),
+            knm_numbers:merge_okkos(Ta, Tb)
+    end.
+
+%% @private
+is_mdn(N) ->
+    ?CARRIER_MDN =:= knm_phone_number:module_name(knm_number:phone_number(N)).
 
 %% @private
 is_assigned_to_assignto(N) ->
