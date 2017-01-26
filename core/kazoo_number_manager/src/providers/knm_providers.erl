@@ -281,6 +281,10 @@ provider_modules(Features, MaybeAccountId) ->
 -spec provider_module(ne_binary(), api_ne_binary()) -> ne_binary().
 provider_module(?FEATURE_CNAM, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     cnam_provider(AccountId);
+provider_module(?FEATURE_CNAM_INBOUND, AccountId) ->
+    provider_module(?FEATURE_CNAM, AccountId);
+provider_module(?FEATURE_CNAM_OUTBOUND, AccountId) ->
+    provider_module(?FEATURE_CNAM, AccountId);
 provider_module(?FEATURE_E911, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     e911_provider(AccountId);
 provider_module(?FEATURE_PREPEND, _) ->

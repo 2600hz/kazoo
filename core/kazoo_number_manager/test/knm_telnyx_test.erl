@@ -129,29 +129,38 @@ cnam_test_() ->
               ,{'public_fields', JObj}
               ],
     {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN1 = knm_number:phone_number(N1),
+    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN2 = knm_number:phone_number(N2),
+    Deactivate = kz_json:from_list(
+                   [{?CNAM_INBOUND_LOOKUP, false}
+                   ,{?CNAM_DISPLAY_NAME, undefined}
+                   ]),
+    #{'ok' := [N3]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
+    PN3 = knm_number:phone_number(N3),
     [{"Verify inbound CNAM is properly activated"
-     ,?_assertEqual(true, kz_json:is_true(?CNAM_INBOUND_LOOKUP
-                                         ,knm_phone_number:feature(PN1, ?FEATURE_CNAM_INBOUND)))
+     ,?_assertEqual(true, is_cnam_activated(PN1))
      }
     ,{"Verify outbound CNAM is properly set"
-     ,?_assertEqual(<<"my CNAM">>
-                   ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME
-                                               ,knm_phone_number:feature(PN1, ?FEATURE_CNAM_OUTBOUND)
-                                               )
-                   )
+     ,?_assertEqual(<<"my CNAM">>, cnam_name(PN1))
      }
     ,{"Verify inbound CNAM is still properly activated"
-     ,?_assertEqual(true, kz_json:is_true(?CNAM_INBOUND_LOOKUP
-                                         ,knm_phone_number:feature(PN2, ?FEATURE_CNAM_INBOUND)))
+     ,?_assertEqual(true, is_cnam_activated(PN2))
      }
     ,{"Verify outbound CNAM is still properly set"
-     ,?_assertEqual(<<"my CNAM">>
-                   ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME
-                                               ,knm_phone_number:feature(PN2, ?FEATURE_CNAM_OUTBOUND)
-                                               )
-                   )
+     ,?_assertEqual(<<"my CNAM">>, cnam_name(PN2))
+     }
+    ,{"Verify inbound CNAM is indeed deactivated"
+     ,?_assertEqual(false, is_cnam_activated(PN3))
+     }
+    ,{"Verify outbound CNAM is indeed reset"
+     ,?_assertEqual(undefined, cnam_name(PN3))
      }
     ].
+
+is_cnam_activated(PN) ->
+    kz_json:is_true(?CNAM_INBOUND_LOOKUP, knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND)).
+
+cnam_name(PN) ->
+    Outbound = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
+    kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, Outbound).
