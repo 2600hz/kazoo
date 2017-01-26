@@ -92,10 +92,10 @@ to_phone_number_setters(Options) ->
          'public_fields' ->
              {fun knm_phone_number:reset_doc/2, Value};
          _ ->
-             FName = kz_util:to_atom("set_" ++ atom_to_list(Option)),
+             FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
      end
-     || {Option, Value} <- Options,
+     || {Option, Value} <- kz_util:uniq(Options),
         is_atom(Option),
         Option =/= 'should_delete'
     ].
@@ -232,18 +232,17 @@ to_phone_number_setters_test_() ->
                    ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
                    ]
                   ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                                           ,<<"coucou">>
                                            ,{'ported_in', 'false'}
+                                           ,{<<"batch_run">>, 'false'}
                                            ,{'dry_run', [[[]]]}
                                            ])
                   )
-     %%FIXME: decide if below should turn into _assertEqual.
-    ,?_assertNotEqual([fun knm_phone_number:set_module_name/2, M_1]
-                     ,to_phone_number_setters([{module_name, M_1}
-                                              ,{module_name, <<"blaaa">>}
-                                              ,{module_name, ?CARRIER_MDN}
-                                              ])
-                     )
+    ,?_assertEqual([{fun knm_phone_number:set_module_name/2, M_1}]
+                  ,to_phone_number_setters([{module_name, M_1}
+                                           ,{module_name, <<"blaaa">>}
+                                           ,{module_name, ?CARRIER_MDN}
+                                           ])
+                  )
     ].
 
 -endif.
