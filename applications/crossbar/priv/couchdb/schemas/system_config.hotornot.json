@@ -3,11 +3,67 @@
     "_id": "system_config.hotornot",
     "description": "Schema for hotornot system_config",
     "properties": {
+        "default_rate_cost": {
+            "default": 0.0,
+            "description": "default cost per minute for rate",
+            "type": "number"
+        },
+        "default_rate_increment": {
+            "default": 60,
+            "description": "default increment time for rate",
+            "type": "integer"
+        },
+        "default_rate_internal_cost": {
+            "default": 0.0,
+            "description": "default internal cost per minute for rate",
+            "type": "number"
+        },
+        "default_rate_minimum": {
+            "default": 60,
+            "description": "default minimal duration for rate",
+            "type": "integer"
+        },
+        "default_rate_nocharge_time": {
+            "default": 0,
+            "description": "default nocharge time for rate",
+            "type": "integer"
+        },
+        "default_rate_surcharge": {
+            "default": 0.0,
+            "description": "default surcharge amount for rate",
+            "type": "number"
+        },
+        "filter_list": {
+            "default": [
+                "direction",
+                "route_options",
+                "routes"
+            ],
+            "description": "List of filters for rates",
+            "type": "array"
+        },
+        "rate_version": {
+            "description": "If defined, use rates with this varsion",
+            "type": "string"
+        },
+        "sort_by_weight": {
+            "default": true,
+            "description": "sort rates by weight (true) or cost (false)",
+            "type": "boolean"
+        },
+        "trie_build_timeout_ms": {
+            "default": 60000,
+            "description": "build timeout (ms) for trie",
+            "type": "integer"
+        },
         "use_trie": {
             "default": false,
-            "description": "Whether to use the trie to store rates in the VM",
+            "description": "whether to use the trie to store rates in the VM",
             "type": "boolean"
         }
     },
+    "required": [
+        "rate_version"
+    ],
     "type": "object"
 }

@@ -54,7 +54,7 @@ publish_no_rate_found(JObj) ->
 get_rate_data(JObj) ->
     ToDID = kz_json:get_value(<<"To-DID">>, JObj),
     FromDID = kz_json:get_value(<<"From-DID">>, JObj),
-    case hon_util:candidate_rates(ToDID, FromDID) of
+    case hon_util:candidate_rates(ToDID) of
         {'ok', []} ->
             kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("no rates found for ~s to ~s", [FromDID, ToDID]),
@@ -74,14 +74,7 @@ get_rate_data(JObj) ->
                            {'error', 'no_rate_found'}.
 get_rate_data(JObj, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
-    RouteOptions = kz_json:get_value(<<"Options">>, JObj, []),
-    RouteFlags   = kz_json:get_value(<<"Outbound-Flags">>, JObj, []),
-    Direction    = kz_json:get_value(<<"Direction">>, JObj),
-    ResourceFlag = case kz_json:get_value(<<"Account-ID">>, JObj) of
-                       'undefined' -> [];
-                       AccountId -> maybe_add_resource_flag(JObj, AccountId)
-                   end,
-    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags++ResourceFlag),
+    Matching = hon_util:matching_rates(Rates, JObj),
 
     case hon_util:sort_rates(Matching) of
         [] ->
@@ -98,17 +91,6 @@ get_rate_data(JObj, ToDID, FromDID, Rates) ->
                         ]
                        ),
             {'ok', rate_resp(Rate, JObj)}
-    end.
-
--spec maybe_add_resource_flag(kz_json:object(), ne_binary()) -> kz_proplist().
-maybe_add_resource_flag(JObj, AccountId) ->
-    case kapps_account_config:get_from_reseller(AccountId, ?APP_NAME, <<"filter_by_resource_id">>, 'false') of
-        'true' ->
-            case kz_json:get_value(<<"Resource-ID">>, JObj) of
-                'undefined' -> [];
-                ResourceId -> [ResourceId]
-            end;
-        'false' -> []
     end.
 
 -spec maybe_get_rate_discount(kz_json:object()) -> api_binary().
@@ -134,42 +116,43 @@ maybe_get_rate_discount(JObj, AccountId) ->
 rate_resp(Rate, JObj) ->
     RateCost = get_rate_cost(Rate),
     RateSurcharge = get_surcharge(Rate),
-    RateMinimum = kz_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
+    RateMinimum = kz_json:get_integer_value(<<"rate_minimum">>, Rate, ?DEFAULT_MINIMUM),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
     PrivateCost = get_private_cost(Rate),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
     ShouldUpdateCalleeId = should_update_callee_id(JObj),
     [{<<"Rate">>, kz_util:to_binary(RateCost)}
-    ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
+    ,{<<"Rate-Increment">>, kz_json:get_integer_value(<<"rate_increment">>, Rate, ?DEFAULT_INCREMENT)}
     ,{<<"Rate-Minimum">>, kz_util:to_binary(RateMinimum)}
     ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
     ,{<<"Surcharge">>, kz_util:to_binary(RateSurcharge)}
     ,{<<"Prefix">>, kz_json:get_binary_value(<<"prefix">>, Rate)}
     ,{<<"Rate-Name">>, kz_json:get_binary_value(<<"rate_name">>, Rate)}
     ,{<<"Rate-Description">>, kz_json:get_binary_value(<<"description">>, Rate)}
-    ,{<<"Rate-ID">>, kz_json:get_binary_value(<<"rate_id">>, Rate)}
+    ,{<<"Rate-ID">>, kz_doc:id(Rate)}
     ,{<<"Base-Cost">>, kz_util:to_binary(BaseCost)}
     ,{<<"Pvt-Cost">>, kz_util:to_binary(PrivateCost)}
-    ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
+    ,{<<"Rate-NoCharge-Time">>, kz_json:get_integer_value(<<"rate_nocharge_time">>, Rate, ?DEFAULT_NOCHARGE)}
     ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
     ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
     ,{<<"Update-Callee-ID">>, ShouldUpdateCalleeId}
+    ,{<<"Rate-Version">>, kz_json:get_binary_value(<<"rate_version">>, Rate)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
 -spec get_surcharge(kz_json:object()) -> kz_transaction:units().
 get_surcharge(Rate) ->
-    Surcharge = kz_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
+    Surcharge = kz_json:get_float_value(<<"rate_surcharge">>, Rate, ?DEFAULT_SURCHARGE),
     wht_util:dollars_to_units(Surcharge).
 
 -spec get_rate_cost(kz_json:object()) -> kz_transaction:units().
 get_rate_cost(Rate) ->
-    Cost = kz_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
+    Cost = kz_json:get_float_value(<<"rate_cost">>, Rate, ?DEFAULT_COST),
     wht_util:dollars_to_units(Cost).
 
 -spec get_private_cost(kz_json:object()) -> kz_transaction:units().
 get_private_cost(Rate) ->
-    Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, 0.0),
+    Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, ?DEFAULT_INT_COST),
     wht_util:dollars_to_units(Cost).
 
 -spec should_update_callee_id(ne_binary() | kz_json:object()) -> boolean().

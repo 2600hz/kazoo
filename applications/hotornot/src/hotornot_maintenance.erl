@@ -9,40 +9,59 @@
 -module(hotornot_maintenance).
 
 -export([local_summary/0
-        ,rates_for_did/1, rates_for_did/3
+        ,rates_for_did/1, rates_for_did/3, rates_for_did/4
         ,rates_between/2
+        ,trie_rebuild/0
+        ,get_rate_version/0, set_rate_version/1
         ]).
 
 -include("hotornot.hrl").
 
 -define(LOCAL_SUMMARY_ROW_FORMAT,
-        " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s |~n").
+        " ~45.s | ~9.s | ~9.s | ~9.s | ~9.s | ~9.s | ~15.s | ~15.s | ~15.s |~n").
 -define(LOCAL_SUMMARY_HEADER,
         io:format(?LOCAL_SUMMARY_ROW_FORMAT, [<<"RATE NAME">>, <<"COST">>, <<"INCREMENT">>, <<"MINIMUM">>
-                                             ,<<"SURCHARGE">>, <<"WEIGHT">>, <<"PREFIX">>
+                                             ,<<"SURCHARGE">>, <<"WEIGHT">>, <<"PREFIX">>, <<"RATEDECK NAME">>
+                                             ,<<"VERSION">>
                                              ])).
 
 -spec local_summary() -> 'ok'.
 local_summary() ->
     io:format("use rates_for_did/1 to see what rates would be used for a DID").
 
+-spec trie_rebuild() -> {'ok', pid()} | {'error', any()}.
+trie_rebuild() ->
+    case hon_util:use_trie() of
+        'true' -> hon_trie:rebuild();
+        'false' -> {'error', 'trie_not_enabled'}
+    end.
+
 -spec rates_for_did(ne_binary()) -> 'ok'.
 -spec rates_for_did(ne_binary(), api_binary(), trunking_options()) -> 'ok'.
+-spec rates_for_did(ne_binary(), api_binary(), api_binary(), trunking_options()) -> 'ok'.
 rates_for_did(DID) ->
     rates_for_did(DID, 'undefined', []).
-rates_for_did(DID, Direction, RouteOptions) when is_list(RouteOptions) ->
+rates_for_did(DID, Direction, RouteOptions) ->
+    rates_for_did(DID, Direction, 'undefined', RouteOptions).
+rates_for_did(DID, Direction, AccountId, RouteOptions) when is_list(RouteOptions) ->
     case hon_util:candidate_rates(DID) of
         {'ok', []} -> io:format("rate lookup had no results~n");
         {'error', _E} -> io:format("rate lookup error: ~p~n", [_E]);
         {'ok', Rates} ->
+            ReqJObj = kz_json:from_list(
+                        props:filter_undefined(
+                          [{<<"Account-ID">>, AccountId}
+                          ,{<<"Direction">>, Direction}
+                          ,{<<"Options">>, RouteOptions}
+                          ,{<<"To-DID">>, DID}
+                          ])),
             io:format("Candidates:~n", []),
             ?LOCAL_SUMMARY_HEADER,
             lists:foreach(fun print_rate/1, Rates),
-
-            print_matching(hon_util:matching_rates(Rates, DID, Direction, RouteOptions))
+            print_matching(hon_util:matching_rates(Rates, ReqJObj))
     end;
-rates_for_did(DID, Direction, Opt) ->
-    rates_for_did(DID, Direction, [Opt]).
+rates_for_did(DID, Direction, AccountId, Opt) ->
+    rates_for_did(DID, Direction, AccountId, [Opt]).
 
 -spec print_matching(kz_json:objects()) -> 'ok'.
 print_matching([]) ->
@@ -83,4 +102,15 @@ print_rate(JObj) ->
                                          ,kz_json:get_binary_value(<<"rate_surcharge">>, JObj, <<"0.0">>)
                                          ,kz_json:get_binary_value(<<"weight">>, JObj)
                                          ,kz_json:get_binary_value(<<"prefix">>, JObj)
+                                         ,kz_json:get_binary_value(<<"ratedeck_name">>, JObj)
+                                         ,kz_json:get_binary_value(<<"rate_version">>, JObj)
                                          ]).
+
+-spec get_rate_version() -> api_binary().
+get_rate_version() ->
+    kapps_config:get_binary(?APP_NAME, <<"rate_version">>).
+
+-spec set_rate_version(ne_binary()) -> 'ok'.
+set_rate_version(Version) ->
+    kapps_config:set(?APP_NAME, <<"rate_version">>, Version),
+    'ok'.

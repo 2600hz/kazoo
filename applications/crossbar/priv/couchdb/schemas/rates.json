@@ -3,6 +3,11 @@
     "_id": "rates",
     "description": "Defines a rate for a given prefix",
     "properties": {
+        "account_id": {
+            "description": "Reseller's account ID",
+            "requred": false,
+            "type": "string"
+        },
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",
             "required": false,
@@ -14,10 +19,6 @@
             "type": "string"
         },
         "direction": {
-            "default": [
-                "inbound",
-                "outbound"
-            ],
             "description": "Apply this rate based on the direction of the call (relative to FreeSWITCH)",
             "items": {
                 "enum": [
@@ -61,16 +62,14 @@
             "type": "number"
         },
         "rate_increment": {
-            "default": 60,
             "description": "The time slice, in seconds, to bill in.",
-            "minimum": 10,
+            "minimum": 1,
             "required": false,
             "type": "integer"
         },
         "rate_minimum": {
-            "default": 60,
             "description": "The minimum time slice, in seconds to bill a call",
-            "minimum": 10,
+            "minimum": 1,
             "required": false,
             "type": "integer"
         },
@@ -80,21 +79,28 @@
             "type": "string"
         },
         "rate_nocharge_time": {
-            "default": 0,
             "description": "If the call duration is shorter than this threshold (seconds), the call is not billed",
             "minimum": 0,
             "required": false,
             "type": "integer"
         },
         "rate_surcharge": {
-            "default": 0,
             "description": "The upfront cost of connecting the call",
             "minimum": 0,
             "required": false,
             "type": "number"
         },
+        "rate_version": {
+            "description": "Rate version",
+            "required": false,
+            "type": "string"
+        },
+        "ratedeck_name": {
+            "description": "Ratedeck name",
+            "required": false,
+            "type": "string"
+        },
         "routes": {
-            "default": [],
             "description": "List of regexs that match valid DIDs for this rate",
             "items": {
                 "required": false,
