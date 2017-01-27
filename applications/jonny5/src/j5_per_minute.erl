@@ -9,7 +9,7 @@
 
 -export([authorize/2]).
 -export([reconcile_cdr/2]).
--export([maybe_credit_available/2, maybe_credit_available/3]).
+-export([maybe_credit_available/2]).
 
 -include("jonny5.hrl").
 
@@ -58,65 +58,135 @@ reconcile_call_cost(Request, Limits) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_credit_available(integer(), j5_limits:limits()) -> boolean().
-maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits, 'false').
-
--spec maybe_credit_available(integer(), j5_limits:limits(), boolean()) -> boolean().
-maybe_credit_available(Amount, Limits, IsReal) ->
+maybe_credit_available(Amount, Limits) ->
     AccountId = j5_limits:account_id(Limits),
     Balance = wht_util:current_balance(AccountId),
-    PerMinuteCost = case kz_util:is_true(IsReal) of
-                        'true' -> j5_channels:real_per_minute_cost(AccountId);
-                        'false' -> j5_channels:per_minute_cost(AccountId)
-                    end,
-    maybe_prepay_credit_available(Balance - PerMinuteCost, Amount, Limits)
-        orelse maybe_postpay_credit_available(Balance - PerMinuteCost, Amount, Limits).
+    PerMinuteCost = j5_channels:per_minute_cost(AccountId),
+    Routines = [fun maybe_prepay_credit_available/3
+               ,fun maybe_postpay_credit_available/3
+               ,fun maybe_promised_payment_available/3
+               ],
+    lager:debug("account ~s current balance: $~w, reserve amount: ~w, per_minute calls: ~w",
+                [AccountId
+                ,wht_util:units_to_dollars(Balance)
+                ,wht_util:units_to_dollars(Amount)
+                ,wht_util:units_to_dollars(PerMinuteCost)
+                ]),
+    {Result, ResultBalance} = lists:foldl(fun(F, Acc) -> F(AccountId, Acc, Limits) end
+                                         ,{'false', Balance - Amount - PerMinuteCost}
+                                         ,Routines
+                                         ),
+    lager:debug("account ~s result balance: $~w, enough credit: ~p",
+                [AccountId
+                ,wht_util:units_to_dollars(ResultBalance)
+                ,Result
+                ]),
+    Result.
 
--spec maybe_prepay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
-maybe_prepay_credit_available(Balance, Amount, Limits) ->
-    AccountId = j5_limits:account_id(Limits),
+-spec maybe_prepay_credit_available(api_binary(), {boolean(), integer()}, j5_limits:limits()) -> {boolean(), integer()}.
+maybe_prepay_credit_available(AccountId, {R, Balance}, Limits) ->
     Dbg = [AccountId
-          ,wht_util:units_to_dollars(Amount)
           ,wht_util:units_to_dollars(Balance)
           ],
     case j5_limits:allow_prepay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using prepay", [AccountId]),
-            'false';
-        'true' when (Balance - Amount) > 0 ->
-            lager:debug("using prepay from account ~s $~w/$~w", Dbg),
-            'true';
+            {R, Balance};
+        'true' when Balance > 0 ->
+            lager:debug("using prepay from account ~s $~w", Dbg),
+            {'true', Balance};
         'true' ->
-            lager:debug("account ~s does not have enough prepay credit $~w/$~w", Dbg),
-            'false'
+            lager:debug("account ~s does not have enough prepay credit $~w", Dbg),
+            {'false', Balance}
     end.
 
--spec maybe_postpay_credit_available(integer(), integer(), j5_limits:limits()) -> boolean().
-maybe_postpay_credit_available(Balance, Amount, Limits) ->
-    AccountId = j5_limits:account_id(Limits),
+-spec maybe_postpay_credit_available(integer(), {boolean(), integer()}, j5_limits:limits()) -> {boolean(), integer()}.
+maybe_postpay_credit_available(AccountId, {R, Balance}, Limits) ->
     MaxPostpay = j5_limits:max_postpay(Limits),
+    NewBalance = Balance + MaxPostpay,
+    Dbg = [AccountId
+          ,wht_util:units_to_dollars(Balance)
+          ,wht_util:units_to_dollars(MaxPostpay)
+          ,wht_util:units_to_dollars(NewBalance)
+          ],
     case j5_limits:allow_postpay(Limits) of
         'false' ->
             lager:debug("account ~s is restricted from using postpay"
                        ,[AccountId]
                        ),
-            'false';
-        'true' when (Balance - Amount) > MaxPostpay ->
-            lager:debug("using postpay from account ~s $~w/$~w"
-                       ,[AccountId
-                        ,wht_util:units_to_dollars(Amount)
-                        ,wht_util:units_to_dollars(Balance)
-                        ]
-                       ),
-            'true';
+            {R, Balance};
+        'true' when NewBalance > 0 ->
+            lager:debug("using postpay from account ~s $~w + $~w = $~w", Dbg),
+            {'true', NewBalance};
         'true' ->
-            lager:debug("account ~s would exceed the maxium postpay amount $~w/$~w"
-                       ,[AccountId
-                        ,wht_util:units_to_dollars(Balance)
-                        ,wht_util:units_to_dollars(MaxPostpay)
-                        ]
-                       ),
-            'false'
+            lager:debug("account ~s would exceed the maxium postpay amount: $~w + $~w = $~w", Dbg),
+            {'false', NewBalance}
     end.
+
+-spec maybe_promised_payment_available(api_binary(), {boolean(), integer()}, j5_limits:limits()) -> {boolean(), integer()}.
+maybe_promised_payment_available(AccountId, {R, Balance}, Limits) ->
+    JObj = j5_limits:promised_payment(Limits),
+    case kz_json:is_true(<<"enabled">>, JObj, 'false') of
+        'false' ->
+            lager:debug("account ~s doesn't allow to use promised payment",[AccountId]),
+            {R, Balance};
+        'true' ->
+            IsArmed = kz_json:is_true(<<"armed">>, JObj, 'false'),
+            Now = kz_util:current_tstamp(),
+            Start = kz_json:get_integer_value(<<"start">>, JObj, 0),
+            Duration = kz_json:get_integer_value(<<"duration">>, JObj, 0),
+            Amount = wht_util:dollars_to_units(kz_json:get_float_value(<<"amount">>, JObj, 0.0)),
+            NewBalance = Balance + Amount,
+            Dbg = [AccountId
+                  ,wht_util:units_to_dollars(Balance)
+                  ,wht_util:units_to_dollars(Amount)
+                  ,wht_util:units_to_dollars(NewBalance)
+                  ],
+            case IsArmed
+                andalso
+                Now > Start
+                andalso
+                Now < Start + Duration
+            of
+                'false' when IsArmed ->
+                    lager:debug("account ~s has promised payment but can't use it: start ~p, stop ~p, current timestamp ~p, amount $~w"
+                               ,[AccountId
+                                ,Start
+                                ,Start + Duration
+                                ,Now
+                                ,wht_util:units_to_dollars(Amount)
+                                ]),
+                    _ = try_disarm_promised_payment(AccountId, Balance),
+                    {R, Balance};
+                'false' ->
+                    lager:debug("account ~s doesn't have armed promised payment",[AccountId]),
+                    {R, Balance};
+                'true' when NewBalance > 0 ->
+                    lager:debug("using promised payment from account ~s $~w + $~w = $~w", Dbg),
+                    {'true', NewBalance};
+                'true' ->
+                    lager:debug("account ~s exceeds the promised payment amount: $~w + $~w = $~w", Dbg),
+                    {'false', NewBalance}
+            end
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec try_disarm_promised_payment(api_binary(), integer()) -> 'ok'.
+try_disarm_promised_payment(AccountId, Balance) when Balance > 0 ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    UpdateProps = [{[<<"pvt_promised_payment">>, <<"armed">>], 'false'}],
+    case kz_datamgr:update_doc(AccountDb, <<"limits">>, UpdateProps) of
+        {'ok', _JObj} ->
+            lager:debug("disarming promised payment for account ~s", [AccountId]);
+        {'error', E} ->
+            lager:error("while trying to disarm promised payment for account ~s got error: ~p", [AccountId, E])
+    end;
+try_disarm_promised_payment(_AccountId, _Balance) -> 'ok'.
 
 %%--------------------------------------------------------------------
 %% @private

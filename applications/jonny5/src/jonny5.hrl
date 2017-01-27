@@ -18,5 +18,15 @@
 
 -type tristate_integer() :: -1 | non_neg_integer().
 
+-define(DEFAULT_PROMISED_PAYMENT, kz_json:from_list(
+                                    [{<<"enabled">>, 'false'}
+                                    ,{<<"armed">>, 'false'}
+                                    ,{<<"max_amount">>, 0.0}
+                                    ,{<<"amount">>, 0.0}
+                                    ,{<<"max_duration">>, ?SECONDS_IN_DAY}
+                                    ,{<<"duration">>, 0}
+                                    ,{<<"start">>, 0}
+                                    ])).
+
 -define(JONNY5_HRL, 'true').
 -endif.
