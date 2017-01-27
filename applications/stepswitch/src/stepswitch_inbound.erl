@@ -305,9 +305,11 @@ is_anonymous(JObj) ->
     IsPrivacyNumber = kz_json:is_true(?CCV(<<"Caller-Privacy-Number">>), JObj, false),
     IsPrivacyName = kz_json:is_true(?CCV(<<"Caller-Privacy-Name">>), JObj, false),
     IsCallerNumberZero = is_zero(kz_json:get_value(<<"Caller-ID-Number">>, JObj)),
+    HasPrivacyFlags = kz_privacy:has_flags(kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
     IsCallerNumberZero
         orelse IsPrivacyName
-        orelse IsPrivacyNumber.
+        orelse IsPrivacyNumber
+        orelse HasPrivacyFlags.
 
 -spec is_blacklisted(kz_json:object()) -> boolean().
 is_blacklisted(JObj) ->
