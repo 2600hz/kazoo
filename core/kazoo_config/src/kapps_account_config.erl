@@ -21,6 +21,7 @@
         ]).
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
+-type api_account() :: api_ne_binary() | kapps_call:call() | kz_json:object().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -28,18 +29,18 @@
 %% Will search the account db first, then system_config for values.
 %% @end
 %%--------------------------------------------------------------------
--spec get_global(account(), ne_binary(), kz_json:path()) ->
+-spec get_global(api_account(), ne_binary(), kz_json:path()) ->
                         kz_json:json_term().
--spec get_global(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec get_global(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                         kz_json:json_term().
 get_global(Account, Category, Key) ->
     get_global(Account, Category, Key, 'undefined').
 
 get_global(Account, Category, Key, Default) ->
-    AccountId = account_id(Account),
-    case get_global_from_account(AccountId, Category, Key, Default) of
+    case get_global_from_account(Account, Category, Key, Default) of
         {'ok', JObj} -> get_global_from_doc(Category, Key, Default, JObj);
-        {'error', _} -> get_from_reseller(AccountId, Category, Key, Default)
+        {'error', 'unknown_object'} -> kapps_config:get(Category, Key, Default);
+        {'error', _} -> get_from_reseller(Account, Category, Key, Default)
     end.
 
 %%--------------------------------------------------------------------
@@ -49,22 +50,29 @@ get_global(Account, Category, Key, Default) ->
 %% i.e. makes sure to skip reading from Account (i.e. sub-account of reseller).
 %% @end
 %%--------------------------------------------------------------------
--spec get_from_reseller(account(), ne_binary(), kz_json:path()) ->
+-spec get_from_reseller(api_account(), ne_binary(), kz_json:path()) ->
                                kz_json:api_json_term().
 get_from_reseller(Account, Category, Key) ->
     get_from_reseller(Account, Category, Key, 'undefined').
 
--spec get_from_reseller(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec get_from_reseller(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                kz_json:api_json_term().
 -ifdef(TEST).
 get_from_reseller(_, _, _, Default) -> Default.
 -else.
+get_from_reseller('undefined', Category, Key, Default) ->
+    kapps_config:get(Category, Key, Default);
 get_from_reseller(Account, Category, Key, Default) ->
-    AccountId = account_id(Account),
-    ResellerId = kz_services:find_reseller_id(AccountId),
-    maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default).
+    try account_id(Account) of
+        AccountId ->
+            ResellerId = kz_services:find_reseller_id(AccountId),
+            maybe_get_global_from_reseller(AccountId, ResellerId, Category, Key, Default)
+    catch
+        _T:_E ->
+            kapps_config:get(Category, Key, Default)
+    end.
 
--spec maybe_get_global_from_reseller(account(), account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec maybe_get_global_from_reseller(api_account(), account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                             kz_json:api_json_term().
 maybe_get_global_from_reseller(AccountId, AccountId, Category, Key, Default) ->
     kapps_config:get(Category, Key, Default);
@@ -75,13 +83,19 @@ maybe_get_global_from_reseller(_AccountId, ResellerId, Category, Key, Default) -
     end.
 -endif.
 
--spec get_global_from_account(account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
+-spec get_global_from_account(api_account(), ne_binary(), kz_json:path(), kz_json:api_json_term()) ->
                                      {'ok', kz_json:object()} |
                                      {'error', any()}.
+get_global_from_account('undefined', _Category, _Key, _Default) ->
+    {'error', 'unknown_object'};
 get_global_from_account(Account, Category, _Key, _Default) ->
-    AccountId = account_id(Account),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}]).
+    try account_id(Account) of
+        AccountId ->
+            AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+            kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Category), [{'cache_failures', ['not_found']}])
+    catch
+        _T:_E -> {'error', 'unknown_object'}
+    end.
 
 -spec get_global_from_doc(ne_binary(), kz_json:path(), kz_json:api_json_term(), kz_json:object()) ->
                                  kz_json:object().
