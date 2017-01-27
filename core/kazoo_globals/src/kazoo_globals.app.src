@@ -1,22 +1,10 @@
-{application, kazoo_globals,
- [
-  {description, "Register processes across the cluster"}
- ,{id, ""}
- ,{vsn, "4.0.0"}
- ,{modules, []}
- ,{registered, [kz_globals]}
- ,{applications, [ kernel
-                 , stdlib
-
-                 , kazoo
-                 , kazoo_config
-                 , kazoo_data
-                 , kazoo_amqp
-                 , kazoo_etsmgr
-
-                 , syslog
-                 , lager
-                 , lager_syslog
-                 ]}
- ,{mod, {kazoo_globals_app, []}}
- ]}.
+{application,kazoo_globals,
+             [{applications,[amqp_client,crypto,kazoo,kazoo_amqp,kazoo_apps,
+                             kazoo_bindings,kazoo_config,kazoo_json,
+                             kazoo_workers,lager,poolboy,stdlib]},
+              {description,"Register processes across the cluster"},
+              {id,[]},
+              {vsn,"4.0.0"},
+              {modules,[]},
+              {registered,[kz_globals]},
+              {mod,{kazoo_globals_app,[]}}]}.

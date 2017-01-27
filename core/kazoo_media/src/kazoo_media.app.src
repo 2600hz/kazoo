@@ -10,9 +10,10 @@
 
                  , kazoo
                  , kazoo_amqp
-                 , kazoo_data
                  , kazoo_config
+                 , kazoo_data
                  , kazoo_documents
+                 , kazoo_workers
                  , kazoo_modb
 
                  , cowboy

@@ -5,6 +5,6 @@
  ,{vsn, "4.0.0"}
  ,{modules, []}
  ,{registered, []}
- ,{applications, [stdlib]}
+ ,{applications, [stdlib, kazoo_workers]}
  ,{env, []}
  ]}.

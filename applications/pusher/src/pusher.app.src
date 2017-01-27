@@ -11,11 +11,12 @@
                  , asn1
                  , ssl
 
-                 , kazoo_apps
-                 , kazoo_amqp
-                 , kazoo_data
                  , apns
                  , gcm
+                 , kazoo_amqp
+                 , kazoo_apps
+                 , kazoo_data
+                 , kazoo_workers
 
                  , lager
                  ]},

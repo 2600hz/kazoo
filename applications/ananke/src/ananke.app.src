@@ -4,18 +4,18 @@
   {vsn, "4.0.0"},
   {modules, []},
   {registered, [ananke_tasks_sup, ananke_listener, ananke_sup]},
-  {applications, [
-                  kernel,
-                  stdlib,
+  {applications, [kernel
+                 ,stdlib
 
-                  kazoo,
-                  kazoo_data,
-                  kazoo_amqp,
-                  kazoo_apps,
+                 ,kazoo
+                 ,kazoo_amqp
+                 ,kazoo_apps
+                 ,kazoo_data
+                 ,kazoo_workers
 
-                  amqp_cron,
+                 ,amqp_cron
 
-                  lager
+                 ,lager
                  ]},
   {mod, {ananke_app, []}},
   {env, []}

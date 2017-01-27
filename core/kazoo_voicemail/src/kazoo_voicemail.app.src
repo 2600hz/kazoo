@@ -9,10 +9,11 @@
                  , crypto
 
                  , kazoo
-                 , kazoo_data
                  , kazoo_config
-                 , kazoo_modb
+                 , kazoo_data
                  , kazoo_documents
+                 , kazoo_modb
+                 , kazoo_workers
 
                  , lager
                  ]}

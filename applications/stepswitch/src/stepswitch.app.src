@@ -11,6 +11,7 @@
                  , inets
 
                  , kazoo_apps
+                 , kazoo_workers
 
                  , lager
                  , poolboy

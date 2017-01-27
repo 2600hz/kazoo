@@ -11,15 +11,15 @@
 
                  , kazoo
                  , kazoo_amqp
+                 , kazoo_apps
                  , kazoo_data
                  , kazoo_modb
-                 , kazoo_apps
-                 , webseq
                  , kazoo_web
+                 , kazoo_workers
+                 , webseq
 
                  , lager
                  , gproc
                  ]},
   {mod, {acdc_app, []}}
  ]}.
-

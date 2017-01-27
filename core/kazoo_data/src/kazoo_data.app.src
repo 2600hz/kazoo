@@ -6,12 +6,13 @@
  ,{modules, []}
  ,{registered, [kazoo_data_cache, kazoo_data_plan_cache, kazoo_data_app, kazoo_data_sup]}
  ,{applications, [ kernel
-                 , stdlib
                  , crypto
-                 , public_key
-                 , lager
-                 , kazoo_config
                  , kazoo_amqp
+                 , kazoo_config
+                 , kazoo_workers
+                 , lager
+                 , public_key
+                 , stdlib
                  ]}
  ,{mod, {kazoo_data_app, []}}
  ]}.

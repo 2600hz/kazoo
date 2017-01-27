@@ -541,7 +541,7 @@ handle_info({'heartbeat', Ref}
     try create_node(Heartbeat, State) of
         Node ->
             _ = ets:insert(Tab, Node),
-            kz_amqp_worker:cast(advertise_payload(Node), fun kapi_nodes:publish_advertise/1)
+            kapi_nodes:publish_advertise(advertise_payload(Node))
     catch
         _E:_N ->
             lager:error("error creating node ~p : ~p", [_E, _N]),

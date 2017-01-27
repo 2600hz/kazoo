@@ -8,11 +8,13 @@
                   , stdlib
                   , crypto
 
+                  , kazoo_amqp
                   , kazoo_apps
                   , kazoo_config
-                  , kazoo_amqp
                   , kazoo_stats
+                  , kazoo_templates
                   , kazoo_web
+                  , kazoo_workers
 
                   , lager
                   , gproc

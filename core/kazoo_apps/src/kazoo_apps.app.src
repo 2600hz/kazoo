@@ -9,18 +9,19 @@
                  , stdlib
 
                  , kazoo
+                 , kazoo_amqp
                  , kazoo_bindings
+                 , kazoo_caches
                  , kazoo_call
                  , kazoo_config
                  , kazoo_data
-                 , kazoo_amqp
-                 , kazoo_services
                  , kazoo_documents
-                 , kazoo_number_manager
-                 , kazoo_token_buckets
-                 , kazoo_caches
-                 , kazoo_web
                  , kazoo_globals
+                 , kazoo_number_manager
+                 , kazoo_services
+                 , kazoo_token_buckets
+                 , kazoo_web
+                 , kazoo_workers
 
                  , syslog
                  , lager
