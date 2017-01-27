@@ -160,13 +160,13 @@ type(#kz_transaction{pvt_type=Type}) ->
 
 -spec created(transaction()) -> gregorian_seconds().
 created(#kz_transaction{pvt_created='undefined'}) ->
-    kz_util:current_tstamp();
+    kz_time:current_tstamp();
 created(#kz_transaction{pvt_created=Created}) ->
     Created.
 
 -spec modified(transaction()) -> gregorian_seconds().
 modified(#kz_transaction{pvt_modified='undefined'}) ->
-    kz_util:current_tstamp();
+    kz_time:current_tstamp();
 modified(#kz_transaction{pvt_modified=Modified}) ->
     Modified.
 
@@ -551,7 +551,7 @@ save(#kz_transaction{}=Transaction) ->
 save_transaction(#kz_transaction{pvt_account_id=AccountId
                                 ,pvt_created=Created
                                 }=Transaction) ->
-    JObj = to_json(Transaction#kz_transaction{pvt_modified=kz_util:current_tstamp()}),
+    JObj = to_json(Transaction#kz_transaction{pvt_modified=kz_time:current_tstamp()}),
     case kazoo_modb:save_doc(AccountId, JObj, Created) of
         {'ok', J} -> {'ok', from_json(J)};
         {'error', _}=E -> E
@@ -577,7 +577,7 @@ service_save(#kz_transaction{}=Transaction) ->
                                       {'ok', transaction()} |
                                       {'error', any()}.
 service_save_transaction(#kz_transaction{pvt_account_id=AccountId}=Transaction) ->
-    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified=kz_util:current_tstamp()}),
+    TransactionJObj = to_json(Transaction#kz_transaction{pvt_modified=kz_time:current_tstamp()}),
     case kz_datamgr:open_doc(?KZ_SERVICES_DB, AccountId) of
         {'error', _R}=Error ->
             lager:debug("unable to open account ~s services doc: ~p", [AccountId, _R]),
@@ -720,8 +720,8 @@ prepare_rollup_transaction(Transaction) ->
 -spec prepare_topup_transaction(transaction()) -> transaction().
 prepare_topup_transaction(Transaction) ->
     {_, M, D} = erlang:date(),
-    Month = kz_util:pad_month(M),
-    Day = kz_util:pad_month(D),
+    Month = kz_time:pad_month(M),
+    Day = kz_time:pad_month(D),
     Id = <<"topup-", Month/binary, Day/binary>>,
     Transaction#kz_transaction{id=Id}.
 
@@ -737,15 +737,15 @@ create(Ledger, Amount, Type) ->
                    ,pvt_amount=abs(Amount)
                    ,pvt_account_id=kz_util:format_account_id(Ledger, 'raw')
                    ,pvt_account_db=kz_util:format_account_mod_id(Ledger)
-                   ,pvt_created=kz_util:current_tstamp()
-                   ,pvt_modified=kz_util:current_tstamp()
+                   ,pvt_created=kz_time:current_tstamp()
+                   ,pvt_modified=kz_time:current_tstamp()
                    }.
 
 -spec modb_doc_id() -> ne_binary().
 modb_doc_id() ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
     <<(kz_term:to_binary(Year))/binary
-      ,(kz_util:pad_month(Month))/binary
+      ,(kz_time:pad_month(Month))/binary
       ,"-"
       ,(kz_binary:rand_hex(16))/binary
     >>.

@@ -106,7 +106,7 @@ finish_request(Context, AuthDoc) ->
 -spec maybe_save_auth_doc(kz_json:object()) -> any().
 maybe_save_auth_doc(OldAuthDoc) ->
     OldAuthModified = kz_doc:modified(OldAuthDoc),
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
 
     ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
 

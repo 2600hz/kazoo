@@ -127,8 +127,8 @@ jwt(#oauth_service_app{private_key=PrivateKey
     JObj = kz_json:from_list([{<<"iss">>, EMail}
                              ,{<<"aud">>, URL}
                              ,{<<"scope">>, Scope}
-                             ,{<<"iat">>, kz_util:current_unix_tstamp()-500}
-                             ,{<<"exp">>, kz_util:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
+                             ,{<<"iat">>, kz_time:current_unix_tstamp()-500}
+                             ,{<<"exp">>, kz_time:current_unix_tstamp()+(2 * ?MILLISECONDS_IN_SECOND)}
                              ]),
 
     JWT64 = base64:encode(kz_json:encode(JObj)),
@@ -192,7 +192,7 @@ token(#oauth_app{name=AppId
             {'ok', #oauth_token{token=Token
                                ,type=Type
                                ,expires=Expires
-                               ,issued=kz_util:current_tstamp()
+                               ,issued=kz_time:current_tstamp()
                                }
             };
         Else ->

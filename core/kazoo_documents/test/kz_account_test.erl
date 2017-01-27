@@ -41,7 +41,7 @@ tree_test_() ->
     ].
 
 trial_time_test_() ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     Passed = kz_account:set_trial_expiration(kz_account:new(), Now - 10000),
     Active = kz_account:set_trial_expiration(kz_account:new(), Now + 10000),
 

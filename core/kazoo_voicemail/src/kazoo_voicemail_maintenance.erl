@@ -141,7 +141,7 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     Length = kz_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
     CIDNumber = kz_util:anonymous_caller_id_number(),
     CIDName = <<"Recovered Voicemail Message">>,
-    Timestamp = kz_json:get_value(<<"pvt_created">>, JObj, kz_util:current_tstamp()),
+    Timestamp = kz_json:get_value(<<"pvt_created">>, JObj, kz_time:current_tstamp()),
     Routines = [{fun kapps_call:set_to/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_from/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_call_id/2, kz_binary:rand_hex(12)}

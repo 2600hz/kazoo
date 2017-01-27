@@ -158,7 +158,7 @@ check_fax_attachment(DocId, Name) ->
 save_fax_doc_completed(JObj)->
     DocId = kz_doc:id(JObj),
     Updates = [{<<"pvt_job_status">>, <<"pending">>}
-              ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+              ,{<<"pvt_modified">>, kz_time:current_tstamp()}
               ],
     case kz_datamgr:save_doc(?KZ_FAXES_DB, kz_json:set_values(Updates, JObj)) of
         {'ok', Doc} ->

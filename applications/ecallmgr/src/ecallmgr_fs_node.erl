@@ -711,7 +711,7 @@ replay_registration(_Node, [[]]) -> 'ok';
 replay_registration(_Node, []) -> 'ok';
 replay_registration(Node, [Reg | Regs]) ->
     Payload = [{<<"FreeSWITCH-Nodename">>, kz_term:to_binary(Node)}
-              ,{<<"Event-Timestamp">>, round(kz_util:current_tstamp())}
+              ,{<<"Event-Timestamp">>, round(kz_time:current_tstamp())}
                | lists:map(fun({K,{F, V}}) when is_function(F,1) ->
                                    {K, F(props:get_value(V, Reg))};
                               ({K,V}) ->
@@ -731,8 +731,8 @@ replay_profile(V) ->
 
 -spec replay_expires(ne_binary()) -> pos_integer().
 replay_expires(V) ->
-    kz_util:unix_seconds_to_gregorian_seconds(kz_term:to_integer(V))
-        - (kz_util:current_tstamp() + ?EXPIRES_DEVIATION_TIME).
+    kz_time:unix_seconds_to_gregorian_seconds(kz_term:to_integer(V))
+        - (kz_time:current_tstamp() + ?EXPIRES_DEVIATION_TIME).
 
 -spec replay_contact(ne_binary()) -> ne_binary().
 replay_contact(V) ->

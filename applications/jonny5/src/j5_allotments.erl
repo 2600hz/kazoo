@@ -102,7 +102,7 @@ reconcile_allotment(Seconds, Allotment, Request, Limits) ->
     CallId = j5_request:call_id(Request),
     AccountId = j5_limits:account_id(Limits),
     LedgerDb = kz_util:format_account_mod_id(AccountId),
-    Timestamp = kz_util:current_tstamp(),
+    Timestamp = kz_time:current_tstamp(),
     Id = <<CallId/binary, "-allotment-consumption">>,
     lager:debug("adding allotment debit ~s to ledger ~s for ~wsec"
                ,[Id, LedgerDb, Seconds]

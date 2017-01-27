@@ -249,7 +249,7 @@
 -define(CHANNEL_LOOPBACK_HEADER_PREFIX, "Export-Loopback-").
 -define(CALL_INTERACTION_ID, "Call-Interaction-ID").
 -define(CALL_INTERACTION_DEFAULT
-       ,<<(kz_term:to_binary(kz_util:current_tstamp()))/binary
+       ,<<(kz_term:to_binary(kz_time:current_tstamp()))/binary
           ,"-", (kz_binary:rand_hex(4))/binary
         >>).
 
@@ -372,7 +372,7 @@
                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                  ,kapps = [] :: kapps_info() | '$1' | '_'
                  ,media_servers = [] :: media_servers() | '_'
-                 ,last_heartbeat = kz_util:now_ms() :: pos_integer() | 'undefined' | '$3' | '_'
+                 ,last_heartbeat = kz_time:now_ms() :: pos_integer() | 'undefined' | '$3' | '_'
                  ,zone :: atom() | 'undefined' | '$2' | '_'
                  ,broker :: api_binary() | '_'
                  ,used_memory = 0 :: non_neg_integer() | '_'

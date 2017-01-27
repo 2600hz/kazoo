@@ -940,7 +940,7 @@ compact('status', _, #state{current_node=N
                      ,{'nodes_left', length(Ns)}
                      ,{'dbs_left', length(Dbs)}
                      ,{'start_time', calendar:now_to_universal_time(Start)}
-                     ,{'elapsed_s', kz_util:elapsed_s(Start)}
+                     ,{'elapsed_s', kz_time:elapsed_s(Start)}
                      ]}, 'compact', State};
 
 compact('cancel_current_shard', _, #state{shards_pid_ref='undefined'}=State) ->
@@ -1031,7 +1031,7 @@ wait('status', _, #state{current_node=N
             ,{'nodes_left', length(Ns)}
             ,{'dbs_left', length(Dbs)}
             ,{'start_time', calendar:now_to_universal_time(Start)}
-            ,{'elapsed_s', kz_util:elapsed_s(Start)}
+            ,{'elapsed_s', kz_time:elapsed_s(Start)}
             ]}
     ,'wait'
     ,State

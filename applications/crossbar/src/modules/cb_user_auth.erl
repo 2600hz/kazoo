@@ -478,7 +478,7 @@ create_resetid_doc(ResetId, UserId) ->
     kz_json:from_list(
       [{<<"_id">>, ResetId}
       ,{<<"pvt_userid">>, UserId}
-      ,{<<"pvt_created">>, kz_util:current_tstamp()}
+      ,{<<"pvt_created">>, kz_time:current_tstamp()}
       ,{<<"pvt_type">>, ?RESET_PVT_TYPE}
       ]).
 

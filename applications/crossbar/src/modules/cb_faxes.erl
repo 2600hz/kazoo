@@ -511,8 +511,8 @@ on_success('undefined', Context) ->
     cb_context:set_doc(Context
                       ,kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                                           ,{<<"pvt_job_status">>, JobStatus}
-                                          ,{<<"pvt_created">>, kz_util:current_tstamp()}
-                                          ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                                          ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                                          ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                                           ,{<<"attempts">>, 0}
                                           ,{<<"pvt_account_id">>, AccountId}
                                           ,{<<"pvt_account_db">>, AccountDb}
@@ -713,7 +713,7 @@ save_attachment(Context, Filename, FileJObj) ->
 set_pending(Context, DocId) ->
     Ctx1 = crossbar_doc:load(DocId, Context),
     KVs = [{<<"pvt_job_status">>, <<"pending">>}
-          ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+          ,{<<"pvt_modified">>, kz_time:current_tstamp()}
           ],
     crossbar_doc:save(cb_context:set_doc(Ctx1, kz_json:set_values(KVs, cb_context:doc(Ctx1)))).
 
@@ -755,8 +755,8 @@ set_resubmit_data(TargetDoc) ->
            ,<<"retry_after">>
            ,<<"pvt_job_node">>
            ],
-    Values = [{<<"pvt_created">>, kz_util:current_tstamp()}
-             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+    Values = [{<<"pvt_created">>, kz_time:current_tstamp()}
+             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
              ,{<<"pvt_job_status">>, <<"resubmitting">>}
              ,{<<"attempts">>, 0}
              ],
@@ -769,8 +769,8 @@ set_forward_data(TargetDoc) ->
            ,<<"retry_after">>
            ,<<"pvt_job_node">>
            ],
-    Values = [{<<"pvt_created">>, kz_util:current_tstamp()}
-             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+    Values = [{<<"pvt_created">>, kz_time:current_tstamp()}
+             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
              ,{<<"pvt_job_status">>, <<"resubmitting">>}
              ,{<<"attempts">>, 0}
              ],

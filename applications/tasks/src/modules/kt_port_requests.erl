@@ -43,7 +43,7 @@ init() ->
 %% @end
 -spec cleanup(ne_binary()) -> 'ok'.
 cleanup(?KZ_PORT_REQUESTS_DB = Db) ->
-    ModifiedBefore = kz_util:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
+    ModifiedBefore = kz_time:current_tstamp() - ?UNFINISHED_PORT_REQUEST_LIFETIME,
     ViewOpts = [{'startkey', [0]}
                ,{'endkey', [ModifiedBefore]}
                ,{'limit', kz_datamgr:max_bulk_insert()}

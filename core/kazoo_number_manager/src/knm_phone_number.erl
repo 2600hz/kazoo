@@ -504,7 +504,7 @@ from_json(JObj0) ->
             FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
             FeaturesJObj -> FeaturesJObj
         end,
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     UsedBy = kz_json:get_value(?PVT_USED_BY, JObj),
     {'ok', PhoneNumber} =
         setters(new(),
@@ -1194,7 +1194,7 @@ reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(knm_phone_number()) -> gregorian_seconds().
-modified(#knm_phone_number{is_dirty = true}) -> kz_util:current_tstamp();
+modified(#knm_phone_number{is_dirty = true}) -> kz_time:current_tstamp();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
 -spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
@@ -1208,7 +1208,7 @@ set_modified(PN, Modified)
 %% @end
 %%--------------------------------------------------------------------
 -spec created(knm_phone_number()) -> gregorian_seconds().
-created(#knm_phone_number{created = undefined}) -> kz_util:current_tstamp();
+created(#knm_phone_number{created = undefined}) -> kz_time:current_tstamp();
 created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().

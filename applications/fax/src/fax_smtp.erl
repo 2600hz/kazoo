@@ -168,7 +168,7 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
     %% JMA: Can this be done with kz_binary:rand_hex() ?
     Reference = lists:flatten(
                   [io_lib:format("~2.16.0b", [X])
-                   || <<X>> <= erlang:md5(term_to_binary(kz_util:now()))
+                   || <<X>> <= erlang:md5(term_to_binary(kz_time:now()))
                   ]),
 
     try mimemail:decode(Data) of
@@ -325,7 +325,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
               [{<<"pvt_account_id">>, AccountId}
               ,{<<"pvt_account_db">>, AccountDb}
               ,{<<"pvt_type">>, <<"fax_smtp_log">>}
-              ,{<<"pvt_created">>, kz_util:current_tstamp()}
+              ,{<<"pvt_created">>, kz_time:current_tstamp()}
               ,{<<"_id">>, error_doc()}
                | to_proplist(State)
               ]
@@ -337,7 +337,7 @@ faxbox_log(#state{account_id=AccountId}=State) ->
 -spec error_doc() -> ne_binary().
 error_doc() ->
     {Year, Month, _} = erlang:date(),
-    <<(kz_term:to_binary(Year))/binary,(kz_util:pad_month(Month))/binary
+    <<(kz_term:to_binary(Year))/binary,(kz_time:pad_month(Month))/binary
       ,"-",(kz_binary:rand_hex(16))/binary
     >>.
 
@@ -670,8 +670,8 @@ add_fax_document(#state{from=From
 
     Doc = kz_json:set_values([{<<"pvt_type">>, <<"fax">>}
                              ,{<<"pvt_job_status">>, <<"attaching files">>}
-                             ,{<<"pvt_created">>, kz_util:current_tstamp()}
-                             ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+                             ,{<<"pvt_created">>, kz_time:current_tstamp()}
+                             ,{<<"pvt_modified">>, kz_time:current_tstamp()}
                              ,{<<"attempts">>, 0}
                              ,{<<"pvt_account_id">>, AccountId}
                              ,{<<"pvt_account_db">>, AccountDb}
@@ -881,7 +881,7 @@ write_tmp_file('undefined', Extension, ?NE_BINARY = Body) ->
     Filename = <<"/tmp/email_attachment_", Basename/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file('undefined', Extension, Body) ->
-    Basename = kz_term:to_binary(kz_util:current_tstamp()),
+    Basename = kz_term:to_binary(kz_time:current_tstamp()),
     Filename = <<"/tmp/email_attachment_", Basename/binary>>,
     write_tmp_file(Filename, Extension, Body);
 write_tmp_file(Filename, Extension, Body) ->

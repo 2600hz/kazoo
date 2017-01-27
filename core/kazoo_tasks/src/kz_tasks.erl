@@ -154,7 +154,7 @@ new(?MATCH_ACCOUNT_RAW(AuthAccountId), ?MATCH_ACCOUNT_RAW(AccountId)
                             ,category => Category
                             ,action => Action
                             ,file_name => InputName
-                            ,created => kz_util:current_tstamp()
+                            ,created => kz_time:current_tstamp()
                             ,started => 'undefined'
                             ,finished => 'undefined'
                             ,total_rows => TotalRows
@@ -339,7 +339,7 @@ to_json(#{id := TaskId
         ,{?PVT_ACTION, Action}
         ,{?PVT_FILENAME, InputName}
         ,{?PVT_CREATED, Created}
-        ,{?PVT_MODIFIED, kz_util:current_tstamp()}
+        ,{?PVT_MODIFIED, kz_time:current_tstamp()}
         ,{?PVT_STARTED_AT, Started}
         ,{?PVT_FINISHED_AT, Finished}
         ,{?PVT_TOTAL_ROWS, TotalRows}
