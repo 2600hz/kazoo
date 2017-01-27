@@ -400,7 +400,9 @@ conference_id(Txts) ->
     MD5.
 
 
+-spec add_conference_profile(kapps_call:call(), kz_proplist()) -> kz_json:object().
 add_conference_profile(Call, ConfProps) ->
+    AccountId = kapps_call:account_id(Call),
     Profile = kz_json:from_list(
                 props:filter_undefined(
                   [{<<"rate">>, props:get_integer_value('rate', ConfProps, 8000)}
@@ -416,8 +418,8 @@ add_conference_profile(Call, ConfProps) ->
                   ,{<<"annouce-count">>, props:get_integer_value('announceCount', ConfProps)}
                   ,{<<"caller-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
                   ,{<<"moderator-controls">>, props:get_value('callerControls', ConfProps, <<"default">>)}
-                  ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_util:anonymous_caller_id_name())}
-                  ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_util:anonymous_caller_id_number())}
+                  ,{<<"caller-id-name">>, props:get_value('callerIdName', ConfProps, kz_privacy:anonymous_caller_id_name(AccountId))}
+                  ,{<<"caller-id-number">>, props:get_value('callerIdNumber', ConfProps, kz_privacy:anonymous_caller_id_number(AccountId))}
                                                 %,{<<"suppress-events">>, <<>>} %% add events to make FS less chatty
                   ,{<<"moh-sound">>, props:get_value('waitUrl', ConfProps, <<"http://com.twilio.music.classical.s3.amazonaws.com/Mellotroniac_-_Flight_Of_Young_Hearts_Flute.mp3">>)}
                   ])),

@@ -112,13 +112,18 @@ route_resp_xml(_, Section, JObj, Props) ->
 
 -spec route_req(ne_binary(), ne_binary(), kz_proplist(), atom()) -> kz_proplist().
 route_req(CallId, FetchId, Props, Node) ->
+    AccountId = kzd_freeswitch:account_id(Props),
     props:filter_empty(
       [{<<"Msg-ID">>, FetchId}
       ,{<<"Call-ID">>, CallId}
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, Props)}
-      ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name())}
-      ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number())}
+      ,{<<"Caller-ID-Name">>
+       ,kzd_freeswitch:caller_id_name(Props, kz_privacy:anonymous_caller_id_name(AccountId))
+       }
+      ,{<<"Caller-ID-Number">>
+       ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
+       }
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
       ,{<<"User-Agent">>, kzd_freeswitch:user_agent(Props)}

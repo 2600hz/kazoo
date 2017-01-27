@@ -313,7 +313,8 @@ maybe_bridge_emergency(#state{resource_req=OffnetReq
     end.
 
 -spec maybe_deny_emergency_bridge(state(), api_binary(), api_binary()) -> 'ok'.
-maybe_deny_emergency_bridge(State, 'undefined', Name) ->
+maybe_deny_emergency_bridge(#state{resource_req=OffnetReq}=State, 'undefined', Name) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
     case kapps_config:get_is_true(?SS_CONFIG_CAT
                                  ,<<"deny_invalid_emergency_cid">>
                                  ,'false'
@@ -322,7 +323,9 @@ maybe_deny_emergency_bridge(State, 'undefined', Name) ->
         'true' -> deny_emergency_bridge(State);
         'false' ->
             maybe_deny_emergency_bridge(State
-                                       ,default_emergency_number(kz_util:anonymous_caller_id_number())
+                                       ,default_emergency_number(
+                                          kz_privacy:anonymous_caller_id_number(AccountId)
+                                         )
                                        ,Name
                                        )
     end;

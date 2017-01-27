@@ -137,9 +137,10 @@ find_destination(JObj) ->
 
 -spec use_to_as_destination(kz_call_event:doc()) -> ne_binary().
 use_to_as_destination(JObj) ->
+    AccountId = kz_call_event:account_id(JObj),
     case catch binary:split(kz_json:get_value(<<"To-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
-        _ -> kz_json:get_value(<<"Callee-ID-Number">>, JObj,  kz_util:anonymous_caller_id_number())
+        _ -> kz_json:get_value(<<"Callee-ID-Number">>, JObj,  kz_privacy:anonymous_caller_id_number(AccountId))
     end.
 
 %%--------------------------------------------------------------------
@@ -150,9 +151,10 @@ use_to_as_destination(JObj) ->
 %%--------------------------------------------------------------------
 -spec find_source(kz_call_event:doc()) -> ne_binary().
 find_source(JObj) ->
+    AccountId = kz_call_event:account_id(JObj),
     case catch binary:split(kz_json:get_value(<<"From-Uri">>, JObj), <<"@">>) of
         [Num|_] -> Num;
-        _ -> kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_util:anonymous_caller_id_number())
+        _ -> kz_json:get_value(<<"Caller-ID-Number">>, JObj,  kz_privacy:anonymous_caller_id_number(AccountId))
     end.
 
 %%--------------------------------------------------------------------

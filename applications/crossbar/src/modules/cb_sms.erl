@@ -236,7 +236,7 @@ get_default_caller_id(Context, 'undefined') ->
     kz_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                              ,JObj
-                             ,kz_util:anonymous_caller_id_number()
+                             ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
      );
 get_default_caller_id(Context, OwnerId) ->
     AccountDb = cb_context:account_db(Context),
@@ -245,7 +245,7 @@ get_default_caller_id(Context, OwnerId) ->
     kz_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
                              ,kz_json:merge_recursive(JObj1, JObj2)
-                             ,kz_util:anonymous_caller_id_number()
+                             ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
      ).
 
 -spec create_sms_doc_id() -> ne_binary().
