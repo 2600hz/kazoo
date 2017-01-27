@@ -145,18 +145,17 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINAR
     {'ok', CSVOut} = file:read_file(Output),
     case kz_datamgr:put_attachment(?KZ_TASKS_DB
                                   ,TaskId
-                                  ,?KZ_TASKS_ATTACHMENT_NAME_OUT
+                                  ,?KZ_TASKS_ANAME_OUT
                                   ,CSVOut
                                   ,[{'content_type', <<"text/csv">>}]
                                   )
     of
         {'ok', _TaskJObj} ->
-            lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]),
+            lager:debug("saved ~s", [?KZ_TASKS_ANAME_OUT]),
             kz_util:delete_file(Output),
             'ok';
         {'error', _R}=Error ->
-            lager:error("failed saving ~s/~s: ~p"
-                       ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R]),
+            lager:error("failed saving ~s/~s: ~p", [TaskId, ?KZ_TASKS_ANAME_OUT, _R]),
             Error
     end.
 
