@@ -140,7 +140,7 @@ whapp_count(Whapp) ->
 
 -spec whapp_count(text(), text() | boolean() | 'remote') -> integer().
 whapp_count(Whapp, Arg) when not is_atom(Arg) ->
-    whapp_count(Whapp, kz_util:to_atom(Arg, 'true'));
+    whapp_count(Whapp, kz_term:to_atom(Arg, 'true'));
 whapp_count(Whapp, 'false') ->
     MatchSpec = [{#kz_node{kapps='$1'
                           ,zone = local_zone()
@@ -149,7 +149,7 @@ whapp_count(Whapp, 'false') ->
                  ,[{'=/=', '$1', []}]
                  ,['$1']
                  }],
-    determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
+    determine_whapp_count(kz_term:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, 'true') ->
     MatchSpec = [{#kz_node{kapps='$1'
                           ,_ = '_'
@@ -157,7 +157,7 @@ whapp_count(Whapp, 'true') ->
                  ,[{'=/=', '$1', []}]
                  ,['$1']
                  }],
-    determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
+    determine_whapp_count(kz_term:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, 'remote') ->
     Zone = local_zone(),
     MatchSpec = [{#kz_node{kapps='$1'
@@ -170,7 +170,7 @@ whapp_count(Whapp, 'remote') ->
                    }]
                  ,['$1']
                  }],
-    determine_whapp_count(kz_util:to_binary(Whapp), MatchSpec);
+    determine_whapp_count(kz_term:to_binary(Whapp), MatchSpec);
 whapp_count(Whapp, Unhandled) ->
     lager:debug("invalid parameters", [Whapp, Unhandled]),
     0.
@@ -200,7 +200,7 @@ whapp_zones(Whapp) ->
                  ,[{'=/=', '$1', []}]
                  ,[{{'$2', '$1'}}]
                  }],
-    determine_whapp_zones(kz_util:to_binary(Whapp), MatchSpec).
+    determine_whapp_zones(kz_term:to_binary(Whapp), MatchSpec).
 
 -spec determine_whapp_zones(ne_binary(), ets:match_spec()) -> list().
 determine_whapp_zones(Whapp, MatchSpec) ->
@@ -267,8 +267,8 @@ print_node_status(#kz_node{zone=NodeZone
     io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]),
     io:format(?SIMPLE_ROW_NUM, [<<"Ports">>, Ports]),
 
-    _ = maybe_print_zone(kz_util:to_binary(NodeZone)
-                        ,kz_util:to_binary(Zone)
+    _ = maybe_print_zone(kz_term:to_binary(NodeZone)
+                        ,kz_term:to_binary(Zone)
                         ),
 
     io:format(?SIMPLE_ROW_STR, [<<"Broker">>, Broker]),
@@ -364,7 +364,7 @@ status_list([{Whapp, #whapp_info{startup='undefined'}}|Whapps], Column) ->
     status_list(Whapps, Column + 1);
 status_list([{Whapp, #whapp_info{startup=Started}}|Whapps], Column) ->
     Elapsed = kz_util:elapsed_s(Started),
-    Print = <<(kz_util:to_binary(Whapp))/binary, "(", (kz_util:pretty_print_elapsed_s(Elapsed))/binary, ")">>,
+    Print = <<(kz_term:to_binary(Whapp))/binary, "(", (kz_util:pretty_print_elapsed_s(Elapsed))/binary, ")">>,
     io:format("~-25s", [Print]),
     status_list(Whapps, Column + 1).
 
@@ -433,7 +433,7 @@ init([]) ->
     State = #state{tab=Tab, zone=get_zone()},
     Version = <<(kz_util:kazoo_version())/binary
                 ," - "
-                ,(kz_util:to_binary(erlang:system_info('otp_release')))/binary
+                ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
     self() ! {'heartbeat', State#state.heartbeat_ref},
     {'ok', State#state{version=Version}}.
@@ -587,7 +587,7 @@ handle_info(_Info, State) ->
 %%--------------------------------------------------------------------
 -spec handle_event(kz_json:object(), nodes_state()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{node=Node}) ->
-    {'reply', [{'node', kz_util:to_binary(Node)}]}.
+    {'reply', [{'node', kz_term:to_binary(Node)}]}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -635,7 +635,7 @@ create_node(Heartbeat, #state{zone=Zone
 
 -spec normalize_amqp_uri(ne_binary()) -> ne_binary().
 normalize_amqp_uri(URI) ->
-    kz_util:to_binary(amqp_uri:remove_credentials(kz_util:to_list(URI))).
+    kz_term:to_binary(amqp_uri:remove_credentials(kz_term:to_list(URI))).
 
 -spec add_kapps_data(kz_node()) -> kz_node().
 add_kapps_data(Node) ->
@@ -666,7 +666,7 @@ kapp_data(App
 -spec maybe_add_info(atom(), 'undefined' | whapp_info(), kapps_info()) -> kapps_info().
 maybe_add_info(_App, 'undefined', Kapps) -> Kapps;
 maybe_add_info(App, AppInfo, Kapps) ->
-    [{kz_util:to_binary(App), AppInfo} | Kapps].
+    [{kz_term:to_binary(App), AppInfo} | Kapps].
 
 -spec get_whapp_info(atom() | pid() | kz_proplist() | 'undefined') -> whapp_info().
 get_whapp_info('undefined') -> #whapp_info{};
@@ -713,7 +713,7 @@ advertise_payload(#kz_node{expires=Expires
                           ,globals=Globals
                           }) ->
     props:filter_undefined(
-      [{<<"Expires">>, kz_util:to_binary(Expires)}
+      [{<<"Expires">>, kz_term:to_binary(Expires)}
       ,{<<"WhApps">>, kapps_to_json(Whapps) }
       ,{<<"Media-Servers">>, media_servers_to_json(MediaServers)}
       ,{<<"Used-Memory">>, UsedMemory}
@@ -722,7 +722,7 @@ advertise_payload(#kz_node{expires=Expires
       ,{<<"Version">>, Version}
       ,{<<"Channels">>, Channels}
       ,{<<"Registrations">>, Registrations}
-      ,{<<"Zone">>, kz_util:to_binary(Zone)}
+      ,{<<"Zone">>, kz_term:to_binary(Zone)}
       ,{<<"Globals">>, kz_json:from_list(Globals)}
       ,{<<"Node-Info">>, node_info()}
        | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -742,8 +742,8 @@ media_servers_from_json(Servers) ->
 -spec from_json(kz_json:object(), nodes_state()) -> kz_node().
 from_json(JObj, State) ->
     Node = kz_json:get_value(<<"Node">>, JObj),
-    #kz_node{node=kz_util:to_atom(Node, 'true')
-            ,expires=kz_util:to_integer(kz_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
+    #kz_node{node=kz_term:to_atom(Node, 'true')
+            ,expires=kz_term:to_integer(kz_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
             ,kapps=kapps_from_json(kz_json:get_value(<<"WhApps">>, JObj, []))
             ,media_servers=media_servers_from_json(kz_json:get_value(<<"Media-Servers">>, JObj, kz_json:new()))
             ,used_memory=kz_json:get_integer_value(<<"Used-Memory">>, JObj, 0)
@@ -801,7 +801,7 @@ whapp_info_to_json(#whapp_info{startup=Start}) ->
 -spec get_zone() -> atom().
 get_zone() ->
     case kz_config:get(kz_config:get_node_section_name(), 'zone') of
-        [Zone] -> kz_util:to_atom(Zone, 'true');
+        [Zone] -> kz_term:to_atom(Zone, 'true');
         _Else -> 'local'
     end.
 
@@ -814,10 +814,10 @@ get_zone(JObj, #state{zones=Zones, zone=LocalZone}) ->
                 Broker ->
                     case props:get_value(Broker, Zones) of
                         'undefined' -> LocalZone;
-                        Zone -> kz_util:to_atom(Zone, 'true')
+                        Zone -> kz_term:to_atom(Zone, 'true')
                     end
             end;
-        Zone -> kz_util:to_atom(Zone, 'true')
+        Zone -> kz_term:to_atom(Zone, 'true')
     end.
 
 -spec local_zone() -> atom().
@@ -859,7 +859,7 @@ whapp_oldest_node(Whapp) ->
 -spec whapp_oldest_node(text(), text() | boolean() | atom()) -> api_integer().
 whapp_oldest_node(Whapp, Federated)
   when is_binary(Federated) ->
-    whapp_oldest_node(Whapp, kz_util:is_true(Federated));
+    whapp_oldest_node(Whapp, kz_term:is_true(Federated));
 whapp_oldest_node(Whapp, 'true') ->
     MatchSpec = [{#kz_node{kapps='$1'
                           ,node='$2'
@@ -868,7 +868,7 @@ whapp_oldest_node(Whapp, 'true') ->
                  ,[{'=/=', '$1', []}]
                  ,[{{'$1','$2'}}]
                  }],
-    determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec);
+    determine_whapp_oldest_node(kz_term:to_binary(Whapp), MatchSpec);
 whapp_oldest_node(Whapp, 'false') ->
     Zone = gen_listener:call(?SERVER, 'zone'),
     whapp_oldest_node(Whapp, Zone);
@@ -882,7 +882,7 @@ whapp_oldest_node(Whapp, Zone)
                  ,[{'=/=', '$1', []}]
                  ,[{{'$1', '$2'}}]
                  }],
-    determine_whapp_oldest_node(kz_util:to_binary(Whapp), MatchSpec).
+    determine_whapp_oldest_node(kz_term:to_binary(Whapp), MatchSpec).
 
 -spec determine_whapp_oldest_node(ne_binary(), ets:match_spec()) ->
                                          'undefined' | node().
@@ -945,7 +945,7 @@ pool_state(Name) ->
     pool_state(Name, PoolState, Workers, OverFlow, Monitors).
 
 pool_state(Name, State, Workers, Overflow, Monitors) ->
-    {kz_util:to_binary(Name)
+    {kz_term:to_binary(Name)
     ,iolist_to_binary(
        io_lib:format("~p/~p/~p (~p)", [Workers, Monitors, Overflow, State])
       )

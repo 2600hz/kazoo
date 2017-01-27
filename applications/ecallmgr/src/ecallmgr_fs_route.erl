@@ -152,7 +152,7 @@ handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #st
                                                                                    }=State) ->
     Props = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                    ,{<<"Switch-URI">>, SwitchURI}
-                                   ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+                                   ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
                                    ]) ++ FSData,
     handle_fetch(Section, FSId, CallId, Props, Node),
     {'noreply', State, 'hibernate'};

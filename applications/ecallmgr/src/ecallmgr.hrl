@@ -362,7 +362,7 @@
                                   ,'sofia::replaced'
                                   ,'sofia::intercepted'
                                   ]).
--define(IS_SOFIA_TRANSFER(N), lists:member(kz_util:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
+-define(IS_SOFIA_TRANSFER(N), lists:member(kz_term:to_atom(N, 'true'), ?FS_SOFIA_TRANSFER_EVENTS)).
 
 -define(FS_CUSTOM_EVENTS, [['kazoo::noop'
                            ,'kazoo::masquerade'
@@ -500,18 +500,18 @@
                          ,<<"Member-Ghost">>
                          ]).
 
--define(CONFERENCE_VAR_MAP, [{<<"variable_conference_moderator">>, {<<"Is-Moderator">>, fun kz_util:to_boolean/1}}
-                            ,{<<"Floor">>, fun kz_util:to_boolean/1}
-                            ,{<<"Video">>, fun kz_util:to_boolean/1}
-                            ,{<<"See">>, fun kz_util:to_boolean/1}
-                            ,{<<"Speak">>, fun kz_util:to_boolean/1}
-                            ,{<<"Hear">>, fun kz_util:to_boolean/1}
-                            ,{<<"Talking">>, fun kz_util:to_boolean/1}
-                            ,{<<"Mute-Detect">>, fun kz_util:to_boolean/1}
-                            ,{<<"Energy-Level">>, fun kz_util:to_integer/1}
-                            ,{<<"Current-Energy">>, fun kz_util:to_integer/1}
-                            ,{<<"Member-ID">>, fun kz_util:to_integer/1}
-                            ,{<<"Member-Ghost">>, fun kz_util:to_boolean/1}
+-define(CONFERENCE_VAR_MAP, [{<<"variable_conference_moderator">>, {<<"Is-Moderator">>, fun kz_term:to_boolean/1}}
+                            ,{<<"Floor">>, fun kz_term:to_boolean/1}
+                            ,{<<"Video">>, fun kz_term:to_boolean/1}
+                            ,{<<"See">>, fun kz_term:to_boolean/1}
+                            ,{<<"Speak">>, fun kz_term:to_boolean/1}
+                            ,{<<"Hear">>, fun kz_term:to_boolean/1}
+                            ,{<<"Talking">>, fun kz_term:to_boolean/1}
+                            ,{<<"Mute-Detect">>, fun kz_term:to_boolean/1}
+                            ,{<<"Energy-Level">>, fun kz_term:to_integer/1}
+                            ,{<<"Current-Energy">>, fun kz_term:to_integer/1}
+                            ,{<<"Member-ID">>, fun kz_term:to_integer/1}
+                            ,{<<"Member-Ghost">>, fun kz_term:to_boolean/1}
                             ]).
 
 -define(FS_EVENT_FILTERS,

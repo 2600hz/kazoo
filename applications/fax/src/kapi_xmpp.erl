@@ -26,7 +26,7 @@
 
 -define(XMPP_EVENT_ROUTING_KEY(Event, JID),
         <<"xmpp."
-          ,(kz_util:to_binary(Event))/binary
+          ,(kz_term:to_binary(Event))/binary
           ,"."
           ,(amqp_util:encode(JID))/binary>>).
 -define(XMPP_EVENT_HEADERS, [<<"JID">>]).

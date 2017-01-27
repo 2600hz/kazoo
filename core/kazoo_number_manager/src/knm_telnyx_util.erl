@@ -152,7 +152,7 @@ rep({'ok', Code, _Headers, _Response}) ->
     knm_errors:by_carrier(?CARRIER, Reason, <<>>);
 rep({'error', R}=_E) ->
     lager:warning("request error: ~p", [_E]),
-    knm_errors:by_carrier(?CARRIER, kz_util:to_binary(R), <<>>).
+    knm_errors:by_carrier(?CARRIER, kz_term:to_binary(R), <<>>).
 
 -spec http_code(pos_integer()) -> atom().
 http_code(400) -> 'bad_request';

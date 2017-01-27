@@ -105,8 +105,8 @@ load_profile(#oauth_app{provider=#oauth_provider{profile_url=ProfileURL}}, JObj,
     TokenType = kz_json:get_value(<<"token_type">>, JObj, <<"Bearer">>),
     AccessToken = kz_json:get_value(<<"access_token">>, JObj),
     Authorization = <<TokenType/binary, " ",AccessToken/binary>>,
-    Headers = [{"Authorization",kz_util:to_list(Authorization)}],
-    case kz_http:get(kz_util:to_list(ProfileURL), Headers) of
+    Headers = [{"Authorization",kz_term:to_list(Authorization)}],
+    case kz_http:get(kz_term:to_list(ProfileURL), Headers) of
         {'ok', 200, _RespHeaders, RespXML} ->
             lager:info("loaded outh profile: ~p",[RespXML]),
             ProfileJObj = kz_json:decode(RespXML),

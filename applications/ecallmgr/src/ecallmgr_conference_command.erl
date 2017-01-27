@@ -31,7 +31,7 @@ exec_cmd(_Node, _ConferenceId, JObj, _DestId) ->
                                                                ,_DestId]).
 
 api(Node, ConferenceId, {AppName, AppData}) ->
-    Command = kz_util:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
+    Command = kz_term:to_list(list_to_binary([ConferenceId, " ", AppName, " ", AppData])),
     freeswitch:api(Node, 'conference', Command).
 
 -type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
@@ -87,16 +87,16 @@ get_conf_command(<<"tones">>, _Focus, _ConferenceId, JObj) ->
                            Vol = case kz_json:get_value(<<"Volume">>, Tone) of
                                      'undefined' -> [];
                                      %% need to map V (0-100) to FS values
-                                     V -> list_to_binary(["v=", kz_util:to_list(V), ";"])
+                                     V -> list_to_binary(["v=", kz_term:to_list(V), ";"])
                                  end,
                            Repeat = case kz_json:get_value(<<"Repeat">>, Tone) of
                                         'undefined' -> [];
-                                        R -> list_to_binary(["l=", kz_util:to_list(R), ";"])
+                                        R -> list_to_binary(["l=", kz_term:to_list(R), ";"])
                                     end,
-                           Freqs = string:join([ kz_util:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, Tone) ], ","),
-                           On = kz_util:to_list(kz_json:get_value(<<"Duration-ON">>, Tone)),
-                           Off = kz_util:to_list(kz_json:get_value(<<"Duration-OFF">>, Tone)),
-                           kz_util:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
+                           Freqs = string:join([ kz_term:to_list(V) || V <- kz_json:get_value(<<"Frequencies">>, Tone) ], ","),
+                           On = kz_term:to_list(kz_json:get_value(<<"Duration-ON">>, Tone)),
+                           Off = kz_term:to_list(kz_json:get_value(<<"Duration-OFF">>, Tone)),
+                           kz_term:to_list(list_to_binary([Vol, Repeat, "%(", On, ",", Off, ",", Freqs, ")"]))
                        end || Tone <- Tones],
             Arg = "tone_stream://" ++ string:join(FSTones, ";"),
             {<<"play">>, Arg}
@@ -121,7 +121,7 @@ get_conf_command(<<"play_macro">>, _Focus, _ConferenceId, JObj) ->
     Participant = kz_json:get_binary_value(<<"Participant-ID">>, JObj, <<>>),
     Macro = kz_json:get_value(<<"Media-Macro">>, JObj, []),
     Paths = lists:map(fun ecallmgr_util:media_path/1, Macro),
-    Media = list_to_binary(["'file_string://", kz_util:join_binary(Paths, <<"!">>), "'", " ", Participant]),
+    Media = list_to_binary(["'file_string://", kz_binary:join(Paths, <<"!">>), "'", " ", Participant]),
     {<<"play">>, Media};
 
 get_conf_command(<<"stop_play">>, _Focus, _ConferenceId, JObj) ->

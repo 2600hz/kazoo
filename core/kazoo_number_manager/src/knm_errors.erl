@@ -177,7 +177,7 @@ to_json(Reason, _, Cause) ->
 build_error(Code, Error, Message, Cause) ->
     kz_json:from_list(
       [{?CODE, Code}]
-      ++ [{K, kz_util:to_binary(V)}
+      ++ [{K, kz_term:to_binary(V)}
           || {K, V} <- [{?ERROR, Error}
                        ,{?CAUSE, Cause}
                        ,{?MESSAGE, Message}

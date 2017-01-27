@@ -231,13 +231,13 @@ encode_call_id(JObj) ->
 
 -spec handle_hook_event(ne_binary(), ne_binary(), kz_json:object()) -> any().
 handle_hook_event(AccountId, EventType, JObj) ->
-    RK = kz_util:join_binary([<<"call">>
-                             ,AccountId
-                             ,EventType
-                             ,encode_call_id(JObj)
-                             ]
-                            ,<<".">>
-                            ),
+    RK = kz_binary:join([<<"call">>
+                        ,AccountId
+                        ,EventType
+                        ,encode_call_id(JObj)
+                        ]
+                       ,<<".">>
+                       ),
     handle_amqp_event(JObj, [], RK).
 
 -spec binding_key(bh_event_binding()) -> binary().

@@ -222,7 +222,7 @@ build_request(CallId, ToDID, AuthorizingId, Q, CtrlQ, AccountId, Action, RetainC
       ,{<<"Control-Queue">>, CtrlQ}
       ,{<<"Existing-Call-ID">>, CallId}
       ,{<<"Originate-Immediate">>, <<"true">>}
-      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(8)}
+      ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
       ,{<<"Account-ID">>, AccountId}
       ,{<<"Dial-Endpoint-Method">>, <<"single">>}
       ,{<<"Continue-On-Fail">>, <<"true">>}

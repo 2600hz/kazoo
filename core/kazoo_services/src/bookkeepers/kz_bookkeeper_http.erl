@@ -71,7 +71,7 @@ sync(Items, AccountId) ->
 http_request(#sync{url = 'undefined'}) ->
     lager:info("http sync URL is empty - skipping");
 http_request(#sync{method = <<"post">>, url = Url} = Sync) ->
-    Headers = [{"Content-Type", kz_util:to_list(Sync#sync.content_type)}
+    Headers = [{"Content-Type", kz_term:to_list(Sync#sync.content_type)}
                | http_headers(Sync)
               ],
     Payload = http_payload(Sync),
@@ -121,9 +121,9 @@ http_headers(Sync) ->
 -spec to_list(api_binary()) -> 'undefined' | list().
 to_list('undefined') -> 'undefined';
 to_list(Value) ->
-    case kz_util:is_empty(Value) of
+    case kz_term:is_empty(Value) of
         'true' -> 'undefined';
-        'false' -> kz_util:to_list(Value)
+        'false' -> kz_term:to_list(Value)
     end.
 
 %%--------------------------------------------------------------------

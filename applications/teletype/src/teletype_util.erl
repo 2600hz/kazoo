@@ -77,17 +77,17 @@ send_email(Emails, Subject, RenderedTemplates, Attachments) ->
         {'ok', Receipt} ->
             maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, 'undefined');
         {'error', {'error', Reason} = E} ->
-            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_term:to_binary(Reason)),
             E;
         {'error', Reason} = E ->
-            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_util:to_binary(Reason)),
+            maybe_log_smtp(Emails, Subject, RenderedTemplates, 'undefined', kz_term:to_binary(Reason)),
             E
     end.
 
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary()) -> 'ok'.
 -spec maybe_log_smtp(email_map(), ne_binary(), list(), api_binary(), api_binary(), boolean()) -> 'ok'.
 maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error) ->
-    Skip = kz_util:is_true(get('skip_smtp_log')),
+    Skip = kz_term:is_true(get('skip_smtp_log')),
     maybe_log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, Skip).
 
 maybe_log_smtp(_Emails, _Subject, _RenderedTemplates, _Receipt, _Error, 'true') ->
@@ -123,7 +123,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
 
 -spec make_smtplog_id(ne_binary()) -> ne_binary().
 make_smtplog_id(?MATCH_MODB_SUFFIX_ENCODED(_Account, Year, Month)) ->
-    ?MATCH_MODB_PREFIX(Year, Month, kz_util:rand_hex_binary(16)).
+    ?MATCH_MODB_PREFIX(Year, Month, kz_binary:rand_hex(16)).
 
 -spec email_body(rendered_templates()) -> mimemail:mimetuple().
 email_body(RenderedTemplates) ->
@@ -234,9 +234,9 @@ log_email_send_error(Reason) ->
 
 -spec smtp_options() -> kz_proplist().
 smtp_options() ->
-    Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
-    Password = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
+    Relay = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
+    Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
     Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
@@ -321,7 +321,7 @@ default_content_transfer_encoding(_) -> <<"7BIT">>.
 
 -spec system_params() -> kz_proplist().
 system_params() ->
-    [{<<"hostname">>, kz_util:to_binary(net_adm:localhost())}].
+    [{<<"hostname">>, kz_term:to_binary(net_adm:localhost())}].
 
 -spec user_params(kzd_user:doc()) -> kz_proplist().
 user_params(UserJObj) ->
@@ -722,7 +722,7 @@ check_address_value('undefined') -> 'undefined';
 check_address_value(<<>>) -> 'undefined';
 check_address_value(<<_/binary>> = Email) -> Email;
 check_address_value(Emails) when is_list(Emails) ->
-    case [E || E <- Emails, not kz_util:is_empty(E)] of
+    case [E || E <- Emails, not kz_term:is_empty(E)] of
         [] -> 'undefined';
         Es -> Es
     end;
@@ -792,7 +792,7 @@ read_doc(File) ->
 
 -spec is_preview(kz_json:object()) -> boolean().
 is_preview(DataJObj) ->
-    kz_util:is_true(
+    kz_term:is_true(
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
@@ -822,7 +822,7 @@ maybe_get_attachments(DataObj) ->
 
 -spec fetch_attachment_from_url(ne_binary()) -> {'ok', attachment()} | {'error', any()}.
 fetch_attachment_from_url(URL) ->
-    case kz_http:get(kz_util:to_list(URL)) of
+    case kz_http:get(kz_term:to_list(URL)) of
         {'ok', _2xx, Headers, Body}
           when (_2xx - 200) < 100 -> %% ie: match "2"++_
             {'ok', attachment_from_url_result(Headers, Body)};
@@ -836,9 +836,9 @@ fetch_attachment_from_url(URL) ->
 
 -spec attachment_from_url_result(kz_proplist(), binary()) -> attachment().
 attachment_from_url_result(Headers, Body) ->
-    CT = kz_util:to_binary(props:get_value("content-type", Headers, <<"text/plain">>)),
-    Disposition = kz_util:to_binary(props:get_value("content-disposition", Headers, <<>>)),
-    CDs = [ list_to_tuple(binary:split(kz_util:strip_binary(CD), <<"=">>)) || CD <- binary:split(Disposition, <<";">>)],
+    CT = kz_term:to_binary(props:get_value("content-type", Headers, <<"text/plain">>)),
+    Disposition = kz_term:to_binary(props:get_value("content-disposition", Headers, <<>>)),
+    CDs = [ list_to_tuple(binary:split(kz_binary:strip(CD), <<"=">>)) || CD <- binary:split(Disposition, <<";">>)],
     Filename = case props:get_value(<<"filename">>, CDs) of
                    'undefined' -> kz_mime:to_filename(CT);
                    FileDisposition -> FileDisposition

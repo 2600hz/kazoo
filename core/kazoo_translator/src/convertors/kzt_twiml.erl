@@ -19,7 +19,7 @@
                         {'ok', xml_els()} |
                         {'error', 'not_parsed'}.
 parse_cmds(XMLBin) ->
-    try xmerl_scan:string(kz_util:to_list(XMLBin)) of
+    try xmerl_scan:string(kz_term:to_list(XMLBin)) of
         {#xmlElement{name='Response'}=XML, _} -> {'ok', XML};
         _E ->
             {'error', 'not_parsed'}
@@ -35,7 +35,7 @@ parse_cmds(XMLBin) ->
 exec(Call, #xmlElement{name='Response', content=Els}) ->
     exec_elements(Call, kz_xml:filter_empty_text(Els));
 exec(Call, Resp) ->
-    try xmerl_scan:string(kz_util:to_list(Resp), [{'space', 'normalize'}]) of
+    try xmerl_scan:string(kz_term:to_list(Resp), [{'space', 'normalize'}]) of
         {#xmlElement{name='Response', content=Els}, _} ->
             exec_elements(Call, kz_xml:filter_empty_text(Els));
         _Other ->

@@ -152,7 +152,7 @@ find_numbers(<<NPA:3/binary>>, Quantity, Options) ->
     process_search_response(Result, Options);
 
 find_numbers(Search, Quantity, Options) ->
-    NpaNxx = kz_util:truncate_right_binary(Search, 6),
+    NpaNxx = kz_binary:truncate_right(Search, 6),
     Params = [ "npaNxx=", binary_to_list(NpaNxx)
              , "&enableTNDetail=false&quantity=", quantity_uri_param(Quantity)
              ],
@@ -199,7 +199,7 @@ acquire_number(Number) ->
             AuthBy = knm_phone_number:auth_by(PhoneNumber),
 
             Props = [{'Name', [ON]}
-                    ,{'CustomerOrderId', [kz_util:to_list(AuthBy)]}
+                    ,{'CustomerOrderId', [kz_term:to_list(AuthBy)]}
                     ,{'SiteId', [?BW2_SITE_ID]}
                     ,{'PeerId', [?BW2_SIP_PEER]}
                     ,{'ExistingTelephoneNumberOrderType',
@@ -210,7 +210,7 @@ acquire_number(Number) ->
 
             case api_post(url(["orders"]), Body) of
                 {'error', Reason} ->
-                    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+                    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
                     knm_errors:by_carrier(?MODULE, Error, Num);
                 {'ok', Xml} ->
                     Response = xmerl_xpath:string("Order", Xml),
@@ -223,10 +223,10 @@ acquire_number(Number) ->
 -spec check_order(api_binary(), api_binary(), xml_el(), knm_number:knm_number(), knm_number:knm_number()) -> knm_number:knm_number().
 check_order(OrderId, <<"RECEIVED">>, _Response, PhoneNumber, Number) ->
     timer:sleep(?BW2_ORDER_POLL_INTERVAL),
-    Url = ["orders/", kz_util:to_list(OrderId)],
+    Url = ["orders/", kz_term:to_list(OrderId)],
     case api_get(url(Url)) of
         {'error', Reason} ->
-            Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+            Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
             Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
             knm_errors:by_carrier(?MODULE, Error, Num);
         {'ok', Xml} ->
@@ -242,13 +242,13 @@ check_order(_OrderId, <<"COMPLETE">>, Response, PhoneNumber, Number) ->
 
 check_order(_OrderId, <<"FAILED">>, _Response, PhoneNumber, _Number) ->
     Reason = <<"FAILED">>,
-    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
     Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
     knm_errors:by_carrier(?MODULE, Error, Num);
 
 check_order(_OrderId, OrderStatus, _Response, PhoneNumber, _Number) ->
     Reason = OrderStatus,
-    Error = <<"Unable to acquire number: ", (kz_util:to_binary(Reason))/binary>>,
+    Error = <<"Unable to acquire number: ", (kz_term:to_binary(Reason))/binary>>,
     Num = to_bandwidth2(knm_phone_number:number(PhoneNumber)),
     knm_errors:by_carrier(?MODULE, Error, Num).
 
@@ -377,7 +377,7 @@ api_post("https://api.inetwork.com/v1.0/accounts/eunit_testing_account/orders", 
 -spec handle_response(kz_http:ret()) -> api_res().
 handle_response({Result, Code, Props, Response})
   when is_binary(Response) ->
-    handle_response({Result, Code, Props, kz_util:to_list(Response)});
+    handle_response({Result, Code, Props, kz_term:to_list(Response)});
 handle_response({'ok', 401, _, _Response}) ->
     ?DEBUG_APPEND("Response:~n401~n~s~n", [_Response]),
     lager:debug("bandwidth.com request error: 401 (unauthenticated)"),

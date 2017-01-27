@@ -63,12 +63,12 @@
                            ]).
 -define(CHECK_SYNC_TYPES, []).
 -define(CHECK_SYNC_KEY(Realm, Username)
-       ,kz_util:join_binary([<<"switch.check_sync">>
-                            ,amqp_util:encode(Realm)
-                            ,amqp_util:encode(Username)
-                            ]
-                           ,<<".">>
-                           )
+       ,kz_binary:join([<<"switch.check_sync">>
+                       ,amqp_util:encode(Realm)
+                       ,amqp_util:encode(Username)
+                       ]
+                      ,<<".">>
+                      )
        ).
 
 %% request fs command
@@ -210,7 +210,7 @@ bind_to_q(Q, ['check_sync'|T], Props) ->
     bind_to_q(Q, T, Props);
 bind_to_q(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_COMMAND_KEY(kz_util:to_binary(Node))),
+    'ok' = amqp_util:bind_q_to_configuration(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
@@ -236,7 +236,7 @@ unbind_q_from(Q, ['check_sync'|T], Props) ->
     unbind_q_from(Q, T, Props);
 unbind_q_from(Q, ['command'|T], Props) ->
     Node = props:get_value('node', Props, <<"*">>),
-    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_COMMAND_KEY(kz_util:to_binary(Node))),
+    'ok' = amqp_util:unbind_q_from_configuration(Q, ?FS_COMMAND_KEY(kz_term:to_binary(Node))),
     unbind_q_from(Q, T, Props);
 unbind_q_from(_Q, [], _Props) -> 'ok'.
 
@@ -251,13 +251,13 @@ declare_exchanges() ->
 
 -spec publish_reload_acls() -> 'ok'.
 publish_reload_acls() ->
-    Defaults = kz_api:default_headers(<<"switch_event">>, kz_util:to_binary(?MODULE)),
+    Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
     {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_ACLS_VALUES, fun reload_acls/1),
     amqp_util:configuration_publish(?RELOAD_ACLS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 
 -spec publish_reload_gateways() -> 'ok'.
 publish_reload_gateways() ->
-    Defaults = kz_api:default_headers(<<"switch_event">>, kz_util:to_binary(?MODULE)),
+    Defaults = kz_api:default_headers(<<"switch_event">>, kz_term:to_binary(?MODULE)),
     {'ok', Payload} = kz_api:prepare_api_payload(Defaults, ?RELOAD_GATEWAYS_VALUES, fun reload_gateways/1),
     amqp_util:configuration_publish(?RELOAD_GATEWAYS_KEY, Payload, ?DEFAULT_CONTENT_TYPE).
 

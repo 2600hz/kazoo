@@ -44,7 +44,7 @@ start_link() ->
                         {'ok', {string(), ne_binaries()}}.
 -spec match_did(ne_binary()) -> {'ok', kz_json:objects()}.
 match_did(ToDID) ->
-    case gen_server:call(?MODULE, {'match_did', kz_util:to_list(ToDID)}) of
+    case gen_server:call(?MODULE, {'match_did', kz_term:to_list(ToDID)}) of
         {'error', 'not_found'} ->
             lager:debug("failed to find rate for ~s", [ToDID]),
             {'ok', []};
@@ -141,7 +141,7 @@ add_results(Trie, Results) ->
 -spec add_result(kz_json:object(), trie:trie()) -> trie:trie().
 add_result(Result, Trie) ->
     Id = kz_doc:id(Result),
-    Prefix = kz_util:to_list(kz_json:get_value(<<"key">>, Result)),
+    Prefix = kz_term:to_list(kz_json:get_value(<<"key">>, Result)),
     trie:append(Prefix, Id, Trie).
 
 -spec fetch_rates(ne_binary(), non_neg_integer()) ->

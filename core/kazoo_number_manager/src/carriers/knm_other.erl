@@ -212,7 +212,7 @@ format_check_numbers_success(Body) ->
                          {'error', 'not_available'}.
 get_numbers(Url, Prefix, Quantity, Options) ->
     Offset = props:get_binary_value('offset', Options, <<"0">>),
-    ReqBody = <<"?prefix=", Prefix/binary, "&limit=", (kz_util:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
+    ReqBody = <<"?prefix=", Prefix/binary, "&limit=", (kz_term:to_binary(Quantity))/binary, "&offset=", Offset/binary>>,
     Uri = <<Url/binary, "/numbers/", (?COUNTRY)/binary, "/search", ReqBody/binary>>,
     Results = query_for_numbers(Uri),
     handle_number_query_results(Results, Options).
@@ -276,7 +276,7 @@ get_blocks(Url, Prefix, Quantity, Options) ->
     Limit = props:get_binary_value('blocks', Options, <<"0">>),
     Country = kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY),
     ReqBody = <<"?prefix=", (kz_util:uri_encode(Prefix))/binary
-                ,"&size=", (kz_util:to_binary(Quantity))/binary
+                ,"&size=", (kz_term:to_binary(Quantity))/binary
                 ,"&offset=", Offset/binary
                 ,"&limit=", Limit/binary
               >>,

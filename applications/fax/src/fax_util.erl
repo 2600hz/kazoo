@@ -67,14 +67,14 @@ attachment_name(Filename, CT) ->
 
 -spec maybe_generate_random_filename(binary()) -> ne_binary().
 maybe_generate_random_filename(A) ->
-    case kz_util:is_empty(A) of
-        'true' -> kz_util:to_hex_binary(crypto:strong_rand_bytes(16));
+    case kz_term:is_empty(A) of
+        'true' -> kz_term:to_hex_binary(crypto:strong_rand_bytes(16));
         'false' -> A
     end.
 
 -spec maybe_attach_extension(ne_binary(), ne_binary()) -> ne_binary().
 maybe_attach_extension(A, CT) ->
-    case kz_util:is_empty(filename:extension(A)) of
+    case kz_term:is_empty(filename:extension(A)) of
         'false' -> A;
         'true' -> <<A/binary, ".", (kz_mime:to_extension(CT))/binary>>
     end.
@@ -101,7 +101,7 @@ save_fax_docs([Doc|Docs], FileContents, CT) ->
                                  {'error', ne_binary()}.
 save_fax_attachment(JObj, FileContents, CT) ->
     MaxStorageRetry = kapps_config:get_integer(?CONFIG_CAT, <<"max_storage_retry">>, 5),
-    ContentsMD5 = kz_util:to_hex_binary(erlang:md5(FileContents)),
+    ContentsMD5 = kz_term:to_hex_binary(erlang:md5(FileContents)),
     Name = attachment_name(ContentsMD5, CT),
 
     save_fax_attachment(JObj, FileContents, CT, Name, MaxStorageRetry).
@@ -215,4 +215,4 @@ normalize_content_type(<<"text/pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<"text/x-pdf">>) -> <<"application/pdf">>;
 normalize_content_type(<<_/binary>> = Else) -> Else;
 normalize_content_type(CT) ->
-    normalize_content_type(kz_util:to_binary(CT)).
+    normalize_content_type(kz_term:to_binary(CT)).

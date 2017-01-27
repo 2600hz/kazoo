@@ -171,7 +171,7 @@ is_node_up(Node) when is_atom(Node) ->
 
 -spec sip_url(atom() | text()) -> api_binary().
 sip_url(Node) when not is_atom(Node) ->
-    sip_url(kz_util:to_atom(Node, 'true'));
+    sip_url(kz_term:to_atom(Node, 'true'));
 sip_url(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_url(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -184,7 +184,7 @@ sip_url(Node) when is_atom(Node) ->
 
 -spec sip_external_ip(atom() | text()) -> api_binary().
 sip_external_ip(Node) when not is_atom(Node) ->
-    sip_external_ip(kz_util:to_atom(Node, 'true'));
+    sip_external_ip(kz_term:to_atom(Node, 'true'));
 sip_external_ip(Node) when is_atom(Node) ->
     case [ecallmgr_fs_node:sip_external_ip(Srv)
           || Srv <- gproc:lookup_pids({'p', 'l', 'fs_node'})
@@ -210,7 +210,7 @@ details() ->
     print_details(gen_server:call(?SERVER, 'nodes')).
 
 details(NodeName) when not is_atom(NodeName) ->
-    details(kz_util:to_atom(NodeName, 'true'));
+    details(kz_term:to_atom(NodeName, 'true'));
 details(NodeName) when is_atom(NodeName) ->
     case gen_server:call(?SERVER, {'node', NodeName}) of
         {'error', 'not_found'} ->
@@ -321,7 +321,7 @@ capability_to_json(#capability{node=Node
                               ,module=Module
                               ,is_loaded=IsLoaded
                               }) ->
-    kz_json:from_list([{<<"node">>, kz_util:to_binary(Node)}
+    kz_json:from_list([{<<"node">>, kz_term:to_binary(Node)}
                       ,{<<"capability">>, Capability}
                       ,{<<"module">>, Module}
                       ,{<<"is_loaded">>, IsLoaded}
@@ -726,9 +726,9 @@ close_node(#node{node=NodeName}) ->
 
 -spec create_node(text(), text(), kz_proplist()) -> fs_node().
 create_node(NodeName, Cookie, Options) when not is_atom(NodeName) ->
-    create_node(kz_util:to_atom(NodeName, 'true'), Cookie, Options);
+    create_node(kz_term:to_atom(NodeName, 'true'), Cookie, Options);
 create_node(NodeName, Cookie, Options) when not is_atom(Cookie) ->
-    create_node(NodeName, kz_util:to_atom(Cookie, 'true'), Options);
+    create_node(NodeName, kz_term:to_atom(Cookie, 'true'), Options);
 create_node(NodeName, Cookie, Options) ->
     #node{node=NodeName
          ,cookie=get_fs_cookie(Cookie, Options)
@@ -738,7 +738,7 @@ create_node(NodeName, Cookie, Options) ->
 
 -spec get_fs_cookie(atom(), kz_proplist()) -> atom().
 get_fs_cookie('undefined', Props) ->
-    kz_util:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
+    kz_term:to_atom(props:get_value('cookie', Props, erlang:get_cookie()));
 get_fs_cookie(Cookie, _) when is_atom(Cookie) ->
     Cookie.
 
@@ -821,10 +821,10 @@ try_connect_to_default_fs() ->
 -spec start_node_from_config(kz_json:object()|atom()) -> 'ok' | 'error' | {'error', 'no_connection'}.
 start_node_from_config(MaybeJObj) ->
     case kz_json:is_json_object(MaybeJObj) of
-        'false' -> add(kz_util:to_atom(MaybeJObj, 'true'));
+        'false' -> add(kz_term:to_atom(MaybeJObj, 'true'));
         'true' ->
             {[Cookie], [Node]} = kz_json:get_values(MaybeJObj),
-            try add(kz_util:to_atom(Node, 'true'), kz_util:to_atom(Cookie, 'true')) of
+            try add(kz_term:to_atom(Node, 'true'), kz_term:to_atom(Cookie, 'true')) of
                 _OK -> lager:debug("added ~s(~s) successfully: ~p", [Node, Cookie, _OK]), 'ok'
             catch
                 _E:_R -> lager:debug("failed to add ~s(~s): ~s: ~p", [Node, Cookie, _E, _R]), 'error'

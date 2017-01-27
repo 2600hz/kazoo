@@ -112,7 +112,7 @@
                                 {'ok', kz_json:object()} |
                                 data_error().
 load_doc_from_file(DbName, App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", kz_util:to_list(File)]),
+    Path = list_to_binary([code:priv_dir(App), "/couchdb/", kz_term:to_list(File)]),
     lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
@@ -207,7 +207,7 @@ revise_docs_from_folder(DbName, App, Folder, Sleep) ->
             lager:error("tried to revise docs for db ~p for invalid priv directory. app: ~p", [DbName, App]);
 
         ValidDir ->
-            Files = filelib:wildcard([ValidDir, "/couchdb/", kz_util:to_list(Folder), "/*.json"]),
+            Files = filelib:wildcard([ValidDir, "/couchdb/", kz_term:to_list(Folder), "/*.json"]),
             do_revise_docs_from_folder(DbName, Sleep, Files)
     end.
 
@@ -1241,7 +1241,7 @@ get_single_result(DbName, DesignDoc, Options) ->
 -spec get_uuid() -> ne_binary().
 -spec get_uuid(pos_integer()) -> ne_binary().
 get_uuid() -> get_uuid(?UUID_SIZE).
-get_uuid(N) -> kz_util:rand_hex_binary(N).
+get_uuid(N) -> kz_binary:rand_hex(N).
 
 -spec get_uuids(pos_integer()) -> ne_binaries().
 -spec get_uuids(pos_integer(), pos_integer()) -> ne_binaries().
@@ -1284,9 +1284,9 @@ change_notice() ->
                                   {'ok', ne_binary()} |
                                   {'error', 'invalid_db_name'}.
 maybe_convert_dbname(DbName) ->
-    case kz_util:is_empty(DbName) of
+    case kz_term:is_empty(DbName) of
         'true' -> {'error', 'invalid_db_name'};
-        'false' -> {'ok', kz_util:to_binary(DbName)}
+        'false' -> {'ok', kz_term:to_binary(DbName)}
     end.
 
 -spec copy_doc(ne_binary(), docid(), ne_binary(), kz_proplist()) ->

@@ -65,7 +65,7 @@ migrate(Accounts) ->
     _ = migrate_accounts_data(Accounts),
 
     CurrentModules =
-        [kz_util:to_atom(Module, 'true')
+        [kz_term:to_atom(Module, 'true')
          || Module <- crossbar_config:autoload_modules()
         ],
 
@@ -142,7 +142,7 @@ flush() ->
 -spec start_module(text()) -> 'ok'.
 start_module(Module) ->
     case crossbar_init:start_mod(Module) of
-        'ok' -> maybe_autoload_module(kz_util:to_binary(Module));
+        'ok' -> maybe_autoload_module(kz_term:to_binary(Module));
         {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
     end.
 
@@ -160,8 +160,8 @@ maybe_autoload_module(Module) ->
 -spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
 persist_module(Module, Mods) ->
     crossbar_config:set_default_autoload_modules(
-      [kz_util:to_binary(Module)
-       | lists:delete(kz_util:to_binary(Module), Mods)
+      [kz_term:to_binary(Module)
+       | lists:delete(kz_term:to_binary(Module), Mods)
       ]),
     'ok'.
 
@@ -175,7 +175,7 @@ persist_module(Module, Mods) ->
 stop_module(Module) ->
     'ok' = crossbar_init:stop_mod(Module),
     Mods = crossbar_config:autoload_modules(),
-    crossbar_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
+    crossbar_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
     io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%--------------------------------------------------------------------
@@ -196,7 +196,7 @@ running_modules() -> crossbar_bindings:modules_loaded().
 -spec find_account_by_number(input_term()) -> {'ok', ne_binary()} |
                                               {'error', any()}.
 find_account_by_number(Number) when not is_binary(Number) ->
-    find_account_by_number(kz_util:to_binary(Number));
+    find_account_by_number(kz_term:to_binary(Number));
 find_account_by_number(Number) ->
     case knm_number:lookup_account(Number) of
         {'ok', AccountId, _} ->
@@ -224,7 +224,7 @@ find_account_by_number(Number) ->
                                   {'multiples', [ne_binary(),...]} |
                                   {'error', any()}.
 find_account_by_name(Name) when not is_binary(Name) ->
-    find_account_by_name(kz_util:to_binary(Name));
+    find_account_by_name(kz_term:to_binary(Name));
 find_account_by_name(Name) ->
     case kapps_util:get_accounts_by_name(Name) of
         {'ok', AccountDb} ->
@@ -252,7 +252,7 @@ find_account_by_name(Name) ->
                                    {'multiples', [ne_binary(),...]} |
                                    {'error', any()}.
 find_account_by_realm(Realm) when not is_binary(Realm) ->
-    find_account_by_realm(kz_util:to_binary(Realm));
+    find_account_by_realm(kz_term:to_binary(Realm));
 find_account_by_realm(Realm) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', AccountDb} ->
@@ -281,7 +281,7 @@ find_account_by_realm(Realm) ->
 find_account_by_id(Id) when is_binary(Id) ->
     print_account_info(kz_util:format_account_id(Id, 'encoded'));
 find_account_by_id(Id) ->
-    find_account_by_id(kz_util:to_binary(Id)).
+    find_account_by_id(kz_term:to_binary(Id)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -407,10 +407,10 @@ create_account(AccountName, Realm, Username, Password)
             'failed'
     end;
 create_account(AccountName, Realm, Username, Password) ->
-    create_account(kz_util:to_binary(AccountName)
-                  ,kz_util:to_binary(Realm)
-                  ,kz_util:to_binary(Username)
-                  ,kz_util:to_binary(Password)
+    create_account(kz_term:to_binary(AccountName)
+                  ,kz_term:to_binary(Realm)
+                  ,kz_term:to_binary(Username)
+                  ,kz_term:to_binary(Password)
                   ).
 
 -spec update_system_config(ne_binary()) -> 'ok'.
@@ -665,7 +665,7 @@ set_data_for_callflow(JObj, BaseGroup) ->
 
 -spec set_number_for_callflow(kz_json:object(), kz_json:object()) -> kz_json:object().
 set_number_for_callflow(JObj, BaseGroup) ->
-    Number = <<"group_", (kz_util:to_binary(kz_util:now_ms()))/binary>>,
+    Number = <<"group_", (kz_term:to_binary(kz_util:now_ms()))/binary>>,
     Numbers = [Number],
     set_name_for_callflow(JObj, kz_json:set_value(<<"numbers">>, Numbers, BaseGroup)).
 
@@ -1048,6 +1048,6 @@ set_app_screenshots(AppId, PathToScreenshotsFolder) ->
     {ok, MA} = kapps_util:get_master_account_db(),
     io:format("Processing...\n"),
     SShots = [{filename:basename(SShot), SShot}
-              || SShot <- filelib:wildcard(kz_util:to_list(PathToScreenshotsFolder) ++ "/*.png")
+              || SShot <- filelib:wildcard(kz_term:to_list(PathToScreenshotsFolder) ++ "/*.png")
              ],
     update_screenshots(AppId, MA, SShots).

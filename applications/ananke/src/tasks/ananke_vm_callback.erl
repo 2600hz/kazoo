@@ -79,7 +79,7 @@ handle_req(JObj, Props) ->
             VMNumber = get_voicemail_number(AccountDb, Mailbox),
             Number = get_first_defined([{<<"number">>, VMBoxNotifyJObj}
                                        ,{<<"number">>, UserNotifyJObj}]),
-            IsDisabled = kz_util:is_true(
+            IsDisabled = kz_term:is_true(
                            get_first_defined([{<<"disabled">>, VMBoxNotifyJObj}
                                              ,{<<"disabled">>, UserNotifyJObj}])),
 
@@ -255,7 +255,7 @@ get_interval(VMBoxJObj, UserJObj, AccountJObj) ->
                                              ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"interval_s">>]
                                              ,5*60
                                              ),
-    kz_util:to_integer(
+    kz_term:to_integer(
       get_first_defined([{<<"interval_s">>, VMBoxJObj}
                         ,{<<"interval_s">>, UserJObj}
                         ,{<<"interval_s">>, AccountJObj}
@@ -269,7 +269,7 @@ get_attempts(VMBoxJObj, UserJObj, AccountJObj) ->
                                           ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"attempts">>]
                                           ,5
                                           ),
-    kz_util:to_integer(
+    kz_term:to_integer(
       get_first_defined([{<<"attempts">>, VMBoxJObj}
                         ,{<<"attempts">>, UserJObj}
                         ,{<<"attempts">>, AccountJObj}
@@ -283,7 +283,7 @@ get_callback_timeout(VMBoxJObj, UserJObj, AccountJObj) ->
                                                 ,[<<"voicemail">>, <<"notify">>, <<"callback">>, <<"timeout_s">>]
                                                 ,20
                                                 ),
-    kz_util:to_integer(
+    kz_term:to_integer(
       get_first_defined([{<<"timeout_s">>, VMBoxJObj}
                         ,{<<"timeout_s">>, UserJObj}
                         ,{<<"timeout_s">>, AccountJObj}

@@ -34,7 +34,7 @@ hooks_configured(AccountId) ->
 -spec set_failure_expiry(ne_binary()) -> 'ok'.
 -spec set_failure_expiry(ne_binary(), ne_binary()) -> 'ok'.
 set_failure_expiry(Expires) ->
-    try kz_util:to_integer(Expires) of
+    try kz_term:to_integer(Expires) of
         I ->
             kapps_config:set_default(?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms~n", [I])
@@ -45,7 +45,7 @@ set_failure_expiry(Expires) ->
 
 set_failure_expiry(Account, Expires) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    try kz_util:to_integer(Expires) of
+    try kz_term:to_integer(Expires) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?ATTEMPT_EXPIRY_KEY, I),
             io:format("set default expiry for failure attempts to ~pms on account ~s~n", [I, AccountId])
@@ -57,7 +57,7 @@ set_failure_expiry(Account, Expires) ->
 -spec set_disable_threshold(ne_binary()) -> 'ok'.
 -spec set_disable_threshold(ne_binary(), ne_binary()) -> 'ok'.
 set_disable_threshold(Count) ->
-    try kz_util:to_integer(Count) of
+    try kz_term:to_integer(Count) of
         I ->
             kapps_config:set_default(?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
@@ -68,7 +68,7 @@ set_disable_threshold(Count) ->
 
 set_disable_threshold(Account, Count) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
-    try kz_util:to_integer(Count) of
+    try kz_term:to_integer(Count) of
         I ->
             kapps_account_config:set(AccountId, ?APP_NAME, ?FAILURE_COUNT_KEY, I),
             io:format("set default count of failed attempts to disable hook to ~p~n", [I])
@@ -106,7 +106,7 @@ print_failure_footer() ->
     io:format(?FORMAT_FAILURE_HEADER, [$-, $-, $-]).
 
 print_failure_count(AccountId, HookId, Count) ->
-    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_util:to_binary(Count)]).
+    io:format(?FORMAT_FAILURE_STRING, [AccountId, HookId, kz_term:to_binary(Count)]).
 
 -spec enable_account_hooks(ne_binary()) -> 'ok'.
 enable_account_hooks(AccountId) ->

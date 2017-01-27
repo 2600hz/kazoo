@@ -235,7 +235,7 @@ validate_new_attachment(Context, 'true') ->
     end;
 validate_new_attachment(Context, 'false') ->
     Records = kz_json:get_value(?RD_RECORDS, cb_context:req_data(Context)),
-    case kz_util:is_empty(Records) of
+    case kz_term:is_empty(Records) of
         'true' ->
             %% For tasks without input data.
             cb_context:set_resp_status(Context, 'success');

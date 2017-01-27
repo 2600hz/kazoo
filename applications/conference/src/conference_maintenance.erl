@@ -44,4 +44,4 @@ refresh(<<Account/binary>>) ->
     Views = kapps_util:get_views_json('conference', "views"),
     kapps_util:update_views(AccountDb, Views);
 refresh(Account) ->
-    refresh(kz_util:to_binary(Account)).
+    refresh(kz_term:to_binary(Account)).

@@ -27,8 +27,8 @@ init() ->
     case kz_config:get_atom(?APP, 'cookie') of
         [] ->
             lager:warning("failed to set ~s cookie trying node ~s", [?APP, node()]),
-            [Name, _Host] = binary:split(kz_util:to_binary(node()), <<"@">>),
-            case kz_config:get_atom(kz_util:to_atom(Name, 'true'), 'cookie') of
+            [Name, _Host] = binary:split(kz_term:to_binary(node()), <<"@">>),
+            case kz_config:get_atom(kz_term:to_atom(Name, 'true'), 'cookie') of
                 [] ->
                     lager:warning("failed to set ~s cookie for node ~s", [?APP, node()]);
                 [Cookie|_] ->

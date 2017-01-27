@@ -28,7 +28,7 @@
 
 -spec init({any(), any()}, cowboy_req:req(), kz_proplist()) -> handler_return().
 init({_Transport, _Proto}, Req, _Opts) ->
-    kz_util:put_callid(kz_util:rand_hex_binary(16)),
+    kz_util:put_callid(kz_binary:rand_hex(16)),
     case authenticate(Req) of
         'true' ->
             validate_request(cowboy_req:path_info(Req));
@@ -58,8 +58,8 @@ maybe_basic_authentication(Req) ->
 maybe_basic_authentication(Username, Password) ->
     AuthUsername = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, <<>>),
     AuthPassword = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, <<>>),
-    not kz_util:is_empty(AuthUsername)
-        andalso not kz_util:is_empty(AuthPassword)
+    not kz_term:is_empty(AuthUsername)
+        andalso not kz_term:is_empty(AuthPassword)
         andalso Username == AuthUsername
         andalso Password == AuthPassword.
 
@@ -180,7 +180,7 @@ validate_request(Path, Req) ->
     end.
 
 setup_context(#media_store_path{att=Attachment}=Path, Req) ->
-    Filename = list_to_binary(["/tmp/", kz_util:rand_hex_binary(16), "_", Attachment]),
+    Filename = list_to_binary(["/tmp/", kz_binary:rand_hex(16), "_", Attachment]),
     case file:open(Filename, ['write', 'exclusive']) of
         {'ok', IODevice} ->
             State = #state{media=Path
@@ -243,12 +243,12 @@ is_appropriate_extension(#media_store_path{att=Attachment}=Path) ->
 
 -spec add_content_type(media_store_path(), ne_binary()) -> media_store_path().
 add_content_type(#media_store_path{opt=Options}= Path, CT) ->
-    NewOptions = props:set_value('content_type', kz_util:to_list(CT), Options),
+    NewOptions = props:set_value('content_type', kz_term:to_list(CT), Options),
     Path#media_store_path{opt=NewOptions}.
 
 -spec ensure_extension_present(media_store_path(), ne_binary()) -> validate_request_ret().
 ensure_extension_present(#media_store_path{att=Attachment}=Path, CT) ->
-    case kz_util:is_empty(filename:extension(Attachment))
+    case kz_term:is_empty(filename:extension(Attachment))
         andalso kz_mime:to_extension(CT)
     of
         'false' ->

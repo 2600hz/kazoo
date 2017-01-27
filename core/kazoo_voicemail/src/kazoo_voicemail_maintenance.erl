@@ -144,7 +144,7 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     Timestamp = kz_json:get_value(<<"pvt_created">>, JObj, kz_util:current_tstamp()),
     Routines = [{fun kapps_call:set_to/2, <<CIDNumber/binary, "@nodomain">>}
                ,{fun kapps_call:set_from/2, <<CIDNumber/binary, "@nodomain">>}
-               ,{fun kapps_call:set_call_id/2, kz_util:rand_hex_binary(12)}
+               ,{fun kapps_call:set_call_id/2, kz_binary:rand_hex(12)}
                ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
                ,{fun kapps_call:set_caller_id_name/2, CIDName}
                ],
@@ -217,7 +217,7 @@ rebuild_kapps_call(JObj, AccountId) ->
     Metadata = kzd_box_message:metadata(JObj),
     To = kz_json:get_value(<<"to">>, Metadata, <<"unknown@nodomain">>),
     CCVs = [{<<"Account-ID">>, AccountId}],
-    Props = [{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, Metadata, kz_util:rand_hex_binary(12))}
+    Props = [{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, Metadata, kz_binary:rand_hex(12))}
             ,{<<"From">>, kz_json:get_value(<<"from">>, Metadata, <<"unknown@nodomain">>)}
             ,{<<"Caller-ID-Name">>, kz_json:get_value(<<"caller_id_name">>, Metadata, kz_util:anonymous_caller_id_name())}
             ,{<<"Caller-ID-Number">>, kz_json:get_value(<<"caller_id_number">>, Metadata, kz_util:anonymous_caller_id_number())}

@@ -15,8 +15,8 @@
 
 -spec move(ne_binary(), atom(), atom()) -> boolean().
 move(UUID, ONode, NNode) ->
-    OriginalNode = kz_util:to_atom(ONode),
-    NewNode = kz_util:to_atom(NNode),
+    OriginalNode = kz_term:to_atom(ONode),
+    NewNode = kz_term:to_atom(NNode),
 
     'true' = ecallmgr_fs_nodes:has_capability(OriginalNode, <<"channel_move">>)
         andalso ecallmgr_fs_nodes:has_capability(NewNode, <<"channel_move">>),
@@ -62,10 +62,10 @@ resume(UUID, NewNode, Evt) ->
     Meta = fix_metadata(props:get_value(<<"metadata">>, Evt)),
 
     freeswitch:sendevent_custom(NewNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                               ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
-                                ,{"channel_id", kz_util:to_list(UUID)}
-                                ,{"metadata", kz_util:to_list(Meta)}
-                                ,{"technology", kz_util:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
+                               ,[{"profile_name", kz_term:to_list(?DEFAULT_FS_PROFILE)}
+                                ,{"channel_id", kz_term:to_list(UUID)}
+                                ,{"metadata", kz_term:to_list(Meta)}
+                                ,{"technology", kz_term:to_list(props:get_value(<<"technology">>, Evt, <<"sofia">>))}
                                 ]),
     lager:debug("sent channel_move::move_request with metadata to ~s for ~s", [NewNode, UUID]).
 
@@ -109,8 +109,8 @@ teardown_sbd(UUID, OriginalNode) ->
     catch gproc:reg({'p', 'l', ?CHANNEL_MOVE_REG(OriginalNode, UUID)}),
 
     freeswitch:sendevent_custom(OriginalNode, ?CHANNEL_MOVE_REQUEST_EVENT
-                               ,[{"profile_name", kz_util:to_list(?DEFAULT_FS_PROFILE)}
-                                ,{"channel_id", kz_util:to_list(UUID)}
+                               ,[{"profile_name", kz_term:to_list(?DEFAULT_FS_PROFILE)}
+                                ,{"channel_id", kz_term:to_list(UUID)}
                                 ,{"technology", ?DEFAULT_FS_TECHNOLOGY}
                                 ]),
     lager:debug("sent channel_move::move_request to ~s for ~s", [OriginalNode, UUID]).

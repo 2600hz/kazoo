@@ -305,9 +305,9 @@ list_number_row(AuthBy, E164) ->
             ,integer_to_binary(knm_phone_number:created(PhoneNumber))
             ,integer_to_binary(knm_phone_number:modified(PhoneNumber))
             ,knm_phone_number:used_by(PhoneNumber)
-            ,kz_util:to_binary(knm_phone_number:ported_in(PhoneNumber))
+            ,kz_term:to_binary(knm_phone_number:ported_in(PhoneNumber))
             ,knm_phone_number:module_name(PhoneNumber)
-            ,kz_util:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
+            ,kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
             ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
             ,kz_json:get_ne_binary_value(?E911_ZIP, E911)
             ,kz_json:get_ne_binary_value(?E911_STREET1, E911)
@@ -389,7 +389,7 @@ import(Props, AccountIds
                      'undefined' -> ?CARRIER_LOCAL;
                      _ -> Carrier
                  end,
-    CNAMInbound = kz_util:is_true(CNAMInbound0),
+    CNAMInbound = kz_term:is_true(CNAMInbound0),
     E911 = e911(props:filter_empty(
                   [{?E911_ZIP, E911PostalCode}
                   ,{?E911_STREET1, E911StreetAddress}
@@ -460,7 +460,7 @@ handle_result({'ok', _KNMNumber}) -> [];
 handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
 handle_result({'error', Reason})
   when is_atom(Reason) ->
-    kz_util:to_binary(Reason);
+    kz_term:to_binary(Reason);
 handle_result({'error', KNMError}) ->
     case knm_errors:message(KNMError) of
         'undefined' -> knm_errors:error(KNMError);

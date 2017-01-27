@@ -93,7 +93,7 @@ nomorobo_req(URI, Data) ->
               ,{'ssl', [{'verify', 'verify_none'}]}
               ],
 
-    kz_http:get(kz_util:to_list(URI), [], Options).
+    kz_http:get(kz_term:to_list(URI), [], Options).
 
 -spec nomorobo_uri(kapps_call:call()) -> ne_binary().
 nomorobo_uri(Call) ->
@@ -130,7 +130,7 @@ nomorobo_branch(Score, [Lo|Keys]) ->
 
 -spec branch_to_binary(integer()) -> ne_binary().
 branch_to_binary(-1) -> <<"_">>;
-branch_to_binary(I) -> kz_util:to_binary(I).
+branch_to_binary(I) -> kz_term:to_binary(I).
 
 nomorobo_branch(_Score, Branch, []) -> Branch;
 nomorobo_branch(Score, _Lo, [K|Ks]) when K =< Score ->
@@ -162,7 +162,7 @@ nomorobo_branches([], Branches) ->
 nomorobo_branches([<<"_">>|Keys], Branches) ->
     nomorobo_branches(Keys, [-1 | Branches]);
 nomorobo_branches([Key|Keys], Branches) ->
-    try kz_util:to_integer(Key) of
+    try kz_term:to_integer(Key) of
         I -> nomorobo_branches(Keys, [I | Branches])
     catch
         'error':'badarg' ->

@@ -91,7 +91,7 @@ create_template_props(Event, [FaxDoc | _Others]=_Docs, Account) ->
     FromE164 = kz_json:get_value(<<"From-User">>, Event),
     DateCalled = kz_json:get_integer_value(<<"Fax-Timestamp">>, Event, Now),
     DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = kz_util:to_list(kz_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
+    Timezone = kz_term:to_list(kz_json:get_value([<<"rx_result">>,<<"timezone">>], FaxDoc, <<"UTC">>)),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
     [{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Event, Account, ?MOD_CONFIG_CAT)}

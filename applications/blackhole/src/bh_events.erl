@@ -55,7 +55,7 @@ validate_data(Context, Payload, Keys) ->
     case ?SUBSCRIBE_KEYS -- Keys of
         [] -> validate_subscription(Context, Payload);
         Missing ->
-            Error = <<"missing required keys : ", (kz_util:join_binary(Missing))/binary>>,
+            Error = <<"missing required keys : ", (kz_binary:join(Missing))/binary>>,
             bh_context:add_error(Context, Error)
     end.
 

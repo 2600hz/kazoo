@@ -22,7 +22,7 @@ register_auth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
                             ,{<<"pvt_account_id">>, AccountId}
                             ,{<<"pvt_secret">>,Secret}
                             ,{<<"pvt_email">>, EMail}
-                            ,{<<"pvt_user_prefix">>, kz_util:rand_hex_binary(16)}
+                            ,{<<"pvt_user_prefix">>, kz_binary:rand_hex(16)}
                             ,{<<"pvt_auth_provider">>, Provider}
                             ,{<<"pvt_type">>, <<"app">>}
                             ]),

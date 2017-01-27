@@ -67,7 +67,7 @@ number_builder(DefaultJObj) ->
 
     {'ok', [Number]} = io:fread("What number should invoke 'play'? ", "~d"),
 
-    K = [<<"numbers">>, kz_util:to_binary(Number)],
+    K = [<<"numbers">>, kz_term:to_binary(Number)],
 
     case number_builder_check(kz_json:get_value(K, DefaultJObj)) of
         'undefined' -> kz_json:delete_key(K, DefaultJObj);
@@ -96,12 +96,12 @@ number_builder_check_option(NumberJObj, _Option) ->
 -spec number_builder_media(kz_json:object()) -> kz_json:object().
 number_builder_media(NumberJObj) ->
     {'ok', [Media]} = io:fread("What media file would you like to play? ", "~s"),
-    number_builder_leg(NumberJObj, kz_util:to_binary(Media)).
+    number_builder_leg(NumberJObj, kz_term:to_binary(Media)).
 
 -spec number_builder_leg(kz_json:object(), ne_binary()) -> kz_json:object().
 number_builder_leg(NumberJObj, Media) ->
     {'ok', [Leg]} = io:fread("On what leg of the call ('self', 'peer', or 'both')? ", "~s"),
-    metaflow_jobj(NumberJObj, Media, kz_util:to_binary(Leg)).
+    metaflow_jobj(NumberJObj, Media, kz_term:to_binary(Leg)).
 
 -spec metaflow_jobj(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
 metaflow_jobj(NumberJObj, Media, Leg) ->

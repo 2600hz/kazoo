@@ -237,7 +237,7 @@ set_language(Call) ->
         {'ok', Endpoint} ->
             Language = kz_device:language(Endpoint, Default),
             lager:debug("setting language '~s' for this call", [Language]),
-            kapps_call:set_language(kz_util:to_lower_binary(Language), Call);
+            kapps_call:set_language(kz_term:to_lower_binary(Language), Call);
         {'error', _E} ->
             lager:debug("no source endpoint for this call, setting language to default ~s", [Default]),
             kapps_call:set_language(Default, Call)
@@ -307,7 +307,7 @@ maybe_start_recording(Call) ->
 
 -spec maybe_start_call_recording(kz_json:object(), kapps_call:call()) -> kapps_call:call().
 maybe_start_call_recording(RecordCall, Call) ->
-    case kz_util:is_empty(RecordCall) of
+    case kz_term:is_empty(RecordCall) of
         'true' -> Call;
         'false' -> kapps_call:start_recording(RecordCall, Call)
     end.

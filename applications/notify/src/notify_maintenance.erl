@@ -181,7 +181,7 @@ template_files() ->
     {'ok', Files} = file:list_dir(?TEMPLATE_PATH),
     lists:foldl(
       fun(File, Acc) ->
-              case kz_util:to_binary(File) of
+              case kz_term:to_binary(File) of
                   <<"notify_", _/binary>>=Bin ->
                       [Bin|Acc];
                   _ -> Acc
@@ -259,7 +259,7 @@ module_exists(Module) when is_atom(Module) ->
         _:_ -> 'false'
     end;
 module_exists(Module) ->
-    module_exists(kz_util:to_atom(Module, 'true')).
+    module_exists(kz_term:to_atom(Module, 'true')).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -274,7 +274,7 @@ module_exists(Module) ->
 
 compare_template_system_config([]) -> 'ok';
 compare_template_system_config([{FileId, Id}|Match]) ->
-    File = [?TEMPLATE_PATH, "/" ,kz_util:to_list(FileId)],
+    File = [?TEMPLATE_PATH, "/" ,kz_term:to_list(FileId)],
     case {open_file(File), open_system_config(Id)} of
         {'error', _} ->
             io:format("comparing, failed to open template: ~s~n", [FileId]),
@@ -303,7 +303,7 @@ compare_template_system_config([], JObj) ->
             io:format("doc ~s failed to update: ~p~n", [Id, Reason])
     end;
 compare_template_system_config([{Key, FileTemplate}|Props], JObj) ->
-    BinKey = kz_util:to_binary(Key),
+    BinKey = kz_term:to_binary(Key),
     <<"notify.", Id/binary>> = kz_doc:id(JObj),
     DefaultTemplates = props:get_value(Key, props:get_value(Id, ?NOTIFY_TEMPLATES, [])),
     case kz_json:get_value([<<"default">>, BinKey], JObj) of

@@ -176,11 +176,11 @@ import_moh(UUID) ->
 set_account_id(UUID, Value) when is_binary(Value) ->
     ecallmgr_fs_channels:update(UUID, #channel.account_id, Value);
 set_account_id(UUID, Value) ->
-    set_account_id(UUID, kz_util:to_binary(Value)).
+    set_account_id(UUID, kz_term:to_binary(Value)).
 
 -spec set_authorized(ne_binary(), boolean() | ne_binary()) -> 'ok'.
 set_authorized(UUID, Value) ->
-    ecallmgr_fs_channels:update(UUID, #channel.is_authorized, kz_util:is_true(Value)).
+    ecallmgr_fs_channels:update(UUID, #channel.is_authorized, kz_term:is_true(Value)).
 
 -spec renew(atom(), ne_binary()) ->
                    {'ok', channel()} |
@@ -273,7 +273,7 @@ to_api_props(Channel) ->
       ,{<<"Realm">>, Channel#channel.realm}
       ,{<<"Username">>, Channel#channel.username}
       ,{<<"Answered">>, Channel#channel.answered}
-      ,{<<"Media-Node">>, kz_util:to_binary(Channel#channel.node)}
+      ,{<<"Media-Node">>, kz_term:to_binary(Channel#channel.node)}
       ,{<<"Timestamp">>, Channel#channel.timestamp}
       ,{<<"Profile">>, Channel#channel.profile}
       ,{<<"Context">>, Channel#channel.context}
@@ -556,8 +556,8 @@ channel_resp_dialprefix(ReqProps, Channel, ChannelVars) ->
 
 -spec fs_props_to_binary(kz_proplist()) -> ne_binary().
 fs_props_to_binary([{Hk,Hv}|T]) ->
-    Rest = << <<",", K/binary, "='", (kz_util:to_binary(V))/binary, "'">> || {K,V} <- T >>,
-    <<"[", Hk/binary, "='", (kz_util:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
+    Rest = << <<",", K/binary, "='", (kz_term:to_binary(V))/binary, "'">> || {K,V} <- T >>,
+    <<"[", Hk/binary, "='", (kz_term:to_binary(Hv))/binary, "'", Rest/binary, "]">>.
 
 -spec try_channel_resp(ne_binary(), atom(), kz_proplist()) -> 'ok'.
 try_channel_resp(FetchId, Node, Props) ->
@@ -618,7 +618,7 @@ process_event(UUID, Props, Node, Pid) ->
 process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     _ = maybe_publish_channel_state(Props, Node),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= kz_util:to_binary(node())
+        =:= kz_term:to_binary(node())
     of
         'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
         'false' -> 'ok'
@@ -668,7 +668,7 @@ maybe_publish_channel_state(Props, Node) ->
 
 -spec maybe_publish_restricted(kz_proplist()) -> 'ok'.
 maybe_publish_restricted(Props) ->
-    EcallmgrNode = kz_util:to_binary(node()),
+    EcallmgrNode = kz_term:to_binary(node()),
 
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
         'undefined' -> ecallmgr_call_events:process_channel_event(Props);
@@ -700,7 +700,7 @@ props_to_record(Props, Node) ->
             ,bridge_id=props:get_value(<<"Bridge-ID">>, CCVs, UUID)
             ,reseller_id=props:get_value(<<"Reseller-ID">>, CCVs)
             ,reseller_billing=props:get_value(<<"Reseller-Billing">>, CCVs)
-            ,precedence=kz_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
+            ,precedence=kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))
             ,realm=props:get_value(<<"Realm">>, CCVs, get_realm(Props))
             ,username=props:get_value(<<"Username">>, CCVs, get_username(Props))
             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
@@ -731,9 +731,9 @@ other_leg_handling_locally(OtherLeg) ->
 -spec handling_locally(kz_proplist(), api_binary()) -> boolean().
 handling_locally(Props, 'undefined') ->
     props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
-        =:= kz_util:to_binary(node());
+        =:= kz_term:to_binary(node());
 handling_locally(Props, OtherLeg) ->
-    Node = kz_util:to_binary(node()),
+    Node = kz_term:to_binary(node()),
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
         Node -> 'true';
         _ -> other_leg_handling_locally(OtherLeg)
@@ -748,7 +748,7 @@ get_username(Props) ->
                                 )
     of
         'undefined' -> 'undefined';
-        Username -> kz_util:to_lower_binary(Username)
+        Username -> kz_term:to_lower_binary(Username)
     end.
 
 -spec get_realm(kz_proplist()) -> api_binary().
@@ -760,7 +760,7 @@ get_realm(Props) ->
                                 )
     of
         'undefined' -> 'undefined';
-        Realm -> kz_util:to_lower_binary(Realm)
+        Realm -> kz_term:to_lower_binary(Realm)
     end.
 
 -spec props_to_update(kz_proplist()) -> [{integer(), ne_binary()}].
@@ -782,7 +782,7 @@ props_to_update(Props) ->
                            ,{#channel.bridge_id, props:get_value(<<"Bridge-ID">>, CCVs, UUID)}
                            ,{#channel.reseller_id, props:get_value(<<"Reseller-ID">>, CCVs)}
                            ,{#channel.reseller_billing, props:get_value(<<"Reseller-Billing">>, CCVs)}
-                           ,{#channel.precedence, kz_util:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
+                           ,{#channel.precedence, kz_term:to_integer(props:get_value(<<"Precedence">>, CCVs, 5))}
                            ,{#channel.realm, props:get_value(<<"Realm">>, CCVs, get_realm(Props))}
                            ,{#channel.username, props:get_value(<<"Username">>, CCVs, get_username(Props))}
                            ,{#channel.import_moh, props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'}

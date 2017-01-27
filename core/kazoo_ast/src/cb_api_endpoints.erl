@@ -118,8 +118,8 @@ method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 ref_doc_header(BaseName) ->
     [[maybe_add_schema(BaseName)]
-    ,["#### About ", kz_util:ucfirst_binary(BaseName), "\n\n"]
-    ,["### ", kz_util:ucfirst_binary(BaseName), "\n\n"]
+    ,["#### About ", kz_binary:ucfirst(BaseName), "\n\n"]
+    ,["### ", kz_binary:ucfirst(BaseName), "\n\n"]
     ].
 
 maybe_add_schema(BaseName) ->
@@ -165,9 +165,9 @@ ref_table_to_doc(RefTable) ->
     RefTable.
 
 -define(TABLE_ROW(Key, Description, Type, Default, Required)
-       ,[kz_util:join_binary([Key, Description, Type, Default, Required]
-                            ,<<" | ">>
-                            )
+       ,[kz_binary:join([Key, Description, Type, Default, Required]
+                       ,<<" | ">>
+                       )
         ,$\n
         ]
        ).
@@ -276,7 +276,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                ,kz_json:get_value(<<"type">>, Settings)
                                ,Names
                                ,Settings
-                               ,{[?TABLE_ROW(cell_wrap(kz_util:join_binary(Names, <<".">>))
+                               ,{[?TABLE_ROW(cell_wrap(kz_binary:join(Names, <<".">>))
                                             ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
                                             ,schema_type(Settings)
                                             ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
@@ -342,7 +342,7 @@ schema_type(Settings, <<"string">>) ->
         _ -> schema_string_type(Settings)
     end;
 schema_type(Settings, Types) when is_list(Types) ->
-    kz_util:join_binary([schema_type(Settings, Type) || Type <- Types], <<", ">>);
+    kz_binary:join([schema_type(Settings, Type) || Type <- Types], <<", ">>);
 schema_type(_Settings, Type) -> Type.
 
 maybe_schema_type_from_enum(Settings) ->
@@ -354,7 +354,7 @@ maybe_schema_type_from_enum(Settings) ->
     end.
 
 schema_enum_type(L) ->
-    <<"string('", (kz_util:join_binary(L, <<"', '">>))/binary, "')">>.
+    <<"string('", (kz_binary:join(L, <<"', '">>))/binary, "')">>.
 
 schema_string_type(Settings) ->
     case {kz_json:get_integer_value(<<"minLength">>, Settings)
@@ -362,10 +362,10 @@ schema_string_type(Settings) ->
          }
     of
         {'undefined', 'undefined'} -> <<"string">>;
-        {'undefined', MaxLength} -> <<"string(0..", (kz_util:to_binary(MaxLength))/binary, ")">>;
-        {MinLength, 'undefined'} -> <<"string(", (kz_util:to_binary(MinLength))/binary, "..)">>;
-        {Length, Length} -> <<"string(", (kz_util:to_binary(Length))/binary, ")">>;
-        {MinLength, MaxLength} -> <<"string(", (kz_util:to_binary(MinLength))/binary, "..", (kz_util:to_binary(MaxLength))/binary, ")">>
+        {'undefined', MaxLength} -> <<"string(0..", (kz_term:to_binary(MaxLength))/binary, ")">>;
+        {MinLength, 'undefined'} -> <<"string(", (kz_term:to_binary(MinLength))/binary, "..)">>;
+        {Length, Length} -> <<"string(", (kz_term:to_binary(Length))/binary, ")">>;
+        {MinLength, MaxLength} -> <<"string(", (kz_term:to_binary(MinLength))/binary, "..", (kz_term:to_binary(MaxLength))/binary, ")">>
     end.
 
 to_anchor_link(Bin) ->
@@ -373,12 +373,12 @@ to_anchor_link(Bin) ->
 
 cell_wrap('undefined') -> <<" ">>;
 cell_wrap([]) -> <<"`[]`">>;
-cell_wrap(L) when is_list(L) -> [<<"`[\"">>, kz_util:join_binary(L, <<"\", \"">>), <<"\"]`">>];
+cell_wrap(L) when is_list(L) -> [<<"`[\"">>, kz_binary:join(L, <<"\", \"">>), <<"\"]`">>];
 cell_wrap(<<>>) -> <<"\"\"">>;
 cell_wrap(Type) ->
     case Type =:= kz_json:new() of
         'true' -> <<"`{}`">>;
-        'false' -> [<<"`">>, kz_util:to_binary(Type), <<"`">>]
+        'false' -> [<<"`">>, kz_term:to_binary(Type), <<"`">>]
     end.
 
 maybe_sub_properties_to_row(SchemaJObj, <<"object">>, Names, Settings, {_,_}=Acc0) ->
@@ -399,7 +399,7 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
                                        );
         <<"string">> = Type ->
             RequiredV4 = local_required(Names, SchemaJObj),
-            {[?TABLE_ROW(cell_wrap(kz_util:join_binary(Names ++ ["[]"], <<".">>))
+            {[?TABLE_ROW(cell_wrap(kz_binary:join(Names ++ ["[]"], <<".">>))
                         ,<<" ">>
                         ,cell_wrap(Type)
                         ,<<" ">>
@@ -473,7 +473,7 @@ to_swagger_definitions() ->
 process_schema(Filename, Definitions) ->
     {'ok', Bin} = file:read_file(Filename),
     JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>], kz_json:decode(Bin)),
-    Name = kz_util:to_binary(filename:basename(Filename, ".json")),
+    Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
 -define(SWAGGER_JSON,
@@ -526,7 +526,7 @@ make_parameters(Path, Method, SchemaParameter) ->
                            ,fun path_params/2
                            ],
                       Parameter <- [F(Path, Method)],
-                      not kz_util:is_empty(Parameter)
+                      not kz_term:is_empty(Parameter)
                   ]
                  )
                ).
@@ -569,7 +569,7 @@ is_authtoken_required(<<"/"?ACCOUNTS_PREFIX"/", _/binary>>=Path) ->
 is_authtoken_required(_Path) -> 'undefined'.
 
 is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
-    kz_util:suffix_binary(<<"/connect">>, Path);
+    kz_binary:suffix(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
 
 path_params(Path, _Method) ->
@@ -613,8 +613,8 @@ format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
     kz_json:set_values(props:filter_undefined(
-                         [{[PathName, kz_util:to_binary(Callback)]
-                          ,[kz_util:to_lower_binary(V) || V <- Vs]
+                         [{[PathName, kz_term:to_binary(Callback)]
+                          ,[kz_term:to_lower_binary(V) || V <- Vs]
                           }
                          ,maybe_include_schema(PathName, Module)
                          ]
@@ -658,15 +658,15 @@ camel_to_snake(Bin) ->
     re:replace(Bin, <<"(?!^)([A-Z][a-z])">>, <<"_\\1">>, Options).
 
 is_all_upper(Bin) ->
-    Bin =:= kz_util:to_upper_binary(Bin).
+    Bin =:= kz_term:to_upper_binary(Bin).
 
 brace_token(Token=?NE_BINARY) ->
-    <<"{", (kz_util:to_upper_binary(Token))/binary, "}">>.
+    <<"{", (kz_term:to_upper_binary(Token))/binary, "}">>.
 
 unbrace_param(Param) ->
     Size = byte_size(Param) - 2,
     <<"{", Param0:Size/binary, "}">> = Param,
-    kz_util:to_lower_binary(Param0).
+    kz_term:to_lower_binary(Param0).
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -791,16 +791,16 @@ arg_to_path(?BINARY_MATCH(Matches), Acc) ->
 arg_to_path(?VAR('Context'), Acc) ->
     Acc;
 arg_to_path(?VAR(Name), Acc) ->
-    [kz_util:to_binary(Name) | Acc];
+    [kz_term:to_binary(Name) | Acc];
 arg_to_path(?MATCH(?BINARY_MATCH(_), ?VAR(Name)), Acc) ->
-    [kz_util:to_binary(Name) | Acc].
+    [kz_term:to_binary(Name) | Acc].
 
 binary_match_to_path(Matches) ->
     iolist_to_binary([binary_to_path(Match) || Match <- Matches]).
 binary_to_path(?BINARY_STRING(Name)) ->
     Name;
 binary_to_path(?BINARY_VAR(VarName)) ->
-    format_path_token(kz_util:to_binary(VarName)).
+    format_path_token(kz_term:to_binary(VarName)).
 
 find_methods(ClauseBody) ->
     find_methods(ClauseBody, []).
@@ -830,35 +830,35 @@ find_methods_in_clause(?MOD_FUN_ARGS('cb_context'
 find_methods_in_clause(?LAGER, Acc) ->
     Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_fax', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_faxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_media', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_media:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_notifications', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_notifications:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_attachments', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_domain_attachments', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_whitelabel:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_provisioner', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_global_provisioner_templates:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_vm_download', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_vmboxes:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_get', _Args), Acc) ->
-    [kz_util:join_binary([Type, SubType], <<"/">>)
+    [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_port_requests:acceptable_content_types()
     ] ++ Acc;
 find_methods_in_clause(?ATOM('ok'), Acc) ->
@@ -935,11 +935,11 @@ find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_BINS(Type, SubType))
                                   ,Rest
                                   )
                             ,Acc) ->
-    CT = kz_util:join_binary([Type, SubType], <<"/">>),
+    CT = kz_binary:join([Type, SubType], <<"/">>),
     find_content_types_in_clause(Rest, [CT | Acc]).
 
 grep_cb_module(Module) when is_atom(Module) ->
-    grep_cb_module(kz_util:to_binary(Module));
+    grep_cb_module(kz_term:to_binary(Module));
 grep_cb_module(?NE_BINARY=Module) ->
     re:run(Module
           ,<<"^cb_([a-z_]+?)(?:_(v[0-9]))?\$">>

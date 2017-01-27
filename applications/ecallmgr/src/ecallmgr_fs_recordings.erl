@@ -184,11 +184,11 @@ maybe_store_recording(_, Props, CallId, Node) ->
 
             MediaName = kzd_freeswitch:ccv(Props, <<"Media-Name">>),
             %% TODO: if you change this logic be sure it matches kz_media_util as well!
-            Url = kz_util:join_binary([kz_util:strip_right_binary(Destination, $/)
-                                      ,MediaName
-                                      ]
-                                     ,<<"/">>
-                                     ),
+            Url = kz_binary:join([kz_binary:strip_right(Destination, $/)
+                                 ,MediaName
+                                 ]
+                                ,<<"/">>
+                                ),
 
             JObj = kz_json:from_list(
                      [{<<"Call-ID">>, CallId}

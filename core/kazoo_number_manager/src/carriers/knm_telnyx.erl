@@ -176,7 +176,7 @@ international_numbers(JObjs, Options) ->
 %%TODO: once Telnyx gives back real numbers, remove this.
 %% Right now international search returns only prefixes.
 ugly_hack(Dialcode, Num) ->
-    kz_util:pad_binary(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
+    kz_binary:pad(<<Dialcode/binary, Num/binary>>, 9, <<"0">>).
 
 search_kind('npa') -> 1;
 search_kind('region') -> 2;

@@ -163,11 +163,11 @@ handle_info(_Info, State) ->
 -spec handle_event(kz_json:object(), state()) -> {'reply', []}.
 handle_event(JObj, #state{name = Name}) ->
     kz_util:put_callid(kapi_leader:queue(Name, node())),
-    NodeBin = kz_util:to_binary(node()),
+    NodeBin = kz_term:to_binary(node()),
     case kz_json:get_value(<<"Node">>, JObj) of
         NodeBin -> 'ok';
         _ ->
-            Msg = erlang:binary_to_term(kz_util:from_hex_binary(kz_json:get_value(<<"Message">>, JObj))),
+            Msg = erlang:binary_to_term(kz_binary:from_hex(kz_json:get_value(<<"Message">>, JObj))),
             Name ! Msg
     end,
     {'reply', []}.

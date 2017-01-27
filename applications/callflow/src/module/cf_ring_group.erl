@@ -145,7 +145,7 @@ resolve_endpoint_ids(Data, Call) ->
     Members = kz_json:get_value(<<"endpoints">>, Data, []),
     ResolvedEndpoints = resolve_endpoint_ids(Members, [], Data, Call),
 
-    FilteredEndpoints = [{Weight, {Id, kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Member)}}
+    FilteredEndpoints = [{Weight, {Id, kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member)}}
                          || {Type, Id, Weight, Member} <- ResolvedEndpoints,
                             Type =:= <<"device">>,
                             Id =/= kapps_call:authorizing_id(Call)
@@ -180,7 +180,7 @@ resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
     Id = kz_doc:id(Member),
     Type = kz_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
     Weight = group_weight(Member, 20),
-    case kz_util:is_empty(Id)
+    case kz_term:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
         orelse Type
     of

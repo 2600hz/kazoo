@@ -166,12 +166,12 @@ validate_search(Context) ->
 
 -spec should_include_presentity(ne_binary()) -> boolean().
 should_include_presentity(AccountId) ->
-    kz_util:is_true(kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
+    kz_term:is_true(kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
 
 -spec maybe_include_presentities(cb_context:context()) -> list().
 maybe_include_presentities(Context) ->
     Default = should_include_presentity(cb_context:account_id(Context)),
-    case kz_util:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
+    case kz_term:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
         'true' -> [fun presentity_search_req/1];
         'false' -> []
     end.
@@ -427,7 +427,7 @@ maybe_load_thing(Context, ThingId) ->
 
 -spec is_reset_request(cb_context:context()) -> boolean().
 is_reset_request(Context) ->
-    kz_util:is_true(cb_context:req_value(Context, <<"reset">>)).
+    kz_term:is_true(cb_context:req_value(Context, <<"reset">>)).
 
 -spec reset_validation_error(cb_context:context()) -> cb_context:context().
 reset_validation_error(Context) ->
@@ -499,7 +499,7 @@ load_report(Context, Report) ->
 
 -spec set_report(cb_context:context(), ne_binary()) -> cb_context:context().
 set_report(Context, File) ->
-    Name = kz_util:to_binary(filename:basename(File)),
+    Name = kz_term:to_binary(filename:basename(File)),
     Headers = [{<<"Content-Disposition">>, <<"attachment; filename=", Name/binary>>}],
     cb_context:setters(Context,
                        [{fun cb_context:set_resp_file/2, File}
@@ -550,7 +550,7 @@ format_and_send_report(Context, Msg) ->
 -spec save_report(cb_context:context()) -> {ne_binary(), ne_binary()}.
 save_report(Context) ->
     JObj = kz_json:encode(cb_context:resp_data(Context)),
-    Report = kz_util:rand_hex_binary(16),
+    Report = kz_binary:rand_hex(16),
     File = <<"/tmp/", Report/binary, ".json">>,
     'ok' = file:write_file(File, JObj),
     Args = [cb_context:api_version(Context)

@@ -100,8 +100,8 @@
 -define(ORIGINATE_REQ_TYPES, [{<<"Endpoints">>, fun is_list/1}
                              ,{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                              ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
-                             ,{<<"Continue-On-Fail">>, fun kz_util:is_boolean/1}
-                             ,{<<"Simplify-Bowout">>, fun kz_util:is_boolean/1}
+                             ,{<<"Continue-On-Fail">>, fun kz_term:is_boolean/1}
+                             ,{<<"Simplify-Bowout">>, fun kz_term:is_boolean/1}
                              ]).
 
 %% Originate Endpoints
@@ -112,8 +112,8 @@
 -define(ORIGINATE_REQ_ENDPOINT_TYPES, [{<<"Custom-SIP-Headers">>, fun kz_json:is_json_object/1}
                                       ,{<<"Custom-Channel-Vars">>, fun kz_json:is_json_object/1}
                                       ,{<<"Endpoint-Options">>, fun kz_json:is_json_object/1}
-                                      ,{<<"Ignore-Early-Media">>, fun kz_util:is_boolean/1}
-                                      ,{<<"Bypass-Media">>, fun kz_util:is_boolean/1}
+                                      ,{<<"Ignore-Early-Media">>, fun kz_term:is_boolean/1}
+                                      ,{<<"Bypass-Media">>, fun kz_term:is_boolean/1}
                                       ]).
 
 %% Origintate Resp

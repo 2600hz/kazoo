@@ -35,7 +35,7 @@ change_in_servers_test_() ->
      }
      |
      [{iolist_to_binary(
-         io_lib:format("Verifying changing ~s results in a change required", [kz_util:join_binary(K)])
+         io_lib:format("Verifying changing ~s results in a change required", [kz_binary:join(K)])
         )
       ,assert_changed(change_server(K, Servers), Servers)
       }
@@ -57,5 +57,5 @@ change_server_keys(Ks, Servers) ->
 change_server([<<"options">>, <<"enabled">>] = Key, Servers) ->
     kz_json:set_value([1 | Key], 'false', Servers);
 change_server(Key, Servers) ->
-    New = kz_util:rand_hex_binary(5),
+    New = kz_binary:rand_hex(5),
     kz_json:set_value([1 | Key], New, Servers).

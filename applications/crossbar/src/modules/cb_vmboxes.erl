@@ -822,7 +822,7 @@ load_attachment_from_message(Doc, Context, Timezone) ->
 
 -spec load_messages_binaries(ne_binary(), cb_context:context()) -> cb_context:context().
 load_messages_binaries(BoxId, Context) ->
-    WorkDir = kz_util:to_list(<<"/tmp/", (cb_context:req_id(Context))/binary, "/">>),
+    WorkDir = kz_term:to_list(<<"/tmp/", (cb_context:req_id(Context))/binary, "/">>),
     Ids = kz_json:get_value(?VM_KEY_MESSAGES, cb_context:req_data(Context), []),
     case Ids =/= []
         andalso kz_datamgr:open_cache_doc(cb_context:account_db(Context), BoxId)
@@ -870,14 +870,14 @@ save_attachment_to_file(MsgId, BoxId, Context, Timezone, WorkDir) ->
             case kz_datamgr:fetch_attachment(kz_doc:account_db(Doc), MsgId, AttachmentId) of
                 {'error', _} = E -> E;
                 {'ok', AttachBin} ->
-                    'ok' = file:write_file(lists:concat([WorkDir, kz_util:to_list(Filename)]), AttachBin)
+                    'ok' = file:write_file(lists:concat([WorkDir, kz_term:to_list(Filename)]), AttachBin)
             end;
         {'error', _}=E -> E
     end.
 
 -spec maybe_create_zip_file(string(), cb_context:context()) -> cb_context:context().
 maybe_create_zip_file(WorkDir, Context) ->
-    Files = [kz_util:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
+    Files = [kz_term:to_list(F) || F <- filelib:wildcard("*", WorkDir)],
     try Files =/= []
              andalso create_zip_file(WorkDir, Files, Context)
     of
@@ -894,16 +894,16 @@ maybe_create_zip_file(WorkDir, Context) ->
 
 -spec create_zip_file(string(), [string()], cb_context:context()) -> cb_context:context().
 create_zip_file(WorkDir, Files, Context) ->
-    ZipName = lists:concat([kz_util:to_list(cb_context:req_id(Context)), ".zip"]),
+    ZipName = lists:concat([kz_term:to_list(cb_context:req_id(Context)), ".zip"]),
     ZipPath = ["/tmp/", ZipName],
     {'ok', _} = zip:zip(ZipPath , Files, [{'cwd', WorkDir}]),
     _ = del_dir(WorkDir),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_etag/2, 'undefined'}
-              ,{fun cb_context:set_resp_file/2, kz_util:to_binary(ZipPath)}
+              ,{fun cb_context:set_resp_file/2, kz_term:to_binary(ZipPath)}
               ,{fun cb_context:add_resp_headers/2
                ,[{<<"Content-Type">>, <<"application/zip">>}
-                ,{<<"Content-Disposition">>, <<"attachment; filename=", (kz_util:to_binary(ZipName))/binary>>}
+                ,{<<"Content-Disposition">>, <<"attachment; filename=", (kz_term:to_binary(ZipName))/binary>>}
                 ,{<<"Content-Length">>, filelib:file_size(ZipPath)}
                 ]
                }
@@ -934,8 +934,8 @@ del_all_files(Dir) ->
 generate_media_name('undefined', GregorianSeconds, Ext, Timezone) ->
     generate_media_name(<<"unknown">>, GregorianSeconds, Ext, Timezone);
 generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
-    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_util:to_integer(GregorianSeconds)),
-    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_util:to_list(Timezone)) of
+    UTCDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(GregorianSeconds)),
+    LocalTime = case localtime:utc_to_local(UTCDateTime, kz_term:to_list(Timezone)) of
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,

@@ -66,7 +66,7 @@ do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Pa
 
 -spec db_delete(server(), ne_binary()) -> boolean().
 db_delete(#server{}=Conn, DbName) ->
-    case couchbeam:delete_db(Conn, kz_util:to_list(DbName)) of
+    case couchbeam:delete_db(Conn, kz_term:to_list(DbName)) of
         {'error', _} -> 'false';
         {'ok', _} -> 'true'
     end.
@@ -102,7 +102,7 @@ db_info(#server{}=Conn, DbName) ->
 
 -spec db_exists(server(), ne_binary()) -> boolean().
 db_exists(#server{}=Conn, DbName) ->
-    couchbeam:db_exists(Conn, kz_util:to_list(DbName)).
+    couchbeam:db_exists(Conn, kz_term:to_list(DbName)).
 
 -spec db_archive(server(), ne_binary(), ne_binary()) ->
                         'ok' |

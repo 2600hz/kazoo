@@ -34,7 +34,7 @@ stop_active_parser(Id)
   when not is_atom(Id) ->
     stop_active_parser(
       ci_parsers_util:make_name(
-        kz_util:to_binary(Id)
+        kz_term:to_binary(Id)
        )
      );
 stop_active_parser(Id)
@@ -43,21 +43,21 @@ stop_active_parser(Id)
 
 -spec start_freeswitch_parser(text(), text(), text()) -> 'no_return'.
 start_freeswitch_parser(Filename, LogIP, LogPort) ->
-    Args = [{'parser_args', Filename, kz_util:to_binary(LogIP), kz_util:to_integer(LogPort)}],
+    Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
     {'ok', Name} = ci_parsers_sup:start_child('ci_parser_freeswitch', Args),
     io:format("started ~p\n", [Name]),
     'no_return'.
 
 -spec start_kamailio_parser(text(), text(), text()) -> 'no_return'.
 start_kamailio_parser(Filename, LogIP, LogPort) ->
-    Args = [{'parser_args', Filename, kz_util:to_binary(LogIP), kz_util:to_integer(LogPort)}],
+    Args = [{'parser_args', Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
     {'ok', Name} = ci_parsers_sup:start_child('ci_parser_kamailio', Args),
     io:format("started ~p\n", [Name]),
     'no_return'.
 
 -spec start_hep_parser(text(), text()) -> 'no_return'.
 start_hep_parser(IP, Port) ->
-    Args = [{'parser_args', kz_util:to_binary(IP), kz_util:to_integer(Port)}],
+    Args = [{'parser_args', kz_term:to_binary(IP), kz_term:to_integer(Port)}],
     {'ok', Name} = ci_parsers_sup:start_child('ci_parser_hep', Args),
     io:format("started ~p\n", [Name]),
     'no_return'.
@@ -72,7 +72,7 @@ flush(CallId) ->
 
 -spec callid_details(text()) -> 'no_return'.
 callid_details(CallId) ->
-    Props = [{<<"Call-ID">>, kz_util:to_binary(CallId)}
+    Props = [{<<"Call-ID">>, kz_term:to_binary(CallId)}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case kz_amqp_worker:call_collect(Props

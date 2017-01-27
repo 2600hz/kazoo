@@ -73,7 +73,7 @@ should_publish_doc(Doc) ->
 
 -spec should_publish_db_changes(ne_binary()) -> boolean().
 should_publish_db_changes(DbName) ->
-    Key = <<"publish_", (kz_util:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
+    Key = <<"publish_", (kz_term:to_binary(kzs_util:db_classification(DbName)))/binary, "_changes">>,
     kapps_config:get_is_true(?CONFIG_CAT, Key, 'true').
 
 -spec publish_doc(ne_binary(), kz_json:object(), kz_json:object()) -> 'ok'.
@@ -82,13 +82,13 @@ publish_doc(DbName, Doc, JObj) ->
         orelse kz_doc:is_deleted(Doc)
     of
         'true' ->
-            publish('deleted', kz_util:to_binary(DbName), publish_fields(Doc, JObj));
+            publish('deleted', kz_term:to_binary(DbName), publish_fields(Doc, JObj));
         'false' ->
             case kz_doc:revision(JObj) of
                 <<"1-", _/binary>> ->
-                    publish('created', kz_util:to_binary(DbName), publish_fields(Doc, JObj));
+                    publish('created', kz_term:to_binary(DbName), publish_fields(Doc, JObj));
                 _Else ->
-                    publish('edited', kz_util:to_binary(DbName), publish_fields(Doc, JObj))
+                    publish('edited', kz_term:to_binary(DbName), publish_fields(Doc, JObj))
             end
     end.
 
@@ -99,7 +99,7 @@ publish_db(DbName, Action) ->
         ,{<<"ID">>, DbName}
         ,{<<"Database">>, DbName}
          | kz_api:default_headers(<<"configuration">>
-                                 ,<<"db_", (kz_util:to_binary(Action))/binary>>
+                                 ,<<"db_", (kz_term:to_binary(Action))/binary>>
                                  ,?CONFIG_CAT
                                  ,<<"1.0.0">>
                                  )
@@ -112,7 +112,7 @@ publish_db(DbName, Action) ->
 publish_fields(Doc) ->
     [{Key, V} ||
         Key <- ?PUBLISH_FIELDS,
-        kz_util:is_not_empty(V = kz_json:get_value(Key, Doc))
+        kz_term:is_not_empty(V = kz_json:get_value(Key, Doc))
     ].
 
 publish_fields(Doc, JObj) ->
@@ -153,7 +153,7 @@ publish(Action, Db, Doc) ->
 doc_change_event_name(_Action, 'true') ->
     ?DOC_DELETED;
 doc_change_event_name(Action, 'false') ->
-    <<"doc_", (kz_util:to_binary(Action))/binary>>.
+    <<"doc_", (kz_term:to_binary(Action))/binary>>.
 
 -spec doc_acct_id(ne_binary(), kz_json:object()) -> ne_binary().
 doc_acct_id(Db, Doc) ->

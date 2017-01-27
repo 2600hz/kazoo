@@ -169,7 +169,7 @@ update_fun(Db, JObj, ResDict) ->
         {'error', R} ->
             lager:warning("failed to bulk update voicemail messages for db ~s: ~p"
                          ,[Db, R]),
-            Failed = kz_json:from_list([{kz_doc:id(D), kz_util:to_binary(R)}
+            Failed = kz_json:from_list([{kz_doc:id(D), kz_term:to_binary(R)}
                                         || D <- JObj
                                        ]),
             dict:append(<<"failed">>, Failed, ResDict)
@@ -213,7 +213,7 @@ fetch_fun(Db, BoxId, Ids, ResDict, RetenTimestamp) ->
 -spec fetch_faild_with_reason(any(), ne_binary(), ne_binaries(), dict:dict()) -> dict:dict().
 fetch_faild_with_reason(Reason, Db, Ids, ResDict) ->
     lager:warning("failed to bulk fetch voicemail messages from db ~s: ~p", [Db, Reason]),
-    Failed = kz_json:from_list([{Id, kz_util:to_binary(Reason)}
+    Failed = kz_json:from_list([{Id, kz_term:to_binary(Reason)}
                                 || Id <- Ids
                                ]),
     dict:append(<<"failed">>, Failed, ResDict).
@@ -291,7 +291,7 @@ get_view_results([], _View, _ViewOpts, 'undefined', ViewResults) ->
 get_view_results([], _View, _ViewOpts, NormFun, ViewResults) ->
     [JObj
      || JObj <- lists:foldl(NormFun, [], ViewResults),
-        not kz_util:is_empty(JObj)
+        not kz_term:is_empty(JObj)
     ];
 get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
     case kz_datamgr:get_results(Db, View, ViewOpts) of
@@ -357,7 +357,7 @@ normalize_bulk_results1(Method, BoxId, RetenTimestamp, [JObj | JObjs], Dict) ->
                       Failed = kz_json:from_list([{Id, <<"prior_to_retention_duration">>}]),
                       dict:append(<<"failed">>, Failed, Dict);
                   Error ->
-                      Failed = kz_json:from_list([{Id, kz_util:to_binary(Error)}]),
+                      Failed = kz_json:from_list([{Id, kz_term:to_binary(Error)}]),
                       dict:append(<<"failed">>, Failed, Dict)
               end,
     normalize_bulk_results1(Method, BoxId, RetenTimestamp, JObjs, NewDict).

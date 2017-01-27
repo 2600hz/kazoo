@@ -282,7 +282,7 @@ find_port(JObj) ->
                                    ], JObj)
     of
         'undefined' -> 'undefined';
-        Port -> kz_util:to_integer(Port)
+        Port -> kz_term:to_integer(Port)
     end.
 
 -spec find_account_id(api_binary(), kz_json:object()) -> api_binary().
@@ -421,7 +421,7 @@ resource_has_flags(Flags, Resource) ->
 
 -spec resource_has_flag(ne_binary(), resource()) -> boolean().
 resource_has_flag(Flag, #resrc{flags=ResourceFlags, id=_Id}) ->
-    case kz_util:is_empty(Flag)
+    case kz_term:is_empty(Flag)
         orelse lists:member(Flag, ResourceFlags)
     of
         'true' -> 'true';
@@ -472,7 +472,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
         {'error','no_match'} -> Endpoints;
         {'ok', NumberMatch} ->
             lager:debug("building resource ~s endpoints", [Id]),
-            CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
+            CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
                          ,{<<"Resource-ID">>, Id}
                          ,{<<"E164-Destination">>, Number}
                          ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}
@@ -619,9 +619,9 @@ gateway_to_endpoint(DestinationNumber
     kz_json:from_list(
       props:filter_empty(
         [{<<"Route">>, gateway_dialstring(Gateway, DestinationNumber)}
-        ,{<<"Callee-ID-Name">>, kz_util:to_binary(DestinationNumber)}
-        ,{<<"Callee-ID-Number">>, kz_util:to_binary(DestinationNumber)}
-        ,{<<"To-DID">>, kz_util:to_binary(DestinationNumber)}
+        ,{<<"Callee-ID-Name">>, kz_term:to_binary(DestinationNumber)}
+        ,{<<"Callee-ID-Number">>, kz_term:to_binary(DestinationNumber)}
+        ,{<<"To-DID">>, kz_term:to_binary(DestinationNumber)}
         ,{<<"Invite-Format">>, InviteFormat}
         ,{<<"Caller-ID-Type">>, CallerIdType}
         ,{<<"Bypass-Media">>, BypassMedia}
@@ -632,7 +632,7 @@ gateway_to_endpoint(DestinationNumber
         ,{<<"SIP-Interface">>, SipInterface}
         ,{<<"Endpoint-Type">>, EndpointType}
         ,{<<"Endpoint-Options">>, EndpointOptions}
-        ,{<<"Endpoint-Progress-Timeout">>, kz_util:to_binary(ProgressTimeout)}
+        ,{<<"Endpoint-Progress-Timeout">>, kz_term:to_binary(ProgressTimeout)}
         ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
         ,{<<"Outbound-Caller-ID-Number">>, CIDNumber}
         ,{<<"Outbound-Caller-ID-Name">>, CIDName}
@@ -658,7 +658,7 @@ gateway_from_uri_settings(#gateway{format_from_uri='true'
                                   ,from_account_realm=AccountRealm
                                   }) ->
     %% precedence: from_uri_realm -> from_account_realm -> realm
-    case kz_util:is_empty(FromRealm) of
+    case kz_term:is_empty(FromRealm) of
         'false' ->
             lager:debug("using resource from_uri_realm in From: ~s", [FromRealm]),
             [{<<"Format-From-URI">>, 'true'}
@@ -670,7 +670,7 @@ gateway_from_uri_settings(#gateway{format_from_uri='true'
             ,{<<"From-Account-Realm">>, 'true'}
             ];
         'true' ->
-            case kz_util:is_empty(Realm) of
+            case kz_term:is_empty(Realm) of
                 'true' ->
                     lager:info("format from URI configured for resource but no realm available"),
                     [{<<"Format-From-URI">>, 'false'}];
@@ -1095,7 +1095,7 @@ endpoint_options(JObj, <<"amqp">>) ->
         ,{<<"Exchange-Type">>, kz_json:get_value(<<"amqp_exchange_type">>, JObj)}
         ,{<<"Route-ID">>, kz_json:get_value(<<"route_id">>, JObj)}
         ,{<<"System-ID">>, kz_json:get_value(<<"system_id">>, JObj)}
-        ,{<<"Broker-Name">>, kz_json:get_value(<<"broker_name">>, JObj, kz_util:rand_hex_binary(6))}
+        ,{<<"Broker-Name">>, kz_json:get_value(<<"broker_name">>, JObj, kz_binary:rand_hex(6))}
         ,{<<"Exchange-Options">>, kz_json:get_value(<<"amqp_exchange_options">>, JObj, ?DEFAULT_AMQP_EXCHANGE_OPTIONS)}
         ]
        )
@@ -1122,10 +1122,10 @@ gateway_dialstring(#gateway{route='undefined'
                            ,port=Port
                            }, Number) ->
     DialStringPort =
-        case not kz_util:is_empty(Port)
+        case not kz_term:is_empty(Port)
             andalso Port =/= 5060
         of
-            'true' -> <<":", (kz_util:to_binary(Port))/binary>>;
+            'true' -> <<":", (kz_term:to_binary(Port))/binary>>;
             'false' -> <<>>
         end,
     Route =

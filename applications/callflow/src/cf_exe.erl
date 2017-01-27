@@ -673,7 +673,7 @@ launch_cf_module(#state{call=Call
 -spec maybe_start_cf_module(ne_binary(), kz_proplist(), kapps_call:call()) ->
                                    {{pid() | 'undefined', reference() | atom()} | 'undefined', atom()}.
 maybe_start_cf_module(ModuleBin, Data, Call) ->
-    CFModule = kz_util:to_atom(ModuleBin, 'true'),
+    CFModule = kz_term:to_atom(ModuleBin, 'true'),
     try CFModule:module_info('exports') of
         _ ->
             lager:info("moving to action '~s'", [CFModule]),
@@ -759,9 +759,9 @@ add_server_id(Q, API) ->
 
 -spec add_message_id(api_terms()) -> api_terms().
 add_message_id(API) when is_list(API) ->
-    [{<<"Msg-ID">>, kz_util:rand_hex_binary(16)} | props:delete(<<"Msg-ID">>, API)];
+    [{<<"Msg-ID">>, kz_binary:rand_hex(16)} | props:delete(<<"Msg-ID">>, API)];
 add_message_id(API) ->
-    kz_json:set_value(<<"Msg-ID">>, kz_util:rand_hex_binary(16), API).
+    kz_json:set_value(<<"Msg-ID">>, kz_binary:rand_hex(16), API).
 
 -spec log_call_information(kapps_call:call()) -> 'ok'.
 log_call_information(Call) ->

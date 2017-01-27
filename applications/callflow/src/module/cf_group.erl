@@ -46,16 +46,16 @@ attempt_group(Data, Call) ->
 -spec attempt_endpoints(kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 attempt_endpoints(JObj, Data, Call) ->
     Endpoints = build_endpoints(JObj, Call),
-    Timeout = kz_util:to_integer(
+    Timeout = kz_term:to_integer(
                 kz_json:find(<<"timeout">>, [JObj, Data], ?DEFAULT_TIMEOUT_S)
                ),
-    Strategy = kz_util:to_binary(
+    Strategy = kz_term:to_binary(
                  kz_json:find(<<"strategy">>, [JObj, Data], ?DIAL_METHOD_SIMUL)
                 ),
-    IgnoreForward = kz_util:to_binary(
+    IgnoreForward = kz_term:to_binary(
                       kz_json:find(<<"ignore_forward">>, [JObj, Data], <<"true">>)
                      ),
-    Ringback = kz_util:to_binary(
+    Ringback = kz_term:to_binary(
                  kz_json:find(<<"ringback">>, [JObj, Data])
                 ),
     lager:info("attempting group of ~b members with strategy ~s", [length(Endpoints), Strategy]),
@@ -104,7 +104,7 @@ build_device_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
         andalso MemberId =/= kapps_call:authorizing_id(Call)
     of
         'true' ->
-            M = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Member),
+            M = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member),
             E = [{MemberId, kz_endpoint:build(MemberId, M, Call)}|Endpoints],
             build_device_endpoints(E, Members, Call);
         'false' -> build_device_endpoints(Endpoints, Members, Call)
@@ -117,7 +117,7 @@ build_user_endpoints(Endpoints, [{MemberId, Member} | Members], Call) ->
         'false' -> build_user_endpoints(Endpoints, Members, Call);
         'true' ->
             DeviceIds = kz_attributes:owned_by(MemberId, <<"device">>, Call),
-            M = kz_json:set_values([{<<"source">>, kz_util:to_binary(?MODULE)}
+            M = kz_json:set_values([{<<"source">>, kz_term:to_binary(?MODULE)}
                                    ,{<<"type">>, <<"device">>}
                                    ]
                                   ,Member

@@ -876,7 +876,7 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                       }=State) ->
     lager:debug("no custom presence id, using ~s for ~s", [AgentId, PresenceState]),
     acdc_util:presence_update(AcctId, AgentId, PresenceState
-                             ,kz_util:to_hex_binary(crypto:hash(md5, AgentId))
+                             ,kz_term:to_hex_binary(crypto:hash(md5, AgentId))
                              ),
     {'noreply', State};
 handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
@@ -884,7 +884,7 @@ handle_cast({'presence_update', PresenceState}, #state{acct_id=AcctId
                                                       }=State) ->
     lager:debug("custom presence id, using ~s for ~s", [PresenceId, PresenceState]),
     acdc_util:presence_update(AcctId, PresenceId, PresenceState
-                             ,kz_util:to_hex_binary(crypto:hash(md5, PresenceId))
+                             ,kz_term:to_hex_binary(crypto:hash(md5, PresenceId))
                              ),
     {'noreply', State};
 
@@ -1046,7 +1046,7 @@ send_sync_response(ReqJObj, AcctId, AgentId, MyId, MyQ, Status, Options) ->
     Prop = [{<<"Account-ID">>, AcctId}
            ,{<<"Agent-ID">>, AgentId}
            ,{<<"Process-ID">>, MyId}
-           ,{<<"Status">>, kz_util:to_binary(Status)}
+           ,{<<"Status">>, kz_term:to_binary(Status)}
            ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, ReqJObj)}
             | Options ++ kz_api:default_headers(MyQ, ?APP_NAME, ?APP_VERSION)
            ],
@@ -1089,7 +1089,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
     MCallId = kapps_call:call_id(Call),
     kz_util:put_callid(MCallId),
 
-    ReqId = kz_util:rand_hex_binary(6),
+    ReqId = kz_binary:rand_hex(6),
     AcctId = kapps_call:account_id(Call),
 
     CCVs = props:filter_undefined([{<<"Account-ID">>, AcctId}
@@ -1114,7 +1114,7 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
                                         end, {[], []}, EPs),
 
     Prop = props:filter_undefined(
-             [{<<"Msg-ID">>, kz_util:rand_hex_binary(6)}
+             [{<<"Msg-ID">>, kz_binary:rand_hex(6)}
              ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
              ,{<<"Timeout">>, Timeout}
              ,{<<"Endpoints">>, Endpoints}
@@ -1142,8 +1142,8 @@ maybe_connect_to_agent(MyQ, EPs, Call, Timeout, AgentId, _CdrUrl) ->
 
 -spec outbound_call_id(kapps_call:call() | ne_binary(), ne_binary()) -> ne_binary().
 outbound_call_id(CallId, AgentId) when is_binary(CallId) ->
-    Hash = kz_util:to_hex_binary(erlang:md5(CallId)),
-    Rnd = kz_util:rand_hex_binary(4),
+    Hash = kz_term:to_hex_binary(erlang:md5(CallId)),
+    Rnd = kz_binary:rand_hex(4),
     <<Hash/binary, "-", AgentId/binary, "-", Rnd/binary>>;
 outbound_call_id(Call, AgentId) ->
     outbound_call_id(kapps_call:call_id(Call), AgentId).

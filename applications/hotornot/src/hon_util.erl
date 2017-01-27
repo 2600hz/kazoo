@@ -86,7 +86,7 @@ build_keys(Number) ->
     case only_numeric(Number) of
         <<>> -> [];
         <<D:1/binary, Rest/binary>> ->
-            build_keys(Rest, D, [kz_util:to_integer(D)])
+            build_keys(Rest, D, [kz_term:to_integer(D)])
     end.
 
 -spec only_numeric(binary()) -> binary().
@@ -100,7 +100,7 @@ is_numeric(N) ->
 
 -spec build_keys(binary(), ne_binary(), [integer()]) -> [integer()].
 build_keys(<<D:1/binary, Rest/binary>>, Prefix, Acc) ->
-    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_util:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
+    build_keys(Rest, <<Prefix/binary, D/binary>>, [kz_term:to_integer(<<Prefix/binary, D/binary>>) | Acc]);
 build_keys(<<>>, _, Acc) -> Acc.
 
 %% Given a list of rates, return the list of rates whose routes regexes match the given E164

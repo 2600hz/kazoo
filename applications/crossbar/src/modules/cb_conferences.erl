@@ -160,7 +160,7 @@ put(Context, ConferenceId, ?PARTICIPANTS) ->
 
 put(Context, ConferenceId, ?PARTICIPANTS, ParticipantId) ->
     Action = cb_context:req_value(Context, ?PUT_ACTION),
-    perform_participant_action(conference(ConferenceId), Action, kz_util:to_integer(ParticipantId)),
+    perform_participant_action(conference(ConferenceId), Action, kz_term:to_integer(ParticipantId)),
     crossbar_util:response_202(<<"ok">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
@@ -237,7 +237,7 @@ validate_numbers(Id, Context) ->
     end.
 
 invalid_numbers(Context, JObjs) ->
-    Numbers = kz_util:join_binary(kz_datamgr:get_result_keys(JObjs)),
+    Numbers = kz_binary:join(kz_datamgr:get_result_keys(JObjs)),
     Error = kz_json:from_list([{<<"message">>, <<"Numbers already in use">>}
                               ,{<<"cause">>, Numbers}
                               ]),

@@ -78,14 +78,14 @@ to_vcard(JObj) ->
                                 ,[card_field(Key, JObj) || Key <- Fields]
                                 ),
     PackedFields = lists:reverse(
-                     [kz_util:join_binary([X, Y], <<":">>) ||
+                     [kz_binary:join([X, Y], <<":">>) ||
                          {X, Y} <- NotEmptyFields
                      ]
                     ),
     DividedFields = lists:reverse(
                       lists:foldl(fun vcard_field_divide_by_length/2, [], PackedFields)
                      ),
-    kz_util:join_binary(DividedFields, <<"\n">>).
+    kz_binary:join(DividedFields, <<"\n">>).
 
 -spec vcard_escape_chars(binary()) -> binary().
 vcard_escape_chars(Val) ->
@@ -111,13 +111,13 @@ vcard_fields_acc([], Acc) ->
 
 -spec vcard_normalize_val(binary() | {char(), binaries()}) -> binary().
 vcard_normalize_val({Separator, Vals}) when is_list(Vals) ->
-    kz_util:join_binary([vcard_escape_chars(X) || X <- Vals, not kz_util:is_empty(X)], Separator);
+    kz_binary:join([vcard_escape_chars(X) || X <- Vals, not kz_term:is_empty(X)], Separator);
 vcard_normalize_val(Val) when is_binary(Val) ->
     vcard_escape_chars(Val).
 
 -spec vcard_normalize_type(list() | {ne_binary(), ne_binary()} | ne_binary()) -> ne_binary().
-vcard_normalize_type(T) when is_list(T) -> kz_util:join_binary([vcard_normalize_type(X) || X <- T], <<";">>);
-vcard_normalize_type({T, V}) -> kz_util:join_binary([T, V], <<"=">>);
+vcard_normalize_type(T) when is_list(T) -> kz_binary:join([vcard_normalize_type(X) || X <- T], <<";">>);
+vcard_normalize_type({T, V}) -> kz_binary:join([T, V], <<"=">>);
 vcard_normalize_type(T) -> T.
 
 -type vcard_val() :: binary() | {char(), binaries()} | 'undefined'.
@@ -138,11 +138,11 @@ card_field(Key = <<"FN">>, JObj) ->
     LastName = kz_json:get_value(<<"last_name">>, JObj),
     MiddleName = kz_json:get_value(<<"middle_name">>, JObj),
     {Key
-    ,kz_util:join_binary([X || X <- [FirstName, MiddleName, LastName],
-                               not kz_util:is_empty(X)
-                         ]
-                        ,<<" ">>
-                        )
+    ,kz_binary:join([X || X <- [FirstName, MiddleName, LastName],
+                          not kz_term:is_empty(X)
+                    ]
+                   ,<<" ">>
+                   )
     };
 card_field(Key = <<"N">>, JObj) ->
     FirstName = kz_json:get_value(<<"first_name">>, JObj),
@@ -204,7 +204,7 @@ normalize_address(JObj) ->
                 T -> T
             end,
     Address = kz_json:get_value(<<"address">>, JObj),
-    {kz_util:join_binary(Types, <<",">>), Address}.
+    {kz_binary:join(Types, <<",">>), Address}.
 
 -spec timezone(kz_json:object()) -> api_binary().
 -spec timezone(kz_json:object(), Default) -> ne_binary() | Default.
@@ -227,7 +227,7 @@ presence_id(UserJObj, Default) ->
 -spec set_presence_id(doc(), ne_binary()) -> doc().
 set_presence_id(UserJObj, Id) ->
     kz_json:set_value(?KEY_PRESENCE_ID
-                     ,kz_util:to_binary(Id)
+                     ,kz_term:to_binary(Id)
                      ,UserJObj
                      ).
 

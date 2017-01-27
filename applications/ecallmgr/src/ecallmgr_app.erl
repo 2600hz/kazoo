@@ -31,7 +31,7 @@ start(_StartType, _StartArgs) ->
 
 -spec request(kz_nodes:request_acc()) -> kz_nodes:request_acc().
 request(Acc) ->
-    Servers = [{kz_util:to_binary(Server)
+    Servers = [{kz_term:to_binary(Server)
                ,kz_json:set_values([{<<"Startup">>, Started}
                                    ,{<<"Interface">>, kz_json:from_list(ecallmgr_fs_node:interface(Server))}
                                    ]

@@ -124,22 +124,22 @@ timestamp(JObj) ->
 
 -spec node(kz_json:object()) -> atom().
 node(JObj) ->
-    kz_util:to_atom(kz_api:node(JObj), 'true').
+    kz_term:to_atom(kz_api:node(JObj), 'true').
 
 -define(GLOBALS_EXCHANGE, <<"globals">>).
 -define(GLOBALS_EXCHANGE_TYPE, <<"topic">>).
 
 routing_key(Event, Name) when is_binary(Name) ->
     <<"globals."
-      ,(kz_util:to_binary(Event))/binary
+      ,(kz_term:to_binary(Event))/binary
       ,"."
       ,(amqp_util:encode(Name))/binary
     >>;
 routing_key(Event, Name) ->
     <<"globals."
-      ,(kz_util:to_binary(Event))/binary
+      ,(kz_term:to_binary(Event))/binary
       ,"."
-      ,(kz_util:to_hex_binary(maybe_encode(Name)))/binary
+      ,(kz_term:to_hex_binary(maybe_encode(Name)))/binary
     >>.
 
 %% Globals Events

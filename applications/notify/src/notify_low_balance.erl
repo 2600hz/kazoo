@@ -92,7 +92,7 @@ create_template_props(CurrentBalance, Account) ->
 %%--------------------------------------------------------------------
 -spec pretty_print_dollars(float()) -> ne_binary().
 pretty_print_dollars(Amount) ->
-    kz_util:to_binary(io_lib:format("$~.2f", [Amount])).
+    kz_term:to_binary(io_lib:format("$~.2f", [Amount])).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -187,7 +187,7 @@ is_notify_enabled(JObj) ->
                            ], JObj)
     of
         'undefined' -> is_notify_enabled_default();
-        Value -> kz_util:is_true(Value)
+        Value -> kz_term:is_true(Value)
     end.
 
 -spec is_notify_enabled_default() -> boolean().

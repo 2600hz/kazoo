@@ -70,7 +70,7 @@ handle_req_as_http(JObj, 'undefined', UseEmail) ->
 handle_req_as_http(JObj, Url, UseEmail) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),
-    case kz_http:post(kz_util:to_list(Url), Headers, Encoded) of
+    case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
         {'ok', _2xx, _ResponseHeaders, _ResponseBody}
           when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);
@@ -115,7 +115,7 @@ process_req(JObj) ->
                       teletype_util:render_subject(SubjectTemplate, Macros);
                   Text -> Text
               catch
-                  _:_ -> <<"system alert received into ", (kz_util:to_binary(node()))/binary>>
+                  _:_ -> <<"system alert received into ", (kz_term:to_binary(node()))/binary>>
               end,
 
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),

@@ -33,7 +33,7 @@
 
 -define(REQ_HEADERS, [<<"Entity">>]).
 -define(OPTIONAL_REQ_HEADERS, [<<"With-Realm">>]).
--define(REQ_TYPES, [{<<"With-Realm">>, fun(V) -> is_boolean(kz_util:to_boolean(V)) end}]).
+-define(REQ_TYPES, [{<<"With-Realm">>, fun(V) -> is_boolean(kz_term:to_boolean(V)) end}]).
 -define(RESP_HEADERS, []).
 -define(OPTIONAL_RESP_HEADERS, [<<"Realm">>, <<"Device">>]).
 

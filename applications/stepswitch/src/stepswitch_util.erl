@@ -35,7 +35,7 @@ get_realm(From) when is_binary(From) ->
     end;
 get_realm(JObj) ->
     AuthRealm = kz_json:get_value(<<"Auth-Realm">>, JObj),
-    case kz_util:is_empty(AuthRealm)
+    case kz_term:is_empty(AuthRealm)
         orelse kz_network_utils:is_ipv4(AuthRealm)
         orelse kz_network_utils:is_ipv6(AuthRealm)
     of
@@ -94,7 +94,7 @@ correct_shortdial(Number, CIDNum) when is_binary(CIDNum) ->
     MinCorrection = kapps_config:get_integer(?SS_CONFIG_CAT, <<"min_shortdial_correction">>, 2),
     case byte_size(CIDNum) - byte_size(Number) of
         Length when Length =< MaxCorrection, Length >= MinCorrection ->
-            Correction = kz_util:truncate_right_binary(CIDNum, Length),
+            Correction = kz_binary:truncate_right(CIDNum, Length),
             CorrectedNumber = knm_converters:normalize(<<Correction/binary, Number/binary>>),
             lager:debug("corrected shortdial ~s via CID ~s to ~s"
                        ,[Number, CIDNum, CorrectedNumber]),
@@ -309,7 +309,7 @@ get_endpoint_format_from(OffnetReq, CCVs) ->
 route_by() ->
     RouteBy = kapps_config:get_ne_binary(?SS_CONFIG_CAT, <<"route_by">>, ?DEFAULT_ROUTE_BY),
     case kz_util:try_load_module(RouteBy) of
-        'false' -> kz_util:to_atom(?DEFAULT_ROUTE_BY);
+        'false' -> kz_term:to_atom(?DEFAULT_ROUTE_BY);
         Module -> Module
     end.
 
@@ -343,7 +343,7 @@ maybe_resource_to_endpoints(Resource
     %% DestinationNumber = maybe_update_number(Resource, Number),
     DestinationNumber = Number,
     lager:debug("building resource ~s endpoints", [Id]),
-    CCVUpdates = [{<<"Global-Resource">>, kz_util:to_binary(Global)}
+    CCVUpdates = [{<<"Global-Resource">>, kz_term:to_binary(Global)}
                  ,{<<"Resource-ID">>, Id}
                  ,{<<"E164-Destination">>, DestinationNumber}
                  ,{<<"Original-Number">>, kapi_offnet_resource:to_did(OffnetJObj)}

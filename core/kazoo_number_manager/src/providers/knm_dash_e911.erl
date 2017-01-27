@@ -97,7 +97,7 @@ maybe_update_e911(Number) ->
     CurrentE911 = feature(Number),
     E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
-    case kz_util:is_empty(E911) of
+    case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
             _ = remove_number(Number),
@@ -197,7 +197,7 @@ provision_geocoded(E911) ->
 is_valid_location(Location) ->
     case emergency_provisioning_request('validateLocation', Location) of
         {'ok', Response} -> parse_response(Response);
-        {'error', Reason} -> {'error', kz_util:to_binary(Reason)}
+        {'error', Reason} -> {'error', kz_term:to_binary(Reason)}
     end.
 
 %% @private
@@ -216,7 +216,7 @@ parse_response(<<"INVALID">>, Response) ->
 parse_response(<<"ERROR">>, Response) ->
     {'error', kz_xml:get_value("//Location/status/description/text()", Response)};
 parse_response(Else, _) ->
-    {'error', kz_util:to_binary(Else)}.
+    {'error', kz_term:to_binary(Else)}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -229,15 +229,15 @@ parse_response(Else, _) ->
                           {'provisioned', kz_json:object()} |
                           {'error', binary()}.
 add_location(Number, Location, CallerName) ->
-    Props = [{'uri', [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
-                     ,{'callername', [kz_util:to_list(CallerName)]}
+    Props = [{'uri', [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Number))/binary>>)]}
+                     ,{'callername', [kz_term:to_list(CallerName)]}
                      ]
              }
              | Location
             ],
     case emergency_provisioning_request('addLocation', Props) of
         {'ok', Response} -> parse_response(Response);
-        {'error', Reason} -> {'error', kz_util:to_binary(Reason)}
+        {'error', Reason} -> {'error', kz_term:to_binary(Reason)}
     end.
 
 %%--------------------------------------------------------------------
@@ -248,7 +248,7 @@ add_location(Number, Location, CallerName) ->
 %%--------------------------------------------------------------------
 -spec provision_location(ne_binary()) -> api_binary().
 provision_location(LocationId) ->
-    Props = [{'locationid', [kz_util:to_list(LocationId)]}],
+    Props = [{'locationid', [kz_term:to_list(LocationId)]}],
     case emergency_provisioning_request('provisionLocation', Props) of
         {'error', _} -> 'undefined';
         {'ok', Response} ->
@@ -265,7 +265,7 @@ provision_location(LocationId) ->
 remove_number(Number) ->
     Num = knm_phone_number:number(knm_number:phone_number(Number)),
     lager:debug("removing from upstream '~s'", [Num]),
-    Props = [{'uri', [kz_util:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
+    Props = [{'uri', [kz_term:to_list(<<"tel:", (knm_converters:to_1npan(Num))/binary>>)]}],
     case emergency_provisioning_request('removeURI', Props) of
         {'error', 'server_error'} ->
             lager:debug("removed number from upstream"),
@@ -307,7 +307,7 @@ remove_number(Number) ->
                                             {'ok', xml_el()} |
                                             {'error', emergency_provisioning_error()}.
 emergency_provisioning_request(Verb, Props) ->
-    URL = list_to_binary([?EMERG_URL, "/", kz_util:to_lower_binary(Verb)]),
+    URL = list_to_binary([?EMERG_URL, "/", kz_term:to_lower_binary(Verb)]),
     Body = unicode:characters_to_binary(
              xmerl:export_simple([{Verb, Props}]
                                 ,'xmerl_xml'
@@ -325,7 +325,7 @@ emergency_provisioning_request(Verb, Props) ->
                   ],
     lager:debug("making ~s request to upstream ~s", [Verb, URL]),
     ?DEBUG("Request:~n~s ~s~n~s~n", ['post', URL, Body]),
-    case kz_http:post(kz_util:to_list(URL), Headers, Body, HTTPOptions) of
+    case kz_http:post(kz_term:to_list(URL), Headers, Body, HTTPOptions) of
         {'ok', 401, _, _Response} ->
             ?DEBUG("Response:~n401~n~s~n", [_Response]),
             lager:debug("request error: 401 (unauthenticated)"),
@@ -349,7 +349,7 @@ emergency_provisioning_request(Verb, Props) ->
         {'ok', Code, _, Response} ->
             ?DEBUG("Response:~n~p~n~s~n", [Code, Response]),
             lager:debug("received response from upstream"),
-            try xmerl_scan:string(kz_util:to_list(Response)) of
+            try xmerl_scan:string(kz_term:to_list(Response)) of
                 {Xml, _} -> {'ok', Xml}
             catch
                 _:R ->

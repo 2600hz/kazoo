@@ -20,7 +20,7 @@
 -spec init(any(), cowboy_req:req(), any()) -> {'ok', cowboy_req:req(), state()} |
                                               {'shutdown', cowboy_req:req(), 'ok'}.
 init({_Transport, _Proto}, Req0, _Opts) ->
-    kz_util:put_callid(kz_util:rand_hex_binary(16)),
+    kz_util:put_callid(kz_binary:rand_hex(16)),
     case cowboy_req:path_info(Req0) of
         {[<<"tts">>, Id], Req1} ->
             init_from_tts(maybe_strip_extension(Id), Req1);
@@ -127,7 +127,7 @@ set_resp_headers(Req, ChunkSize, ContentType, MediaName, Url) ->
                           ,{<<"icy-url">>, Url}
                           ,{<<"content-type">>, ContentType}
                           ,{<<"icy-pub">>, <<"1">>}
-                          ,{<<"icy-metaint">>, kz_util:to_binary(ChunkSize)}
+                          ,{<<"icy-metaint">>, kz_term:to_binary(ChunkSize)}
                           ,{<<"icy-br">>, <<"8">>}
                           ]
                ).

@@ -225,7 +225,7 @@ get_auth_user(ApiJObj) ->
                        ToUser;
                    Username -> Username
                end,
-    kz_util:to_lower_binary(AuthUser).
+    kz_term:to_lower_binary(AuthUser).
 
 %%-----------------------------------------------------------------------------
 %% @private
@@ -246,5 +246,5 @@ get_auth_realm(ApiProp) when is_list(ApiProp) ->
                     [_ToUser, ToDomain] = binary:split(To, <<"@">>),
                     ToDomain
             end,
-    kz_util:to_lower_binary(Realm);
+    kz_term:to_lower_binary(Realm);
 get_auth_realm(ApiJObj) -> get_auth_realm(kz_json:to_proplist(ApiJObj)).

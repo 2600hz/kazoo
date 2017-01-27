@@ -71,7 +71,7 @@ get_all_acl_ips() ->
           ,{<<"Key">>, <<"acls">>}
           ,{<<"Node">>, <<"all">>}
           ,{<<"Default">>, kz_json:new()}
-          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Resp = kapps_util:amqp_pool_request(

@@ -44,7 +44,7 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
--define(ATOM(X), kz_util:to_atom(X, 'true')).
+-define(ATOM(X), kz_term:to_atom(X, 'true')).
 -define(SMS_POOL(A,B,C), ?ATOM(<<A/binary,"_", B/binary, "_", C/binary>>) ).
 
 %%%===================================================================
@@ -307,7 +307,7 @@ send_error(API, CallId, Reason) ->
     DeliveryProps = [{<<"Delivery-Result-Code">>, <<"sip:500">>}
                     ,{<<"Delivery-Failure">>, 'true'}
                     ,{<<"Error-Code">>, 500}
-                    ,{<<"Error-Message">>, kz_util:error_to_binary(Reason)}
+                    ,{<<"Error-Message">>, kz_term:error_to_binary(Reason)}
                     ,{<<"Status">>, <<"Failed">>}
                     ,{<<"Message-ID">>, props:get_value(<<"Message-ID">>, API)}
                     ,{<<"Call-ID">>, CallId}
@@ -318,7 +318,7 @@ send_error(API, CallId, Reason) ->
 -spec amqp_exchange_options(api_object()) -> kz_proplist().
 amqp_exchange_options('undefined') -> [];
 amqp_exchange_options(JObj) ->
-    [{kz_util:to_atom(K, 'true'), V}
+    [{kz_term:to_atom(K, 'true'), V}
      || {K, V} <- kz_json:to_proplist(JObj)
     ].
 
@@ -550,7 +550,7 @@ sms_timeout(OffnetReq) ->
 
 -spec sms_error(kz_json:object(), kapi_offnet_resource:req()) -> kz_proplist().
 sms_error(JObj, OffnetReq) ->
-    lager:debug("error during outbound request: ~s", [kz_util:to_binary(kz_json:encode(JObj))]),
+    lager:debug("error during outbound request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
     [{<<"Call-ID">>, kapi_offnet_resource:call_id(OffnetReq)}
     ,{<<"Msg-ID">>, kapi_offnet_resource:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}

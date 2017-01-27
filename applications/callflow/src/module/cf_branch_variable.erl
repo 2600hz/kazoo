@@ -133,7 +133,7 @@ find_child_in_branch(?NE_BINARY = ChildName, _Call, Keys) ->
         'false' -> 'undefined'
     end;
 find_child_in_branch(ChildName, Call, Keys) ->
-    try kz_util:to_binary(ChildName) of
+    try kz_term:to_binary(ChildName) of
         Bin ->
             find_child_in_branch(Bin, Call, Keys)
     catch
@@ -171,7 +171,7 @@ normalize_variable(?NE_BINARY = Variable) ->
 normalize_variable(Variable) when is_list(Variable) ->
     lists:reverse([kz_json:normalize_key(V)
                    || V <- Variable,
-                      not kz_util:is_empty(V)
+                      not kz_term:is_empty(V)
                   ]
                  );
 normalize_variable(_JObj) ->

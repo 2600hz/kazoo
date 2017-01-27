@@ -35,7 +35,7 @@ remove_versioned_modules(Modules) ->
 -spec remove_module_version(binary() | atom()) -> binary().
 remove_module_version(Module)
   when is_atom(Module) ->
-    remove_module_version(kz_util:to_binary(Module));
+    remove_module_version(kz_term:to_binary(Module));
 remove_module_version(Module) ->
     maybe_remove_module_version(lists:reverse(binary_to_list(Module))).
 

@@ -244,7 +244,7 @@ load_rules(Context) ->
 
 -spec summary(cb_context:context(), api_binaries(), api_binary(), boolean()) -> cb_context:context().
 summary(Context, Prefix, ViewName, Reduce) ->
-    case kz_util:is_true(Reduce) of
+    case kz_term:is_true(Reduce) of
         'true' ->
             Options = [{'startkey', build_start_key(Context, Prefix)}
                       ,{'endkey', build_end_key(Context, Prefix)}

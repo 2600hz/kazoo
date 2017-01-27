@@ -33,8 +33,8 @@
 
 -define(USE_HTTPS, kapps_config:get_is_true(?CONFIG_CAT, <<"use_https">>, 'false')).
 -define(AUTH_PLAYBACK, kapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_playback">>, 'false')).
--define(AUTH_USERNAME, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, kz_util:rand_hex_binary(8))).
--define(AUTH_PASSWORD, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, kz_util:rand_hex_binary(8))).
+-define(AUTH_USERNAME, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_username">>, kz_binary:rand_hex(8))).
+-define(AUTH_PASSWORD, kapps_config:get_binary(?CONFIG_CAT, <<"proxy_password">>, kz_binary:rand_hex(8))).
 -define(USE_AUTH_STORE, kapps_config:get_is_true(?CONFIG_CAT, <<"authenticated_store">>, 'true')).
 
 -define(NORMALIZE_EXE, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_executable">>, <<"sox">>)).
@@ -334,7 +334,7 @@ detect_format_options(File) ->
 %%--------------------------------------------------------------------
 -spec tmp_file(ne_binary()) -> ne_binary().
 tmp_file(Ext) ->
-    <<"/tmp/", (kz_util:rand_hex_binary(16))/binary, ".", Ext/binary>>.
+    <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
 
 -spec recording_url(ne_binary(), kz_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
@@ -342,7 +342,7 @@ recording_url(CallId, Data) ->
     %%   the filename, otherwise continue to append as we do today.
     %%   If this is updated be sure and fix the similar code in ecallmgr_call_events!
     Format = kz_json:get_value(<<"format">>, Data, <<"mp3">>),
-    Url = kz_util:strip_right_binary(kz_json:get_value(<<"url">>, Data, <<>>), $/),
+    Url = kz_binary:strip_right(kz_json:get_value(<<"url">>, Data, <<>>), $/),
     <<Url/binary, "/call_recording_", CallId/binary, ".", Format/binary>>.
 
 -spec max_recording_time_limit() -> ?SECONDS_IN_HOUR.
@@ -388,14 +388,14 @@ build_url(H, P, [], []) ->
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
-    list_to_binary([Scheme, "://", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"]);
+    list_to_binary([Scheme, "://", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"]);
 build_url(H, P, User, Pwd) ->
     Scheme = case ?USE_HTTPS of
                  'true' -> <<"https">>;
                  'false' -> <<"http">>
              end,
     list_to_binary([Scheme, "://", User, ":", Pwd
-                   ,"@", kz_util:to_binary(H), ":", kz_util:to_binary(P), "/"
+                   ,"@", kz_term:to_binary(H), ":", kz_term:to_binary(P), "/"
                    ]).
 
 -spec convert_stream_type(ne_binary()) -> ne_binary().
@@ -438,7 +438,7 @@ prompt_path('undefined', PromptId) ->
 prompt_path(Db, <<"/system_media/", PromptId/binary>>) ->
     prompt_path(Db, PromptId);
 prompt_path(Db, PromptId) ->
-    kz_util:join_binary([<<>>, Db, PromptId], <<"/">>).
+    kz_binary:join([<<>>, Db, PromptId], <<"/">>).
 
 -spec prompt_id(ne_binary()) -> ne_binary().
 -spec prompt_id(ne_binary(), api_binary()) -> ne_binary().
@@ -475,7 +475,7 @@ get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _Call) ->
 get_prompt(<<"/system_media/", Name/binary>>, Lang, Call) ->
     get_prompt(Name, Lang, Call);
 get_prompt(PromptId, Lang, 'undefined') ->
-    kz_util:join_binary([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>);
+    kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>);
 get_prompt(PromptId, Lang, <<_/binary>> = AccountId) ->
     get_prompt(PromptId, Lang, AccountId, ?USE_ACCOUNT_OVERRIDES);
 get_prompt(PromptId, Lang, Call) ->
@@ -486,10 +486,10 @@ get_prompt(<<"prompt://", _/binary>> = PromptId, _Lang, _AccountId, _UseOverride
     PromptId;
 get_prompt(PromptId, Lang, AccountId, 'true') ->
     lager:debug("using account override for ~s in account ~s", [PromptId, AccountId]),
-    kz_util:join_binary([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
+    kz_binary:join([<<"prompt:/">>, AccountId, PromptId, Lang], <<"/">>);
 get_prompt(PromptId, Lang, _AccountId, 'false') ->
     lager:debug("account overrides not enabled; ignoring account prompt for ~s", [PromptId]),
-    kz_util:join_binary([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
+    kz_binary:join([<<"prompt:/">>, ?KZ_MEDIA_DB, PromptId, Lang], <<"/">>).
 
 -spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call()) -> api_binary().
 -spec get_account_prompt(ne_binary(), api_binary(), kapps_call:call(), ne_binary()) -> api_binary().
@@ -633,7 +633,7 @@ get_system_prompt(Name, Lang) ->
 default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
-    kz_util:to_lower_binary(
+    kz_term:to_lower_binary(
       kapps_config:get(?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
@@ -651,8 +651,8 @@ prompt_language(<<_/binary>> = AccountId, Default) ->
     case ?USE_ACCOUNT_OVERRIDES of
         'false' -> default_prompt_language();
         'true' ->
-            kz_util:to_lower_binary(
-              kapps_account_config:get(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_util:to_lower_binary(Default))
+            kz_term:to_lower_binary(
+              kapps_account_config:get(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_term:to_lower_binary(Default))
              )
     end.
 

@@ -63,7 +63,7 @@ proceed_with_endpoint(State, Endpoint, JObj) ->
     'true' = kapi_dialplan:bridge_endpoint_v(Endpoint),
 
     MediaHandling = case kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Inception-Account-ID">>], JObj) =/= 'undefined'
-                        orelse kz_util:is_false(kz_json:get_value(<<"Bypass-Media">>, Endpoint))
+                        orelse kz_term:is_false(kz_json:get_value(<<"Bypass-Media">>, Endpoint))
                     of
                         'true' -> <<"process">>; %% bypass media is false, process media
                         'false' -> <<"bypass">>
@@ -289,7 +289,7 @@ get_endpoint_data(State, JObj, ToDID, AccountId, NumberProps) ->
     AuthRealm = props:get_value(<<"To-Realm">>, RoutingData),
     AuthzId = props:get_value(<<"Authorizing-ID">>, RoutingData),
     InFormat = props:get_value(<<"Invite-Format">>, RoutingData, <<"username">>),
-    Invite = ts_util:invite_format(kz_util:to_lower_binary(InFormat), ToDID) ++ RoutingData,
+    Invite = ts_util:invite_format(kz_term:to_lower_binary(InFormat), ToDID) ++ RoutingData,
     Routines = [fun(E) -> get_endpoint_ccvs(E, AuthUser, AuthRealm, AccountId, AuthzId) end
                ,fun(E) -> get_endpoint_sip_headers(E, AuthUser, AuthRealm) end
                ],
@@ -431,9 +431,9 @@ routing_data(ToDID, AccountId, Settings) ->
 -spec build_ip(api_binary(), api_binary() | integer()) -> api_binary().
 build_ip('undefined', _) -> 'undefined';
 build_ip(IP, 'undefined') -> IP;
-build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, kz_util:to_integer(PortBin));
+build_ip(IP, <<_/binary>> = PortBin) -> build_ip(IP, kz_term:to_integer(PortBin));
 build_ip(IP, 5060) -> IP;
-build_ip(IP, Port) -> list_to_binary([IP, ":", kz_util:to_binary(Port)]).
+build_ip(IP, Port) -> list_to_binary([IP, ":", kz_term:to_binary(Port)]).
 
 callee_id([]) -> {'undefined', 'undefined'};
 callee_id(['undefined' | T]) -> callee_id(T);

@@ -141,7 +141,7 @@ route_req(CallId, FetchId, Props, Node) ->
       ,{<<"Request">>, ecallmgr_util:get_sip_request(Props)}
       ,{<<"Body">>, get_body(Props) }
       ,{<<"SIP-Request-Host">>, props:get_value(<<"variable_sip_req_host">>, Props)}
-      ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+      ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
       ,{<<"Switch-Hostname">>, props:get_value(<<"FreeSWITCH-Hostname">>, Props)}
       ,{<<"Switch-URL">>, props:get_value(<<"Switch-URL">>, Props)}
       ,{<<"Switch-URI">>, props:get_value(<<"Switch-URI">>, Props)}

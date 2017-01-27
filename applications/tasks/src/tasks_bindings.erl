@@ -131,7 +131,7 @@ filter_out_failed({'halt', _}) -> 'true';
 filter_out_failed({'false', _}) -> 'false';
 filter_out_failed('false') -> 'false';
 filter_out_failed({'EXIT', _}) -> 'false';
-filter_out_failed(Term) -> not kz_util:is_empty(Term).
+filter_out_failed(Term) -> not kz_term:is_empty(Term).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -145,7 +145,7 @@ filter_out_succeeded({'halt', _}) -> 'true';
 filter_out_succeeded({'false', _}) -> 'true';
 filter_out_succeeded('false') -> 'true';
 filter_out_succeeded({'EXIT', _}) -> 'true';
-filter_out_succeeded(Term) -> kz_util:is_empty(Term).
+filter_out_succeeded(Term) -> kz_term:is_empty(Term).
 
 -type bind_result() :: 'ok' |
                        {'error', 'exists'}.
@@ -167,7 +167,7 @@ bind_actions(RoutePrefix, Module, Actions) ->
     lists:foreach(fun (Action) ->
                           bind(<<RoutePrefix/binary, ".", Action/binary>>
                               ,Module
-                              ,kz_util:to_atom(Action)
+                              ,kz_term:to_atom(Action)
                               )
                   end
                  ,Actions
@@ -206,7 +206,7 @@ modules_loaded() ->
 is_task_module(<<"kt_", _/binary>>) -> 'true';
 is_task_module(Mod)
   when is_atom(Mod) ->
-    is_task_module(kz_util:to_binary(Mod));
+    is_task_module(kz_term:to_binary(Mod));
 is_task_module(_) -> 'false'.
 
 
@@ -222,7 +222,7 @@ init_mod(ModuleName) ->
 
 maybe_init_mod(ModuleName) ->
     lager:debug("trying to init module: ~p", [ModuleName]),
-    try (kz_util:to_atom(ModuleName, 'true')):init()
+    try (kz_term:to_atom(ModuleName, 'true')):init()
     catch
         _E:_R ->
             lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])

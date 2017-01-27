@@ -422,7 +422,7 @@ to_querystring_test_() ->
             ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
              ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
             ],
-    [?_assertEqual(QS, kz_util:to_binary(
+    [?_assertEqual(QS, kz_term:to_binary(
                          kz_json:to_querystring(
                            kz_json:decode(JSON)
                           )

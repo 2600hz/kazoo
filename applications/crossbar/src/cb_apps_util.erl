@@ -194,7 +194,7 @@ has_all_or_apps_in_service_plan(ServicePlan) ->
 
 -spec has_apps_in_service_plan(kzd_service_plan:doc()) -> boolean().
 has_apps_in_service_plan(ServicePlan) ->
-    kz_util:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY)).
+    kz_term:is_empty(kzd_service_plan:category(ServicePlan, ?PLAN_CATEGORY)).
 
 -spec is_all_in_apps_service_plan(kzd_service_plan:doc()) -> boolean().
 is_all_in_apps_service_plan(ServicePlan) ->

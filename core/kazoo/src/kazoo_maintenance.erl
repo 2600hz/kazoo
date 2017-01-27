@@ -29,15 +29,15 @@
 
 -spec syslog_level(text()) -> 'ok'.
 syslog_level(Level) ->
-    kz_util:change_syslog_log_level(kz_util:to_atom(Level)).
+    kz_util:change_syslog_log_level(kz_term:to_atom(Level)).
 
 -spec error_level(text()) -> 'ok'.
 error_level(Level) ->
-    kz_util:change_error_log_level(kz_util:to_atom(Level)).
+    kz_util:change_error_log_level(kz_term:to_atom(Level)).
 
 -spec console_level(text()) -> 'ok'.
 console_level(Level) ->
-    kz_util:change_console_log_level(kz_util:to_atom(Level)).
+    kz_util:change_console_log_level(kz_term:to_atom(Level)).
 
 -spec hotload(text() | atom()) -> 'ok' | 'no_return'.
 hotload(Module) when is_atom(Module) ->
@@ -49,7 +49,7 @@ hotload(Module) when is_atom(Module) ->
             'no_return'
     end;
 hotload(Module) ->
-    hotload(kz_util:to_atom(Module, 'true')).
+    hotload(kz_term:to_atom(Module, 'true')).
 
 -spec hotload_app(text() | atom()) -> 'ok'.
 hotload_app(App) when is_atom(App) ->
@@ -62,7 +62,7 @@ hotload_app(App) when is_atom(App) ->
             io:format("app ~s not found (is it running? typo?)~n", [App])
     end;
 hotload_app(App) ->
-    hotload_app(kz_util:to_atom(App, 'true')).
+    hotload_app(kz_term:to_atom(App, 'true')).
 
 -spec gc_all() -> 'ok'.
 -spec gc_pids([pid(),...]) -> 'ok'.
@@ -121,7 +121,7 @@ words_to_bytes(Words) ->
 
 -spec print_table({ets:tid(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->
-    io:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+    io:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
 
 -spec mem_info() -> 'ok'.
 mem_info() ->

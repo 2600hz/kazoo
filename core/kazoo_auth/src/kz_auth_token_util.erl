@@ -57,7 +57,7 @@ verify(#{auth_provider := #{token_info_url := TokenInfoUrl}
         ,access_token := AccessToken
         }=Token) ->
     URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
-    case kz_http:get(kz_util:to_list(URL)) of
+    case kz_http:get(kz_term:to_list(URL)) of
         {'ok', 200, _RespHeaders, RespJObj} ->
             Token#{verified_token => kz_json:decode(RespJObj)};
         Else ->

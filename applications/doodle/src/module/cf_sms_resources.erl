@@ -91,7 +91,7 @@ build_offnet_request(Data, Call) ->
       ,{<<"Application-Name">>, <<"sms">>}
       ,{<<"Outbound-Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
       ,{<<"Outbound-Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-      ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+      ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
       ,{<<"Call-ID">>, doodle_exe:callid(Call)}
       ,{<<"Control-Queue">>, doodle_exe:control_queue(Call)}
       ,{<<"Presence-ID">>, kz_attributes:presence_id(Call)}
@@ -180,7 +180,7 @@ get_sip_headers(Data, Call) ->
                ],
     CustomHeaders = kz_json:get_value(<<"custom_sip_headers">>, Data, kz_json:new()),
     JObj = lists:foldl(fun(F, J) -> F(J) end, CustomHeaders, Routines),
-    case kz_util:is_empty(JObj) of
+    case kz_term:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
     end.
@@ -256,7 +256,7 @@ process_dynamic_flags([DynamicFlag|DynamicFlags], Flags, Call) ->
     case is_flag_exported(DynamicFlag) of
         'false' -> process_dynamic_flags(DynamicFlags, Flags, Call);
         'true' ->
-            Fun = kz_util:to_atom(DynamicFlag),
+            Fun = kz_term:to_atom(DynamicFlag),
             process_dynamic_flags(DynamicFlags, [kapps_call:Fun(Call)|Flags], Call)
     end.
 
@@ -266,7 +266,7 @@ is_flag_exported(Flag) ->
 
 is_flag_exported(_, []) -> 'false';
 is_flag_exported(Flag, [{F, 1}|Funs]) ->
-    kz_util:to_binary(F) =:= Flag
+    kz_term:to_binary(F) =:= Flag
         orelse is_flag_exported(Flag, Funs);
 is_flag_exported(Flag, [_|Funs]) -> is_flag_exported(Flag, Funs).
 

@@ -17,7 +17,7 @@ available_as_parent_test_() ->
     available_as(?MASTER_ACCOUNT_ID).
 
 available_as_rando_test_() ->
-    available_as(kz_util:rand_hex_binary(16)).
+    available_as(kz_binary:rand_hex(16)).
 
 available_as(AuthAccountId) ->
     case knm_number:get(?TEST_AVAILABLE_NUM, [{'auth_by', AuthAccountId}]) of

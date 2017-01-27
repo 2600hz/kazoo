@@ -94,8 +94,8 @@ find_blocks(Options0) ->
     ,?_assertEqual(?END_BLOCK, kz_json:get_value(<<"number">>, EndRep))
     ,?_assertEqual(?START_BLOCK, element(1,element(2,StartNumber)))
     ,?_assertEqual(?END_BLOCK, element(1,element(2,EndNumber)))
-    ,?_assertEqual(?CARRIER_OTHER, kz_util:to_binary(element(2,element(2,StartNumber))))
-    ,?_assertEqual(?CARRIER_OTHER, kz_util:to_binary(element(2,element(2,EndNumber))))
+    ,?_assertEqual(?CARRIER_OTHER, kz_term:to_binary(element(2,element(2,StartNumber))))
+    ,?_assertEqual(?CARRIER_OTHER, kz_term:to_binary(element(2,element(2,EndNumber))))
     ].
 
 find_numbers(Options0) ->

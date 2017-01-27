@@ -41,13 +41,13 @@ url() ->
     "/transactions/".
 
 url(TransactionId) ->
-    lists:append(["/transactions/", kz_util:to_list(TransactionId)]).
+    lists:append(["/transactions/", kz_term:to_list(TransactionId)]).
 
 url(TransactionId, Options) ->
     lists:append(["/transactions/"
-                 ,kz_util:to_list(TransactionId)
+                 ,kz_term:to_list(TransactionId)
                  ,"/"
-                 ,kz_util:to_list(Options)
+                 ,kz_term:to_list(Options)
                  ]).
 
 %%--------------------------------------------------------------------
@@ -110,7 +110,7 @@ find_by_customer(CustomerId, Min, Max) ->
 
 create(#bt_transaction{amount=Amount}=Transaction) ->
     MaxAmount = kapps_config:get_float(?CONFIG_CAT, <<"max_amount">>, 200.00),
-    case kz_util:to_float(Amount) >  MaxAmount of
+    case kz_term:to_float(Amount) >  MaxAmount of
         'true' -> braintree_util:error_max_amount(MaxAmount);
         'false' -> 'ok'
     end,
@@ -141,17 +141,17 @@ sale(CustomerId, Transaction) ->
 -spec quick_sale(ne_binary(), number() | ne_binary()) -> bt_transaction().
 -spec quick_sale(ne_binary(), number() | ne_binary(), kz_proplist()) -> bt_transaction().
 quick_sale(CustomerId, Amount) ->
-    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
-        'false' -> sale(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)})
+        'false' -> sale(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
 quick_sale(CustomerId, Amount, Props) ->
-    case kz_util:to_float(Amount) < ?MIN_AMOUNT of
+    case kz_term:to_float(Amount) < ?MIN_AMOUNT of
         'true' -> braintree_util:error_min_amount(?MIN_AMOUNT);
         'false' ->
             Transaction = json_to_record(kz_json:from_list(Props)),
-            sale(CustomerId, Transaction#bt_transaction{amount=kz_util:to_binary(Amount)})
+            sale(CustomerId, Transaction#bt_transaction{amount=kz_term:to_binary(Amount)})
     end.
 
 %%--------------------------------------------------------------------
@@ -172,7 +172,7 @@ credit(CustomerId, Transaction) ->
 
 -spec quick_credit(ne_binary(), ne_binary()) -> bt_transaction().
 quick_credit(CustomerId, Amount) ->
-    credit(CustomerId, #bt_transaction{amount=kz_util:to_binary(Amount)
+    credit(CustomerId, #bt_transaction{amount=kz_term:to_binary(Amount)
                                       ,settle='false'
                                       ,tax_exempt='false'
                                       }).
@@ -251,7 +251,7 @@ xml_to_record(Xml, Base) ->
                    ,processor_response_code = kz_xml:get_value([Base, "/processor-response-code/text()"], Xml)
                    ,processor_response_text = kz_xml:get_value([Base, "/processor-response-text/text()"], Xml)
                    ,tax_amount = kz_xml:get_value([Base, "/tax-amount/text()"], Xml)
-                   ,tax_exempt = kz_util:is_true(kz_xml:get_value([Base, "/tax-exempt/text()"], Xml))
+                   ,tax_exempt = kz_term:is_true(kz_xml:get_value([Base, "/tax-exempt/text()"], Xml))
                    ,billing_address = BillingAddress
                    ,shipping_address = braintree_address:xml_to_record(Xml, [Base, "/shipping"])
                    ,customer = braintree_customer:xml_to_record(Xml, [Base, "/customer"])

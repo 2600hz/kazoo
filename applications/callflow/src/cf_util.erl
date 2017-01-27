@@ -150,7 +150,7 @@ manual_presence_resp(Username, Realm, JObj) ->
         State ->
             PresenceUpdate = [{<<"Presence-ID">>, PresenceId}
                              ,{<<"State">>, State}
-                             ,{<<"Call-ID">>, kz_util:to_hex_binary(crypto:hash(md5, PresenceId))}
+                             ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))}
                               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                              ],
             kapps_util:amqp_pool_send(PresenceUpdate, fun kapi_presence:publish_update/1)
@@ -214,7 +214,7 @@ mwi_resp(Username, Realm, OwnerId, AccountDb, JObj) ->
 -spec is_unsolicited_mwi_enabled(ne_binary()) -> boolean().
 is_unsolicited_mwi_enabled(AccountId) ->
     kapps_config:get_is_true(?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')
-        andalso kz_util:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
+        andalso kz_term:is_true(kapps_account_config:get(AccountId, ?CF_CONFIG_CAT, ?MWI_SEND_UNSOLICITATED_UPDATES, 'true')).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -350,7 +350,7 @@ send_mwi_update(New, Saved, Username, Realm, JObj) ->
 %%--------------------------------------------------------------------
 -spec alpha_to_dialpad(ne_binary()) -> ne_binary().
 alpha_to_dialpad(Value) ->
-    << <<(dialpad_digit(C))>> || <<C>> <= kz_util:to_lower_binary(Value), is_alpha(C) >>.
+    << <<(dialpad_digit(C))>> || <<C>> <= kz_term:to_lower_binary(Value), is_alpha(C) >>.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -604,7 +604,7 @@ apply_dialplan(Regex, [Key|Keys], DialPlan, Number) ->
 
 -spec load_system_dialplans(ne_binaries()) -> kz_json:object().
 load_system_dialplans(Names) ->
-    LowerNames = [kz_util:to_lower_binary(Name) || Name <- Names],
+    LowerNames = [kz_term:to_lower_binary(Name) || Name <- Names],
     Plans = kapps_config:get_all_kvs(<<"dialplans">>),
     lists:foldl(fold_system_dialplans(LowerNames), kz_json:new(), Plans).
 
@@ -619,7 +619,7 @@ fold_system_dialplans(Names) ->
 
 -spec maybe_dialplan_suits({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
 maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
-    Name = kz_util:to_lower_binary(kz_json:get_value(<<"name">>, Val)),
+    Name = kz_term:to_lower_binary(kz_json:get_value(<<"name">>, Val)),
     case lists:member(Name, Names) of
         'true' -> kz_json:set_value(Key, Val, Acc);
         'false' -> maybe_system_dialplan_name(KV, Acc, Names)
@@ -627,10 +627,10 @@ maybe_dialplan_suits({Key, Val}=KV, Acc, Names) ->
 
 -spec maybe_system_dialplan_name({ne_binary(), kz_json:object()} ,kz_json:object(), ne_binaries()) -> kz_json:object().
 maybe_system_dialplan_name({Key, Val}, Acc, Names) ->
-    Name = kz_util:to_lower_binary(Key),
+    Name = kz_term:to_lower_binary(Key),
     case lists:member(Name, Names) of
         'true' ->
-            N = kz_util:to_binary(index_of(Name, Names)),
+            N = kz_term:to_binary(index_of(Name, Names)),
             kz_json:set_value(<<N/binary, "-", Key/binary>>, Val, Acc);
         'false' -> Acc
     end.
@@ -660,7 +660,7 @@ start_event_listener(Call, Mod, Args) ->
 
 -spec event_listener_name(kapps_call:call(), atom() | ne_binary()) -> ne_binary().
 event_listener_name(Call, Module) ->
-    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_util:to_binary(Module))/binary>>.
+    <<(kapps_call:call_id_direct(Call))/binary, "-", (kz_term:to_binary(Module))/binary>>.
 
 -spec caller_belongs_to_group(ne_binary(), kapps_call:call()) -> boolean().
 caller_belongs_to_group(GroupId, Call) ->
@@ -821,7 +821,7 @@ start_task(Fun, Args, Call) ->
 -spec mailbox(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
                                            {'error', any()}.
 mailbox(AccountDb, VMNumber) ->
-    try kz_util:to_integer(VMNumber) of
+    try kz_term:to_integer(VMNumber) of
         Number -> maybe_cached_mailbox(AccountDb, Number)
     catch
         _E:_R ->  {'error', 'not_found'}

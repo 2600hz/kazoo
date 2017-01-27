@@ -28,13 +28,13 @@
                            ,<<"redirect_uri">>
                            ]).
 
--define(KAZOO_GEN_SIGNATURE_SECRET, kz_util:rand_hex_binary(16)).
+-define(KAZOO_GEN_SIGNATURE_SECRET, kz_binary:rand_hex(16)).
 -define(KAZOO_SIGNATURE_ID, <<"secret_for_user_signature">>).
 -define(KAZOO_SIGNATURE_SECRET, kapps_config:get_ne_binary(?CONFIG_CAT, ?KAZOO_SIGNATURE_ID, ?KAZOO_GEN_SIGNATURE_SECRET)).
 
 -define(RSA_KEY_SIZE, 2048).
 
--define(SYSTEM_KEY_ID, kapps_config:get_ne_binary(?CONFIG_CAT, <<"system_key">>, kz_util:rand_hex_binary(16))).
+-define(SYSTEM_KEY_ID, kapps_config:get_ne_binary(?CONFIG_CAT, <<"system_key">>, kz_binary:rand_hex(16))).
 -define(SYSTEM_KEY_ATTACHMENT_NAME, <<"private_key.pem">>).
 -define(SYSTEM_KEY_ATTACHMENT_CTYPE, <<"application/x-pem-file">>).
 

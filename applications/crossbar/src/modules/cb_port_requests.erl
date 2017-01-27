@@ -995,7 +995,7 @@ check_number_existence(E164, Number, Context) ->
             cb_context:set_resp_status(Context, 'success');
         {'error', E} ->
             lager:debug("number ~s error-ed when looking up: ~p", [E164, E]),
-            number_validation_error(Context, Number, kz_util:to_binary(E))
+            number_validation_error(Context, Number, kz_term:to_binary(E))
     end.
 
 %%--------------------------------------------------------------------
@@ -1090,7 +1090,7 @@ find_template(ResellerId, 'undefined') ->
     {'ok', Template} = kz_pdf:find_template(ResellerId, <<"loa">>),
     Template;
 find_template(ResellerId, CarrierName) ->
-    EncodedCarrierName = kz_util:to_lower_binary(kz_util:uri_encode(CarrierName)),
+    EncodedCarrierName = kz_term:to_lower_binary(kz_util:uri_encode(CarrierName)),
     TemplateName = <<EncodedCarrierName/binary, ".tmpl">>,
     lager:debug("looking for carrier template ~s or plain template for reseller ~s"
                ,[TemplateName, ResellerId]),

@@ -24,9 +24,9 @@ map_keys_to_atoms(Map) ->
 
 -spec map_keys_to_atoms_fold(ne_binary(), any(), map()) -> map().
 map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
-    Acc#{kz_util:to_atom(K, 'true') => map_keys_to_atoms(V)};
+    Acc#{kz_term:to_atom(K, 'true') => map_keys_to_atoms(V)};
 map_keys_to_atoms_fold(K, V, Acc) ->
-    Acc#{kz_util:to_atom(K, 'true') => V}.
+    Acc#{kz_term:to_atom(K, 'true') => V}.
 
 
 
@@ -36,10 +36,10 @@ get_json_from_url(Url) ->
 
 -spec get_json_from_url(ne_binary(), kz_proplist()) -> {'ok', kz_json:object()} | {'error', any()}.
 get_json_from_url(Url, ReqHeaders) ->
-    case kz_http:get(kz_util:to_list(Url), ReqHeaders) of
+    case kz_http:get(kz_term:to_list(Url), ReqHeaders) of
         {'ok', 200, _RespHeaders, Body} ->
             JObj = kz_json:decode(Body),
-            case kz_util:is_empty(JObj) of
+            case kz_term:is_empty(JObj) of
                 'true' -> {'error', 'empty'};
                 'false' -> {'ok', JObj}
             end;
@@ -81,8 +81,8 @@ fetch_access_code(#{auth_app := #{name := ClientId
              ,{"grant_type", "authorization_code"}
              ,{"code", AuthorizationCode}
              ],
-    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_util:to_list(V)], "=") ] end, Fields)),"&"),
-    case kz_http:post(kz_util:to_list(URL), Headers, Body) of
+    Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K, kz_term:to_list(V)], "=") ] end, Fields)),"&"),
+    case kz_http:post(kz_term:to_list(URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespXML} -> {'ok', kz_json:decode(RespXML)};
         Else -> {'error', Else}
     end.

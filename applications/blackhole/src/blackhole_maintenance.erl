@@ -24,7 +24,7 @@
 -spec start_module(text()) -> 'ok'.
 start_module(Module) ->
     case blackhole_bindings:init_mod(Module) of
-        'ok' -> maybe_autoload_module(kz_util:to_binary(Module));
+        'ok' -> maybe_autoload_module(kz_term:to_binary(Module));
         {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
     end.
 
@@ -42,8 +42,8 @@ maybe_autoload_module(Module) ->
 -spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
 persist_module(Module, Mods) ->
     blackhole_config:set_default_autoload_modules(
-      [kz_util:to_binary(Module)
-       | lists:delete(kz_util:to_binary(Module), Mods)
+      [kz_term:to_binary(Module)
+       | lists:delete(kz_term:to_binary(Module), Mods)
       ]),
     'ok'.
 
@@ -58,7 +58,7 @@ stop_module(Module) ->
     'ok' = blackhole_bindings:flush_mod(Module),
 
     Mods = blackhole_config:autoload_modules(),
-    blackhole_config:set_default_autoload_modules(lists:delete(kz_util:to_binary(Module), Mods)),
+    blackhole_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
     io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
 
 %%--------------------------------------------------------------------

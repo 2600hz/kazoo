@@ -29,11 +29,11 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     Fields = maps:get('field_list', Params, default_format()),
     FieldSeparator = maps:get('field_separator', Params, <<"/">>),
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
-    BaseUrl = kz_util:strip_right_binary(BaseUrlParam, $/),
+    BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
     Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
-    case send_request(Url, kz_util:to_atom(Verb, 'true'), Headers, Contents) of
+    case send_request(Url, kz_term:to_atom(Verb, 'true'), Headers, Contents) of
         {'ok', NewUrl, _Body, _Debug} -> {'ok', url_fields(DocUrlField, NewUrl)};
         {'error', _} = Error -> Error
     end.
@@ -58,7 +58,7 @@ send_request(Url, Verb, Headers, Contents, Redirects, Debug) ->
             Fun = fun(URL, Tries, Data) -> send_request(URL, Verb, Headers, Contents, Tries, Data) end,
             maybe_redirect(Url, ReplyHeaders, Redirects, NewDebug, Fun);
         {'ok', Code, _ReplyHeaders, Body} ->
-            {'error', kz_util:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
+            {'error', kz_term:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
         {'error', Error} ->
             {'error', term_to_binary(Error)}
     end.
@@ -122,7 +122,7 @@ fetch_attachment(Url, Redirects, Debug) ->
             Fun = fun(URL, N, Data) -> fetch_attachment(URL, N, Data) end,
             maybe_redirect(Url, Headers, Redirects, NewDebug, Fun);
         {'ok', Code, _Headers, Body} ->
-            {'error', kz_util:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
+            {'error', kz_term:to_binary(io_lib:format("~B : ~s", [Code, Body]))};
         _R -> {'error', <<"error getting attachment from url ", Url/binary>>}
     end.
 
@@ -134,7 +134,7 @@ format_url(Fields, JObj, Args, Separator) ->
                                  ,Fields
                                  ),
     Reversed = lists:reverse(FormattedFields),
-    kz_util:join_binary(Reversed, Separator).
+    kz_binary:join(Reversed, Separator).
 
 format_url_field(JObj, Args, Fields, Acc)
   when is_list(Fields) ->

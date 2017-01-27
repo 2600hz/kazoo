@@ -65,7 +65,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
     case doodle_util:handle_bridge_failure(Reason, Call) of
         'not_found' ->
             doodle_util:maybe_reschedule_sms(
-              doodle_util:set_flow_status(<<"pending">>, kz_util:to_binary(R), Call)
+              doodle_util:set_flow_status(<<"pending">>, kz_term:to_binary(R), Call)
              );
         'ok' -> 'ok'
     end.
@@ -82,7 +82,7 @@ maybe_handle_bridge_failure({_ , R}=Reason, Call) ->
                            {kz_json:objects(), non_neg_integer()}.
 get_endpoints('undefined', _, _) -> {[], 0};
 get_endpoints(UserId, Data, Call) ->
-    Params = kz_json:set_value(<<"source">>, kz_util:to_binary(?MODULE), Data),
+    Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     EndpointIds = kz_attributes:owned_by(UserId, <<"device">>, Call),
     {Endpoints, DndCount} = lists:foldr(fun(EndpointId, {Acc, Dnd}) ->
                                                 case kz_endpoint:build(EndpointId, Params, Call) of

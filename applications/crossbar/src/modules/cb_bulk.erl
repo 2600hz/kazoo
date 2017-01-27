@@ -341,7 +341,7 @@ import_results_error(Id, C, Context) ->
     Errors    = cb_context:resp_data(C),
     JObj      = cb_context:resp_data(Context),
 
-    Resp = kz_json:from_list([{<<"status">>, kz_util:to_binary(Status)}
+    Resp = kz_json:from_list([{<<"status">>, kz_term:to_binary(Status)}
                              ,{<<"error">>, ErrorCode}
                              ,{<<"message">>, ErrorMsg}
                              ,{<<"data">>, Errors}

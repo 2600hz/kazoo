@@ -39,10 +39,10 @@ send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
-    Relay = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
-    Password = kz_util:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
-    Auth = kz_util:to_list(kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
+    Relay = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
+    Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
+    Auth = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
 
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
@@ -117,7 +117,7 @@ normalize_proplist_element(Else) ->
     Else.
 
 normalize_value(Value) ->
-    binary:replace(kz_util:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
+    binary:replace(kz_term:to_lower_binary(Value), <<"-">>, <<"_">>, ['global']).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -186,9 +186,9 @@ do_render_template('undefined', DefaultTemplate, Props) ->
     kz_template:render(DefaultTemplate, Props);
 do_render_template(Template, DefaultTemplate, Props) ->
     try
-        'false' = kz_util:is_empty(Template),
-        CustomTemplate = kz_util:to_atom(list_to_binary([kz_datamgr:get_uuid(), "_"
-                                                        ,kz_util:to_binary(DefaultTemplate)
+        'false' = kz_term:is_empty(Template),
+        CustomTemplate = kz_term:to_atom(list_to_binary([kz_datamgr:get_uuid(), "_"
+                                                        ,kz_term:to_binary(DefaultTemplate)
                                                         ])
                                         ,'true'),
         lager:debug("compiling custom ~s template", [DefaultTemplate]),
@@ -230,7 +230,7 @@ get_service_props(Request, Account, ConfigCat) ->
                                         ,kapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
     DefaultEmail = kz_json:get_ne_value(<<"support_email">>, Request
                                        ,kapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
-    UnconfiguredFrom = list_to_binary([<<"no_reply@">>, kz_util:to_binary(net_adm:localhost())]),
+    UnconfiguredFrom = list_to_binary([<<"no_reply@">>, kz_term:to_binary(net_adm:localhost())]),
     DefaultFrom = kz_json:get_ne_value(<<"send_from">>, Request
                                       ,kapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
     DefaultCharset = kz_json:get_ne_value(<<"template_charset">>, Request
@@ -246,7 +246,7 @@ get_service_props(Request, Account, ConfigCat) ->
     ,{<<"support_email">>, kz_json:get_value(<<"support_email">>, JObj, DefaultEmail)}
     ,{<<"send_from">>, kz_json:get_value(<<"send_from">>, JObj, DefaultFrom)}
     ,{<<"template_charset">>, kz_json:get_value(<<"template_charset">>, JObj, DefaultCharset)}
-    ,{<<"host">>, kz_util:to_binary(net_adm:localhost())}
+    ,{<<"host">>, kz_term:to_binary(net_adm:localhost())}
     ].
 
 -spec find_notification_settings(ne_binaries() | ne_binary(), ne_binaries()) -> kz_json:object().
@@ -418,7 +418,7 @@ qr_code_image(Text) ->
     CHL = kz_util:uri_encode(Text),
     Url = <<"https://chart.googleapis.com/chart?chs=300x300&cht=qr&chl=", CHL/binary, "&choe=UTF-8">>,
 
-    case kz_http:get(kz_util:to_list(Url)) of
+    case kz_http:get(kz_term:to_list(Url)) of
         {'ok', 200, _RespHeaders, RespBody} ->
             lager:debug("generated QR code from ~s: ~s", [Url, RespBody]),
             [{<<"image">>, base64:encode(RespBody)}];
@@ -443,7 +443,7 @@ post_json(Url, JObj, OnErrorCallback) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),
 
-    case kz_http:post(kz_util:to_list(Url), Headers, Encoded) of
+    case kz_http:post(kz_term:to_list(Url), Headers, Encoded) of
         {'ok', _2xx, _ResponseHeaders, _ResponseBody}
           when (_2xx - 200) < 100 -> %% ie: match "2"++_
             lager:debug("JSON data successfully POSTed to '~s'", [Url]);

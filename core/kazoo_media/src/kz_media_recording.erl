@@ -160,11 +160,11 @@ init([Call, Data]) ->
     {Year, Month, _} = erlang:date(),
     AccountDb = kz_util:format_account_modb(kazoo_modb:get_modb(AccountId, Year, Month),'encoded'),
     CallId = kapps_call:call_id(Call),
-    CdrId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), CallId),
-    RecordingId = kz_util:rand_hex_binary(16),
-    DocId = ?MATCH_MODB_PREFIX(kz_util:to_binary(Year), kz_util:pad_month(Month), RecordingId),
+    CdrId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_util:pad_month(Month), CallId),
+    RecordingId = kz_binary:rand_hex(16),
+    DocId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_util:pad_month(Month), RecordingId),
     InteractionId = kapps_call:custom_channel_var(<<?CALL_INTERACTION_ID>>, Call),
-    DefaultMediaName = get_media_name(kz_util:rand_hex_binary(16), Format),
+    DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
     Url = kz_json:get_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
@@ -443,7 +443,7 @@ store_recording_meta(#state{call=Call
                      ,{<<"content_type">>, kz_mime:from_extension(Ext)}
                      ,{<<"media_type">>, Ext}
                      ,{<<"media_source">>, <<"recorded">>}
-                     ,{<<"source_type">>, kz_util:to_binary(?MODULE)}
+                     ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
                      ,{<<"pvt_type">>, <<"call_recording">>}
                      ,{<<"from">>, kapps_call:from(Call)}
                      ,{<<"to">>, kapps_call:to(Call)}
@@ -536,7 +536,7 @@ handler_from_url(Url) ->
 
 -spec should_store_recording(ne_binary(), api_binary()) -> store_url().
 should_store_recording(AccountId, Url) ->
-    case kz_util:is_empty(Url) of
+    case kz_term:is_empty(Url) of
         'true' -> maybe_storage_plan(AccountId);
         'false' ->
             case handler_from_url(Url) of
@@ -584,7 +584,7 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     Props = [{<<"Media-Name">>, MediaName}
             ,{<<"Media-Recording-ID">>, MediaDocId}
             ,{<<"Record-Sample-Rate">>, SampleRate}
-            ,{<<"Record-Min-Sec">>, kz_util:to_binary(RecordMinSec)}
+            ,{<<"Record-Min-Sec">>, kz_term:to_binary(RecordMinSec)}
             ,{<<"Media-Recorder">>, <<"kz_media_recording">>}
             ],
     kapps_call_command:start_record_call(Props, TimeLimit, Call),

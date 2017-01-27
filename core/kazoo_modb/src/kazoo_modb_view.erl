@@ -24,7 +24,7 @@
                          {kz_json:path(), kz_json:objects()}.
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, Start, End, Limit, Options) ->
     CouchOptions = props:get_value(couch_options, Options, []),
-    Mapper = props:get_value(mapper, Options, fun kz_util:identity/1),
+    Mapper = props:get_value(mapper, Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, Start, End, Limit, Mapper, CouchOptions).
 
 -spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), pos_integer(), mapper_fun(), kz_datamgr:view_options()) ->
@@ -85,7 +85,7 @@ last_key(_LastKey, [Last|JObjs], Limit, Returned) when Returned == Limit ->
 -spec get_results(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), options()) -> [kz_json:objects()].
 get_results(?NE_BINARY = AccountId, ?NE_BINARY = View, Start, End, Options) ->
     CouchOptions = props:get_value(couch_options, Options, []),
-    Mapper = props:get_value(mapper, Options, fun kz_util:identity/1),
+    Mapper = props:get_value(mapper, Options, fun kz_term:identity/1),
     get_ordered(AccountId, View, Start, End, Mapper, CouchOptions).
 
 -spec get_ordered(ne_binary(), ne_binary(), kz_json:path(), kz_json:path(), mapper_fun(), kz_datamgr:view_options()) -> kz_json:objects().

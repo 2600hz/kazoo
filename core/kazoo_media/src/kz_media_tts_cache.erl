@@ -86,7 +86,7 @@ stop(Srv) ->
 %%--------------------------------------------------------------------
 -spec init(list()) -> {'ok', state()}.
 init([Text, JObj]) ->
-    kz_util:put_callid(kz_util:binary_md5(Text)),
+    kz_util:put_callid(kz_binary:binary_md5(Text)),
 
     Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
                            ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
@@ -97,7 +97,7 @@ init([Text, JObj]) ->
 
     {'ok', ReqID} = kapps_speech:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
-    MediaName = kz_util:binary_md5(Text),
+    MediaName = kz_binary:binary_md5(Text),
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
 
     Meta = kz_json:from_list([{<<"content_type">>, kz_mime:from_extension(Format)}
@@ -293,7 +293,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 -spec kv_to_bin(kz_proplist()) -> kz_proplist().
 kv_to_bin(L) ->
-    [{kz_util:to_binary(K), kz_util:to_binary(V)} || {K,V} <- L].
+    [{kz_term:to_binary(K), kz_term:to_binary(V)} || {K,V} <- L].
 
 -spec start_timer() -> reference().
 start_timer() ->

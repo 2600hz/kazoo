@@ -71,10 +71,10 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
                 ]
                },
 
-    Boundary = <<"------", (kz_util:rand_hex_binary(16))/binary>>,
+    Boundary = <<"------", (kz_binary:rand_hex(16))/binary>>,
 
     Body = encode_multipart([JsonPart, FilePart], Boundary),
-    ContentType = kz_util:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
+    ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
     Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
               ,{<<"Content-Type">>, ContentType}
               ],
@@ -97,10 +97,10 @@ filter_kv(_KV) -> 'false'.
 
 convert_kv({K, V})
   when is_list(K) ->
-    convert_kv({kz_util:to_binary(K), V});
+    convert_kv({kz_term:to_binary(K), V});
 convert_kv({K, V})
   when is_list(V) ->
-    convert_kv({K, kz_util:to_binary(V)});
+    convert_kv({K, kz_term:to_binary(V)});
 convert_kv(KV) -> KV.
 
 -spec fetch_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary()) ->

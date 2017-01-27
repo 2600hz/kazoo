@@ -37,10 +37,10 @@ xml_to_record(Xml) ->
 xml_to_record(Xml, Base) ->
     #bt_discount{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                 ,amount = kz_xml:get_value([Base, "/amount/text()"], Xml)
-                ,never_expires = kz_util:is_true(kz_xml:get_value([Base, "/never-expires/text()"], Xml))
+                ,never_expires = kz_term:is_true(kz_xml:get_value([Base, "/never-expires/text()"], Xml))
                 ,billing_cycle = kz_xml:get_value([Base, "/current-billing-cycle/text()"], Xml)
                 ,number_of_cycles = kz_xml:get_value([Base, "/number-of-billing-cycles/text()"], Xml)
-                ,quantity = kz_util:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
+                ,quantity = kz_term:to_integer(kz_xml:get_value([Base, "/quantity/text()"], Xml))
                 }.
 
 %%--------------------------------------------------------------------
@@ -79,7 +79,7 @@ record_to_xml(Discount, ToString) ->
 record_to_json(#bt_discount{id=Id, amount=Amount, quantity=Q}) ->
     Props = [{<<"id">>, Id}
             ,{<<"amount">>, Amount}
-            ,{<<"quantity">>, kz_util:to_integer(Q)}
+            ,{<<"quantity">>, kz_term:to_integer(Q)}
             ],
     kz_json:from_list([KV || {_, V}=KV <- Props, V =/= 'undefined']).
 

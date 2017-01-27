@@ -24,7 +24,7 @@ exec(Call, Cmds) ->
 exec(Call, Cmds, 'undefined') ->
     exec(Call, Cmds, <<"text/xml">>);
 exec(Call, Cmds, CT) when not is_binary(CT) ->
-    exec(Call, Cmds, kz_util:to_binary(CT));
+    exec(Call, Cmds, kz_term:to_binary(CT));
 exec(Call, Cmds, CT) ->
     case [{M, Cmd1} || M <- find_candidate_translators(just_the_type(CT)),
                        begin {IsRecognized, Cmd1} = is_recognized(M, Cmds), IsRecognized end
@@ -36,10 +36,10 @@ exec(Call, Cmds, CT) ->
 -spec just_the_type(ne_binary()) -> ne_binary().
 just_the_type(ContentType) ->
     case binary:split(ContentType, <<";">>) of
-        [ContentType] -> kz_util:strip_binary(ContentType);
+        [ContentType] -> kz_binary:strip(ContentType);
         [JustContentType | _Other]=L ->
             lager:debug("just using content type ~s, ignoring ~p", L),
-            kz_util:strip_binary(JustContentType)
+            kz_binary:strip(JustContentType)
     end.
 
 -spec get_user_vars(kapps_call:call()) -> kz_json:object().

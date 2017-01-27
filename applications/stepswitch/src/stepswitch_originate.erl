@@ -22,7 +22,7 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {msg_id=kz_util:rand_hex_binary(12)
+-record(state, {msg_id=kz_binary:rand_hex(12)
                ,endpoints = [] :: kz_json:objects()
                ,resource_req :: kapi_offnet_resource:req()
                ,request_handler :: pid()
@@ -344,7 +344,7 @@ originate_timeout(Request) ->
 
 -spec originate_error(kz_json:object(), kz_json:object()) -> kz_proplist().
 originate_error(JObj, OffnetReq) ->
-    lager:debug("error during originate request: ~s", [kz_util:to_binary(kz_json:encode(JObj))]),
+    lager:debug("error during originate request: ~s", [kz_term:to_binary(kz_json:encode(JObj))]),
     [{<<"Call-ID">>, kz_json:get_value(<<"Outbound-Call-ID">>, OffnetReq)}
     ,{<<"Msg-ID">>, kz_api:msg_id(OffnetReq)}
     ,{<<"Response-Message">>, <<"NORMAL_TEMPORARY_FAILURE">>}

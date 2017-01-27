@@ -32,7 +32,7 @@ load(<<_/binary>> = Schema) ->
         {'error', _E}=E -> E;
         {'ok', JObj} -> {'ok', kz_json:insert_value(<<"id">>, Schema, JObj)}
     end;
-load(Schema) -> load(kz_util:to_binary(Schema)).
+load(Schema) -> load(kz_term:to_binary(Schema)).
 
 -spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
                                        {'error', any()}.
@@ -43,7 +43,7 @@ fload(<<_/binary>> = Schema) ->
     {'ok', SchemaJSON} = file:read_file(SchemaPath),
     SchemaJObj = kz_json:decode(SchemaJSON),
     {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)};
-fload(Schema) -> fload(kz_util:to_binary(Schema)).
+fload(Schema) -> fload(kz_term:to_binary(Schema)).
 
 -spec maybe_add_ext(ne_binary()) -> ne_binary().
 maybe_add_ext(Schema) ->
@@ -183,7 +183,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Minimum = kz_json:get_value(<<"minLength">>, FailedSchemaJObj),
-    MinLen = kz_util:to_binary(Minimum),
+    MinLen = kz_term:to_binary(Minimum),
 
     validation_error(FailedKeyPath
                     ,<<"minLength">>
@@ -203,7 +203,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Maximum = kz_json:get_value(<<"maxLength">>, FailedSchemaJObj),
-    MaxLen = kz_util:to_binary(Maximum),
+    MaxLen = kz_term:to_binary(Maximum),
 
     validation_error(FailedKeyPath
                     ,<<"maxLength">>
@@ -304,7 +304,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Minimum = kz_json:get_first_defined([<<"minimum">>, <<"exclusiveMinimum">>], FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
+    Min = kz_term:to_binary(Minimum),
 
     validation_error(FailedKeyPath
                     ,<<"minimum">>
@@ -323,7 +323,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Maximum = kz_json:get_first_defined([<<"maximum">>, <<"exclusiveMaximum">>], FailedSchemaJObj),
-    Max = kz_util:to_binary(Maximum),
+    Max = kz_term:to_binary(Maximum),
 
     validation_error(FailedKeyPath
                     ,<<"maximum">>
@@ -373,7 +373,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Minimum = kz_json:get_value(<<"minItems">>, FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
+    Min = kz_term:to_binary(Minimum),
 
     validation_error(FailedKeyPath
                     ,<<"minItems">>
@@ -392,7 +392,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Maximum = kz_json:get_value(<<"maxItems">>, FailedSchemaJObj),
-    Max = kz_util:to_binary(Maximum),
+    Max = kz_term:to_binary(Maximum),
 
     validation_error(FailedKeyPath
                     ,<<"maxItems">>
@@ -411,7 +411,7 @@ error_to_jobj({'data_invalid'
              ,Options
              ) ->
     Minimum = kz_json:get_value(<<"minProperties">>, FailedSchemaJObj),
-    Min = kz_util:to_binary(Minimum),
+    Min = kz_term:to_binary(Minimum),
 
     validation_error(FailedKeyPath
                     ,<<"minProperties">>
@@ -588,7 +588,7 @@ error_to_jobj({'data_invalid'
     lager:debug("failed value: ~p", [_FailedValue]),
     lager:debug("failed keypath: ~p", [FailedKeyPath]),
     validation_error(FailedKeyPath
-                    ,kz_util:to_binary(FailMsg)
+                    ,kz_term:to_binary(FailMsg)
                     ,kz_json:from_list([{<<"message">>, <<"failed to validate">>}])
                     ,Options
                     );
@@ -724,7 +724,7 @@ build_validate_error(Property, Code, Message, Options) ->
 
     Error = build_error_message(Version, Message),
 
-    Key = kz_util:join_binary(Property, <<".">>),
+    Key = kz_binary:join(Property, <<".">>),
 
     {props:get_value('error_code', Options)
     ,props:get_value('error_message', Options)
@@ -741,13 +741,13 @@ build_error_message(_Version, JObj) ->
 get_disallow(JObj) ->
     case kz_json:get_value(<<"disallow">>, JObj) of
         <<_/binary>> = Disallow -> Disallow;
-        Disallows when is_list(Disallows) -> kz_util:join_binary(Disallows)
+        Disallows when is_list(Disallows) -> kz_binary:join(Disallows)
     end.
 
 -spec get_types(kz_json:object()) -> ne_binary().
 get_types(JObj) ->
     case kz_json:get_first_defined([<<"type">>, <<"types">>], JObj) of
         <<_/binary>> = Type -> Type;
-        Types when is_list(Types) -> kz_util:join_binary(Types);
+        Types when is_list(Types) -> kz_binary:join(Types);
         _TypeSchema -> <<"type schema">>
     end.

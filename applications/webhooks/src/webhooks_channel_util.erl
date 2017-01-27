@@ -71,7 +71,7 @@ format_event(JObj, AccountId, <<"CHANNEL_DESTROY">>) ->
 base_hook_event(JObj, AccountId) ->
     base_hook_event(JObj, AccountId, []).
 base_hook_event(JObj, AccountId, Acc) ->
-    WasGlobal = kz_util:is_true(ccv(JObj, <<"Global-Resource">>)),
+    WasGlobal = kz_term:is_true(ccv(JObj, <<"Global-Resource">>)),
 
     kz_json:from_list(
       props:filter_undefined(
@@ -94,7 +94,7 @@ base_hook_event(JObj, AccountId, Acc) ->
         ,{<<"authorizing_type">>, kz_call_event:authorizing_type(JObj)}
         ,{<<"local_resource_used">>, (not WasGlobal)}
         ,{<<"local_resource_id">>, resource_used(WasGlobal, JObj)}
-        ,{<<"emergency_resource_used">>, kz_util:is_true(ccv(JObj, <<"Emergency-Resource">>))}
+        ,{<<"emergency_resource_used">>, kz_term:is_true(ccv(JObj, <<"Emergency-Resource">>))}
         ,{<<"call_forwarded">>, kz_call_event:is_call_forwarded(JObj)}
          | Acc
         ])).

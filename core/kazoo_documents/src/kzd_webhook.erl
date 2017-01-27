@@ -131,7 +131,7 @@ verb(Hook) ->
 verb(Hook, Default) ->
     case kz_json:get_value(?VERB, Hook) of
         'undefined' -> Default;
-        Verb -> safe_verbs(kz_util:to_lower_binary(Verb), Default)
+        Verb -> safe_verbs(kz_term:to_lower_binary(Verb), Default)
     end.
 
 -spec safe_verbs(api_binary(), http_verb() | Default) ->
@@ -146,7 +146,7 @@ set_verb(Hook, <<_/binary>> = Verb) ->
 set_verb(Hook, Verb) when Verb =:= 'get'
                           orelse Verb =:= 'post'
                           ->
-    kz_json:set_value(?VERB, kz_util:to_binary(Verb), Hook).
+    kz_json:set_value(?VERB, kz_term:to_binary(Verb), Hook).
 
 -type retry_range() :: 1..5.
 

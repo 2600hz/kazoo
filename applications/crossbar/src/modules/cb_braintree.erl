@@ -139,7 +139,7 @@ validate_customer(Context, ?HTTP_GET) ->
             Resp = braintree_customer:record_to_json(Customer),
             crossbar_util:response(Resp, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 validate_customer(Context, ?HTTP_POST) ->
     JObj = cb_context:req_data(Context),
@@ -169,7 +169,7 @@ validate_cards(Context, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 validate_cards(Context, ?HTTP_PUT) ->
     Card0 = braintree_card:json_to_record(cb_context:req_data(Context)),
@@ -186,7 +186,7 @@ validate_addresses(Context, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 validate_addresses(Context, ?HTTP_PUT) ->
     Address0 = braintree_address:json_to_record(cb_context:req_data(Context)),
@@ -203,7 +203,7 @@ validate_transactions(Context, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec validate_credits(cb_context:context(), path_token()) -> cb_context:context().
@@ -224,13 +224,13 @@ validate_credits(Context, ?HTTP_PUT) ->
         'true' ->
             error_max_credit(Context, MaxCredit, FutureAmount);
         'false' ->
-            Context1 = cb_context:store(Context, 'bt_order_id', kz_util:rand_hex_binary(16)),
+            Context1 = cb_context:store(Context, 'bt_order_id', kz_binary:rand_hex(16)),
             maybe_charge_billing_id(Amount, Context1)
     end.
 
 -spec error_max_credit(cb_context:context(), number(), number()) -> cb_context:context().
 error_max_credit(Context, MaxCredit, FutureAmount) ->
-    Message = <<"Available credit can not exceed $", (kz_util:to_binary(MaxCredit))/binary>>,
+    Message = <<"Available credit can not exceed $", (kz_term:to_binary(MaxCredit))/binary>>,
     cb_context:add_validation_error(<<"amount">>
                                    ,<<"maximum">>
                                    ,kz_json:from_list(
@@ -248,7 +248,7 @@ validate_token(Context, ?HTTP_GET) ->
             crossbar_util:response(JObj, Context)
     catch
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
@@ -270,7 +270,7 @@ validate_card(Context, CardId, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 validate_card(Context, CardId, ?HTTP_POST) ->
     Card0 = braintree_card:json_to_record(cb_context:req_data(Context)),
@@ -292,7 +292,7 @@ validate_address(Context, AddressId, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 validate_address(Context, AddressId, ?HTTP_POST) ->
     Address0 = braintree_address:json_to_record(cb_context:req_data(Context)),
@@ -313,7 +313,7 @@ validate_transaction(Context, TransactionId, ?HTTP_GET) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
@@ -330,7 +330,7 @@ post(Context, ?CUSTOMER_PATH_TOKEN) ->
         'throw':{'not_found', _} ->
             create_braintree_customer(Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 post(Context, ?CARDS_PATH_TOKEN, CardId) ->
@@ -345,7 +345,7 @@ post(Context, ?CARDS_PATH_TOKEN, CardId) ->
         'throw':{'not_found', _} ->
             cb_context:add_system_error('bad_identifier', kz_json:from_list([{<<"cause">>, CardId}]), Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     try braintree_address:update(cb_context:fetch(Context, 'braintree')) of
@@ -358,7 +358,7 @@ post(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
         'throw':{'not_found', _} ->
             crossbar_util:response_bad_identifier(AddressId, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -373,7 +373,7 @@ put(Context, ?ADDRESSES_PATH_TOKEN) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 put(Context, ?CARDS_PATH_TOKEN) ->
     try braintree_card:create(cb_context:fetch(Context, 'braintree')) of
@@ -385,7 +385,7 @@ put(Context, ?CARDS_PATH_TOKEN) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec create_credits(cb_context:context()) -> cb_context:context().
@@ -444,7 +444,7 @@ delete(Context, ?CARDS_PATH_TOKEN, CardId) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end;
 delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
     try braintree_address:delete(cb_context:account_id(Context), AddressId) of
@@ -455,7 +455,7 @@ delete(Context, ?ADDRESSES_PATH_TOKEN, AddressId) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 %%%===================================================================
@@ -482,7 +482,7 @@ create_braintree_customer(Context) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec maybe_charge_billing_id(float(), cb_context:context()) -> cb_context:context().
@@ -523,7 +523,7 @@ charge_billing_id(Amount, Context) ->
                     ]
             end,
 
-    try braintree_transaction:quick_sale(BillingId, kz_util:to_binary(Amount), Props) of
+    try braintree_transaction:quick_sale(BillingId, kz_term:to_binary(Amount), Props) of
         #bt_transaction{}=Transaction ->
             kz_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
             crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
@@ -531,7 +531,7 @@ charge_billing_id(Amount, Context) ->
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
-            crossbar_util:response('error', kz_util:to_binary(Error), 500, Reason, Context)
+            crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
     end.
 
 -spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->

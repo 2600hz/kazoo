@@ -46,11 +46,11 @@ do_fetch_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att) 
     end.
 
 do_fetch_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName) ->
-    Module = kz_util:to_atom(Handler, 'true'),
+    Module = kz_term:to_atom(Handler, 'true'),
     Module:fetch_attachment(Props, DbName, DocId, AName);
 do_fetch_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName) ->
     Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps),
-    case kz_util:to_atom(Handler, 'true') of
+    case kz_term:to_atom(Handler, 'true') of
         Module -> Module:fetch_attachment(Props, DbName, DocId, AName);
         DiffModule -> DiffModule:fetch_attachment(HandlerProps, DbName, DocId, AName)
     end.
@@ -76,12 +76,12 @@ do_stream_attachment(#{server := {App, Conn}}=Server, DbName, DocId, AName, Att,
     end.
 
 do_stream_attachment_from_handler([{Handler, Props}], 'undefined', DbName, DocId, AName, Caller) ->
-    Module = kz_util:to_atom(Handler, 'true'),
+    Module = kz_term:to_atom(Handler, 'true'),
     Ref = make_ref(),
     kz_util:spawn(fun relay_stream_attachment/7, [Caller, Ref, Module, Props, DbName, DocId, AName]),
     {'ok', Ref};
 do_stream_attachment_from_handler([{Handler, HandlerProps}], {Module, ModuleProps}, DbName, DocId, AName, Caller) ->
-    case kz_util:to_atom(Handler, 'true') of
+    case kz_term:to_atom(Handler, 'true') of
         Module ->
             FinalModule = Module,
             Props = kz_json:set_value(<<"handler_props">>, ModuleProps, HandlerProps);
@@ -129,7 +129,7 @@ put_attachment(#{server := {App, Conn}}, DbName, DocId, AName, Contents, Options
 
 
 attachment_from_handler(AName, AttHandler, Size, CT) ->
-    Props = [{<<"content_type">>, kz_util:to_binary(CT)}
+    Props = [{<<"content_type">>, kz_term:to_binary(CT)}
             ,{<<"length">>, Size}
             ,{<<"stub">>, 'false'}
             ,{<<"handler">>, AttHandler}
@@ -138,7 +138,7 @@ attachment_from_handler(AName, AttHandler, Size, CT) ->
 
 attachment_handler_jobj(Handler, Props) ->
     JObj = kz_json:from_list(props:get_value('attachment', Props, [])),
-    kz_json:set_value(kz_util:to_binary(Handler), JObj, kz_json:new()).
+    kz_json:set_value(kz_term:to_binary(Handler), JObj, kz_json:new()).
 
 -spec handle_put_attachment(map(), kz_json:object(), ne_binary(), ne_binary(), ne_binary(), ne_binary()
                            , kz_proplist(), kz_proplist()) ->

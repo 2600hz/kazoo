@@ -248,7 +248,7 @@ render_farm(TemplateId, Macros, Templates) ->
 
 -spec renderer_name(ne_binary(), ne_binary()) -> atom().
 renderer_name(TemplateId, ContentType) ->
-    kz_util:to_atom(<<(TemplateId)/binary, ".", ContentType/binary>>, 'true').
+    kz_term:to_atom(<<(TemplateId)/binary, ".", ContentType/binary>>, 'true').
 
 %%--------------------------------------------------------------------
 %% @public
@@ -571,7 +571,7 @@ update_macro(MacroKey, MacroValue, {_IsUpdated, TemplateJObj}=Acc) ->
 %%--------------------------------------------------------------------
 -spec attachment_name(ne_binary()) -> ne_binary().
 attachment_name(ContentType) ->
-    kz_util:clean_binary(<<"template.", (kz_http_util:urlencode(ContentType))/binary>>).
+    kz_binary:clean(<<"template.", (kz_http_util:urlencode(ContentType))/binary>>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -602,7 +602,7 @@ save_attachment(DocId, AName, ContentType, Contents) ->
                                  ,DocId
                                  ,AName
                                  ,Contents
-                                 ,[{'content_type', kz_util:to_list(ContentType)}]
+                                 ,[{'content_type', kz_term:to_list(ContentType)}]
          )
     of
         {'ok', _UpdatedJObj}=OK ->
@@ -648,7 +648,7 @@ write_template_to_disk(TemplateId, {Type, Template}) ->
 
 -spec template_filename(ne_binary(), 'html' | 'text') -> file:filename_all().
 template_filename(TemplateId, Type) ->
-    Basename = iolist_to_binary([TemplateId, ".", kz_util:to_list(Type)]),
+    Basename = iolist_to_binary([TemplateId, ".", kz_term:to_list(Type)]),
     filename:join([code:priv_dir('teletype')
                   ,"templates"
                   ,Basename
