@@ -123,7 +123,7 @@ maybe_top_up(AccountId, Balance, Amount, Threshold) ->
                           boolean() |
                           {'error', error()}.
 should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
-    To = kz_util:current_tstamp(),
+    To = kz_time:current_tstamp(),
     From = To - ?SECONDS_IN_DAY,
     case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason} = Error ->

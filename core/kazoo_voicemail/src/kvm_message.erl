@@ -289,7 +289,7 @@ do_copy(AccountId, JObj, Funs) ->
     FromId = kz_doc:id(JObj),
     ToDb = kazoo_modb:get_modb(AccountId),
     ToId = <<(kz_term:to_binary(Year))/binary
-             ,(kz_util:pad_month(Month))/binary
+             ,(kz_time:pad_month(Month))/binary
              ,"-"
              ,(kz_binary:rand_hex(16))/binary
            >>,
@@ -379,12 +379,12 @@ maybe_add_metadata(Call, JObj, 'undefined', Props) ->
     Length = props:get_value(<<"Length">>, Props),
     CIDNumber = kvm_util:get_caller_id_number(Call),
     CIDName = kvm_util:get_caller_id_name(Call),
-    Timestamp = kz_util:current_tstamp(),
+    Timestamp = kz_time:current_tstamp(),
     Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
     kzd_box_message:set_metadata(Metadata, JObj);
 maybe_add_metadata(_Call, JObj, Metadata, Props) ->
     MediaId = kz_doc:id(JObj),
-    Updates = [fun(M) -> kz_json:set_value(<<"timestamp">>, kz_util:current_tstamp(), M) end
+    Updates = [fun(M) -> kz_json:set_value(<<"timestamp">>, kz_time:current_tstamp(), M) end
               ,fun(M) -> kzd_box_message:set_media_id(MediaId, M) end
               ,fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
               ],
@@ -590,7 +590,7 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
                   ],
             update_metadata(AccountId, BoxId, MediaId, Fun);
         'nothing' ->
-            Timestamp = kz_util:current_tstamp(),
+            Timestamp = kz_time:current_tstamp(),
             kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
     end.
 

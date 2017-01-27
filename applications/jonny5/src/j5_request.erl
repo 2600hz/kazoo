@@ -115,7 +115,7 @@ from_jobj(JObj) ->
             ,node = kz_api:node(JObj)
             ,billing_seconds = kz_json:get_integer_value(<<"Billing-Seconds">>, JObj, 0)
             ,answered_time = kz_json:get_integer_value(<<"Answered-Seconds">>, JObj, 0)
-            ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_util:current_tstamp())
+            ,timestamp = kz_json:get_integer_value(<<"Timestamp">>, JObj, kz_time:current_tstamp())
             ,classification = knm_converters:classify(Number)
             ,number = Number
             ,request_jobj = JObj

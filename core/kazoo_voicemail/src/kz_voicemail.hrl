@@ -31,7 +31,7 @@
 
 -define(MODB_MSG_ID(Year, Month, Id),
         <<(kz_term:to_binary(Year))/binary
-          ,(kz_util:pad_month(Month))/binary
+          ,(kz_time:pad_month(Month))/binary
           ,"-"
           ,(Id)/binary
         >>).

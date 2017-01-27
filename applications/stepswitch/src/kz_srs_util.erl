@@ -78,7 +78,7 @@ get_value({'database', SelectorName}, Resources, Number, OffnetJObj, DB, Default
 get_value({'database', View, Options}, _Resources, _Number, _OffnetJObj, DB, Default) ->
     case kz_datamgr:get_results(DB, View, Options) of
         {'ok', Rows} ->
-            Now = kz_util:current_tstamp(),
+            Now = kz_time:current_tstamp(),
             lists:foldl(fun(Row, Acc) ->
                                 filter_by_start_stop(Now, Row, Acc, Default)
                         end

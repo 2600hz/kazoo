@@ -35,7 +35,7 @@ execute_text_flow(JObj, Call) ->
             doodle_util:save_sms(doodle_util:set_flow_error(<<"error">>, ?RESTRICTED_MSG, Call)),
             'ok';
         'false' ->
-            maybe_scheduled_delivery(JObj, Call, ?SCHEDULED(Call) , kz_util:current_tstamp())
+            maybe_scheduled_delivery(JObj, Call, ?SCHEDULED(Call) , kz_time:current_tstamp())
     end.
 
 -spec maybe_scheduled_delivery(kz_json:object(), kapps_call:call(), integer(), integer()) ->

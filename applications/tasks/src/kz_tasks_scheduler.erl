@@ -241,7 +241,7 @@ handle_call({'worker_finished', TaskId, TotalSucceeded, TotalFailed}, _From, Sta
     lager:debug("worker finished ~s: ~p/~p", [TaskId, TotalSucceeded, TotalFailed]),
     case task_by_id(TaskId, State) of
         [Task] ->
-            Task1 = Task#{finished => kz_util:current_tstamp()
+            Task1 = Task#{finished => kz_time:current_tstamp()
                          ,total_rows_failed => TotalFailed
                          ,total_rows_succeeded => TotalSucceeded
                          },
@@ -291,7 +291,7 @@ handle_call(_Request, _From, State) ->
 handle_cast({'worker_error', TaskId}, State) ->
     lager:debug("worker error ~s", [TaskId]),
     [Task=#{total_rows := TotalRows}] = task_by_id(TaskId, State),
-    Task1 = Task#{finished => kz_util:current_tstamp()
+    Task1 = Task#{finished => kz_time:current_tstamp()
                  ,total_rows_failed => TotalRows
                  ,total_rows_succeeded => 0
                  },
@@ -330,7 +330,7 @@ handle_info({'EXIT', Pid, _Reason}, State) ->
             %% Note: this means output attachment was MAYBE NOT saved to task doc.
             %% Note: setting total_rows_failed to undefined here will change
             %%  status to ?STATUS_BAD but will not update total_rows_failed value in doc.
-            Task1 = Task#{finished => kz_util:current_tstamp()
+            Task1 = Task#{finished => kz_time:current_tstamp()
                          ,total_rows_failed := 'undefined'
                          },
             {'ok', _JObj} = update_task(Task1),
@@ -385,7 +385,7 @@ task_by_pid(Pid, State) ->
 log_elapsed_time(#{started := Start
                   ,finished := End
                   }) ->
-    lager:debug("task ran for ~s", [kz_util:pretty_print_elapsed_s(End - Start)]).
+    lager:debug("task ran for ~s", [kz_time:pretty_print_elapsed_s(End - Start)]).
 
 -spec handle_call_start_task(kz_tasks:task(), state()) -> ?REPLY(state(), Response) when
       Response :: {'ok', kz_json:object()} |
@@ -414,7 +414,7 @@ handle_call_start_task(Task=#{id := TaskId
     %% Task needs to run where App is started.
     try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
         Pid ->
-            Task1 = Task#{started => kz_util:current_tstamp()
+            Task1 = Task#{started => kz_time:current_tstamp()
                          ,worker_pid => Pid
                          ,worker_node => kz_term:to_binary(node())
                          },

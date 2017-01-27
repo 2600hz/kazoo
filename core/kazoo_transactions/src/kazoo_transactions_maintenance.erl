@@ -74,7 +74,7 @@ get_topup_thresholds(AccountId) ->
 
 -spec is_topup_today(ne_binary()) -> boolean().
 is_topup_today(AccountId) ->
-    To = kz_util:current_tstamp(),
+    To = kz_time:current_tstamp(),
     From = To - ?SECONDS_IN_DAY,
     case kz_transactions:fetch_local(AccountId, From, To) of
         {'error', _Reason} ->

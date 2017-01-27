@@ -410,7 +410,7 @@ receive_event(Timeout, IgnoreOthers) ->
     receive
         {'amqp_msg', JObj} -> {'ok', JObj};
         _ when IgnoreOthers ->
-            receive_event(kz_util:decr_timeout(Timeout, Start), IgnoreOthers);
+            receive_event(kz_time:decr_timeout(Timeout, Start), IgnoreOthers);
         Other -> {'other', Other}
     after
         Timeout -> {'error', 'timeout'}
@@ -2213,7 +2213,7 @@ do_collect_digits(#wcc_collect_digits{max_digits=MaxDigits
                     %% if we were given the NoopId of the noop and this is not it, then keep waiting
                     do_collect_digits(Collect);
                 {'decrement'} ->
-                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_util:decr_timeout(After, Start)});
+                    do_collect_digits(Collect#wcc_collect_digits{after_timeout=kz_time:decr_timeout(After, Start)});
                 {'ok', Digit} ->
                     %% DTMF received, collect and start interdigit timeout
                     Digits =:= <<>>
@@ -2325,7 +2325,7 @@ wait_for_message(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     Ok;
                 _ ->
-                    wait_for_message(Call, Application, Event, Type, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_message(Call, Application, Event, Type, kz_time:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2369,7 +2369,7 @@ wait_for_application(Call, Application, Event, Type, Timeout) ->
                 {Type, Event, Application} ->
                     Ok;
                 _ ->
-                    wait_for_application(Call, Application, Event, Type, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_application(Call, Application, Event, Type, kz_time:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2429,15 +2429,15 @@ wait_for_headless_application(Application, {StartEv, StopEv}=Event, Type, Fun, T
                     {'error', 'channel_hungup'};
                 {Type, StartEv, Application} ->
                     lager:debug("start event ~s has been received for ~s", [StartEv, Application]),
-                    wait_for_headless_application(Application, StopEv, Type, Fun, kz_util:decr_timeout(Timeout, Start));
+                    wait_for_headless_application(Application, StopEv, Type, Fun, kz_time:decr_timeout(Timeout, Start));
                 {Type, StopEv, Application} ->
                     case Fun(JObj) of
                         'true' -> Ok;
-                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
+                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
                     end;
                 _T ->
                     lager:debug("headless application ~s ignoring ~p", [Application, _T]),
-                    wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
             end;
         {'error', _E}=E -> E
     end;
@@ -2455,11 +2455,11 @@ wait_for_headless_application(Application, Event, Type, Fun, Timeout) ->
                 {Type, Event, Application} ->
                     case Fun(JObj) of
                         'true' -> Ok;
-                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
+                        'false' -> wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
                     end;
                 _T ->
                     lager:debug("ignore ~p", [_T]),
-                    wait_for_headless_application(Application, Event, Type, Fun, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_headless_application(Application, Event, Type, Fun, kz_time:decr_timeout(Timeout, Start))
             end;
         {'error', _E}=E -> E
     end.
@@ -2487,7 +2487,7 @@ wait_for_dtmf(Timeout) ->
                 {<<"call_event">>, <<"DTMF">>} ->
                     {'ok', kz_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_dtmf(kz_util:decr_timeout(Timeout, Start))
+                    wait_for_dtmf(kz_time:decr_timeout(Timeout, Start))
             end;
         {'error', 'timeout'}=E ->
             lager:debug("timed out after ~p ms waiting for DTMF", [Timeout]),
@@ -2551,7 +2551,7 @@ wait_for_bridge(Timeout, Fun, Call, Start, {'ok', JObj}) ->
             lager:info("bridge channel execute completed with result ~s(~s)", [Disposition, Result]),
             {Result, JObj};
         _E ->
-            NewTimeout = kz_util:decr_timeout(Timeout, Start),
+            NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = os:timestamp(),
             wait_for_bridge(NewTimeout, Fun, Call, NewStart, receive_event(NewTimeout))
     end.
@@ -2633,9 +2633,9 @@ wait_for_hangup(Timeout) ->
                     {'ok', 'channel_hungup'};
                 _Evt ->
                     lager:debug("ignoring: ~p", [_Evt]),
-                    wait_for_hangup(kz_util:decr_timeout(Timeout, Start))
+                    wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
             end;
-        _ -> wait_for_hangup(kz_util:decr_timeout(Timeout, Start))
+        _ -> wait_for_hangup(kz_time:decr_timeout(Timeout, Start))
     after
         Timeout ->
             {'error', 'timeout'}
@@ -2662,7 +2662,7 @@ wait_for_unbridge(Timeout) ->
         {'ok', JObj} ->
             case kapps_util:get_event_type(JObj) of
                 {<<"call_event">>, <<"LEG_DESTROYED">>} -> {'ok', 'leg_hungup'};
-                _ -> wait_for_unbridge(kz_util:decr_timeout(Timeout, Start))
+                _ -> wait_for_unbridge(kz_time:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2690,7 +2690,7 @@ wait_for_application_or_dtmf(Application, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, Application} -> Ok;
                 {<<"call_event">>, <<"DTMF">>, _} -> {'dtmf', kz_json:get_value(<<"DTMF-Digit">>, JObj)};
                 _ ->
-                    wait_for_application_or_dtmf(Application, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_application_or_dtmf(Application, kz_time:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2719,7 +2719,7 @@ wait_for_fax(Timeout) ->
                     %% NOTE:
                     lager:debug("channel hungup but no end of fax, maybe its coming next..."),
                     wait_for_fax(5 * ?MILLISECONDS_IN_SECOND);
-                _ -> wait_for_fax(kz_util:decr_timeout(Timeout, Start))
+                _ -> wait_for_fax(kz_time:decr_timeout(Timeout, Start))
             end
     end.
 
@@ -2953,7 +2953,7 @@ wait_for_fax_detection(Timeout, Call) ->
             case get_event_type(JObj) of
                 {<<"call_event">>, <<"FAX_DETECTED">>, _ } ->
                     {'ok', kz_json:set_value(<<"Fax-Success">>, 'true', JObj)};
-                _ -> wait_for_fax_detection(kz_util:decr_timeout(Timeout, Start), Call)
+                _ -> wait_for_fax_detection(kz_time:decr_timeout(Timeout, Start), Call)
             end
     end.
 
@@ -2993,7 +2993,7 @@ wait_for_unparked_call(Call, Timeout) ->
                 {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"hold">>} ->
                     Ok;
                 _ ->
-                    wait_for_unparked_call(Call, kz_util:decr_timeout(Timeout, Start))
+                    wait_for_unparked_call(Call, kz_time:decr_timeout(Timeout, Start))
             end
     end.
 

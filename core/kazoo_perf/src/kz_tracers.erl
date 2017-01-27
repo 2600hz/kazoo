@@ -53,7 +53,7 @@ gen_load(N, D) ->
 wait_for_refs(Start, MaxMailbox, Tables, []) ->
     case cache_data() of
         {0, _} ->
-            io:format("finished test after ~pms: ~p~n", [kz_util:elapsed_ms(Start), MaxMailbox]),
+            io:format("finished test after ~pms: ~p~n", [kz_time:elapsed_ms(Start), MaxMailbox]),
             table_status(Tables);
         _ -> timer:sleep(1000),
              wait_for_refs(Start, MaxMailbox, Tables, [])
@@ -170,7 +170,7 @@ wait_for_cache(Start, {N, _}=NF) ->
             timer:sleep(1000),
             wait_for_cache(Start, MG);
         {0, _F} ->
-            io:format("~pms done (in ~p)~n", [kz_util:elapsed_ms(Start), _F]);
+            io:format("~pms done (in ~p)~n", [kz_time:elapsed_ms(Start), _F]);
         _ ->
             timer:sleep(1000),
             wait_for_cache(Start, NF)

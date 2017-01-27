@@ -255,7 +255,7 @@ set_expiration_date(JObj, ExpDate) ->
 %%--------------------------------------------------------------------
 -spec expired(doc()) -> boolean().
 expired(JObj) ->
-    kz_json:get_value(?EXPIRATION_DATE, JObj) < kz_util:current_tstamp().
+    kz_json:get_value(?EXPIRATION_DATE, JObj) < kz_time:current_tstamp().
 
 %%%===================================================================
 %%% Internal functions

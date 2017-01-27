@@ -63,7 +63,7 @@
 
 -define(MSG_ID(Year, Month, Id),
         <<(kz_term:to_binary(Year))/binary
-          ,(kz_util:pad_month(Month))/binary
+          ,(kz_time:pad_month(Month))/binary
           ,"-"
           ,(Id)/binary
         >>).
@@ -96,7 +96,7 @@
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
 new(AccountId, Props) ->
-    UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_util:current_tstamp()),
+    UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_time:current_tstamp()),
     Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
 

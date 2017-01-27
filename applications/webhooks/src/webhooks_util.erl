@@ -264,7 +264,7 @@ failed_hook(#webhook{hook_id = HookId
 
 -spec save_attempt(api_binary(), kz_json:object()) -> 'ok'.
 save_attempt(AccountId, Attempt) ->
-    Now = kz_util:current_tstamp(),
+    Now = kz_time:current_tstamp(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),
 
     Doc = kz_json:set_values(
@@ -467,7 +467,7 @@ init_webhooks() ->
     end.
 
 init_webhooks(Accts) ->
-    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_util:current_tstamp()),
+    {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(kz_time:current_tstamp()),
     init_webhooks(Accts, Year, Month).
 
 init_webhooks(Accts, Year, Month) ->
@@ -483,7 +483,7 @@ init_webhook(Acct, Year, Month) ->
 -spec note_failed_attempt(ne_binary(), ne_binary()) -> 'ok'.
 note_failed_attempt(AccountId, HookId) ->
     kz_cache:store_local(?CACHE_NAME
-                        ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_util:current_tstamp())
+                        ,?FAILURE_CACHE_KEY(AccountId, HookId, kz_time:current_tstamp())
                         ,'true'
                         ,[{'expires', account_expires_time(AccountId)}]
                         ).

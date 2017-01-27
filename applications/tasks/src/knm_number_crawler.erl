@@ -217,7 +217,7 @@ maybe_transition_aging(PhoneNumber) ->
 -spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
 is_old_enough(PhoneNumber, Expiry) ->
     knm_phone_number:created(PhoneNumber)
-        > (kz_util:current_tstamp() - Expiry * ?SECONDS_IN_DAY).
+        > (kz_time:current_tstamp() - Expiry * ?SECONDS_IN_DAY).
 
 -spec maybe_remove(knm_phone_number:knm_phone_number(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().

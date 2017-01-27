@@ -51,7 +51,7 @@ cleanup_reset_ids(AccountDb) ->
 
 -spec maybe_delete_doc(ne_binary(), kz_json:object()) -> 'ok'.
 maybe_delete_doc(AccountDb, ResetIdDoc) ->
-    TwoDaysAgo = kz_util:current_tstamp() - 2 * ?SECONDS_IN_DAY,
+    TwoDaysAgo = kz_time:current_tstamp() - 2 * ?SECONDS_IN_DAY,
     Created = kz_doc:created(ResetIdDoc),
     case TwoDaysAgo < Created of
         'true' -> 'ok';

@@ -60,7 +60,7 @@
 -record(bucket, {key :: {ne_binary(), ne_binary()} | '_'
                 ,srv :: pid() | '$1' | '$2' | '_'
                 ,ref :: reference() | '$2' | '_'
-                ,accessed = kz_util:now_s() :: gregorian_seconds() | '$1' | '_'
+                ,accessed = kz_time:now_s() :: gregorian_seconds() | '$1' | '_'
                 }).
 -type bucket() :: #bucket{}.
 
@@ -244,7 +244,7 @@ print_bucket_info(#bucket{key={CurrentApp, Name}
               ,Name
               ,pid_to_list(P)
               ,integer_to_list(kz_token_bucket:tokens(P))
-              ,kz_util:pretty_print_elapsed_s(kz_util:elapsed_s(Accessed))
+              ,kz_time:pretty_print_elapsed_s(kz_time:elapsed_s(Accessed))
               ]
              ),
     CurrentApp;
@@ -344,7 +344,7 @@ handle_cast(_Req, #state{table_id='undefined'}=State) ->
     lager:debug("ignoring req: ~p", [_Req]),
     {'noreply', State};
 handle_cast({'bucket_accessed', Key}, State) ->
-    ets:update_element(table_id(), Key, {#bucket.accessed, kz_util:now_s()}),
+    ets:update_element(table_id(), Key, {#bucket.accessed, kz_time:now_s()}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     {'noreply', State}.
@@ -430,7 +430,7 @@ start_inactivity_timer() ->
 -spec check_for_inactive_buckets() -> 'ok'.
 check_for_inactive_buckets() ->
     kz_util:put_callid(?MODULE),
-    Now = kz_util:now_s(),
+    Now = kz_time:now_s(),
     InactivityTimeout = ?INACTIVITY_TIMEOUT_S,
 
     MS = [{#bucket{accessed='$1'

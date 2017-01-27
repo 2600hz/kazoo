@@ -147,7 +147,7 @@ handle_cast({'job_status',{JobId, <<"start">>, ServerId}}, #state{jobs=#{pending
     {'noreply', State#state{jobs=Jobs#{pending => maps:remove(JobId, Pending)
                                       ,running => Running#{JobId => #{number => Number
                                                                      ,queue => ServerId
-                                                                     ,start => kz_util:now_ms()
+                                                                     ,start => kz_time:now_ms()
                                                                      }
                                                           }
                                       }
@@ -311,7 +311,7 @@ distribute_job(ToNumber, Job, #state{account_id=AccountId
                        | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                       ],
             kz_amqp_worker:cast(Payload, fun kapi_fax:publish_start_job/1),
-            Start = kz_util:now_ms(),
+            Start = kz_time:now_ms(),
             distribute_jobs(State#state{jobs=Map#{pending => Pending#{JobId => #{number => ToNumber
                                                                                 ,start => Start
                                                                                 }
@@ -350,7 +350,7 @@ number(JObj) ->
 
 -spec check_pending(ne_binary(), map(), map()) -> map().
 check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending, numbers := Numbers} = Map) ->
-    case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
+    case kz_time:now_ms() - Start > ?MAX_WAIT_FOR_PENDING of
         'true'  ->
             lager:debug("recovering pending fax job ~s", [JobId]),
             Map#{pending => maps:remove(JobId, Pending)
@@ -362,7 +362,7 @@ check_pending(JobId, #{number := ToNumber, start := Start}, #{pending := Pending
 
 -spec check_running(ne_binary(), map(), map()) -> map().
 check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running, numbers := Numbers} = Map) ->
-    case kz_util:now_ms() - Start > ?MAX_WAIT_FOR_RUNNING of
+    case kz_time:now_ms() - Start > ?MAX_WAIT_FOR_RUNNING of
         'true'  ->
             lager:debug("recovering running fax job ~s", [JobId]),
             Map#{running => maps:remove(JobId, Running)
@@ -374,7 +374,7 @@ check_running(JobId, #{number := ToNumber, start := Start}, #{running := Running
 
 -spec get_account_jobs(ne_binary()) -> kz_json:objects().
 get_account_jobs(AccountId) ->
-    Upto = kz_util:current_tstamp(),
+    Upto = kz_time:current_tstamp(),
     ViewOptions = [{'limit', 100}
                   ,{'startkey', [AccountId]}
                   ,{'endkey', [AccountId, Upto]}

@@ -59,7 +59,7 @@ save(Ledger) ->
 -spec save(ledger(), ne_binary()) -> {'ok', ledger()} | {'error', any()}.
 save(Ledger, LedgerId) ->
     Props = [{<<"pvt_type">>, ?PVT_TYPE}
-            ,{<<"pvt_modified">>, kz_util:current_tstamp()}
+            ,{<<"pvt_modified">>, kz_time:current_tstamp()}
             ,{<<"pvt_account_id">>, LedgerId}
              | maybe_add_id(Ledger)
             ],
@@ -71,11 +71,11 @@ maybe_add_id(Ledger) ->
         'undefined' ->
             {Year, Month, _} = erlang:date(),
             [{<<"_id">>, <<(kz_term:to_binary(Year))/binary
-                           ,(kz_util:pad_month(Month))/binary
+                           ,(kz_time:pad_month(Month))/binary
                            ,"-"
                            ,(kz_binary:rand_hex(16))/binary
                          >>}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
             ];
         _ -> []
     end.

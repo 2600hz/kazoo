@@ -237,7 +237,7 @@ generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Sto
             ,{<<"start_time">>, Start}
             ,{<<"stop_time">>, Stop}
             ,{<<"pvt_auth_account_id">>, AuthAccountId}
-            ,{<<"pvt_created">>, kz_util:current_tstamp()}
+            ,{<<"pvt_created">>, kz_time:current_tstamp()}
             ],
     kz_json:from_list(props:filter_undefined(Props)).
 

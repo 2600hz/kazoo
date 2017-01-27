@@ -238,7 +238,7 @@ to_props(Channel) ->
       ,{<<"switch_nodename">>, Channel#channel.node}
       ,{<<"to_tag">>, Channel#channel.to_tag}
       ,{<<"from_tag">>, Channel#channel.from_tag}
-      ,{<<"elapsed_s">>, kz_util:elapsed_s(Channel#channel.timestamp)}
+      ,{<<"elapsed_s">>, kz_time:elapsed_s(Channel#channel.timestamp)}
       ,{<<"interaction_id">>, Channel#channel.interaction_id}
       ,{<<"is_loopback">>, Channel#channel.is_loopback}
       ,{<<"loopback_leg_name">>, Channel#channel.loopback_leg_name}
@@ -282,7 +282,7 @@ to_api_props(Channel) ->
       ,{<<"To-Tag">>, Channel#channel.to_tag}
       ,{<<"From-Tag">>, Channel#channel.from_tag}
       ,{<<"Switch-URL">>, ecallmgr_fs_nodes:sip_url(Channel#channel.node)}
-      ,{<<"Elapsed-Seconds">>, kz_util:elapsed_s(Channel#channel.timestamp)}
+      ,{<<"Elapsed-Seconds">>, kz_time:elapsed_s(Channel#channel.timestamp)}
       ,{<<?CALL_INTERACTION_ID>>, Channel#channel.interaction_id}
       ,{<<"Is-Loopback">>, Channel#channel.is_loopback}
       ,{<<"Loopback-Leg-Name">>, Channel#channel.loopback_leg_name}
@@ -706,7 +706,7 @@ props_to_record(Props, Node) ->
             ,import_moh=props:get_value(<<"variable_hold_music">>, Props) =:= 'undefined'
             ,answered=props:get_value(<<"Answer-State">>, Props) =:= <<"answered">>
             ,node=Node
-            ,timestamp=kz_util:current_tstamp()
+            ,timestamp=kz_time:current_tstamp()
             ,profile=props:get_value(<<"variable_sofia_profile_name">>, Props, ?DEFAULT_FS_PROFILE)
             ,context=props:get_value(<<"Caller-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT)
             ,dialplan=props:get_value(<<"Caller-Dialplan">>, Props, ?DEFAULT_FS_DIALPLAN)

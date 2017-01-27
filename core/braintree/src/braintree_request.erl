@@ -92,45 +92,45 @@ request(Method, Path, Body) ->
     case kz_http:req(Method, Url, Headers, Body, HTTPOptions) of
         {'ok', 401, _, _Response} ->
             verbose_debug("Response:~n401~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 401 Unauthenticated", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 401 Unauthenticated", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_authentication();
         {'ok', 403, _, _Response} ->
             verbose_debug("Response:~n403~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 403 Unauthorized", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 403 Unauthorized", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_authorization();
         {'ok', 404, _, _Response} ->
             verbose_debug("Response:~n404~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 404 Not Found", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 404 Not Found", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_not_found(<<>>);
         {'ok', 426, _, _Response} ->
             verbose_debug("Response:~n426~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 426 Upgrade Required", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 426 Upgrade Required", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_upgrade_required();
         {'ok', 500, _, _Response} ->
             verbose_debug("Response:~n500~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 500 Server Error", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 500 Server Error", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_server_error();
         {'ok', 503, _, _Response} ->
             verbose_debug("Response:~n503~n~s~n", [_Response]),
-            lager:debug("braintree error response(~pms): 503 Maintenance", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree error response(~pms): 503 Maintenance", [kz_time:elapsed_ms(StartTime)]),
             braintree_util:error_maintenance();
         {'ok', Code, _, "<?xml"++_=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree xml response(~pms)", [kz_time:elapsed_ms(StartTime)]),
             verify_response(Xml);
         {'ok', Code, _, "<search"++_=Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, Response]),
             {Xml, _} = xmerl_scan:string(Response),
-            lager:debug("braintree xml response(~pms)", [kz_util:elapsed_ms(StartTime)]),
+            lager:debug("braintree xml response(~pms)", [kz_time:elapsed_ms(StartTime)]),
             verify_response(Xml);
         {'ok', Code, _, _Response} ->
             verbose_debug("Response:~n~p~n~s~n", [Code, _Response]),
-            lager:debug("braintree empty response(~pms): ~p", [kz_util:elapsed_ms(StartTime), Code]),
+            lager:debug("braintree empty response(~pms): ~p", [kz_time:elapsed_ms(StartTime), Code]),
             ?BT_EMPTY_XML;
         {'error', _R} ->
             verbose_debug("Response:~nerror~n~p~n", [_R]),
-            lager:debug("braintree request error(~pms): ~p", [kz_util:elapsed_ms(StartTime), _R]),
+            lager:debug("braintree request error(~pms): ~p", [kz_time:elapsed_ms(StartTime), _R]),
             braintree_util:error_io_fault()
     end.
 

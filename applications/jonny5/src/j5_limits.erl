@@ -400,7 +400,7 @@ get_limit_jobj(AccountDb) ->
 
 -spec create_default_limit_jobj(ne_binary()) -> kz_json:object().
 create_default_limit_jobj(AccountDb) ->
-    TStamp = kz_util:current_tstamp(),
+    TStamp = kz_time:current_tstamp(),
     JObj = kz_json:from_list(
              [{<<"_id">>, <<"limits">>}
              ,{<<"pvt_account_db">>, AccountDb}

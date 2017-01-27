@@ -70,13 +70,13 @@ wait_for_connection(Tag, Timeout) ->
     try test_conn(Tag) of
         {'error', _E} ->
             timer:sleep(rand:uniform(?MILLISECONDS_IN_SECOND) + 100),
-            wait_for_connection(Tag, kz_util:decr_timeout(Timeout, Start));
+            wait_for_connection(Tag, kz_time:decr_timeout(Timeout, Start));
         {'ok', Info} ->
             lager:info("connected to ~s: ~s", [Tag, kz_json:encode(Info)])
     catch
         'error':{'badmatch','$end_of_table'} ->
             timer:sleep(rand:uniform(?MILLISECONDS_IN_SECOND) + 100),
-            wait_for_connection(Tag, kz_util:decr_timeout(Timeout, Start))
+            wait_for_connection(Tag, kz_time:decr_timeout(Timeout, Start))
     end.
 
 

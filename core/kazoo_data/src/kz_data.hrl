@@ -11,7 +11,7 @@
 -define(APP_NAME, <<"datamgr">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--record(data_connection, {id = {kz_util:current_tstamp(), kz_binary:rand_hex(4)}
+-record(data_connection, {id = {kz_time:current_tstamp(), kz_binary:rand_hex(4)}
                          ,app :: atom() | '$1'
                          ,props = #{} :: #{} | '_'
                          ,server :: any() | '$2'

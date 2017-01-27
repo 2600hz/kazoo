@@ -346,7 +346,7 @@ patch(Context, _Id) ->
 validate_message(Context, BoxId, MessageId, ?HTTP_GET) ->
     load_message(MessageId, BoxId, Context);
 validate_message(Context, BoxId, MessageId, ?HTTP_POST) ->
-    RetenTimestamp = kz_util:current_tstamp() - kvm_util:retention_seconds(),
+    RetenTimestamp = kz_time:current_tstamp() - kvm_util:retention_seconds(),
     case kvm_message:fetch(cb_context:account_id(Context), MessageId, BoxId) of
         {'ok', Msg} ->
             case kzd_box_message:utc_seconds(Msg) < RetenTimestamp of
@@ -642,7 +642,7 @@ empty_source_id(Context) ->
 -spec load_message_summary(api_binary(), cb_context:context()) -> cb_context:context().
 load_message_summary(BoxId, Context) ->
     MaxRetenSecond = kvm_util:retention_seconds(),
-    RetenTimestamp = kz_util:current_tstamp() - MaxRetenSecond,
+    RetenTimestamp = kz_time:current_tstamp() - MaxRetenSecond,
     case message_summary_view_options(Context, BoxId, MaxRetenSecond) of
         {'ok', ViewOptions} ->
             NormlizeFun = fun(J, Acc) ->
@@ -939,7 +939,7 @@ generate_media_name(CallerId, GregorianSeconds, Ext, Timezone) ->
                     {{_,_,_},{_,_,_}}=LT -> lager:debug("Converted to TZ: ~s", [Timezone]), LT;
                     _ -> lager:debug("Bad TZ: ~p", [Timezone]), UTCDateTime
                 end,
-    Date = kz_util:pretty_print_datetime(LocalTime),
+    Date = kz_time:pretty_print_datetime(LocalTime),
     list_to_binary([CallerId, "_", Date, Ext]).
 
 -spec filtered_by_qs(kz_json:object(), boolean(), cb_context:context()) -> boolean().

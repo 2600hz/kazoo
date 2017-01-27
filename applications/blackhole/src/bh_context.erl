@@ -61,7 +61,7 @@
 -spec new() -> context().
 -spec new(pid(), ne_binary()) -> context().
 new()->
-    Setters = [{fun set_timestamp/2, kz_util:current_tstamp()}
+    Setters = [{fun set_timestamp/2, kz_time:current_tstamp()}
               ],
     setters(#bh_context{}, Setters).
 

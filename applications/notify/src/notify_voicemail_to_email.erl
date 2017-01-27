@@ -257,7 +257,7 @@ get_file_name(MediaJObj, Props) ->
 
     LocalDateTime = props:get_value(<<"date_called">>, Voicemail, <<"0000-00-00_00-00-00">>),
     Extension = get_extension(MediaJObj),
-    FName = list_to_binary([CallerID, "_", kz_util:pretty_print_datetime(LocalDateTime), ".", Extension]),
+    FName = list_to_binary([CallerID, "_", kz_time:pretty_print_datetime(LocalDateTime), ".", Extension]),
 
     binary:replace(kz_term:to_lower_binary(FName), <<" ">>, <<"_">>).
 
