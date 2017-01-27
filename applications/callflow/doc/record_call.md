@@ -1,5 +1,5 @@
 
-The `record_call` callflow enables you to record the audio of the call.
+The `record_call` callflow enables you to record the audio of the call (typically between two or more callers).
 
 ## Mandatory fields
 

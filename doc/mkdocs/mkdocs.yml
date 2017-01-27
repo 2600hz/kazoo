@@ -1,93 +1,158 @@
 site_name: Dev Reference
-theme_dir: '2600Hz_theme'
 
 pages:
 - 'index.md'
-- 'Voice':
+- 'Voice APIs':
   - 'API Basics':
-    - 'applications/crossbar/doc/api_authentication.md'
-    - 'applications/crossbar/doc/basic_auth.md'
     - 'applications/crossbar/doc/basics.md'
     - 'applications/crossbar/doc/multipart.md'
     - 'applications/crossbar/doc/schemas.md'
-    - 'applications/crossbar/doc/token_auth.md'
-    - 'applications/crossbar/doc/user_authentication.md'
     - 'applications/crossbar/doc/402.md'
+  - 'Authentication':
+    - 'applications/crossbar/doc/user_authentication.md'
+    - 'applications/crossbar/doc/api_authentication.md'
+    - 'applications/crossbar/doc/basic_auth.md'
+    - 'applications/crossbar/doc/token_auth.md'
   - 'Account Management':
-    - 'applications/crossbar/doc/whitelabeling.md'
-    - 'applications/crossbar/doc/transactions.md'
-    - 'applications/crossbar/doc/services.md'
-    - 'applications/crossbar/doc/service_plans.md'
-    - 'applications/crossbar/doc/search.md'
-    - 'applications/crossbar/doc/port_requests.md'
-    - 'applications/crossbar/doc/limits.md'
-    - 'applications/crossbar/doc/allotments.md'
     - 'applications/crossbar/doc/accounts.md'
+    - 'applications/crossbar/doc/allotments.md'
+    - 'applications/crossbar/doc/limits.md'
+    - 'applications/crossbar/doc/port_requests.md'
+    - 'applications/crossbar/doc/search.md'
+    - 'applications/crossbar/doc/service_plans.md'
+    - 'applications/crossbar/doc/services.md'
+    - 'applications/crossbar/doc/transactions.md'
+    - 'applications/crossbar/doc/whitelabeling.md'
   - 'Billing':
-    - 'applications/crossbar/doc/ledgers.md'
     - 'applications/crossbar/doc/cdrs.md'
+    - 'applications/crossbar/doc/ledgers.md'
   - 'Branding':
     - 'applications/crossbar/doc/notifications.md'
   - 'Connectivity':
-    - 'applications/crossbar/doc/resources.md'
-    - 'applications/crossbar/doc/rates.md'
     - 'applications/crossbar/doc/ips.md'
+    - 'applications/crossbar/doc/rates.md'
+    - 'applications/crossbar/doc/resources.md'
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
   - 'Misc':
     - 'applications/crossbar/doc/comments.md'
   - 'PBX Features':
-    - 'applications/crossbar/doc/voicemail.md'
-    - 'applications/crossbar/doc/users.md'
-    - 'applications/crossbar/doc/temporal_rules_sets.md'
-    - 'applications/crossbar/doc/recordings.md'
-    - 'applications/crossbar/doc/phone_numbers.md'
-    - 'applications/crossbar/doc/metaflows.md'
-    - 'applications/crossbar/doc/groups.md'
-    - 'applications/crossbar/doc/faxes.md'
-    - 'applications/crossbar/doc/directories.md'
-    - 'applications/crossbar/doc/devices.md'
-    - 'applications/crossbar/doc/conference.md'
     - 'applications/crossbar/doc/blacklists.md'
+    - 'applications/crossbar/doc/conference.md'
+    - 'applications/crossbar/doc/devices.md'
+    - 'applications/crossbar/doc/directories.md'
+    - 'applications/crossbar/doc/faxes.md'
+    - 'applications/crossbar/doc/groups.md'
+    - 'applications/crossbar/doc/metaflows.md'
+    - 'applications/crossbar/doc/phone_numbers.md'
+    - 'applications/crossbar/doc/recordings.md'
+    - 'applications/crossbar/doc/temporal_rules_sets.md'
+    - 'applications/crossbar/doc/users.md'
+    - 'applications/crossbar/doc/voicemail.md'
   - 'Status':
-    - 'applications/crossbar/doc/registrations.md'
-    - 'applications/crossbar/doc/presence.md'
     - 'applications/crossbar/doc/channels.md'
+    - 'applications/crossbar/doc/presence.md'
+    - 'applications/crossbar/doc/registrations.md'
   - 'System Management':
-    - 'applications/crossbar/doc/token_restrictions.md'
-    - 'applications/crossbar/doc/system_configs.md'
-    - 'applications/crossbar/doc/sup.md'
-    - 'applications/crossbar/doc/securing_crossbar.md'
-    - 'applications/crossbar/doc/reverse_proxy.md'
-    - 'applications/crossbar/doc/rate_limiting.md'
-    - 'applications/crossbar/doc/maintenance.md'
-    - 'applications/crossbar/doc/configuration.md'
-    - 'applications/crossbar/doc/call_inspector.md'
     - 'applications/crossbar/doc/apps_store.md'
+    - 'applications/crossbar/doc/call_inspector.md'
+    - 'applications/crossbar/doc/configuration.md'
+    - 'applications/crossbar/doc/maintenance.md'
+    - 'applications/crossbar/doc/rate_limiting.md'
+    - 'applications/crossbar/doc/reverse_proxy.md'
+    - 'applications/crossbar/doc/securing_crossbar.md'
+    - 'applications/crossbar/doc/sup.md'
+    - 'applications/crossbar/doc/system_configs.md'
+    - 'applications/crossbar/doc/token_restrictions.md'
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
-    - 'applications/crossbar/doc/pivot.md'
-    - 'Websockets':
-      - 'applications/crossbar/doc/websockets.md'
-    - 'Webhooks':
-      - 'applications/webhooks/doc/maintenance.md'
-      - 'applications/webhooks/doc/README.md'
-      - 'applications/crossbar/doc/webhooks.md'
-    - 'Twiml':
-      - 'applications/pivot/doc/twiml/README.md'
-    - 'Tutorials':
+    - 'API': 'applications/crossbar/doc/pivot.md'
+    - 'Response Formats':
+      - 'Kazoo':
+        - 'applications/pivot/doc/kazoo/README.md'
+        - 'applications/pivot/doc/kazoo/bridging.md'
+        - 'applications/pivot/doc/kazoo/collect.md'
+        - 'applications/pivot/doc/kazoo/conferencing.md'
+        - 'applications/pivot/doc/kazoo/dtmf.md'
+        - 'applications/pivot/doc/kazoo/hangups.md'
+        - 'applications/pivot/doc/kazoo/play.md'
+        - 'applications/pivot/doc/kazoo/presence.md'
+        - 'applications/pivot/doc/kazoo/recording.md'
+        - 'applications/pivot/doc/kazoo/say.md'
+      - 'Twiml':
+        - 'applications/pivot/doc/twiml/README.md'
+    - 'Presentations':
       - 'doc/kazoocon/pivot2014.md'
+      - 'doc/kazoocon/pivot2016.md'
     - 'Known_Issues':
       - 'applications/pivot/doc/issues.md'
-    - 'Kazoo':
-      - 'applications/pivot/doc/kazoo/say.md'
-      - 'applications/pivot/doc/kazoo/recording.md'
-      - 'applications/pivot/doc/kazoo/presence.md'
-      - 'applications/pivot/doc/kazoo/play.md'
-      - 'applications/pivot/doc/kazoo/README.md'
-      - 'applications/pivot/doc/kazoo/hangups.md'
-      - 'applications/pivot/doc/kazoo/dtmf.md'
-      - 'applications/pivot/doc/kazoo/conferencing.md'
-      - 'applications/pivot/doc/kazoo/collect.md'
-      - 'applications/pivot/doc/kazoo/bridging.md'
+  - 'Websockets':
+    - 'applications/blackhole/doc/README.md'
+    - 'Bindings': 'applications/blackhole/doc/bindings.md'
+    - 'API': 'applications/crossbar/doc/websockets.md'
+    - 'HAProxy configuration': 'applications/blackhole/doc/haproxy.md'
+    - 'Troubleshooting': 'applications/blackhole/doc/troubleshooting.md'
+  - 'Webhooks':
+    - 'applications/webhooks/doc/README.md'
+    - 'Administration': 'applications/webhooks/doc/maintenance.md'
+    - 'API': 'applications/crossbar/doc/webhooks.md'
+- 'Internationalization':
+  - 'Phone Numbers':
+    - 'Overview': 'doc/internationalization/numbers.md'
+    - 'Example Number Manager Configurations':
+      - 'European Union': 'doc/internationalization/examples/number_manager/european_union.md'
+      - 'Indonesia': 'doc/internationalization/numbers/indonesia.md'
+    - 'Example Dialplan Configurations':
+      - 'Ireland': 'doc/internationalization/examples/dialplan/IE_Local-National-Mobile.md'
+      - 'Netherlands - Amsterdam': 'doc/internationalization/examples/dialplan/NL_Amsterdam.md'
+      - ' Netherlands - Rotterdam': 'doc/internationalization/examples/dialplan/NL_Rotterdam.md'
+  - 'System Prompts': 'doc/internationalization/prompts.md'
+- 'Applications':
+  - 'Callflows':
+    - 'applications/callflow/doc/README.md'
+    - 'Call Parking': 'applications/callflow/doc/park.md'
+    - 'Call Recording': 'applications/callflow/doc/record_call.md'
+    - 'Custom SIP Headers': 'applications/callflow/doc/custom_sip_headers.md'
+    - 'Incoming Fax Detection': 'applications/callflow/doc/fax_detect.md'
+    - 'Change Language': 'applications/callflow/doc/language.md'
+    - 'Caller ID':
+      - 'Dynamic Caller ID': 'applications/callflow/doc/cf_dynamic_cid.md'
+      - 'Lookup Caller ID': 'applications/callflow/doc/lookupcidname.md'
+      - 'Prepend Caller ID': 'applications/callflow/doc/prepend_cid.md'
+    - 'Conference': 'applications/callflow/doc/conference.md'
+    - 'Ring Group': 'applications/callflow/doc/ring_group.md'
+    - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
+    - 'Webhooks': 'applications/callflow/doc/webhooks.md'
+    - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
+    - 'Preflows': 'applications/callflow/doc/preflow.md'
+  - 'Fax':
+    - 'applications/fax/doc/README.md'
+    - 'Postfix Settings': 'applications/fax/doc/postfix.md'
+    - 'SMTP Settings': 'applications/fax/doc/smtp.md'
+    - 'HAProxy Settings': 'applications/fax/doc/haproxy.md'
+    - 'DNS Settings': 'applications/fax/doc/dns.md'
+    - 'Google Cloud Printer': 'applications/fax/doc/gcp.md'
+    - 'Internet Fax for Office 2010': 'applications/fax/doc/user.md'
+  - 'Stepswitch':
+    - 'applications/stepswitch/doc/README.md'
+    - 'applications/stepswitch/doc/resource_selectors.md'
+    - 'applications/stepswitch/doc/rules.md'
+  - 'Teletype':
+    - 'applications/teletype/doc/README.md'
+    - 'applications/teletype/doc/maintenance.md'
+- 'Articles':
+  - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
+  - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
+  - 'Engineering':
+    - 'Call Recording': 'doc/engineering/call_recording.md'
+    - 'Documentation':
+      - 'How to write docs': 'doc/engineering/documentation.md'
+      - 'Sample API reference doc': 'doc/engineering/things.md'
+    - 'Erlang Releases': 'doc/engineering/releases.md'
+    - 'Erlang VM Tracing': 'doc/engineering/tracing.md'
+    - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
+    - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
+    - 'Loopback Channels': 'doc/engineering/loopback.md'
+    - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
+    - 'Webhooks': 'doc/engineering/webhooks.md'

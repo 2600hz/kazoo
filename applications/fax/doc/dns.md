@@ -1,8 +1,7 @@
-
 # DNS configuration for smtp-to-fax
 
+## generated addresses
 
-# generated addresses
 simple bind configuration for kazoo generated addresses.
 assuming that fax.kazoo.io is the domain configured for faxboxes.
 
@@ -18,7 +17,8 @@ $ORIGIN fax.kazoo.io.
 *           MX  5 mail-02.kazoo.io.
 ```
 
-# custom addresses
+## custom addresses
+
 When a user customizes the SMTP address of the faxbox, the user must
 also add a DNS entry to the domain. For example, if the user
 configured the SMTP address to be `myfax.mydomain.tld`, then the user

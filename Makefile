@@ -194,8 +194,16 @@ apis:
 	@$(ROOT)/scripts/format-json.sh applications/crossbar/priv/api/*.json
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
+DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs:
-	$(ROOT)/scripts/validate_mkdocs.py
+	@$(ROOT)/scripts/validate_mkdocs.py
+	@$(ROOT)/scripts/setup_docs.bash
+	@cp $(DOCS_ROOT)/mkdocs.yml $(DOCS_ROOT)/mkdocs.local.yml
+	@echo "site_dir: '$(DOCS_ROOT)/site'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> doc/mkdocs/mkdocs.local.yml
+	@mkdocs build -f $(DOCS_ROOT)/mkdocs.local.yml -c -q
+
+docs-serve: docs
+	@mkdocs serve -f $(DOCS_ROOT)/mkdocs.local.yml
 
 fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
