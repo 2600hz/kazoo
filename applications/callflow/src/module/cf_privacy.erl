@@ -42,7 +42,7 @@ update_call(CaptureGroup, {'ok', Call}, Mode) ->
                ],
     cf_exe:set_call(kapps_call:exec(Routines, Call)).
 
--spec ccvs_by_privacy_mode(ne_binary()) -> kz_proplist().
+-spec ccvs_by_privacy_mode(api_ne_binary()) -> kz_proplist().
 ccvs_by_privacy_mode('undefined') ->
     ccvs_by_privacy_mode(<<"full">>);
 ccvs_by_privacy_mode(<<"full">>) ->
