@@ -95,9 +95,45 @@ function kz_util_to_binary {
     search_and_replace fs[@] "kz_util" "kz_binary" "_binary"
 }
 
+function kz_util_to_time {
+    local fs=(current_tstamp
+              current_unix_tstamp
+              decr_timeout
+              elapsed_ms
+              elapsed_ms
+              elapsed_s
+              elapsed_s
+              elapsed_us
+              elapsed_us
+              format_date
+              format_datetime
+              format_time
+              gregorian_seconds_to_unix_seconds
+              iso8601
+              microseconds_to_seconds
+              milliseconds_to_seconds
+              month
+              now
+              now_ms
+              now_s
+              now_us
+              pad_month
+              pretty_print_datetime
+              pretty_print_elapsed_s
+              rfc1036
+              unitfy_seconds
+              unix_seconds_to_gregorian_seconds
+              unix_timestamp_to_gregorian_seconds
+              weekday
+             )
+    search_and_replace fs[@] "kz_util" "kz_time" ""
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
 kz_util_to_binary
+echo "ensuring kz_time is used"
+kz_util_to_time
 
 popd > /dev/null
