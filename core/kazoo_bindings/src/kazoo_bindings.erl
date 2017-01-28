@@ -226,6 +226,7 @@ matches([<<"#">>], []) -> 'true';
 matches([<<"#">>, <<"*">>], []) -> 'false';
 matches([<<"#">>, <<"*">>], [<<>>]) -> 'false';
 matches([<<"#">>, <<"*">>], [_]) -> 'true'; % match one item:  #.* matches foo
+matches([<<"#">>], [_]) -> 'true';
 
 matches([<<"#">>, <<"#">> | Bs], Rs) ->
     matches([<<"#">> | Bs], Rs);
@@ -255,7 +256,8 @@ matches([<<"#">>, B | Bs], [B | Rs]) ->
     case lists:member(B, Rs) of
         'true' ->
             matches(Bs, Rs)
-                orelse matches([<<"#">> | Bs], Rs);
+                orelse matches([<<"#">> | Bs], Rs)
+                orelse matches([<<"#">>, B | Bs], Rs);
         'false' ->
             matches(Bs, Rs)
     end;
