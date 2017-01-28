@@ -617,34 +617,6 @@
             "required": false,
             "type": "object"
         },
-        "callflow": {
-            "description": "A callflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-            "properties": {
-                "children": {
-                    "default": {},
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "callflow"
-                        }
-                    },
-                    "required": false,
-                    "type": "object"
-                },
-                "data": {
-                    "default": {},
-                    "description": "The data/arguments of the callflow module",
-                    "required": true,
-                    "type": "object"
-                },
-                "module": {
-                    "description": "The name of the callflow module to excute at this node",
-                    "maxLength": 64,
-                    "minLength": 1,
-                    "required": true,
-                    "type": "string"
-                }
-            }
-        },
         "callflows": {
             "description": "Call flows describe steps to take in order to process a phone call. They are trees of information related to a phone call such as \"answer, play file, record file\" etc. that are logically grouped together and ordered.",
             "properties": {
@@ -1545,38 +1517,6 @@
         },
         "callflows.park": {
             "description": "Validator for the park callflow's data object",
-            "properties": {
-                "action": {
-                    "default": "park",
-                    "description": "",
-                    "type": "string"
-                },
-                "default_callback_timeout": {
-                    "description": "",
-                    "type": "integer"
-                },
-                "default_presence_type": {
-                    "description": "",
-                    "type": "string"
-                },
-                "default_ringback_timeout": {
-                    "description": "",
-                    "type": "integer"
-                },
-                "slot": {
-                    "description": ""
-                },
-                "slots": {
-                    "default": {},
-                    "description": "",
-                    "type": "object"
-                }
-            },
-            "required": true,
-            "type": "object"
-        },
-        "callflows.park2": {
-            "description": "Validator for the park2 callflow's data object",
             "properties": {
                 "action": {
                     "default": "park",
@@ -8639,32 +8579,6 @@
             ],
             "type": "object"
         },
-        "system_config.crossbar.webphone": {
-            "description": "Schema for crossbar.webphone system_config",
-            "properties": {
-                "credential_ttl": {
-                    "default": 86400,
-                    "description": "credential ttl",
-                    "type": "integer"
-                },
-                "shared_secret": {
-                    "default": "consider the possibility to add your own shared secret",
-                    "description": "turn shared secret",
-                    "type": "string"
-                },
-                "stun": {
-                    "default": [],
-                    "description": "stun servers",
-                    "type": "array"
-                },
-                "turn": {
-                    "default": [],
-                    "description": "turn servers",
-                    "type": "array"
-                }
-            },
-            "type": "object"
-        },
         "system_config.datamgr": {
             "description": "Schema for datamgr system_config",
             "properties": {
@@ -9767,18 +9681,6 @@
             "required": [
                 "transfer"
             ],
-            "type": "object"
-        },
-        "system_config.konami-pro": {
-            "description": "Schema for konami-pro system_config",
-            "properties": {
-                "route_win_timeout": {
-                    "default": 3000,
-                    "description": "konami-pro route win timeout",
-                    "type": "integer"
-                }
-            },
-            "required": true,
             "type": "object"
         },
         "system_config.kzt_twiml_util": {
@@ -16599,30 +16501,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/killio/call": {
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/ledgers": {
             "get": {
                 "parameters": [
@@ -17442,54 +17320,6 @@
                             "$ref": "#/definitions/metaflows"
                         }
                     },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/mms": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/mms/mms_Id": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header",
                         "required": true
@@ -19755,52 +19585,6 @@
                 ]
             }
         },
-        "/accounts/{ACCOUNT_ID}/slack_hooks": {
-            "delete": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "post": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
-            "put": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
         "/accounts/{ACCOUNT_ID}/sms": {
             "get": {
                 "parameters": [
@@ -21193,35 +20977,6 @@
                         "description": "List of objects representing webhook attempts made for this webhook"
                     }
                 }
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            }
-        },
-        "/accounts/{ACCOUNT_ID}/webphone/{USER_ID}": {
-            "get": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/user_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/websockets": {
