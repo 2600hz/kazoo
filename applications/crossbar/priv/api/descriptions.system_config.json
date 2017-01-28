@@ -537,6 +537,7 @@
     "pivot.tts_texts_size": "pivot tts texts size",
     "privacy.privacy_name": "Default Caller ID Name should be shown for anonymous calls",
     "privacy.privacy_number": "Default Caller ID Number should be shown for anonymous calls",
+    "privacy.privacy_mode": "Default privacy mode for anonymous calls",
     "provisioner.cluster_id": "provisioner cluster id",
     "provisioner.feature_keys": "provisioner feature keys",
     "provisioner.provisioning_type": "provisioner provisioning type",
