@@ -8,11 +8,6 @@
             "description": "stepswitch assume inbound e164",
             "type": "boolean"
         },
-        "block_anonymous_caller_id": {
-            "default": false,
-            "description": "stepswitch block anonymous caller id",
-            "type": "boolean"
-        },
         "cid_rules_honor_diversions": {
             "default": false,
             "description": "stepswitch cid rules honor diversions",
