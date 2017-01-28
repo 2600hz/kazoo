@@ -61,7 +61,7 @@ fields_without_defaults(JObj0) ->
 
 -spec process_project() -> kz_json:object().
 process_project() ->
-    io:format("processing kapps_config usage: "),
+    io:format("processing kapps_config/kapps_account_config usage: "),
     Apps = kz_ast_util:project_apps(),
     Usage = lists:foldl(fun process_app/2, kz_json:new(), Apps),
     io:format(" done~n"),
@@ -148,6 +148,8 @@ expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_node', _), Schemas) -
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', F, Args), Schemas) ->
     config_to_schema(F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
+expression_to_schema(?MOD_FUN_ARGS('kapps_account_config', F='get_global', Args), Schemas) ->
+    config_to_schema(F, Args, Schemas);
 expression_to_schema(?MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
     expressions_to_schema(Args, Schemas);
 expression_to_schema(?DYN_MOD_FUN(_M, _F), Schemas) ->
@@ -265,6 +267,14 @@ config_to_schema('migrate', _Args, Schemas) ->
     Schemas;
 config_to_schema('get_node_value', _Args, Schemas) ->
     Schemas;
+config_to_schema(F='get_global', [Account, Cat, K], Schemas) ->
+    config_to_schema(F, [Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(F='get_global', [_Account, Cat, K, Default], Schemas) ->
+    Document = category_to_document(Cat),
+    case key_to_key_path(K) of
+        'undefined' -> Schemas;
+        Key -> config_key_to_schema(F, Document, Key, Default, Schemas)
+    end;
 config_to_schema(F, [Cat, K], Schemas) ->
     config_to_schema(F, [Cat, K, 'undefined'], Schemas);
 config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
@@ -329,6 +339,7 @@ guess_type('get_string', _Default) -> <<"string">>;
 guess_type('get_integer', _Default) -> <<"integer">>;
 guess_type('get_float', _Default) -> <<"number">>;
 guess_type('get_atom', _Default) -> <<"string">>;
+guess_type('get_global', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _Default) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
 guess_type('set_node', Default) -> guess_type_by_default(Default);
@@ -432,6 +443,8 @@ default_value(?MOD_FUN_ARGS('kapps_config', 'get', [_Category, _Key, Default])) 
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_global', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     '_system';

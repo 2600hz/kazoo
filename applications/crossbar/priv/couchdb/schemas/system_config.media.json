@@ -21,6 +21,13 @@
                         "description": "media extension",
                         "type": "string"
                     }
+                },
+                "storage_retry_times": {
+                    "properties": {
+                        "default": 5,
+                        "description": "media storage retry times",
+                        "type": "integer"
+                    }
                 }
             }
         },

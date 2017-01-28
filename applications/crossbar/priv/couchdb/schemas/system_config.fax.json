@@ -73,6 +73,11 @@
             "description": "fax default retry period",
             "type": "integer"
         },
+        "default_smtp_domain": {
+            "default": "fax.kazoo.io",
+            "description": "fax defaultsmtp domain",
+            "type": "string"
+        },
         "delete_empty_faxes": {
             "default": false,
             "description": "fax delete empty faxes",
@@ -134,6 +139,16 @@
             "default": true,
             "description": "fax inbound t38 default",
             "type": "string"
+        },
+        "log_faxbox_errors": {
+            "default": true,
+            "description": "fax log faxbox errors",
+            "type": "boolean"
+        },
+        "max_outbound": {
+            "default": 10,
+            "description": "fax max outbound",
+            "type": "integer"
         },
         "max_storage_retry": {
             "default": 5,
