@@ -289,7 +289,11 @@ get_value(Key, JObj) ->
 
 -spec get_value(ne_binary(), kz_json:object(), any()) -> any().
 get_value(Key, JObj, Default) ->
-    case kz_term:is_empty(kz_json:get_first_defined([Key, ?CCV(Key)], JObj)) of
+    case kz_json:get_first_defined([Key, ?CCV(Key)], JObj) of
         'undefined' -> Default;
-        Value -> Value
+        Value ->
+            case kz_term:is_empty(Value) of
+                'true' -> Default;
+                'false' -> Value
+            end
     end.
