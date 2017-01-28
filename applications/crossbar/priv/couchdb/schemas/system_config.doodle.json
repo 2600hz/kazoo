@@ -3,6 +3,11 @@
     "_id": "system_config.doodle",
     "description": "Schema for doodle system_config",
     "properties": {
+        "api_preserve_caller_id": {
+            "default": true,
+            "description": "doodle.api preserve caller id",
+            "type": "boolean"
+        },
         "connections": {
             "description": "doodle connections"
         },
@@ -47,7 +52,9 @@
             "type": "integer"
         },
         "reschedule": {
-            "description": "doodle reschedule"
+            "default": {},
+            "description": "doodle reschedule",
+            "type": "object"
         },
         "route_win_timeout": {
             "default": 3000,
@@ -64,8 +71,7 @@
     },
     "required": [
         "connections",
-        "inbound_queue_name",
-        "reschedule"
+        "inbound_queue_name"
     ],
     "type": "object"
 }

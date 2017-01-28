@@ -153,6 +153,11 @@
             "default": 1000,
             "description": "number_manager time between numbers in milliseconds",
             "type": "integer"
+        },
+        "unauthorized_numbers_lookup": {
+            "default": false,
+            "description": "number_manager unauthorized numbers lookup",
+            "type": "boolean"
         }
     },
     "required": [

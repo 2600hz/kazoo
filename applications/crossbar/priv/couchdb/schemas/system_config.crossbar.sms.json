@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.sms",
+    "description": "Schema for crossbar.sms system_config",
+    "properties": {
+        "api_e164_convert_from": {
+            "default": false,
+            "description": "crossbar.sms api e164 convert from",
+            "type": "boolean"
+        },
+        "api_e164_convert_to": {
+            "default": false,
+            "description": "crossbar.sms api e164 convert to",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

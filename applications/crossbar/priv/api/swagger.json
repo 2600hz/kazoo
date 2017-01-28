@@ -7854,6 +7854,36 @@
                     "description": "conferences bridge username",
                     "type": "string"
                 },
+                "entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "conferences entry tone",
+                    "type": "string"
+                },
+                "exit_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "description": "conferences exit tone",
+                    "type": "string"
+                },
+                "moderator_entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "conferences moderator entry tone",
+                    "type": "string"
+                },
+                "moderator_exit_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "description": "conferences moderator exit tone",
+                    "type": "string"
+                },
+                "number_timeout": {
+                    "default": 5000,
+                    "description": "conferences number timeout",
+                    "type": "integer"
+                },
+                "pin_timeout": {
+                    "default": 5000,
+                    "description": "conferences pin timeout",
+                    "type": "integer"
+                },
                 "profiles": {
                     "properties": {
                         "default": {
@@ -7897,6 +7927,11 @@
                     "default": 3000,
                     "description": "conferences route win timeout",
                     "type": "integer"
+                },
+                "support_name_announcement": {
+                    "default": true,
+                    "description": "conferences support name announcement",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -8375,6 +8410,11 @@
         "system_config.crossbar.presence": {
             "description": "Schema for crossbar.presence system_config",
             "properties": {
+                "query_include_presentity": {
+                    "default": false,
+                    "description": "crossbar.presence query include presentity",
+                    "type": "boolean"
+                },
                 "query_presence_timeout": {
                     "default": 1000,
                     "description": "crossbar.presence query presence timeout",
@@ -8440,6 +8480,22 @@
             "required": [
                 "authoritative_crossbar"
             ],
+            "type": "object"
+        },
+        "system_config.crossbar.sms": {
+            "description": "Schema for crossbar.sms system_config",
+            "properties": {
+                "api_e164_convert_from": {
+                    "default": false,
+                    "description": "crossbar.sms api e164 convert from",
+                    "type": "boolean"
+                },
+                "api_e164_convert_to": {
+                    "default": false,
+                    "description": "crossbar.sms api e164 convert to",
+                    "type": "boolean"
+                }
+            },
             "type": "object"
         },
         "system_config.crossbar.token_restrictions": {
@@ -8570,6 +8626,11 @@
         "system_config.doodle": {
             "description": "Schema for doodle system_config",
             "properties": {
+                "api_preserve_caller_id": {
+                    "default": true,
+                    "description": "doodle.api preserve caller id",
+                    "type": "boolean"
+                },
                 "connections": {
                     "description": "doodle connections"
                 },
@@ -8614,7 +8675,9 @@
                     "type": "integer"
                 },
                 "reschedule": {
-                    "description": "doodle reschedule"
+                    "default": {},
+                    "description": "doodle reschedule",
+                    "type": "object"
                 },
                 "route_win_timeout": {
                     "default": 3000,
@@ -8631,8 +8694,7 @@
             },
             "required": [
                 "connections",
-                "inbound_queue_name",
-                "reschedule"
+                "inbound_queue_name"
             ],
             "type": "object"
         },
@@ -9085,6 +9147,11 @@
                     "description": "fax default retry period",
                     "type": "integer"
                 },
+                "default_smtp_domain": {
+                    "default": "fax.kazoo.io",
+                    "description": "fax defaultsmtp domain",
+                    "type": "string"
+                },
                 "delete_empty_faxes": {
                     "default": false,
                     "description": "fax delete empty faxes",
@@ -9146,6 +9213,16 @@
                     "default": true,
                     "description": "fax inbound t38 default",
                     "type": "string"
+                },
+                "log_faxbox_errors": {
+                    "default": true,
+                    "description": "fax log faxbox errors",
+                    "type": "boolean"
+                },
+                "max_outbound": {
+                    "default": 10,
+                    "description": "fax max outbound",
+                    "type": "integer"
                 },
                 "max_storage_retry": {
                     "default": 5,
@@ -9458,6 +9535,11 @@
                     "description": "kazoo_endpoint default caller id number",
                     "type": "string"
                 },
+                "default_can_text_self": {
+                    "default": true,
+                    "description": "kazoo_endpoint default can text self",
+                    "type": "boolean"
+                },
                 "default_ignore_completed_elsewhere": {
                     "default": true,
                     "description": "kazoo_endpoint default ignore completed elsewhere",
@@ -9634,6 +9716,13 @@
                                 "default": "mp3",
                                 "description": "media extension",
                                 "type": "string"
+                            }
+                        },
+                        "storage_retry_times": {
+                            "properties": {
+                                "default": 5,
+                                "description": "media storage retry times",
+                                "type": "integer"
                             }
                         }
                     }
@@ -10436,6 +10525,11 @@
                     "default": 1000,
                     "description": "number_manager time between numbers in milliseconds",
                     "type": "integer"
+                },
+                "unauthorized_numbers_lookup": {
+                    "default": false,
+                    "description": "number_manager unauthorized numbers lookup",
+                    "type": "boolean"
                 }
             },
             "required": [
@@ -11215,6 +11309,11 @@
                     "description": "stepswitch assume inbound e164",
                     "type": "boolean"
                 },
+                "block_anonymous_caller_id": {
+                    "default": false,
+                    "description": "stepswitch block anonymous caller id",
+                    "type": "boolean"
+                },
                 "cid_rules_honor_diversions": {
                     "default": false,
                     "description": "stepswitch cid rules honor diversions",
@@ -11560,6 +11659,11 @@
         "system_config.webhooks": {
             "description": "Schema for webhooks system_config",
             "properties": {
+                "attempt_failure_count": {
+                    "default": 6,
+                    "description": "webhooks attempt failure count",
+                    "type": "integer"
+                },
                 "attempt_failure_expiry_ms": {
                     "default": 60000,
                     "description": "webhooks attempt failure expiry in milliseconds",
