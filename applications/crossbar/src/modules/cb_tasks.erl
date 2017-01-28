@@ -215,9 +215,9 @@ validate_tasks(Context, TaskId, ?HTTP_DELETE) ->
 -spec validate_tasks(cb_context:context(), path_token(), path_token(), http_method()) ->
                             cb_context:context().
 validate_tasks(Context, TaskId, ?CSV_OUT, ?HTTP_GET) ->
-    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT);
+    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ANAME_OUT);
 validate_tasks(Context, TaskId, ?CSV_IN, ?HTTP_GET) ->
-    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN).
+    maybe_load_csv_attachment(Context, TaskId, ?KZ_TASKS_ANAME_IN).
 
 -spec validate_new_attachment(cb_context:context(), boolean()) -> cb_context:context().
 validate_new_attachment(Context, 'true') ->
@@ -422,8 +422,8 @@ attached_data(Context, 'false') ->
 save_attached_data(Context, TaskId, CSV, 'true') ->
     CT = req_content_type(Context),
     Options = [{'content_type', CT}],
-    lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ATTACHMENT_NAME_IN, TaskId]),
-    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN, CSV, Context, Options);
+    lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ANAME_IN, TaskId]),
+    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options);
 save_attached_data(Context, _TaskId, 'undefined', 'false') ->
     lager:debug("no attachment to save for task ~s", [_TaskId]),
     Context;
@@ -431,9 +431,9 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     lager:debug("converting json to csv before saving"),
     lager:debug("csv fields found: ~p", [kz_json:get_keys(hd(Records))]),
     CSV = kz_csv:json_to_iolist(Records),
-    lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ATTACHMENT_NAME_IN, TaskId]),
+    lager:debug("saving ~s attachment in task ~s", [?KZ_TASKS_ANAME_IN, TaskId]),
     Options = [{'content_type', <<"text/csv">>}],
-    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN, CSV, Context, Options).
+    crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
 
 %% @private
 -spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
