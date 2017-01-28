@@ -485,7 +485,7 @@ read_swagger_json() ->
     end.
 
 write_swagger_json(Swagger) ->
-    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger, ['pretty'])).
+    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
 to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
