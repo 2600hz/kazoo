@@ -72,7 +72,7 @@ bindings_match_test_() ->
 %%     dbg:tpl(kazoo_bindings, [{'_', [], [$_]}]),
 %%     dbg:p(all, c),
 
-%%     Result = binding_matches(<<"#.c.#.c.#">>, <<"c.c">>),
+%%     Result = binding_matches(<<"#.Z.*.9.0.#">>,<<"1.Z.7.9.0.9.a.0">>),
 
 %%     dbg:stop_clear(),
 %%     dbg:stop(),
@@ -87,6 +87,7 @@ weird_bindings_test_() ->
     ,?_assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>))
     ,?_assertEqual('true', binding_matches(<<"*.u.*.7.7.#">>,<<"i.u.e.7.7.7.a">>))
     ,?_assertEqual('true', binding_matches(<<"#.c.#.c.#">>, <<"c.c">>))
+    ,?_assertEqual('true', binding_matches(<<"#.Z.*.9.0.#">>,<<"1.Z.7.9.0.9.a.0">>))
     ].
 
 %%% PropEr tests
