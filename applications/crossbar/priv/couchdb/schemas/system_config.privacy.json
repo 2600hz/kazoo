@@ -1,0 +1,28 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.privacy",
+    "description": "Schema for privacy system_config",
+    "properties": {
+        "block_anonymous_caller_id": {
+            "default": false,
+            "description": "Controls blocking of anonymous calls",
+            "type": "boolean"
+        },
+        "privacy_mode": {
+            "default": "kazoo",
+            "description": "Default privacy mode for anonymous calls",
+            "type": "string"
+        },
+        "privacy_name": {
+            "default": "anonymous",
+            "description": "Default Caller ID Name should be shown for anonymous calls",
+            "type": "string"
+        },
+        "privacy_number": {
+            "default": "0000000000",
+            "description": "Default Caller ID Number should be shown for anonymous calls",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

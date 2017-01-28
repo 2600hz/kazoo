@@ -4,7 +4,15 @@
     "description": "Validator for the privacy callflow's data object",
     "properties": {
         "mode": {
-            "description": ""
+            "default": "full",
+            "description": "set caller privacy on calls, restricting the presentation some or full parts of Caller ID",
+            "enum": [
+                "full",
+                "name",
+                "number",
+                "yes"
+            ],
+            "type": "string"
         }
     },
     "required": true,

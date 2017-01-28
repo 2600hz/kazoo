@@ -366,8 +366,8 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) -> <<"string">>;
-guess_type_by_default(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
@@ -425,10 +425,10 @@ default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
     '_system';
-default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_number', [])) ->
-    default_value(kz_util:anonymous_caller_id_number());
-default_value(?MOD_FUN_ARGS('kz_util', 'anonymous_caller_id_name', [])) ->
-    default_value(kz_util:anonymous_caller_id_name());
+default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) ->
+    default_value(kz_privacy:anonymous_caller_id_number());
+default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) ->
+    default_value(kz_privacy:anonymous_caller_id_name());
 default_value(?MOD_FUN_ARGS('kz_term', 'to_binary', [Arg])) ->
     default_value(Arg);
 default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->

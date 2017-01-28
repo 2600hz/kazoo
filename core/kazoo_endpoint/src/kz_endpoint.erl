@@ -960,7 +960,7 @@ get_clid(Endpoint, Properties, Call) ->
 
 get_clid(Endpoint, Properties, Call, Type) ->
     case kz_json:is_true(<<"suppress_clid">>, Properties) of
-        'true' -> #clid{};
+        'true' -> maybe_privacy_cid(#clid{}, Call);
         'false' ->
             {Number, Name} = kz_attributes:caller_id(Type, Call),
             CallerNumber = case kapps_call:caller_id_number(Call) of
@@ -972,12 +972,21 @@ get_clid(Endpoint, Properties, Call, Type) ->
                              _Name -> Name
                          end,
             {CalleeNumber, CalleeName} = kz_attributes:callee_id(Endpoint, Call),
-            #clid{caller_number=CallerNumber
-                 ,caller_name=CallerName
-                 ,callee_number=CalleeNumber
-                 ,callee_name=CalleeName
-                 }
+            maybe_privacy_cid(#clid{caller_number=CallerNumber
+                                   ,caller_name=CallerName
+                                   ,callee_number=CalleeNumber
+                                   ,callee_name=CalleeName
+                                   }, Call)
     end.
+
+-spec maybe_privacy_cid(clid(), kapps_call:call()) -> clid().
+maybe_privacy_cid(#clid{caller_name=CallerName
+                       ,caller_number=CallerNumber
+                       }=Clid, Call) ->
+    {Name, Number} = kz_privacy:maybe_cid_privacy(kapps_call:custom_channel_vars(Call), {CallerName, CallerNumber}),
+    Clid#clid{caller_name=Name
+             ,caller_number=Number
+             }.
 
 -spec maybe_record_call(kz_json:object(), kapps_call:call()) -> 'ok'.
 maybe_record_call(Endpoint, Call) ->

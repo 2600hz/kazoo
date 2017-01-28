@@ -112,27 +112,40 @@ build_offnet_request(Data, Call) ->
 
 -spec get_channel_vars(kapps_call:call()) -> kz_json:object().
 get_channel_vars(Call) ->
+    GetterFuns = [fun maybe_add_endpoint/2
+                 ,fun add_privacy_flags/2
+                 ,fun maybe_require_ignore_early_media/2
+                 ],
+    CCVs = lists:foldl(fun(F, Acc) -> F(Call, Acc) end
+                      ,[]
+                      ,GetterFuns
+                      ),
+    kz_json:from_list(props:filter_empty(CCVs)).
+
+-spec add_privacy_flags(kapps_call:call(), kz_proplist()) -> kz_proplist().
+add_privacy_flags(Call, Acc) ->
+    CCVs = kapps_call:custom_channel_vars(Call),
+    kz_privacy:flags(CCVs) ++ Acc.
+
+-spec maybe_add_endpoint(kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_add_endpoint(Call, Acc) ->
     AuthId = kapps_call:authorizing_id(Call),
     EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, AuthId, Call),
-    kz_json:from_list(
-      props:filter_undefined(get_channel_vars(EndpointId, Call))
-     ).
-
--spec get_channel_vars(api_binary(), kapps_call:call()) -> kz_proplist().
-get_channel_vars('undefined', Call) -> [maybe_require_ignore_early_media(Call)];
-get_channel_vars(EndpointId, Call) ->
-    case kz_endpoint:get(EndpointId, kapps_call:account_db(Call)) of
+    case EndpointId =/= 'undefined'
+        andalso kz_endpoint:get(EndpointId, kapps_call:account_db(Call))
+    of
+        'false' -> Acc;
         {'ok', Endpoint} ->
             [{<<"Authorizing-ID">>, EndpointId}
             ,{<<"Owner-ID">>, kz_json:get_value(<<"owner_id">>, Endpoint)}
-            ,maybe_require_ignore_early_media(Call)
+             | Acc
             ];
-        {'error', _} -> [maybe_require_ignore_early_media(Call)]
+        {'error', _} -> Acc
     end.
 
--spec maybe_require_ignore_early_media(kapps_call:call()) -> {ne_binary(), api_binary()}.
-maybe_require_ignore_early_media(Call) ->
-    {<<"Require-Ignore-Early-Media">>, kapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)}.
+-spec maybe_require_ignore_early_media(kapps_call:call(), kz_proplist()) -> kz_proplist().
+maybe_require_ignore_early_media(Call, Acc) ->
+    [{<<"Require-Ignore-Early-Media">>, kapps_call:custom_channel_var(<<"Require-Ignore-Early-Media">>, Call)} | Acc].
 
 -spec get_bypass_e164(kz_json:object()) -> boolean().
 get_bypass_e164(Data) ->

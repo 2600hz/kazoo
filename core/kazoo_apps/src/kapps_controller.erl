@@ -116,6 +116,7 @@ initialize_kapps() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
     kz_datamgr:db_exists(?KZ_ACCOUNTS_DB)
         orelse kapps_maintenance:refresh(),
+    kapps_config:migrate(),
     ToStart = [kz_term:to_atom(KApp, 'true') || KApp <- start_which_kapps()],
     Started = [KApp || KApp <- lists:sort(fun sysconf_first/2, ToStart),
                        {'ok',_} <- [start_app(KApp)]

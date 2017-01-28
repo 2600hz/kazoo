@@ -61,10 +61,6 @@
 
 -export([node_name/0, node_hostname/0]).
 
--export([anonymous_caller_id_name/0
-        ,anonymous_caller_id_number/0
-        ]).
-
 -export([write_file/2, write_file/3
         ,rename_file/2
         ,delete_file/1
@@ -904,14 +900,6 @@ make_dir(Filename) ->
         {'error', _}=_E ->
             lager:error("creating directory ~s failed : ~p", [Filename, _E])
     end.
-
--spec anonymous_caller_id_name() -> ne_binary().
-anonymous_caller_id_name() ->
-    <<"anonymous">>.
-
--spec anonymous_caller_id_number() -> ne_binary().
-anonymous_caller_id_number() ->
-    <<"0000000000">>.
 
 -spec process_fold([tuple()], atom()) -> tuple() | atom().
 process_fold([], App) -> App;

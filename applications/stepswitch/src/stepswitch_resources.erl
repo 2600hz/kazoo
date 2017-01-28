@@ -105,6 +105,7 @@
                  ,from_uri_realm :: api_binary()
                  ,is_emergency = 'false' :: boolean()
                  ,force_port = 'false' :: boolean()
+                 ,privacy_mode = 'undefined' :: api_binary()
                  }).
 
 -record(resrc, {id :: api_binary()
@@ -130,6 +131,7 @@
                ,formatters :: api_objects()
                ,proxies = [] :: kz_proplist()
                ,selector_marks = [] :: [tuple()]
+               ,privacy_mode = 'undefined' :: api_binary()
                }).
 
 -type resource() :: #resrc{}.
@@ -188,6 +190,7 @@ resource_to_props(#resrc{}=Resource) ->
       ,{<<"Rules">>, Resource#resrc.raw_rules}
       ,{<<"Caller-ID-Rules">>, Resource#resrc.cid_raw_rules}
       ,{<<"Formatters">>, Resource#resrc.formatters}
+      ,{<<"Privacy-Mode">>, Resource#resrc.privacy_mode}
       ]).
 
 -spec sort_resources(resources()) -> resources().
@@ -499,7 +502,7 @@ check_diversion_fields(OffnetJObj) ->
 -spec update_endpoint(kz_json:object(), kz_proplist(), kz_proplist()) ->
                              kz_json:object().
 update_endpoint(Endpoint, Updates, CCVUpdates) ->
-    kz_json:set_values(Updates ,update_ccvs(Endpoint, CCVUpdates)).
+    kz_json:set_values(Updates, update_ccvs(Endpoint, CCVUpdates)).
 
 -spec maybe_add_proxies(kz_json:objects(), kz_proplist(), kz_json:objects()) -> kz_json:objects().
 maybe_add_proxies([], _, Acc) -> Acc;
@@ -604,12 +607,13 @@ gateway_to_endpoint(DestinationNumber
                             ,endpoint_type=EndpointType
                             ,endpoint_options=EndpointOptions
                             ,progress_timeout=ProgressTimeout
+                            ,privacy_mode=PrivacyMode
                             }=Gateway
                    ,OffnetJObj
                    ) ->
 
     IsEmergency = gateway_emergency_resource(Gateway),
-    {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency),
+    {CIDName, CIDNumber} = gateway_cid(OffnetJObj, IsEmergency, PrivacyMode),
 
     CCVs = props:filter_empty(
              [{<<"Emergency-Resource">>, IsEmergency}
@@ -639,12 +643,25 @@ gateway_to_endpoint(DestinationNumber
          | maybe_get_t38(Gateway, OffnetJObj)
         ])).
 
--spec gateway_cid(kapi_offnet_resource:req(), api_binary()) -> {ne_binary(), ne_binary()}.
-gateway_cid(OffnetJObj, 'undefined') ->
+-spec gateway_cid(kapi_offnet_resource:req(), api_binary(), api_binary()) -> {ne_binary(), ne_binary()}.
+gateway_cid(OffnetJObj, IsEmergency, PrivacyMode) ->
+    CCVs = kz_json:get_ne_value(<<"Custom-Channel-Vars">>, OffnetJObj, kz_json:new()),
+    AccountId = kapi_offnet_resource:hunt_account_id(OffnetJObj, kapi_offnet_resource:account_id(OffnetJObj)),
+    DefaultCID = default_gateway_cid(OffnetJObj, IsEmergency),
+    kz_privacy:maybe_cid_privacy(kz_json:set_values([{<<"Account-ID">>, AccountId}
+                                                    ,{<<"Privacy-Mode">>, PrivacyMode}
+                                                    ]
+                                                   ,CCVs
+                                                   )
+                                , DefaultCID
+                                ).
+
+-spec default_gateway_cid(kapi_offnet_resource:req(), api_binary()) -> {ne_binary(), ne_binary()}.
+default_gateway_cid(OffnetJObj, 'undefined') ->
     {kapi_offnet_resource:outbound_caller_id_name(OffnetJObj)
     ,kapi_offnet_resource:outbound_caller_id_number(OffnetJObj)
     };
-gateway_cid(OffnetJObj, <<"true">>) ->
+default_gateway_cid(OffnetJObj, <<"true">>) ->
     {stepswitch_bridge:bridge_emergency_cid_name(OffnetJObj)
     ,stepswitch_bridge:bridge_emergency_cid_number(OffnetJObj)
     }.
@@ -932,6 +949,7 @@ resource_from_jobj(JObj) ->
                      ,formatters=resource_formatters(JObj)
                      ,global=kz_json:is_true(<<"Is-Global">>, JObj, 'true')
                      ,proxies=kz_json:to_proplist(<<"Proxies">>, JObj)
+                     ,privacy_mode=kz_json:get_ne_value(<<"privacy_mode">>, JObj)
                      },
     Gateways = gateways_from_jobjs(kz_json:get_value(<<"gateways">>, JObj, [])
                                   ,Resource
@@ -1037,6 +1055,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
                               ,fax_option=T38
                               ,codecs=Codecs
                               ,bypass_media=BypassMedia
+                              ,privacy_mode=PrivacyMode
                               }) ->
     EndpointType = kz_json:get_ne_value(<<"endpoint_type">>, JObj, <<"sip">>),
     #gateway{endpoint_type = EndpointType
@@ -1062,6 +1081,7 @@ gateway_from_jobj(JObj, #resrc{is_emergency=IsEmergency
             ,caller_id_type = kz_json:get_ne_value(<<"caller_id_type">>, JObj, ?DEFAULT_CALLER_ID_TYPE)
             ,progress_timeout = kz_json:get_integer_value(<<"progress_timeout">>, JObj, ?DEFAULT_PROGRESS_TIMEOUT)
             ,endpoint_options = endpoint_options(JObj, EndpointType)
+            ,privacy_mode=kz_json:get_value(<<"privacy_mode">>, JObj, PrivacyMode)
             }.
 
 -spec gateway_is_emergency(kz_json:object(), boolean()) -> boolean().

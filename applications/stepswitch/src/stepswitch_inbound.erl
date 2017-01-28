@@ -10,10 +10,6 @@
 
 -include("stepswitch.hrl").
 
--define(SHOULD_BLOCK_ANONYMOUS(AccountId)
-       ,kapps_account_config:get_global(AccountId, ?SS_CONFIG_CAT, <<"block_anonymous_caller_id">>, 'false')
-       ).
-
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -229,25 +225,12 @@ maybe_add_prepend(NumberProps, JObj) ->
 -spec maybe_block_call(knm_number_options:extra_options(), kz_json:object()) -> kz_json:object().
 maybe_block_call(_, JObj) ->
     case is_blacklisted(JObj)
-        orelse block_anonymous(JObj) of
+        orelse kz_privacy:should_block_anonymous(JObj)
+    of
         true -> JObj;
         false -> relay_request(JObj)
     end,
     JObj.
-
--spec block_anonymous(kz_json:object()) -> kz_json:object().
-block_anonymous(JObj) ->
-    AccountId = kz_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),
-    case {?SHOULD_BLOCK_ANONYMOUS(AccountId), is_anonymous(JObj)} of
-        {true, true} ->
-            lager:info("block anonymous call, account_id:~p", [AccountId]),
-            true;
-        {true, false} ->
-            lager:info("passing non-anonymous calll, account_id:~p", [AccountId]),
-            false;
-        _Check ->
-            false
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -289,26 +272,6 @@ transition_port_in(Number, JObj) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
-
-%% string: two or more zeros -> true
--spec is_zero(api_ne_binary()) -> boolean().
-is_zero(Number) when is_binary(Number) ->
-    case re:run(erlang:binary_to_list(Number), "^\\+?00+\$", [global]) of
-        {match, _} -> true;
-        _ -> false
-    end;
-is_zero(_) -> false.
-
-%%% true if we think call is anonymous
--spec is_anonymous(kz_json:object()) -> boolean().
-is_anonymous(JObj) ->
-    IsPrivacyNumber = kz_json:is_true(?CCV(<<"Caller-Privacy-Number">>), JObj, false),
-    IsPrivacyName = kz_json:is_true(?CCV(<<"Caller-Privacy-Name">>), JObj, false),
-    IsCallerNumberZero = is_zero(kz_json:get_value(<<"Caller-ID-Number">>, JObj)),
-    IsCallerNumberZero
-        orelse IsPrivacyName
-        orelse IsPrivacyNumber.
-
 -spec is_blacklisted(kz_json:object()) -> boolean().
 is_blacklisted(JObj) ->
     AccountId = kz_json:get_ne_value(?CCV(<<"Account-ID">>), JObj),

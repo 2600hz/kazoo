@@ -362,6 +362,7 @@ maybe_update_callee_id(JObj, Acc) ->
 
 -spec authz_req(kz_proplist()) -> kz_proplist().
 authz_req(Props) ->
+    AccountId = kzd_freeswitch:account_id(Props),
     props:filter_undefined(
       [{<<"To">>, ecallmgr_util:get_sip_to(Props)}
       ,{<<"From">>, ecallmgr_util:get_sip_from(Props)}
@@ -369,8 +370,12 @@ authz_req(Props) ->
       ,{<<"Call-ID">>, kzd_freeswitch:call_id(Props)}
       ,{<<"Call-Direction">>, kzd_freeswitch:call_direction(Props)}
       ,{<<"Other-Leg-Call-ID">>, kzd_freeswitch:other_leg_call_id(Props)}
-      ,{<<"Caller-ID-Name">>, kzd_freeswitch:caller_id_name(Props, kz_util:anonymous_caller_id_name())}
-      ,{<<"Caller-ID-Number">>, kzd_freeswitch:caller_id_number(Props, kz_util:anonymous_caller_id_number())}
+      ,{<<"Caller-ID-Name">>
+       ,kzd_freeswitch:caller_id_name(Props, kz_privacy:anonymous_caller_id_name(AccountId))
+       }
+      ,{<<"Caller-ID-Number">>
+       ,kzd_freeswitch:caller_id_number(Props, kz_privacy:anonymous_caller_id_number(AccountId))
+       }
       ,{<<"From-Network-Addr">>, kzd_freeswitch:from_network_ip(Props)}
       ,{<<"From-Network-Port">>, kzd_freeswitch:from_network_port(Props)}
       ,{<<"Custom-Channel-Vars">>, kz_json:from_list(ecallmgr_util:custom_channel_vars(Props))}

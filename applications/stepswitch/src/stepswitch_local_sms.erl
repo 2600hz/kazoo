@@ -98,11 +98,12 @@ delivery_from_req(OffnetReq, Status, DeliveryCode, DeliveryFailure) ->
 
 -spec request_caller_id(kapi_offnet_resource:req()) -> {ne_binary(), ne_binary()}.
 request_caller_id(OffnetReq) ->
+    AccountId = kapi_offnet_resource:account_id(OffnetReq),
     {kapi_offnet_resource:outbound_caller_id_number(OffnetReq
-                                                   ,kz_util:anonymous_caller_id_number()
+                                                   ,kz_privacy:anonymous_caller_id_number(AccountId)
                                                    )
     ,kapi_offnet_resource:outbound_caller_id_name(OffnetReq
-                                                 ,kz_util:anonymous_caller_id_name()
+                                                 ,kz_privacy:anonymous_caller_id_name(AccountId)
                                                  )
     }.
 

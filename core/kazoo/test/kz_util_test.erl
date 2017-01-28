@@ -194,11 +194,6 @@ log_test_() ->
     ,?_assertEqual(ok, kz_util:log_stacktrace(erlang:get_stacktrace()))
     ].
 
-anon_test_() ->
-    [?_assertEqual(<<"anonymous">>, kz_util:anonymous_caller_id_name())
-    ,?_assertEqual(<<"0000000000">>, kz_util:anonymous_caller_id_number())
-    ].
-
 calling_app_test_() ->
     [?_assertEqual(eunit_test, maps:get(app, kz_util:calling_process()))
     ,?_assertMatch(undefined, kz_util:get_app("kazoo"))

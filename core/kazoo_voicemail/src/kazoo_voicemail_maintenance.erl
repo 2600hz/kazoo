@@ -139,7 +139,8 @@ rebuild_message_metadata(JObj, AttachmentName) ->
     MediaId = kz_json:get_value(<<"_id">>, JObj),
     ?LOG("  rebuilding metadata for ~s", [MediaId]),
     Length = kz_json:get_value([<<"_attachments">>, AttachmentName, <<"length">>], JObj, 0),
-    CIDNumber = kz_util:anonymous_caller_id_number(),
+    AccountId = kz_doc:account_id(JObj),
+    CIDNumber = kz_privacy:anonymous_caller_id_number(AccountId),
     CIDName = <<"Recovered Voicemail Message">>,
     Timestamp = kz_json:get_value(<<"pvt_created">>, JObj, kz_time:current_tstamp()),
     Routines = [{fun kapps_call:set_to/2, <<CIDNumber/binary, "@nodomain">>}
@@ -219,8 +220,16 @@ rebuild_kapps_call(JObj, AccountId) ->
     CCVs = [{<<"Account-ID">>, AccountId}],
     Props = [{<<"Call-ID">>, kz_json:get_value(<<"call_id">>, Metadata, kz_binary:rand_hex(12))}
             ,{<<"From">>, kz_json:get_value(<<"from">>, Metadata, <<"unknown@nodomain">>)}
-            ,{<<"Caller-ID-Name">>, kz_json:get_value(<<"caller_id_name">>, Metadata, kz_util:anonymous_caller_id_name())}
-            ,{<<"Caller-ID-Number">>, kz_json:get_value(<<"caller_id_number">>, Metadata, kz_util:anonymous_caller_id_number())}
+            ,{<<"Caller-ID-Name">>, kz_json:get_value(<<"caller_id_name">>
+                                                     ,Metadata
+                                                     ,kz_privacy:anonymous_caller_id_name(AccountId)
+                                                     )
+             }
+            ,{<<"Caller-ID-Number">>, kz_json:get_value(<<"caller_id_number">>
+                                                       ,Metadata
+                                                       ,kz_privacy:anonymous_caller_id_number(AccountId)
+                                                       )
+             }
             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
             ,{<<"Custom-SIP-Headers">>, kz_json:new()}
             ,{<<"Request">>, To}

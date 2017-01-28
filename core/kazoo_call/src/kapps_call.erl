@@ -131,8 +131,8 @@
                     ,control_q :: api_binary()                   %% The control queue provided on route win
                     ,control_q_helper = fun default_helper_function/2 :: kapps_helper_function()       %% A function used when requesting the call id, to ensure it is up-to-date
                     ,controller_q :: api_binary()                %%
-                    ,caller_id_name = kz_util:anonymous_caller_id_name() :: ne_binary()      %% The caller name
-                    ,caller_id_number = kz_util:anonymous_caller_id_number() :: ne_binary() %% The caller number
+                    ,caller_id_name = kz_privacy:anonymous_caller_id_name() :: ne_binary()      %% The caller name
+                    ,caller_id_number = kz_privacy:anonymous_caller_id_number() :: ne_binary() %% The caller number
                     ,callee_id_name :: api_binary()                     %% The callee name
                     ,callee_id_number :: api_binary()                   %% The callee number
                     ,switch_nodename = <<>> :: binary()                 %% The switch node name (as known in ecallmgr)
@@ -678,9 +678,11 @@ set_caller_id_name(CIDName, #kapps_call{}=Call) when is_binary(CIDName) ->
 -endif.
 
 -spec caller_id_name(call()) -> ne_binary().
-caller_id_name(#kapps_call{caller_id_name=CIDName}) ->
+caller_id_name(#kapps_call{caller_id_name=CIDName
+                          ,account_id=AccountId
+                          }) ->
     case kz_term:is_empty(CIDName) of
-        'true' -> kz_util:anonymous_caller_id_name();
+        'true' -> kz_privacy:anonymous_caller_id_name(AccountId);
         'false' -> CIDName
     end.
 
@@ -695,9 +697,11 @@ set_caller_id_number(CIDNumber, #kapps_call{}=Call) ->
 -endif.
 
 -spec caller_id_number(call()) -> ne_binary().
-caller_id_number(#kapps_call{caller_id_number=CIDNumber}) ->
+caller_id_number(#kapps_call{caller_id_number=CIDNumber
+                            ,account_id=AccountId
+                            }) ->
     case  kz_term:is_empty(CIDNumber) of
-        'true' -> kz_util:anonymous_caller_id_number();
+        'true' -> kz_privacy:anonymous_caller_id_number(AccountId);
         'false' -> CIDNumber
     end.
 
