@@ -55,10 +55,10 @@ start(TaskId, API, ExtraArgs) ->
 -spec init(kz_tasks:task_id(), kz_json:object(), kz_proplist()) -> {'ok', state()} |
                                                                    {'error', any()}.
 init(TaskId, API, ExtraArgs) ->
-    case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ATTACHMENT_NAME_IN) of
+    case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
         {'error', _R}=Error ->
             lager:error("failed loading attachment ~s from ~s/~s: ~p"
-                       ,[?KZ_TASKS_ATTACHMENT_NAME_IN, ?KZ_TASKS_DB, TaskId, _R]),
+                       ,[?KZ_TASKS_ANAME_IN, ?KZ_TASKS_DB, TaskId, _R]),
             Error;
         {'ok', CSV} ->
             {Header, CSVRest} = kz_csv:take_row(CSV),
