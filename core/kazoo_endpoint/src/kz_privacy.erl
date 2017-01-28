@@ -95,7 +95,7 @@ should_block_anonymous(JObj) ->
                                                  ,<<"block_anonymous_caller_id">>
                                                  ,'false'
                                                  ),
-    case {ShouldBlock, is_anonymous(JObj)} of
+    case {kz_term:is_true(ShouldBlock), is_anonymous(JObj)} of
         {'true', 'true'} ->
             lager:info("block anonymous call, account_id: ~s", [AccountId]),
             'true';
