@@ -41,6 +41,7 @@
         ,auth_by/1, set_auth_by/2, is_authorized/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
+        ,mdn_run/1, set_mdn_run/2
         ,locality/1, set_locality/2
         ,doc/1, update_doc/2, reset_doc/2
         ,modified/1, set_modified/2
@@ -75,6 +76,7 @@
                           ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
+                          ,mdn_run = false :: boolean()
                           ,locality :: kz_json:object()
                           ,doc = kz_json:new() :: kz_json:object()
                           ,modified :: gregorian_seconds()
@@ -136,37 +138,37 @@ fetch(Num) ->
 fetch(?TEST_CREATE_NUM, _Options) ->
     {'error', 'not_found'};
 fetch(?TEST_AVAILABLE_NUM, Options) ->
-    handle_fetched_result(?AVAILABLE_NUMBER, Options);
+    handle_fetch(?AVAILABLE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_BAD_CARRIER_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
+    handle_fetch(?IN_SERVICE_BAD_CARRIER_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_MDN, Options) ->
-    handle_fetched_result(?IN_SERVICE_MDN, Options);
+    handle_fetch(?IN_SERVICE_MDN, Options);
 fetch(?TEST_IN_SERVICE_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_NUMBER, Options);
+    handle_fetch(?IN_SERVICE_NUMBER, Options);
 fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
-    handle_fetched_result(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
+    handle_fetch(?IN_SERVICE_WITH_HISTORY_NUMBER, Options);
 fetch(?BW_EXISTING_DID, Options) ->
-    handle_fetched_result(?BW_EXISTING_JSON, Options);
+    handle_fetch(?BW_EXISTING_JSON, Options);
 fetch(?TEST_TELNYX_NUM, Options) ->
-    handle_fetched_result(?TELNY_NUMBER, Options);
+    handle_fetch(?TELNY_NUMBER, Options);
 fetch(?TEST_OLD_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD3_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD4_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD5_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD6_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
-    handle_fetched_result(JObj, Options);
+    handle_fetch(JObj, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
@@ -174,7 +176,7 @@ fetch(Num, Options) ->
     NormalizedNum = knm_converters:normalize(Num),
     NumberDb = knm_converters:to_db(NormalizedNum),
     case fetch(NumberDb, NormalizedNum, Options) of
-        {'ok', JObj} -> handle_fetched_result(JObj, Options);
+        {'ok', JObj} -> handle_fetch(JObj, Options);
         {'error', _R}=Error ->
             lager:debug("failed to open ~s in ~s: ~p", [NormalizedNum, NumberDb, _R]),
             Error
@@ -187,13 +189,28 @@ fetch(NumberDb, NormalizedNum, Options) ->
     end.
 -endif.
 
--spec handle_fetched_result(kz_json:object(), knm_number_options:options()) ->
-                                   {'ok', knm_phone_number()}.
-handle_fetched_result(JObj, Options) ->
+-spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {ok, knm_phone_number()}.
+handle_fetch(JObj, Options) ->
     PhoneNumber = from_json_with_options(JObj, Options),
-    case is_authorized(PhoneNumber) of
-        'true' -> {'ok', PhoneNumber};
-        'false' -> knm_errors:unauthorized()
+    case is_authorized(PhoneNumber)
+        andalso is_mdn_for_mdn_run(PhoneNumber, Options)
+    of
+        true -> {ok, PhoneNumber};
+        false -> knm_errors:unauthorized()
+    end.
+
+is_mdn_for_mdn_run(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}, _) ->
+    lager:debug("mdn check disabled by auth_by"),
+    true;
+is_mdn_for_mdn_run(PN, Options) ->
+    IsMDN = ?CARRIER_MDN =:= module_name(PN),
+    %% Equal to: IsMDN xnor IsMDNRun
+    case knm_number_options:mdn_run(Options) of
+        false -> not IsMDN;
+        true ->
+            _ = IsMDN
+                andalso lager:debug("~s is an mdn", [number(PN)]),
+            IsMDN
     end.
 
 %%--------------------------------------------------------------------
@@ -485,9 +502,10 @@ features_fold(FeatureKey, Acc, JObj) ->
 from_json_with_options(JObj, Options)
   when is_list(Options) ->
     Updates = [{fun set_assign_to/2, knm_number_options:assign_to(Options)}
-               %% See knm_number_options:default/0 for these 3.
+               %% See knm_number_options:default/0 for these 4.
               ,{fun set_dry_run/2, knm_number_options:dry_run(Options, 'false')}
               ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
+              ,{fun set_mdn_run/2, knm_number_options:mdn_run(Options)}
               ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
               ],
     {'ok', PhoneNumber} = setters(from_json(JObj), Updates),
@@ -495,6 +513,7 @@ from_json_with_options(JObj, Options)
 from_json_with_options(JObj, PhoneNumber) ->
     Options = [{'dry_run', dry_run(PhoneNumber)}
               ,{'batch_run', batch_run(PhoneNumber)}
+              ,{mdn_run, mdn_run(PhoneNumber)}
               ,{'auth_by', auth_by(PhoneNumber)}
               ],
     from_json_with_options(JObj, Options).
@@ -966,6 +985,18 @@ batch_run(#knm_phone_number{batch_run=BatchRun}) -> BatchRun.
 -spec set_batch_run(knm_phone_number(), boolean()) -> knm_phone_number().
 set_batch_run(N, BatchRun) when is_boolean(BatchRun) ->
     N#knm_phone_number{batch_run=BatchRun}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec mdn_run(knm_phone_number()) -> boolean().
+mdn_run(#knm_phone_number{mdn_run=MDNRun}) -> MDNRun.
+
+-spec set_mdn_run(knm_phone_number(), boolean()) -> knm_phone_number().
+set_mdn_run(N, MDNRun) when is_boolean(MDNRun) ->
+    N#knm_phone_number{mdn_run=MDNRun}.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -43,8 +43,8 @@ release_in_service_bad_carrier_number_test_() ->
     ].
 
 release_in_service_mdn_number_test_() ->
-    {'ok', Released} = knm_number:release(?TEST_IN_SERVICE_MDN),
-    PhoneNumber = knm_number:phone_number(Released),
+    {'ok', N} = knm_number:release(?TEST_IN_SERVICE_MDN, knm_number_options:mdn_options()),
+    PhoneNumber = knm_number:phone_number(N),
     [{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PhoneNumber))
      }

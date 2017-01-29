@@ -138,25 +138,27 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(kz_tasks:task_id(), non_neg_integer(), non_neg_integer(), ne_binary()) -> 'ok'.
+-spec worker_finished(kz_tasks:task_id(), non_neg_integer(), non_neg_integer(), ne_binary()) -> ok.
 worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINARY)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
     {'ok', CSVOut} = file:read_file(Output),
-    case kz_datamgr:put_attachment(?KZ_TASKS_DB
-                                  ,TaskId
-                                  ,?KZ_TASKS_ATTACHMENT_NAME_OUT
-                                  ,CSVOut
-                                  ,[{'content_type', <<"text/csv">>}]
-                                  )
-    of
-        {'ok', _TaskJObj} ->
-            lager:debug("saved ~s", [?KZ_TASKS_ATTACHMENT_NAME_OUT]),
-            kz_util:delete_file(Output),
-            'ok';
-        {'error', _R}=Error ->
-            lager:error("failed saving ~s/~s: ~p"
-                       ,[TaskId, ?KZ_TASKS_ATTACHMENT_NAME_OUT, _R]),
+    AName = ?KZ_TASKS_ANAME_OUT,
+    attempt_upload(TaskId, AName, CSVOut, Output, 3).
+
+attempt_upload(_TaskId, _AName, _, _, 0) ->
+    lager:error("failed saving ~s/~s: 3rd conflict", [_TaskId, _AName]),
+    {error, conflict};
+attempt_upload(TaskId, AName, CSVOut, Output, Retries) ->
+    lager:debug("attempt #~p to save ~s/~s", [3-Retries+1, TaskId, AName]),
+    Options = [{content_type, <<"text/csv">>}],
+    case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSVOut, Options) of
+        {ok, _TaskJObj} ->
+            lager:debug("saved ~s", [AName]),
+            kz_util:delete_file(Output);
+        {error, conflict} -> attempt_upload(TaskId, AName, CSVOut, Output, Retries-1);
+        {error, _R}=Error ->
+            lager:error("failed saving ~s/~s: ~p", [TaskId, AName, _R]),
             Error
     end.
 

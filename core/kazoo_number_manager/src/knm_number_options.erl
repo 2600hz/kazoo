@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_number_options).
 
@@ -12,6 +13,7 @@
         ,auth_by/1, auth_by/2
         ,dry_run/1, dry_run/2
         ,batch_run/1, batch_run/2
+        ,mdn_run/1
         ,module_name/1
         ,ported_in/1, ported_in/2
         ,public_fields/1
@@ -19,6 +21,7 @@
         ,should_delete/1, should_delete/2
 
         ,default/0
+        ,mdn_options/0
 
         ,to_phone_number_setters/1
         ]).
@@ -44,6 +47,7 @@
                   {'auth_by', ne_binary()} |
                   {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
+                  {mdn_run, boolean()} |
                   {'module_name', ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
@@ -73,6 +77,13 @@ default() ->
     [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
     ,{'dry_run', 'false'}
     ,{'batch_run', 'false'}
+    ,{mdn_run, false}
+    ].
+
+-spec mdn_options() -> options().
+mdn_options() ->
+    [{mdn_run, true}
+     |default()
     ].
 
 -spec to_phone_number_setters(options()) -> knm_phone_number:set_functions().
@@ -81,10 +92,10 @@ to_phone_number_setters(Options) ->
          'public_fields' ->
              {fun knm_phone_number:reset_doc/2, Value};
          _ ->
-             FName = kz_util:to_atom("set_" ++ atom_to_list(Option)),
+             FName = list_to_existing_atom("set_" ++ atom_to_list(Option)),
              {fun knm_phone_number:FName/2, Value}
      end
-     || {Option, Value} <- Options,
+     || {Option, Value} <- kz_util:uniq(Options),
         is_atom(Option),
         Option =/= 'should_delete'
     ].
@@ -104,7 +115,17 @@ dry_run(Options, Default) ->
 batch_run(Options) ->
     batch_run(Options, 'false').
 batch_run(Options, Default) ->
-    props:get_is_true('batch_run', Options, Default).
+    R = props:get_is_true(batch_run, Options, Default),
+    _ = R
+        andalso lager:debug("batch_run-ing btw"),
+    R.
+
+-spec mdn_run(options()) -> boolean().
+mdn_run(Options) ->
+    R = props:get_is_true(mdn_run, Options, false),
+    _ = R
+        andalso lager:debug("mdn_run-ing btw"),
+    R.
 
 -spec assign_to(options()) -> api_binary().
 -spec assign_to(options(), Default) -> ne_binary() | Default.
@@ -211,18 +232,17 @@ to_phone_number_setters_test_() ->
                    ,{fun knm_phone_number:set_dry_run/2, [[[]]]}
                    ]
                   ,to_phone_number_setters([{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-                                           ,<<"coucou">>
                                            ,{'ported_in', 'false'}
+                                           ,{<<"batch_run">>, 'false'}
                                            ,{'dry_run', [[[]]]}
                                            ])
                   )
-     %%FIXME: decide if below should turn into _assertEqual.
-    ,?_assertNotEqual([fun knm_phone_number:set_module_name/2, M_1]
-                     ,to_phone_number_setters([{module_name, M_1}
-                                              ,{module_name, <<"blaaa">>}
-                                              ,{module_name, ?CARRIER_MDN}
-                                              ])
-                     )
+    ,?_assertEqual([{fun knm_phone_number:set_module_name/2, M_1}]
+                  ,to_phone_number_setters([{module_name, M_1}
+                                           ,{module_name, <<"blaaa">>}
+                                           ,{module_name, ?CARRIER_MDN}
+                                           ])
+                  )
     ].
 
 -endif.

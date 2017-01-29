@@ -32,6 +32,9 @@
         },
         "min_digits": {
             "description": ""
+        },
+        "whitelist_regex": {
+            "description": ""
         }
     },
     "required": true,

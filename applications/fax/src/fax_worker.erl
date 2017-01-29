@@ -910,11 +910,9 @@ fetch_document(JObj) ->
 
 -spec fetch_document_from_attachment(kz_json:object(), ne_binaries()) -> kz_http:ret().
 fetch_document_from_attachment(JObj, [AttachmentName|_]) ->
-    Extension = filename:extension(AttachmentName),
-    DefaultContentType = kz_mime:from_extension(Extension),
+    DefaultContentType = kz_mime:from_extension(filename:extension(AttachmentName)),
     ContentType = kz_doc:attachment_content_type(JObj, AttachmentName, DefaultContentType),
-
-    Props = [{"Content-Type", ContentType}],
+    Props = [{"content-type", ContentType}],
     {'ok', Contents} = kz_datamgr:fetch_attachment(?KZ_FAXES_DB, kz_doc:id(JObj), AttachmentName),
     {'ok', 200, Props, Contents}.
 

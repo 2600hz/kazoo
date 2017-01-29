@@ -45,6 +45,7 @@ save(Number, _State) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(Number) ->
+    _ = remove_inbound_cnam(Number),
     knm_services:deactivate_features(Number
                                     ,[?FEATURE_CNAM_INBOUND
                                      ,?FEATURE_CNAM_OUTBOUND
@@ -197,7 +198,10 @@ handle_inbound_cnam(Number) ->
 handle_inbound_cnam(Number, 'true') ->
     Doc = knm_phone_number:doc(knm_number:phone_number(Number)),
     case kz_json:is_true([?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], Doc) of
-        'false' -> knm_services:deactivate_feature(Number, ?FEATURE_CNAM_INBOUND);
+        false ->
+            knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                                     ,?CNAM_INBOUND_LOOKUP
+                                                     ]);
         'true' ->
             FeatureData = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
             knm_services:activate_feature(Number, {?FEATURE_CNAM_INBOUND, FeatureData})
@@ -215,8 +219,7 @@ handle_inbound_cnam(Number, 'false') ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec remove_inbound_cnam(knm_number:knm_number()) ->
-                                 knm_number:knm_number().
+-spec remove_inbound_cnam(knm_number:knm_number()) -> knm_number:knm_number().
 remove_inbound_cnam(Number) ->
     DID = knm_phone_number:number(knm_number:phone_number(Number)),
     _ = knm_vitelity_util:query_vitelity(
@@ -224,7 +227,9 @@ remove_inbound_cnam(Number) ->
             remove_inbound_options(DID)
            )
          ),
-    knm_services:deactivate_feature(Number, ?FEATURE_CNAM_INBOUND).
+    knm_services:deactivate_features(Number, [?FEATURE_CNAM_INBOUND
+                                             ,?CNAM_INBOUND_LOOKUP
+                                             ]).
 
 %%--------------------------------------------------------------------
 %% @private
