@@ -356,12 +356,13 @@ save(T0) ->
     knm_numbers:merge_okkos(Ta, Tb).
 
 take_not_to_save(T0=#{todo := PNs, options := Options}) ->
-    T = T0#{todo => []},
     case knm_number_options:dry_run(Options) of
         true ->
             lager:debug("dry_run-ing btw"),
-            knm_numbers:ok(PNs, T0);
+            T = T0#{todo => [], ok => []},
+            {T, PNs};
         false ->
+            T = T0#{todo => []},
             lists:foldl(fun take_not_to_save_fold/2, {T, []}, PNs)
     end.
 
