@@ -506,7 +506,7 @@ new(Options, ToDos, KOs, Reason) ->
 %% Apply something to "todo" if not empty,
 %% if empty use "ok" as the new "todo".
 %% If "ok" is empty, return.
-%% Exported ONLY for knm_number_states use.
+%% Exported ONLY for inside-app use.
 %% @end
 -spec pipe(t(), appliers()) -> t();
           (t_pn(), appliers(t_pn())) -> t_pn().
