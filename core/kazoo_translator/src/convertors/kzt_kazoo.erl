@@ -77,7 +77,7 @@ req_params(Call) ->
       ,{<<"Request">>, kapps_call:request_user(Call)}
       ,{<<"Request-Realm">>, kapps_call:request_realm(Call)}
       ,{<<"Call-Status">>, kzt_util:get_call_status(Call)}
-      ,{<<"Api-Version">>, <<"2015-03-01">>}
+      ,{<<"Api-Version">>, <<"4.x">>}
       ,{<<"Direction">>, <<"inbound">>}
       ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
       ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}

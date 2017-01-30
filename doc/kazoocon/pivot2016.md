@@ -1,24 +1,10 @@
 # Pivot
 
-<div class="LaTeX">
-{ \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
-
-\begin{frame}
-\begin{flushright}
-\alert{PIVOT - REAL-TIME CALL CONTROL} \par
-\par
-Presented by: James Aimonetti
-\end{flushright}
-\end{frame}
-
-}
-
-</div>
 
 
 ## About Myself
 
-1.  About Myself     :B_column:BMCOL:
+1.  About Myself
 
     -   James Aimonetti
         -   `Eye-Moe-Net-Tea`
@@ -26,26 +12,26 @@ Presented by: James Aimonetti
     -   Kazoo Architect and Community at 2600Hz
     -   mc\_ on freenode
 
-2.  Presenter     :BMCOL:
+2.  Presenter
 
     <div class="org-center">
     ![img](./images/presenter_h280.jpg)
     </div>
 
 
-## High-level     :B_block:
+## High-level
 
 -   Point a callflow at your server
 -   Process the call against your business logic
 -   Return Kazoo callflow JSON
 
 
-## Flow     :B_block:
+## Flow
 
 ![img](./images/pivot_flow.png)
 
 
-## Setting up Kazoo     :B_block:
+## Setting up Kazoo
 
 -   create a callflow
 -   set the pivot action as the child
@@ -71,13 +57,13 @@ http://crossbar:8000/v2/accounts/{ACCOUNT_ID}/callflows
 Pivot will attempt to reach your server for calls to that callflow.
 
 
-## The Request     :B_block:
+## The Request
 
 -   GET - query string parameters
 -   POST - x-www-form-urlencoded request body
 
 
-## Common Request Fields     :B_block:
+## Common Request Fields
 
 | Name             | Description       |
 |---------------- |----------------- |
@@ -87,10 +73,10 @@ Pivot will attempt to reach your server for calls to that callflow.
 | From             | SIP From user     |
 | Account-ID       | Kazoo Account ID  |
 | Caller-ID-Name   | CID Name          |
-| Caller-ID-Number | CID Number        |  |  |
+| Caller-ID-Number | CID Number        |
 
 
-## Other Request Fields     :B_block:
+## Other Request Fields
 
 | Name     | Description                           |
 |-------- |------------------------------------- |
@@ -99,7 +85,7 @@ Pivot will attempt to reach your server for calls to that callflow.
 | Language | Configured by the device/user/account |
 
 
-## Create a handler     :B_block:
+## Create a handler
 
 -   Create the script that Pivot will call
 -   Process and build the Kazoo callflow JSON
@@ -114,63 +100,19 @@ Example Time!
 </div>
 
 
-## Say something     :B_frame:
+## Say something
 
 -   Uses [FreeSWITCH `mod_flite`](https://freeswitch.org/confluence/display/FREESWITCH/mod_flite) by default
 -   Supports [iSpeech](http://www.ispeech.org/text.to.speech) and [VoiceFabric](https://voicefabric.ru/) as alternatives
 
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json"); ?>
-{"module":"tts"
- ,"data":{"text":"Hello caller"}
-}
-\end{lstlisting}
 
-</div>
+## Say Hi to the caller
 
 
-## Say Hi to the caller     :B_frame:
-
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json");
-
-$caller_id_name = $_REQUEST['Caller-ID-Name'];
-
-if ( ! empty($caller_id_name)
-     && is_string($caller_id_name)
-) {
-    $parts = explode(" ", $caller_id_name);
-    $name = $parts[0];
-} else {
-    $caller_id_number = $_REQUEST['Caller-ID-Number'];
-    $user = db_user_lookup($caller_id_number);
-    $name = user_first_name($user);
-}
-?>
-{"module":"tts"
- ,"data":{"text":"Hi <?= $name ?>"}
-}
-\end{lstlisting}
-
-</div>
+## Play an MP3 to the caller
 
 
-## Play an MP3 to the caller     :B_frame:
-
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json"); ?>
-{"module":"play"
- ,"data":{"id":"http://your.server.com/path/to/file.mp3"}
-}
-\end{lstlisting}
-
-</div>
-
-
-## Bridging the caller to a user     :B_frame:
+## Bridging the caller to a user
 
 Bridge to:
 
@@ -180,66 +122,20 @@ Bridge to:
 -   [Conferences](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.conference.json) (Pre-defined or ad-hoc)
 -   and more!
 
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json"); ?>
-{"module":"user"
- ,"data":{"id":"user_doc_id"}
-}
-\end{lstlisting}
 
-</div>
-
-
-## Bridging the caller to a carrier     :B_frame:
+## Bridging the caller to a carrier
 
 -   Toggle between local and global resources
 -   Statically define a number to dial out to
 -   See the [schema](https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.resources.json) for all the **data** options
 
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json"); ?>
-{"module":"resource"
- ,"data":{
-   "use_local_resources":"false"
- }
-}
-\end{lstlisting}
 
-</div>
-
-
-## Collecting DTMF     :B_frame:
+## Collecting DTMF
 
 First, collect the DTMF
 
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header('content-type:application/json'); ?>
 
-{"module":"tts"
- ,"data":{"text":"Please enter up to four digits."}
- ,"children":{
-   "_":{
-     "module":"collect_dtmf"
-     ,"data":{"max_digits":4, "collection_name":"custom_name"}
-     ,"children":{
-       "_":{
-           "module":"pivot"
-           ,"data":{"voice_url":"http://you.com/collected.php"}
-           ,"children":{}
-       }
-     }
-   }
- }
-}
-\end{lstlisting}
-
-</div>
-
-
-## Collecting DTMF     :B_frame:
+## Collecting DTMF
 
 A followup HTTP request will be sent to `http://pivot.your.company.com/collected.php`
 
@@ -248,36 +144,10 @@ A followup HTTP request will be sent to `http://pivot.your.company.com/collected
 -   Let's see how to process them.
 
 
-## Collecting DTMF     :B_frame:
-
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header('content-type:application/json');
-
-$dtmf = $_REQUEST['Digits'];
-
-if ( empty($dtmf) ) { ?>
-{"module":"tts"
- ,"data":{"text":"We didn't get that"}
- ,"children":{}
-}
-<?php } else if ( is_string($dtmf) ) { ?>
-{"module":"tts"
- ,"data":{"text":"You typed <?= $dtmf ?>"}
- ,"children":{}
-}
-<?php } else { ?>
-{"module":"tts"
- ,"data":{"text":"You typed <?= $dtmf['custom_name'] ?>"}
- ,"children":{}
-}
-<?php } ?>
-\end{lstlisting}
-
-</div>
+## Collecting DTMF
 
 
-## Sending Presence Updates     :B_frame:
+## Sending Presence Updates
 
 Send custom presence updates
 
@@ -285,23 +155,10 @@ Send custom presence updates
 -   `presence_id` can be **name** or **name@realm**
 -   `status` can be **idle**, **ringing**, or **busy**
 
-<div class="LaTeX">
-\begin{lstlisting}[language=php]
-<?php header("content-type:application/json"); ?>
-{"module":"manual_presence"
- ,"data":{
-   "presence_id":"foobar"
-   ,"status":"ringing"
- }
-}
-\end{lstlisting}
 
-</div>
+## Callflow actions
 
-
-## Callflow actions     :B_frame:
-
-1.  Bridging     :B_column:
+1.  Bridging
 
     -   Device
     -   User
@@ -311,7 +168,7 @@ Send custom presence updates
     -   Voicemail Box
     -   Fax Box
 
-2.  Caller ID     :B_column:
+2.  Caller ID
 
     -   Statically set Caller ID
     -   Dynamically set Caller ID
@@ -319,9 +176,9 @@ Send custom presence updates
     -   Routing via Whitelist or Regex of Caller IDs
 
 
-## Callflow actions (cont)     :B_frame:
+## Callflow actions (cont)
 
-1.  Features     :B_column:BMCOL:
+1.  Features
 
     -   Eavesdrop
     -   Group Pickup
@@ -329,7 +186,7 @@ Send custom presence updates
     -   Page Groups
     -   Hotdesk
 
-2.  Miscellaneous     :B_column:BMCOL:
+2.  Miscellaneous
 
     -   Toggle call forwarding
     -   Toggle Do Not Disturb
@@ -340,9 +197,9 @@ Send custom presence updates
     -   Custom Webhook
 
 
-## Brainstorm     :B_frame:
+## Brainstorm
 
-1.  Possible Integrations     :B_block:
+1.  Possible Integrations
 
     -   Calendars (Office365, Google, etc)
     -   Put received media (vm, fax) into services (storage, chat)
@@ -354,7 +211,7 @@ Send custom presence updates
     -   **Your Ideas?**
 
 
-## What's Next?     :B_frame:
+## What's Next?
 
 1.  In Progress
 
@@ -370,16 +227,3 @@ Send custom presence updates
 
 
 # Thank You
-
-<div class="LaTeX">
-{ \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
-
-\begin{frame}
-\begin{center}
-\alert{THANK YOU!}
-\end{center}
-\end{frame}
-
-}
-
-</div>

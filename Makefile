@@ -1,4 +1,4 @@
-ROOT = .
+ROOT = $(shell readlink -f .)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
@@ -196,14 +196,22 @@ apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
-docs:
+docs: docs-setup docs-build
+
+docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
 	@cp $(DOCS_ROOT)/mkdocs.yml $(DOCS_ROOT)/mkdocs.local.yml
-	@echo "site_dir: '$(DOCS_ROOT)/site'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> doc/mkdocs/mkdocs.local.yml
-	@mkdocs build -f $(DOCS_ROOT)/mkdocs.local.yml -c -q
+	@mkdir -p $(DOCS_ROOT)/theme
 
-docs-serve: docs
+docs-build:
+	@echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $(DOCS_ROOT)/mkdocs.local.yml
+	@mkdocs build -f $(DOCS_ROOT)/mkdocs.local.yml --clean -q --site-dir $(DOCS_ROOT)/site
+
+docs-clean:
+	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
+
+docs-serve: docs-build
 	@mkdocs serve -f $(DOCS_ROOT)/mkdocs.local.yml
 
 fs-headers:

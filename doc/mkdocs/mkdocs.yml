@@ -68,9 +68,9 @@ pages:
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
     - 'API': 'applications/crossbar/doc/pivot.md'
-    - 'Response Formats':
-      - 'Kazoo':
-        - 'applications/pivot/doc/kazoo/README.md'
+    - 'The Request': 'applications/pivot/doc/requests.md'
+    - 'The Response':
+        - 'Kazoo JSON': 'applications/pivot/doc/kazoo/README.md'
         - 'applications/pivot/doc/kazoo/bridging.md'
         - 'applications/pivot/doc/kazoo/collect.md'
         - 'applications/pivot/doc/kazoo/conferencing.md'
@@ -80,8 +80,6 @@ pages:
         - 'applications/pivot/doc/kazoo/presence.md'
         - 'applications/pivot/doc/kazoo/recording.md'
         - 'applications/pivot/doc/kazoo/say.md'
-      - 'Twiml':
-        - 'applications/pivot/doc/twiml/README.md'
     - 'Presentations':
       - 'doc/kazoocon/pivot2014.md'
       - 'doc/kazoocon/pivot2016.md'

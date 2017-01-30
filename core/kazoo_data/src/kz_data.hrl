@@ -97,7 +97,8 @@
 
 -type db_classifications() :: 'account' | 'modb' | 'acdc' |
                               'numbers' | 'aggregate' | 'system' |
-                              'resource_selectors' | 'deprecated' | 'undefined'.
+                              'resource_selectors' | 'deprecated' |
+                              'undefined' | 'external'.
 
 -type db_create_options() :: [{'q',integer()} | {'n',integer()} | 'ensure_other_dbs'].
 -type db_delete_options() :: ['ensure_other_dbs'].
