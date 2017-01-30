@@ -44,6 +44,7 @@
 -export([pipe/2]).
 -export([do/2]).
 -export([merge_okkos/2, merge_okkos/1]).
+-export([from_jobjs/1]).
 
 -include("knm.hrl").
 
@@ -250,6 +251,17 @@ do_get_pn(Nums, Options) ->
 do_get_pn(Nums, Options, Error) ->
     {Yes, No} = are_reconcilable(Nums),
     do(fun knm_phone_number:fetch/1, new(Options, Yes, No, Error)).
+
+%% @public (used by knm_number_crawler)
+-spec from_jobjs(kz_json:objects()) -> t_pn().
+from_jobjs(JObjs) ->
+    Options = knm_number_options:default(),
+    PNs = [knm_phone_number:from_json_with_options(Doc, Options)
+           || JObj <- JObjs,
+              Doc <- [kz_json:get_value(<<"doc">>, JObj)],
+              kz_doc:type(Doc) =:= <<"number">>
+          ],
+    new(Options, PNs, []).
 
 %%--------------------------------------------------------------------
 %% @public
