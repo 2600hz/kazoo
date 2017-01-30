@@ -164,7 +164,8 @@ crawl_number_db(Db) ->
                                 ,[fun maybe_edit/1
                                  ,fun knm_phone_number:save/1
                                  ]),
-            lager:debug("finished crawling '~s'", [Db])
+            lager:debug("finished crawling '~s'", [Db]),
+            timer:sleep(10 * ?MILLISECONDS_IN_SECOND)
     end.
 
 maybe_edit(T0=#{todo := PNs}) ->
