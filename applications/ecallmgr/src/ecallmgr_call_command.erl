@@ -350,7 +350,7 @@ get_fs_app(Node, UUID, JObj, <<"page">>) ->
                                         ]),
             Routines = [fun(DP) ->
                                 [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
-                                ,{"application", <<"set conference_auto_outcall_flags=mute">>}
+                                ,{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
                                 ,{"application", <<"set conference_auto_outcall_profile=page">>}
                                 ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
                                 ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
@@ -358,11 +358,11 @@ get_fs_app(Node, UUID, JObj, <<"page">>) ->
                                 ]
                         end
                        ,fun(DP) ->
-                                CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"$${effective_caller_id_name}">>),
+                                CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),
                                 [{"application", <<"set conference_auto_outcall_caller_id_name=", CIDName/binary>>}|DP]
                         end
                        ,fun(DP) ->
-                                CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"$${effective_caller_id_number}">>),
+                                CIDNumber = kz_json:get_ne_value(<<"Caller-ID-Number">>, JObj, <<"${caller_id_number}">>),
                                 [{"application", <<"set conference_auto_outcall_caller_id_number=", CIDNumber/binary>>}|DP]
                         end
                        ,fun(DP) ->
