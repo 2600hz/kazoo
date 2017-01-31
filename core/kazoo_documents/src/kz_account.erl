@@ -55,7 +55,7 @@
 -define(LANGUAGE, <<"language">>).
 -define(TIMEZONE, <<"timezone">>).
 -define(THRESHOLD, <<"threshold">>).
--define(HOME_ZONE, <<"home_zone">>).
+-define(HOME_ZONE, [<<"zones">>, <<"home">>]).
 -define(TREE, <<"pvt_tree">>).
 -define(IS_ENABLED, <<"pvt_enabled">>).
 -define(API_KEY, <<"pvt_api_key">>).
