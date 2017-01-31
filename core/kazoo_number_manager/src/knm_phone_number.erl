@@ -250,6 +250,10 @@ handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
     PNsMap = group_by_num(PNs),
     handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF).
 
+handle_bulk_change(Db, JObjs, PNs, T) ->
+    ErrorF = fun assign_failure/3,
+    handle_bulk_change(Db, JObjs, PNs, T, ErrorF).
+
 do_handle_fetch(T=#{options := Options}, Doc) ->
     case knm_number:attempt(fun handle_fetch/2, [Doc, Options]) of
         {ok, PN} -> knm_numbers:ok(PN, T);
@@ -413,7 +417,8 @@ save(T0) ->
     {T, NotToSave} = take_not_to_save(T0),
     Ta = knm_numbers:ok(NotToSave, T),
     Tb = knm_numbers:pipe(T, [fun save_to_number_db/1
-                             ,fun handle_assignment/1
+                             ,fun assign/1
+                             ,fun unassign_from_prev/1
                              ]),
     knm_numbers:merge_okkos(Ta, Tb).
 
@@ -1556,28 +1561,25 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
     kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
 -endif.
 
+%%--------------------------------------------------------------------
 %% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec save_to_number_db(knm_numbers:collection()) -> knm_numbers:collection().
 save_to_number_db(T0) ->
     F = fun (NumberDb, PNs, T) ->
                 Docs = [to_json(PN) || PN <- PNs],
-                ErrorF = fun database_error/3,
                 case save_docs(NumberDb, Docs) of
                     {ok, JObjs} ->
+                        ErrorF = fun database_error/3,
                         handle_bulk_change(NumberDb, JObjs, PNs, T, ErrorF);
                     {error, E} ->
                         lager:error("failed to save to ~s: ~p", [NumberDb, E]),
-                        ErrorF(PNs, T, E)
+                        database_error(PNs, T, E)
                 end
         end,
     maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
-
-%% @private
--spec handle_assignment(knm_numbers:collection()) -> knm_numbers:collection().
-handle_assignment(T) ->
-    knm_numbers:pipe(T, [fun assign/1
-                        ,fun unassign_from_prev/1
-                        ]).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1591,13 +1593,11 @@ assign(T0) ->
             (AccountDb, PNs, T) ->
                 ?LOG_DEBUG("handling assignments to ~s", [AccountDb]),
                 Docs = [to_json(PN) || PN <- PNs],
-                ErrorF = fun assign_failure/3,
                 case save_docs(AccountDb, Docs) of
-                    {ok, JObjs} ->
-                        handle_bulk_change(AccountDb, JObjs, PNs, T, ErrorF);
+                    {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
                     {error, E} ->
-                        lager:error("failed to assign numbers to ~s", [AccountDb]),
-                        ErrorF(PNs, T, E)
+                        lager:error("failed to assign numbers to ~s: ~p", [AccountDb, E]),
+                        assign_failure(PNs, T, E)
                 end
         end,
     maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
@@ -1615,13 +1615,11 @@ unassign_from_prev(T0) ->
             (PrevAccountDb, PNs, T) ->
                 ?LOG_DEBUG("handling assignments from prev ~s", [PrevAccountDb]),
                 Docs = [to_json(PN) || PN <- PNs],
-                ErrorF = fun assign_failure/3,
                 case delete_docs(PrevAccountDb, Docs) of
-                    {ok, JObjs} ->
-                        handle_bulk_change(PrevAccountDb, JObjs, PNs, T, ErrorF);
+                    {ok, JObjs} -> handle_bulk_change(PrevAccountDb, JObjs, PNs, T);
                     {error, E} ->
                         lager:error("failed to unassign from prev ~s: ~p", [PrevAccountDb, E]),
-                        ErrorF(PNs, T, E)
+                        assign_failure(PNs, T, E)
                 end
         end,
     maps:fold(F, T0, split_by_prevassignedto(knm_numbers:todo(T0))).
