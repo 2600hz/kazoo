@@ -370,7 +370,9 @@ get_fs_app(Node, UUID, JObj, <<"page">>) ->
                                 [{"application", <<"set conference_auto_outcall_timeout=", Timeout/binary>>}|DP]
                         end
                        ,fun(DP) ->
+                                {'ok', #channel{interaction_id=Id}} = ecallmgr_fs_channel:fetch(UUID, 'record'),
                                 Values = [{[<<"Custom-Channel-Vars">>, <<"Auto-Answer">>], 'true'}
+                                         ,{[<<"Custom-Channel-Vars">>, <<?CALL_INTERACTION_ID>>], Id}
                                          ],
                                 EPs = [kz_json:set_values(Values, Endpoint) || Endpoint <- Endpoints],
                                 Channels = [<<AutoAnswer/binary, Channel/binary>> || Channel <- ecallmgr_util:build_bridge_channels(EPs)],
