@@ -6,13 +6,13 @@
 -include_lib("eunit/include/eunit.hrl").
 
 -define(PREFIX_SEARCH_CMD, <<"listnpa">>).
--define(PREFIX_SEARCH_RESP, knm_util:fixture("vitelity_listnpa.xml")).
+-define(PREFIX_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listnpa.xml"))).
 
 -define(NUMBER_SEARCH_CMD, <<"listnpanxx">>).
--define(NUMBER_SEARCH_RESP, knm_util:fixture("vitelity_listnpanxx.xml")).
+-define(NUMBER_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listnpanxx.xml"))).
 
 -define(TOLLFREE_SEARCH_CMD, <<"listtollfree">>).
--define(TOLLFREE_SEARCH_RESP, knm_util:fixture("vitelity_listtollfree.xml")).
+-define(TOLLFREE_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listtollfree.xml"))).
 
 -define(VITELITY_URI, <<"http://api.vitelity.net/api.php">>).
 
