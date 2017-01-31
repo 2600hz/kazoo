@@ -106,7 +106,8 @@ fetch_locals(DbName, DocIds) ->
 disassemble_jobjs(DbName, Options, JObjs) ->
     [case kz_json:get_ne_value(<<"doc">>, JObj) of
          undefined ->
-             Reason = kz_json:get_ne_value(<<"error">>, JObj),
+             %% Reason is not_found for when documents were deleted.
+             Reason = kz_json:get_ne_value(<<"error">>, JObj, <<"not_found">>),
              _ = maybe_cache_failure(DbName, DocId, Options, {error, Reason}),
              {DocId, error, Reason};
          Doc ->
