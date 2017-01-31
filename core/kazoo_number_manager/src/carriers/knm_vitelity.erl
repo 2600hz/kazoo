@@ -269,7 +269,8 @@ query_vitelity(Prefix, Quantity, QOptions) ->
 -spec process_xml_resp(ne_binary(), pos_integer(), text()) ->
                               {'ok', kz_json:object()} |
                               {'error', any()}.
-process_xml_resp(Prefix, Quantity, XML) ->
+process_xml_resp(Prefix, Quantity, XML_binary) ->
+    XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Prefix, Quantity, XmlEl)
     catch
@@ -465,7 +466,8 @@ query_vitelity(Number, QOptions) ->
 %%--------------------------------------------------------------------
 -spec process_xml_resp(knm_number:knm_number(), text()) ->
                               knm_number:knm_number().
-process_xml_resp(Number, XML) ->
+process_xml_resp(Number, XML_binary) ->
+    XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
         {XmlEl, _} -> process_xml_content_tag(Number, XmlEl)
     catch
