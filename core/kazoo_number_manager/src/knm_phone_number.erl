@@ -181,16 +181,16 @@ fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
-    F = fun ({NumberDb, NormalizedNums}, T) ->
+    F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
-                        lager:warning("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
                     {ok, JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
                     {ok, JObj} -> do_handle_fetch(T, JObj)
                 end
         end,
-    lists:foldl(F, T0, Pairs).
+    maps:fold(F, T0, Pairs).
 
 -ifdef(TEST).
 fetch_in(NumberDb, Nums, _Options) ->
@@ -219,6 +219,7 @@ bulk_fetch(T0, JObjs) ->
                 case kz_json:get_ne_value(<<"doc">>, JObj) of
                     undefined ->
                         R = kz_json:get_ne_value(<<"error">>, JObj),
+                        lager:warning("failed reading ~s: ~p", [Num, R]),
                         knm_numbers:ko(Num, kz_term:to_atom(R, true), T);
                     Doc ->
                         do_handle_fetch(T, Doc)
@@ -265,14 +266,14 @@ group_by_db(Nums) ->
                 Key = knm_converters:to_db(Num),
                 M#{Key => [Num | maps:get(Key, M, [])]}
         end,
-    maps:to_list(lists:foldl(F, #{}, Nums)).
+    lists:foldl(F, #{}, Nums).
 
 group_by_num(PNs) ->
     F = fun (PN, M) ->
                 Key = number(PN),
                 M#{Key => [PN | maps:get(Key, M, [])]}
         end,
-    maps:to_list(lists:foldl(F, #{}, PNs)).
+    lists:foldl(F, #{}, PNs).
 
 split_by_numberdb(PNs) ->
     F = fun (PN, M) ->
@@ -1575,7 +1576,8 @@ save_to_number_db(T0) ->
                         ErrorF = fun database_error/3,
                         handle_bulk_change(NumberDb, JObjs, PNs, T, ErrorF);
                     {error, E} ->
-                        lager:error("failed to save to ~s: ~p", [NumberDb, E]),
+                        lager:error("failed to save to ~s (~p): ~p"
+                                   ,[NumberDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
                         database_error(PNs, T, E)
                 end
         end,
@@ -1596,7 +1598,8 @@ assign(T0) ->
                 case save_docs(AccountDb, Docs) of
                     {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
                     {error, E} ->
-                        lager:error("failed to assign numbers to ~s: ~p", [AccountDb, E]),
+                        lager:error("failed to assign numbers to ~s (~p): ~p"
+                                   ,[AccountDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
                         assign_failure(PNs, T, E)
                 end
         end,
@@ -1618,7 +1621,8 @@ unassign_from_prev(T0) ->
                 case delete_docs(PrevAccountDb, Docs) of
                     {ok, JObjs} -> handle_bulk_change(PrevAccountDb, JObjs, PNs, T);
                     {error, E} ->
-                        lager:error("failed to unassign from prev ~s: ~p", [PrevAccountDb, E]),
+                        lager:error("failed to unassign from prev ~s (~p): ~p"
+                                   ,[PrevAccountDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
                         assign_failure(PNs, T, E)
                 end
         end,

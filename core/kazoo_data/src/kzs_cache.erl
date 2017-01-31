@@ -79,7 +79,7 @@ open_cache_doc(Server, DbName, DocId, Options) ->
                              data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    lager:debug("misses ~p", [MissedDocIds]),
+    lager:debug("misses: ~p", [MissedDocIds]),
     case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
         {error, _}=E -> E;
         {ok, Opened} ->
