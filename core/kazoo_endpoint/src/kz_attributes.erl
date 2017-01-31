@@ -10,7 +10,7 @@
 
 -export([temporal_rules/1]).
 -export([groups/1, groups/2]).
--export([caller_id/2]).
+-export([caller_id_type/1, caller_id/1, caller_id/2]).
 -export([callee_id/2]).
 -export([moh_attributes/2, moh_attributes/3]).
 -export([owner_id/1, owner_id/2]).
@@ -63,6 +63,17 @@ groups(Call, ViewOptions) ->
 %% @doc
 %% @end
 %%-----------------------------------------------------------------------------
+-spec caller_id_type(kapps_call:call()) -> ne_binary().
+caller_id_type(Call) ->
+    case kapps_call:inception(Call) of
+        'undefined' -> <<"internal">>;
+        _ -> <<"external">>
+    end.
+
+-spec caller_id(kapps_call:call()) -> cid().
+caller_id(Call) ->
+    caller_id(caller_id_type(Call), Call).
+
 -spec caller_id(ne_binary(), kapps_call:call()) -> cid().
 caller_id(Attribute, Call) ->
     CCVs = kapps_call:custom_channel_vars(Call),

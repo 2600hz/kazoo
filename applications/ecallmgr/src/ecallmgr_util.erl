@@ -76,6 +76,7 @@
                          ,interface = <<"RR">> :: ne_binary() % for Skype
                          ,sip_interface
                          ,channel_vars = ["[",[],"]"] :: iolist()
+                         ,header_vars = ["[",[],"]"] :: iolist()
                          ,include_channel_vars = 'true' :: boolean()
                          ,failover
                          }).
@@ -661,25 +662,34 @@ endpoint_jobj_to_record(Endpoint) ->
 -spec endpoint_jobj_to_record(kz_json:object(), boolean()) -> bridge_endpoint().
 endpoint_jobj_to_record(Endpoint, IncludeVars) ->
     ToUser = kz_json:get_ne_value(<<"To-User">>, Endpoint),
-    #bridge_endpoint{invite_format = kz_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
-                    ,endpoint_type = kz_json:get_ne_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>)
-                    ,ip_address = kz_json:get_ne_value(<<"To-IP">>, Endpoint)
-                    ,username = kz_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser)
-                    ,user = ToUser
-                    ,realm = kz_json:get_ne_value(<<"To-Realm">>, Endpoint)
-                    ,number = kz_json:get_ne_value(<<"To-DID">>, Endpoint)
-                    ,route = kz_json:get_ne_value(<<"Route">>, Endpoint)
-                    ,proxy_address = kz_json:get_ne_value(<<"Proxy-IP">>, Endpoint)
-                    ,forward_address = kz_json:get_ne_value(<<"Forward-IP">>, Endpoint)
-                    ,transport = kz_json:get_ne_value(<<"SIP-Transport">>, Endpoint)
-                    ,span = get_endpoint_span(Endpoint)
-                    ,channel_selection = get_endpoint_channel_selection(Endpoint)
-                    ,interface = get_endpoint_interface(Endpoint)
-                    ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
-                    ,channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)
-                    ,include_channel_vars = IncludeVars
-                    ,failover = kz_json:get_value(<<"Failover">>, Endpoint)
-                    }.
+    Bridge = #bridge_endpoint{invite_format = kz_json:get_ne_value(<<"Invite-Format">>, Endpoint, <<"username">>)
+                             ,endpoint_type = kz_json:get_ne_value(<<"Endpoint-Type">>, Endpoint, <<"sip">>)
+                             ,ip_address = kz_json:get_ne_value(<<"To-IP">>, Endpoint)
+                             ,username = kz_json:get_ne_value(<<"To-Username">>, Endpoint, ToUser)
+                             ,user = ToUser
+                             ,realm = kz_json:get_ne_value(<<"To-Realm">>, Endpoint)
+                             ,number = kz_json:get_ne_value(<<"To-DID">>, Endpoint)
+                             ,route = kz_json:get_ne_value(<<"Route">>, Endpoint)
+                             ,proxy_address = kz_json:get_ne_value(<<"Proxy-IP">>, Endpoint)
+                             ,forward_address = kz_json:get_ne_value(<<"Forward-IP">>, Endpoint)
+                             ,transport = kz_json:get_ne_value(<<"SIP-Transport">>, Endpoint)
+                             ,span = get_endpoint_span(Endpoint)
+                             ,channel_selection = get_endpoint_channel_selection(Endpoint)
+                             ,interface = get_endpoint_interface(Endpoint)
+                             ,sip_interface = kz_json:get_ne_value(<<"SIP-Interface">>, Endpoint)
+                             ,include_channel_vars = IncludeVars
+                             ,failover = kz_json:get_value(<<"Failover">>, Endpoint)
+                             },
+    endpoint_jobj_to_record_vars(Endpoint, Bridge).
+
+-spec endpoint_jobj_to_record_vars(kz_json:object(), bridge_endpoint()) -> bridge_endpoint().
+endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='true'}=Bridge) ->
+    Bridge#bridge_endpoint{channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)};
+endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='false'}=Bridge) ->
+    Props = lists:filter(fun({<<"Custom-SIP-Headers">>, _}) -> true;
+                            (_) -> false
+                         end, kz_json:to_proplist(Endpoint)),
+    Bridge#bridge_endpoint{header_vars = ecallmgr_fs_xml:get_leg_vars(Props)}.
 
 -spec get_endpoint_span(kz_json:object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->
@@ -964,9 +974,16 @@ maybe_set_interface(Contact, #bridge_endpoint{sip_interface=SIPInterface}) ->
     <<"sofia/", SIPInterface/binary, "/", Contact/binary>>.
 
 -spec append_channel_vars(ne_binary(), bridge_endpoint()) -> ne_binary().
-append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'}) ->
+append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
+                                             ,header_vars=["[",[],"]"]
+                                             }) ->
     'false' = kz_term:is_empty(Contact),
     Contact;
+append_channel_vars(Contact, #bridge_endpoint{include_channel_vars='false'
+                                             ,header_vars=HeaderVars
+                                             }) ->
+    'false' = kz_term:is_empty(Contact),
+    list_to_binary([HeaderVars, Contact]);
 append_channel_vars(Contact, #bridge_endpoint{channel_vars=["[",[],"]"]}) ->
     'false' = kz_term:is_empty(Contact),
     Contact;
