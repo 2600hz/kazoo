@@ -43,7 +43,7 @@
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
 
 -define(CLASSIFIER_TOLLFREE_US,
-        kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|888|877|866|855)\\d{7})\$">>}
+        kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"US TollFree">>}
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                           ])).
