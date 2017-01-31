@@ -38,7 +38,8 @@
 -define(TEMPLATE_NAME, <<"Inbound Fax Negotiation Error to Email">>).
 -define(FILTERED_TEMPLATE_NAME, <<"Inbound Fax Receive Error to Email">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
+-define(TEMPLATE_FILTERED_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
@@ -50,13 +51,20 @@ init() ->
     Fields = [{'macros', ?TEMPLATE_MACROS}
              ,{'subject', ?TEMPLATE_SUBJECT}
              ,{'category', ?TEMPLATE_CATEGORY}
-             ,{'to', ?TEMPLATE_TO}
              ,{'from', ?TEMPLATE_FROM}
              ,{'cc', ?TEMPLATE_CC}
              ,{'bcc', ?TEMPLATE_BCC}
              ,{'reply_to', ?TEMPLATE_REPLY_TO}],
-    teletype_templates:init(?TEMPLATE_ID_FILTERED, [{'friendly_name', ?FILTERED_TEMPLATE_NAME} | Fields]),
-    teletype_templates:init(?TEMPLATE_ID, [{'friendly_name', ?TEMPLATE_NAME} | Fields]).
+    FilteredParams = [{'friendly_name', ?FILTERED_TEMPLATE_NAME}
+                     ,{'to', ?TEMPLATE_FILTERED_TO}
+                      | Fields
+                     ],
+    UnfilteredParams = [{'friendly_name', ?TEMPLATE_NAME}
+                       ,{'to', ?TEMPLATE_TO}
+                        | Fields
+                       ],
+    teletype_templates:init(?TEMPLATE_ID_FILTERED, FilteredParams),
+    teletype_templates:init(?TEMPLATE_ID, UnfilteredParams).
 
 -spec handle_fax_inbound_error(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_fax_inbound_error(JObj, _Props) ->

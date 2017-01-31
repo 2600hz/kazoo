@@ -37,6 +37,8 @@
         ,created/1, created/2, set_created/2
         ,modified/1, modified/2, set_modified/2
         ,vsn/1, vsn/2, set_vsn/2
+        ,document_hash/1, set_document_hash/2
+        ,calculate_document_hash/1
         ,set_soft_deleted/2, is_soft_deleted/1
         ,set_deleted/1, set_deleted/2, is_deleted/1
 
@@ -54,6 +56,7 @@
                   ,fun add_pvt_type/3
                   ,fun add_pvt_node/3
                   ,fun add_id/3
+                  ,fun add_pvt_document_hash/3
                   ]).
 
 %% CouchDB Keys
@@ -72,6 +75,7 @@
 -define(KEY_SOFT_DELETED, <<"pvt_deleted">>).
 -define(KEY_VSN, <<"pvt_vsn">>).
 -define(KEY_EXTERNAL_ATTACHMENTS, <<"pvt_attachments">>).
+-define(KEY_DOCUMENT_HASH, <<"pvt_document_hash">>).
 
 -define(ATTACHMENT_PROPERTY_REVISION, <<"revpos">>).
 
@@ -177,6 +181,11 @@ add_id(JObj, _, Opts) ->
         'undefined' -> JObj;
         Id -> set_id(JObj, Id)
     end.
+
+-spec add_pvt_document_hash(kz_json:object(), any(), kz_proplist()) -> kz_json:object().
+add_pvt_document_hash(JObj, _, _) ->
+    Hash = calculate_document_hash(JObj),
+    set_document_hash(JObj, Hash).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -446,3 +455,21 @@ vsn(JObj, Default) ->
 -spec set_vsn(kz_json:object(), ne_binary()) -> kz_json:object().
 set_vsn(JObj, VSN) ->
     kz_json:set_value(?KEY_VSN, VSN, JObj).
+
+-spec document_hash(kz_json:object()) -> ne_binary().
+document_hash(JObj) ->
+    case kz_json:get_value(?KEY_DOCUMENT_HASH, JObj) of
+        'undefined' -> calculate_document_hash(JObj);
+        Hash -> Hash
+    end.
+
+-spec set_document_hash(kz_json:object(), ne_binary()) -> kz_json:object().
+set_document_hash(JObj, Hash) ->
+    kz_json:set_value(?KEY_DOCUMENT_HASH, Hash, JObj).
+
+-spec calculate_document_hash(kz_json:object()) -> ne_binary().
+calculate_document_hash(JObj) ->
+    PublicJObj = kz_json:public_fields(JObj),
+    Attachments = kz_json:get_value(<<"_attachments">>, JObj),
+    Props = [{<<"public">>, PublicJObj}, {<<"attachments">>, Attachments}],
+    kz_binary:binary_md5(kz_json:encode(kz_json:from_list(Props))).

@@ -311,8 +311,10 @@ create(DocId, Params) ->
 %%--------------------------------------------------------------------
 -spec maybe_update(kz_json:object(), init_params()) -> 'ok'.
 maybe_update(TemplateJObj, Params) ->
-    case kz_doc:is_soft_deleted(TemplateJObj) of
-        'true' -> lager:warning("template is currently soft-deleted");
+    case kz_doc:is_soft_deleted(TemplateJObj)
+        orelse has_manual_modifications(TemplateJObj)
+    of
+        'true' -> lager:warning("template is currently soft-deleted or has manual changes, not updating!");
         'false' ->
             case update(TemplateJObj, Params) of
                 'ok' -> 'ok';
@@ -320,6 +322,10 @@ maybe_update(TemplateJObj, Params) ->
                 {'error', _E} -> lager:debug("failed to update template: ~p", [_E])
             end
     end.
+
+-spec has_manual_modifications(kz_json:object()) -> boolean().
+has_manual_modifications(TemplateJObj) ->
+    kz_doc:document_hash(TemplateJObj) =/= kz_doc:calculate_document_hash(TemplateJObj).
 
 %%--------------------------------------------------------------------
 %% @private
