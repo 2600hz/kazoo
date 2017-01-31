@@ -234,16 +234,14 @@ handle_bulk_change(_Db, JObjs, PNsMap, T0, ErrorF)
   when is_map(PNsMap) ->
     F = fun (JObj, T) ->
                 Num = kz_json:get_ne_value(<<"id">>, JObj),
-                PN = maps:get(Num, PNsMap),
                 case kz_json:get_ne_value(<<"ok">>, JObj) of
                     true ->
                         lager:debug("successfully changed ~s in ~s", [Num, _Db]),
-                        knm_numbers:ok(PN, T);
+                        knm_numbers:ok(maps:get(Num, PNsMap), T);
                     undefined ->
                         R = kz_json:get_ne_value(<<"error">>, JObj),
                         lager:warning("error changing ~s in ~s: ~p", [Num, _Db, R]),
-                        E = kz_term:to_atom(R, true),
-                        ErrorF(PN, T, E)
+                        ErrorF(Num, kz_term:to_atom(R, true), T)
                 end
         end,
     lists:foldl(F, T0, JObjs);
@@ -1576,9 +1574,9 @@ save_to_number_db(T0) ->
                         ErrorF = fun database_error/3,
                         handle_bulk_change(NumberDb, JObjs, PNs, T, ErrorF);
                     {error, E} ->
-                        lager:error("failed to save to ~s (~p): ~p"
-                                   ,[NumberDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
-                        database_error(PNs, T, E)
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to save to ~s (~p): ~p", [NumberDb, E, Nums]),
+                        database_error(Nums, E, T)
                 end
         end,
     maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
@@ -1598,9 +1596,9 @@ assign(T0) ->
                 case save_docs(AccountDb, Docs) of
                     {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
                     {error, E} ->
-                        lager:error("failed to assign numbers to ~s (~p): ~p"
-                                   ,[AccountDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
-                        assign_failure(PNs, T, E)
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to assign numbers to ~s (~p): ~p", [AccountDb, E, Nums]),
+                        assign_failure(Nums, E, T)
                 end
         end,
     maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
@@ -1615,28 +1613,28 @@ assign(T0) ->
 -spec unassign_from_prev(knm_numbers:collection()) -> knm_numbers:collection().
 unassign_from_prev(T0) ->
     F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
-            (PrevAccountDb, PNs, T) ->
-                ?LOG_DEBUG("handling assignments from prev ~s", [PrevAccountDb]),
+            (PrevDb, PNs, T) ->
+                ?LOG_DEBUG("handling assignments from prev ~s", [PrevDb]),
                 Docs = [to_json(PN) || PN <- PNs],
-                case delete_docs(PrevAccountDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(PrevAccountDb, JObjs, PNs, T);
+                case delete_docs(PrevDb, Docs) of
+                    {ok, JObjs} -> handle_bulk_change(PrevDb, JObjs, PNs, T);
                     {error, E} ->
-                        lager:error("failed to unassign from prev ~s (~p): ~p"
-                                   ,[PrevAccountDb, E, [kz_doc:id(Doc) || Doc <- Docs]]),
-                        assign_failure(PNs, T, E)
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to unassign from prev ~s (~p): ~p", [PrevDb, E, Nums]),
+                        assign_failure(Nums, E, T)
                 end
         end,
     maps:fold(F, T0, split_by_prevassignedto(knm_numbers:todo(T0))).
 
-assign_failure(PNOrPNs, T, E) ->
+assign_failure(NumOrNums, E, T) ->
     {error,A,B,C} = (catch knm_errors:assign_failure(undefined, E)),
     Reason = knm_errors:to_json(A, B, C),
-    knm_numbers:ko(PNOrPNs, Reason, T).
+    knm_numbers:ko(NumOrNums, Reason, T).
 
-database_error(PNOrPNs, T, E) ->
+database_error(NumOrNums, E, T) ->
     {error,A,B,C} = (catch knm_errors:database_error(E, undefined)),
     Reason = knm_errors:to_json(A, B, C),
-    knm_numbers:ko(PNOrPNs, Reason, T).
+    knm_numbers:ko(NumOrNums, Reason, T).
 
 %% @private
 -spec save_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
