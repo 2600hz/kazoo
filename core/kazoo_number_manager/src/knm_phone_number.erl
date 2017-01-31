@@ -239,7 +239,7 @@ group_by_db(Nums) ->
         end,
     maps:to_list(lists:foldl(F, #{}, Nums)).
 
-split_by_db(PNs) ->
+split_by_numberdb(PNs) ->
     F = fun (PN, M) ->
                 Key = number_db(PN),
                 M#{Key => [PN | maps:get(Key, M, [])]}
@@ -1494,11 +1494,7 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
     kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
 -endif.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec save_to_number_db(knm_numbers:collection()) -> knm_numbers:collection().
 save_to_number_db(T0) ->
     F = fun (NumberDb, PNs, T) ->
@@ -1511,15 +1507,16 @@ save_to_number_db(T0) ->
                         knm_numbers:ko(PNs, Reason, T)
                 end
         end,
-    maps:fold(F, T0, split_by_db(knm_numbers:todo(T0))).
+    maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
 
+%% @private
 -spec save_number_docs(ne_binary(), kz_json:objects()) -> ok | kz_data:data_errors().
 -ifdef(TEST).
 save_number_docs(_, _) -> ok.
 -else.
 save_number_docs(NumberDb, Docs) ->
     case kz_datamgr:save_docs(NumberDb, Docs) of
-        {ok, _} -> ok;
+        {ok, _} -> lager:debug("saved number docs to ~s", [NumberDb]);
         {error, not_found} ->
             lager:debug("creating new db ~p", [NumberDb]),
             true = kz_datamgr:db_create(NumberDb),
@@ -1644,8 +1641,8 @@ delete_number_doc(PN) -> {ok, PN}.
 -else.
 delete_number_doc(PN) ->
     case kz_datamgr:del_doc(number_db(PN), number(PN)) of
-        {'error', _R}=E -> E;
-        {'ok', _} -> {'ok', PN}
+        {error, _R}=E -> E;
+        {ok, _} -> {ok, PN}
     end.
 -endif.
 
