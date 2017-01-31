@@ -682,7 +682,9 @@ probe_capabilities(Node, PossibleCapabilities) ->
     kz_util:put_callid(Node),
     lists:foreach(fun(Capability) ->
                           maybe_add_capability(Node, Capability)
-                  end, PossibleCapabilities).
+                  end, PossibleCapabilities),
+    lager:notice("fs sync complete"),
+    ok.
 
 -spec maybe_add_capability(atom(), kz_json:object()) -> any().
 maybe_add_capability(Node, Capability) ->
