@@ -101,14 +101,13 @@ maybe_ensure_saved_others(_, _, _, _, _) -> 'ok'.
 -spec del_doc(map(), ne_binary(), kz_json:object() | ne_binary(), kz_proplist()) ->
                      {'ok', kz_json:object()} |
                      data_error().
-del_doc(Server, DbName, DocId, Options)
-  when is_binary(DocId) ->
+del_doc(Server, DbName, ?NE_BINARY=DocId, Options) ->
     case open_doc(Server, DbName, DocId, Options) of
         {'error', _}=Err -> Err;
         {'ok', JObj} -> del_doc(Server, DbName, JObj, Options)
     end;
 del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
-    DelDoc = prepare_doc_for_del(Server,DbName, Doc),
+    DelDoc = prepare_doc_for_del(Server, DbName, Doc),
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, DelDoc),
     try App:del_doc(Conn, DbName, PreparedDoc, Options) of
         {'ok', [JObj|_]} ->
@@ -116,8 +115,9 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
             {'ok', JObj};
         Else -> Else
     catch
-        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
-                 'failed'
+        Ex:Er ->
+            lager:error("exception ~p: ~p", [Ex, Er]),
+            failed
     end.
 
 -spec del_docs(map(), ne_binary(), kz_json:objects() | ne_binaries(), kz_proplist()) ->
@@ -137,15 +137,17 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
 
 -spec prepare_doc_for_del(map(), ne_binary(), kz_json:object() | ne_binary()) ->
                                  kz_json:object().
-prepare_doc_for_del(Server, Db, <<_/binary>> = DocId) ->
+prepare_doc_for_del(Server, Db, ?NE_BINARY=DocId) ->
     prepare_doc_for_del(Server, Db, kz_json:from_list([{<<"_id">>, DocId}]));
 prepare_doc_for_del(Server, DbName, Doc) ->
     Id = kz_doc:id(Doc),
-    DocRev = case kz_doc:revision(Doc) of
-                 'undefined' ->
-                     {'ok', Rev} = lookup_doc_rev(Server, DbName, Id),
-                     Rev;
-                 Rev -> Rev
+    Rev0 = kz_doc:revision(Doc),
+    DocRev = case Rev0 =:= undefined
+                 andalso lookup_doc_rev(Server, DbName, Id)
+             of
+                 false -> Rev0;
+                 {ok, Rev} -> Rev;
+                 {error, not_found} -> undefined
              end,
     kz_json:from_list(
       props:filter_undefined(
