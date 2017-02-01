@@ -306,7 +306,7 @@ create(AccountMODb) ->
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(AccountMODb, 'true') ->
-    lager:warning("modb ~p is exists, not creating", [AccountMODb]),
+    lager:warning("modb ~p exists, not creating", [AccountMODb]),
     refresh_views(AccountMODb);
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
