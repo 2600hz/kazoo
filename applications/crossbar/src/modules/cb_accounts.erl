@@ -260,10 +260,14 @@ validate_account_path(Context, AccountId, ?TREE, ?HTTP_GET) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, AccountId) ->
+    {'ok', Existing} = kz_account:fetch(AccountId),
     Context1 = crossbar_doc:save(Context),
+
     case cb_context:resp_status(Context1) of
         'success' ->
+            _ = kz_util:spawn(fun notification_util:maybe_notify_account_change/2, [Existing, cb_context:doc(Context1)]),
             _ = kz_util:spawn(fun provisioner_util:maybe_update_account/1, [Context1]),
+
             JObj = cb_context:doc(Context1),
             _ = replicate_account_definition(JObj),
             support_depreciated_billing_id(kz_json:get_value(<<"billing_id">>, JObj)
