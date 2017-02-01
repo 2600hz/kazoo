@@ -469,27 +469,11 @@ delete(T0=#{todo := PNs, options := Options}) ->
 delete(PN) ->
     lager:debug("deleting permanently ~s", [number(PN)]),
     Routines = [fun try_delete_number_doc/1
-               ,fun try_maybe_remove_number_from_account/1
+               ,fun try_remove_number_from_account/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
     {'ok', NewPN} = setters(PN, Routines),
     NewPN.
-
-try_delete_number_doc(PN) ->
-    case delete_number_doc(PN) of
-        {'ok', _}=Ok -> Ok;
-        {'error', _R} ->
-            lager:debug("number doc for ~s not removed: ~p", [number(PN), _R]),
-            {'ok', PN}
-    end.
-
-try_maybe_remove_number_from_account(PN) ->
-    case maybe_remove_number_from_account(PN) of
-        {'ok', _}=Ok -> Ok;
-        {'error', _R} ->
-            lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
-            {'ok', PN}
-    end.
 
 -spec release(knm_phone_number()) -> knm_phone_number();
              (knm_numbers:collection()) -> knm_numbers:collection().
@@ -1661,33 +1645,37 @@ delete_docs(Db, Docs) ->
 -endif.
 
 %% @private
--spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
+-spec try_delete_number_doc(knm_phone_number()) -> {ok, knm_phone_number()}.
 -ifdef(TEST).
-delete_number_doc(PN) -> {ok, PN}.
+try_delete_number_doc(PN) -> {ok, PN}.
 -else.
-delete_number_doc(PN) ->
+try_delete_number_doc(PN) ->
     case kz_datamgr:del_doc(number_db(PN), number(PN)) of
-        {error, _R}=E -> E;
-        {ok, _} -> {ok, PN}
+        {ok, _} -> {ok, PN};
+        {error, _R} ->
+            lager:warning("number doc for ~s not removed: ~p", [number(PN), _R]),
+            {ok, PN}
     end.
 -endif.
 
 %% @private
--spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
+-spec try_remove_number_from_account(knm_phone_number()) -> {ok, knm_phone_number()}.
 -ifdef(TEST).
-maybe_remove_number_from_account(PN) -> {ok, PN}.
+try_remove_number_from_account(PN) -> {ok, PN}.
 -else.
-maybe_remove_number_from_account(PN) ->
+try_remove_number_from_account(PN) ->
     AssignedTo = assigned_to(PN),
     Num = number(PN),
     case kz_term:is_empty(AssignedTo) of
-        'true' ->
+        true ->
             lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
-            {'ok', PN};
-        'false' ->
+            {ok, PN};
+        false ->
             case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), Num) of
-                {'error', _R}=E -> E;
-                {'ok', _} -> {'ok', PN}
+                {ok, _} -> {ok, PN};
+                {error, _R} ->
+                    lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
+                    {ok, PN}
             end
     end.
 -endif.
