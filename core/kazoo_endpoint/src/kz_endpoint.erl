@@ -96,6 +96,8 @@ get(Call) -> get(kapps_call:authorizing_id(Call), Call).
 
 get('undefined', _Call) ->
     {'error', 'invalid_endpoint_id'};
+get(EndpointId, ?MATCH_ACCOUNT_RAW(AccountId)) ->
+    get(EndpointId, kz_util:format_account_db(AccountId));
 get(EndpointId, AccountDb) when is_binary(AccountDb) ->
     case kz_cache:peek_local(?CACHE_NAME, {?MODULE, AccountDb, EndpointId}) of
         {'ok', _Endpoint}=Ok -> Ok;
