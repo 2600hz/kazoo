@@ -234,7 +234,6 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
                    ),
-    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ToRm0 = gb_sets:to_list(Leftovers),
     lists:foreach(fun (DID) ->
                           ?LOG("########## found alien [~s] doc: ~s ##########", [AccountDb, DID])
@@ -299,7 +298,6 @@ migrate_unassigned_numbers() ->
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
     ?LOG("########## start fixing ~s ##########", [NumberDb]),
     migrate_unassigned_numbers(NumberDb, 0),
-    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ?LOG("########## done fixing ~s ##########", [NumberDb]);
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_encoded, Suffix/binary>>) ->
     migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>);

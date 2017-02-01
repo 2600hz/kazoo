@@ -54,8 +54,6 @@
 
 -ifdef(TEST).
 -export([set_is_dirty/2]).
--else.
--export([push_stored/0]).
 -endif.
 
 -include("knm.hrl").
@@ -110,8 +108,6 @@
              ,set_functions/0
              ]).
 
--define(BULK_BATCH_WRITES,
-        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN),
@@ -1641,13 +1637,13 @@ database_error(NumOrNums, E, T) ->
                                                    {error, kz_data:data_errors()}.
 -ifdef(TEST).
 save_docs(?NE_BINARY, Docs) ->
-    JObjs = [kz_json:from_list(
-               [{<<"id">>, kz_doc:id(Doc)}
-               ,{<<"ok">>, true}
-               ])
-             || Doc <- Docs
-            ],
-    {ok, JObjs}.
+    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
+
+mock_docs_return(Doc) ->
+    kz_json:from_list(
+      [{<<"id">>, kz_doc:id(Doc)}
+      ,{<<"ok">>, true}
+      ]).
 -else.
 save_docs(Db, Docs) ->
     kz_datamgr:save_docs(Db, Docs).
@@ -1658,13 +1654,7 @@ save_docs(Db, Docs) ->
                                                      {error, kz_data:data_errors()}.
 -ifdef(TEST).
 delete_docs(?NE_BINARY, Docs) ->
-    JObjs = [kz_json:from_list(
-               [{<<"id">>, kz_doc:id(Doc)}
-               ,{<<"ok">>, true}
-               ])
-             || Doc <- Docs
-            ],
-    {ok, JObjs}.
+    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
 -else.
 delete_docs(Db, Docs) ->
     kz_datamgr:del_docs(Db, Docs).
@@ -1700,72 +1690,4 @@ maybe_remove_number_from_account(PN) ->
                 {'ok', _} -> {'ok', PN}
             end
     end.
--endif.
-
--ifndef(TEST).
-%% @private
--spec datamgr_save(knm_phone_number(), ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          kz_data:data_error().
-datamgr_save(PN, Db, JObj) ->
-    case batch_run(PN)
-        andalso ?BULK_BATCH_WRITES
-    of
-        'false' -> kz_datamgr:ensure_saved(Db, JObj);
-        'true' -> store_maybe_push(Db, JObj)
-    end.
-
-store_maybe_push(Db, Doc) ->
-    BelowMax = kz_datamgr:max_bulk_insert() - 1,
-    case get(Db) of
-        'undefined' ->
-            put(Db, 1),
-            put({Db,1}, [Doc]),
-            {'ok', Doc};
-        BelowMax ->
-            store_doc(Db, Doc, BelowMax),
-            push_stored(Db, {Db, BelowMax + 1});
-        Count ->
-            store_doc(Db, Doc, Count),
-            {'ok', Doc}
-    end.
-
-store_doc(Db, Doc, Count) ->
-    NewCount = Count + 1,
-    put(Db, NewCount),
-    put({Db,NewCount}, [Doc | get({Db,Count})]),
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec push_stored() -> 'ok'.
-push_stored() ->
-    case ?BULK_BATCH_WRITES of
-        true ->
-            lager:debug("pushing stored writes"),
-            DBs = [Db || {Db=?NE_BINARY, I} <- get(),
-                         is_integer(I)
-                  ],
-            lists:foreach(fun push_stored/1, DBs);
-        false ->
-            ok
-    end.
-
-push_stored(Db) ->
-    push_stored(Db, {Db, get(Db)}).
-
-push_stored(Db, Key) ->
-    Docs = get(Key),
-    erase(Key),
-    erase(Db),
-    R = kz_datamgr:save_docs(Db, Docs),
-    element(1, R) =:= 'error'
-        andalso lager:debug("save_docs ~p failed: ~p"
-                           ,[[kz_doc:id(Doc) || Doc <- Docs]
-                            ,element(2,R)
-                            ]),
-    R.
 -endif.
