@@ -12,7 +12,7 @@
 -export([db_compact/2
         ,db_create/2
         ,db_create/3
-        ,db_delete/2
+        ,db_delete/3
         ,db_replicate/2
         ,db_view_cleanup/2
         ,db_view_update/4
@@ -38,12 +38,24 @@ db_create(Server, DbName) ->
 -spec db_create(map(), ne_binary(), db_create_options()) -> boolean().
 db_create(#{}=Map, DbName, Options) ->
     %%TODO storage policy
-    Others = maps:get('others', Map, []),
     do_db_create(Map, DbName, Options)
-        andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_create(#{server => M1}, DbName, Options)
-                          end, Others)
-        andalso kzs_publish:maybe_publish_db(DbName, 'created') =:= 'ok'.
+        andalso db_create_others(Map, DbName, Options)
+        andalso kzs_publish:publish_db(DbName, 'created').
+
+-spec db_create_others(map(), ne_binary(), db_create_options()) -> boolean().
+db_create_others(#{}=Map, DbName, Options) ->
+    EnsureOthers = props:get_value('ensure_other_dbs', Options, 'false'),
+    case do_db_create_others(Map, DbName, Options) of
+        'false' when EnsureOthers -> 'false';
+        _ -> 'true'
+    end.
+
+-spec do_db_create_others(map(), ne_binary(), db_create_options()) -> boolean().
+do_db_create_others(Map, DbName, Options) ->
+    Others = maps:get('others', Map, []),
+    lists:all(fun({_Tag, M1}) ->
+                      do_db_create(#{server => M1}, DbName, Options)
+              end, Others).
 
 -spec do_db_create(map(), ne_binary(), db_create_options()) -> boolean().
 do_db_create(#{server := {App, Conn}}, DbName, Options) ->
@@ -52,14 +64,26 @@ do_db_create(#{server := {App, Conn}}, DbName, Options) ->
         'true' -> 'true'
     end.
 
--spec db_delete(map(), ne_binary()) -> boolean().
-db_delete(#{}=Map, DbName) ->
-    Others = maps:get('others', Map, []),
+-spec db_delete(map(), ne_binary(), db_delete_options()) -> boolean().
+db_delete(#{}=Map, DbName, Options) ->
     do_db_delete(Map, DbName)
-        andalso lists:all(fun({_Tag, M1}) ->
-                                  do_db_delete(#{server => M1}, DbName)
-                          end, Others)
-        andalso kzs_publish:maybe_publish_db(DbName, 'deleted') =:= 'ok'.
+        andalso db_delete_others(Map, DbName, Options)
+        andalso kzs_publish:publish_db(DbName, 'deleted').
+
+-spec db_delete_others(map(), ne_binary(), db_delete_options()) -> boolean().
+db_delete_others(#{}=Map, DbName, Options) ->
+    EnsureOthers = props:get_value('ensure_other_dbs', Options, 'false'),
+    case do_db_delete_others(Map, DbName) of
+        'false' when EnsureOthers -> 'false';
+        _ -> 'true'
+    end.
+
+-spec do_db_delete_others(map(), ne_binary()) -> boolean().
+do_db_delete_others(Map, DbName) ->
+    Others = maps:get('others', Map, []),
+    lists:all(fun({_Tag, M1}) ->
+                      do_db_delete(#{server => M1}, DbName)
+              end, Others).
 
 -spec do_db_delete(map(), ne_binary()) -> boolean().
 do_db_delete(#{server := {App, Conn}}, DbName) ->

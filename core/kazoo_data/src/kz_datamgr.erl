@@ -499,11 +499,15 @@ db_compact(DbName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_delete(text()) -> 'ok' | data_error().
-db_delete(DbName) when ?VALID_DBNAME(DbName) ->
-    kzs_db:db_delete(kzs_plan:plan(DbName), DbName);
 db_delete(DbName) ->
+    db_delete(DbName, []).
+
+-spec db_delete(text(), db_delete_options()) -> 'ok' | data_error().
+db_delete(DbName, Options) when ?VALID_DBNAME(DbName) ->
+    kzs_db:db_delete(kzs_plan:plan(DbName), DbName, Options);
+db_delete(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> db_delete(Db);
+        {'ok', Db} -> db_delete(Db, Options);
         {'error', _}=E -> E
     end.
 

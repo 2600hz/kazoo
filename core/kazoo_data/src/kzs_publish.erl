@@ -8,8 +8,7 @@
 -module(kzs_publish).
 
 
--export([maybe_publish_db/2
-        ,maybe_publish_doc/3
+-export([maybe_publish_doc/3
         ,maybe_publish_docs/3
         ,publish_db/2
         ,publish_doc/3
@@ -53,14 +52,10 @@ maybe_publish_doc(Db, Doc, JObj) ->
         'false' -> 'ok'
     end.
 
--spec maybe_publish_db(ne_binary(), kapi_conf:action()) -> 'ok'.
-maybe_publish_db(DbName, Action) ->
-    case kz_datamgr:change_notice() of
-        'true' ->
-            _ = kz_util:spawn(fun() -> publish_db(DbName, Action) end),
-            'ok';
-        'false' -> 'ok'
-    end.
+-spec publish_db(ne_binary(), kapi_conf:action()) -> boolean().
+publish_db(DbName, Action) ->
+    _ = kz_util:spawn(fun() -> do_publish_db(DbName, Action) end),
+    'true'.
 
 -spec should_publish_doc(kz_json:object()) -> boolean().
 should_publish_doc(Doc) ->
@@ -92,8 +87,8 @@ publish_doc(DbName, Doc, JObj) ->
             end
     end.
 
--spec publish_db(ne_binary(), kapi_conf:action()) -> 'ok'.
-publish_db(DbName, Action) ->
+-spec do_publish_db(ne_binary(), kapi_conf:action()) -> 'ok'.
+do_publish_db(DbName, Action) ->
     Props =
         [{<<"Type">>, 'database'}
         ,{<<"ID">>, DbName}
