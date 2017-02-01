@@ -497,7 +497,7 @@ db_delete(DbName) ->
     db_delete(DbName, []).
 
 -spec db_delete(text(), db_delete_options()) -> 'ok' | data_error().
-db_delete(DbName, Options) when ?VALID_DBNAME(DbName) ->
+db_delete(DbName, Options) when ?VALID_DBNAME ->
     kzs_db:db_delete(kzs_plan:plan(DbName), DbName, Options);
 db_delete(DbName, Options) ->
     case maybe_convert_dbname(DbName) of
