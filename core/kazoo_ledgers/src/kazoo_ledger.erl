@@ -73,12 +73,22 @@ maybe_add_id(Ledger) ->
             [{<<"_id">>, <<(kz_term:to_binary(Year))/binary
                            ,(kz_time:pad_month(Month))/binary
                            ,"-"
-                           ,(kz_binary:rand_hex(16))/binary
+                           ,(create_hash(Ledger))/binary
                          >>}
             ,{<<"pvt_created">>, kz_time:current_tstamp()}
             ];
         _ -> []
     end.
+
+-spec create_hash(ledger()) -> ne_binary().
+create_hash(Ledger) ->
+    Props = [{<<"source">>, source(Ledger)}
+            ,{<<"account">>, account(Ledger)}
+            ,{<<"usage">>, usage(Ledger)}
+            ,{<<"period">>, period(Ledger)}
+            ,{<<"type">>, type(Ledger)}
+            ],
+    kz_binary:binary_md5(kz_json:encode(kz_json:from_list(Props))).
 
 %%--------------------------------------------------------------------
 %% @public
