@@ -1594,13 +1594,11 @@ unassign_from_prev(T0) ->
                 ?LOG_DEBUG("handling assignments from prev ~s", [PrevDb]),
                 Docs = [to_json(PN) || PN <- PNs],
                 case delete_docs(PrevDb, Docs) of
-                    {ok, JObjs} ->
-                        ErrorF = fun assign_failure/3,
-                        handle_bulk_change(PrevDb, JObjs, PNs, T, ErrorF);
+                    {ok, JObjs} -> handle_bulk_change(PrevDb, JObjs, PNs, T);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to unassign from prev ~s (~p): ~p", [PrevDb, E, Nums]),
-                        assign_failure(Nums, E, T)
+                        database_error(Nums, E, T)
                 end
         end,
     maps:fold(F, T0, split_by_prevassignedto(knm_numbers:todo(T0))).
