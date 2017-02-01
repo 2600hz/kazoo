@@ -246,7 +246,7 @@ handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
     handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF).
 
 handle_bulk_change(Db, JObjs, PNs, T) ->
-    ErrorF = fun assign_failure/3,
+    ErrorF = fun database_error/3,
     handle_bulk_change(Db, JObjs, PNs, T, ErrorF).
 
 do_handle_fetch(T=#{options := Options}, Doc) ->
@@ -450,30 +450,27 @@ log_why_not_to_save(false, _Num) ->
 %% To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> knm_phone_number();
-            (knm_numbers:collection()) -> knm_numbers:collection().
-delete(T0=#{todo := PNs, options := Options}) ->
+-spec delete(knm_numbers:collection()) -> knm_numbers:collection().
+delete(T=#{todo := PNs, options := Options}) ->
     case knm_number_options:dry_run(Options) of
         true ->
-            lager:debug("dry_run-ing btw"),
-            knm_numbers:ok(PNs, T0);
+            lager:debug("dry_run-ing btw, not deleting anything"),
+            knm_numbers:ok(PNs, T);
         false ->
-            F = fun (PN, T) ->
-                        case knm_number:attempt(fun delete/1, [PN]) of
-                            {error, R} -> knm_numbers:ko(number(PN), R, T);
-                            NewPN -> knm_numbers:ok(NewPN, T)
-                        end
-                end,
-            lists:foldl(F, T0, PNs)
-    end;
-delete(PN) ->
-    lager:debug("deleting permanently ~s", [number(PN)]),
-    Routines = [fun try_delete_number_doc/1
-               ,fun try_remove_number_from_account/1
-               ,{fun set_state/2, ?NUMBER_STATE_DELETED}
-               ],
-    {'ok', NewPN} = setters(PN, Routines),
-    NewPN.
+            knm_numbers:pipe(T, [fun log_permanent_deletion/1
+                                ,fun try_delete_number_doc/1
+                                ,fun try_remove_account_doc/1
+                                ,fun set_state_deleted/1
+                                ])
+    end.
+
+log_permanent_deletion(T=#{todo := PNs}) ->
+    F = fun (_PN) -> lager:debug("deleting permanently ~s", [number(_PN)]) end,
+    lists:foreach(F, PNs),
+    knm_numbers:ok(PNs, T).
+
+set_state_deleted(T) ->
+    setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
 -spec release(knm_phone_number()) -> knm_phone_number();
              (knm_numbers:collection()) -> knm_numbers:collection().
@@ -1550,9 +1547,7 @@ save_to_number_db(T0) ->
     F = fun (NumberDb, PNs, T) ->
                 Docs = [to_json(PN) || PN <- PNs],
                 case save_docs(NumberDb, Docs) of
-                    {ok, JObjs} ->
-                        ErrorF = fun database_error/3,
-                        handle_bulk_change(NumberDb, JObjs, PNs, T, ErrorF);
+                    {ok, JObjs} -> handle_bulk_change(NumberDb, JObjs, PNs, T);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to save to ~s (~p): ~p", [NumberDb, E, Nums]),
@@ -1574,7 +1569,9 @@ assign(T0) ->
                 ?LOG_DEBUG("handling assignments to ~s", [AccountDb]),
                 Docs = [to_json(PN) || PN <- PNs],
                 case save_docs(AccountDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
+                    {ok, JObjs} ->
+                        ErrorF = fun assign_failure/3,
+                        handle_bulk_change(AccountDb, JObjs, PNs, T, ErrorF);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to assign numbers to ~s (~p): ~p", [AccountDb, E, Nums]),
@@ -1597,7 +1594,9 @@ unassign_from_prev(T0) ->
                 ?LOG_DEBUG("handling assignments from prev ~s", [PrevDb]),
                 Docs = [to_json(PN) || PN <- PNs],
                 case delete_docs(PrevDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(PrevDb, JObjs, PNs, T);
+                    {ok, JObjs} ->
+                        ErrorF = fun assign_failure/3,
+                        handle_bulk_change(PrevDb, JObjs, PNs, T, ErrorF);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to unassign from prev ~s (~p): ~p", [PrevDb, E, Nums]),
@@ -1605,6 +1604,37 @@ unassign_from_prev(T0) ->
                 end
         end,
     maps:fold(F, T0, split_by_prevassignedto(knm_numbers:todo(T0))).
+
+%% @private
+try_delete_number_doc(T0) ->
+    F = fun (NumberDb, PNs, T) ->
+                ?LOG_DEBUG("deleting from ~s", [NumberDb]),
+                Docs = [to_json(PN) || PN <- PNs],
+                case delete_docs(NumberDb, Docs) of
+                    {ok, JObjs} -> handle_bulk_change(NumberDb, JObjs, PNs, T);
+                    {error, E} ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to delete from ~s (~p): ~p", [NumberDb, E, Nums]),
+                        database_error(Nums, E, T)
+                end
+        end,
+    maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
+
+%% @private
+try_remove_account_doc(T0) ->
+    F = fun (undefined, PNs, T) -> knm_numbers:ok(PNs, T);
+            (AccountDb, PNs, T) ->
+                ?LOG_DEBUG("deleting from ~s", [AccountDb]),
+                Docs = [to_json(PN) || PN <- PNs],
+                case delete_docs(AccountDb, Docs) of
+                    {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
+                    {error, E} ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to delete from ~s (~p): ~p", [AccountDb, E, Nums]),
+                        database_error(Nums, E, T)
+                end
+        end,
+    maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
 
 assign_failure(NumOrNums, E, T) ->
     {error,A,B,C} = (catch knm_errors:assign_failure(undefined, E)),
@@ -1630,6 +1660,7 @@ mock_docs_return(Doc) ->
       ]).
 -else.
 save_docs(Db, Docs) ->
+    %% Note: deleting unexisting docs returns ok.
     kz_datamgr:save_docs(Db, Docs).
 -endif.
 
@@ -1642,40 +1673,4 @@ delete_docs(?NE_BINARY, Docs) ->
 -else.
 delete_docs(Db, Docs) ->
     kz_datamgr:del_docs(Db, Docs).
--endif.
-
-%% @private
--spec try_delete_number_doc(knm_phone_number()) -> {ok, knm_phone_number()}.
--ifdef(TEST).
-try_delete_number_doc(PN) -> {ok, PN}.
--else.
-try_delete_number_doc(PN) ->
-    case kz_datamgr:del_doc(number_db(PN), number(PN)) of
-        {ok, _} -> {ok, PN};
-        {error, _R} ->
-            lager:warning("number doc for ~s not removed: ~p", [number(PN), _R]),
-            {ok, PN}
-    end.
--endif.
-
-%% @private
--spec try_remove_number_from_account(knm_phone_number()) -> {ok, knm_phone_number()}.
--ifdef(TEST).
-try_remove_number_from_account(PN) -> {ok, PN}.
--else.
-try_remove_number_from_account(PN) ->
-    AssignedTo = assigned_to(PN),
-    Num = number(PN),
-    case kz_term:is_empty(AssignedTo) of
-        true ->
-            lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
-            {ok, PN};
-        false ->
-            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), Num) of
-                {ok, _} -> {ok, PN};
-                {error, _R} ->
-                    lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
-                    {ok, PN}
-            end
-    end.
 -endif.
