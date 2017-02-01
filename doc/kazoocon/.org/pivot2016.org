@@ -1,11 +1,9 @@
-#+SETUPFILE: "theme2016.org"
-#+TITLE: Pivot - Real-Time Call Control
+#+include: "theme2016.org"
 #+DATE: \today
-#+AUTHOR: James Aimonetti
 #+EMAIL: james@2600hz.com
 
 * Pivot
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
 \begin{frame}
@@ -16,9 +14,9 @@ Presented by: James Aimonetti
 \end{flushright}
 \end{frame}
 }
-#+END_LaTeX
+#+END_EXPORT
 ** About Myself
-*** About Myself                                           :B_column:BMCOL:
+*** About Myself
     :PROPERTIES:
     :BEAMER_col: 0.5
     :BEAMER_env: column
@@ -28,26 +26,27 @@ Presented by: James Aimonetti
   - Commit to memory Patrick!
 - Kazoo Architect and Community at 2600Hz
 - mc_ on freenode
-*** Presenter                                                       :BMCOL:
+*** Presenter
     :PROPERTIES:
     :BEAMER_col: 0.45
+    :BEAMER_env: column
     :END:
 #+BEGIN_CENTER
 [[./images/presenter_h280.jpg]]
 #+END_CENTER
-** High-level                                                       :B_block:
+** High-level
 :PROPERTIES:
 :BEAMER_env: block
 :END:
 - Point a callflow at your server
 - Process the call against your business logic
 - Return Kazoo callflow JSON
-** Flow                                                             :B_block:
+** Flow
 :PROPERTIES:
 :BEAMER_env: block
 :END:
 [[./images/pivot_flow.png]]
-** Setting up Kazoo                                                 :B_block:
+** Setting up Kazoo
 :PROPERTIES:
 :BEAMER_env: block
 :END:
@@ -73,13 +72,13 @@ http://crossbar:8000/v2/accounts/{ACCOUNT_ID}/callflows
 #+END_SRC
 
 Pivot will attempt to reach your server for calls to that callflow.
-** The Request                                                      :B_block:
+** The Request
 :PROPERTIES:
 :BEAMER_env: block
 :END:
 - GET - query string parameters
 - POST - x-www-form-urlencoded request body
-** Common Request Fields                                            :B_block:
+** Common Request Fields
 :PROPERTIES:
 :BEAMER_env: block
 :END:
@@ -91,8 +90,8 @@ Pivot will attempt to reach your server for calls to that callflow.
 | From             | SIP From user     |
 | Account-ID       | Kazoo Account ID  |
 | Caller-ID-Name   | CID Name          |
-| Caller-ID-Number | CID Number        |                   |                   |
-** Other Request Fields                                             :B_block:
+| Caller-ID-Number | CID Number        |
+** Other Request Fields
 :PROPERTIES:
 :BEAMER_env: block
 :END:
@@ -102,7 +101,7 @@ Pivot will attempt to reach your server for calls to that callflow.
 | User-ID  | Owner ID(s) of the calling device     |
 | Language | Configured by the device/user/account |
 
-** Create a handler                                                 :B_block:
+** Create a handler
 :PROPERTIES:
 :BEAMER_env: block
 :END:
@@ -114,27 +113,27 @@ Pivot will attempt to reach your server for calls to that callflow.
 #+BEGIN_CENTER
 Example Time!
 #+END_CENTER
-** Say something                                                   :B_frame:
+** Say something
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
 - Uses [[https://freeswitch.org/confluence/display/FREESWITCH/mod_flite][FreeSWITCH =mod_flite=]] by default
 - Supports [[http://www.ispeech.org/text.to.speech][iSpeech]] and [[https://voicefabric.ru/][VoiceFabric]] as alternatives
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"tts"
  ,"data":{"text":"Hello caller"}
 }
 \end{lstlisting}
-#+END_LaTeX
-** Say Hi to the caller                                            :B_frame:
+#+END_EXPORT
+** Say Hi to the caller
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json");
 
@@ -155,21 +154,21 @@ if ( ! empty($caller_id_name)
  ,"data":{"text":"Hi <?= $name ?>"}
 }
 \end{lstlisting}
-#+END_LaTeX
-** Play an MP3 to the caller                                       :B_frame:
+#+END_EXPORT
+** Play an MP3 to the caller
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"play"
  ,"data":{"id":"http://your.server.com/path/to/file.mp3"}
 }
 \end{lstlisting}
-#+END_LaTeX
-** Bridging the caller to a user                                    :B_frame:
+#+END_EXPORT
+** Bridging the caller to a user
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
@@ -180,15 +179,15 @@ Bridge to:
 - [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.ring_group.json][Ring Groups]]
 - [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.conference.json][Conferences]] (Pre-defined or ad-hoc)
 - and more!
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"user"
  ,"data":{"id":"user_doc_id"}
 }
 \end{lstlisting}
-#+END_LaTeX
-** Bridging the caller to a carrier                                 :B_frame:
+#+END_EXPORT
+** Bridging the caller to a carrier
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
@@ -196,7 +195,7 @@ Bridge to:
 - Toggle between local and global resources
 - Statically define a number to dial out to
 - See the [[https://github.com/2600hz/kazoo/blob/master/applications/crossbar/priv/couchdb/schemas/callflows.resources.json][schema]] for all the *data* options
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"resource"
@@ -205,14 +204,14 @@ Bridge to:
  }
 }
 \end{lstlisting}
-#+END_LaTeX
-** Collecting DTMF                                                  :B_frame:
+#+END_EXPORT
+** Collecting DTMF
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
 First, collect the DTMF
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header('content-type:application/json'); ?>
 
@@ -233,8 +232,8 @@ First, collect the DTMF
  }
 }
 \end{lstlisting}
-#+END_LaTeX
-** Collecting DTMF                                                 :B_frame:
+#+END_EXPORT
+** Collecting DTMF
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -242,12 +241,12 @@ A followup HTTP request will be sent to =http://pivot.your.company.com/collected
 - Request includes =Digits[custom_name]=1234=
 - DTMF can either come as a basic string (if no custom name is used) or an array.
 - Let's see how to process them.
-** Collecting DTMF                                                 :B_frame:
+** Collecting DTMF
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header('content-type:application/json');
 
@@ -270,8 +269,8 @@ if ( empty($dtmf) ) { ?>
 }
 <?php } ?>
 \end{lstlisting}
-#+END_LaTeX
-** Sending Presence Updates                                         :B_frame:
+#+END_EXPORT
+** Sending Presence Updates
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
@@ -280,7 +279,7 @@ Send custom presence updates
 - Some IoT devices/appliances can process SIP NOTIFY
 - =presence_id= can be *name* or *name@realm*
 - =status= can be *idle*, *ringing*, or *busy*
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=php]
 <?php header("content-type:application/json"); ?>
 {"module":"manual_presence"
@@ -290,12 +289,12 @@ Send custom presence updates
  }
 }
 \end{lstlisting}
-#+END_LaTeX
-** Callflow actions                                                :B_frame:
+#+END_EXPORT
+** Callflow actions
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
-*** Bridging                                                       :B_column:
+*** Bridging
 :PROPERTIES:
 :BEAMER_env: column
 :BEAMER_col: 0.45
@@ -307,7 +306,7 @@ Send custom presence updates
 - Conference
 - Voicemail Box
 - Fax Box
-*** Caller ID                                                    :B_column:
+*** Caller ID
 :PROPERTIES:
 :BEAMER_col: 0.45
 :BEAMER_env: column
@@ -316,11 +315,11 @@ Send custom presence updates
 - Dynamically set Caller ID
 - Prepend Caller ID
 - Routing via Whitelist or Regex of Caller IDs
-** Callflow actions (cont)                                         :B_frame:
+** Callflow actions (cont)
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
-*** Features                                               :B_column:BMCOL:
+*** Features
 :PROPERTIES:
 :BEAMER_env: column
 :BEAMER_col: 0.45
@@ -330,7 +329,7 @@ Send custom presence updates
 - Intercept
 - Page Groups
 - Hotdesk
-*** Miscellaneous                                          :B_column:BMCOL:
+*** Miscellaneous
 :PROPERTIES:
 :BEAMER_env: column
 :BEAMER_col: 0.45
@@ -342,11 +341,11 @@ Send custom presence updates
 - Detect incoming fax
 - Menus
 - Custom Webhook
-** Brainstorm                                                      :B_frame:
+** Brainstorm
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
-*** Possible Integrations                                         :B_block:
+*** Possible Integrations
 :PROPERTIES:
 :BEAMER_env: block
 :END:
@@ -358,7 +357,7 @@ Send custom presence updates
 - CRM/Salesforce access
 - Combine with metaflows and webhooks: call queues
 - *Your Ideas?*
-** What's Next?                                                     :B_frame:
+** What's Next?
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -371,7 +370,7 @@ Send custom presence updates
 - Contribute to the docs effort
   - Take ref docs and create/update the *real* docs
 * Thank You
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
 \begin{frame}
@@ -380,4 +379,4 @@ Send custom presence updates
 \end{center}
 \end{frame}
 }
-#+END_LaTeX
+#+END_EXPORT

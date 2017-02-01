@@ -54,3 +54,4 @@ compile_commands.json
 /doc/mkdocs/docs
 /doc/mkdocs/site/
 /doc/mkdocs/mkdocs.local.yml
+/doc/mkdocs/theme

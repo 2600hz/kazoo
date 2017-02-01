@@ -1,11 +1,8 @@
-#+SETUPFILE: "theme2016.org"
-#+TITLE: Webhooks and Websockets
+#+include:: "theme2016.org"
 #+DATE: \today
-#+AUTHOR: James Aimonetti
 #+EMAIL: james@2600hz.com
-
 * Webhooks and Websockets
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/first_slide.png}}%
 \begin{frame}
@@ -16,24 +13,25 @@ Presented by: James Aimonetti
 \end{flushright}
 \end{frame}
 }
-#+END_LaTeX
+#+END_EXPORT
 ** About Myself
-*** About Myself                                           :B_column:BMCOL:
+*** About Myself
     :PROPERTIES:
-    :BEAMER_col: 0.5
+    :BEAMER_col: 0.45
     :BEAMER_env: column
     :END:
 - James Aimonetti
 - Kazoo Architect and Community at 2600Hz
 - mc_ on freenode
-*** Presenter                                                       :BMCOL:
+*** Presenter
     :PROPERTIES:
     :BEAMER_col: 0.45
+    :BEAMER_env: column
     :END:
 #+BEGIN_CENTER
 [[./images/presenter_h280.jpg]]
 #+END_CENTER
-** Webhooks - High level                                            :B_frame:
+** Webhooks - High level
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -41,7 +39,7 @@ Presented by: James Aimonetti
 - Read-only
 - AMQP->HTTP bridge
 - Custom webhooks via callflows
-** Webhooks                                                        :B_frame:
+** Webhooks
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -72,7 +70,7 @@ Presented by: James Aimonetti
 #+BEGIN_SRC shell
 curl -v -X GET http://{SERVER}:8000/v2/webhooks
 #+END_SRC
-** Creating a webhook                                              :B_frame:
+** Creating a webhook
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -91,17 +89,23 @@ curl -v -X PUT \
 http://{CB_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 #+END_SRC
 ** Webhook Request
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 - *GET*: query string parameters
 - *POST*: =x-www-urlencoded-form= body
 - Data sent will be the AMQP JSON payload, encoded for the HTTP method chosen
 - No processing of the response (except HTTP response code)
 
 ** The future of webhooks
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 - Reseller hooks for all sub-accounts
   - Added Oct 6
   - Create one hook, receive events for all sub-accounts
 - Feature requests welcome!
-** Websockets                                                      :B_frame:
+** Websockets
 :PROPERTIES:
 :BEAMER_env: frame
 :END:
@@ -110,11 +114,16 @@ http://{CB_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 - Get events *and* issue commands to Kazoo
 - Richer UI interactions with Kazoo (operator console)
 ** Anatomy of websocket connection
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 #+BEGIN_CENTER
-#+ATTR_LaTeX: :height 0.8\textheight
-[[https://www.pubnub.com/wp-content/uploads/2014/09/WebSockets-Diagram.png][file:./images/WebSockets-Diagram.png]]
+#+CAPTION: https://www.pubnub.com/wp-content/uploads/2014/09/WebSockets-Diagram.png
+#+ATTR_LATEX: :height 0.8\textheight
+[[./images/WebSockets-Diagram.png]]
+
 #+END_CENTER
-** Create a websocket connection                                   :B_frame:
+** Create a websocket connection
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
@@ -122,18 +131,18 @@ http://{CB_SERVER}:8000/v2/accounts/{ACCOUNT_ID}/webhooks
 - Ensure *blackhole* application is running
 - Open a connection
 
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 var socket = new WebSocket("ws://{BH_IP}:5555");
 \end{lstlisting}
-#+END_LaTeX
+#+END_EXPORT
 
-** Subscribe for events                                            :B_frame:
+** Subscribe for events
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 function send(data) {
     socket.send(JSON.stringify(data));
@@ -146,13 +155,13 @@ socket.onmessage = function(raw_message) {
     console.log(json_data);
 };
 \end{lstlisting}
-#+END_LaTeX
-** Subscribe for an account's new calls                             :B_frame:
+#+END_EXPORT
+** Subscribe for an account's new calls
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 send({
     action: 'subscribe',
@@ -161,13 +170,13 @@ send({
     binding: 'call.CHANNEL_CREATE.*'
 });
 \end{lstlisting}
-#+END_LaTeX
-** Subscribe for multiple types of events                          :B_frame:
+#+END_EXPORT
+** Subscribe for multiple types of events
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 send({
     action: 'subscribe',
@@ -178,13 +187,13 @@ send({
               ]
 });
 \end{lstlisting}
-#+END_LaTeX
-** Subscribe for doc change events                                 :B_frame:
+#+END_EXPORT
+** Subscribe for doc change events
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 send({
     action: 'subscribe',
@@ -195,13 +204,13 @@ send({
               ]
 });
 \end{lstlisting}
-#+END_LaTeX
-** Unsubscribe from events                                         :B_frame:
+#+END_EXPORT
+** Unsubscribe from events
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 send({
     "action": "unsubscribe"
@@ -210,7 +219,7 @@ send({
     ,"binding": "call.CHANNEL_CREATE.*"
 });
 \end{lstlisting}
-#+END_LaTeX
+#+END_EXPORT
 
 ** Monster makes this easy
 :PROPERTIES:
@@ -218,7 +227,7 @@ send({
 :BEAMER_opt: fragile
 :END:
 - See [[https://github.com/2600hz/monster-ui/blob/master/docs/kazoocon.md][the docs]] for specifics
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 monster.socket.emit("subscribe", { account_id: self.accountId
 ,auth_token: self.authToken
@@ -232,13 +241,13 @@ addEvent = function(data) {
       template.find('.list-events tbody').prepend(eventTemplate);
 };
 \end{lstlisting}
-#+END_LaTeX
+#+END_EXPORT
 ** Monster makes this easy (cont)
 :PROPERTIES:
 :BEAMER_env: frame
 :BEAMER_opt: fragile
 :END:
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 \begin{lstlisting}[language=javascript]
 // Bind some js code to the reception of call events
 monster.socket.on("CHANNEL_CREATE", function (data) {
@@ -252,8 +261,11 @@ monster.socket.on("CHANNEL_DESTROY", function (data) {
   addEvent(data);
 });
 \end{lstlisting}
-#+END_LaTeX
+#+END_EXPORT
 ** Query for available bindings
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 #+LaTeX: \scriptsize
 #+BEGIN_SRC shell
 curl -v -X GET http://{CROSSBAR}:8000/v2/websockets | python -mjson.tool
@@ -285,10 +297,16 @@ curl -v -X GET http://{CROSSBAR}:8000/v2/websockets | python -mjson.tool
 }
 #+END_SRC
 ** Event categories available
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 - Channel events
 - Fax events
 - Objects - identical to webhooks
 ** Fetch account's socket connections
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 #+LaTeX: \scriptsize
 #+BEGIN_SRC shell
 curl -v -X GET \
@@ -307,6 +325,9 @@ http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets
 }
 #+END_SRC
 ** Fetch bindings for a socket ID
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 #+LaTeX: \scriptsize
 #+BEGIN_SRC shell
 curl -v -X GET \
@@ -332,6 +353,9 @@ http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/websockets/{SOCKET_ID}
 }
 #+END_SRC
 ** Execute commands
+:PROPERTIES:
+:BEAMER_env: frame
+:END:
 #+LaTeX: \scriptsize
 #+BEGIN_SRC shell
 curl -v -X PUT \
@@ -351,7 +375,7 @@ curl -v -X PUT \
   - Conference events
   - Notifications (vm left, system alerts)
 * Thank You
-#+BEGIN_LaTeX
+#+BEGIN_EXPORT latex
 {
 \usebackgroundtemplate{\includegraphics[width=\paperwidth,height=\paperheight]{./images/last_slide.png}}%
 \begin{frame}
@@ -360,4 +384,4 @@ curl -v -X PUT \
 \end{center}
 \end{frame}
 }
-#+END_LaTeX
+#+END_EXPORT
