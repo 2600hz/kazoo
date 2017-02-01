@@ -66,7 +66,7 @@ is_in_path(Name, Path) ->
 add_dir(Dir) ->
     case Dir =/= "."
         %% Don't include deps
-        andalso not lists:prefix("./deps/", Dir)
+        andalso not ('match' =:= re:run(Dir, "/deps/", [{'capture', 'none'}]))
         %% Note: OTP's dirs usually start with "/"
         andalso xref:add_directory(?SERVER, Dir)
     of
@@ -79,10 +79,10 @@ add_dir(Dir) ->
 xrefs() ->
     ['undefined_function_calls'
     ,'undefined_functions'        %%
-    %% ,'locals_not_used'            %% Compilation discovers this
-    %% ,'exports_not_used'           %% Compilation discovers this
-    %% ,'deprecated_function_calls'  %% Concerns not kazoo
-    %% ,'deprecated_functions'       %% Concerns not kazoo
+     %% ,'locals_not_used'            %% Compilation discovers this
+     %% ,'exports_not_used'           %% Compilation discovers this
+     %% ,'deprecated_function_calls'  %% Concerns not kazoo
+     %% ,'deprecated_functions'       %% Concerns not kazoo
      %% Want moar? http://www.erlang.org/doc/man/xref.html
     ].
 
@@ -90,72 +90,72 @@ filter('undefined_function_calls', Results) ->
     ToKeep = fun
                  %% OTP Xref errors
                  ({{eunit_test,_,_}, {_,_,_}}) -> 'false';
-                 ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
-                 ({{compile,_,_}, {_,_,_}}) -> 'false';
-                 ({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
-                 ({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_x86_main,_,_}, {_,_,_}}) -> 'false';
-                 ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
-                 ({{init,_,_}, {_,_,_}}) -> 'false';
+        ({{cerl_to_icode,_,_}, {_,_,_}}) -> 'false';
+        ({{compile,_,_}, {_,_,_}}) -> 'false';
+        ({{dialyzer_cl,_,_}, {_,_,_}}) -> 'false';
+        ({{diameter_lib,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_beam_to_icode,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_consttab,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_icode_bincomp,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_icode_mulret,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_icode_pp,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_icode_split_arith,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_icode_type,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_main,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_x86_main,_,_}, {_,_,_}}) -> 'false';
+        ({{hipe_unified_loader,_,_}, {_,_,_}}) -> 'false';
+        ({{init,_,_}, {_,_,_}}) -> 'false';
 
                  %% DTL modules that only exist at runtime
-                 ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
-                 ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
-                 ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
+        ({{_,_,_}, {sub_package_dialog,_,_}}) -> 'false';
+        ({{_,_,_}, {sub_package_message_summary,_,_}}) -> 'false';
+        ({{_,_,_}, {sub_package_presence,_,_}}) -> 'false';
 
                  %% False positives due to RabbitMQ clashing with EVERYTHING
-                 ({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
-                 ({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
+        ({{_,_,_}, {cowboy,start_http,4}}) -> 'false';
+        ({{_,_,_}, {cowboy,start_https,4}}) -> 'false';
 
                  %% Missing deps of an old-deprecated app: pusher
-                 ({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
-                 ({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
+        ({{_,_,_}, {qdate,to_unixtime,1}}) -> 'false';
+        ({{_,_,_}, {qdate,unixtime,0}}) -> 'false';
 
-                 (_) -> 'true'
-             end,
-    lists:filter(ToKeep, Results);
+        (_) -> 'true'
+                                            end,
+lists:filter(ToKeep, Results);
 filter(undefined_functions, Results) ->
     ToKeep = fun
                  %% OTP Xref errors
                  ({eunit_test, nonexisting_function, 0}) -> false;
-                 ({hipe, _, _}) -> false;
-                 ({hipe_amd64_main, _, _}) -> false;
-                 ({hipe_arm_main, _, _}) -> false;
-                 ({hipe_x86_main, _, _}) -> false;
-                 ({hipe_bifs, _, _}) -> false;
-                 ({hipe_data_pp, _, _}) -> false;
-                 ({hipe_icode2rtl, _, _}) -> false;
-                 ({hipe_icode_heap_test, _, _}) -> false;
-                 ({hipe_llvm_liveness, _, _}) -> false;
-                 ({hipe_llvm_main, _, _}) -> false;
-                 ({hipe_ppc_main, _, _}) -> false;
-                 ({hipe_rtl_arch, _, _}) -> false;
-                 ({hipe_rtl_cfg, _, _}) -> false;
-                 ({hipe_rtl_cleanup_const, _, _}) -> false;
-                 ({hipe_rtl_lcm, _, _}) -> false;
-                 ({hipe_rtl_ssa, _, _}) -> false;
-                 ({hipe_rtl_ssa_avail_expr, _, _}) -> false;
-                 ({hipe_rtl_ssa_const_prop, _, _}) -> false;
-                 ({hipe_rtl_ssapre, _, _}) -> false;
-                 ({hipe_rtl_symbolic, _, _}) -> false;
-                 ({hipe_sparc_main, _, _}) -> false;
-                 ({hipe_tagscheme, _, _}) -> false;
+        ({hipe, _, _}) -> false;
+        ({hipe_amd64_main, _, _}) -> false;
+        ({hipe_arm_main, _, _}) -> false;
+        ({hipe_x86_main, _, _}) -> false;
+        ({hipe_bifs, _, _}) -> false;
+        ({hipe_data_pp, _, _}) -> false;
+        ({hipe_icode2rtl, _, _}) -> false;
+        ({hipe_icode_heap_test, _, _}) -> false;
+        ({hipe_llvm_liveness, _, _}) -> false;
+        ({hipe_llvm_main, _, _}) -> false;
+        ({hipe_ppc_main, _, _}) -> false;
+        ({hipe_rtl_arch, _, _}) -> false;
+        ({hipe_rtl_cfg, _, _}) -> false;
+        ({hipe_rtl_cleanup_const, _, _}) -> false;
+        ({hipe_rtl_lcm, _, _}) -> false;
+        ({hipe_rtl_ssa, _, _}) -> false;
+        ({hipe_rtl_ssa_avail_expr, _, _}) -> false;
+        ({hipe_rtl_ssa_const_prop, _, _}) -> false;
+        ({hipe_rtl_ssapre, _, _}) -> false;
+        ({hipe_rtl_symbolic, _, _}) -> false;
+        ({hipe_sparc_main, _, _}) -> false;
+        ({hipe_tagscheme, _, _}) -> false;
 
                  %% Missing deps of an old-deprecated app: pusher
-                 ({qdate, to_unixtime, 1}) -> false;
-                 ({qdate, unixtime, 0}) -> false;
+        ({qdate, to_unixtime, 1}) -> false;
+        ({qdate, unixtime, 0}) -> false;
 
-                 (_) -> true
-             end,
-    lists:filter(ToKeep, Results);
+        (_) -> true
+                                     end,
+lists:filter(ToKeep, Results);
 filter(_Xref, Results) ->
     Results.
 
