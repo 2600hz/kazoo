@@ -419,7 +419,7 @@ route_ccvs_list(CCVs) ->
     L = [kz_term:to_list(ecallmgr_util:get_fs_kv(K, V))
          || {K, V} <- CCVs
         ],
-    <<"^^;", (kz_term:to_binary(string:join(L, ";")))/binary>>.
+    <<"^^|", (kz_term:to_binary(string:join(L, "|")))/binary>>.
 
 -spec route_resp_transfer_ringback(kz_json:object()) -> xml_el().
 route_resp_transfer_ringback(JObj) ->
