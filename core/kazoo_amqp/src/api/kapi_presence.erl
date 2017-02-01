@@ -311,15 +311,18 @@ update_routing_key(Req) ->
                       ).
 
 update_routing_key(State, PresenceID) when is_binary(State) ->
-    R = case binary:split(PresenceID, <<"@">>) of
-            [_To, Realm] -> amqp_util:encode(Realm);
-            [Realm] -> amqp_util:encode(Realm)
-        end,
     list_to_binary([<<"update.">>
                    ,amqp_util:encode(State)
                    ,"."
-                   ,amqp_util:encode(R)
+                   ,amqp_util:encode(realm_from_presence_id(PresenceID))
                    ]).
+
+-spec realm_from_presence_id(ne_binary()) -> ne_binary().
+realm_from_presence_id(PresenceID) ->
+    case binary:split(PresenceID, <<"@">>) of
+        [_To, Realm] -> Realm;
+        [Realm] -> Realm
+    end.
 
 %%--------------------------------------------------------------------
 %% @doc
