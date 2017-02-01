@@ -47,6 +47,9 @@
                     ,{{'teletype_new_account', 'handle_new_account'}
                      ,[{<<"notification">>, <<"new_account">>}]
                      }
+                    ,{{'teletype_account_zone_change', 'handle_account_zone_change'}
+                     ,[{<<"notification">>, <<"account_zone_change">>}]
+                     }
                     ,{{'teletype_new_user', 'handle_req'}
                      ,[{<<"notification">>, <<"new_user">>}]
                      }
@@ -125,6 +128,7 @@
                      ,'inbound_fax_error'
                      ,'low_balance'
                      ,'new_account'
+                     ,'account_zone_change'
                      ,'new_user'
                      ,'new_voicemail'
                      ,'outbound_fax'
