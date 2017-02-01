@@ -57,11 +57,11 @@ init() ->
              ,{'reply_to', ?TEMPLATE_REPLY_TO}],
     FilteredParams = [{'friendly_name', ?FILTERED_TEMPLATE_NAME}
                      ,{'to', ?TEMPLATE_FILTERED_TO}
-                     | Fields
+                      | Fields
                      ],
     UnfilteredParams = [{'friendly_name', ?TEMPLATE_NAME}
                        ,{'to', ?TEMPLATE_TO}
-                       | Fields
+                        | Fields
                        ],
     teletype_templates:init(?TEMPLATE_ID_FILTERED, FilteredParams),
     teletype_templates:init(?TEMPLATE_ID, UnfilteredParams).
