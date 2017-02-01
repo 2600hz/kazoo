@@ -16,7 +16,7 @@
 -record(state, {task_id :: kz_tasks:task_id()
                ,api :: kz_json:object()
                ,fassoc :: kz_csv:fassoc()
-               ,extra_args :: kz_proplist()
+               ,extra_args :: map()
                ,total_failed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                }).
@@ -34,7 +34,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id(), kz_json:object(), kz_proplist()) -> 'ok'.
+-spec start(kz_tasks:task_id(), kz_json:object(), map()) -> ok.
 start(TaskId, API, ExtraArgs) ->
     _ = kz_util:put_callid(TaskId),
     case init(TaskId, API, ExtraArgs) of
@@ -51,8 +51,8 @@ start(TaskId, API, ExtraArgs) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id(), kz_json:object(), kz_proplist()) -> {'ok', state()} |
-                                                                   {'error', any()}.
+-spec init(kz_tasks:task_id(), kz_json:object(), map()) -> {ok, state()} |
+                                                           {error, any()}.
 init(TaskId, API, ExtraArgs) ->
     case write_output_csv_header(TaskId, API) of
         {'error', _R}=Error ->
@@ -118,7 +118,7 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
     S.
 
 %% @private
--spec is_task_successful(kz_tasks:task_id(), kz_json:object(), kz_proplist(), task_iterator()) ->
+-spec is_task_successful(kz_tasks:task_id(), kz_json:object(), map(), task_iterator()) ->
                                 {boolean(), non_neg_integer(), task_iterator()} |
                                 'stop'.
 is_task_successful(TaskId, API, ExtraArgs, IterValue) ->
