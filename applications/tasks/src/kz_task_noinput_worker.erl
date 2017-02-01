@@ -15,7 +15,6 @@
 
 -record(state, {task_id :: kz_tasks:task_id()
                ,api :: kz_json:object()
-               ,fassoc :: kz_csv:fassoc()
                ,extra_args :: map()
                ,total_failed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
