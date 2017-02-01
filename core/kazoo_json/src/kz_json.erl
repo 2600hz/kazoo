@@ -254,8 +254,8 @@ from_list_recursive(L)
 -spec recursive_from_list(list()) -> object().
 recursive_from_list([First | _]=List)
   when is_list(List)
-           andalso is_tuple(First)  ->
-    kz_json:set_values([{K, recursive_from_list(V)} || {K,V} <- List], kz_json:new());
+       andalso is_tuple(First)  ->
+    set_values([{K, recursive_from_list(V)} || {K,V} <- List], new());
 recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
