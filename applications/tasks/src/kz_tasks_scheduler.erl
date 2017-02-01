@@ -409,9 +409,9 @@ handle_call_start_task(Task=#{id := TaskId
     lager:debug("API ~s", [kz_json:encode(API)]),
     Worker = worker_module(API),
     lager:debug("worker type: ~s", [Worker]),
-    ExtraArgs = [{'account_id', AccountId}
-                ,{'auth_account_id', AuthAccountId}
-                ],
+    ExtraArgs = #{account_id => AccountId
+                 ,auth_account_id => AuthAccountId
+                 },
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
     try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of

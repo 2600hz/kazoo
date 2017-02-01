@@ -81,12 +81,12 @@ col2(?NE_BINARY) -> 'true'.
 
 %%% Appliers
 
--spec id1(kz_proplist(), task_iterator(), api_binary()) -> task_return().
-id1(_Props, _IterValue, Col1) ->
+-spec id1(map(), task_iterator(), api_binary()) -> task_return().
+id1(_ExtraArgs, _IterValue, Col1) ->
     [Col1].
 
--spec id2(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
-id2(_Props, _IterValue, Col1, Col2) ->
+-spec id2(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+id2(_ExtraArgs, _IterValue, Col1, Col2) ->
     [Col1, Col2].
 
 %%% Triggerables

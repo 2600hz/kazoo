@@ -280,18 +280,15 @@ carrier_module(_) -> 'false'.
 
 %%% Appliers
 
--spec list(kz_proplist(), task_iterator()) -> task_iterator().
-list(Props, 'init') ->
-    ForAccount = props:get_value('account_id', Props),
+-spec list(map(), task_iterator()) -> task_iterator().
+list(#{account_id := ForAccount}, init) ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
-    {'ok', ToList};
-list(_, []) ->
-    'stop';
-list(Props, [{AccountId, NumberDb} | Rest]) ->
+    {ok, ToList};
+list(_, []) -> stop;
+list(#{auth_account_id := AuthBy}, [{AccountId, NumberDb} | Rest]) ->
     case number_db_listing(NumberDb, AccountId) of
-        [] -> {'ok', Rest};
+        [] -> {ok, Rest};
         E164s ->
-            AuthBy = props:get_value('auth_account_id', Props),
             Rows = [list_number_row(AuthBy, E164) || E164 <- E164s],
             {Rows, Rest}
     end.
@@ -333,17 +330,15 @@ list_number_row(AuthBy, E164) ->
             [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')]
     end.
 
--spec list_all(kz_proplist(), task_iterator()) -> task_iterator().
-list_all(Props, 'init') ->
-    Account = props:get_value('account_id', Props),
+-spec list_all(map(), task_iterator()) -> task_iterator().
+list_all(#{account_id := Account}, init) ->
     ForAccounts = [Account | get_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
              ],
-    {'ok', ToList};
-list_all(_, []) ->
-    'stop';
+    {ok, ToList};
+list_all(_, []) -> stop;
 list_all(_, [{AccountId, NumberDb} | Rest]) ->
     case number_db_listing(NumberDb, AccountId) of
         [] -> {'ok', Rest};
@@ -352,15 +347,14 @@ list_all(_, [{AccountId, NumberDb} | Rest]) ->
             {Rows, Rest}
     end.
 
--spec dump(kz_proplist(), task_iterator()) -> task_iterator().
-dump(Props, 'init') ->
-    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
-    case props:get_value('auth_account_id', Props) of
-        MasterAccountId -> {'ok', knm_util:get_all_number_dbs()};
-        _ -> 'stop'
+-spec dump(map(), task_iterator()) -> task_iterator().
+dump(ExtraArgs, init) ->
+    {ok, MasterAccountId} = kapps_util:get_master_account_id(),
+    case maps:get(auth_account_id, ExtraArgs) of
+        MasterAccountId -> {ok, knm_util:get_all_number_dbs()};
+        _ -> stop
     end;
-dump(_, []) ->
-    'stop';
+dump(_, []) -> stop;
 dump(_, [NumberDb|NumberDbs]) ->
     case kz_datamgr:get_results(NumberDb, <<"numbers/status">>) of
         {'ok', []} -> {'ok', NumberDbs};
@@ -372,33 +366,33 @@ dump(_, [NumberDb|NumberDbs]) ->
             {Rows, NumberDbs}
     end.
 
--spec import(kz_proplist(), task_iterator()
+-spec import(map(), task_iterator()
             ,ne_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ) ->
                     {task_return(), sets:set()}.
-import(Props, 'init', _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
+import(ExtraArgs, init, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
-    import(Props, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
-import(Props, AccountIds
+    import(ExtraArgs, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
+import(#{account_id := Account}, AccountIds
       ,E164, AccountId0, Carrier
       ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
       ,CNAMInbound0, CNAMOutbound
       ,E911PostalCode, E911StreetAddress, E911ExtendedAddress, E911Locality, E911Region
       ) ->
     %%TODO: use all the optional fields
-    AccountId = case AccountId0 of
-                    'undefined' -> props:get_value('account_id', Props);
-                    _ -> AccountId0
+    AccountId = case undefined =:= AccountId0 of
+                    true -> Account;
+                    false -> AccountId0
                 end,
-    ModuleName = case kz_util:is_system_admin(props:get_value('account_id', Props))
+    ModuleName = case kz_util:is_system_admin(Account)
                      andalso Carrier
                  of
-                     'false' -> ?CARRIER_LOCAL;
-                     'undefined' -> ?CARRIER_LOCAL;
+                     false -> ?CARRIER_LOCAL;
+                     undefined -> ?CARRIER_LOCAL;
                      _ -> Carrier
                  end,
     CNAMInbound = kz_util:is_true(CNAMInbound0),
@@ -434,32 +428,32 @@ cnam(Inbound, CallerID=?NE_BINARY) ->
 e911([]) -> [];
 e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
--spec assign_to(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
-assign_to(Props, _IterValue, Number, AccountId) ->
-    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
-              ,{'batch_run', 'true'}
+-spec assign_to(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+assign_to(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
--spec release(kz_proplist(), task_iterator(), ne_binary()) -> task_return().
-release(Props, _IterValue, Number) ->
-    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
-              ,{'batch_run', 'true'}
+-spec release(map(), task_iterator(), ne_binary()) -> task_return().
+release(#{auth_account_id := AuthBy}, _IterValue, Number) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
               ],
     handle_result(knm_number:release(Number, Options)).
 
--spec reserve(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
-reserve(Props, _IterValue, Number, AccountId) ->
-    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
-              ,{'batch_run', 'true'}
-              ,{'assign_to', AccountId}
+-spec reserve(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+reserve(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
+              ,{assign_to, AccountId}
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
--spec delete(kz_proplist(), task_iterator(), ne_binary()) -> task_return().
-delete(Props, _IterValue, Number) ->
-    Options = [{'auth_by', props:get_value('auth_account_id', Props)}
-              ,{'batch_run', 'true'}
+-spec delete(map(), task_iterator(), ne_binary()) -> task_return().
+delete(#{auth_account_id := AuthBy}, _IterValue, Number) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
               ],
     handle_result(knm_number:delete(Number, Options)).
 
