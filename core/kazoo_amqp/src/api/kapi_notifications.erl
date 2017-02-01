@@ -305,8 +305,8 @@
                                      ]).
 -define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, [?DEFAULT_OPTIONAL_HEADERS]).
 -define(ACCOUNT_ZONE_CHANGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
-                            ,{<<"Event-Name">>, <<"account_zone_change">>}
-                            ]).
+                                    ,{<<"Event-Name">>, <<"account_zone_change">>}
+                                    ]).
 -define(ACCOUNT_ZONE_CHANGE_TYPES, []).
 
 %% Notify New User

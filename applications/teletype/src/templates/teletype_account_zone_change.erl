@@ -9,9 +9,9 @@
 -module(teletype_account_zone_change).
 
 -export([
-    init/0
-   ,handle_account_zone_change/2
-]).
+         init/0
+        ,handle_account_zone_change/2
+        ]).
 
 -include("teletype.hrl").
 
