@@ -1,6 +1,6 @@
-{application, kazoo_tasks,
+{application, kazoo_csv,
  [
-  {description, "Kazoo Tasks - Application library for Tasks"},
+  {description, "Kazoo CSV - Application library for handling CSV files (RFC4180)."},
   {vsn, "4.0.0"},
   {modules, []},
   {registered, []},
@@ -8,6 +8,5 @@
                  ,stdlib
 
                  ,kazoo
-                 ,kazoo_csv
                  ]}
  ]}.

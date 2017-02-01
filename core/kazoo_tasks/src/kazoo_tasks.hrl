@@ -3,8 +3,8 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
--include_lib("kazoo_tasks/include/task_fields.hrl").
--include_lib("kazoo_tasks/include/tasks.hrl").
+-include("task_fields.hrl").
+-include("tasks.hrl").
 
 -define(APP, 'kzaoo_tasks').
 -define(APP_NAME, <<"kazoo_tasks">>).
