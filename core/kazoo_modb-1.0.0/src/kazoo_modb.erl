@@ -241,8 +241,9 @@ create(AccountMODb) ->
     do_create(AccountMODb, IsDbExists).
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
-do_create(_AccountMODb, 'true') ->
-    lager:warning("modb ~p is exists, not creating", [_AccountMODb]);
+do_create(AccountMODb, 'true') ->
+    lager:warning("modb ~p exists, not creating", [AccountMODb]),
+    refresh_views(AccountMODb);
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = wh_util:format_account_modb(AccountMODb, 'encoded'),
