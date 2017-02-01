@@ -75,6 +75,7 @@
 %% And all this is because we need to set is_dirty reliably.
 -record(knm_phone_number, {number :: api_ne_binary()             %%%
                           ,number_db :: api_ne_binary()          %%%
+                          ,rev :: ne_binary()
                           ,assign_to :: api_ne_binary()
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
@@ -556,13 +557,14 @@ to_public_json(PN) ->
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(PN=#knm_phone_number{doc=JObj}) ->
     kz_json:from_list(
-      [{<<"_id">>, number(PN)}
-      ,{?PVT_DB_NAME, number_db(PN)}
-      ,{?PVT_STATE, state(PN)}
-      ,{?PVT_PORTED_IN, ported_in(PN)}
-      ,{?PVT_MODULE_NAME, module_name(PN)}
-      ,{?PVT_MODIFIED, modified(PN)}
-      ,{?PVT_CREATED, created(PN)}
+      [{<<"_id">>, number(N)}
+      ,{<<"_rev">>, rev(N)}
+      ,{?PVT_DB_NAME, number_db(N)}
+      ,{?PVT_STATE, state(N)}
+      ,{?PVT_PORTED_IN, ported_in(N)}
+      ,{?PVT_MODULE_NAME, module_name(N)}
+      ,{?PVT_MODIFIED, modified(N)}
+      ,{?PVT_CREATED, created(N)}
       ,{?PVT_TYPE, <<"number">>}
        | kz_json:to_proplist(sanitize_public_fields(JObj))
       ]
@@ -616,6 +618,8 @@ from_json(JObj) ->
 
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
+
+                 |props:filter_undefined([{fun set_rev/2, Rev}])
                 ]),
     PN.
 
@@ -840,8 +844,15 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db(knm_phone_number()) -> ne_binary().
-number_db(#knm_phone_number{number_db=NumberDb}) ->
-    NumberDb.
+number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
+
+%% @private
+-spec rev(knm_phone_number()) -> ne_binary().
+rev(#knm_phone_number{rev=Rev}) -> Rev.
+
+-spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_rev(N, ?NE_BINARY=Rev) ->
+    N#knm_phone_number{rev=Rev}.
 
 %%--------------------------------------------------------------------
 %% @public
