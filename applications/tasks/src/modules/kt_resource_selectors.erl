@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -91,8 +91,8 @@ account_id(_) -> 'false'.
 
 %%% Appliers
 
--spec import(map(), task_iterator(), api_binary(), api_binary(),
-             api_binary(), api_binary(), api_binary(), api_binary()) -> task_return().
+-spec import(kz_tasks:extra_args(), kz_tasks:iterator(), api_binary(), api_binary(),
+             api_binary(), api_binary(), api_binary(), api_binary()) -> kz_tasks:return().
 import(#{auth_account_id := AuthBy}=ExtraArgs, init, Name, Selector, Resource, Value, Start, Stop) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
@@ -120,7 +120,7 @@ import(_ExtraArgs, State, _Name, _Selector, _Resource, _Value, _Start, _Stop) ->
     lager:error("wrong state: ~p", [State]),
     stop.
 
--spec delete(map(), task_iterator(), api_binary(), api_binary(), api_binary()) -> task_return().
+-spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), api_binary(), api_binary(), api_binary()) -> kz_tasks:return().
 delete(ExtraArgs, init, Name, Selector, Resource) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
@@ -206,7 +206,7 @@ do_delete_fold(Db, Keys, AccIDs) ->
             AccIDs
     end.
 
--spec get_selectors_db(map()) -> api_binary().
+-spec get_selectors_db(kz_tasks:extra_args()) -> api_binary().
 get_selectors_db(#{account_id := AccountId
                   ,auth_account_id := AuthAccountId
                   }) ->

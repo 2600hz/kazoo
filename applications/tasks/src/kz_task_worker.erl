@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%%  Run tasks scheduled by kz_tasks.
 %%% @end
@@ -13,7 +13,7 @@
 
 -include("tasks.hrl").
 
--record(state, {task_id :: kz_tasks:task_id()
+-record(state, {task_id :: kz_tasks:id()
                ,api = kz_json:object()
                ,fassoc :: kz_csv:fassoc()
                ,extra_args :: map()
@@ -35,7 +35,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id(), kz_json:object(), map()) -> ok.
+-spec start(kz_tasks:id(), kz_json:object(), map()) -> ok.
 start(TaskId, API, ExtraArgs) ->
     _ = kz_util:put_callid(TaskId),
     case init(TaskId, API, ExtraArgs) of
@@ -52,8 +52,8 @@ start(TaskId, API, ExtraArgs) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:task_id(), kz_json:object(), map()) -> {ok, state()} |
-                                                           {error, any()}.
+-spec init(kz_tasks:id(), kz_json:object(), map()) -> {ok, state()} |
+                                                      {error, any()}.
 init(TaskId, API, ExtraArgs) ->
     case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
         {'error', _R}=Error ->
@@ -100,7 +100,7 @@ build_verifier(API) ->
     end.
 
 %% @private
--spec loop(task_iterator(), state()) -> any().
+-spec loop(kz_tasks:iterator(), state()) -> any().
 loop(IterValue, State=#state{task_id = TaskId
                             ,api = API
                             ,fassoc = FAssoc
@@ -156,10 +156,10 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
     S.
 
 %% @private
--spec is_task_successful(kz_tasks:task_id(), kz_json:object(), map()
-                        ,kz_csv:fassoc(), kz_csv:row(), task_iterator()) ->
-                                {boolean(), non_neg_integer(), task_iterator()} |
-                                'stop'.
+-spec is_task_successful(kz_tasks:id(), kz_json:object(), map()
+                        ,kz_csv:fassoc(), kz_csv:row(), kz_tasks:iterator()) ->
+                                {boolean(), non_neg_integer(), kz_tasks:iterator()} |
+                                stop.
 is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
     try FAssoc(RawRow) of
         {'true', RowArgs} ->
@@ -201,7 +201,7 @@ is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
     end.
 
 %% @private
--spec store_return(kz_tasks:task_id(), kz_csv:row(), task_return()) -> pos_integer().
+-spec store_return(kz_tasks:id(), kz_csv:row(), kz_tasks:return()) -> pos_integer().
 store_return(TaskId, Row, Rows=[_List|_]) when is_list(_List) ->
     lists:sum([store_return(TaskId, Row, R) || R <- Rows]);
 store_return(TaskId, Row, Reason) ->
@@ -210,7 +210,7 @@ store_return(TaskId, Row, Reason) ->
     1.
 
 %% @private
--spec reason(task_return()) -> iodata().
+-spec reason(kz_tasks:return()) -> iodata().
 reason([_|_]=Row) ->
     kz_csv:row_to_iolist(Row);
 reason(?NE_BINARY=Reason) ->
@@ -218,8 +218,8 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec write_output_csv_header(kz_tasks:task_id(), kz_json:object(), kz_csv:row()) ->
-                                     'ok' | {'error', any()}.
+-spec write_output_csv_header(kz_tasks:id(), kz_json:object(), kz_csv:row()) ->
+                                     ok | {error, any()}.
 write_output_csv_header(TaskId, API, HeaderRow) ->
     HeaderRHS = kz_tasks_scheduler:get_output_header(API),
     Data = [kz_csv:row_to_iolist(HeaderRow ++ HeaderRHS), $\n],

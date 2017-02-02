@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -268,7 +268,7 @@ carrier_module(Data) ->
 
 %%% Appliers
 
--spec list(map(), task_iterator()) -> task_iterator().
+-spec list(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list(#{account_id := ForAccount}, init) ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
     {ok, ToList};
@@ -318,7 +318,7 @@ list_number_row(AuthBy, E164) ->
             [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')]
     end.
 
--spec list_all(map(), task_iterator()) -> task_iterator().
+-spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list_all(#{account_id := Account}, init) ->
     ForAccounts = [Account | get_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
@@ -335,7 +335,7 @@ list_all(_, [{AccountId, NumberDb} | Rest]) ->
             {Rows, Rest}
     end.
 
--spec dump(map(), task_iterator()) -> task_iterator().
+-spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(ExtraArgs, init) ->
     {ok, MasterAccountId} = kapps_util:get_master_account_id(),
     case maps:get(auth_account_id, ExtraArgs) of
@@ -354,13 +354,13 @@ dump(_, [NumberDb|NumberDbs]) ->
             {Rows, NumberDbs}
     end.
 
--spec import(map(), task_iterator()
+-spec import(kz_tasks:extra_args(), kz_tasks:iterator()
             ,ne_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ,api_binary(), api_binary()
             ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
             ) ->
-                    {task_return(), sets:set()}.
+                    {kz_tasks:return(), sets:set()}.
 import(ExtraArgs, init, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
@@ -416,21 +416,21 @@ cnam(Inbound, CallerID=?NE_BINARY) ->
 e911([]) -> [];
 e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
--spec assign_to(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+-spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary(), ne_binary()) -> kz_tasks:return().
 assign_to(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
     handle_result(knm_number:move(Number, AccountId, Options)).
 
--spec release(map(), task_iterator(), ne_binary()) -> task_return().
+-spec release(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary()) -> kz_tasks:return().
 release(#{auth_account_id := AuthBy}, _IterValue, Number) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
     handle_result(knm_number:release(Number, Options)).
 
--spec reserve(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+-spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary(), ne_binary()) -> kz_tasks:return().
 reserve(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
@@ -438,7 +438,7 @@ reserve(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
               ],
     handle_result(knm_number:reserve(Number, Options)).
 
--spec delete(map(), task_iterator(), ne_binary()) -> task_return().
+-spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary()) -> kz_tasks:return().
 delete(#{auth_account_id := AuthBy}, _IterValue, Number) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
@@ -449,7 +449,7 @@ delete(#{auth_account_id := AuthBy}, _IterValue, Number) ->
 %%% Internal functions
 %%%===================================================================
 
--spec handle_result(knm_number_return()) -> task_return().
+-spec handle_result(knm_number_return()) -> kz_tasks:return().
 handle_result({'ok', _KNMNumber}) -> [];
 handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
 handle_result({'error', Reason})

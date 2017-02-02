@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -91,7 +91,7 @@ action(<<"descendant_quantities">>) ->
 
 %%% Appliers
 
--spec descendant_quantities(map(), task_iterator()) -> task_iterator().
+-spec descendant_quantities(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 descendant_quantities(#{account_id := AccountId}, init) ->
     Descendants = get_descendants(AccountId),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),

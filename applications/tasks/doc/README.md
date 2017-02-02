@@ -79,7 +79,7 @@ As second argument, the function takes one of:
 
 ### Return values
 
-The function must return a valid instance of the type `task_return()`:
+The function must return a valid instance of the type `kz_tasks:return()`:
 
 * `stop`: ends the task & uploads the output CSV.
 * `ok`: row is counted as successful, nothin is written in the error column.
