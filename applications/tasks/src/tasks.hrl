@@ -23,7 +23,6 @@
                ]).
 
 -define(WORKER_TASK_FAILED, <<"applier crashed">>).
--define(WORKER_TASK_TYPE, <<"bad input">>).
 -define(WORKER_TASK_MAYBE_OK, <<"internal">>).
 
 -define(OUTPUT_CSV_HEADER_ROW, [<<"error">>]).

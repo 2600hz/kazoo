@@ -26,7 +26,7 @@ associator_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
     FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verifier/2),
-    ?assertEqual({true
+    ?assertEqual({ok
                  ,#{<<"A">> => <<"1">>
                    ,<<"B">> => <<"2">>
                    ,<<"C">> => <<"3">>
@@ -44,7 +44,7 @@ associator_verify_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"42">>],
     FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verify_all_1bin/2),
-    ?assertEqual(false, FAssoc(CSVRow)).
+    ?assertEqual({error,<<"B">>}, FAssoc(CSVRow)).
 
 verify_FIELDS_only(_, undefined) -> true;
 verify_FIELDS_only(Field, Value) ->
@@ -57,7 +57,7 @@ associator_varargs_test() ->
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"my_field">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"blip blop">>],
     FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verify_FIELDS_only/2),
-    ?assertEqual({true
+    ?assertEqual({ok
                  ,#{<<"A">> => <<"1">>
                    ,<<"B">> => ?ZILCH
                    ,<<"C">> => <<"3">>
