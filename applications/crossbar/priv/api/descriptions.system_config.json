@@ -17,6 +17,7 @@
     "ananke.interval_s": "ananke interval in seconds",
     "ananke.schedules": "ananke schedules",
     "ananke.timeout_s": "ananke timeout in seconds",
+    "auth.auth_modules": "Kazoo Auth modules' configurations",
     "auth.secret_for_user_signature": "auth secret for user signature",
     "auth.system_key": "auth system key",
     "blackhole.acceptors": "blackhole acceptors",
