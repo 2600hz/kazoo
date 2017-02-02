@@ -11,12 +11,21 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
+-define(FIELDS, [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>]).
+
+
+verify_bin1(Cell)
+  when 1 =:= byte_size(Cell) -> true;
+verify_bin1(_) -> false.
+
+verifier(<<"D">>, _Cell) -> true;
+verifier(_Field, Cell) ->
+    verify_bin1(Cell).
 
 associator_test() ->
-    OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
-    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, fun verifier/2),
+    FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verifier/2),
     ?assertEqual({true
                  ,#{<<"A">> => <<"1">>
                    ,<<"B">> => <<"2">>
@@ -28,23 +37,37 @@ associator_test() ->
                 ,FAssoc(CSVRow)
                 ).
 
-verify_bin1(Cell)
-  when 1 =:= byte_size(Cell) -> true;
-verify_bin1(_) -> false.
-
-verifier(<<"D">>, _Cell) -> true;
-verifier(_Field, Cell) ->
-    verify_bin1(Cell).
-
-verifier1(_Field, Cell) ->
+verify_all_1bin(_Field, Cell) ->
     verify_bin1(Cell).
 
 associator_verify_test() ->
-    OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"42">>],
-    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, fun verifier1/2),
+    FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verify_all_1bin/2),
     ?assertEqual(false, FAssoc(CSVRow)).
+
+verify_FIELDS_only(_, undefined) -> true;
+verify_FIELDS_only(Field, Value) ->
+    case lists:member(Field, ?FIELDS) of
+        false -> true;
+        true -> 1 =:= byte_size(Value)
+    end.
+
+associator_varargs_test() ->
+    CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"my_field">>],
+    CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"blip blop">>],
+    FAssoc = kz_csv:associator(CSVHeader, ?FIELDS, fun verify_FIELDS_only/2),
+    ?assertEqual({true
+                 ,#{<<"A">> => <<"1">>
+                   ,<<"B">> => ?ZILCH
+                   ,<<"C">> => <<"3">>
+                   ,<<"D">> => ?ZILCH
+                   ,<<"E">> => <<"5">>
+                   ,<<"my_field">> => <<"blip blop">>
+                   }
+                 }
+                ,FAssoc(CSVRow)
+                ).
 
 take_row_test_() ->
     CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,

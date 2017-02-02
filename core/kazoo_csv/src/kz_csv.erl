@@ -135,33 +135,31 @@ pad_row_to(_, Row) ->
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
-associator(CSVHeader, OrderedFields, Verifier) ->
-    Max = length(OrderedFields),
-    Map = maps:from_list(
-            [{find_position(Header, OrderedFields, 1), I}
-             || {I,Header} <- lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader)
-            ]),
+associator(CSVHeader, Fields, Verifier) ->
+    Header = complete_header(Fields, CSVHeader),
+    Max = length(Header),
+    Map = map_io_indices(Header, CSVHeader),
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
             F = fun (_, false) -> false;
-                    (I, MRow) ->
-                        case verify(Verifier, OrderedFields, Row, I, Map) of
+                    (I, MappedRow) ->
+                        case verify(Verifier, Header, Row, I, Map) of
                             false -> false;
-                            {Key, Cell} -> MRow#{Key => Cell}
+                            {Key, Cell} -> MappedRow#{Key => Cell}
                         end
                 end,
             case lists:foldl(F, #{}, lists:seq(1, Max)) of
                 false -> false;
-                MRow -> {true, MRow}
+                MappedRow -> {true, MappedRow}
             end
     end.
 
-verify(Verifier, OrderedFields, Row, I, Map) ->
+verify(Verifier, Header, Row, I, Map) ->
     Cell = case maps:get(I, Map, undefined) of
                undefined -> ?ZILCH;
                J -> lists:nth(J, Row)
            end,
-    Key = lists:nth(I, OrderedFields),
+    Key = lists:nth(I, Header),
     Verifier(Key, Cell)
         andalso {Key, Cell}.
 
@@ -203,10 +201,26 @@ json_to_iolist(Records)
 %%%===================================================================
 
 %% @private
+-spec find_position(ne_binary(), ne_binaries()) -> pos_integer().
 -spec find_position(ne_binary(), ne_binaries(), pos_integer()) -> pos_integer().
+find_position(Item, Items) ->
+    find_position(Item, Items, 1).
 find_position(Item, [Item|_], Pos) -> Pos;
 find_position(Item, [_|Items], N) ->
     find_position(Item, Items, N+1).
+
+%% @private
+complete_header(Fields, CSVHeader) ->
+    Diff = CSVHeader -- Fields,
+    Fields ++ Diff.
+
+%% @private
+map_io_indices(Header, CSVHeader) ->
+    MapF = fun ({I, Head}, M) ->
+                   M#{find_position(Head, Header) => I}
+           end,
+    IndexToCSVHeader = lists:zip(lists:seq(1, length(CSVHeader)), CSVHeader),
+    lists:foldl(MapF, #{}, IndexToCSVHeader).
 
 %% @private
 -spec cell_to_binary(cell()) -> csv().

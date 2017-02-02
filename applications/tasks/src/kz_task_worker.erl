@@ -68,8 +68,8 @@ init(TaskId, API, ExtraArgs) ->
                     Error;
                 'ok' ->
                     Verifier = build_verifier(API),
-                    OrderedFields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
-                    FAssoc = kz_csv:associator(Header, OrderedFields, Verifier),
+                    Fields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
+                    FAssoc = kz_csv:associator(Header, Fields, Verifier),
                     State = #state{task_id = TaskId
                                   ,api = API
                                   ,fassoc = FAssoc
