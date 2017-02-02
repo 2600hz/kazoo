@@ -6,7 +6,7 @@
 %%% @contributors
 %%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
--module(kz_task_noinput_worker).
+-module(kz_task_worker_noinput).
 
 %% API
 -export([start/3]).
