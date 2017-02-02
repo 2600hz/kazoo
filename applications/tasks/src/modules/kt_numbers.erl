@@ -376,7 +376,8 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
                                               ,<<"e911.extended_address">> := E911ExtendedAddress
                                               ,<<"e911.locality">> := E911Locality
                                               ,<<"e911.region">> := E911Region
-                                              }) ->
+                                              }=Args
+      ) ->
     AccountId = case undefined =:= AccountId0 of
                     true -> Account;
                     false -> AccountId0
@@ -396,16 +397,39 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
                   ,{?E911_CITY, E911Locality}
                   ,{?E911_STATE, E911Region}
                   ])),
+    PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911
+        ++ additional_fields_to_json(<<"import">>, Args),
     Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, ModuleName}
-              ,{public_fields, kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ E911)}
+              ,{public_fields, kz_json:from_list(PublicFields)}
               ],
     case handle_result(knm_number:create(E164, Options)) of
         [] -> {[], sets:add_element(AccountId, AccountIds)};
         E -> {E, AccountIds}
     end.
+
+%% @private
+additional_fields_to_json(Action, Args) ->
+    F = fun (Field, JObj) ->
+                Path = binary:split(Field, <<$.>>, [global]),
+                case maps:get(Field, Args) of
+                    undefined -> JObj;
+                    Value ->
+                        lager:debug("setting public field ~p to ~p", [Path, Value]),
+                        kz_json:set_value(Path, Value, JObj)
+                end
+        end,
+    kz_json:to_proplist(
+      lists:foldl(F, kz_json:new(), additional_fields(Action, Args))
+     ).
+
+%% @private
+additional_fields(Action, Args) ->
+    API = kz_json:from_list(action(Action)),
+    Fields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
+    maps:keys(Args) -- Fields.
 
 %% @private
 -spec cnam(boolean(), api_ne_binary()) -> kz_proplist().
