@@ -131,7 +131,7 @@ pad_row_to(_, Row) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type fassoc_ret() :: {true, map()} | false.
+-type fassoc_ret() :: {ok, map()} | {error, ne_binary()}.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
@@ -141,16 +141,16 @@ associator(CSVHeader, Fields, Verifier) ->
     Map = map_io_indices(Header, CSVHeader),
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
-            F = fun (_, false) -> false;
-                    (I, MappedRow) ->
+            F = fun (_, ?NE_BINARY=Field) -> Field;
+                    (I, MappedRow) when is_map(MappedRow) ->
                         case verify(Verifier, Header, Row, I, Map) of
-                            false -> false;
-                            {Key, Cell} -> MappedRow#{Key => Cell}
+                            {Key, Cell} -> MappedRow#{Key => Cell};
+                            Field -> Field
                         end
                 end,
             case lists:foldl(F, #{}, lists:seq(1, Max)) of
-                false -> false;
-                MappedRow -> {true, MappedRow}
+                MappedRow when is_map(MappedRow) -> {ok, MappedRow};
+                Field -> {error, Field}
             end
     end.
 
@@ -159,9 +159,11 @@ verify(Verifier, Header, Row, I, Map) ->
                undefined -> ?ZILCH;
                J -> lists:nth(J, Row)
            end,
-    Key = lists:nth(I, Header),
-    Verifier(Key, Cell)
-        andalso {Key, Cell}.
+    Field = lists:nth(I, Header),
+    case Verifier(Field, Cell) of
+        false -> Field;
+        true -> {Field, Cell}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -162,7 +162,7 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
                                 stop.
 is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
     try FAssoc(RawRow) of
-        {'true', RowArgs} ->
+        {ok, RowArgs} ->
             Args = [ExtraArgs, IterValue, RowArgs],
             case tasks_bindings:apply(API, Args) of
                 ['stop'] -> 'stop';
@@ -186,9 +186,9 @@ is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
                     Written = store_return(TaskId, RawRow, NewRow),
                     {'false', Written, NewIterValue}
             end;
-        'false' ->
-            lager:error("verifier failed on ~p", [RawRow]),
-            Written = store_return(TaskId, RawRow, ?WORKER_TASK_TYPE),
+        {error, Field} ->
+            lager:error("verifier ~s failed on ~p", [Field, RawRow]),
+            Written = store_return(TaskId, RawRow, <<"bad ", Field/binary>>),
             %% Stop on crashes, but only skip typefailed rows.
             {'false', Written, IterValue}
     catch
