@@ -16,19 +16,35 @@ associator_test() ->
     OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
     CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
-    Verify = fun (_Cell) -> 'true' end,
-    Verifier = fun (_Field, Cell) -> Verify(Cell) end,
-    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, Verifier),
-    ?assertEqual({'true', [<<"1">>, <<"2">>, <<"3">>, 'undefined', <<"5">>]}, FAssoc(CSVRow)).
+    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, fun verifier/2),
+    ?assertEqual({true
+                 ,#{<<"A">> => <<"1">>
+                   ,<<"B">> => <<"2">>
+                   ,<<"C">> => <<"3">>
+                   ,<<"D">> => ?ZILCH
+                   ,<<"E">> => <<"5">>
+                   }
+                 }
+                ,FAssoc(CSVRow)
+                ).
+
+verify_bin1(Cell)
+  when 1 =:= byte_size(Cell) -> true;
+verify_bin1(_) -> false.
+
+verifier(<<"D">>, _Cell) -> true;
+verifier(_Field, Cell) ->
+    verify_bin1(Cell).
+
+verifier1(_Field, Cell) ->
+    verify_bin1(Cell).
 
 associator_verify_test() ->
     OrderedFields = [<<"A">>, <<"B">>, <<"C">>, <<"D">>, <<"E">>],
     CSVHeader = [<<"A">>, <<"E">>, <<"C">>, <<"B">>],
-    CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"2">>],
-    Verify = fun (_Cell) -> 'false' end,
-    Verifier = fun (<<"B">>, Cell) -> Verify(Cell); (_Field, _Cell) -> 'true' end,
-    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, Verifier),
-    ?assertEqual('false', FAssoc(CSVRow)).
+    CSVRow    = [<<"1">>, <<"5">>, <<"3">>, <<"42">>],
+    FAssoc = kz_csv:associator(CSVHeader, OrderedFields, fun verifier1/2),
+    ?assertEqual(false, FAssoc(CSVRow)).
 
 take_row_test_() ->
     CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,
@@ -43,8 +59,8 @@ take_row_test_() ->
     ,?_assertEqual({[<<"c">>], CSV4}, kz_csv:take_row(CSV3))
     ,?_assertEqual({[<<"d">>], CSV5}, kz_csv:take_row(CSV4))
     ,?_assertEqual({[<<"e">>], CSV6}, kz_csv:take_row(CSV5))
-    ,?_assertEqual('eof', kz_csv:take_row(CSV6))
-    ,?_assertEqual('eof', kz_csv:take_row(CSV7))
+    ,?_assertEqual(eof, kz_csv:take_row(CSV6))
+    ,?_assertEqual(eof, kz_csv:take_row(CSV7))
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, kz_csv:take_row(<<"1,B">>))
     ].
 
@@ -64,7 +80,8 @@ count_rows_test_() ->
     ].
 
 row_to_iolist_test_() ->
-    [?_assertException('error', 'function_clause', kz_csv:row_to_iolist([]))] ++
+    [?_assertException(error, function_clause, kz_csv:row_to_iolist([]))
+    ] ++
         [?_assertEqual(Expected, iolist_to_binary(kz_csv:row_to_iolist(Input)))
          || {Expected, Input} <- [{<<"a,b">>, [<<"a">>, <<"b">>]}
                                  ,{<<"a,,b">>, [<<"a">>, ?ZILCH, <<"b">>]}

@@ -163,7 +163,7 @@ new_state_after_writing(WrittenSucceeded, WrittenFailed, State) ->
 is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
     try FAssoc(RawRow) of
         {'true', RowArgs} ->
-            Args = [ExtraArgs, IterValue | RowArgs],
+            Args = [ExtraArgs, IterValue, RowArgs],
             case tasks_bindings:apply(API, Args) of
                 ['stop'] -> 'stop';
                 [{'EXIT', {_Error, _ST}}] ->
