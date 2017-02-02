@@ -25,10 +25,10 @@
 -export([list/2
         ,list_all/2
         ,dump/2
-        ,import/17
-        ,assign_to/4
+        ,import/3
+        ,assign_to/3
         ,release/3
-        ,reserve/4
+        ,reserve/3
         ,delete/3
         ]).
 
@@ -366,24 +366,29 @@ dump(_, [NumberDb|NumberDbs]) ->
             {Rows, NumberDbs}
     end.
 
--spec import(kz_tasks:extra_args(), kz_tasks:iterator()
-            ,ne_binary(), api_binary(), api_binary()
-            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
-            ,api_binary(), api_binary()
-            ,api_binary(), api_binary(), api_binary(), api_binary(), api_binary()
-            ) ->
+-spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
                     {kz_tasks:return(), sets:set()}.
-import(ExtraArgs, init, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15) ->
+import(ExtraArgs, init, Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
-    import(ExtraArgs, IterValue, _1,_2,_3, _4,_5,_6, _7,_8,_9, _10,_11,_12, _13,_14,_15);
-import(#{account_id := Account}, AccountIds
-      ,E164, AccountId0, Carrier
-      ,_PortIn, _PrevAssignedTo, _Created, _Modified, _UsedBy
-      ,CNAMInbound0, CNAMOutbound
-      ,E911PostalCode, E911StreetAddress, E911ExtendedAddress, E911Locality, E911Region
-      ) ->
-    %%TODO: use all the optional fields
+    import(ExtraArgs, IterValue, Args);
+import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
+                                              ,<<"account_id">> := AccountId0
+                                              ,<<"carrier_module">> := Carrier
+                                               %%TODO: use all the optional fields
+                                              ,<<"port_in">> := _PortIn
+                                              ,<<"previously_assigned_to">> := _PrevAssignedTo
+                                              ,<<"created">> := _Created
+                                              ,<<"modified">> := _Modified
+                                              ,<<"used_by">> := _UsedBy
+                                              ,<<"cnam.inbound">> := CNAMInbound0
+                                              ,<<"cnam.outbound">> := CNAMOutbound
+                                              ,<<"e911.postal_code">> := E911PostalCode
+                                              ,<<"e911.street_address">> := E911StreetAddress
+                                              ,<<"e911.extended_address">> := E911ExtendedAddress
+                                              ,<<"e911.locality">> := E911Locality
+                                              ,<<"e911.region">> := E911Region
+                                              }) ->
     AccountId = case undefined =:= AccountId0 of
                     true -> Account;
                     false -> AccountId0
@@ -403,11 +408,11 @@ import(#{account_id := Account}, AccountIds
                   ,{?E911_CITY, E911Locality}
                   ,{?E911_STATE, E911Region}
                   ])),
-    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
-              ,{'batch_run', 'true'}
-              ,{'assign_to', AccountId}
-              ,{'module_name', ModuleName}
-              ,{'public_fields', kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ E911)}
+    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+              ,{batch_run, true}
+              ,{assign_to, AccountId}
+              ,{module_name, ModuleName}
+              ,{public_fields, kz_json:from_list(cnam(CNAMInbound, CNAMOutbound) ++ E911)}
               ],
     case handle_result(knm_number:create(E164, Options)) of
         [] -> {[], sets:add_element(AccountId, AccountIds)};
@@ -415,47 +420,53 @@ import(#{account_id := Account}, AccountIds
     end.
 
 %% @private
--spec cnam(boolean(), api_binary()) -> kz_proplist().
-cnam(_, 'undefined') -> [];
+-spec cnam(boolean(), api_ne_binary()) -> kz_proplist().
+cnam(_, undefined) -> [];
 cnam(Inbound, CallerID=?NE_BINARY) ->
     [{?FEATURE_CNAM, kz_json:from_list([{?CNAM_DISPLAY_NAME, CallerID}
                                        ,{?CNAM_INBOUND_LOOKUP, Inbound}
                                        ])
-     }].
+     }
+    ].
 
 %% @private
 -spec e911(kz_proplist()) -> kz_proplist().
 e911([]) -> [];
 e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
--spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary(), ne_binary()) -> kz_tasks:return().
-assign_to(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
+
+-spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+assign_to(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num
+                                                     ,<<"account_id">> := AccountId
+                                                     }) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:move(Number, AccountId, Options)).
+    handle_result(knm_number:move(Num, AccountId, Options)).
 
--spec release(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary()) -> kz_tasks:return().
-release(#{auth_account_id := AuthBy}, _IterValue, Number) ->
+-spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+release(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:release(Number, Options)).
+    handle_result(knm_number:release(Num, Options)).
 
--spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary(), ne_binary()) -> kz_tasks:return().
-reserve(#{auth_account_id := AuthBy}, _IterValue, Number, AccountId) ->
+-spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+reserve(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num
+                                                   ,<<"account_id">> := AccountId
+                                                   }) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ],
-    handle_result(knm_number:reserve(Number, Options)).
+    handle_result(knm_number:reserve(Num, Options)).
 
--spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary()) -> kz_tasks:return().
-delete(#{auth_account_id := AuthBy}, _IterValue, Number) ->
+-spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+delete(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:delete(Number, Options)).
+    handle_result(knm_number:delete(Num, Options)).
 
 %%%===================================================================
 %%% Internal functions

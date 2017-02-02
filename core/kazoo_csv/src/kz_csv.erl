@@ -25,9 +25,11 @@
 
 -type cell() :: ne_binary() | ?ZILCH.
 -type row() :: [cell(), ...].
+-type csv() :: binary().
 
 -export_type([cell/0
              ,row/0
+             ,csv/0
              ,folder/1
              ,fassoc/0
              ,verifier/0
@@ -50,19 +52,19 @@ count_rows(CSV) when is_binary(CSV) ->
     try fold(CSV, fun throw_bad/2, {-1,0}) of
         {_, TotalRows} -> TotalRows
     catch
-        'throw':'bad_csv' -> 0
+        throw:bad_csv -> 0
     end.
 
 throw_bad(Header, {-1,0}) ->
     case lists:all(fun is_binary/1, Header) of
         %% Strip header line from total rows count
-        'true' -> {length(Header), 0};
-        'false' -> throw('bad_csv')
+        true -> {length(Header), 0};
+        false -> throw(bad_csv)
     end;
 throw_bad(Row, {MaxRow,RowsCounted}) ->
     case length(Row) of
         MaxRow -> {MaxRow, RowsCounted+1};
-        _ -> throw('bad_csv')
+        _ -> throw(bad_csv)
     end.
 
 %%--------------------------------------------------------------------
@@ -71,13 +73,11 @@ throw_bad(Row, {MaxRow,RowsCounted}) ->
 %% @end
 %%--------------------------------------------------------------------
 -type folder(T) :: fun((row(), T) -> T).
--spec fold(CSV, folder(T), T) -> T when
-      CSV :: binary(),
-      T :: any().
+-spec fold(csv(), folder(T), T) -> T.
 fold(CSV, Fun, Acc)
   when is_binary(CSV), is_function(Fun, 2) ->
     case take_row(CSV) of
-        'eof' -> Acc;
+        eof -> Acc;
         {Row, CSVRest} ->
             NewAcc = Fun(Row, Acc),
             fold(CSVRest, Fun, NewAcc)
@@ -88,13 +88,12 @@ fold(CSV, Fun, Acc)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec take_row(CSV) -> {row(), CSV} |
-                       'eof' when
-      CSV :: binary().
-take_row(<<>>) -> 'eof';
+-spec take_row(csv()) -> {row(), csv()} |
+                         eof.
+take_row(<<>>) -> eof;
 take_row(CSV=?NE_BINARY) ->
     case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<"\n">>, <<"\r">>]) of
-        [<<>>|_] -> 'eof';
+        [<<>>|_] -> eof;
         [Row] ->
             {split_row(Row), <<>>};
         [Row, CSVRest] ->
@@ -112,7 +111,7 @@ split_row(Row=?NE_BINARY) ->
          <<>> -> ?ZILCH;
          _ -> Cell
      end
-     || Cell <- binary:split(Row, <<$,>>, ['global'])
+     || Cell <- binary:split(Row, <<$,>>, [global])
     ].
 
 %%--------------------------------------------------------------------
@@ -132,7 +131,7 @@ pad_row_to(_, Row) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type fassoc_ret() :: {'true', row()} | 'false'.
+-type fassoc_ret() :: {true, map()} | false.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
@@ -144,22 +143,27 @@ associator(CSVHeader, OrderedFields, Verifier) ->
             ]),
     fun (Row0) ->
             Row = pad_row_to(Max, Row0),
-            ReOrdered =
-                [ begin
-                      Cell = case maps:get(I, Map, 'undefined') of
-                                 'undefined' -> ?ZILCH;
-                                 J -> lists:nth(J, Row)
-                             end,
-                      Verifier(lists:nth(I, OrderedFields), Cell)
-                          andalso Cell
-                  end
-                  || I <- lists:seq(1, Max)
-                ],
-            case lists:any(fun is_boolean/1, ReOrdered) of
-                'false' -> {'true', ReOrdered};
-                'true' -> 'false'
+            F = fun (_, false) -> false;
+                    (I, MRow) ->
+                        case verify(Verifier, OrderedFields, Row, I, Map) of
+                            false -> false;
+                            {Key, Cell} -> MRow#{Key => Cell}
+                        end
+                end,
+            case lists:foldl(F, #{}, lists:seq(1, Max)) of
+                false -> false;
+                MRow -> {true, MRow}
             end
     end.
+
+verify(Verifier, OrderedFields, Row, I, Map) ->
+    Cell = case maps:get(I, Map, undefined) of
+               undefined -> ?ZILCH;
+               J -> lists:nth(J, Row)
+           end,
+    Key = lists:nth(I, OrderedFields),
+    Verifier(Key, Cell)
+        andalso {Key, Cell}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -183,14 +187,14 @@ json_to_iolist(Records)
   when is_list(Records) ->
     Tmp = <<"/tmp/json_", (kz_util:rand_hex_binary(11))/binary, ".csv">>,
     Fields = kz_json:get_keys(hd(Records)),
-    'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
+    ok = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
                           Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
-                          _ = file:write_file(Tmp, [row_to_iolist(Row),$\n], ['append'])
+                          _ = file:write_file(Tmp, [row_to_iolist(Row),$\n], [append])
                   end
                  ,Records
                  ),
-    {'ok', IOData} = file:read_file(Tmp),
+    {ok, IOData} = file:read_file(Tmp),
     kz_util:delete_file(Tmp),
     IOData.
 
@@ -199,17 +203,16 @@ json_to_iolist(Records)
 %%%===================================================================
 
 %% @private
--spec find_position(A, [A], I) -> I when
-      A :: ne_binary(),
-      I :: pos_integer().
+-spec find_position(ne_binary(), ne_binaries(), pos_integer()) -> pos_integer().
 find_position(Item, [Item|_], Pos) -> Pos;
 find_position(Item, [_|Items], N) ->
     find_position(Item, Items, N+1).
 
 %% @private
--spec cell_to_binary(cell()) -> binary().
+-spec cell_to_binary(cell()) -> csv().
 cell_to_binary(?ZILCH) -> <<>>;
 cell_to_binary(Cell=?NE_BINARY) ->
-    binary:replace(Cell, <<$,>>, <<$;>>, ['global']).
+    %% Some naive "security"
+    binary:replace(Cell, <<$,>>, <<$;>>, [global]).
 
 %%% End of Module.

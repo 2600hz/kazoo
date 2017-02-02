@@ -19,8 +19,8 @@
         ]).
 
 %% Appliers
--export([import/8
-        ,delete/5
+-export([import/3
+        ,delete/3
         ]).
 
 -include("tasks.hrl").
@@ -91,14 +91,13 @@ account_id(_) -> 'false'.
 
 %%% Appliers
 
--spec import(kz_tasks:extra_args(), kz_tasks:iterator(), api_binary(), api_binary(),
-             api_binary(), api_binary(), api_binary(), api_binary()) -> kz_tasks:return().
-import(#{auth_account_id := AuthBy}=ExtraArgs, init, Name, Selector, Resource, Value, Start, Stop) ->
+-spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+import(#{auth_account_id := AuthBy}=ExtraArgs, init, Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
                   ,auth_account_id = AuthBy
                   },
-    import(ExtraArgs, State, Name, Selector, Resource, Value, Start, Stop);
+    import(ExtraArgs, State, Args);
 import(_ExtraArgs
       ,#state{bulk_limit = Limit
              ,acc = Docs
@@ -106,7 +105,13 @@ import(_ExtraArgs
              ,auth_account_id = AuthAccountId
              ,db = Db
              }=State
-      ,Name, Selector, Resource, Value, Start, Stop
+      ,#{<<"name">> := Name
+        ,<<"selector">> := Selector
+        ,<<"resource">> := Resource
+        ,<<"value">> := Value
+        ,<<"start_time">> := Start
+        ,<<"stop_time">> := Stop
+        }
       ) ->
     Doc = generate_selector_doc(AuthAccountId, Resource, Name, Selector, Value, Start, Stop),
     Acc = case (ProcessedRows + 1) rem Limit =:= 0 of
@@ -116,26 +121,27 @@ import(_ExtraArgs
                   []
           end,
     {[], State#state{acc=Acc, processed_rows=ProcessedRows+1}};
-import(_ExtraArgs, State, _Name, _Selector, _Resource, _Value, _Start, _Stop) ->
+import(_ExtraArgs, State, _Args) ->
     lager:error("wrong state: ~p", [State]),
     stop.
 
--spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), api_binary(), api_binary(), api_binary()) -> kz_tasks:return().
-delete(ExtraArgs, init, Name, Selector, Resource) ->
+-spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+delete(ExtraArgs, init, Args) ->
     kz_datamgr:suppress_change_notice(),
     State = #state{db = get_selectors_db(ExtraArgs)
                    %% ,bulk_limit = kz_datamgr:max_bulk_insert()
                   },
-    delete(ExtraArgs, State, Name, Selector, Resource);
+    delete(ExtraArgs, State, Args);
 delete(_ExtraArgs
       ,#state{bulk_limit = Limit
              ,acc = Keys
              ,processed_rows = ProcessedRows
              ,db = Db
              }=State
-      ,Name
-      ,Selector
-      ,Resource
+      ,#{<<"name">> := Name
+        ,<<"selector">> := Selector
+        ,<<"resource">> := Resource
+        }
       ) ->
     Key = [Resource, Name, Selector],
     Acc = case (ProcessedRows + 1) rem Limit =:= 0 of
@@ -144,8 +150,11 @@ delete(_ExtraArgs
                   do_delete(Db, [Key | Keys]),
                   []
           end,
-    {[], State#state{acc=Acc, processed_rows=ProcessedRows+1}};
-delete(_ExtraArgs, State, _Name, _Selector, _Resource) ->
+    NewState = State#state{acc = Acc
+                          ,processed_rows = ProcessedRows + 1
+                          },
+    {[], NewState};
+delete(_ExtraArgs, State, _Args) ->
     lager:error("wrong state: ~p", [State]),
     stop.
 
