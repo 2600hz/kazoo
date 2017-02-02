@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2016, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -81,11 +81,11 @@ col2(?NE_BINARY) -> 'true'.
 
 %%% Appliers
 
--spec id1(map(), task_iterator(), api_binary()) -> task_return().
+-spec id1(kz_tasks:extra_args(), kz_tasks:iterator(), api_binary()) -> kz_tasks:return().
 id1(_ExtraArgs, _IterValue, Col1) ->
     [Col1].
 
--spec id2(map(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
+-spec id2(kz_tasks:extra_args(), kz_tasks:iterator(), ne_binary(), ne_binary()) -> kz_tasks:return().
 id2(_ExtraArgs, _IterValue, Col1, Col2) ->
     [Col1, Col2].
 

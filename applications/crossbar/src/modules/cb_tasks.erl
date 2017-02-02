@@ -436,7 +436,7 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
 
 %% @private
--spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+-spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:id(), ne_binary()) ->
                                        cb_context:context().
 maybe_load_csv_attachment(Context, TaskId, AName) ->
     Context1 = read(TaskId, Context),
@@ -448,7 +448,7 @@ maybe_load_csv_attachment(Context, TaskId, AName) ->
     end.
 
 %% @private
--spec load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+-spec load_csv_attachment(cb_context:context(), kz_tasks:id(), ne_binary()) ->
                                  cb_context:context().
 load_csv_attachment(Context, TaskId, AName) ->
     RD = kz_json:get_value(<<"_read_only">>, cb_context:resp_data(Context)),
