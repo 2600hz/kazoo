@@ -465,8 +465,8 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        <<"none">> -> 'kz_task_noinput_worker';
-        _TextCSV -> 'kz_task_worker'
+        <<"none">> -> kz_task_worker_noinput;
+        _TextCSV -> kz_task_worker
     end.
 
 %%% End of Module.
