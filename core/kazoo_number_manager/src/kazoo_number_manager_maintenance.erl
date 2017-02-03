@@ -32,8 +32,6 @@
 -export([purge_discovery/0, purge_discovery/1]).
 -export([purge_deleted/0, purge_deleted/1]).
 
--include("knm.hrl").
-
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
 
@@ -66,10 +64,8 @@ carrier_module_usage(Prefix) ->
 -spec carrier_module_usage(ne_binaries(), dict:dict()) -> 'ok'.
 carrier_module_usage([], Totals) ->
     io:format("Totals:~n", []),
-    _ = [io:format("    ~s: ~p~n", [Module, Count])
-         || {Module, Count} <- dict:to_list(Totals)
-        ],
-    'ok';
+    F = fun (Module, Count) -> io:format("    ~s: ~p~n", [Module, Count]) end,
+    dict:map(F, Totals);
 carrier_module_usage([Database|Databases], Totals0) ->
     Totals1 = get_carrier_module_usage(Database, Totals0),
     carrier_module_usage(Databases, Totals1).
@@ -110,38 +106,20 @@ convert_carrier_module(Source, Target, Prefix) ->
 convert_carrier_module_database(_, _, []) -> 'ok';
 convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     io:format("attempt to convert numbers with carrier module ~s to ~s in database ~s~n"
-             ,[Source, Target, Database]
-             ),
+             ,[Source, Target, Database]),
     ViewOptions = [{'reduce', 'false'}, {'key', Source}],
     {'ok', JObjs} = kz_datamgr:get_results(Database, <<"numbers/module_name">>, ViewOptions),
-    _ = [convert_carrier_module_number(kz_json:get_value(<<"id">>, JObj), Target)
-         || JObj <- JObjs
-        ],
+    F = fun (JObj) -> convert_carrier_module_number(kz_doc:id(JObj), Target) end,
+    lists:foreach(F, JObjs),
     convert_carrier_module_database(Source, Target, Databases).
 
 -spec convert_carrier_module_number(ne_binary(), ne_binary()) -> 'ok'.
-convert_carrier_module_number(Number, Target) ->
-    {'ok', PhoneNumber} = knm_phone_number:fetch(Number),
-    PreviousModuleName = knm_phone_number:module_name(PhoneNumber),
-    Features = fix_number_features(Target, PhoneNumber),
-    Routines =[{fun(K, V) -> knm_phone_number:set_module_name(K, V) end, Target}
-              ,{fun(K, V) -> knm_phone_number:set_features(K, V) end, Features}
-              ],
-    case knm_number:update(Number, Routines) of
-        {'ok', _} ->
-            io:format("successfully updated ~s carrier module, previously ~s, to ~s~n"
-                     ,[Number, PreviousModuleName, Target]
-                     );
-        {'error', _R} -> io:format("unable ot update ~s carrier module: ~p~n", [Number, _R])
+convert_carrier_module_number(Num, Target) ->
+    Routines = [{fun knm_phone_number:set_module_name/2, Target}],
+    case knm_number:update(Num, Routines) of
+        {ok, _} -> io:format("updated ~s carrier module to ~s~n", [Num, Target]);
+        {error, _R} -> io:format("updating ~s carrier module failed: ~p~n", [Num, _R])
     end.
-
--spec fix_number_features(ne_binary(), knm_phone_number:phone_number()) -> kz_json:object().
-fix_number_features(?CARRIER_LOCAL, PhoneNumber) ->
-    Features = knm_phone_number:features(PhoneNumber),
-    kz_json:set_value(?FEATURE_LOCAL, kz_json:new(), Features);
-fix_number_features(_, PhoneNumber) ->
-    Features = knm_phone_number:features(PhoneNumber),
-    kz_json:delete_key(?FEATURE_LOCAL, Features).
 
 %%--------------------------------------------------------------------
 %% @public
