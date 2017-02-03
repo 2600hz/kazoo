@@ -33,7 +33,7 @@ script:
   - # make eunit
   - make deps
   - ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
-  - ERL_AFLAGS='-s lager' ERL_LIBS="$HOME/proper" make eunit
+  - ERL_LIBS="$HOME/proper" make eunit
 
 after_success:
   - if [[ "$TRAVIS_REPO_SLUG" == '2600hz/kazoo' ]]; then make coverage-report; fi
