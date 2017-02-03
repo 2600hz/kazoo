@@ -66,7 +66,8 @@ carrier_module_usage(Prefix) ->
 carrier_module_usage([], Totals) ->
     io:format("Totals:~n", []),
     F = fun (Module, Count) -> io:format("    ~s: ~p~n", [Module, Count]) end,
-    dict:map(F, Totals);
+    _ = dict:map(F, Totals),
+    ok;
 carrier_module_usage([Database|Databases], Totals0) ->
     Totals1 = get_carrier_module_usage(Database, Totals0),
     carrier_module_usage(Databases, Totals1).
