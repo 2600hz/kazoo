@@ -45,6 +45,8 @@
         ,event_listener_name/2
         ]).
 
+-export([update_presence/2]).
+
 -include("callflow.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
@@ -869,3 +871,10 @@ vm_count(JObj) ->
 vm_count_by_owner(_AccountDb, 'undefined') -> {0, 0};
 vm_count_by_owner(<<_/binary>> = AccountDb, <<_/binary>> = OwnerId) ->
     kvm_messages:count_by_owner(AccountDb, OwnerId).
+
+-spec update_presence(kapps_call:call(), ne_binary()) -> any().
+update_presence(Call, State) ->
+    lager:debug("updating presence to ~s", [State]),
+    PresenceId = kz_attributes:presence_id(Call),
+    _ = kz_datamgr:update_doc(kapps_call:account_db(Call), ?MANUAL_PRESENCE_DOC, [{PresenceId, State}]),
+    kapps_call_command:presence(State, PresenceId, kz_term:to_hex_binary(crypto:hash(md5, PresenceId))).

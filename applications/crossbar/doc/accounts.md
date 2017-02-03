@@ -36,6 +36,7 @@ Key | Description | Type | Default | Required
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `timezone` | The default timezone | `string(5..32)` |   | `false`
+`update_presence_on_call_forward` | Determines if the presence state for a phone should be altered when call_forward is toggled on a user | `boolean` |   | `false`
 `voicemail` |   | `object` |   | `false`
 `voicemail.notify` |   | `object` |   | `false`
 `voicemail.notify.callback` |   | [#/definitions/notify.callback](#notifycallback) |   | `false`

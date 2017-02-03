@@ -67,6 +67,7 @@ handle(Data, Call) ->
                       <<"menu">> -> cf_menu(CF, CaptureGroup, Call)
                   end,
             {'ok', _} = update_callfwd(CF1, Call),
+            maybe_update_presence(Call, CF, CF1),
             cf_exe:continue(Call)
     end.
 
@@ -287,3 +288,17 @@ maybe_get_call_forward(Call, OwnerId) ->
             lager:info("failed to load call forwarding object from ~s, ~w", [OwnerId, R]),
             {'error', #callfwd{}}
     end.
+
+-spec maybe_update_presence(kapps_call:call(), callfwd(), callfwd()) -> any().
+maybe_update_presence(_Call, #callfwd{enabled=Enabled}, #callfwd{enabled=Enabled}) ->
+    lager:debug("not updating presence state as call forwarding wasn't toggled");
+maybe_update_presence(Call, _OldCF, NewCF) ->
+    {'ok', AccountDoc} = kz_account:fetch(kapps_call:account_id(Call)),
+    PresenceState = presence_state_for_call_forward(NewCF),
+    lager:debug("updating presence to ~s", [PresenceState]),
+    kz_account:update_presence_on_call_forward(AccountDoc)
+        andalso cf_util:update_presence(Call, PresenceState).
+
+-spec presence_state_for_call_forward(callfwd()) -> ne_binary().
+presence_state_for_call_forward(#callfwd{enabled='true'}) -> <<"confirmed">>;
+presence_state_for_call_forward(_CF) -> <<"terminated">>.

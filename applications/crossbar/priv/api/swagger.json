@@ -175,6 +175,10 @@
                     "minLength": 5,
                     "type": "string"
                 },
+                "update_presence_on_call_forward": {
+                    "description": "Determines if the presence state for a phone should be altered when call_forward is toggled on a user",
+                    "type": "boolean"
+                },
                 "voicemail": {
                     "properties": {
                         "notify": {
