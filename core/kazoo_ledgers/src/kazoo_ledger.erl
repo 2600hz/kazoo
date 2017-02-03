@@ -88,7 +88,7 @@ create_hash(Ledger) ->
             ,{<<"period">>, period(Ledger)}
             ,{<<"type">>, type(Ledger)}
             ],
-    kz_binary:binary_md5(kz_json:encode(kz_json:from_list(Props))).
+    kz_binary:md5(kz_json:encode(kz_json:from_list(Props))).
 
 %%--------------------------------------------------------------------
 %% @public
