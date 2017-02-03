@@ -99,7 +99,8 @@
                               'numbers' | 'aggregate' | 'system' |
                               'resource_selectors' | 'deprecated' | 'undefined'.
 
--type db_create_options() :: [{'q',integer()} | {'n',integer()}].
+-type db_create_options() :: [{'q',integer()} | {'n',integer()} | 'ensure_other_dbs'].
+-type db_delete_options() :: ['ensure_other_dbs'].
 
 -type ddoc() :: ne_binary() | 'all_docs' | 'design_docs'.
 

@@ -35,7 +35,6 @@ handle(Data, Call) ->
 attempt_page(Endpoints, Data, Call) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, 5),
     BargeOption = barge_option(Data),
-    lager:info("attempting page group of ~b members", [length(Endpoints)]),
     case send_page(Endpoints, Timeout, BargeOption, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the page group - call finished normally"),
@@ -55,10 +54,12 @@ barge_option(Data) ->
 -spec send_page(kz_json:objects(), integer(), kz_json:object(), kapps_call:call()) ->
                        {'error', 'timeout' | kz_json:object()} | {'ok', kz_json:object()}.
 send_page(Endpoints, Timeout, CCVs, Call) ->
+    {CIDNumber, CIDName} = kz_attributes:caller_id(Call),
+    lager:info("attempting page group of ~b members with caller-id (~s/~s)", [length(Endpoints), CIDNumber, CIDName]),
     kapps_call_command:b_page(Endpoints
                              ,Timeout
-                             ,'undefined'
-                             ,'undefined'
+                             ,CIDName
+                             ,CIDNumber
                              ,'undefined'
                              ,CCVs
                              ,Call
