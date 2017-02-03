@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -91,17 +91,14 @@ action(<<"descendant_quantities">>) ->
 
 %%% Appliers
 
--spec descendant_quantities(kz_proplist(), task_iterator()) -> task_iterator().
-descendant_quantities(Props, 'init') ->
-    Descendants = get_descendants(props:get_value('account_id', Props)),
+-spec descendant_quantities(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+descendant_quantities(#{account_id := AccountId}, init) ->
+    Descendants = get_descendants(AccountId),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),
     lager:debug("found ~p descendants & ~p MoDBs in total"
                ,[length(Descendants), length(DescendantsMoDBs)]),
-    {'ok', DescendantsMoDBs};
-
-descendant_quantities(_, []) ->
-    'stop';
-
+    {ok, DescendantsMoDBs};
+descendant_quantities(_, []) -> stop;
 descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     ?MATCH_MODB_SUFFIX_ENCODED(A, B, Rest, YYYY, MM) = SubAccountMoDB,
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
@@ -110,18 +107,18 @@ descendant_quantities(_, [SubAccountMoDB | DescendantsMoDBs]) ->
     case rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) of
         [] ->
             %% No rows generated: ask worker to skip writing for this step.
-            {'ok', DescendantsMoDBs};
+            {ok, DescendantsMoDBs};
         Rows -> {Rows, DescendantsMoDBs}
     end.
 
 
 %%% Triggerables
 
--spec cleanup(ne_binary()) -> 'ok'.
+-spec cleanup(ne_binary()) -> ok.
 cleanup(?KZ_SERVICES_DB) ->
     lager:debug("checking ~s for abandoned accounts", [?KZ_SERVICES_DB]),
     cleanup_orphaned_services_docs();
-cleanup(_SystemDb) -> 'ok'.
+cleanup(_SystemDb) -> ok.
 
 
 %%%===================================================================

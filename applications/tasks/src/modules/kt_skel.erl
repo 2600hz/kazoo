@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2013-2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -20,7 +20,7 @@
 
 %% Appliers
 -export([id1/3
-        ,id2/4
+        ,id2/3
         ]).
 
 %% Triggerables
@@ -81,12 +81,16 @@ col2(?NE_BINARY) -> 'true'.
 
 %%% Appliers
 
--spec id1(kz_proplist(), task_iterator(), api_binary()) -> task_return().
-id1(_Props, _IterValue, Col1) ->
-    [Col1].
+-spec id1(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+id1(_ExtraArgs, _IterValue, #{<<"col1">> := undefined}) ->
+    [<<"col1 was not defined">>];
+id1(_ExtraArgs, _IterValue, #{<<"col1">> := Col1}) ->
+    [<<"col1 was set to", Col1/binary, "!">>].
 
--spec id2(kz_proplist(), task_iterator(), ne_binary(), ne_binary()) -> task_return().
-id2(_Props, _IterValue, Col1, Col2) ->
+-spec id2(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+id2(_ExtraArgs, _IterValue, #{<<"col1">> := Col1
+                             ,<<"col2">> := Col2
+                             }) ->
     [Col1, Col2].
 
 %%% Triggerables

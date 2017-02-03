@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%% Schedule one-off tasks only once per cluster
 %%% @end
@@ -76,12 +76,12 @@ start_link() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:task_id()) -> {'ok', kz_json:object()} |
-                                   {'error'
-                                   ,'not_found' |
-                                    'already_started' |
-                                    any()
-                                   }.
+-spec start(kz_tasks:id()) -> {ok, kz_json:object()} |
+                              {error
+                              ,not_found |
+                               already_started |
+                               any()
+                              }.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
 
@@ -90,8 +90,8 @@ start(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec remove(kz_tasks:task_id()) -> {'ok', kz_json:object()} |
-                                    {'error', 'not_found' | 'task_running'}.
+-spec remove(kz_tasks:id()) -> {ok, kz_json:object()} |
+                               {error, not_found | task_running}.
 remove(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'remove_task', TaskId}).
 
@@ -105,7 +105,7 @@ remove(TaskId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_error(kz_tasks:task_id()) -> 'ok'.
+-spec worker_error(kz_tasks:id()) -> ok.
 worker_error(TaskId=?NE_BINARY) ->
     gen_server:cast(?SERVER, {'worker_error', TaskId}).
 
@@ -125,7 +125,7 @@ worker_pause() ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_maybe_send_update(kz_tasks:task_id(), pos_integer(), pos_integer()) -> 'ok'.
+-spec worker_maybe_send_update(kz_tasks:id(), pos_integer(), pos_integer()) -> ok.
 worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
     case (TotalFailed + TotalSucceeded) rem ?PROGRESS_AFTER_PROCESSED == 0 of
         'false' -> 'ok';
@@ -138,7 +138,7 @@ worker_maybe_send_update(TaskId, TotalSucceeded, TotalFailed) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec worker_finished(kz_tasks:task_id(), non_neg_integer(), non_neg_integer(), ne_binary()) -> ok.
+-spec worker_finished(kz_tasks:id(), non_neg_integer(), non_neg_integer(), ne_binary()) -> ok.
 worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINARY)
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
@@ -371,7 +371,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec task_by_id(kz_tasks:task_id(), state()) -> [kz_tasks:task()].
+-spec task_by_id(kz_tasks:id(), state()) -> [kz_tasks:task()].
 task_by_id(TaskId, State) ->
     [T || T=#{id := Id} <- State#state.tasks,
           TaskId == Id
@@ -409,9 +409,9 @@ handle_call_start_task(Task=#{id := TaskId
     lager:debug("API ~s", [kz_json:encode(API)]),
     Worker = worker_module(API),
     lager:debug("worker type: ~s", [Worker]),
-    ExtraArgs = [{'account_id', AccountId}
-                ,{'auth_account_id', AuthAccountId}
-                ],
+    ExtraArgs = #{account_id => AccountId
+                 ,auth_account_id => AuthAccountId
+                 },
     lager:debug("extra args: ~p", [ExtraArgs]),
     %% Task needs to run where App is started.
     try kz_util:spawn_link(fun Worker:start/3, [TaskId, API, ExtraArgs]) of
@@ -429,7 +429,7 @@ handle_call_start_task(Task=#{id := TaskId
             ?REPLY(State, {'error', _R})
     end.
 
--spec remove_task(kz_tasks:task_id(), state()) -> state().
+-spec remove_task(kz_tasks:id(), state()) -> state().
 remove_task(TaskId, State) ->
     NewTasks =
         [T || T=#{id := Id} <- State#state.tasks,
@@ -465,8 +465,8 @@ task_api(Category, Action) ->
 -spec worker_module(kz_json:object()) -> module().
 worker_module(API) ->
     case kz_tasks:input_mime(API) of
-        <<"none">> -> 'kz_task_noinput_worker';
-        _TextCSV -> 'kz_task_worker'
+        <<"none">> -> kz_task_worker_noinput;
+        _TextCSV -> kz_task_worker
     end.
 
 %%% End of Module.

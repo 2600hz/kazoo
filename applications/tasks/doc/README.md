@@ -32,7 +32,7 @@ Such a task is a *"`noinput` task"*: a task that does not requires CSV input dat
 
 ## Writing tasks
 
-Note input rows are processed one by one, top to bottom and produce 0 or 1 row of output.
+Note: input rows are processed one by one, top to bottom and produce 0 or 1 rows of output.
 For `noinput` tasks it is also possible to create more than one row of output.
 
 Let's call `Module` the name of the module implementing an app's tasks and `TaskName` one of these tasks' name.
@@ -52,40 +52,39 @@ The function take the cell as input and should return
 * `false`: otherwise
 If the call crashes, `false` is assumed.
 
-### `Module:TaskName/Arity`
+### `Module:TaskName/2,3`
 
-This call applies the task with the current row as input.
+#### Called as `Module:TaskName(ExtraArgs, Iterator)`.
 
-Note the first argument proplist contains the following pairs:
-* `auth_account_id`: account id that created the task instance.
+This means the scheduler determined this to be a `noinput` task.
 
-If the call crashes, the current input row plus a crash reason column is written to output.csv.
-
-#### Tasks with input data
-
-`Arity` then equals the sum of the count of `mandatory` & `optional` input fields plus one.
-Arguments of `TaskName/Arity` are first the +1 proplist then the input fields in order.
-If an `optional` input value is not defined, its value is `undefined`.
-
-
-#### Tasks without input data
-
-`Arity` is then equals to 2: the proplist & task iterator.
+The first argument `ExtraArgs` contains the following pairs:
+* `account_id`: account id that created the task instance.
+* `auth_account_id`: account id of the X-Auth-Token used when creating the task instance.
 
 As second argument, the function takes one of:
-* `init`: so that the function can return `{ok, Data}`. Nothing is written to output and `Data` will be passed to the function on next call.
+* `init`: so that the function can return `{ok, Data}`. Nothing is written to output and `Data` will be passed to the function on next call as the 2nd argument.
 * `Data`: the term that a previous call to the function returned. This way one can work with state in between iterations.
 
+If the call crashes, the current input row plus an `"error"` column is written to output.csv.
+
+#### Called as `Module:TaskName(ExtraArgs, Iterator, Args)`.
+
+This call applies the task with the current row as a map in `Args`.
+
+If an `optional` input value is not defined or empty, its value is `undefined`.
+
+The same rules as above apply on the 1st & 2nd arguments.
 
 ### Return values
 
-The function must return a valid instance of the type `task_return()`:
+The function must return a valid instance of the type `kz_tasks:return()`:
 
 * `stop`: ends the task & uploads the output CSV.
-* `ok`: row is counted as successful, nothin is written in the error column.
+* `ok`: row is counted as successful, nothing is written in the error column.
 * `ne_binary()`: the error to write in the error column.
-* `kz_csv:row()`: the row to write (usefull if `output_header(TaskName)` was implemented).
-* `[kz_csv:row()]`: this is only supported for `noinput` tasks.
+* `kz_csv:row()`: the row to write (useful if `output_header(TaskName)` was implemented).
+* `[kz_csv:row()]`: this is only supported for `noinput` tasks. Writes more than 1 row to output.
 * `{ok, Data}`: nothing is written to output and `Data` will be passed to the function on next call.
 * `{ToWrite, Data}`: where `ToWrite` is either a `kz_csv:row()` or `[kz_csv:row()]`. Writes them to output & will pass `Data` on next call.
 * `{binary(), Data}`: writes the binary string to output & will pass `Data` on next call.
@@ -96,24 +95,29 @@ The function must return a valid instance of the type `task_return()`:
 
 Examples of both kinds of tasks can be found in
 
-* [kt_numbers](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_numbers.erl)
-* [kt_services](https://github.com/2600hz/kazoo/blob/master/applications/tasks/src/modules/kt_services.erl)
+* [kt_numbers](../src/modules/kt_numbers.erl)
+* [kt_services](../src/modules/kt_services.erl)
 
 
 ## Task statuses
 
 Once a task has been added it can have one of the following statuses:
 
-* `"pending"`: task has not been started yet.
+* `"pending"`: task created (input uploaded, if any) but has not been started yet.
 * `"executing"`: task has been started & has not finished yet.
 * `"success"`: task finished executing & no rows failed to process.
 * `"failure"`: task finished executing & all rows failed to process.
 * `"partial"`: task finished executing & some rows failed to process.
-* `"internal_error"`: all other cases.
+* `"internal_error"`: all other cases. Maybe the application crashed? Maybe disk is full? ...
 
-Note: when executing a task, its failed & succeeded rows counts will be updated at a configurable rate.
+Once a task completed (with either `"success"`, `"failure"` or `"partial"`), if the upload
+of the output.csv file failed, you can find your task's output `/tmp/task_out.TaskId.csv`.
+
+## Configuration
+
+When executing a task, its failed & succeeded rows counts will be periodically updated at a configurable rate.
 Set `tasks.send_progress_after_processed` to the rate you prefer (default: `1000`).
 Be careful as a rate too low may corrupt a task's state.
 
-Note: after a task's function (`TaskName`) has been called, the worker will wait a configurable number of milliseconds.
-Set `tasks.wait_after_row_ms` to the pause you want the system to make in between writes to output CSV (default: `500`).
+After a task's function (`TaskName`) has been called, the worker will wait a configurable number of milliseconds before proceeding with the next row.
+Set `tasks.wait_after_row_ms` to the pause you want the system to make in between writes to output (default: `500`).

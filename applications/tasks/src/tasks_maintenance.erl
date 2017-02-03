@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @Copyright (C) 2013-2016, 2600Hz
+%%% @Copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -141,7 +141,7 @@ print_error(Reason) ->
     io:format("ERROR: ~p\n", [Reason]),
     'no_return'.
 
--spec attachment(kz_tasks:task_id(), ne_binary()) -> 'no_return'.
+-spec attachment(kz_tasks:id(), ne_binary()) -> no_return.
 attachment(TaskId, AName) ->
     case kz_tasks:read(TaskId) of
         {'ok', _JObj} ->

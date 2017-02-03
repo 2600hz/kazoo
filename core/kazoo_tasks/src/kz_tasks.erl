@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%% Utilities for tasks validation & stuff.
 %%% @end
@@ -32,13 +32,13 @@
 
 -define(TASK_ID_SIZE, 15).
 -define(A_TASK_ID, kz_binary:rand_hex(?TASK_ID_SIZE)).
--type task_id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
+-type id() :: <<_:(8*2*?TASK_ID_SIZE)>>.
 
 -type task() :: #{worker_pid => api_pid()
                  ,worker_node => api_ne_binary()
                  ,account_id => ne_binary()
                  ,auth_account_id => ne_binary()
-                 ,id => task_id()
+                 ,id => id()
                  ,category => ne_binary()
                  ,action => ne_binary()
                  ,file_name => api_ne_binary()
@@ -52,11 +52,25 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
--type help_error() :: {'error', 'unknown_category_action'}.
+-type help_error() :: {error, unknown_category_action}.
 
--export_type([task_id/0
+-type return() :: ok | api_ne_binary() | kz_csv:row() | [kz_csv:row()].
+
+-type iterator() :: init | stop | any().
+
+-type extra_args() :: #{account_id => ne_binary()
+                       ,auth_account_id => ne_binary()
+                       }.
+
+-type args() :: map().
+
+-export_type([id/0
              ,input/0
              ,help_error/0
+             ,return/0
+             ,iterator/0
+             ,extra_args/0
+             ,args/0
              ]).
 
 -define(API_MANDATORY, <<"mandatory">>).
@@ -105,8 +119,8 @@ all(AccountId=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec read(task_id()) -> {'ok', kz_json:object()} |
-                         {'error', 'not_found'}.
+-spec read(id()) -> {ok, kz_json:object()} |
+                    {error, not_found}.
 read(TaskId=?NE_BINARY) ->
     case task_by_id(TaskId) of
         [Task] -> {'ok', to_public_json(Task)};
@@ -285,7 +299,7 @@ save_new_task(Task = #{id := _TaskId}) ->
             E
     end.
 
--spec task_by_id(task_id()) -> [task()].
+-spec task_by_id(id()) -> [task()].
 task_by_id(TaskId) ->
     case kz_datamgr:open_cache_doc(?KZ_TASKS_DB, TaskId) of
         {'ok', JObj} -> [from_json(JObj)];
