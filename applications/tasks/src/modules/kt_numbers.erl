@@ -398,7 +398,7 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
                   ,{?E911_STATE, E911Region}
                   ])),
     PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911
-        ++ additional_fields_to_json(<<"import">>, Args),
+        ++ additional_fields_to_json(Args),
     Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
               ,{batch_run, true}
               ,{assign_to, AccountId}
@@ -411,10 +411,10 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
     end.
 
 %% @private
-additional_fields_to_json(Action, Args) ->
+additional_fields_to_json(Args) ->
     F = fun (Field, JObj) ->
                 Path = binary:split(Field, <<$.>>, [global]),
-                case maps:get(Field, Args) of
+                case maps:get(<<"opaque.",Field/binary>>, Args) of
                     undefined -> JObj;
                     Value ->
                         lager:debug("setting public field ~p to ~p", [Path, Value]),
@@ -422,14 +422,16 @@ additional_fields_to_json(Action, Args) ->
                 end
         end,
     kz_json:to_proplist(
-      lists:foldl(F, kz_json:new(), additional_fields(Action, Args))
+      lists:foldl(F, kz_json:new(), additional_fields(Args))
      ).
 
 %% @private
-additional_fields(Action, Args) ->
-    API = kz_json:from_list(action(Action)),
-    Fields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
-    maps:keys(Args) -- Fields.
+additional_fields(Args) ->
+    [OpaqueField
+     || <<"opaque.", OpaqueField0/binary>> <- maps:keys(Args),
+        OpaqueField <- [kz_binary:strip(OpaqueField0)],
+        not kz_term:is_empty(OpaqueField)
+    ].
 
 %% @private
 -spec cnam(boolean(), api_ne_binary()) -> kz_proplist().
