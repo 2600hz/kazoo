@@ -999,10 +999,13 @@ set_module_name(N, <<"undefined">>) ->
 set_module_name(N, 'undefined') ->
     set_module_name(N, ?CARRIER_LOCAL);
 set_module_name(N=#knm_phone_number{module_name = Name}, Name=?NE_BINARY) -> N;
-set_module_name(N, Name) ->
-    N#knm_phone_number{is_dirty = true
-                      ,module_name = Name
-                      }.
+set_module_name(N0, Name=?NE_BINARY) ->
+    lager:debug("updating module_name from ~p to ~p", [N0#knm_phone_number.module_name, Name]),
+    N = N0#knm_phone_number{is_dirty = true
+                           ,module_name = Name
+                           },
+    Features = kz_json:delete_key(?FEATURE_LOCAL, features(N)),
+    set_features(N, Features).
 
 set_module_name_local(N0, Name) ->
     Feature =
@@ -1014,6 +1017,7 @@ set_module_name_local(N0, Name) ->
     case N0#knm_phone_number.module_name =:= Name of
         true -> N;
         false ->
+            lager:debug("updating module_name from ~p to ~p", [N#knm_phone_number.module_name, Name]),
             N#knm_phone_number{is_dirty = true
                               ,module_name = Name
                               }
