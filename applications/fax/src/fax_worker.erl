@@ -842,14 +842,24 @@ move_doc(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    kazoo_modb:maybe_create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
     Options = ['override_existing_document'
               ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
               ],
     lager:debug("moving fax outbound document ~s from faxes to ~s with id ~s", [FromId, AccountMODb, ToId]),
-    kz_datamgr:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
+    case kz_datamgr:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options) of
+        {'ok', _} = OK -> OK;
+        {'error', 'not_found'} = NotFound ->
+            case kazoo_modb:maybe_create(AccountMODb) of
+                'true' -> move_doc(JObj);
+                'false' ->
+                    %% FIXME: what to do with document if we can't move it to MODb?
+                    lager:debug("can't create modb ~s to move document ~s into", [ToDB, ToId]),
+                    NotFound
+            end;
+        {'error', _} = Error -> Error
+    end.
 
 -spec fax_error(kz_json:object()) -> api_binary().
 fax_error(JObj) ->

@@ -433,7 +433,7 @@ store_recording_meta(#state{call=Call
                            ,cdr_id=CdrId
                            ,interaction_id=InteractionId
                            ,url=Url
-                           }) ->
+                           }=State) ->
     CallId = kapps_call:call_id(Call),
     MediaDoc = kz_doc:update_pvt_parameters(
                  kz_json:from_list(
@@ -458,9 +458,13 @@ store_recording_meta(#state{call=Call
                      ]))
                                            ,Db
                 ),
-    kazoo_modb:maybe_create(Db),
     case kz_datamgr:ensure_saved(Db, MediaDoc) of
         {'ok', JObj} -> kz_doc:revision(JObj);
+        {'error', 'not_found'} = NotFound ->
+            case kazoo_modb:maybe_create(Db) of
+                'true' -> store_recording_meta(State);
+                'false' -> NotFound
+            end;
         {'error', _}= Err -> Err
     end.
 

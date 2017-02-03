@@ -90,9 +90,10 @@ get_results_not_found(Account, View, ViewOptions, Retry) ->
                                     {'ok', kz_json:objects()}.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
-    ShouldCreate = props:get_is_true('create_db', ViewOptions, 'true'),
-    case maybe_create_current_modb(AccountMODb) of
-        'true' when ShouldCreate ->
+    case props:get_is_true('create_db', ViewOptions, 'true')
+        andalso maybe_create_current_modb(AccountMODb)
+    of
+        'true' ->
             lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
             get_results(Account, View, ViewOptions, Retry-1);
         _ -> {'ok', []}
@@ -196,12 +197,13 @@ couch_save(AccountMODb, _Doc, _Options, 0) ->
     {'error', 'max_save_retries'};
 couch_save(AccountMODb, Doc, Options, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ShouldCreate = props:get_is_true('create_db', Options, 'true'),
     case kz_datamgr:save_doc(EncodedMODb, Doc, strip_modb_options(Options)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} = NotFound ->
-            case maybe_create_current_modb(AccountMODb) of
-                'true' when ShouldCreate ->
+            case props:get_is_true('create_db', Options, 'true')
+                andalso maybe_create_current_modb(AccountMODb)
+            of
+                'true' ->
                     lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
                     couch_save(AccountMODb, Doc, Options, Retry - 1);
                 _ -> NotFound
@@ -272,8 +274,7 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = Acco
     {Y, M, _} = erlang:date(),
     case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
         {Year, Month} ->
-            maybe_create(AccountMODb),
-            'true';
+            maybe_create(AccountMODb);
         {_Year, _Month} ->
             lager:warning("modb ~p is not for the current month, skip creating", [AccountMODb]),
             'false'
@@ -283,8 +284,7 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
     maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw')).
 
--spec maybe_create(ne_binary()) -> 'ok'.
--spec maybe_create(ne_binary(), boolean()) -> 'ok'.
+-spec maybe_create(ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
     maybe_create(AccountMODb, is_account_deleted(AccountId));
 maybe_create(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
@@ -292,13 +292,15 @@ maybe_create(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
 maybe_create(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
     maybe_create(kz_util:format_account_modb(AccountMODb, 'raw')).
 
+-spec maybe_create(ne_binary(), boolean()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb, 'true') ->
-    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]);
+    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]),
+    'false';
 maybe_create(AccountMODb, 'false') ->
     create(AccountMODb).
 
 
--spec create(ne_binary()) -> 'ok'.
+-spec create(ne_binary()) -> boolean().
 create(AccountMODb) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     IsDbExists = kz_datamgr:db_exists_all(EncodedMODb),
@@ -306,15 +308,18 @@ create(AccountMODb) ->
 
 -spec do_create(ne_binary(), boolean()) -> 'ok'.
 do_create(_AccountMODb, 'true') ->
-    lager:warning("modb ~p is exists, not creating", [_AccountMODb]);
+    lager:warning("modb ~p is exists, not creating", [_AccountMODb]),
+    'false';
 do_create(AccountMODb, 'false') ->
     lager:debug("create modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_create(EncodedMODb) of
         'true' ->
             refresh_views(EncodedMODb),
-            create_routines(AccountMODb);
-        _ -> 'false'
+            create_routines(AccountMODb),
+            'true';
+        _ ->
+            'false'
     end.
 
 -spec is_account_deleted(ne_binary()) -> boolean().
