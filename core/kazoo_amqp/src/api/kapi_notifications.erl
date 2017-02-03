@@ -24,6 +24,7 @@
         ,first_occurrence/1, first_occurrence_v/1
         ,password_recovery/1, password_recovery_v/1
         ,new_account/1, new_account_v/1
+        ,account_zone_change/1, account_zone_change_v/1
         ,new_user/1, new_user_v/1
         ,port_unconfirmed/1, port_unconfirmed_v/1
         ,port_request/1, port_request_v/1
@@ -62,6 +63,7 @@
         ,publish_first_occurrence/1, publish_first_occurrence/2
         ,publish_password_recovery/1, publish_password_recovery/2
         ,publish_new_account/1, publish_new_account/2
+        ,publish_account_zone_change/1, publish_account_zone_change/2
         ,publish_new_user/1, publish_new_user/2
         ,publish_port_unconfirmed/1, publish_port_unconfirmed/2
         ,publish_port_request/1, publish_port_request/2
@@ -108,6 +110,7 @@
 -define(NOTIFY_REGISTER, <<"notifications.sip.register">>).
 -define(NOTIFY_PASSWORD_RECOVERY, <<"notifications.user.password_recovery">>).
 -define(NOTIFY_NEW_ACCOUNT, <<"notifications.account.new">>).
+-define(NOTIFY_ACCOUNT_ZONE_CHANGE, <<"notifications.account.zone_change">>).
 -define(NOTIFY_NEW_USER, <<"notifications.user.new">>).
 %% -define(NOTIFY_DELETE_ACCOUNT, <<"notifications.account.delete">>).
 -define(NOTIFY_PORT_UNCONFIRMED, <<"notifications.number.port_unconfirmed">>).
@@ -295,6 +298,16 @@
                             ,{<<"Event-Name">>, <<"new_account">>}
                             ]).
 -define(NEW_ACCOUNT_TYPES, []).
+
+%% Notify Account Zone Change
+-define(ACCOUNT_ZONE_CHANGE_HEADERS, [<<"Account-ID">>
+                                     ,<<"Zones">>
+                                     ]).
+-define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, [?DEFAULT_OPTIONAL_HEADERS]).
+-define(ACCOUNT_ZONE_CHANGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                    ,{<<"Event-Name">>, <<"account_zone_change">>}
+                                    ]).
+-define(ACCOUNT_ZONE_CHANGE_TYPES, []).
 
 %% Notify New User
 -define(NEW_USER_HEADERS, [<<"Account-ID">>, <<"User-ID">>, <<"Password">>]).
@@ -550,6 +563,8 @@ headers(<<"low_balance">>) ->
     ?LOW_BALANCE_HEADERS ++ ?OPTIONAL_LOW_BALANCE_HEADERS;
 headers(<<"new_account">>) ->
     ?NEW_ACCOUNT_HEADERS ++ ?OPTIONAL_NEW_ACCOUNT_HEADERS;
+headers(<<"account_zone_change">>) ->
+    ?ACCOUNT_ZONE_CHANGE_HEADERS ++ ?OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS;
 headers(<<"new_user">>) ->
     ?NEW_USER_HEADERS ++ ?OPTIONAL_NEW_USER_HEADERS;
 headers(<<"deregister">>) ->
@@ -811,6 +826,19 @@ new_account(JObj) -> new_account(kz_json:to_proplist(JObj)).
 new_account_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?NEW_ACCOUNT_HEADERS, ?NEW_ACCOUNT_VALUES, ?NEW_ACCOUNT_TYPES);
 new_account_v(JObj) -> new_account_v(kz_json:to_proplist(JObj)).
+
+-spec account_zone_change(api_terms()) -> api_formatter_return().
+account_zone_change(Prop) when is_list(Prop) ->
+    case account_zone_change_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?ACCOUNT_ZONE_CHANGE_HEADERS, ?OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS);
+        'false' -> {'error', "Proplist failed validation for new_account"}
+    end;
+account_zone_change(JObj) -> account_zone_change(kz_json:to_proplist(JObj)).
+
+-spec account_zone_change_v(api_terms()) -> boolean().
+account_zone_change_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?ACCOUNT_ZONE_CHANGE_HEADERS, ?ACCOUNT_ZONE_CHANGE_VALUES, ?ACCOUNT_ZONE_CHANGE_TYPES);
+account_zone_change_v(JObj) -> account_zone_change_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc New user notification - see wiki
@@ -1280,6 +1308,9 @@ bind_to_q(Q, ['first_occurrence'|T]) ->
 bind_to_q(Q, ['new_account'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
     bind_to_q(Q, T);
+bind_to_q(Q, ['account_zone_change'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_ACCOUNT_ZONE_CHANGE),
+    bind_to_q(Q, T);
 bind_to_q(Q, ['new_user'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_NEW_USER),
     bind_to_q(Q, T);
@@ -1390,6 +1421,9 @@ unbind_q_from(Q, ['first_occurrence'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_account'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_ACCOUNT),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['account_zone_change'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_ACCOUNT_ZONE_CHANGE),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['new_user'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_NEW_USER),
@@ -1546,6 +1580,13 @@ publish_new_account(JObj) -> publish_new_account(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_new_account(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?NEW_ACCOUNT_VALUES, fun new_account/1),
     amqp_util:notifications_publish(?NOTIFY_NEW_ACCOUNT, Payload, ContentType).
+
+-spec publish_account_zone_change(api_terms()) -> 'ok'.
+-spec publish_account_zone_change(api_terms(), ne_binary()) -> 'ok'.
+publish_account_zone_change(JObj) -> publish_account_zone_change(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_account_zone_change(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?ACCOUNT_ZONE_CHANGE_VALUES, fun account_zone_change/1),
+    amqp_util:notifications_publish(?NOTIFY_ACCOUNT_ZONE_CHANGE, Payload, ContentType).
 
 -spec publish_new_user(api_terms()) -> 'ok'.
 -spec publish_new_user(api_terms(), ne_binary()) -> 'ok'.
