@@ -470,6 +470,7 @@ normalize_port_number(JObj, Number, Context) ->
     Setters = [{fun knm_phone_number:set_number/2, Number}
               ,{fun knm_phone_number:set_assigned_to/2, kz_json:get_value(<<"assigned_to">>, JObj)}
               ,{fun knm_phone_number:set_used_by/2, kz_json:get_value(<<"used_by">>, JObj)}
+              ,{fun knm_phone_number:set_auth_by/2, cb_context:auth_account_id(Context)}
               ,{fun knm_phone_number:set_state/2, ?NUMBER_STATE_PORT_IN}
               ,{fun knm_phone_number:set_modified/2, kz_json:get_value(<<"updated">>, JObj)}
               ,{fun knm_phone_number:set_created/2, kz_json:get_value(<<"created">>, JObj)}
