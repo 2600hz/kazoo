@@ -118,7 +118,7 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     _ = [convert_carrier_module_number(kz_json:get_value(<<"id">>, JObj), Target)
         || JObj <- JObjs
         ],
-    convert_carrier_module_database(Source, Target, Databases);
+    convert_carrier_module_database(Source, Target, Databases).
 
 -spec convert_carrier_module_number(ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module_number(Number, Target) ->
