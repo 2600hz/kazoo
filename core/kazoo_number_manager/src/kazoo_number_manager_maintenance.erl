@@ -110,17 +110,24 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
              ,[Source, Target, Database]),
     ViewOptions = [{'reduce', 'false'}, {'key', Source}],
     {'ok', JObjs} = kz_datamgr:get_results(Database, <<"numbers/module_name">>, ViewOptions),
-    F = fun (JObj) -> convert_carrier_module_number(kz_doc:id(JObj), Target) end,
-    lists:foreach(F, JObjs),
+    convert_carrier_module_numbers([kz_doc:id(JObj) || JObj <- JObjs], Target),
     convert_carrier_module_database(Source, Target, Databases).
 
--spec convert_carrier_module_number(ne_binary(), ne_binary()) -> 'ok'.
-convert_carrier_module_number(Num, Target) ->
+-spec convert_carrier_module_numbers(ne_binaries(), ne_binary()) -> ok.
+convert_carrier_module_numbers(Nums, Target) ->
     Routines = [{fun knm_phone_number:set_module_name/2, Target}],
-    case knm_number:update(Num, Routines) of
-        {ok, _} -> io:format("updated ~s carrier module to ~s~n", [Num, Target]);
-        {error, _R} -> io:format("updating ~s carrier module failed: ~p~n", [Num, _R])
-    end.
+    #{ok := Ns, ko := KOs} = knm_numbers:update(Nums, Routines),
+    io:format("updated carrier module to ~s for ~p:\n", [Target, length(Ns)]),
+    F = fun (N) -> io:format("\t~s\n", [knm_phone_number:number(knm_number:phone_number(N))]) end,
+    lists:foreach(F, Ns),
+    io:format("updating carrier module failed for ~p:\n", [maps:size(KOs)]),
+    G = fun (Num, R) -> io:format("\t~s: ~p\n", [Num, R]) end,
+    _ = maps:map(G, KOs),
+    ok.
+
+-spec convert_carrier_module_number(ne_binary(), ne_binary()) -> ok.
+convert_carrier_module_number(Num, Target) ->
+    convert_carrier_module_numbers([Num], Target).
 
 %%--------------------------------------------------------------------
 %% @public
