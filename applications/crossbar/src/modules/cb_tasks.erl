@@ -262,15 +262,13 @@ put(Context) ->
     Action   = kz_json:get_value(?QS_ACTION, QS),
     IsCSV = is_content_type_csv(Context),
     CSVorJSON = attached_data(Context, IsCSV),
-    TotalRows = cb_context:fetch(Context, 'total_rows'),
-    CSVName = cb_context:req_value(Context, ?RV_FILENAME),
     case kz_tasks:new(cb_context:auth_account_id(Context)
                      ,cb_context:account_id(Context)
                      ,Category
                      ,Action
-                     ,TotalRows
+                     ,cb_context:fetch(Context, total_rows)
                      ,CSVorJSON
-                     ,CSVName
+                     ,cb_context:req_value(Context, ?RV_FILENAME)
                      )
     of
         {'ok', TaskJObj} ->
