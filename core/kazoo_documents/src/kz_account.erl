@@ -44,6 +44,7 @@
         ,topup_threshold/1, topup_threshold/2, set_topup_threshold/2
         ,sent_initial_registration/1, set_initial_registration_sent/2
         ,sent_initial_call/1, set_initial_call_sent/2
+        ,home_zone/1, home_zone/2, set_home_zone/2
         ]).
 
 -include("kz_documents.hrl").
@@ -54,6 +55,7 @@
 -define(LANGUAGE, <<"language">>).
 -define(TIMEZONE, <<"timezone">>).
 -define(THRESHOLD, <<"threshold">>).
+-define(HOME_ZONE, [<<"zones">>, <<"home">>]).
 -define(TREE, <<"pvt_tree">>).
 -define(IS_ENABLED, <<"pvt_enabled">>).
 -define(API_KEY, <<"pvt_api_key">>).
@@ -266,6 +268,30 @@ parent_timezone(_AccountId, ParentId) -> timezone(ParentId).
 -spec set_timezone(doc(), ne_binary()) -> doc().
 set_timezone(JObj, Timezone) ->
     kz_json:set_value(?TIMEZONE, Timezone, JObj).
+
+-spec home_zone(ne_binary() | doc()) -> api_binary().
+home_zone(AccountId) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'error', _R} -> 'undefined';
+        {'ok', JObj}  -> home_zone(JObj, 'undefined')
+    end;
+
+home_zone(JObj) ->
+    home_zone(JObj, 'undefined').
+
+-spec home_zone(ne_binary() | doc(), api_binary()) -> api_binary().
+home_zone(AccountId, Default) when is_binary(AccountId) ->
+    case fetch(AccountId) of
+        {'error', _R} -> Default;
+        {'ok', JObj}  -> home_zone(JObj, Default)
+    end;
+
+home_zone(JObj, Default) ->
+    kz_json:get_value(?HOME_ZONE, JObj, Default).
+
+-spec set_home_zone(doc(), api_binary()) -> doc().
+set_home_zone(JObj, Zone) ->
+    kz_json:set_value(?HOME_ZONE, Zone, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
