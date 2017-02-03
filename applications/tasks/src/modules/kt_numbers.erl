@@ -441,8 +441,8 @@ additional_fields_to_json(Args) ->
 additional_fields(Args) ->
     [OpaqueField
      || <<"opaque.", OpaqueField0/binary>> <- maps:keys(Args),
-        OpaqueField <- [kz_binary:strip(OpaqueField0)],
-        not kz_term:is_empty(OpaqueField)
+        OpaqueField <- [kz_util:strip_binary(OpaqueField0)],
+        not kz_util:is_empty(OpaqueField)
     ].
 
 %% @private
