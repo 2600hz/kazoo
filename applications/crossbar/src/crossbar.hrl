@@ -202,5 +202,31 @@
                                ,{<<"resource_selectors">>, <<"resource_selectors_rules">>}
                                ]).
 
+-define(CSV_HEADER_MAP, [{<<"account_id">>, <<"Account ID">>}
+                        ,{<<"account_name">>, <<"Account Name">>}
+                        ,{<<"amount">>, <<"Amount">>}
+                        ,{<<"description">>, <<"Description">>}
+                        ,{<<"id">>, <<"ID">>}
+                        ,{<<"metadata_callee_id_number">>, <<"Callee ID Number">>}
+                        ,{<<"metadata_callee_id_name">>, <<"Callee ID Name">>}
+                        ,{<<"metadata_caller_id_number">>, <<"Caller ID Number">>}
+                        ,{<<"metadata_caller_id_name">>, <<"Caller ID Name">>}
+                        ,{<<"metadata_direction">>, <<"Direction">>}
+                        ,{<<"metadata_from">>, <<"From">>}
+                        ,{<<"metadata_to">>, <<"To">>}
+                        ,{<<"metadata_rate_description">>, <<"Rate Description">>}
+                        ,{<<"metadata_rate_increment">>, <<"Rate Increment">>}
+                        ,{<<"metadata_rate_minimum">>, <<"Rate Minimum">>}
+                        ,{<<"metadata_rate_name">>, <<"Rate Name">>}
+                        ,{<<"metadata_rate_nocharge_time">>, <<"Grace Period">>}
+                        ,{<<"metadata_rate_value">>, <<"Rate">>}
+                        ,{<<"period_start">>, <<"Start Time">>}
+                        ,{<<"period_end">>, <<"End Time">>}
+                        ,{<<"source_id">>, <<"Source ID">>}
+                        ,{<<"source_service">>, <<"Source Service">>}
+                        ,{<<"usage_quantity">>, <<"Usage Quantity">>}
+                        ,{<<"usage_type">>, <<"Usage Type">>}
+                        ,{<<"usage_unit">>, <<"Usage Unit">>}]).
+
 -define(CROSSBAR_HRL, 'true').
 -endif.
