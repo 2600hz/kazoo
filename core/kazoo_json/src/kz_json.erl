@@ -1112,16 +1112,16 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--spec flatten(kz_json:object()) -> kz_json:object().
+-spec flatten(object() | objects()) -> object() | objects().
 flatten(L) when is_list(L) -> [ flatten(JObj) || JObj <- L ];
-flatten({JObj}) when is_list(JObj) ->
-    { lists:flatten([ flatten_key(K,V) || {K,V} <- JObj ]) }.
+flatten(?JSON_WRAPPER(L)) when is_list(L) ->
+    from_list(lists:flatten([ flatten_key(K,V) || {K,V} <- L ])).
 
 -spec join_keys(binary(), binary()) -> binary().
 join_keys(K1, K2) when is_binary(K1), is_binary(K2) -> <<K1/binary, "_", K2/binary>>.
 
--spec flatten_key(binary(), any()) -> {binary(), any()}.
-flatten_key(K, {L}) when is_list(L) ->
+-spec flatten_key(binary(), any()) -> [{binary(), any()}].
+flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
     [ flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L ];
 flatten_key(K, V) ->
     [ {K, V} ].
