@@ -8,6 +8,7 @@
 -module(kz_csv_test).
 
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -include_lib("eunit/include/eunit.hrl").
 
@@ -68,6 +69,28 @@ associator_varargs_test() ->
                  }
                 ,FAssoc(CSVRow)
                 ).
+
+verify_account_id_only(<<"account_id">>, ?MATCH_ACCOUNT_RAW(_)) -> true;
+verify_account_id_only(<<"account_id">>, _) -> false;
+verify_account_id_only(_Field, _Value) -> true.
+
+associator_varargs2_test_() ->
+    Fields = [<<"account_id">>, <<"e164">>, <<"cnam.outbound">>],
+    CSVHeader = Fields ++ [<<"opaque.field1.nest1">>],
+    CSVRow1 = [<<"bla">>, <<"+14157215235">>, ?ZILCH, ?ZILCH],
+    CSVRow2 = [<<"6b71cb72c876b5b1396a335f8f8a2594">>, <<"+14157215234">>, ?ZILCH, <<"val1">>],
+    FAssoc = kz_csv:associator(CSVHeader, Fields, fun verify_account_id_only/2),
+    [?_assertEqual({error, <<"account_id">>}, FAssoc(CSVRow1))
+    ,?_assertEqual({ok
+                   ,#{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
+                     ,<<"e164">> => <<"+14157215234">>
+                     ,<<"cnam.outbound">> => ?ZILCH
+                     ,<<"opaque.field1.nest1">> => <<"val1">>
+                     }
+                   }
+                  ,FAssoc(CSVRow2)
+                  )
+    ].
 
 take_row_test_() ->
     CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,
