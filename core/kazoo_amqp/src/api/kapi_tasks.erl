@@ -91,7 +91,7 @@ category(JObj) ->
 action(JObj) ->
     kz_json:get_value(<<"Action">>, JObj).
 
--spec task_id(kz_json:object()) -> kz_tasks:task_id().
+-spec task_id(kz_json:object()) -> kz_tasks:id().
 task_id(JObj) ->
     kz_json:get_value(<<"Task-ID">>, JObj).
 

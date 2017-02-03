@@ -262,15 +262,13 @@ put(Context) ->
     Action   = kz_json:get_value(?QS_ACTION, QS),
     IsCSV = is_content_type_csv(Context),
     CSVorJSON = attached_data(Context, IsCSV),
-    TotalRows = cb_context:fetch(Context, 'total_rows'),
-    CSVName = cb_context:req_value(Context, ?RV_FILENAME),
     case kz_tasks:new(cb_context:auth_account_id(Context)
                      ,cb_context:account_id(Context)
                      ,Category
                      ,Action
-                     ,TotalRows
+                     ,cb_context:fetch(Context, total_rows)
                      ,CSVorJSON
-                     ,CSVName
+                     ,cb_context:req_value(Context, ?RV_FILENAME)
                      )
     of
         {'ok', TaskJObj} ->
@@ -436,7 +434,7 @@ save_attached_data(Context, TaskId, Records, 'false') ->
     crossbar_doc:save_attachment(TaskId, ?KZ_TASKS_ANAME_IN, CSV, Context, Options).
 
 %% @private
--spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+-spec maybe_load_csv_attachment(cb_context:context(), kz_tasks:id(), ne_binary()) ->
                                        cb_context:context().
 maybe_load_csv_attachment(Context, TaskId, AName) ->
     Context1 = read(TaskId, Context),
@@ -448,7 +446,7 @@ maybe_load_csv_attachment(Context, TaskId, AName) ->
     end.
 
 %% @private
--spec load_csv_attachment(cb_context:context(), kz_tasks:task_id(), ne_binary()) ->
+-spec load_csv_attachment(cb_context:context(), kz_tasks:id(), ne_binary()) ->
                                  cb_context:context().
 load_csv_attachment(Context, TaskId, AName) ->
     RD = kz_json:get_value(<<"_read_only">>, cb_context:resp_data(Context)),

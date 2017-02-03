@@ -37,9 +37,9 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary(), kz_tasks:task_id() | 'undefined') ->
-                   {'ok', kz_json:object()} |
-                   {'error', any()}.
+-spec fetch(api_binary(), kz_tasks:id() | undefined) ->
+                   {ok, kz_json:object()} |
+                   {error, any()}.
 fetch('undefined', _) ->
     {'error', 'account_id_undefined'};
 fetch(_, 'undefined') ->
