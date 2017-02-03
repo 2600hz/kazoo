@@ -912,7 +912,15 @@ check_integrity_fold(Header, JObj) ->
 
 -spec get_headers(kz_json:objects()) -> ne_binaries().
 get_headers(JObjs) ->
-    lists:foldl(fun fold_over_objects/2, [], JObjs).
+    Headers = lists:foldl(fun fold_over_objects/2, [], JObjs),
+    lists:map(fun header_map/1, Headers).
+
+-spec header_map(ne_binary()) -> ne_binary().
+header_map(Header) ->
+    case props:get_value(Header, ?CSV_HEADER_MAP) of
+        'undefined' -> Header;
+        FriendlyHeader -> FriendlyHeader
+    end.
 
 -spec fold_over_objects(kz_json:object(), ne_binaries()) -> ne_binaries().
 fold_over_objects(JObj, Headers) ->
