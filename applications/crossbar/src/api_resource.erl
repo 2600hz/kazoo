@@ -831,7 +831,7 @@ to_csv(Req, Context) ->
     case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
-            RespBody = maybe_flatten_jobj(Context1),
+            RespBody = flatten_jobj(Context1),
             RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
                            ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
                             | cb_context:resp_headers(Context1)
@@ -874,27 +874,14 @@ to_pdf(Req, Context, RespData) ->
 accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
 
--spec maybe_flatten_jobj(cb_context:context()) -> iolist().
-maybe_flatten_jobj(Context) ->
-    case props:get_all_values(<<"identifier">>
-                             ,kz_json:to_proplist(cb_context:query_string(Context))
-                             )
-    of
-        [] ->
-            Routines = [fun check_integrity/1
-                       ,fun create_csv_header/1
-                       ,fun json_objs_to_csv/1
-                       ],
-            lists:foldl(fun fold_over_funs/2, cb_context:resp_data(Context), Routines);
-        Identifier ->
-            Depth = kz_json:get_integer_value(<<"depth">>, cb_context:query_string(Context), 1),
-            JObj = kz_json:flatten(cb_context:resp_data(Context), Depth, Identifier),
-            Routines = [fun check_integrity/1
-                       ,fun create_csv_header/1
-                       ,fun json_objs_to_csv/1
-                       ],
-            lists:foldl(fun fold_over_funs/2, JObj, Routines)
-    end.
+-spec flatten_jobj(cb_context:context()) -> iolist().
+flatten_jobj(Context) ->
+    JObj = kz_json:flatten(cb_context:resp_data(Context)),
+    Routines = [fun check_integrity/1
+               ,fun create_csv_header/1
+               ,fun json_objs_to_csv/1
+               ],
+    lists:foldl(fun fold_over_funs/2, JObj, Routines).
 
 -spec fold_over_funs(fun((kz_json:object() | kz_json:objects()) -> kz_json:object() | kz_json:objects()), kz_json:object() | kz_json:objects()) ->
                             kz_json:object() | kz_json:objects().
