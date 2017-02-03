@@ -449,7 +449,7 @@ prompt_id(<<"/system_media/", PromptId/binary>>, Lang) ->
 prompt_id(PromptId, 'undefined') -> PromptId;
 prompt_id(PromptId, <<>>) -> PromptId;
 prompt_id(PromptId, Lang) ->
-    kz_util:uri_encode(<<Lang/binary, "/", PromptId/binary>>).
+    <<Lang/binary, "/", PromptId/binary>>.
 
 -spec get_prompt(ne_binary()) -> api_binary().
 -spec get_prompt(ne_binary(), api_binary() | kapps_call:call()) ->
