@@ -67,7 +67,7 @@ carrier_module_usage(Prefix) ->
 carrier_module_usage([], Totals) ->
     io:format("Totals:~n", []),
     _ = [io:format("    ~s: ~p~n", [Module, Count])
-        || {Module, Count} <- dict:to_list(Totals)
+         || {Module, Count} <- dict:to_list(Totals)
         ],
     'ok';
 carrier_module_usage([Database|Databases], Totals0) ->
@@ -115,7 +115,7 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
     ViewOptions = [{'reduce', 'false'}, {'key', Source}],
     {'ok', JObjs} = kz_datamgr:get_results(Database, <<"numbers/module_name">>, ViewOptions),
     _ = [convert_carrier_module_number(kz_json:get_value(<<"id">>, JObj), Target)
-        || JObj <- JObjs
+         || JObj <- JObjs
         ],
     convert_carrier_module_database(Source, Target, Databases).
 
