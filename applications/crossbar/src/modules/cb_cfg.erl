@@ -50,10 +50,16 @@ validate_read(Context, <<"account">>, Section, Key) ->
     Value = kapps_account_config:get(cb_context:account_id(Context), Section, Key),
     cb_context:set_resp_status(cb_context:set_resp_data(Context, Value), success).
 
-validate_write(Context, <<"system">>, Section, Key, Value) -> 
+validate_write(Context, <<"system">>, Section, Key, Value) ->
     kapps_config:set(Section, Key, Value),
     cb_context:set_resp_status(Context, success);
 
-validate_write(Context, <<"account">>, Section, Key, Value) -> 
+validate_write(Context, <<"account">>, Section, Key, Value) ->
     kapps_account_config:set(cb_context:account_id(Context), Section, Key, Value),
+    cb_context:set_resp_status(Context, success);
+
+validate_write(Context, <<"maintenance">>, <<"kazoo_services_maintenance">>, <<"credit">>, Value) ->
+    kazoo_services_maintenance:credit(cb_context:account_id(Context), Value),
     cb_context:set_resp_status(Context, success).
+
+
