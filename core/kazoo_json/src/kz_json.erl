@@ -91,7 +91,7 @@
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
--export([flatten/3]).
+-export([flatten/1]).
 
 -export([sum/2, sum/3]).
 -export_type([sumer/0]).
@@ -1159,54 +1159,19 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--spec flatten(object() | objects(), integer(), list()) -> objects().
--spec flatten(any(), list(), list(), integer()) -> objects().
-flatten([], _, _) -> [];
-flatten(JObj, Depth, Ids) when is_list(Ids) ->
-    lists:foldl(
-      fun(Id, Acc) ->
-              Acc ++ flatten(JObj, Depth, Id)
-      end, [], Ids);
-flatten(JObj, Depth, Id) ->
-    lists:foldl(
-      fun(Obj, Acc) ->
-              case Obj of
-                  {[Id|_], Data} ->
-                      [{Data}|Acc];
-                  _ ->
-                      Acc
-              end
-      end
-      ,[]
-      ,flatten(JObj, [], [], Depth)
-     ).
+-spec flatten(object() | objects()) -> object() | objects().
+flatten(L) when is_list(L) -> [ flatten(JObj) || JObj <- L ];
+flatten(?JSON_WRAPPER(L)) when is_list(L) ->
+    from_list(lists:flatten([ flatten_key(K,V) || {K,V} <- L ])).
 
-flatten({[_ | _] = Elems}, Acc, Keys, Depth) ->
-    flatten(Elems, Acc, Keys, Depth);
-flatten([_ | _] = Elems, Acc, Keys, Depth) ->
-    lists:foldl(fun (Value, A) ->
-                        flatten(Value, A, Keys, Depth)
-                end,
-                Acc, Elems);
-flatten({Key, Value}, Acc, Keys, Depth) ->
-    KList = [Key | Keys],
-    case length(Keys) + 2 =:=  Depth of
-        'false' ->
-            flatten(Value, Acc, KList, Depth);
-        'true' ->
-            case flatten(Value, [], KList, Depth) of
-                [] -> Acc;
-                Group ->
-                    Pos = lists:reverse(KList),
-                    [{Pos, Group} | Acc]
-            end
-    end;
-flatten(Value, Acc, [K | Keys], Depth) ->
-    case length(Keys) + 1 =:= Depth of
-        'false' -> Acc;
-        'true' ->
-            [{K, Value} | Acc]
-    end.
+-spec join_keys(binary(), binary()) -> binary().
+join_keys(K1, K2) when is_binary(K1), is_binary(K2) -> <<K1/binary, "_", K2/binary>>.
+
+-spec flatten_key(binary(), any()) -> [{binary(), any()}].
+flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
+    [ flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L ];
+flatten_key(K, V) ->
+    [ {K, V} ].
 
 -type exec_fun_1() :: fun((object()) -> object()).
 -type exec_fun_2() :: {fun((_, object()) -> object()), _}.
