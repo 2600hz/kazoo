@@ -63,14 +63,14 @@
         "rate_increment": {
             "default": 60,
             "description": "The time slice, in seconds, to bill in.",
-            "minimum": 10,
+            "minimum": 6,
             "required": false,
             "type": "integer"
         },
         "rate_minimum": {
             "default": 60,
             "description": "The minimum time slice, in seconds to bill a call",
-            "minimum": 10,
+            "minimum": 6,
             "required": false,
             "type": "integer"
         },
