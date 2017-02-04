@@ -506,7 +506,7 @@ get_row_routes([_|_]) ->
 
 get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) ->
     case kz_term:to_float(Increment) of
-        Inc when Inc < 10 -> 10;
+        Inc when Inc < 6 -> 6;
         Inc -> Inc
     end;
 get_row_increment([_|_]) ->
@@ -514,7 +514,7 @@ get_row_increment([_|_]) ->
 
 get_row_minimum([_, _, _, _, _, _, _, _, _, Minimum | _]) ->
     case kz_term:to_float(Minimum) of
-        Min when Min < 10 -> 10;
+        Min when Min < 6 -> 6;
         Min -> Min
     end;
 get_row_minimum([_|_]) ->
