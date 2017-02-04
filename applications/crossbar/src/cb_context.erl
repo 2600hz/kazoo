@@ -318,7 +318,7 @@ path_token(Token) ->
 
 -spec path_tokens(context()) -> ne_binaries().
 path_tokens(#cb_context{raw_path=Path}) ->
-    [ path_token(Token) || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])].
+    [ path_token(kz_util:uri_decode(Token)) || Token <- binary:split(Path, <<"/">>, ['global', 'trim'])].
 
 -spec magic_pathed(context()) -> boolean().
 magic_pathed(#cb_context{magic_pathed=MP}) -> MP.

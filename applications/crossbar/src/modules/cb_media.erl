@@ -168,7 +168,7 @@ acceptable_content_types() ->
 -spec content_types_provided_for_media(cb_context:context(), path_token(), path_token(), http_method()) ->
                                               cb_context:context().
 content_types_provided(Context, MediaId, ?BIN_DATA) ->
-    content_types_provided_for_media(Context, kz_http_util:urlencode(MediaId), ?BIN_DATA, cb_context:req_verb(Context)).
+    content_types_provided_for_media(Context, MediaId, ?BIN_DATA, cb_context:req_verb(Context)).
 
 content_types_provided_for_media(Context, MediaId, ?BIN_DATA, ?HTTP_GET) ->
     Context1 = load_media_meta(Context, MediaId),
@@ -238,7 +238,7 @@ validate(Context, ?LANGUAGES) ->
 validate(Context, ?PROMPTS) ->
     load_available_prompts(Context);
 validate(Context, MediaId) ->
-    validate_media_doc(Context, kz_http_util:urlencode(MediaId), cb_context:req_verb(Context)).
+    validate_media_doc(Context, MediaId, cb_context:req_verb(Context)).
 
 validate(Context, ?LANGUAGES, Language) ->
     load_media_docs_by_language(Context, kz_term:to_lower_binary(Language));
@@ -246,7 +246,7 @@ validate(Context, ?PROMPTS, PromptId) ->
     load_media_docs_by_prompt(Context, PromptId);
 validate(Context, MediaId, ?BIN_DATA) ->
     lager:debug("uploading binary data to '~s'", [MediaId]),
-    validate_media_binary(Context, kz_http_util:urlencode(MediaId), cb_context:req_verb(Context), cb_context:req_files(Context)).
+    validate_media_binary(Context, MediaId, cb_context:req_verb(Context), cb_context:req_files(Context)).
 
 -spec validate_media_docs(cb_context:context(), http_method()) -> cb_context:context().
 validate_media_docs(Context, ?HTTP_GET) ->
@@ -417,7 +417,7 @@ put_media(Context, _AccountId) ->
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, MediaId) ->
-    post_media_doc(Context, kz_http_util:urlencode(MediaId), cb_context:account_id(Context)).
+    post_media_doc(Context, MediaId, cb_context:account_id(Context)).
 
 -spec post_media_doc(cb_context:context(), ne_binary(), api_binary()) -> cb_context:context().
 post_media_doc(Context, MediaId, 'undefined') ->
@@ -444,7 +444,7 @@ post_media_doc(Context, MediaId, _AccountId) ->
     lists:foldl(fun(F, C) -> F(C) end, Context, Routines).
 
 post(Context, MediaId, ?BIN_DATA) ->
-    post_media_binary(Context, kz_http_util:urlencode(MediaId), cb_context:account_id(Context)).
+    post_media_binary(Context, MediaId, cb_context:account_id(Context)).
 
 -spec remove_tts_keys(cb_context:context()) -> cb_context:context().
 remove_tts_keys(C) ->
@@ -560,7 +560,7 @@ delete(Context, _MediaId) ->
     crossbar_doc:delete(Context, delete_type(Context)).
 
 delete(Context, MediaId, ?BIN_DATA) ->
-    delete_media_binary(kz_http_util:urlencode(MediaId), Context, cb_context:account_id(Context)).
+    delete_media_binary(MediaId, Context, cb_context:account_id(Context)).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -595,7 +595,7 @@ load_media_summary(Context, _AccountId) ->
 start_key(Context) ->
     case crossbar_doc:start_key(Context) of
         'undefined' -> 'undefined';
-        StartKey -> kz_http_util:urlencode(StartKey)
+        StartKey -> StartKey
     end.
 
 -spec fix_start_keys(cb_context:context()) -> cb_context:context().
