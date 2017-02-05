@@ -258,7 +258,7 @@ create_slot(ParkerCallId, PresenceType, Call) ->
     CallId = cf_exe:callid(Call),
     RingbackId = maybe_get_ringback_id(Call),
     SlotCallId = kz_binary:rand_hex(16),
-    User = kapps_call:request_user(Call),    
+    User = kapps_call:request_user(Call),
     Realm = kapps_call:account_realm(Call),
     kz_json:from_list(
       props:filter_undefined(
@@ -776,9 +776,9 @@ update_presence(_State, 'undefined') -> 'ok';
 update_presence(State, Slot) ->
     PresenceUser = kz_json:get_value(<<"Presence-User">>, Slot),
     PresenceRealm = kz_json:get_value(<<"Presence-Realm">>, Slot),
-    PresenceId = <<PresenceUser/binary, "@", PresenceRealm/binary>>, 
+    PresenceId = <<PresenceUser/binary, "@", PresenceRealm/binary>>,
     PresenceURI = <<"sip:", PresenceId/binary>>,
-    
+
     SwitchURI = kz_json:get_value(<<"Switch-URI">>, Slot),
     CallId = kz_json:get_value(<<"Call-ID">>, Slot),
     _SlotCallId = kz_json:get_value(<<"Slot-Call-ID">>, Slot),
@@ -792,7 +792,7 @@ update_presence(State, Slot) ->
                 ,{<<"From-User">>, PresenceUser}
                 ,{<<"From-Realm">>, PresenceRealm}
                 ,{<<"From-Tag">>, <<"A">>}
-                
+
                 ,{<<"To">>, To}
                 ,{<<"To-User">>, ToUser}
                 ,{<<"To-Realm">>, PresenceRealm}
@@ -806,7 +806,7 @@ update_presence(State, Slot) ->
 
                 ,{<<"Expires">>, Expires}
                 ,{<<"Event-Package">>, <<"dialog">>}
-                
+
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     lager:info("update presence-id '~s' with state: ~s", [PresenceId, State]),
