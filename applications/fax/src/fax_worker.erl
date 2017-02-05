@@ -58,7 +58,7 @@
 -type release_ret() :: {kz_json:object(), kz_json:object()}.
 
 -define(ORIGINATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
--define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE).
+-define(NEGOTIATE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 2).
 -define(PAGE_TIMEOUT, ?MILLISECONDS_IN_MINUTE * 6).
 
 -define(BINDINGS(CallId), [{'self', []}
@@ -483,9 +483,9 @@ handle_cast(_Msg, State) ->
 handle_info('timeout', #state{stage='undefined'}=State) ->
     {'noreply', State};
 handle_info('timeout', #state{stage=Stage, job=JObj}=State) ->
-    _ = release_failed_job('job_timeout', Stage, JObj),
+    {Resp, Doc} = release_failed_job('job_timeout', Stage, JObj),
     gen_server:cast(self(), 'stop'),
-    {'noreply', State};
+    {'noreply', State#state{job=Doc, resp = Resp}};
 handle_info(_Info, State) ->
     lager:debug("fax worker unhandled message: ~p", [_Info]),
     {'noreply', State}.
