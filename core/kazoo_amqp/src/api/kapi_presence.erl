@@ -56,7 +56,7 @@
 -define(DIALOG_STATES, [<<"early">>, <<"confirmed">>, <<"terminated">>]).
 
 -define(PRESENCE_STATES, [<<"trying">>, <<"online">>, <<"offline">>
-                           | ?DIALOG_STATES
+                              | ?DIALOG_STATES
                          ]).
 
 %% Search request for active subscriptions
@@ -481,7 +481,7 @@ mwi_extended_update(Prop) ->
             ,{<<"Messages-Saved">>, 0}
             ,{<<"Messages-Urgent">>, 0}
             ,{<<"Messages-Urgent-Saved">>, 0}
-%%            ,{<<"Expires">>, 600}
+             %%            ,{<<"Expires">>, 600}
             ].
 
 -spec mwi_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
