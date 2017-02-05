@@ -26,7 +26,7 @@
 -define(PRESENTITY_CFG_KEY, <<"query_include_presentity">>).
 
 -define(PRESENCE_QUERY_TIMEOUT_KEY, <<"query_presence_timeout">>).
--define(PRESENCE_QUERY_DEFAULT_TIMEOUT, 1000).
+-define(PRESENCE_QUERY_DEFAULT_TIMEOUT, 5000).
 -define(PRESENCE_QUERY_TIMEOUT, kapps_config:get_integer(?MOD_CONFIG_CAT
                                                         ,?PRESENCE_QUERY_TIMEOUT_KEY
                                                         ,?PRESENCE_QUERY_DEFAULT_TIMEOUT
@@ -198,10 +198,10 @@ search_collect(Context, JObj, N) ->
     receive
         {'ok', Reply} -> search_collect(Context, kz_json:merge_jobjs(Reply, JObj), N - 1);
         {'error', Reason} ->
-            lager:debug("error collecting responses from presence : ~p", [Reason]),
+            lager:debug("error collecting responses : ~p", [Reason]),
             search_collect(Context, JObj, N - 1)
     after ?PRESENCE_QUERY_TIMEOUT ->
-            lager:debug("timeout (~B) collecting responses from presence", [?PRESENCE_QUERY_TIMEOUT]),
+            lager:debug("timeout (~B) collecting responses for presence", [?PRESENCE_QUERY_TIMEOUT]),
             search_collect(Context, JObj, N - 1)
     end.
 
@@ -211,7 +211,8 @@ search_collect(Context, JObj, N) ->
 search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
+          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
@@ -293,7 +294,8 @@ presentity_search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
           ,{<<"Scope">>, <<"presentity">>}
-          ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+          ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
+          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
@@ -316,6 +318,7 @@ presentity_search_req(Context) ->
                                   'true' |
                                   {'false', {integer(), integer()}}.
 collect_presentities([Response | _], {Count, Max}) ->
+    lager:debug("received ~s from ~s",[kz_api:event_name(Response), kz_api:node(Response)]),
     case Count + resp_value(Response) of
         Max -> 'true';
         V -> {'false', {V, Max}}
@@ -510,8 +513,10 @@ set_report(Context, File) ->
                       ).
 
 -spec collect_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> any().
-collect_report(_Context, []) -> 'ok';
+collect_report(_Context, []) ->
+    lager:debug("nothing to collect");
 collect_report(Context, Param) ->
+    lager:debug("collecting report"),
     Funs = [fun search_req/1
            ,fun presentity_search_req/1
            ],
@@ -536,6 +541,7 @@ send_report(Context, Thing) ->
 
 -spec format_and_send_report(cb_context:context(), iodata()) -> 'ok'.
 format_and_send_report(Context, Msg) ->
+    lager:debug("formatting and sending report"),
     {ReportId, URL} = save_report(Context),
     Subject = io_lib:format("presence reset for account ~s", [cb_context:account_id(Context)]),
     Props = [{<<"Report-ID">>, ReportId}
