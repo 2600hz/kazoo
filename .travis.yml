@@ -11,7 +11,7 @@ otp_release:
   - 18.2
   - 19.1
 
-sudo: false
+sudo: required
 
 addons:
   apt:
