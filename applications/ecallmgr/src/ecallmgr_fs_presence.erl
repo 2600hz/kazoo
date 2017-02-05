@@ -193,7 +193,7 @@ build_presence_event(_Node, UUID, Props) ->
     FromTag = kzd_freeswitch:from_tag(Props),
 
     From = from(Props),
-    [FromUser, Realm | _] = binary:split(From, <<"@">>, ['global']), 
+    [FromUser, Realm | _] = binary:split(From, <<"@">>, ['global']),
 
     ToUser =  to_user(Props),
 
