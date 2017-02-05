@@ -212,7 +212,7 @@ search_req(Context) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
           ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
-          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
@@ -295,7 +295,7 @@ presentity_search_req(Context) ->
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
           ,{<<"Scope">>, <<"presentity">>}
           ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
-          ,{<<"Msg-ID">>, kz_util:rand_hex_binary(16)}
+          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
