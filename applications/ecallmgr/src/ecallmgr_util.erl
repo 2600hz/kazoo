@@ -1217,7 +1217,7 @@ media_url_cache_props(<<"prompt://", Prompt/binary>>) ->
         _ -> []
     end;
 media_url_cache_props(<<"tts://", Text/binary>>) ->
-    Id = kz_binary:binary_md5(Text),
+    Id = kz_binary:md5(Text),
     [{'origin', {'db', <<"tts">>, Id}}];
 media_url_cache_props(_MediaName) -> [].
 

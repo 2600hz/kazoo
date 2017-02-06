@@ -416,7 +416,7 @@ conference_sounds(Profile) ->
     kz_json:foldl(fun conference_sound/3, Profile, Profile).
 
 conference_sound(Key, Value, Profile) ->
-    maybe_convert_sound(kz_binary:binary_reverse(Key), Key, Value, Profile).
+    maybe_convert_sound(kz_binary:reverse(Key), Key, Value, Profile).
 
 maybe_convert_sound(<<"dnuos-", _/binary>>, Key, Value, Profile) ->
     MediaName = ecallmgr_util:media_path(Value),

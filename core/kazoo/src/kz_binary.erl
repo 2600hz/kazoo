@@ -28,10 +28,10 @@
         ,remove_white_spaces/1, remove_white_spaces/2
         ]).
 
--export([binary_md5/1]).
+-export([md5/1]).
 -export([pad/3, pad_left/3
         ,join/1, join/2
-        ,binary_reverse/1
+        ,reverse/1
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -71,8 +71,8 @@ join([Bin|Bins], Sep) ->
       [kz_term:to_binary(Bin)] ++ [[Sep, kz_term:to_binary(B)] || B <- Bins]
      ).
 
--spec binary_md5(text()) -> ne_binary().
-binary_md5(Text) -> kz_term:to_hex_binary(erlang:md5(kz_term:to_binary(Text))).
+-spec md5(text()) -> ne_binary().
+md5(Text) -> kz_term:to_hex_binary(erlang:md5(kz_term:to_binary(Text))).
 
 -spec remove_white_spaces(binary(), kz_proplist()) -> binary().
 remove_white_spaces(Bin, Opts) ->
@@ -204,8 +204,8 @@ rand_hex(Size) when is_integer(Size)
                     andalso Size > 0 ->
     kz_term:to_hex_binary(crypto:strong_rand_bytes(Size)).
 
--spec binary_reverse(binary()) -> binary().
-binary_reverse(Bin) ->
+-spec reverse(binary()) -> binary().
+reverse(Bin) ->
     kz_term:to_binary(lists:reverse(kz_term:to_list(Bin))).
 
 -spec ucfirst(ne_binary()) -> ne_binary().

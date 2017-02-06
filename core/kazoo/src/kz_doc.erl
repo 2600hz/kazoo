@@ -472,4 +472,4 @@ calculate_document_hash(JObj) ->
     PublicJObj = kz_json:public_fields(JObj),
     Attachments = kz_json:get_value(<<"_attachments">>, JObj),
     Props = [{<<"public">>, PublicJObj}, {<<"attachments">>, Attachments}],
-    kz_binary:binary_md5(kz_json:encode(kz_json:from_list(Props))).
+    kz_binary:md5(kz_json:encode(kz_json:from_list(Props))).

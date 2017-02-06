@@ -460,7 +460,7 @@ clean_binary_test_() ->
     ].
 
 binary_hashes_test_() ->
-    [?_assertEqual(<<"d41d8cd98f00b204e9800998ecf8427e">>, kz_binary:binary_md5(<<>>))
+    [?_assertEqual(<<"d41d8cd98f00b204e9800998ecf8427e">>, kz_binary:md5(<<>>))
     ,?_assertEqual("44add22b6f3179b751eafd68ee370f7d", kz_term:a1hash(<<"u">>, <<"r">>, <<"p">>))
     ].
 
@@ -476,8 +476,8 @@ float_bounds_test_() ->
     ].
 
 binary_reverse_test_() ->
-    [?_assertEqual(<<>>, kz_binary:binary_reverse(<<>>))
-    ,?_assertEqual(<<"B a">>, kz_binary:binary_reverse(<<"a B">>))
+    [?_assertEqual(<<>>, kz_binary:reverse(<<>>))
+    ,?_assertEqual(<<"B a">>, kz_binary:reverse(<<"a B">>))
     ].
 
 pad_month_test_() ->

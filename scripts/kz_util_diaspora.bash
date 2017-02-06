@@ -11,7 +11,7 @@ function replace_call {
     NEW_FUN=${3%$4}
     FILE=$5
 
-#    echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
     $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
 }
 
@@ -24,6 +24,30 @@ function search_and_replace {
     for FUN in "${FUNS[@]}"; do
         for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
             replace_call $FROM $TO "$FUN" "$SUFFIX" $FILE
+        done
+    done
+}
+
+function replace_call_prefix {
+    FROM=$1
+    TO=$2
+    OLD_FUN=$3
+    NEW_FUN=${3#$4}
+    FILE=$5
+
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+}
+
+function search_and_replace_prefix {
+    declare -a FUNS=("${!1}")
+    FROM=$2
+    TO=$3
+    PREFIX=$4
+
+    for FUN in "${FUNS[@]}"; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+            replace_call_prefix $FROM $TO "$FUN" "$PREFIX" $FILE
         done
     done
 }
@@ -92,7 +116,10 @@ function kz_util_to_binary {
               join_binary
               binary_reverse
              )
+    local special=(binary_md5 binary_reverse)
     search_and_replace fs[@] "kz_util" "kz_binary" "_binary"
+    search_and_replace special[@] "kz_util" "kz_binary" "binary_"
+    search_and_replace_prefix special[@] "kz_binary" "kz_binary" "binary_"
 }
 
 function kz_util_to_time {
