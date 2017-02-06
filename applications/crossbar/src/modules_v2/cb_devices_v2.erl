@@ -822,7 +822,6 @@ add_mobile_mdn(Context) ->
           ]),
     PublicFields = kz_json:from_list([{<<"mobile">>, MobileField}]),
     Options = [{assign_to, cb_context:account_id(Context)}
-              ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', PublicFields}
               ,{'module_name', ?CARRIER_MDN}
                |knm_number_options:mdn_options()
