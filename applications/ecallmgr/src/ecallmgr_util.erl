@@ -178,25 +178,15 @@ get_interface_properties(Node, Interface) ->
 %% retrieves the sip address for the 'to' field
 -spec get_sip_to(kz_proplist()) -> ne_binary().
 get_sip_to(Props) ->
-    get_sip_to(Props, kzd_freeswitch:original_call_direction(Props)).
+    get_sip_to(Props, kzd_freeswitch:call_direction(Props)).
 
 get_sip_to(Props, <<"outbound">>) ->
     case props:get_value(<<"Channel-Presence-ID">>, Props) of
-        'undefined' ->
-            Number = props:get_first_defined([<<"Other-Leg-ANI">>
-                                             ,<<"Other-Leg-Callee-ID-Number">>
-                                             ,<<"variable_sip_to_user">>
-                                             ], Props, <<"nouser">>),
-            Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                            ,<<"variable_sip_to_host">>
-                                            ], Props, ?DEFAULT_REALM),
-            <<Number/binary, "@", Realm/binary>>;
+        'undefined' -> get_sip_request(Props);
         PresenceId -> PresenceId
     end;
 get_sip_to(Props, _) ->
-    case props:get_first_defined([<<"variable_sip_to_uri">>
-                                 ,<<"variable_sip_req_uri">>
-                                 ], Props) of
+    case props:get_value(<<"variable_sip_to_uri">>, Props) of
         'undefined' -> get_sip_request(Props);
         ToUri -> ToUri
     end.
@@ -205,30 +195,48 @@ get_sip_to(Props, _) ->
 -spec get_sip_from(kz_proplist()) -> ne_binary().
 -spec get_sip_from(kz_proplist(), api_binary()) -> ne_binary().
 get_sip_from(Props) ->
-    get_sip_from(Props, kzd_freeswitch:original_call_direction(Props)).
+    get_sip_from(Props, kzd_freeswitch:call_direction(Props)).
 
 get_sip_from(Props, <<"outbound">>) ->
-    Num = props:get_first_defined([<<"Other-Leg-RDNIS">>
-                                  ,<<"Other-Leg-Caller-ID-Number">>
-                                  ,<<"variable_sip_from_user">>
-                                  ,<<"variable_sip_from_uri">>
-                                  ], Props, <<"nouser">>),
-    [Number | _] = binary:split(Num, <<"@">>, ['global']),
     Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                    ,<<"variable_sip_invite_domain">>
                                     ,<<"variable_sip_auth_realm">>
+                                    ,<<"variable_sip_to_host">>
                                     ], Props, ?DEFAULT_REALM),
-    <<Number/binary, "@", Realm/binary>>;
+    User = props:get_first_defined([<<"Other-Leg-Caller-ID-Number">>
+                                   ,<<"Hunt-Callee-ID-Number">>
+                                   ,<<"variable_sip_contact_user">>
+                                   ,<<"Other-Leg-Callee-ID-Number">>
+                                   ,<<"Caller-Callee-ID-Number">>
+                                   ,<<"variable_sip_from_user">>
+                                   ,?GET_CCV(<<"Username">>)
+                                   ], Props, <<"nouser">>),
+%%     props:get_first_defined([<<"variable_sip_from_uri">>
+%%                             ]
+%%                            ,Props
+%%                            ,<<User/binary, "@", Realm/binary>>
+%%                            );
+                           <<User/binary, "@", Realm/binary>>;
 get_sip_from(Props, _) ->
-    Default = <<(props:get_value(<<"sip_from_user">>, Props, <<"nouser">>))/binary
+    Default = <<(props:get_value(<<"variable_sip_from_user">>, Props, <<"xnouser">>))/binary
                 ,"@"
                 ,(props:get_first_defined([?GET_CCV(<<"Realm">>)
                                           ,<<"variable_sip_from_host">>
                                           ,<<"sip_from_host">>
-                                          ], Props, ?DEFAULT_REALM))/binary
+                                          ]
+                                         ,Props
+                                         ,?DEFAULT_REALM
+                                         )
+                 )/binary
               >>,
     props:get_first_defined([<<"Channel-Presence-ID">>
+                            ,<<"variable_presence_id">>
                             ,<<"variable_sip_from_uri">>
-                            ], Props, Default).
+                            ,<<"variable_sip_loopback_req_uri">>
+                            ]
+                           ,Props
+                           ,Default
+                           ).
 
 %% retrieves the sip address for the 'request' field
 -spec get_sip_request(kz_proplist()) -> ne_binary().
@@ -236,16 +244,26 @@ get_sip_request(Props) ->
     [User | _] = binary:split(
                    props:get_first_defined(
                      [<<"Hunt-Destination-Number">>
-                     ,<<"variable_sip_req_uri">>
-                     ,<<"variable_sip_loopback_req_uri">>
                      ,<<"Caller-Destination-Number">>
                      ,<<"variable_sip_to_user">>
+                     ,<<"variable_sip_req_uri">>
+                     ,<<"variable_sip_loopback_req_uri">>
+                     ,<<"sip_req_uri">>
+                     ,<<"sip_to_user">>
                      ], Props, <<"nouser">>), <<"@">>, ['global']),
-    Realm = props:get_first_defined([?GET_CCV(<<"Realm">>)
-                                    ,<<"variable_sip_auth_realm">>
-                                    ,<<"variable_sip_to_host">>
-                                    ,<<"variable_sip_req_host">>
-                                    ], Props, ?DEFAULT_REALM),
+    Realm = lists:last(binary:split(
+                         props:get_first_defined([?GET_CCV(<<"Realm">>)
+                                                 ,<<"variable_sip_auth_realm">>
+                                                 ,<<"variable_sip_to_host">>
+                                                 ,<<"sip_auth_realm">>
+                                                 ,<<"sip_to_host">>
+                                                 ,<<"variable_sip_req_host">>
+                                                 ,<<"sip_req_host">>
+                                                 ,<<"variable_sip_req_uri">>
+                                                 ,<<"sip_req_uri">>
+                                                 ,<<"variable_sip_loopback_req_uri">>
+                                                 ,<<"sip_loopback_req_uri">>
+                                                 ], Props, ?DEFAULT_REALM), <<"@">>, ['global'])),
     <<User/binary, "@", Realm/binary>>.
 
 -spec get_orig_ip(kz_proplist()) -> api_binary().
@@ -332,6 +350,11 @@ custom_channel_vars_fold({<<"variable_", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, 
 custom_channel_vars_fold({<<?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     [{Key, V} | Acc];
 custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
+    case props:is_defined(Key, Acc) of
+        'true' -> Acc;
+        'false' -> [{Key, V} | Acc]
+    end;
+custom_channel_vars_fold({<<"X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
     case props:is_defined(Key, Acc) of
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
@@ -746,6 +769,11 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
+build_bridge_channels([#bridge_endpoint{invite_format = <<"dialplan">>}=Endpoint|Endpoints], Channels) ->
+    case build_channel(Endpoint) of
+        {'error', _} -> build_bridge_channels(Endpoints, Channels);
+        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
+    end;
 %% If this does not have an explicted sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
@@ -866,6 +894,9 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+get_sip_contact(#bridge_endpoint{invite_format = <<"dialplan">>, route=Route}) ->
+%%    <<"dialplan/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+    <<"dialplan/", Route/binary, "/context_2">>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                 ,realm=Realm
                                 ,username=Username
@@ -881,6 +912,8 @@ maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
     Contact;
+maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"dialplan">>}) ->
+    Contact;
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
@@ -888,6 +921,8 @@ maybe_clean_contact(Contact, _) ->
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
+    Contact;
+ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"dialplan">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of
@@ -949,6 +984,7 @@ maybe_format_user(Contact, _) -> Contact.
 -spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
+maybe_set_interface(<<"dialplan/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->
     Options = ['ungreedy', {'capture', 'all_but_first', 'binary'}],
     case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, Options) of
