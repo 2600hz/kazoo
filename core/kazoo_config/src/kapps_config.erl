@@ -40,6 +40,7 @@
 -export([flush/0, flush/1, flush/2, flush/3]).
 
 -export([migrate/0]).
+-export([get_category/1]).
 
 -type config_category() :: ne_binary() | nonempty_string() | atom().
 -type config_key() :: ne_binary() | nonempty_string() | atom() | [config_key(),...].

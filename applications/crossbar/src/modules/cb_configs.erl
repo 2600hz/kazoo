@@ -62,7 +62,6 @@ allowed_methods(_ConfigId) ->
 %% Does the path point to a valid resource
 %% So /configs => []
 %%    /configs/foo => [<<"foo">>]
-%%    /configs/foo/bar => [<<"foo">>, <<"bar">>]
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'false'.
@@ -75,8 +74,6 @@ resource_exists(_) -> true.
 %% @doc
 %% Check the request (request body, query string params, path tokens, etc)
 %% and load necessary information.
-%% /configs mights load a list of config objects
-%% /configs/123 might load the config object 123
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
@@ -85,62 +82,61 @@ validate(Context, Config) ->
     validate(Context, cb_context:req_verb(Context), Config).
 
 -spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
-validate(Context, ?HTTP_GET, Config) -> read(Config, Context);
-validate(Context, ?HTTP_PUT, Config) -> create(Config, Context);
-validate(Context, ?HTTP_POST, Config) -> update(Config, Context);
+validate(Context, ?HTTP_GET, Config) -> validate_get(Config, Context);
+validate(Context, ?HTTP_PUT, Config) -> validate_put(Config, Context);
+validate(Context, ?HTTP_POST, Config) -> validate_post(Config, Context);
 validate(Context, ?HTTP_PATCH, Config) -> validate_patch(Config, Context);
-validate(Context, ?HTTP_DELETE, Config) -> read(Config, Context).
+validate(Context, ?HTTP_DELETE, Config) -> validate_delete(Config, Context).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
+-spec validate_put(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_put(Config, Context) ->
+    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
+    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
+        {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
+        {'error', _} -> validate_post(Config, Context)
+    end.
+
+%% XXX: probably it's worth to check allowed category name (ecallmgr, crossbar, etc)?
+-spec validate_get(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_get(_Config, Context) -> Context.
+
+-spec validate_delete(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_delete(_Config, Context) -> Context.
+
+-spec validate_post(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_post(Config, Context) ->
+    JObj = kz_json:public_fields(cb_context:req_data(Context)),
+    ResellerConfig = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
+    FullConfig = kz_json:merge_recursive(JObj, ResellerConfig),
+    cb_context:validate_request_data(make_schema_name(Config), cb_context:set_req_data(Context, FullConfig)).
+
+-spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
+validate_patch(Config, Context) ->
+    JObj = kz_json:public_fields(cb_context:req_data(Context)),
+    BaseConfig = kapps_account_config:get_category(cb_context:account_id(Context), Config),
+    FullConfig = kz_json:merge_recursive(JObj, BaseConfig),
+    cb_context:validate_request_data(make_schema_name(Config), cb_context:set_req_data(Context, FullConfig)).
+
 -spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(Context, _) ->
-    Context.
+get(Context, Config) ->
+    JObj = kapps_account_config:get_category(cb_context:account_id(Context), Config),
+    cb_context:setters(Context,[{fun cb_context:set_resp_status/2, success}
+        ,{fun cb_context:set_resp_data/2, JObj}
+        ,{fun cb_context:set_resp_etag/2, crossbar_doc:rev_to_etag(JObj)}
+    ]).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
-%% @end
-%%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(Context, _) ->
-    crossbar_doc:save(Context).
+put(Context, Config) ->
+    save_delta(Context, Config).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
-%% @end
-%%--------------------------------------------------------------------
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(Context).
+post(Context, Config) ->
+    save_delta(Context, Config).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PATCH, execute the actual action, usually a db save
-%% (after a merge).
-%% @end
-%%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) ->
-    crossbar_doc:save(Context).
+patch(Context, Config) ->
+    save_delta(Context, Config).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
-%% @end
-%%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _) ->
     crossbar_doc:delete(Context).
@@ -148,65 +144,7 @@ delete(Context, _) ->
 -spec make_schema_name(api_ne_binary()) -> ne_binary().
 make_schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create(ne_binary(), cb_context:context()) -> cb_context:context().
-create(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
-        {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
-        {'error', _} ->
-            JObj = kz_doc:set_id(cb_context:req_data(Context), Id),
-            Context1 = cb_context:set_req_data(Context, JObj),
-            cb_context:validate_request_data(make_schema_name(Config), Context1)
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    validate_request_data(Id, Context).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update-merge partially an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_patch(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:patch_and_validate(Id, Context, fun validate_request_data/2).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Validates existing instance
-%% @end
-%%--------------------------------------------------------------------
--spec validate_request_data(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_request_data(<<"configs_", Config/binary>> = Id, Context) ->
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(<<"account_config">>)) end,
-    cb_context:validate_request_data(make_schema_name(Config), Context, OnSuccess).
+save_delta(Context, Config) ->
+    ResellerConfig = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
+    JObjDiff = kz_json:diff(cb_context:doc(Context), ResellerConfig),
+    crossbar_doc:save(Context, JObjDiff).
