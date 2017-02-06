@@ -847,14 +847,11 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
 
 %% @private
--spec rev(knm_phone_number()) -> api_ne_binary().
+-spec rev(knm_phone_number()) -> ne_binary().
 rev(#knm_phone_number{rev=Rev}) -> Rev.
 
--spec set_rev(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
-set_rev(N, undefined=Rev) ->
-    N#knm_phone_number{rev=Rev};
-set_rev(N, ?NE_BINARY=Rev) ->
-    N#knm_phone_number{rev=Rev}.
+-spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_rev(N, ?NE_BINARY=Rev) -> N#knm_phone_number{rev=Rev}.
 
 %%--------------------------------------------------------------------
 %% @public
