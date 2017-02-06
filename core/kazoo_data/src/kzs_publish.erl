@@ -7,8 +7,7 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_publish).
 
--export([maybe_publish_db/2
-        ,maybe_publish_doc/3
+-export([maybe_publish_doc/3
         ,maybe_publish_docs/3
         ,publish_db/2
         ,publish_doc/3
