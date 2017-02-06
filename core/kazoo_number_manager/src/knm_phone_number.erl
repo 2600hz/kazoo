@@ -18,7 +18,7 @@
 
 -export([to_json/1
         ,to_public_json/1
-        ,from_json/1, from_json_with_options/2
+        ,from_json_with_options/2
         ,from_number/1, from_number_with_options/2
         ,is_phone_number/1
         ]).
