@@ -462,16 +462,16 @@ get_row_description(_R) ->
     'undefined'.
 
 -spec get_row_internal_surcharge(rate_row()) -> api_float().
-get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) ->
+get_row_internal_surcharge([_, _, _, InternalSurcharge, _, _ | _]) when (InternalSurcharge /= []) ->
     kz_term:to_float(InternalSurcharge);
 get_row_internal_surcharge(_R) ->
     lager:info("internal surcharge not found on row: ~p", [_R]),
     'undefined'.
 
 -spec get_row_surcharge(rate_row()) -> api_float().
-get_row_surcharge([_, _, _, Surcharge, _, _]) ->
+get_row_surcharge([_, _, _, Surcharge, _, _]) when (Surcharge /= []) ->
     kz_term:to_float(Surcharge);
-get_row_surcharge([_, _, _, _, Surcharge, _ | _]) ->
+get_row_surcharge([_, _, _, _, Surcharge, _ | _]) when (Surcharge /= []) ->
     kz_term:to_float(Surcharge);
 get_row_surcharge([_|_]=_R) ->
     lager:info("surcharge not found on row: ~p", [_R]),
@@ -499,7 +499,7 @@ get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
     'undefined'.
 
-get_row_routes([_, _, _, _, _, _, _, Routes | _]) ->
+get_row_routes([_, _, _, _, _, _, _, Routes | _]) when (Routes /= []) ->
     [kz_term:to_binary(X) || X <- string:tokens(kz_term:to_list(Routes), ";")];
 get_row_routes([_|_]) ->
     'undefined'.
