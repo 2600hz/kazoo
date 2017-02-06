@@ -91,7 +91,7 @@
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
--export([flatten/1]).
+-export([flatten/1, flatten/2, expand/1, diff/2]).
 
 -export([sum/2, sum/3]).
 -export_type([sumer/0]).
@@ -1179,19 +1179,44 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
+-type composite_key() :: binary() | [binary()].
+
 -spec flatten(object() | objects()) -> object() | objects().
 flatten(L) when is_list(L) -> [ flatten(JObj) || JObj <- L ];
 flatten(?JSON_WRAPPER(L)) when is_list(L) ->
     from_list(lists:flatten([ flatten_key(K,V) || {K,V} <- L ])).
 
--spec join_keys(binary(), binary()) -> binary().
-join_keys(K1, K2) when is_binary(K1), is_binary(K2) -> <<K1/binary, "_", K2/binary>>.
+-spec flatten(object() | objects(), binary_join) -> object() | objects().
+flatten(L, binary_join) -> keys_to_binary(flatten(L)).
 
--spec flatten_key(binary(), any()) -> [{binary(), any()}].
+-spec keys_to_binary(object()) -> object().
+keys_to_binary(?JSON_WRAPPER(L)) when is_list(L) ->
+    from_list([ {key_to_binary(K), V} || {K,V} <-L ]).
+
+-spec key_to_binary(composite_key()) -> binary().
+key_to_binary(K) when is_list(K) -> kz_binary:join(K, <<"_">>);
+key_to_binary(K) -> K.
+
+-spec join_keys(composite_key(), binary()) -> [binary()].
+join_keys(K1, K2) when is_list(K1) -> K1 ++ [K2];
+join_keys(K1, K2) -> [K1, K2].
+
+-spec flatten_key(composite_key(), any()) -> [{composite_key(), any()}].
+flatten_key(K, V = ?JSON_WRAPPER([])) -> [ {K, V} ];
 flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
     [ flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L ];
 flatten_key(K, V) ->
     [ {K, V} ].
+
+-spec expand(object()) -> object().
+expand(?JSON_WRAPPER(L)) when is_list(L) ->
+    lists:foldl( fun({K,V}, JObj) -> set_value(K, V, JObj) end, new(), L ).
+
+-spec diff(object(), object()) -> object().
+diff(J1, J2) ->
+    ?JSON_WRAPPER(L1) = flatten(J1),
+    ?JSON_WRAPPER(L2) = flatten(J2),
+    expand(from_list(L1 -- L2)).
 
 -type exec_fun_1() :: fun((object()) -> object()).
 -type exec_fun_2() :: {fun((_, object()) -> object()), _}.
