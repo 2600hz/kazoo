@@ -77,8 +77,12 @@ load_default_category(_Account, Config) ->
 
 -spec get_category(api_account(), ne_binary(), [fun()]) -> kz_json:object().
 get_category(Account, Category, Programm) ->
-    Confs = [ P(Account, Category) || P <- Programm ],
+    Confs = [ maybe_new(P(Account, Category)) || P <- Programm ],
     kz_json:merge_recursive(Confs).
+
+-spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
+maybe_new({ok, JObj}) -> JObj;
+maybe_new(_) -> kz_json:new().
 
 %%--------------------------------------------------------------------
 %% @public
