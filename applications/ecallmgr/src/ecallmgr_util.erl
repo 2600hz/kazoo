@@ -354,11 +354,6 @@ custom_channel_vars_fold({<<"variable_sip_h_X-", ?CHANNEL_VAR_PREFIX, Key/binary
         'true' -> Acc;
         'false' -> [{Key, V} | Acc]
     end;
-custom_channel_vars_fold({<<"X-", ?CHANNEL_VAR_PREFIX, Key/binary>>, V}, Acc) ->
-    case props:is_defined(Key, Acc) of
-        'true' -> Acc;
-        'false' -> [{Key, V} | Acc]
-    end;
 custom_channel_vars_fold(_, Acc) -> Acc.
 
 -spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
@@ -769,11 +764,6 @@ build_bridge_channels([#bridge_endpoint{invite_format = <<"loopback">>}=Endpoint
         {'error', _} -> build_bridge_channels(Endpoints, Channels);
         {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
     end;
-build_bridge_channels([#bridge_endpoint{invite_format = <<"dialplan">>}=Endpoint|Endpoints], Channels) ->
-    case build_channel(Endpoint) of
-        {'error', _} -> build_bridge_channels(Endpoints, Channels);
-        {'ok', Channel} -> build_bridge_channels(Endpoints, [Channel|Channels])
-    end;
 %% If this does not have an explicted sip route and we have no ip address, lookup the registration
 build_bridge_channels([#bridge_endpoint{ip_address='undefined'}=Endpoint|Endpoints], Channels) ->
     S = self(),
@@ -894,9 +884,6 @@ get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
     Route;
 get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
-get_sip_contact(#bridge_endpoint{invite_format = <<"dialplan">>, route=Route}) ->
-%%    <<"dialplan/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
-    <<"dialplan/", Route/binary, "/context_2">>;
 get_sip_contact(#bridge_endpoint{ip_address='undefined'
                                 ,realm=Realm
                                 ,username=Username
@@ -912,8 +899,6 @@ maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
     Contact;
-maybe_clean_contact(Contact, #bridge_endpoint{invite_format = <<"dialplan">>}) ->
-    Contact;
 maybe_clean_contact(Contact, _) ->
     re:replace(Contact, <<"^.*?[^=]sip:">>, <<>>, [{'return', 'binary'}]).
 
@@ -921,8 +906,6 @@ maybe_clean_contact(Contact, _) ->
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"route">>}) ->
     Contact;
 ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"loopback">>}) ->
-    Contact;
-ensure_username_present(Contact, #bridge_endpoint{invite_format = <<"dialplan">>}) ->
     Contact;
 ensure_username_present(Contact, Endpoint) ->
     case binary:split(Contact, <<"@">>) of
@@ -984,7 +967,6 @@ maybe_format_user(Contact, _) -> Contact.
 -spec maybe_set_interface(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_set_interface(<<"sofia/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(<<"loopback/", _/binary>>=Contact, _) -> Contact;
-maybe_set_interface(<<"dialplan/", _/binary>>=Contact, _) -> Contact;
 maybe_set_interface(Contact, #bridge_endpoint{sip_interface='undefined'}=Endpoint) ->
     Options = ['ungreedy', {'capture', 'all_but_first', 'binary'}],
     case re:run(Contact, <<";fs_path=sip:(.*):\\d*;">>, Options) of
