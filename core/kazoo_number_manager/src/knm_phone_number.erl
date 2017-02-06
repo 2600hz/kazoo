@@ -558,7 +558,6 @@ to_public_json(PN) ->
 to_json(PN=#knm_phone_number{doc=JObj}) ->
     kz_json:from_list(
       [{<<"_id">>, number(N)}
-      ,{<<"_rev">>, rev(N)}
       ,{?PVT_DB_NAME, number_db(N)}
       ,{?PVT_STATE, state(N)}
       ,{?PVT_PORTED_IN, ported_in(N)}
@@ -570,16 +569,17 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
       ]
       ++
           props:filter_empty(
-            [{?PVT_ASSIGNED_TO, assigned_to(PN)}
-            ,{?PVT_AUTH_BY, auth_by(PN)}
-            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
-            ,{?PVT_USED_BY, used_by(PN)}
-            ,{?PVT_FEATURES, features(PN)}
-            ,{?PVT_FEATURES_ALLOWED, features_allowed(PN)}
-            ,{?PVT_FEATURES_DENIED, features_denied(PN)}
-            ,{?PVT_RESERVE_HISTORY, reserve_history(PN)}
-            ,{?PVT_CARRIER_DATA, carrier_data(PN)}
-            ,{?PVT_REGION, region(PN)}
+            [{<<"_rev">>, rev(N)}
+            ,{?PVT_ASSIGNED_TO, assigned_to(N)}
+            ,{?PVT_AUTH_BY, auth_by(N)}
+            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
+            ,{?PVT_USED_BY, used_by(N)}
+            ,{?PVT_FEATURES, features(N)}
+            ,{?PVT_FEATURES_ALLOWED, features_allowed(N)}
+            ,{?PVT_FEATURES_DENIED, features_denied(N)}
+            ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
+            ,{?PVT_CARRIER_DATA, carrier_data(N)}
+            ,{?PVT_REGION, region(N)}
             ])
      ).
 
@@ -847,7 +847,7 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
 
 %% @private
--spec rev(knm_phone_number()) -> ne_binary().
+-spec rev(knm_phone_number()) -> api_ne_binary().
 rev(#knm_phone_number{rev=Rev}) -> Rev.
 
 -spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
