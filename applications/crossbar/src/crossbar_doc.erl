@@ -10,7 +10,6 @@
 -module(crossbar_doc).
 
 -export([load/2, load/3
-        ,load_from_file/2
         ,load_merge/2, load_merge/3, load_merge/4
         ,merge/3
         ,patch_and_validate/3
@@ -268,22 +267,6 @@ handle_successful_load(Context, JObj, 'false') ->
                ,[kz_doc:id(JObj), kz_doc:revision(JObj), cb_context:account_db(Context)]
                ),
     cb_context:store(handle_datamgr_success(JObj, Context), 'db_doc', JObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% "Load" is a poor word choice given the other function names...
-%% This function creates a crossbar document from the contents of
-%% a file.
-%%
-%% Failure here returns 410, 500, or 503
-%% @end
-%%--------------------------------------------------------------------
--spec load_from_file(ne_binary(), ne_binary()) ->
-                            {'ok', kz_json:object()} |
-                            {'error', atom()}.
-load_from_file(Db, File) ->
-    kz_datamgr:load_doc_from_file(Db, 'crossbar', File).
 
 %%--------------------------------------------------------------------
 %% @public
