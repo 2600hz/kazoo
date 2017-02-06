@@ -33,7 +33,6 @@
 
 -define(SIGNUP_DB, <<"signups">>).
 
--define(VIEW_FILE, <<"views/signup.json">>).
 -define(VIEW_ACTIVATION_KEYS, <<"signups/listing_by_key">>).
 -define(VIEW_ACTIVATION_REALM, <<"signups/listing_by_realm">>).
 -define(VIEW_ACTIVATION_CREATED, <<"signups/listing_by_created">>).
@@ -64,12 +63,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.put.signup">>, ?MODULE, 'put'),
 
     _ = kz_datamgr:db_create(?SIGNUP_DB),
-
-    _ = case kz_datamgr:update_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE) of
-            {'error', _} -> kz_datamgr:load_doc_from_file(?SIGNUP_DB, 'crossbar', ?VIEW_FILE);
-            {'ok', _} -> 'ok'
-        end,
-
+    _ = kz_datamgr:revise_doc_from_file(?SIGNUP_DB, 'crossbar', <<"views/signup.json">>),
     _ = supervisor:start_child('crossbar_sup', crossbar_sup:child_spec(?MODULE)),
     ok.
 

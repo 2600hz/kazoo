@@ -43,7 +43,6 @@
         ,lookup_doc_rev/2, lookup_doc_rev/3
         ,update_doc/3, update_doc/4
         ,load_doc_from_file/3
-        ,update_doc_from_file/3
         ,revise_doc_from_file/3
         ,revise_docs_from_folder/3, revise_docs_from_folder/4
         ,revise_views_from_folder/2
@@ -120,7 +119,7 @@ load_doc_from_file(DbName, App, File) ->
     end.
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% Overwrite the existing contents of a document with the contents of
 %% a file
@@ -134,7 +133,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME ->
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
-        JObj = kz_json:decode(Bin),
+        JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
         ensure_saved(DbName, JObj)
     catch
         _Type:{'badmatch',{'error',Reason}} ->
