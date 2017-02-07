@@ -227,21 +227,22 @@ bulk_fetch(T0, JObjs) ->
 %% @doc
 %% Works the same with the output of save_docs and del_docs
 %% @end
-handle_bulk_change(_Db, JObjs, PNsMap, T0, ErrorF)
+handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
   when is_map(PNsMap) ->
     F = fun (JObj, T) ->
                 Num = kz_json:get_ne_value(<<"id">>, JObj),
                 case kz_json:get_ne_value(<<"ok">>, JObj) of
                     true ->
-                        lager:debug("successfully changed ~s in ~s", [Num, _Db]),
+                        lager:debug("successfully changed ~s in ~s", [Num, Db]),
                         knm_numbers:ok(maps:get(Num, PNsMap), T);
                     undefined ->
+                        %% Weirdest thing here is on conflict doc was actually properly saved!
                         R = kz_json:get_ne_value(<<"error">>, JObj),
-                        lager:warning("error changing ~s in ~s: ~p", [Num, _Db, R]),
+                        lager:warning("error changing ~s in ~s: ~p", [Num, Db, R]),
                         ErrorF(Num, kz_term:to_atom(R, true), T)
                 end
         end,
-    lists:foldl(F, T0, JObjs);
+    retry_conflicts(lists:foldl(F, T0, JObjs), Db, PNsMap, ErrorF);
 handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
     PNsMap = group_by_num(PNs),
     handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF).
@@ -249,6 +250,24 @@ handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
 handle_bulk_change(Db, JObjs, PNs, T) ->
     ErrorF = fun database_error/3,
     handle_bulk_change(Db, JObjs, PNs, T, ErrorF).
+
+%% On delete there won't be conflicts.
+retry_conflicts(T0, Db, PNsMap, ErrorF) ->
+    {Conflicts, BaseT} = take_conflits(T0),
+    F = fun (Num, T) ->
+                PN = maps:get(Num, PNsMap),
+                case kz_datamgr:ensure_saved(Db, to_json(PN)) of
+                    {ok,_} -> knm_numbers:ok(PN, T);
+                    {error,R} -> ErrorF(Num, R, T)
+                end
+        end,
+    lists:foldl(F, BaseT, Conflicts).
+
+take_conflits(T=#{ko := KOs}) ->
+    F = fun ({_Num, R}) -> knm_errors:cause(R) =:= <<"conflict">> end,
+    {Conflicts, NewKOs} = lists:partition(F, maps:to_list(KOs)),
+    {Nums, _} = lists:unzip(Conflicts),
+    {Nums, T#{ko => maps:from_list(NewKOs)}}.
 
 do_handle_fetch(T=#{options := Options}, Doc) ->
     case knm_number:attempt(fun handle_fetch/2, [Doc, Options]) of
@@ -264,10 +283,7 @@ group_by_db(Nums) ->
     lists:foldl(F, #{}, Nums).
 
 group_by_num(PNs) ->
-    F = fun (PN, M) ->
-                Key = number(PN),
-                M#{Key => [PN | maps:get(Key, M, [])]}
-        end,
+    F = fun (PN, M) -> M#{number(PN) => PN} end,
     lists:foldl(F, #{}, PNs).
 
 split_by_numberdb(PNs) ->
