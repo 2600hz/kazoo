@@ -71,19 +71,20 @@ create_auth_token(Context, AuthModule, JObj) ->
 
 -spec maybe_create_token(kz_proplist()) ->
                                 {'ok', ne_binary()} |
-                                {'error', atom()}.
+                                {'error', any()}.
 maybe_create_token(Claims) ->
     AuthConfigs = auth_configs(props:get_ne_binary_value(<<"account_id">>, Claims)),
     AuthModule = props:get_ne_binary_value(<<"method">>, Claims),
-    maybe_create_token(Claims, AuthModule, is_auth_module_enabled(AuthModule, AuthConfigs)).
+    maybe_create_token(Claims, AuthConfigs, is_auth_module_enabled(AuthModule, AuthConfigs)).
 
--spec maybe_create_token(kz_proplist(), api_binary(), boolean()) ->
+-spec maybe_create_token(kz_proplist(), kz_json:object(), api_boolean()) ->
                                 {'ok', ne_binary()} |
-                                {'error', atom()}.
-maybe_create_token(Claims, _AuthModule, 'true') ->
+                                {'error', any()}.
+maybe_create_token(Claims, _AuthConfigs, 'true') ->
     %%TODO: check for 2FA here
     kz_auth:create_token(Claims);
-maybe_create_token(_Claims, AuthModule, 'false') ->
+maybe_create_token(Claims, _AuthConfigs, 'false') ->
+    AuthModule = props:get_ne_binary_value(<<"method">>, Claims),
     {'error', <<"authentication module ", (kz_term:to_binary(AuthModule))/binary, " is disabled">>}.
 
 -spec validate_auth_token(map() | ne_binary()) ->
@@ -112,18 +113,14 @@ maybe_db_token(AuthToken) ->
 %% @doc Check if is authenticator module enabled or not
 %% @end
 %%--------------------------------------------------------------------
--spec is_auth_module_enabled(api_ne_binary(), kz_json:object()) -> boolean().
-is_auth_module_enabled(AuthModule, Settings) ->
-    AuthModule =/= 'undefined'
-        andalso kz_term:is_true(
-                  kz_json:get_first_defined([enabled_path(AuthModule), enabled_path(<<"_">>)]
-                                           ,Settings
-                                           ,'false'
-                                           )
-                 ).
-
--spec enabled_path(ne_binary()) -> list().
-enabled_path(Module) -> [Module, <<"enabled">>].
+-spec is_auth_module_enabled(api_ne_binary(), api_object()) -> boolean().
+is_auth_module_enabled(_AuthModule, 'undefined') -> 'true';
+is_auth_module_enabled('undefined', _Configs) -> 'true';
+is_auth_module_enabled(AuthModule, Configs) ->
+    kz_json:is_true([AuthModule, <<"enabled">>]
+                   ,Configs
+                   ,'true'
+                   ).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -136,7 +133,7 @@ enabled_path(Module) -> [Module, <<"enabled">>].
 %%      3.2. If not reseller get parent's AccountId and go to (1)
 %% @end
 %%--------------------------------------------------------------------
--spec auth_configs(kz_json:object()) -> kz_json:object().
+-spec auth_configs(kz_json:object()) -> api_object().
 auth_configs(AccountId) ->
     MasterId = case kapps_util:get_master_account_id() of
                    {'ok', Id} -> Id;
@@ -152,7 +149,7 @@ auth_configs(AccountId) ->
 %% then system_config if couldn't find configs in account's
 %% @end
 %%--------------------------------------------------------------------
--spec account_auth_configs(api_binary(), api_binary()) -> kz_json:object().
+-spec account_auth_configs(api_binary(), api_binary()) -> api_object().
 account_auth_configs('undefined', _MasterId) ->
     system_auth_config();
 account_auth_configs(MasterId, ?NE_BINARY = MasterId) ->
@@ -162,7 +159,7 @@ account_auth_configs(AccountId, MasterId) ->
     IsReseller = kz_services:is_reseller(AccountId),
     account_auth_configs(AccountId, MasterId, IsReseller).
 
--spec account_auth_configs(ne_binary(), api_binary(), boolean()) -> kz_json:object().
+-spec account_auth_configs(ne_binary(), api_binary(), boolean()) -> api_object().
 account_auth_configs(AccountId, MasterId, IsReseller) ->
     auth_configs_from_doc(account_auth_configs(AccountId), AccountId, MasterId, IsReseller).
 
@@ -176,7 +173,7 @@ account_auth_configs(AccountId) ->
 %% either go to parent's account or system config
 %% @end
 %%--------------------------------------------------------------------
--spec auth_configs_from_doc(kz_std_return(), ne_binary(), api_binary(), boolean()) -> kz_json:object().
+-spec auth_configs_from_doc(kz_std_return(), ne_binary(), api_binary(), boolean()) -> api_object().
 auth_configs_from_doc({'ok', Configs}, AccountId, MasterId, _IsReseller) ->
     case kz_json:is_empty(Configs) of
         'true' -> account_auth_configs(account_parent(AccountId), MasterId);
@@ -211,20 +208,6 @@ account_parent(AccountId) ->
 %% @doc Get configs from system_config
 %% @end
 %%--------------------------------------------------------------------
--spec system_auth_config() -> kz_json:object().
+-spec system_auth_config() -> api_object().
 system_auth_config() ->
-    kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID, default_auth_configs()).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc Default Kazoo Auth configs (A catch-all module name to allow
-%% token generation if Auth is not configured)
-%% @end
-%%--------------------------------------------------------------------
-default_auth_configs() ->
-    kz_json:from_list(
-      [{<<"_">>
-       ,kz_json:from_list([{<<"enabled">>, 'true'}])
-       }
-      ]
-     ).
+    kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID).
