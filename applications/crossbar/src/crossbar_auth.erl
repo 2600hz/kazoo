@@ -113,8 +113,7 @@ maybe_db_token(AuthToken) ->
 %% @doc Check if is authenticator module enabled or not
 %% @end
 %%--------------------------------------------------------------------
--spec is_auth_module_enabled(api_ne_binary(), api_object()) -> boolean().
-is_auth_module_enabled(_AuthModule, 'undefined') -> 'true';
+-spec is_auth_module_enabled(api_ne_binary(), kz_json:object()) -> boolean().
 is_auth_module_enabled('undefined', _Configs) -> 'true';
 is_auth_module_enabled(AuthModule, Configs) ->
     kz_json:is_true([AuthModule, <<"enabled">>]
@@ -133,7 +132,7 @@ is_auth_module_enabled(AuthModule, Configs) ->
 %%      3.2. If not reseller get parent's AccountId and go to (1)
 %% @end
 %%--------------------------------------------------------------------
--spec auth_configs(kz_json:object()) -> api_object().
+-spec auth_configs(kz_json:object()) -> kz_json:object().
 auth_configs(AccountId) ->
     MasterId = case kapps_util:get_master_account_id() of
                    {'ok', Id} -> Id;
@@ -149,7 +148,7 @@ auth_configs(AccountId) ->
 %% then system_config if couldn't find configs in account's
 %% @end
 %%--------------------------------------------------------------------
--spec account_auth_configs(api_binary(), api_binary()) -> api_object().
+-spec account_auth_configs(api_binary(), api_binary()) -> kz_json:object().
 account_auth_configs('undefined', _MasterId) ->
     system_auth_config();
 account_auth_configs(MasterId, ?NE_BINARY = MasterId) ->
@@ -159,7 +158,7 @@ account_auth_configs(AccountId, MasterId) ->
     IsReseller = kz_services:is_reseller(AccountId),
     account_auth_configs(AccountId, MasterId, IsReseller).
 
--spec account_auth_configs(ne_binary(), api_binary(), boolean()) -> api_object().
+-spec account_auth_configs(ne_binary(), api_binary(), boolean()) -> kz_json:object().
 account_auth_configs(AccountId, MasterId, IsReseller) ->
     auth_configs_from_doc(account_auth_configs(AccountId), AccountId, MasterId, IsReseller).
 
@@ -173,7 +172,7 @@ account_auth_configs(AccountId) ->
 %% either go to parent's account or system config
 %% @end
 %%--------------------------------------------------------------------
--spec auth_configs_from_doc(kz_std_return(), ne_binary(), api_binary(), boolean()) -> api_object().
+-spec auth_configs_from_doc(kz_std_return(), ne_binary(), api_binary(), boolean()) -> kz_json:object().
 auth_configs_from_doc({'ok', Configs}, AccountId, MasterId, _IsReseller) ->
     case kz_json:is_empty(Configs) of
         'true' -> account_auth_configs(account_parent(AccountId), MasterId);
@@ -208,6 +207,6 @@ account_parent(AccountId) ->
 %% @doc Get configs from system_config
 %% @end
 %%--------------------------------------------------------------------
--spec system_auth_config() -> api_object().
+-spec system_auth_config() -> kz_json:object().
 system_auth_config() ->
-    kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID).
+    kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID, kz_json:new()).

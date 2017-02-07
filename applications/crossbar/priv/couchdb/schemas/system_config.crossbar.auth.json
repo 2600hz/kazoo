@@ -9,6 +9,7 @@
             "type": "string"
         },
         "kazoo_auth_configs": {
+            "default": {},
             "description": "Kazoo Auth modules' configurations",
             "type": "object"
         }
