@@ -243,6 +243,7 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
                                             ,job=Job
+                                            ,resp='undefined'
                                             }=State) ->
     case kz_call_event:response_message(JObj) of
         <<"SUCCESS">> ->
@@ -265,6 +266,7 @@ handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
 handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
                                                     ,job=Job
                                                     ,fax_status='undefined'
+                                                    ,resp='undefined'
                                                     }=State) ->
     lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
     send_error_status(State, kz_call_event:hangup_cause(JObj)),
