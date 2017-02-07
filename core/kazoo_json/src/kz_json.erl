@@ -72,7 +72,7 @@
         ,merge_left/2, merge_right/2
         ]).
 
--export([from_list/1, merge_jobjs/2]).
+-export([from_list/1, from_list_recursive/1, merge_jobjs/2]).
 
 -export([load_fixture_from_file/2, load_fixture_from_file/3]).
 
@@ -244,6 +244,26 @@ are_equal(JObj1, JObj2) ->
 -spec from_list(json_proplist()) -> object().
 from_list([]) -> new();
 from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
+
+-spec from_list_recursive(json_proplist()) -> object().
+from_list_recursive([]) -> new();
+from_list_recursive(L)
+  when is_list(L) ->
+    recursive_from_list(L).
+
+-spec recursive_from_list(list()) -> object().
+recursive_from_list([First | _]=List)
+  when is_list(List)
+       andalso is_tuple(First)  ->
+    set_values([{K, recursive_from_list(V)} || {K,V} <- List], new());
+recursive_from_list(X) when is_float(X) -> X;
+recursive_from_list(X) when is_integer(X) -> X;
+recursive_from_list(X) when is_atom(X) -> X;
+recursive_from_list(X) when is_list(X) -> X;
+recursive_from_list(X) when is_binary(X) -> X;
+recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601({Date, {0,0,0}});
+recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
+recursive_from_list(_Else) -> null.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
 -spec merge(object(), object()) -> object().
