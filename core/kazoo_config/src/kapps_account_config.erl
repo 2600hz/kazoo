@@ -18,7 +18,7 @@
         ,set_global/4
         ,flush/1, flush/2
         ,migrate/1
-        ,get_category/2, get_reseller_category/2
+        ,get_category/2, get_reseller_category/2, config_doc_id/1
         ]).
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
@@ -78,7 +78,7 @@ load_default_category(_Account, Config) ->
 -spec get_category(api_account(), ne_binary(), [fun()]) -> kz_json:object().
 get_category(Account, Category, Programm) ->
     Confs = [ maybe_new(P(Account, Category)) || P <- Programm ],
-    kz_json:merge_recursive(Confs).
+    kz_json:merge_recursive(lists:reverse(Confs)).
 
 -spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
 maybe_new({ok, JObj}) -> JObj;
