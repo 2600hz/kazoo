@@ -3,10 +3,6 @@
     "_id": "system_config.auth",
     "description": "Schema for auth system_config",
     "properties": {
-        "auth_modules": {
-            "description": "Kazoo Auth modules' configurations",
-            "type": "object"
-        },
         "secret_for_user_signature": {
             "description": "auth secret for user signature",
             "type": "string"
