@@ -333,7 +333,7 @@ put(Context, ?OUTBOX, Id) ->
     do_put_action(Context, ?OUTBOX, Action, Id);
 put(Context, ?INBOX, Id) ->
     Action = kz_json:get_value(<<"action">>, cb_context:req_json(Context)),
-    do_put_action(Context, ?OUTBOX, Action, Id).
+    do_put_action(Context, ?INBOX, Action, Id).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -724,7 +724,8 @@ do_put_action(Context, ?OUTBOX, ?OUTBOX_ACTION_RESUBMIT, Id) ->
     Options = [{'transform', Fun}],
     FromDB = cb_context:account_db(Context),
     NewId = kz_binary:rand_hex(16),
-    case kz_datamgr:copy_doc(FromDB, Id, ?KZ_FAXES_DB, NewId, Options) of
+    lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
+    case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
             Updates = [{<<"pvt_job_status">>, <<"pending">>}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, Updates),
@@ -739,7 +740,8 @@ do_put_action(Context, ?INBOX, ?INBOX_ACTION_FORWARD, Id) ->
     Options = [{'transform', Fun}],
     FromDB = cb_context:account_db(Context),
     NewId = kz_binary:rand_hex(16),
-    case kz_datamgr:copy_doc(FromDB, Id, ?KZ_FAXES_DB, NewId, Options) of
+    lager:debug("copying ~s/~s to ~s/~s", [FromDB, Id, ?KZ_FAXES_DB, NewId]),
+    case kz_datamgr:copy_doc(FromDB, {?FAX_TYPE, Id}, ?KZ_FAXES_DB, NewId, Options) of
         {'ok', _Doc} ->
             Updates = [{<<"pvt_job_status">>, <<"pending">>}],
             {'ok', UpdatedDoc} = kz_datamgr:update_doc(?KZ_FAXES_DB, NewId, Updates),
