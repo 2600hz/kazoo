@@ -557,3 +557,21 @@ sum_test_() ->
     ,?_assertEqual(A42Bhi, kz_json:sum(A2Bhi, A40))
     ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum(?CHARGES_SIMPLE, ?CHARGES_SIMPLE))
     ].
+
+from_list_recursive_test() ->
+    List = [{<<"fax">>,
+             [{<<"id">>,<<"201702-1b6cfec4e3ab0b7bb97ced78bf431f39">>},
+              {<<"info">>,
+               [{<<"fax_hangup_code">>,200},
+                {<<"fax_hangup_cause">>,<<"NORMAL_CLEARING">>}]},
+              {<<"notifications">>,
+               {[{<<"email">>,
+                  {[{<<"send_to">>,
+                     [<<"someone@somedomain.com">>]}]}}]}}]}
+           ],
+    JObj = kz_json:from_list_recursive(List),
+    Key1 = [<<"fax">>, <<"info">>, <<"fax_hangup_code">>],
+    Key2 = [<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>],
+    [?_assertEqual(200, kz_json:get_integer_value(Key1, JObj))
+    ,?_assertEqual(<<"someone@somedomain.com">>, kz_json:get_ne_binary_value(Key2, JObj))
+    ].
