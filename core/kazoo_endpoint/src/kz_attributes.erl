@@ -96,6 +96,9 @@ caller_id(Attribute, Call) ->
 maybe_get_dynamic_cid(Validate, Attribute, Call) ->
     case kapps_call:kvs_fetch('dynamic_cid', Call) of
         'undefined' -> maybe_get_endpoint_cid(Validate, Attribute, Call);
+        {DynamicCIDNum,  DynamicCIDName} ->
+            lager:debug("found dynamic caller id ~s/~s", [DynamicCIDNum, DynamicCIDName]),
+            maybe_normalize_cid(DynamicCIDNum, DynamicCIDName, Validate, Attribute, Call);
         DynamicCID ->
             lager:debug("found dynamic caller id number ~s", [DynamicCID]),
             maybe_normalize_cid(DynamicCID, 'undefined', Validate, Attribute, Call)
