@@ -115,6 +115,7 @@ log_smtp(Emails, Subject, RenderedTemplates, Receipt, Error, AccountId) ->
             ,{<<"pvt_created">>, kz_time:current_tstamp()}
             ,{<<"template_id">>, get('template_id')}
             ,{<<"template_account_id">>, get('template_account_id')}
+            ,{<<"macros">>, get('macros')}
             ,{<<"_id">>, make_smtplog_id(AccountDb)}
             ]),
     lager:debug("attempting to save notify smtp log"),
