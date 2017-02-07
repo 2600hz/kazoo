@@ -77,13 +77,15 @@ lookup_doc_rev(#{server := {App, Conn}}, DbName, DocId) ->
 ensure_saved(#{server := {App, Conn}}=Map, DbName, Doc, Options) ->
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, Doc),
     try App:ensure_saved(Conn, DbName, PreparedDoc, Options) of
-        {'ok', JObj}=Ok -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
-                           _ = maybe_ensure_saved_others(kz_doc:id(Doc), Map, DbName, Doc, Options),
-                           Ok;
+        {'ok', JObj}=Ok ->
+            kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+            _ = maybe_ensure_saved_others(kz_doc:id(Doc), Map, DbName, Doc, Options),
+            Ok;
         Else -> Else
     catch
-        Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
-                 'failed'
+        Ex:Er ->
+            lager:error("exception ~p : ~p", [Ex, Er]),
+            'failed'
     end.
 
 maybe_ensure_saved_others(<<"_design", _/binary>>, Map, DbName, Doc, Options) ->

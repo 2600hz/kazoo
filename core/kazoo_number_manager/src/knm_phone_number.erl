@@ -1585,7 +1585,7 @@ assign(T0) ->
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to assign numbers to ~s (~p): ~p", [AccountDb, E, Nums]),
-                        assign_failure(Nums, E, T)
+                        database_error(Nums, E, T)
                 end
         end,
     maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
