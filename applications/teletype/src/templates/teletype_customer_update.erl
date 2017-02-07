@@ -32,6 +32,7 @@
 -define(TEMPLATE_SUBJECT, <<"Customer update">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Customer update">>).
+-define(THIRD_PARTY_DATA, <<"databag">>).
 
 -define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
@@ -110,8 +111,9 @@ select_users_to_update(Users, DataJObj) ->
 send_update_to_user(UserJObj, DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-              | build_macro_data(UserJObj, DataJObj)
-             ],
+             ]
+        ++ build_macro_data(UserJObj, DataJObj)
+        ++ [{?THIRD_PARTY_DATA, kz_json:get_value(?THIRD_PARTY_DATA, DataJObj, kz_json:new())}],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj, 'true'),
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
