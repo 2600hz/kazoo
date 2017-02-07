@@ -187,7 +187,15 @@ transition_to_pending(JObj) ->
     transition(JObj, [?PORT_SUBMITTED], ?PORT_PENDING).
 
 transition_to_scheduled(JObj) ->
-    transition(JObj, [?PORT_PENDING], ?PORT_SCHEDULED).
+    FromSubmitted = kapps_config:get_is_true(?KNM_CONFIG_CAT
+                                            ,<<"allow_port_transition_from_submitted_to_scheduled">>
+                                            ,'false'),
+    transition(JObj, states_to_scheduled(FromSubmitted), ?PORT_SCHEDULED).
+
+states_to_scheduled(_AllowFromSubmitted='false') ->
+    [?PORT_PENDING];
+states_to_scheduled(_AllowFromSubmitted='true') ->
+    [?PORT_SUBMITTED | states_to_scheduled('false')].
 
 transition_to_complete(JObj) ->
     case transition(JObj, [?PORT_PENDING, ?PORT_SCHEDULED, ?PORT_REJECTED], ?PORT_COMPLETED) of
