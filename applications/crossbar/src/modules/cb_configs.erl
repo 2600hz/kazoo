@@ -135,9 +135,13 @@ maybe_validate(ConfigName, Config, Parent) ->
         valid ->
             valid = validate_schema(SchemaName, Config);
         Error ->
-            lager:error("Parent configuration for ~p doesn't pass schema ~p validation due to: ~p", [ConfigName, SchemaName, Error]),
+            ErrorMsg = parse_error(Error),
+            lager:error("Parent configuration for ~p doesn't pass schema ~p validation due to: ~p", [ConfigName, SchemaName, ErrorMsg]),
             skip_validation
     end.
+
+parse_error({invalid_document, [{data_invalid, _Schema, Error, _Doc, Path}]}) -> {Error, Path};
+parse_error(X) -> X.
 
 -spec validate_schema(api_binary(), kz_json:object()) -> no_schema_present | valid | {invalid_document, term()}.
 validate_schema(Name, JObj) ->
