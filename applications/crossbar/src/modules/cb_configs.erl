@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
-%%%
 %%% @end
 %%% @contributors:
 %%%   Karl Anderson
@@ -12,27 +9,20 @@
 -module(cb_configs).
 
 -export([init/0
-        ,allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,validate/2
-        ,post/2
-        ,delete/2
+        ,allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/2, validate/3
+        ,post/2, post/3
+        ,delete/2, delete/3
         ]).
 
--export([validate_schema/2]).
-
 -include("crossbar.hrl").
+-define(DEFAULT_NODE, <<"default">>).
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
-%% @end
-%%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, 'allowed_methods'),
@@ -41,42 +31,28 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, 'delete').
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
-%% going to be responded to.
-%% @end
-%%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_ConfigId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+allowed_methods(_Config) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(_Node, _Config) ->
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /configs => []
-%%    /configs/foo => [<<"foo">>]
-%% @end
-%%--------------------------------------------------------------------
--spec resource_exists() -> 'false'.
--spec resource_exists(path_tokens()) -> 'true'.
+-spec resource_exists() -> false.
+-spec resource_exists(path_tokens()) -> true.
+-spec resource_exists(path_tokens(), path_tokens()) -> true.
 resource_exists() -> false.
 resource_exists(_) -> true.
+resource_exists(_, _) -> true.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
-%% and load necessary information.
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
-%% @end
-%%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Config) ->
+    validate(Context, ?DEFAULT_NODE, Config).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, Node, Config) ->
     try
-        validate(Context, cb_context:req_verb(Context), Config)
+        validate(Context, cb_context:req_verb(Context), Node, Config)
     catch
         _:{badmatch, {invalid_document, Errors}} ->
             lager:error("schema validation error: ~p", [Errors]),
@@ -88,46 +64,58 @@ validate(Context, Config) ->
             error_validation(Context)
     end.
 
--spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
-validate(Context, ?HTTP_GET, Config) -> validate_get(Config, Context);
-validate(Context, ?HTTP_POST, Config) -> validate_post(Config, Context);
-validate(Context, ?HTTP_DELETE, Config) -> validate_delete(Config, Context).
+-spec validate(cb_context:context(), http_method(), path_token(), path_token()) -> cb_context:context().
 
-%% XXX: probably it's worth to check allowed category name (ecallmgr, crossbar, etc)?
--spec validate_get(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_get(Config, Context) ->
+validate(Context, ?HTTP_GET, Node, Config) ->
     JObj = kapps_account_config:get_category(cb_context:account_id(Context), Config),
-    crossbar_doc:handle_datamgr_success(JObj, Context).
+    crossbar_doc:handle_datamgr_success(set_id(Config, node(Node, JObj)), Context);
 
--spec validate_delete(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_delete(Config, Context) ->
-    pass_validation(Context, kapps_account_config:get(cb_context:account_id(Context), Config)).
+validate(Context, ?HTTP_DELETE, Node, Config) ->
+    Document = kapps_account_config:get_category(cb_context:account_id(Context), Config),
+    pass_validation(Context, kz_json:delete_key(Node, Document));
 
--spec validate_post(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_post(Config, Context) ->
-    JObj = kz_json:public_fields(cb_context:req_data(Context)),
-    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
+validate(Context, ?HTTP_PUT, Node, Config) ->
+    validate(Context, ?HTTP_POST, Node, Config);
+
+validate(Context, ?HTTP_POST, Node, Config) ->
+    JObj = strip_id(cb_context:req_data(Context)),
+    Parent = node(Node, kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config)),
     FullConfig = kz_json:merge_recursive(Parent, JObj),
     maybe_validate(Config, FullConfig, Parent),
     pass_validation(Context, FullConfig).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Config) ->
-    save_delta(Context, Config).
+post(Context, Config) -> post(Context, ?DEFAULT_NODE, Config).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context, Node, Config) ->
+    save_delta(Context, Node, Config).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
-    crossbar_doc:delete(Context, permanent).
+delete(Context, Config) ->
+    delete(Context, ?DEFAULT_NODE, Config).
+
+-spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+delete(Context, _Node, _Config) ->
+    crossbar_doc:save(Context).
 
 -spec schema_name(api_ne_binary()) -> ne_binary().
 schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
 
-save_delta(Context, Config) ->
+% shortcuts
+node(Node, JObj) -> kz_json:get_value(Node, JObj, kz_json:new()).
+doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
+strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
+
+save_delta(Context, Node, Config) ->
     Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
-    JObjDiff = kz_json:diff(cb_context:doc(Context), Parent),
+    JObj = cb_context:doc(Context),
+    JObjDiff = kz_json:diff(JObj, node(Node, Parent)),
     StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), Config)),
-    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
-    crossbar_doc:save(Context, Document, []).
+    Document = kz_json:merge_recursive(StoredDocument, kz_json:set_value(Node, JObjDiff, kz_json:new())),
+    crossbar_doc:save(Context, Document, []),
+    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
 
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
@@ -152,8 +140,7 @@ maybe_validate(ConfigName, Config, Parent) ->
     end.
 
 -spec validate_schema(api_binary(), kz_json:object()) -> no_schema_present | valid | {invalid_document, term()}.
-validate_schema(Name, Doc) ->
-    JObj = kz_json:get_value(<<"default">>, Doc),
+validate_schema(Name, JObj) ->
     case kz_json_schema:load(Name) of
         {ok, Schema} ->
             case kz_json_schema:validate(Schema, JObj) of
