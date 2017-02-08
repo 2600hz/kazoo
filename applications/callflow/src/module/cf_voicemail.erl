@@ -130,6 +130,9 @@
               ,prev = <<"4">>
               ,next = <<"6">>
               ,delete = <<"7">>
+
+              %% Greeting, instructions or leaving a voicemail message
+              ,continue = <<"#">>
          }).
 -type vm_keys() :: #keys{}.
 
@@ -430,6 +433,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
     end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                      ,operator=Operator
+                                     ,continue=Continue
                                      }
                           ,media_extension=Ext
                           }=Box, _, Call) ->
@@ -455,6 +459,9 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                         {'ok', Flow} -> {'branch', Flow};
                         {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
                     end;
+                Continue ->
+                    lager:info("caller chose to continue to the next element in the callflow"),
+                    'ok';
                 _Else ->
                     lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
                     record_voicemail(tmp_file(Ext), Box, Call)
@@ -526,9 +533,7 @@ play_instructions(#mailbox{skip_instructions='false'}, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec record_voicemail(ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
-record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
-                                         ,media_extension=Ext
-                                         }=Box, Call) ->
+record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=Box, Call) ->
     Tone = kz_json:from_list([{<<"Frequencies">>, [<<"440">>]}
                              ,{<<"Duration-ON">>, <<"500">>}
                              ,{<<"Duration-OFF">>, <<"100">>}
@@ -539,25 +544,31 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
             IsCallUp = kz_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
-            case IsCallUp
-                andalso review_recording(AttachmentName, 'true', Box, Call)
-            of
-                'false' ->
-                    new_message(AttachmentName, Length, Box, Call);
-                {'ok', 'record'} ->
-                    record_voicemail(tmp_file(Ext), Box, Call);
-                {'ok', _Selection} ->
-                    cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
-                    _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
-                    _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
-                    'ok';
-                {'branch', Flow} ->
-                    _ = new_message(AttachmentName, Length, Box, Call),
-                    _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
-                    {'branch', Flow}
-            end;
+            Digit = kz_json:get_value(<<"Terminator">>, Msg),
+            maybe_review_recording(AttachmentName, Box, Call, Digit, Length, IsCallUp);
         {'error', _R} ->
             lager:info("error while attempting to record a new message: ~p", [_R])
+    end.
+
+-spec maybe_review_recording(ne_binary(), mailbox(), kapps_call:call(), ne_binary() | 'undefined', integer(), boolean()) -> 'ok'.
+maybe_review_recording(AttachmentName, #mailbox{}=Box, Call, _Digit, Length, _IsCallUp='false') ->
+    new_message(AttachmentName, Length, Box, Call);
+maybe_review_recording(_AttachmentName, #mailbox{keys=#keys{continue=Digit}}, _Call, Digit, _Length, _IsCallUp) ->
+    lager:info("caller chose to continue to the next element in the callflow"),
+    'ok';
+maybe_review_recording(AttachmentName, #mailbox{media_extension=Ext}=Box, Call, _Digit, Length, _IsCallUp) ->
+    case review_recording(AttachmentName, 'true', Box, Call) of
+        {'ok', 'record'} ->
+            record_voicemail(tmp_file(Ext), Box, Call);
+        {'ok', _Selection} ->
+            cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
+            _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
+            _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
+            'ok';
+        {'branch', Flow} ->
+            _ = new_message(AttachmentName, Length, Box, Call),
+            _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
+            {'branch', Flow}
     end.
 
 %%--------------------------------------------------------------------
@@ -1662,6 +1673,7 @@ populate_keys(Call) ->
          ,prev = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
          ,next = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
          ,delete = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
+         ,continue = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"continue">>], JObj, Default#keys.continue)
          }.
 
 %%--------------------------------------------------------------------
