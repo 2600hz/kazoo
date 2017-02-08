@@ -94,17 +94,26 @@ delete(Context, _Config) ->
     end.
 
 % shortcuts
+-spec doc_id(ne_binary()) -> ne_binary().
 doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+
+-spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
 set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
+
+-spec strip_id(kz_json:object()) -> kz_json:object().
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
+
+-spec schema_name(ne_binary()) -> ne_binary().
 schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
 
+-spec pass_validation(cb_context:context()) -> cb_context:context().
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
          {fun cb_context:set_doc/2, JObj}
         ,{fun cb_context:set_resp_status/2, success}
     ]).
 
+-spec error_validation(cb_context:context()) -> cb_context:context().
 error_validation(Context) ->
     cb_context:setters(Context, [
         {fun cb_context:set_resp_error_code/2, 400}
@@ -137,6 +146,7 @@ validate_schema(Name, JObj) ->
         _ -> no_schema_present
     end.
 
+-spec flush(cb_context:context()) -> cb_context:context().
 flush(Context) ->
     kapps_account_config:flush(cb_context:account_id(Context)),
     Context.
