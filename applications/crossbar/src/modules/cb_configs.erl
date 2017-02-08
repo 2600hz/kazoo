@@ -106,7 +106,7 @@ strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
 -spec schema_name(ne_binary()) -> ne_binary().
 schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
 
--spec pass_validation(cb_context:context()) -> cb_context:context().
+-spec pass_validation(cb_context:context(), kz_json:object()) -> cb_context:context().
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
          {fun cb_context:set_doc/2, JObj}
