@@ -9,7 +9,7 @@
 -module(cb_configs).
 
 -export([init/0
-        ,allowed_methods/1, allowed_methods/2
+        ,allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/2
         ,post/2
@@ -33,9 +33,6 @@ init() ->
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_Config) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
--spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(_Node, _Config) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
 -spec resource_exists() -> false.
