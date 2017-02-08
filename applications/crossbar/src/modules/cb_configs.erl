@@ -47,12 +47,12 @@ resource_exists(_, _) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Config) ->
-    validate(Context, ?DEFAULT_NODE, Config).
+    validate(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(Context, Node, Config) ->
+validate(Context, Config, Node) ->
     try
-        validate(Context, cb_context:req_verb(Context), Node, Config)
+        validate(Context, cb_context:req_verb(Context), Config, Node)
     catch
         _:{badmatch, {invalid_document, Errors}} ->
             lager:error("schema validation error: ~p", [Errors]),
@@ -66,18 +66,18 @@ validate(Context, Node, Config) ->
 
 -spec validate(cb_context:context(), http_method(), path_token(), path_token()) -> cb_context:context().
 
-validate(Context, ?HTTP_GET, Node, Config) ->
+validate(Context, ?HTTP_GET, Config, Node) ->
     JObj = kapps_account_config:get_category(cb_context:account_id(Context), Config),
     crossbar_doc:handle_datamgr_success(set_id(Config, node(Node, JObj)), Context);
 
-validate(Context, ?HTTP_DELETE, Node, Config) ->
+validate(Context, ?HTTP_DELETE, Config, Node) ->
     Document = kapps_account_config:get_category(cb_context:account_id(Context), Config),
     pass_validation(Context, kz_json:delete_key(Node, Document));
 
-validate(Context, ?HTTP_PUT, Node, Config) ->
+validate(Context, ?HTTP_PUT, Config, Node) ->
     validate(Context, ?HTTP_POST, Node, Config);
 
-validate(Context, ?HTTP_POST, Node, Config) ->
+validate(Context, ?HTTP_POST, Config, Node) ->
     JObj = strip_id(cb_context:req_data(Context)),
     Parent = node(Node, kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config)),
     FullConfig = kz_json:merge_recursive(Parent, JObj),
@@ -85,30 +85,21 @@ validate(Context, ?HTTP_POST, Node, Config) ->
     pass_validation(Context, FullConfig).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Config) -> post(Context, ?DEFAULT_NODE, Config).
+post(Context, Config) -> post(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context, Node, Config) ->
-    save_delta(Context, Node, Config).
+post(Context, Config, Node) ->
+    save_delta(Context, Config, Node).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, Config) ->
-    delete(Context, ?DEFAULT_NODE, Config).
+    delete(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, _Node, _Config) ->
     crossbar_doc:save(Context).
 
--spec schema_name(api_ne_binary()) -> ne_binary().
-schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
-
-% shortcuts
-node(Node, JObj) -> kz_json:get_value(Node, JObj, kz_json:new()).
-doc_id(Config) -> kapps_account_config:config_doc_id(Config).
-set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
-strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
-
-save_delta(Context, Node, Config) ->
+save_delta(Context, Config, Node) ->
     Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
     JObj = cb_context:doc(Context),
     JObjDiff = kz_json:diff(JObj, node(Node, Parent)),
@@ -116,6 +107,14 @@ save_delta(Context, Node, Config) ->
     Document = kz_json:merge_recursive(StoredDocument, kz_json:set_value(Node, JObjDiff, kz_json:new())),
     crossbar_doc:save(Context, Document, []),
     crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
+
+% shortcuts
+node(Node, JObj) -> kz_json:get_value(Node, JObj, kz_json:new()).
+doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
+strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
+schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
+
 
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
@@ -129,6 +128,7 @@ error_validation(Context) ->
         ,{fun cb_context:set_resp_status/2, error}
     ]).
 
+-spec maybe_validate(ne_binary(), kz_json:object(), kz_json:object()) -> skip_validation | valid.
 maybe_validate(ConfigName, Config, Parent) ->
     SchemaName = schema_name(ConfigName),
     case validate_schema(SchemaName, Parent) of
