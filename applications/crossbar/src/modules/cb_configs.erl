@@ -77,7 +77,13 @@ validate(Context, ?HTTP_POST, Config) ->
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, Config) ->
-    save_delta(Context, Config).
+    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
+    JObj = cb_context:doc(Context),
+    JObjDiff = kz_json:diff(JObj, Parent),
+    StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), Config)),
+    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
+    flush(crossbar_doc:save(Context, Document, [])),
+    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _Config) ->
@@ -86,15 +92,6 @@ delete(Context, _Config) ->
         _ ->
             flush(crossbar_doc:delete(Context, permanent))
     end.
-
-save_delta(Context, Config) ->
-    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
-    JObj = cb_context:doc(Context),
-    JObjDiff = kz_json:diff(JObj, Parent),
-    StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), Config)),
-    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
-    flush(crossbar_doc:save(Context, Document, [])),
-    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
 
 % shortcuts
 doc_id(Config) -> kapps_account_config:config_doc_id(Config).
