@@ -61,7 +61,9 @@
 
 %% Search request for active subscriptions
 -define(SEARCH_REQ_HEADERS, [<<"Realm">>]).
--define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>, <<"Event-Package">>]).
+-define(OPTIONAL_SEARCH_REQ_HEADERS, [<<"Username">>, <<"Event-Package">>
+                                     ,<<"Search-Type">>
+                                     ]).
 -define(SEARCH_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
                            ,{<<"Event-Name">>, <<"search_req">>}
                            ]).

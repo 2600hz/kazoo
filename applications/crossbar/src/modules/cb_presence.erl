@@ -37,6 +37,8 @@
 -define(MATCH_REPORT_PREFIX(ReportId), <<?REPORT_PREFIX, ReportId/binary>>).
 -define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _ReportId/binary>>).
 
+-type search_result() :: {'ok', kz_json:object()} | {'error', any()}.
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -93,7 +95,7 @@ allowed_methods() ->
 allowed_methods(?MATCH_REPORT_PREFIX) ->
     [?HTTP_GET];
 allowed_methods(_Extension) ->
-    [?HTTP_POST].
+    [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -146,236 +148,88 @@ validate(Context) ->
 
 validate(Context, ?MATCH_REPORT_PREFIX(Report)) ->
     load_report(Context, Report);
-validate(Context, _Extension) ->
-    cb_context:set_resp_status(Context, 'success').
+validate(Context, Extension) ->
+    search_detail(Context, Extension).
 
 -spec validate_thing(cb_context:context(), http_method()) ->
                             cb_context:context().
 validate_thing(Context, ?HTTP_GET) ->
-    validate_search(Context);
+    search_summary(Context);
 validate_thing(Context, ?HTTP_POST) ->
     validate_thing_reset(Context, cb_context:req_nouns(Context)).
 
--spec validate_search(cb_context:context()) -> cb_context:context().
-validate_search(Context) ->
-    Funs = [fun search_req/1
-            | maybe_include_presentities(Context)
-           ],
-    search(Context, Funs).
+-spec search_summary(cb_context:context()) -> cb_context:context().
+search_summary(Context) ->
+    search_result(Context, search_req(Context, <<"summary">>)).
 
+-spec search_detail(cb_context:context(), ne_binary()) -> cb_context:context().
+search_detail(Context, Extension) ->
+    search_result(Context, search_req(Context, <<"detail">>, Extension)).
 
--spec should_include_presentity(ne_binary()) -> boolean().
-should_include_presentity(AccountId) ->
-    kz_term:is_true(kapps_account_config:get_global(AccountId, ?MOD_CONFIG_CAT, ?PRESENTITY_CFG_KEY, 'false')).
+-spec search_result(cb_context:context(), search_result()) -> cb_context:context().
+search_result(Context, {'ok', JObj}) ->
+    Routines = [{fun cb_context:set_resp_data/2, kz_json:normalize(JObj)}
+               ,{fun cb_context:set_resp_status/2, 'success'}
+               ],
+    cb_context:setters(Context, Routines);
+search_result(Context, {'error', Error}) ->
+    cb_context:add_system_error(Error, Context).
 
--spec maybe_include_presentities(cb_context:context()) -> list().
-maybe_include_presentities(Context) ->
-    Default = should_include_presentity(cb_context:account_id(Context)),
-    case kz_term:is_true(cb_context:req_param(Context, ?PRESENTITY_KEY, Default)) of
-        'true' -> [fun presentity_search_req/1];
-        'false' -> []
-    end.
+-spec search_req(cb_context:context(), ne_binary()) -> search_result().
+search_req(Context, SearchType) ->
+    search_req(Context, SearchType, 'undefined').
 
--spec search(cb_context:context(), list()) -> cb_context:context().
-search(Context, Funs) ->
-    Self = self(),
-    lists:foreach(fun(Fun) -> search_spawn(Self, Fun, Context) end, Funs),
-    search_collect(Context, kz_json:new(), length(Funs)).
-
--spec search_spawn(pid(), fun(), cb_context:context()) -> any().
-search_spawn(Pid, Fun, Context) ->
-    F = fun() -> Pid ! Fun(Context) end,
-    kz_util:spawn(F).
-
--spec search_collect(cb_context:context(), kz_json:object(), integer()) -> cb_context:context().
-search_collect(Context, JObj, 0) ->
-    cb_context:setters(Context
-                      ,[{fun cb_context:set_resp_data/2, JObj}
-                       ,{fun cb_context:set_resp_status/2, 'success'}
-                       ]
-                      );
-search_collect(Context, JObj, N) ->
-    receive
-        {'ok', Reply} -> search_collect(Context, kz_json:merge_jobjs(Reply, JObj), N - 1);
-        {'error', Reason} ->
-            lager:debug("error collecting responses : ~p", [Reason]),
-            search_collect(Context, JObj, N - 1)
-    after ?PRESENCE_QUERY_TIMEOUT ->
-            lager:debug("timeout (~B) collecting responses for presence", [?PRESENCE_QUERY_TIMEOUT]),
-            search_collect(Context, JObj, N - 1)
-    end.
-
--spec search_req(cb_context:context()) ->
-                        {'ok', kz_json:object()} |
-                        {'error', any()}.
-search_req(Context) ->
+-spec search_req(cb_context:context(), ne_binary(), api_binary()) -> search_result().
+search_req(Context, SearchType, Username) ->
     Req = [{<<"Realm">>, cb_context:account_realm(Context)}
+          ,{<<"Username">>, Username}
+          ,{<<"Search-Type">>, SearchType}
           ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-          ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
-          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
-           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-          ],
-    case kz_amqp_worker:call_collect(Req
-                                    ,fun kapi_presence:publish_search_req/1
-                                    ,{'omnipresence', 'true', 'true'}
-                                    )
-    of
-        {'error', _R}=Err -> Err;
-        {'ok', JObjs} ->
-            process_search_responses(JObjs);
-        {'timeout', JObjs} ->
-            process_search_responses(JObjs, 'true')
-    end.
-
--spec process_search_responses(kz_json:objects()) ->
-                                      {'ok', kz_json:object()}.
--spec process_search_responses(kz_json:objects(), api_boolean()) ->
-                                      {'ok', kz_json:object()}.
-process_search_responses(JObjs) ->
-    process_search_responses(JObjs, 'undefined').
-
-process_search_responses(JObjs, Timeout) ->
-    Subscriptions = extract_subscriptions_from_results(JObjs),
-    {'ok'
-    ,kz_json:from_list(
-       props:filter_undefined(
-         [{<<"subscriptions">>, Subscriptions}
-         ,{<<"timeout">>, Timeout}
-         ]
-        )
-      )
-    }.
-
--spec extract_subscriptions_from_results(kz_json:objects()) ->
-                                                kz_json:object().
-extract_subscriptions_from_results(JObjs) ->
-    lists:foldl(fun extract_subscriptions_from_result/2, kz_json:new(), JObjs).
-
--spec extract_subscriptions_from_result(kz_json:object(), kz_json:object()) ->
-                                               kz_json:object().
-extract_subscriptions_from_result(JObj, Acc) ->
-    Subscriptions = kz_json:get_value(<<"Subscriptions">>, JObj, []),
-    lists:foldl(fun extract_subscription/2, Acc, Subscriptions).
-
--spec extract_subscription(kz_json:object(), kz_json:object()) ->
-                                  kz_json:object().
-extract_subscription(Subscription, Acc) ->
-    Key = [kz_json:get_value(<<"username">>, Subscription)
-          ,kz_json:get_value(<<"event">>, Subscription)
-          ,kz_json:get_value(<<"call_id">>, Subscription)
-          ],
-    case kz_json:get_value(Key, Acc) of
-        'undefined' ->
-            add_subscription(Subscription, Acc, Key);
-        _Sub -> Acc
-    end.
-
--spec add_subscription(kz_json:object(), kz_json:object(), kz_json:path()) ->
-                              kz_json:object().
-add_subscription(Subscription, Acc, Key) ->
-    kz_json:set_value(Key
-                     ,kz_json:delete_keys([<<"username">>
-                                          ,<<"user">>
-                                          ,<<"event">>
-                                          ,<<"realm">>
-                                          ,<<"protocol">>
-                                          ,<<"contact">>
-                                          ,<<"call_id">>
-                                          ]
-                                         ,Subscription
-                                         )
-                     ,Acc
-                     ).
-
--spec presentity_search_req(cb_context:context()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'error', any()}.
-presentity_search_req(Context) ->
-    Req = [{<<"Realm">>, cb_context:account_realm(Context)}
-          ,{<<"Event-Package">>, cb_context:req_param(Context, <<"event">>)}
-          ,{<<"Scope">>, <<"presentity">>}
           ,{<<"System-Log-ID">>, cb_context:req_id(Context)}
           ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
-
-    lager:debug("attempting presentity search from ~p servers", [Count]),
-
     case kz_amqp_worker:call_collect(Req
-                                    ,fun kapi_omnipresence:publish_search_req/1
-                                    ,{fun collect_presentities/2, {0, Count}}
+                                    ,fun kapi_presence:publish_search_req/1
+                                    ,{fun collect_results/2, {0, Count}}
                                     )
     of
-        {'error', _E}=Err -> Err;
-        {'ok', JObjs} ->
-            process_presentity_responses(JObjs);
-        {'timeout', JObjs} ->
-            process_presentity_responses(JObjs, 'true')
+        {'error', _R}=Err -> Err;
+        {'ok', JObjs} -> process_responses(JObjs, SearchType, 'null');
+        {'timeout', JObjs} -> process_responses(JObjs, SearchType, 'true')
     end.
 
--spec collect_presentities(kz_json:objects(), {integer(), integer()}) ->
-                                  'true' |
-                                  {'false', {integer(), integer()}}.
-collect_presentities([Response | _], {Count, Max}) ->
-    lager:debug("received ~s from ~s",[kz_api:event_name(Response), kz_api:node(Response)]),
-    case Count + resp_value(Response) of
+-type collect_params() :: {integer(), integer()}.
+-type collect_result() :: 'true' | {'false', collect_params()}.
+
+-spec collect_results(kz_json:objects(), collect_params()) -> collect_result().
+collect_results([Response | _], {Count, Max}) ->
+    case Count + search_resp_value(kz_api:event_name(Response)) of
         Max -> 'true';
         V -> {'false', {V, Max}}
     end.
 
--spec resp_value(kz_json:object()) -> 0..1.
-resp_value(Response) ->
-    case kz_api:event_name(Response) of
-        <<"search_resp">> -> 1;
-        _EventName -> 0
-    end.
+-spec search_resp_value(ne_binary()) -> 0..1.
+search_resp_value("search_resp") -> 1;
+search_resp_value(_) -> 0.
 
--spec process_presentity_responses(kz_json:objects()) ->
-                                          {'ok', kz_json:object()}.
--spec process_presentity_responses(kz_json:objects(), api_boolean()) ->
-                                          {'ok', kz_json:object()}.
-process_presentity_responses(JObjs) ->
-    process_presentity_responses(JObjs, 'undefined').
+-type acc_function() :: fun((kz_json:object(), kz_json:object()) -> kz_json:object()).
 
-process_presentity_responses(JObjs, Timeout) ->
-    Presentities = extract_presentities_from_responses(JObjs),
-    {'ok'
-    ,kz_json:from_list(
-       props:filter_undefined(
-         [{<<"presentities">>, Presentities}
-         ,{<<"timeout">>, Timeout}
-         ]
-        )
-      )
-    }.
+-spec accumulator_fun(ne_binary()) -> acc_function().
+accumulator_fun(<<"summary">>) -> fun kz_json:sum/2;
+accumulator_fun(<<"detail">>) -> fun kz_json:merge_jobjs/2.
 
-extract_presentities_from_responses(JObjs) ->
-    lists:foldl(fun extract_presentities_from_response/2, kz_json:new(), JObjs).
+-spec process_responses(kz_json:objects(), ne_binary(), atom()) -> {'ok', kz_json:object()}.
+process_responses(JObjs, SearchType, Timeout) ->
+    Fun = accumulator_fun(SearchType),
+    Subscriptions = extract_subscriptions(JObjs, Fun),
+    {'ok', kz_json:set_value(<<"timeout">>, Timeout, Subscriptions)}.
 
-extract_presentities_from_response(JObj, Acc) ->
-    extract_presentities_from_response(JObj, Acc, kz_api:event_name(JObj)).
-extract_presentities_from_response(JObj, Acc, <<"search_partial_resp">>) ->
-    process_partial_response(JObj, Acc);
-extract_presentities_from_response(_JObj, Acc, _EventName) ->
-    Acc.
 
-process_partial_response(JObj, Acc) ->
-    SubscriptionKeys = kz_json:get_keys(<<"Subscriptions">>, JObj),
-    Node = kz_api:node(JObj),
-
-    lists:foldl(fun(Key, Acc1) ->
-                        process_partial_response(Key, Acc1, JObj, Node)
-                end
-               ,Acc
-               ,SubscriptionKeys
-               ).
-
-process_partial_response(Key, Acc, JObj, Node) ->
-    kz_json:set_value([Key, Node]
-                     ,kz_json:get_value([<<"Subscriptions">>, Key], JObj)
-                     ,Acc
-                     ).
+-spec extract_subscriptions(kz_json:objects(), acc_function()) -> kz_json:object().
+extract_subscriptions(JObjs, Fun) ->
+    lists:foldl(fun(JObj, Acc) -> Fun(kz_api:remove_defaults(JObj), Acc) end, kz_json:new(), JObjs).
 
 -spec validate_thing_reset(cb_context:context(), req_nouns()) ->
                                   cb_context:context().
@@ -517,10 +371,11 @@ collect_report(_Context, []) ->
     lager:debug("nothing to collect");
 collect_report(Context, Param) ->
     lager:debug("collecting report"),
-    Funs = [fun search_req/1
-           ,fun presentity_search_req/1
-           ],
-    Ctx = search(Context, Funs),
+    %%     Funs = [fun search_req/1
+    %%            ,fun presentity_search_req/1
+    %%            ],
+    %%    Ctx = search(Context, Funs),
+    Ctx = Context,
     kz_util:spawn(fun send_report/2, [Ctx, Param]).
 
 -spec send_report(cb_context:context(), ne_binary() | kz_json:object() | kz_json:objects()) -> 'ok'.
