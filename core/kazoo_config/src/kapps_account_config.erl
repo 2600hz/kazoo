@@ -69,7 +69,10 @@ load_category_from_reseller(Account, Config) ->
 
 -spec load_category_from_system(api_account(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_category_from_system(_Account, Config) ->
-    kapps_config:get_category(Config).
+    kz_json:get_value(<<"default">>, ensure_value(kapps_config:get_category(Config))).
+
+ensure_value({ok, JObj}) -> JObj;
+ensure_value(_) -> kz_json:new().
 
 -spec load_default_category(api_account(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_category(_Account, Config) ->

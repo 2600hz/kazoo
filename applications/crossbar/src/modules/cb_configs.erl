@@ -10,10 +10,10 @@
 
 -export([init/0
         ,allowed_methods/1, allowed_methods/2
-        ,resource_exists/0, resource_exists/1, resource_exists/2
-        ,validate/2, validate/3
-        ,post/2, post/3
-        ,delete/2, delete/3
+        ,resource_exists/0, resource_exists/1
+        ,validate/2
+        ,post/2
+        ,delete/2
         ]).
 
 -include("crossbar.hrl").
@@ -40,19 +40,13 @@ allowed_methods(_Node, _Config) ->
 
 -spec resource_exists() -> false.
 -spec resource_exists(path_tokens()) -> true.
--spec resource_exists(path_tokens(), path_tokens()) -> true.
 resource_exists() -> false.
 resource_exists(_) -> true.
-resource_exists(_, _) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Config) ->
-    validate(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
-
--spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-validate(Context, Config, Node) ->
     try
-        validate(Context, cb_context:req_verb(Context), Config, Node)
+        validate(Context, cb_context:req_verb(Context), Config)
     catch
         _:{badmatch, {invalid_document, Errors}} ->
             lager:error("schema validation error: ~p", [Errors]),
@@ -64,57 +58,52 @@ validate(Context, Config, Node) ->
             error_validation(Context)
     end.
 
--spec validate(cb_context:context(), http_method(), path_token(), path_token()) -> cb_context:context().
+-spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
 
-validate(Context, ?HTTP_GET, Config, Node) ->
+validate(Context, ?HTTP_GET, Config) ->
     JObj = kapps_account_config:get_category(cb_context:account_id(Context), Config),
-    crossbar_doc:handle_datamgr_success(set_id(Config, node(Node, JObj)), Context);
+    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context);
 
-validate(Context, ?HTTP_DELETE, Config, Node) ->
+validate(Context, ?HTTP_DELETE, Config) ->
     Document = kapps_account_config:get_category(cb_context:account_id(Context), Config),
-    pass_validation(Context, kz_json:delete_key(Node, Document));
+    pass_validation(Context, Document);
 
-validate(Context, ?HTTP_PUT, Config, Node) ->
-    validate(Context, ?HTTP_POST, Node, Config);
+validate(Context, ?HTTP_PUT, Config) ->
+    validate(Context, ?HTTP_POST, Config);
 
-validate(Context, ?HTTP_POST, Config, Node) ->
+validate(Context, ?HTTP_POST, Config) ->
     JObj = strip_id(cb_context:req_data(Context)),
-    Parent = node(Node, kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config)),
+    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
     FullConfig = kz_json:merge_recursive(Parent, JObj),
     maybe_validate(Config, FullConfig, Parent),
     pass_validation(Context, FullConfig).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Config) -> post(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
-
--spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-post(Context, Config, Node) ->
-    save_delta(Context, Config, Node).
+post(Context, Config) ->
+    save_delta(Context, Config).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, Config) ->
-    delete(Context, Config, cb_context:req_value(Context, <<"node">>, ?DEFAULT_NODE)).
+delete(Context, _Config) ->
+    case kz_json:delete_key(<<"_id">>, cb_context:doc(Context)) of
+        {[]} -> Context;
+        _ ->
+            flush(crossbar_doc:delete(Context, permanent))
+    end.
 
--spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
-delete(Context, _Node, _Config) ->
-    crossbar_doc:save(Context).
-
-save_delta(Context, Config, Node) ->
+save_delta(Context, Config) ->
     Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
     JObj = cb_context:doc(Context),
-    JObjDiff = kz_json:diff(JObj, node(Node, Parent)),
+    JObjDiff = kz_json:diff(JObj, Parent),
     StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), Config)),
-    Document = kz_json:merge_recursive(StoredDocument, kz_json:set_value(Node, JObjDiff, kz_json:new())),
-    crossbar_doc:save(Context, Document, []),
+    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
+    flush(crossbar_doc:save(Context, Document, [])),
     crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
 
 % shortcuts
-node(Node, JObj) -> kz_json:get_value(Node, JObj, kz_json:new()).
 doc_id(Config) -> kapps_account_config:config_doc_id(Config).
 set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
 schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
-
 
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
@@ -153,3 +142,7 @@ validate_schema(Name, JObj) ->
             end;
         _ -> no_schema_present
     end.
+
+flush(Context) ->
+    kapps_account_config:flush(cb_context:account_id(Context)),
+    Context.
