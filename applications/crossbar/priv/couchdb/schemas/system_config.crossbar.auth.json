@@ -7,6 +7,11 @@
             "default": "md5",
             "description": "crossbar.auth basic auth type",
             "type": "string"
+        },
+        "kazoo_auth_configs": {
+            "default": {},
+            "description": "Kazoo Auth modules' configurations",
+            "type": "object"
         }
     },
     "type": "object"

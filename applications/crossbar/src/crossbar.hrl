@@ -11,6 +11,7 @@
 -define(APP_NAME, <<"crossbar">>).
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
+-define(AUTH_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
 
 -define(CACHE_NAME, 'crossbar_cache').
 

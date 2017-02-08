@@ -19,10 +19,9 @@
 
 -include("crossbar.hrl").
 
--define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".auth">>).
 -define(DEFAULT_BASIC_AUTH_TYPE, <<"md5">>).
 -define(BASIC_AUTH_KEY, <<"basic_auth_type">>).
--define(BASIC_AUTH_TYPE, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?DEFAULT_BASIC_AUTH_TYPE)).
+-define(BASIC_AUTH_TYPE, kapps_config:get_ne_binary(?AUTH_CONFIG_CAT, ?BASIC_AUTH_KEY, ?DEFAULT_BASIC_AUTH_TYPE)).
 
 -define(ACCT_MD5_LIST, <<"users/creds_by_md5">>).
 -define(ACCT_SHA1_LIST, <<"users/creds_by_sha">>).
@@ -92,7 +91,7 @@ maybe_check_credentials(Context, AuthToken) ->
                                {'true' | 'halt', cb_context:context()}.
 check_credentials(Context, AccountId, Credentials) ->
     lager:debug("checking credentials '~s' for account '~s'", [Credentials, AccountId]),
-    BasicType = kapps_account_config:get(AccountId, ?MOD_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
+    BasicType = kapps_account_config:get(AccountId, ?AUTH_CONFIG_CAT, ?BASIC_AUTH_KEY, ?BASIC_AUTH_TYPE),
     check_credentials(Context, AccountId, Credentials, BasicType).
 
 -spec check_credentials(cb_context:context(), ne_binary(), ne_binary() | {ne_binary(), ne_binary()}, ne_binary()) ->
