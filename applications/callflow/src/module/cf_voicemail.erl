@@ -460,8 +460,7 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                         {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
                     end;
                 Continue ->
-                    lager:info("caller chose to continue to the next element in the callflow"),
-                    'ok';
+                    lager:info("caller chose to continue to the next element in the callflow");
                 _Else ->
                     lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
                     record_voicemail(tmp_file(Ext), Box, Call)
@@ -550,11 +549,13 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength}=B
             lager:info("error while attempting to record a new message: ~p", [_R])
     end.
 
--spec maybe_review_recording(ne_binary(), mailbox(), kapps_call:call(), ne_binary() | 'undefined', integer(), boolean()) -> 'ok'.
+-spec maybe_review_recording(ne_binary(), mailbox(), kapps_call:call(), api_ne_binary(), integer(), boolean()) -> 'ok'.
 maybe_review_recording(AttachmentName, #mailbox{}=Box, Call, _Digit, Length, _IsCallUp='false') ->
     new_message(AttachmentName, Length, Box, Call);
-maybe_review_recording(_AttachmentName, #mailbox{keys=#keys{continue=Digit}}, _Call, Digit, _Length, _IsCallUp) ->
+maybe_review_recording(AttachmentName, #mailbox{keys=#keys{continue=Digit}}=Box, Call, Digit, Length, _IsCallUp) ->
     lager:info("caller chose to continue to the next element in the callflow"),
+    new_message(AttachmentName, Length, Box, Call),
+    _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
     'ok';
 maybe_review_recording(AttachmentName, #mailbox{media_extension=Ext}=Box, Call, _Digit, Length, _IsCallUp) ->
     case review_recording(AttachmentName, 'true', Box, Call) of
