@@ -29,7 +29,7 @@ save(N) ->
     Doc = knm_phone_number:doc(PN),
     Value = kz_json:get_ne_value(?KEY, Doc),
     Carrier = <<"knm_", Value/binary>>,
-    case false =/= kz_util:try_load_module(Carrier) of
+    case is_valid(Carrier, PN) of
         false ->
             Msg = <<"'", Value/binary, "' is not known by the system">>,
             knm_errors:invalid(N, Msg);
@@ -51,3 +51,9 @@ save(N) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(N) -> N.
+
+is_valid(Carrier, PN) ->
+    case knm_phone_number:is_admin(PN) of
+        false -> knm_errors:unauthorized();
+        true -> kz_util:try_load_module(Carrier) =/= false
+    end.
