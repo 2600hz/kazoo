@@ -59,7 +59,7 @@ handle_req(JObj, _Props) ->
     'true' = kapi_notifications:customer_update_v(JObj),
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
+    case teletype_util:is_notice_enabled(AccountId, JObj, maybe_expand_template_id(DataJObj)) of
         'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj, teletype_util:is_preview(DataJObj))
     end.
@@ -115,15 +115,17 @@ send_update_to_user(UserJObj, DataJObj) ->
         ++ build_macro_data(UserJObj, DataJObj)
         ++ [{?THIRD_PARTY_DATA, kz_json:get_value(?THIRD_PARTY_DATA, DataJObj, kz_json:new())}],
 
-    RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj, 'true'),
-    {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
+    RenderedTemplates =
+        teletype_templates:render(maybe_expand_template_id(DataJObj), Macros, DataJObj, maybe_tpls_provided(DataJObj)),
+    {'ok', TemplateMetaJObj} =
+        teletype_templates:fetch_notification(maybe_expand_template_id(DataJObj), teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
                 kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj])
                                           ,Macros
                ),
     Emails = maybe_replace_to_field(
-               teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT)
+               teletype_util:find_addresses(DataJObj, TemplateMetaJObj, maybe_expand_mod_config_cat(DataJObj))
                                    ,kz_json:get_value(<<"email">>, UserJObj)
               ),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
@@ -163,4 +165,29 @@ maybe_add_user_data(Key, Acc, UserJObj) ->
             lager:debug("unprocessed user macro key ~s: ~p", [Key, UserJObj]),
             Acc;
         V -> props:set_value(<<"user">>, [{Key, V} | UserMacros], Acc)
+    end.
+
+-spec maybe_expand_template_id(kz_json:object()) -> ne_binary().
+maybe_expand_template_id(DataJObj) ->
+    case kz_json:get_value(<<"template_id">>, DataJObj) of
+        <<"customer_update_", _/binary>> = TemplateId ->
+            TemplateId;
+        _ ->
+            ?TEMPLATE_ID
+    end.
+
+-spec maybe_expand_mod_config_cat(kz_json:object()) -> ne_binary().
+maybe_expand_mod_config_cat(DataJObj) ->
+    case kz_json:get_value(<<"template_id">>, DataJObj) of
+        <<"customer_update_", _/binary>> = TemplateId ->
+            <<(?NOTIFY_CONFIG_CAT)/binary, ".", TemplateId/binary>>;
+        _ ->
+            ?MOD_CONFIG_CAT
+    end.
+
+-spec maybe_tpls_provided(kz_json:object()) -> boolean().
+maybe_tpls_provided(DataJObj) ->
+    case kz_json:get_first_defined([<<"html">>, <<"text">>], DataJObj) of
+        'undefined' -> false;
+        _ -> 'true'
     end.
