@@ -492,12 +492,10 @@ summary(Context) ->
 %% @private
 -spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
 view_account_phone_numbers(Context) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST
-                                     ,[]
-                                     ,rename_qs_filters(Context)
-                                     ,fun normalize_view_results/2
-                                     ),
-    ListOfNumProps = lists:map(fun fix_available/1, cb_context:resp_data(Context1)),
+    Ctx = rename_qs_filters(Context),
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], Ctx, fun normalize_view_results/2),
+    IsAdmin = cb_context:is_superduper_admin(Context),
+    ListOfNumProps = [fix_available(IsAdmin, NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
     PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
@@ -507,11 +505,12 @@ view_account_phone_numbers(Context) ->
                                     ]),
     cb_context:set_resp_data(Context1, NewRespData).
 
--spec fix_available(kz_json:object()) -> kz_json:object().
-fix_available(NumJObj) ->
+-spec fix_available(boolean(), kz_json:object()) -> kz_json:object().
+fix_available(IsAdmin, NumJObj) ->
     [{Num, JObj}] = kz_json:to_proplist(NumJObj),
     IsLocal = lists:member(?FEATURE_LOCAL, kz_json:get_list_value(<<"features">>, JObj, [])),
-    Allowed = knm_providers:available_features(IsLocal
+    Allowed = knm_providers:available_features(IsAdmin
+                                              ,IsLocal
                                               ,kz_json:get_ne_binary_value(<<"assigned_to">>, JObj)
                                               ,kz_json:get_ne_binary_value(<<"used_by">>, JObj)
                                               ,kz_json:get_list_value(<<"features_allowed">>, JObj, [])

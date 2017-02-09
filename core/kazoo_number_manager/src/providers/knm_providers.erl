@@ -13,7 +13,7 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([available_features/1, available_features/5
+-export([available_features/1, available_features/6
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -46,7 +46,8 @@
         ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES)).
 
 
--record(feature_parameters, {is_local = 'false' :: boolean()
+-record(feature_parameters, {is_admin = false :: boolean()
+                            ,is_local = 'false' :: boolean()
                             ,assigned_to :: api_ne_binary()
                             ,used_by :: api_ne_binary()
                             ,allowed_features = [] :: ne_binaries()
@@ -82,9 +83,9 @@ delete(Number) ->
 available_features(PhoneNumber) ->
     list_available_features(feature_parameters(PhoneNumber)).
 
--spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
-available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
-    list_available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
+-spec available_features(boolean(), boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
+available_features(IsAdmin, IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
+    list_available_features(feature_parameters(IsAdmin, IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -154,17 +155,18 @@ is_local(PN) ->
 
 -spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
 feature_parameters(PhoneNumber) ->
-    feature_parameters(is_local(PhoneNumber)
+    feature_parameters(knm_phone_number:is_admin(PhoneNumber)
+                      ,is_local(PhoneNumber)
                       ,knm_phone_number:assigned_to(PhoneNumber)
                       ,knm_phone_number:used_by(PhoneNumber)
                       ,knm_phone_number:features_allowed(PhoneNumber)
                       ,knm_phone_number:features_denied(PhoneNumber)
                       ).
 
--spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
-                                feature_parameters().
-feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
-    #feature_parameters{is_local = IsLocal
+-spec feature_parameters(boolean(), boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> feature_parameters().
+feature_parameters(IsAdmin, IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
+    #feature_parameters{is_admin = IsAdmin
+                       ,is_local = IsLocal
                        ,assigned_to = AssignedTo
                        ,used_by = UsedBy
                        ,allowed_features = Allowed

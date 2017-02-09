@@ -356,10 +356,7 @@ release(Nums, Options) ->
 %%--------------------------------------------------------------------
 -spec delete(ne_binaries(), knm_number_options:options()) -> ret().
 delete(Nums, Options) ->
-    AuthBy = knm_number_options:auth_by(Options),
-    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
-        orelse kz_util:is_system_admin(AuthBy)
-    of
+    case knm_phone_number:is_admin(knm_number_options:auth_by(Options)) of
         false ->
             Error = knm_errors:to_json(unauthorized),
             ret(new(Options, [], Nums, Error));
