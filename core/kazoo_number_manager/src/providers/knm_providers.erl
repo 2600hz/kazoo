@@ -47,7 +47,7 @@
 
 
 -record(feature_parameters, {is_admin = false :: boolean()
-                            ,is_local = 'false' :: boolean()
+                            ,is_local = false :: boolean()
                             ,assigned_to :: api_ne_binary()
                             ,used_by :: api_ne_binary()
                             ,allowed_features = [] :: ne_binaries()
@@ -178,7 +178,12 @@ list_allowed_features(Parameters) ->
     case number_allowed_features(Parameters) of
         [] -> reseller_allowed_features(Parameters);
         NumberAllowed -> NumberAllowed
-    end.
+    end
+        -- admin_only_features(Parameters).
+
+admin_only_features(#feature_parameters{is_admin = true}) -> [];
+admin_only_features(_) -> [?FEATURE_RENAME_CARRIER
+                          ].
 
 -spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
 reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
@@ -295,6 +300,8 @@ provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
+provider_module(?FEATURE_RENAME_CARRIER, _) ->
+    <<"knm_rename_carrier">>;
 provider_module(Other, _) ->
     lager:debug("unmatched feature provider ~p, allowing", [Other]),
     Other.

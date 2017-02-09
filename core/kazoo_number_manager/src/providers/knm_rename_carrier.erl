@@ -26,13 +26,19 @@
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 save(N) ->
     PN = knm_number:phone_number(N),
-    Value = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PN)),
-    case false =/= kz_util:try_load_module(Value) of
+    Doc = knm_phone_number:doc(PN),
+    Value = kz_json:get_ne_value(?KEY, Doc),
+    Carrier = <<"knm_", Value/binary>>,
+    case false =/= kz_util:try_load_module(Carrier) of
         false ->
             Msg = <<"'", Value/binary, "' is not known by the system">>,
             knm_errors:invalid(N, Msg);
         true ->
-            NewPN = knm_phone_number:set_module_name(PN, Value),
+            NewDoc = kz_json:delete_key(?KEY, Doc),
+            Updates = [{fun knm_phone_number:set_module_name/2, Carrier}
+                      ,{fun knm_phone_number:reset_doc/2, NewDoc}
+                      ],
+            {ok, NewPN} = knm_phone_number:setters(PN, Updates),
             knm_number:set_phone_number(N, NewPN)
     end.
 
