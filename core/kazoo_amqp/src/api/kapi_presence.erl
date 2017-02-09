@@ -373,7 +373,7 @@ update_routing_key(Req) ->
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
-update_routing_key(CallId, PresenceID) when is_binary(State) ->
+update_routing_key(CallId, PresenceID) ->
     list_to_binary([<<"update.">>
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
                    ,"."
@@ -424,7 +424,7 @@ dialog_routing_key(Req) ->
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
-dialog_routing_key(CallId, PresenceID) when is_binary(State) ->
+dialog_routing_key(CallId, PresenceID) ->
     list_to_binary([<<"dialog.">>
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
                    ,"."
@@ -509,7 +509,7 @@ publish_mwi_update(Req, ContentType) ->
 mwi_update_routing_key(Prop) when is_list(Prop) ->
     mwi_update_routing_key(props:get_value(<<"To">>, Prop));
 mwi_update_routing_key(To) when is_binary(To) ->
-    [To, Realm] -> binary:split(To, <<"@">>),
+    [To, Realm] = binary:split(To, <<"@">>),
     list_to_binary([<<"mwi_updates.">>
                    ,amqp_util:encode(Realm)
                    ,"."
