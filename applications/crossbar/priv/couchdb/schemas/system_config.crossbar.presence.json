@@ -9,7 +9,7 @@
             "type": "boolean"
         },
         "query_presence_timeout": {
-            "default": 1000,
+            "default": 5000,
             "description": "crossbar.presence query presence timeout",
             "type": "integer"
         }

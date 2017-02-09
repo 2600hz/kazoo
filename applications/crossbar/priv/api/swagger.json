@@ -8419,7 +8419,7 @@
                     "type": "boolean"
                 },
                 "query_presence_timeout": {
-                    "default": 1000,
+                    "default": 5000,
                     "description": "crossbar.presence query presence timeout",
                     "type": "integer"
                 }
@@ -18358,6 +18358,20 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/extension"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
             "post": {
                 "parameters": [
                     {
