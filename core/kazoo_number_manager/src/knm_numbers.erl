@@ -312,9 +312,18 @@ update([?NE_BINARY|_]=Nums, Routines, Options) ->
     Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.
     do_update(do_get_pn(Nums, Options, Reason), Routines);
 update(Ns, Routines, Options) ->
-    T0 = new(Options, Ns),
+    T0 = new(Options, fix_options_inside(Options, Ns)),
     T1 = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Routines) end, T0),
     ret(do(fun save_numbers/1, T1)).
+
+fix_options_inside(Options, Ns) ->
+    Fix = knm_number_options:to_phone_number_setters(Options),
+    [begin
+         {ok, NewPN} = knm_phone_number:setters(knm_number:phone_number(N), Fix),
+         knm_number:set_phone_number(N, NewPN)
+     end
+     || N <- Ns
+    ].
 -else.
 update(Nums, Routines, Options) ->
     Reason = not_reconcilable,  %% FIXME: unify to atom OR knm_error.

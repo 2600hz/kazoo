@@ -73,7 +73,7 @@
                           ,ported_in = 'false' :: boolean()
                           ,module_name = knm_carriers:default_carrier() :: ne_binary()
                           ,carrier_data = kz_json:new() :: kz_json:object()
-                          ,region :: ne_binary()
+                          ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
