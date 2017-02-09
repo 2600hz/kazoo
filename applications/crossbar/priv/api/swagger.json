@@ -18353,6 +18353,20 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/presence/{EXTENSION}": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/extension"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
             "post": {
                 "parameters": [
                     {
