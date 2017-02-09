@@ -103,7 +103,7 @@
                                  ,<<"From">>, <<"From-Tag">>
                                  ,<<"Call-Direction">>, <<"Call-ID">>
                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>
-                                 ,<<"Event-Package">>
+                                 ,<<"Presence-ID">>, <<"Event-Package">>
                                  ]).
 -define(UPDATE_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"update">>}
@@ -132,6 +132,7 @@
                                   ,<<"Message-Account">>
                                   ,<<"Messages-Waiting">>
                                   ,<<"Call-ID">>, <<"Expires">>
+                                  ,<<"Presence-ID">>
                                   ,<<"From">>, <<"From-User">>, <<"From-Realm">>
                                   ]).
 -define(MWI_REQ_VALUES, [{<<"Event-Category">>, <<"presence">>}
@@ -199,6 +200,7 @@
                                  ,<<"Expires">>, <<"Flush-Level">>
                                  ,<<"Presentity">>, <<"Presentity-User">>, <<"Presentity-Realm">>
                                  ,<<"Target-Call-ID">>, <<"Switch-URI">>, <<"Call-Cookie">>
+                                 ,<<"Presence-ID">>
                                  ]).
 -define(DIALOG_VALUES, [{<<"Event-Category">>, <<"presence">>}
                        ,{<<"Event-Name">>, <<"dialog_update">>}
@@ -575,6 +577,7 @@ publish_mwi_query(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_QUERY_VALUES, fun mwi_query/1),
     amqp_util:presence_publish(mwi_query_routing_key(Req), Payload, ContentType).
 
+-spec mwi_query_routing_key(api_terms() | ne_binary()) -> ne_binary().
 mwi_query_routing_key(Prop) when is_list(Prop) ->
     mwi_query_routing_key(props:get_value(<<"Realm">>, Prop));
 mwi_query_routing_key(Realm) when is_binary(Realm) ->

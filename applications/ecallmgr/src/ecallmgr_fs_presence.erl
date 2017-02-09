@@ -161,17 +161,20 @@ process_specific_event(_Event, _UUID, _Props, _Node) ->
     lager:debug("event ~s for callid ~s not handled in presence (~s)", [_Event, _UUID, _Node]).
 
 
+-spec maybe_build_presence_event(atom(), api_binary(), kz_proplist(), api_binary()) -> any().
 maybe_build_presence_event(Node, UUID, Props, <<"device">>) ->
     build_presence_event(Node, UUID, Props);
 maybe_build_presence_event(_Node, _UUID, _Props, _AuthType) ->
     lager:debug("Authorizing-Type ~p not handled", [_AuthType]).
 
+-spec from(kz_proplist()) -> ne_binary().
 from(Props) ->
     props:get_first_defined([<<"from">>
                             ,<<"variable_presence_id">>
                             ,<<"Channel-Presence-ID">>
                             ], Props).
 
+-spec to_user(kz_proplist()) -> ne_binary().
 to_user(Props) ->
     to_user(direction(Props), Props).
 
@@ -184,10 +187,12 @@ to_user(<<"recipient">>, Props) ->
                             ,<<"variable_sip_from_user">>
                             ], Props).
 
+-spec expires(ne_binary()) -> integer().
 expires(<<"early">>) -> 0;
 expires(<<"confirmed">>) -> 0;
 expires(<<"terminated">>) -> 20.
 
+-spec build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
 build_presence_event(_Node, UUID, Props) ->
     ToTag = kzd_freeswitch:to_tag(Props),
     FromTag = kzd_freeswitch:from_tag(Props),
@@ -230,24 +235,29 @@ build_presence_event(_Node, UUID, Props) ->
     lager:debug("sending presence ~s to ~s/~s in realm ~s", [State, FromUser, ToUser, Realm]),
     kz_amqp_worker:cast(Payload, fun kapi_presence:publish_dialog/1).
 
+-spec direction(kz_proplist()) -> ne_binary().
 direction(Props) ->
     case props:get_value(<<"Presence-Call-Direction">>, Props) of
         <<"inbound">> -> <<"initiator">>;
         <<"outbound">> -> <<"recipient">>
     end.
 
+-spec status(kz_proplist()) -> ne_binary().
 status(Props) ->
     kz_term:to_lower_binary(props:get_binary_value(<<"status">>, Props)).
 
+-spec answer_state(kz_proplist()) -> ne_binary().
 answer_state(Props) ->
     kz_term:to_lower_binary(props:get_value(<<"Answer-State">>, Props)).
 
+-spec presence_status(kz_proplist()) -> ne_binary().
 presence_status(Props) ->
     Status = status(Props),
     AnswerState = answer_state(Props),
     Direction = direction(Props),
     presence_status(Direction, Status, AnswerState).
 
+-spec presence_status(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 presence_status(_, _, <<"answered">>) -> <<"confirmed">>;
 presence_status(_, <<"hangup">>, _) -> <<"terminated">>;
 presence_status(Direction, <<"cs_", Status/binary>>, AnswerState) -> presence_status(Direction, Status, AnswerState);
