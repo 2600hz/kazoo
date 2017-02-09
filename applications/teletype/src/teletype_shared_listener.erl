@@ -170,8 +170,8 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     gen_listener:start_link(?SERVER
-                           ,[{'bindings', ?BINDINGS}
-                            ,{'responders', ?RESPONDERS}
+                           ,[{'bindings', ?BINDINGS ++ get_custom_bindings()}
+                            ,{'responders', ?RESPONDERS ++ get_custom_responders()}
                             ,{'queue_name', ?QUEUE_NAME}
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
@@ -298,3 +298,65 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Comes from system_config in the form:
+%% "custom_teletype_bindings" {
+%%     "custom_notifications": [
+%%         "arbitrary_notification"
+%%     ]
+%% }
+%% @end
+%%--------------------------------------------------------------------
+-spec get_custom_bindings() -> [{atom(), kz_proplist()}].
+get_custom_bindings() ->
+    BindingKVs = kz_json:to_proplist(kapps_config:get(?NOTIFY_CONFIG_CAT, <<"custom_teletype_bindings">>, kz_json:new())),
+    %% Create atom if doesn't exist - it will only exist if a binding has been set up elsewhere
+    Bindings = [{kz_term:to_atom(Binding, 'true'), custom_options(RestrictTo)} || {Binding, RestrictTo} <- BindingKVs],
+    lager:info("loaded custom teletype bindings ~p", [Bindings]),
+    Bindings.
+
+-spec custom_options([ne_binary()]) -> kz_proplist().
+custom_options(RestrictTo) ->
+    RestrictToAtoms = [kz_term:to_atom(X) || X <- RestrictTo],
+    [{'restrict_to', RestrictToAtoms} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Comes from system_config in the form:
+%% "custom_teletype_responders" [
+%%     {
+%%         "module": "arbitrary_notification",
+%%         "function": "handle_req",
+%%         "events": [
+%%             {
+%%                 "category": "notification",
+%%                 "name": "arbitrary_notification",
+%%             }
+%%         ]
+%%     }
+%% ]
+%% @end
+%%--------------------------------------------------------------------
+-spec get_custom_responders() -> [{atom(), kz_proplist()}].
+get_custom_responders() ->
+    ResponderJObjs = kapps_config:get(?NOTIFY_CONFIG_CAT, <<"custom_teletype_responders">>, []),
+    Responders = [transform_responder(Responder) || Responder <- ResponderJObjs],
+    lager:info("loaded custom teletype responders ~p", [Responders]),
+    Responders.
+
+-spec transform_responder(kz_json:object()) -> {{module(), atom()}, [{ne_binary(), ne_binary()}]}.
+transform_responder(Responder) ->
+    Module = kz_json:get_atom_value(<<"module">>, Responder),
+    Function = kz_json:get_atom_value(<<"function">>, Responder, 'handle_req'),
+    Events = [transform_event(Event) || Event <- kz_json:get_value(<<"events">>, Responder)],
+    {{Module, Function}, Events}.
+
+-spec transform_event(kz_json:object()) -> {ne_binary(), ne_binary()}.
+transform_event(Event) ->
+    Category = kz_json:get_binary_value(<<"category">>, Event),
+    Name = kz_json:get_binary_value(<<"name">>, Event),
+    {Category, Name}.
