@@ -74,6 +74,7 @@
 -define(FEATURE_PORT, <<"port">>).
 -define(FEATURE_PREPEND, <<"prepend">>).
 -define(FEATURE_RINGBACK, <<"ringback">>).
+-define(FEATURE_RENAME_CARRIER, <<"carrier_name">>).
 
 -define(LEGACY_DASH_E911, <<"dash_e911">>).
 -define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
