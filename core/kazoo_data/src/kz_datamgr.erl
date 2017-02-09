@@ -44,8 +44,6 @@
         ,del_doc/3, del_docs/3
         ,lookup_doc_rev/2, lookup_doc_rev/3
         ,update_doc/3, update_doc/4
-        ,load_doc_from_file/3
-        ,update_doc_from_file/3
         ,revise_doc_from_file/3
         ,revise_docs_from_folder/3, revise_docs_from_folder/4
         ,revise_views_from_folder/2
@@ -103,31 +101,7 @@
 %%%===================================================================
 
 %%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Load a file into couch as a document (not an attachement)
-%% @end
-%%--------------------------------------------------------------------
--spec load_doc_from_file(ne_binary(), atom(), nonempty_string() | ne_binary()) ->
-                                {'ok', kz_json:object()} |
-                                data_error().
-load_doc_from_file(DbName, App, File) ->
-    Path = list_to_binary([code:priv_dir(App), "/couchdb/", kz_term:to_list(File)]),
-    lager:debug("read into db ~s from CouchDB JSON file: ~s", [DbName, Path]),
-    try
-        {'ok', Bin} = file:read_file(Path),
-        save_doc(DbName, kz_json:decode(Bin)) %% if it crashes on the match, the catch will let us know
-    catch
-        _Type:{'badmatch',{'error',Reason}} ->
-            lager:debug("badmatch error reading ~s: ~p", [Path, Reason]),
-            {'error', Reason};
-        _Type:Reason ->
-            lager:debug("exception reading ~s: ~p", [Path, Reason]),
-            {'error', Reason}
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% Overwrite the existing contents of a document with the contents of
 %% a file
@@ -141,7 +115,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
     try
         {'ok', Bin} = file:read_file(Path),
-        JObj = kz_json:decode(Bin),
+        JObj = maybe_adapt_multilines(kz_json:decode(Bin)),
         ensure_saved(DbName, JObj)
     catch
         _Type:{'badmatch',{'error',Reason}} ->
@@ -153,7 +127,7 @@ update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
     end;
 update_doc_from_file(DbName, App, File) ->
     case maybe_convert_dbname(DbName) of
-        {'ok', Db} -> load_doc_from_file(Db, App, File);
+        {'ok', Db} -> update_doc_from_file(Db, App, File);
         {'error', _}=E -> E
     end.
 
@@ -169,9 +143,9 @@ update_doc_from_file(DbName, App, File) ->
                                   data_error().
 revise_doc_from_file(DbName, App, File) ->
     case update_doc_from_file(DbName, App, File) of
-        {'error', _E} ->
+        {'error', _E}=R ->
             lager:debug("failed to update doc: ~p", [_E]),
-            load_doc_from_file(DbName, App, File);
+            R;
         {'ok', _}=Resp ->
             lager:debug("revised ~s", [File]),
             Resp
