@@ -13,7 +13,8 @@
         ,set_folder/3, change_folder/3, change_folder/4
 
         ,update/3, update/4
-        ,move_to_vmbox/4, copy_to_vmboxes/4, copy_to_vmboxes/5
+        ,move_to_vmbox/4, do_move/5
+        ,copy_to_vmboxes/4, copy_to_vmboxes/5
 
         ,media_url/2
         ]).
@@ -230,13 +231,43 @@ update(AccountId, _BoxId, JObj, Funs) ->
 %% @doc Move a message to another vmbox
 %% @end
 %%--------------------------------------------------------------------
--spec move_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+-spec move_to_vmbox(ne_binary(), message(), ne_binary(), ne_binary()) ->
                            db_ret().
-move_to_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId) ->
+    %% FIXME: maybe fetch message to make sure it's exists
     AccountDb = kvm_util:get_db(AccountId),
-    {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Funs = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
-    update(AccountId, OldBoxId, MsgId, Funs).
+    case kz_datamgr:open_cache_doc(AccountDb, NewBoxId) of
+        {'ok', NBoxJ} -> do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ);
+        {'error', _Reason} = Error ->
+            lager:debug("failed to open destination vmbox ~s", NewBoxId),
+            Error
+    end;
+move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
+    move_to_vmbox(AccountId, get_msg_id(JObj), OldBoxId, NewBoxId).
+
+-spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
+do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
+    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, FromId),
+
+    FromDb = kvm_util:get_db(AccountId, FromId),
+    ToDb = kvm_util:get_db(AccountId, ToId),
+
+    lager:debug("moving voicemail ~s/~s (vmbox ~s) to ~s/~s (vmbox ~s)"
+               ,[FromDb, FromId, OldBoxId, ToDb, ToId, NewBoxId]
+               ),
+
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    case kz_datamgr:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
+        {'ok', _} = OK -> OK;
+        {'error', 'not_found'} = NotFound ->
+            lager:warning("could not copy ~s/~s to ~s/~s, modb is not exists (or maybe the original message is not exists)"
+                         ,[FromDb, FromId, ToDb, ToId]
+                         ),
+            NotFound;
+        {'error', _} = Error ->
+            lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
+            Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -247,70 +278,77 @@ move_to_vmbox(AccountId, MsgId, OldBoxId, NewBoxId) ->
                              kz_json:object().
 copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]);
-copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds) ->
-    case fetch(AccountId, Id, OldBoxId) of
-        {'error', Error} ->
-            Failed = kz_json:from_list([{Id, kz_term:to_binary(Error)}]),
-            kz_json:from_list([{<<"failed">>, [Failed]}]);
-        {'ok', JObj} ->
-            Results = copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds, dict:new()),
-            kz_json:from_list(dict:to_list(Results))
+copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds) ->
+    %% FIXME: maybe fetch message to make sure it's exists
+    kz_json:from_list(
+      dict:to_list(
+        copy_to_vmboxes(AccountId, Id, OldBoxId, NewBoxIds, dict:new())
+       )
+     );
+copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds) ->
+    copy_to_vmboxes(AccountId, get_msg_id(JObj), OldBoxId, NewBoxIds).
+
+-spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict()) ->
+                             dict:dict().
+copy_to_vmboxes(_, _, _, [], CopiedDict) ->
+    CopiedDict;
+copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict) ->
+    NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict),
+    copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict).
+
+-spec copy_to_vmbox(ne_binary(), kz_json:object(), ne_binary(), ne_binary(), dict:dict()) ->
+                           dict:dict().
+copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
+    AccountDb = kvm_util:get_db(AccountId),
+    %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
+    {OkErr, JObjError} = kz_datamgr:open_cache_doc(AccountDb, NBId),
+
+    case OkErr =:= 'ok'
+        andalso do_copy(AccountId, FromId, OldBoxId, NBId, JObjError)
+    of
+        {'ok', CopiedJObj} ->
+            CopiedId = kz_doc:id(CopiedJObj),
+            dict:append(<<"succeeded">>, CopiedId, CopiedDict);
+        {'error', R} ->
+            Failed = kz_json:from_list([{FromId, kz_term:to_binary(R)}]),
+            dict:append(<<"failed">>, Failed, CopiedDict);
+        'false' ->
+            lager:warning("could not open destination vmbox ~s", [NBId]),
+            Failed = kz_json:from_list([{FromId, kz_term:to_binary(JObjError)}]),
+            dict:append(<<"failed">>, Failed, CopiedDict)
     end.
 
--spec copy_to_vmboxes(ne_binary(), kz_json:object(), ne_binary(), ne_binaries(), dict:dict()) ->
-                             dict:dict().
-copy_to_vmboxes(_, _, _, [], CopiedDict) -> CopiedDict;
-copy_to_vmboxes(AccountId, JObj, OldBoxId, [NBId | NBIds], CopiedDict) ->
-    AccountDb = kvm_util:get_db(AccountId),
-    {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NBId),
+-spec do_copy(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
+do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ) ->
+    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
 
-    Funs = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
+    FromDb = kvm_util:get_db(AccountId, FromId),
+    ToDb = kvm_util:get_db(AccountId, ToId),
 
-    lager:debug("copying voicemail ~s from ~s to ~s in account ~s"
-               ,[kz_doc:id(JObj), OldBoxId, NBId, AccountId]
+    lager:debug("copying voicemail ~s/~s (vmbox ~s) to ~s/~s (vmbox ~s)"
+               ,[FromDb, FromId, OldBoxId, ToDb, ToId, NBId]
                ),
 
-    Id = kz_doc:id(JObj),
-    NewCopiedDict = case do_copy(AccountId, JObj, Funs) of
-                        {'ok', CopiedJObj} ->
-                            NewId = kz_doc:id(CopiedJObj),
-                            dict:append(<<"succeeded">>, NewId, CopiedDict);
-                        {'error', R} ->
-                            Failed = kz_json:from_list([{Id, kz_term:to_binary(R)}]),
-                            dict:append(<<"failed">>, Failed, CopiedDict)
-                    end,
-    copy_to_vmboxes(AccountId, JObj, OldBoxId, NBIds, NewCopiedDict).
-
--spec do_copy(ne_binary(), kz_json:object(), update_funs()) -> db_ret().
-do_copy(AccountId, JObj, Funs) ->
-    ?MATCH_MODB_PREFIX(Year, Month, _) = kz_doc:id(JObj),
-
-    FromDb = kazoo_modb:get_modb(AccountId, Year, Month),
-    FromId = kz_doc:id(JObj),
-    ToDb = kazoo_modb:get_modb(AccountId),
-    ToId = <<(kz_term:to_binary(Year))/binary
-             ,(kz_time:pad_month(Month))/binary
-             ,"-"
-             ,(kz_binary:rand_hex(16))/binary
-           >>,
-
-    TransformFuns = [fun(DestDoc) -> kzd_box_message:update_media_id(ToId, DestDoc) end
-                     | Funs
-                    ],
-    Options = [{'transform', fun(_, B) ->
-                                     lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns)
-                             end
-               }
-              ],
-    case kz_datamgr:copy_doc(FromDb, FromId, ToDb, ToId, Options) of
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    case kz_datamgr:copy_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
         {'error', 'not_found'} = NotFound ->
-            lager:warning("modb ~s is not existed, not copying vm message ~s", [ToDb, FromId]),
+            lager:warning("could not copy ~s/~s to ~s/~s, modb is not exists (or maybe the original message is not exists)"
+                         ,[FromDb, FromId, ToDb, ToId]
+                         ),
             NotFound;
         {'error', _}=Error ->
-            lager:debug("failed to copy vm message ~s to ~s db with id ~s", [FromId, ToDb, ToId]),
+            lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
     end.
+
+-spec get_msg_id(kz_json:object()) -> ne_binary().
+get_msg_id(JObj) ->
+    Paths = [<<"_id">>
+            ,<<"media_id">>
+            ,[<<"metadata">>, <<"media_id">>]
+            ],
+    kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -344,57 +382,60 @@ media_url(AccountId, Message) ->
 -spec create_new_message_doc(kapps_call:call(), kz_proplist()) ->
                                     {ne_binary(), sotre_media_url()}.
 create_new_message_doc(Call, Props) ->
-    MsgJObj = create_message_doc(Call, 'undefined', Props),
-    save_generate_media_url(MsgJObj, props:get_value(<<"Attachment-Name">>, Props)).
-
--spec create_forward_message_doc(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) ->
-                                        {ne_binary(), sotre_media_url()}.
-create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
-    AccountId = kapps_call:account_id(Call),
-    MsgJObj = create_message_doc(Call, Metadata, Props),
-    %% create a fake Destination Box JObj to pass to change vmbox functions
-    %% Note: set pvt_account_id and db just to make sure if timezone is not passed
-    %% kzd_voicemail_box can find timezone for the owner or account
-    NewBoxJObj = kz_json:from_list(
-                   [{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
-                   ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
-                   ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)}
-                   ,{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
-                   ,{<<"pvt_account_id">>, AccountId}
-                   ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
-                   ]
-                  ),
-    UpdateFuns = kvm_util:get_change_vmbox_funs(AccountId, kz_doc:id(NewBoxJObj), NewBoxJObj, SrcBoxId),
-    ForwardJObj = lists:foldl(fun(F, J) -> F(J) end, MsgJObj, UpdateFuns),
-    save_generate_media_url(ForwardJObj, props:get_value(<<"Attachment-Name">>, Props)).
-
--spec create_message_doc(kapps_call:call(), api_object(), kz_proplist()) -> kz_json:object().
-create_message_doc(Call, Metadata, Props) ->
     AccountId = kapps_call:account_id(Call),
     JObj = kzd_box_message:new(AccountId, Props),
-    maybe_add_metadata(Call, JObj, Metadata, Props).
 
--spec maybe_add_metadata(kapps_call:call(), kz_json:object(), api_object(), kz_proplist()) -> kz_json:object().
-maybe_add_metadata(Call, JObj, 'undefined', Props) ->
     Length = props:get_value(<<"Length">>, Props),
     CIDNumber = kvm_util:get_caller_id_number(Call),
     CIDName = kvm_util:get_caller_id_name(Call),
     Timestamp = kz_time:current_tstamp(),
     Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
-    kzd_box_message:set_metadata(Metadata, JObj);
-maybe_add_metadata(_Call, JObj, Metadata, Props) ->
-    MediaId = kz_doc:id(JObj),
-    Updates = [fun(M) -> kz_json:set_value(<<"timestamp">>, kz_time:current_tstamp(), M) end
-              ,fun(M) -> kzd_box_message:set_media_id(MediaId, M) end
-              ,fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
+
+    MsgJObj = kzd_box_message:set_metadata(Metadata, JObj),
+    save_generate_media_url(MsgJObj, props:get_value(<<"Attachment-Name">>, Props)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec create_forward_message_doc(kapps_call:call(), kz_json:object(), ne_binary(), kz_proplist()) ->
+                                        {ne_binary(), sotre_media_url()}.
+create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
+    AccountId = kapps_call:account_id(Call),
+    JObj = kzd_box_message:set_metadata(Metadata, kzd_box_message:new(AccountId, Props)),
+
+    NewBoxJObj = fake_vmbox_jobj(Call, Props),
+    {_NewId, VMChangeFuns} = kvm_util:get_change_vmbox_funs(kapps_call:account_id(Call)
+                                                           ,kz_doc:id(NewBoxJObj)
+                                                           ,NewBoxJObj
+                                                           ,SrcBoxId
+                                                           ,kz_doc:id(JObj)
+                                                           ),
+    Updates = [fun(M) -> kz_json:set_value(<<"lenght">>, props:get_value(<<"Length">>, Props), M) end
+               | VMChangeFuns
               ],
-    kzd_box_message:set_metadata(lists:foldl(fun(F, Meta) -> F(Meta) end, Metadata, Updates), JObj).
+    MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Updates),
+    save_generate_media_url(MsgJObj, props:get_value(<<"Attachment-Name">>, Props)).
 
 -spec save_generate_media_url(kz_json:object(), ne_binary()) -> {ne_binary(), sotre_media_url()}.
 save_generate_media_url(MsgJObj, AttachmentName) ->
     {'ok', SavedJObj} = kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj),
     MediaUrl = fun() -> kz_media_url:store(SavedJObj, AttachmentName) end,
     {kz_doc:id(SavedJObj), MediaUrl}.
+
+%% create a fake Destination Box JObj to pass to change vmbox functions
+%% Note: set pvt_account_id and db just to make sure for case when timezone is not passed
+%% so kzd_voicemail_box can find timezone from vmbox the owner or account
+fake_vmbox_jobj(Call, Props) ->
+    kz_json:from_list(
+      [{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
+      ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
+      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)},{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
+      ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
+      ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
+      ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -237,11 +237,39 @@ change_folder(Folder, Msgs, AccountId, BoxId) ->
 %%--------------------------------------------------------------------
 -spec move_to_vmbox(ne_binary(), messages(), ne_binary(), ne_binary()) ->
                            kz_json:object().
-move_to_vmbox(AccountId, Msgs, OldBoxId, NewBoxId) ->
+move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId) ->
     AccountDb = kvm_util:get_db(AccountId),
     {'ok', NBoxJ} = kz_datamgr:open_cache_doc(AccountDb, NewBoxId),
-    Funs = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
-    update(AccountId, OldBoxId, Msgs, Funs).
+    Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new()),
+    kz_json:from_list(dict:to_list(Results));
+move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId) ->
+    MsgIds = get_ids(MsgJObjs),
+    move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId).
+
+-spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict()) -> dict:dict().
+do_move(_AccountId, [], _OldboxId, _NewBoxId, _NBoxJ, ResDict) ->
+    ResDict;
+do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict) ->
+    case kvm_message:do_move(AccountId, FromId, OldboxId, NewBoxId, NBoxJ) of
+        {'ok', Moved} ->
+            Res = dict:append(<<"succeeded">>, kz_doc:id(Moved), ResDict),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res);
+        {'error', Reason} ->
+            Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
+            Res = dict:append(<<"failed">>, Failed, ResDict),
+            do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res)
+    end.
+
+-spec get_ids(kz_json:object()) -> ne_binaries().
+get_ids(JObjs) ->
+    Paths = [<<"_id">>
+            ,<<"media_id">>
+            ,[<<"metadata">>, <<"media_id">>]
+            ],
+    lists:foldl(fun(M, Ids) -> [kz_json:get_first_defined(Paths, M) | Ids] end
+               ,[]
+               ,JObjs
+               ).
 
 %%--------------------------------------------------------------------
 %% @public

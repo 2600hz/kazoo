@@ -14,7 +14,7 @@
         ,check_doc_type/3
 
         ,check_msg_belonging/2
-        ,get_change_vmbox_funs/4
+        ,get_change_vmbox_funs/4, get_change_vmbox_funs/5
 
         ,retention_seconds/0, retention_seconds/1
         ,maybe_set_deleted_by_retention/1, maybe_set_deleted_by_retention/2
@@ -166,15 +166,38 @@ maybe_set_deleted_by_retention(JObj, Timestamp) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec get_change_vmbox_funs(ne_binary(), ne_binary(), kz_json:object(), ne_binary()) ->
-                                   update_funs().
+                                   {ne_binary(), update_funs()}.
 get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId) ->
-    [fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
-    ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
-    ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
-    ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
-    ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
-    ,fun(DocJ) -> kz_json:set_value(<<"timestamp">>, kz_time:current_tstamp(), DocJ) end
-    ].
+    get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, 'undefined').
+
+-spec get_change_vmbox_funs(ne_binary(), ne_binary(), kz_json:object(), ne_binary(), api_binary()) ->
+                                   {ne_binary(), update_funs()}.
+get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, ToId) ->
+    Timestamp = kz_time:current_tstamp(),
+    {{Y, M, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
+    Year = kz_term:to_binary(Y),
+    Month = kz_time:pad_month(M),
+
+    NewId = case ToId of
+                'undefined' -> ?MODB_MSG_ID(Year, Month, kz_binary:rand_hex(16));
+                <<Year:4/binary, Month:2/binary, _Rest/binary>> -> ToId;
+                _OldId -> ?MODB_MSG_ID(Year, Month, kz_binary:rand_hex(16))
+            end,
+    AccountDb = get_db(AccountId, NewId),
+
+    {NewId
+    ,[fun(DocJ) -> kzd_box_message:set_source_id(NewBoxId, DocJ) end
+     ,fun(DocJ) -> kzd_box_message:apply_folder(?VM_FOLDER_NEW, DocJ) end
+     ,fun(DocJ) -> kzd_box_message:change_message_name(NBoxJ, DocJ) end
+     ,fun(DocJ) -> kzd_box_message:change_to_sip_field(AccountId, NBoxJ, DocJ) end
+     ,fun(DocJ) -> kzd_box_message:add_message_history(OldBoxId, DocJ) end
+     ,fun(DocJ) -> kzd_box_message:update_media_id(NewId, DocJ) end
+     ,fun(DocJ) -> kz_json:set_value([<<"metadata">>, <<"timestamp">>], Timestamp, DocJ) end
+     ,fun(DocJ) -> kz_json:set_value(<<"utc_seconds">>, Timestamp, DocJ) end
+     ,fun(DocJ) -> kz_doc:set_account_db(DocJ, AccountDb) end
+     ,fun(DocJ) -> kz_doc:set_modified(DocJ, Timestamp) end
+     ]
+    }.
 
 %%--------------------------------------------------------------------
 %% @public
