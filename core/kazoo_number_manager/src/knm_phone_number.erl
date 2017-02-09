@@ -764,7 +764,8 @@ set_features_denied(N, Features) ->
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
 -ifdef(TEST).
 features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>, <<"prepend">>, <<"ringback">>];
+    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>
+    ,<<"prepend">>, <<"ringback">>, <<"carrier_name">>];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
@@ -977,6 +978,12 @@ set_auth_by(N, ?MATCH_ACCOUNT_RAW(AuthBy)) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec is_admin(knm_phone_number() | api_ne_binary()) -> boolean().
+-ifdef(TEST).
+is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
+is_admin(?KNM_DEFAULT_AUTH_BY) -> true;
+is_admin(?MASTER_ACCOUNT_ID) -> true;
+is_admin(_) -> false.
+-else.
 is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
 is_admin(AuthBy) ->
     IsBypassed = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
@@ -984,6 +991,7 @@ is_admin(AuthBy) ->
         andalso lager:info("bypassing auth"),
     IsBypassed
         orelse kz_util:is_system_admin(AuthBy).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public
