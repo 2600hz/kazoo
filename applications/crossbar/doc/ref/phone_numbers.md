@@ -6,6 +6,7 @@
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
+`carrier_name` |   | `string(1..30)` |   | `false`
 `cnam` |   | `object` |   | `false`
 `cnam.display_name` |   | `string(1..15)` |   | `false`
 `cnam.inbound_lookup` |   | `boolean` |   | `false`
