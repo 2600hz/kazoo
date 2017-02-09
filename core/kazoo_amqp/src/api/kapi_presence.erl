@@ -365,19 +365,19 @@ publish_update(Req, ContentType) ->
 -spec update_routing_key(ne_binary() | api_terms()) -> ne_binary().
 -spec update_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 update_routing_key(Req) when is_list(Req) ->
-    update_routing_key(props:get_value(<<"State">>, Req)
+    update_routing_key(props:get_value(<<"Call-ID">>, Req)
                       ,props:get_value(<<"Presence-ID">>, Req)
                       );
 update_routing_key(Req) ->
-    update_routing_key(kz_json:get_value(<<"State">>, Req)
+    update_routing_key(kz_json:get_value(<<"Call-ID">>, Req)
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
-update_routing_key(State, PresenceID) when is_binary(State) ->
+update_routing_key(CallId, PresenceID) when is_binary(State) ->
     list_to_binary([<<"update.">>
-                   ,amqp_util:encode(State)
-                   ,"."
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
+                   ,"."
+                   ,amqp_util:encode(CallId)
                    ]).
 
 -spec realm_from_presence_id(ne_binary()) -> ne_binary().
@@ -416,19 +416,19 @@ publish_dialog(Req, ContentType) ->
 -spec dialog_routing_key(ne_binary() | api_terms()) -> ne_binary().
 -spec dialog_routing_key(ne_binary(), ne_binary()) -> ne_binary().
 dialog_routing_key(Req) when is_list(Req) ->
-    dialog_routing_key(props:get_value(<<"State">>, Req)
+    dialog_routing_key(props:get_value(<<"Call-ID">>, Req)
                       ,props:get_value(<<"Presence-ID">>, Req)
                       );
 dialog_routing_key(Req) ->
-    dialog_routing_key(kz_json:get_value(<<"State">>, Req)
+    dialog_routing_key(kz_json:get_value(<<"Call-ID">>, Req)
                       ,kz_json:get_value(<<"Presence-ID">>, Req)
                       ).
 
-dialog_routing_key(State, PresenceID) when is_binary(State) ->
+dialog_routing_key(CallId, PresenceID) when is_binary(State) ->
     list_to_binary([<<"dialog.">>
-                   ,amqp_util:encode(State)
-                   ,"."
                    ,amqp_util:encode(realm_from_presence_id(PresenceID))
+                   ,"."
+                   ,amqp_util:encode(CallId)
                    ]).
 
 %%--------------------------------------------------------------------
@@ -483,7 +483,6 @@ mwi_extended_update(Prop) ->
             ,{<<"Messages-Saved">>, 0}
             ,{<<"Messages-Urgent">>, 0}
             ,{<<"Messages-Urgent-Saved">>, 0}
-             %%            ,{<<"Expires">>, 600}
             ].
 
 -spec mwi_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -510,11 +509,12 @@ publish_mwi_update(Req, ContentType) ->
 mwi_update_routing_key(Prop) when is_list(Prop) ->
     mwi_update_routing_key(props:get_value(<<"To">>, Prop));
 mwi_update_routing_key(To) when is_binary(To) ->
-    R = case binary:split(To, <<"@">>) of
-            [_To, Realm] -> amqp_util:encode(Realm);
-            [Realm] -> amqp_util:encode(Realm)
-        end,
-    <<"mwi_updates.", R/binary>>;
+    [To, Realm] -> binary:split(To, <<"@">>),
+    list_to_binary([<<"mwi_updates.">>
+                   ,amqp_util:encode(Realm)
+                   ,"."
+                   ,amqp_util:encode(To)
+                   ]);
 mwi_update_routing_key(JObj) ->
     mwi_update_routing_key(kz_json:get_value(<<"To">>, JObj)).
 
