@@ -573,9 +573,7 @@ delete(Num, Options) ->
 
 -spec delete_number(knm_number(), ne_binary()) -> knm_number_return().
 delete_number(Number, AuthBy) ->
-    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
-        orelse kz_util:is_system_admin(AuthBy)
-    of
+    case knm_phone_number:is_admin(AuthBy) of
         'false' -> knm_errors:unauthorized();
         'true' ->
             N = knm_providers:delete(Number),
