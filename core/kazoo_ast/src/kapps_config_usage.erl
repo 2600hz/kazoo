@@ -21,9 +21,29 @@ to_schema_docs(Schemas) ->
 
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
+    maybe_update_account_schema(Name, AutoGenSchema),
     Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
-    JObj = static_fields(Name, AutoGenSchema),
+    JObj = static_fields(Name, remove_source(AutoGenSchema)),
     'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj))).
+
+maybe_update_account_schema(Name, AutoGenSchema) ->
+    Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
+    case account_properties(AutoGenSchema) of
+        {[]} -> ok;
+        Properties ->
+            io:format("~p~n~n", [Properties]),
+            JObj = static_account_fields(Name, remove_source(Properties)),
+            'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj)))
+    end.
+
+-spec account_properties(kz_json:object()) -> kz_json:object().
+account_properties(JObj0) ->
+    Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
+    Keep = [ lists:droplast(K) || {K, V} <- Flat, V == <<"kapps_account_config">> ],
+    kz_json:expand({[ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ]}).
+
+remove_source(JObj0) ->
+    kz_json:expand({[ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(<<"source">>, K) ]}).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
@@ -48,11 +68,22 @@ static_fields(Name, JObj) ->
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
+static_account_fields(Name, JObj) ->
+    Id = <<"account_config.", Name/binary>>,
+    Description = <<"Schema for ", Name/binary, " account_config">>,
+    Required = fields_without_defaults(JObj),
+    Values = [{<<"description">>, Description}
+             ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
+             ,{<<"type">>, <<"object">>}
+              |[{<<"required">>, Required} || Required =/= []]
+             ],
+    kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
+
 -define(NO_DEFAULTS_EXCEPTIONS, [<<"proxy_hostname">>]).
 
 -spec fields_without_defaults(kz_json:object()) -> ne_binaries().
 fields_without_defaults(JObj0) ->
-    JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0),
+    JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0, kz_json:new()),
     lists:sort([Field
                 || {Field, Content} <- kz_json:to_proplist(JObj),
                    'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content),
@@ -138,18 +169,18 @@ expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_default', _), Schemas) -
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_node', _), Schemas) ->
     Schemas;
-expression_to_schema(?MOD_FUN_ARGS('kapps_config', F, Args), Schemas) ->
-    config_to_schema(F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source = 'kapps_config', F, Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_default', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', 'set_node', _), Schemas) ->
     Schemas;
-expression_to_schema(?MOD_FUN_ARGS('ecallmgr_config', F, Args), Schemas) ->
-    config_to_schema(F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
-expression_to_schema(?MOD_FUN_ARGS('kapps_account_config', F='get_global', Args), Schemas) ->
-    config_to_schema(F, Args, Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source = 'ecallmgr_config', F, Args), Schemas) ->
+    config_to_schema(Source, F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
+expression_to_schema(?MOD_FUN_ARGS(Source = 'kapps_account_config', F='get_global', Args), Schemas) ->
+    config_to_schema(Source, F, Args, Schemas);
 expression_to_schema(?MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
     expressions_to_schema(Args, Schemas);
 expression_to_schema(?DYN_MOD_FUN(_M, _F), Schemas) ->
@@ -259,37 +290,39 @@ expression_to_schema(?MAP_FIELD_ASSOC(K, V), Schemas) ->
 expression_to_schema(?MAP_FIELD_EXACT(K, V), Schemas) ->
     expressions_to_schema([K, V], Schemas).
 
-config_to_schema('get_all_kvs', _Args, Schemas) ->
+config_to_schema(_, 'get_all_kvs', _Args, Schemas) ->
     Schemas;
-config_to_schema('flush', _Args, Schemas) ->
+config_to_schema(_, 'flush', _Args, Schemas) ->
     Schemas;
-config_to_schema('migrate', _Args, Schemas) ->
+config_to_schema(_, 'migrate', _Args, Schemas) ->
     Schemas;
-config_to_schema('get_node_value', _Args, Schemas) ->
+config_to_schema(_, 'get_node_value', _Args, Schemas) ->
     Schemas;
-config_to_schema(F='get_global', [Account, Cat, K], Schemas) ->
-    config_to_schema(F, [Account, Cat, K, 'undefined'], Schemas);
-config_to_schema(F='get_global', [_Account, Cat, K, Default], Schemas) ->
+config_to_schema(_, 'get_category', _Args, Schemas) ->
+    Schemas;
+config_to_schema(Source, F='get_global', [Account, Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Account, Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F='get_global', [_Account, Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
     case key_to_key_path(K) of
         'undefined' -> Schemas;
-        Key -> config_key_to_schema(F, Document, Key, Default, Schemas)
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end;
-config_to_schema(F, [Cat, K], Schemas) ->
-    config_to_schema(F, [Cat, K, 'undefined'], Schemas);
-config_to_schema(F, [Cat, K, Default, _Node], Schemas) ->
-    config_to_schema(F, [Cat, K, Default], Schemas);
-config_to_schema(F, [Cat, K, Default], Schemas) ->
+config_to_schema(Source, F, [Cat, K], Schemas) ->
+    config_to_schema(Source, F, [Cat, K, 'undefined'], Schemas);
+config_to_schema(Source, F, [Cat, K, Default, _Node], Schemas) ->
+    config_to_schema(Source, F, [Cat, K, Default], Schemas);
+config_to_schema(Source, F, [Cat, K, Default], Schemas) ->
     Document = category_to_document(Cat),
     case key_to_key_path(K) of
         'undefined' -> Schemas;
-        Key -> config_key_to_schema(F, Document, Key, Default, Schemas)
+        Key -> config_key_to_schema(Source, F, Document, Key, Default, Schemas)
     end.
 
-config_key_to_schema(_F, 'undefined', _Key, _Default, Schemas) ->
+config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
-config_key_to_schema(F, Document, Key, Default, Schemas) ->
-    Properties = guess_properties(Document, Key, guess_type(F, Default), Default),
+config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
+    Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
@@ -371,7 +404,7 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _A
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
-guess_properties(Document, Key, Type, Default)
+guess_properties(Document, Source, Key, Type, Default)
   when is_binary(Key) ->
     DescriptionKey = description_key(Document, Key),
     Description = fetch_description(DescriptionKey),
@@ -384,18 +417,19 @@ guess_properties(Document, Key, Type, Default)
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
+        ,{<<"source">>, erlang:atom_to_binary(Source, utf8)}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
         ]
        )
      );
-guess_properties(Document, [Key], Type, Default)
+guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
-    guess_properties(Document, Key, Type, Default);
-guess_properties(Document, [Key, ?FIELD_PROPERTIES], Type, Default) ->
-    guess_properties(Document, Key, Type, Default);
-guess_properties(Document, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
-    guess_properties(Document, Rest, Type, Default).
+    guess_properties(Document, Source, Key, Type, Default);
+guess_properties(Document, Source, [Key, ?FIELD_PROPERTIES], Type, Default) ->
+    guess_properties(Document, Source, Key, Type, Default);
+guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
+    guess_properties(Document, Source, Rest, Type, Default).
 
 description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
 fetch_description(DescriptionKey) ->
