@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.conferences",
+    "description": "Schema for conferences account_config",
+    "properties": {
+        "entry_tone": {
+            "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+            "description": "conferences entry tone",
+            "type": "string"
+        },
+        "exit_tone": {
+            "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+            "description": "conferences exit tone",
+            "type": "string"
+        },
+        "moderator_entry_tone": {
+            "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+            "description": "conferences moderator entry tone",
+            "type": "string"
+        },
+        "moderator_exit_tone": {
+            "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+            "description": "conferences moderator exit tone",
+            "type": "string"
+        },
+        "number_timeout": {
+            "default": 5000,
+            "description": "conferences number timeout",
+            "type": "integer"
+        },
+        "pin_timeout": {
+            "default": 5000,
+            "description": "conferences pin timeout",
+            "type": "integer"
+        },
+        "support_name_announcement": {
+            "default": true,
+            "description": "conferences support name announcement",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

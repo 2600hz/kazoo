@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.cdr",
+    "description": "Schema for cdr account_config",
+    "properties": {
+        "ignore_loopback_bowout": {
+            "default": true,
+            "description": "cdr ignore loopback bowout",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

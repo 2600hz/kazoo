@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.fax",
+    "description": "Schema for fax account_config",
+    "properties": {
+        "default_smtp_domain": {
+            "default": "fax.kazoo.io",
+            "description": "fax defaultsmtp domain",
+            "type": "string"
+        },
+        "log_faxbox_errors": {
+            "default": true,
+            "description": "fax log faxbox errors",
+            "type": "boolean"
+        },
+        "max_outbound": {
+            "default": 10,
+            "description": "fax max outbound",
+            "type": "integer"
+        }
+    },
+    "type": "object"
+}
