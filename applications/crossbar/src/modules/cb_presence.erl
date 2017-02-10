@@ -190,6 +190,7 @@ search_req(Context, SearchType, Username) ->
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     Count = kz_nodes:whapp_count(<<"kamailio">>, 'true'),
+    lager:debug("requesting presence ~s from ~B servers", [SearchType, Count]),
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_presence:publish_search_req/1
                                     ,{fun collect_results/2, {0, Count}}
@@ -211,7 +212,7 @@ collect_results([Response | _], {Count, Max}) ->
     end.
 
 -spec search_resp_value(ne_binary()) -> 0..1.
-search_resp_value("search_resp") -> 1;
+search_resp_value(<<"search_resp">>) -> 1;
 search_resp_value(_) -> 0.
 
 -type acc_function() :: fun((kz_json:object(), kz_json:object()) -> kz_json:object()).
