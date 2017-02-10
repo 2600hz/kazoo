@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.doodle",
+    "description": "Schema for doodle account_config",
+    "properties": {
+        "api_preserve_caller_id": {
+            "default": true,
+            "description": "doodle.api preserve caller id",
+            "type": "boolean"
+        },
+        "reschedule": {
+            "default": {},
+            "description": "doodle reschedule",
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

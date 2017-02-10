@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.privacy",
+    "description": "Schema for privacy account_config",
+    "properties": {
+        "block_anonymous_caller_id": {
+            "default": false,
+            "description": "Controls blocking of anonymous calls",
+            "type": "boolean"
+        },
+        "privacy_mode": {
+            "default": "kazoo",
+            "description": "Default privacy mode for anonymous calls",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}

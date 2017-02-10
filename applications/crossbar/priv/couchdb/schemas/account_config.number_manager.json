@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.number_manager",
+    "description": "Schema for number_manager account_config",
+    "properties": {
+        "unauthorized_numbers_lookup": {
+            "default": false,
+            "description": "number_manager unauthorized numbers lookup",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}

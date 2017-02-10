@@ -35,6 +35,185 @@
             ],
             "type": "object"
         },
+        "account_config.cdr": {
+            "description": "Schema for cdr account_config",
+            "properties": {
+                "ignore_loopback_bowout": {
+                    "default": true,
+                    "description": "cdr ignore loopback bowout",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.conferences": {
+            "description": "Schema for conferences account_config",
+            "properties": {
+                "entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "conferences entry tone",
+                    "type": "string"
+                },
+                "exit_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "description": "conferences exit tone",
+                    "type": "string"
+                },
+                "moderator_entry_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "description": "conferences moderator entry tone",
+                    "type": "string"
+                },
+                "moderator_exit_tone": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "description": "conferences moderator exit tone",
+                    "type": "string"
+                },
+                "number_timeout": {
+                    "default": 5000,
+                    "description": "conferences number timeout",
+                    "type": "integer"
+                },
+                "pin_timeout": {
+                    "default": 5000,
+                    "description": "conferences pin timeout",
+                    "type": "integer"
+                },
+                "support_name_announcement": {
+                    "default": true,
+                    "description": "conferences support name announcement",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.crossbar.sms": {
+            "description": "Schema for crossbar.sms account_config",
+            "properties": {
+                "api_e164_convert_from": {
+                    "default": false,
+                    "description": "crossbar.sms api e164 convert from",
+                    "type": "boolean"
+                },
+                "api_e164_convert_to": {
+                    "default": false,
+                    "description": "crossbar.sms api e164 convert to",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.doodle": {
+            "description": "Schema for doodle account_config",
+            "properties": {
+                "api_preserve_caller_id": {
+                    "default": true,
+                    "description": "doodle.api preserve caller id",
+                    "type": "boolean"
+                },
+                "reschedule": {
+                    "default": {},
+                    "description": "doodle reschedule",
+                    "type": "object"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.fax": {
+            "description": "Schema for fax account_config",
+            "properties": {
+                "default_smtp_domain": {
+                    "default": "fax.kazoo.io",
+                    "description": "fax defaultsmtp domain",
+                    "type": "string"
+                },
+                "log_faxbox_errors": {
+                    "default": true,
+                    "description": "fax log faxbox errors",
+                    "type": "boolean"
+                },
+                "max_outbound": {
+                    "default": 10,
+                    "description": "fax max outbound",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.kazoo_endpoint": {
+            "description": "Schema for kazoo_endpoint account_config",
+            "properties": {
+                "default_can_text_self": {
+                    "default": true,
+                    "description": "kazoo_endpoint default can text self",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.media": {
+            "description": "Schema for media account_config",
+            "properties": {
+                "call_recording": {
+                    "properties": {
+                        "storage_retry_times": {
+                            "properties": {
+                                "default": 5,
+                                "description": "media storage retry times",
+                                "type": "integer"
+                            }
+                        }
+                    }
+                }
+            },
+            "required": [
+                "call_recording"
+            ],
+            "type": "object"
+        },
+        "account_config.number_manager": {
+            "description": "Schema for number_manager account_config",
+            "properties": {
+                "unauthorized_numbers_lookup": {
+                    "default": false,
+                    "description": "number_manager unauthorized numbers lookup",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.privacy": {
+            "description": "Schema for privacy account_config",
+            "properties": {
+                "block_anonymous_caller_id": {
+                    "default": false,
+                    "description": "Controls blocking of anonymous calls",
+                    "type": "boolean"
+                },
+                "privacy_mode": {
+                    "default": "kazoo",
+                    "description": "Default privacy mode for anonymous calls",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "account_config.webhooks": {
+            "description": "Schema for webhooks account_config",
+            "properties": {
+                "attempt_failure_count": {
+                    "default": 6,
+                    "description": "webhooks attempt failure count",
+                    "type": "integer"
+                },
+                "attempt_failure_expiry_ms": {
+                    "default": 60000,
+                    "description": "webhooks attempt failure expiry in milliseconds",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "account_rate_limits": {
             "additionalProperties": true,
             "description": "describe limits for SIP requests",

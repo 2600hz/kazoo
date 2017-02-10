@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "account_config.kazoo_endpoint",
+    "description": "Schema for kazoo_endpoint account_config",
+    "properties": {
+        "default_can_text_self": {
+            "default": true,
+            "description": "kazoo_endpoint default can text self",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}
