@@ -809,11 +809,12 @@ used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 -spec set_used_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_used_by(N=#knm_phone_number{used_by = V}, V) -> N;
 set_used_by(N, UsedBy='undefined') ->
+    lager:debug("updating used_by from ~s to ~s", [N#knm_phone_number.used_by, UsedBy]),
     N#knm_phone_number{is_dirty = true
                       ,used_by = UsedBy
                       };
 set_used_by(N, UsedBy=?NE_BINARY) ->
-    lager:debug("assigning ~s to ~s", [number(N), UsedBy]),
+    lager:debug("updating used_by from ~s to ~s", [N#knm_phone_number.used_by, UsedBy]),
     N#knm_phone_number{is_dirty = true
                       ,used_by = UsedBy
                       }.
@@ -917,6 +918,7 @@ set_state(N, State)
        State =:= ?NUMBER_STATE_DELETED;
        State =:= ?NUMBER_STATE_AGING
        ->
+    lager:debug("updating state from ~s to ~s", [N#knm_phone_number.state, State]),
     N#knm_phone_number{is_dirty = true
                       ,state = State
                       }.
@@ -971,6 +973,7 @@ ported_in(#knm_phone_number{ported_in=Ported}) -> Ported.
 -spec set_ported_in(knm_phone_number(), boolean()) -> knm_phone_number().
 set_ported_in(N=#knm_phone_number{ported_in = V}, V) -> N;
 set_ported_in(N, Ported) when is_boolean(Ported) ->
+    lager:debug("updating ported_in from ~s to ~s", [N#knm_phone_number.ported_in, Ported]),
     N#knm_phone_number{is_dirty = true
                       ,ported_in = Ported
                       }.
@@ -1000,7 +1003,7 @@ set_module_name(N, 'undefined') ->
     set_module_name(N, ?CARRIER_LOCAL);
 set_module_name(N=#knm_phone_number{module_name = Name}, Name=?NE_BINARY) -> N;
 set_module_name(N0, Name=?NE_BINARY) ->
-    lager:debug("updating module_name from ~p to ~p", [N0#knm_phone_number.module_name, Name]),
+    lager:debug("updating module_name from ~s to ~s", [N0#knm_phone_number.module_name, Name]),
     N = N0#knm_phone_number{is_dirty = true
                            ,module_name = Name
                            },
@@ -1068,10 +1071,12 @@ region(#knm_phone_number{region=Region}) -> Region.
 -spec set_region(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_region(N=#knm_phone_number{region = V}, V) -> N;
 set_region(N, Region='undefined') ->
+    lager:debug("updating region from ~s to ~s", [N#knm_phone_number.region, Region]),
     N#knm_phone_number{is_dirty = true
                       ,region = Region
                       };
 set_region(N, Region=?NE_BINARY) ->
+    lager:debug("updating region from ~s to ~s", [N#knm_phone_number.region, Region]),
     N#knm_phone_number{is_dirty = true
                       ,region = Region
                       }.
