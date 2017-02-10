@@ -173,18 +173,12 @@ rename_carrier_test_() ->
     {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     PN1 = knm_number:phone_number(N1),
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"local">>}]),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj1}]),
+    {ok, N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj1}]),
     PN2 = knm_number:phone_number(N2),
     JObj2 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"wrong_carrier">>}]),
-    #{ko := #{?TEST_TELNYX_NUM := Error3}} =
-        knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, JObj2}]),
-    #{ok := [N4]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
+    {ok, N4} = knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
     PN4 = knm_number:phone_number(N4),
     JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
-    #{ko := #{?TEST_TELNYX_NUM := Error5}} = knm_numbers:update([N4]
-                                                               ,[{fun knm_phone_number:reset_doc/2, JObj3}]
-                                                               ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
-                                                               ),
     [{"Verify carrier name is right"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
      }
@@ -194,13 +188,20 @@ rename_carrier_test_() ->
      }
     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
     ,{"Verify setting wrong carrier is forbidden"
-     ,?_assertEqual(<<"invalid">>, knm_errors:message(Error3))
+     ,?_assertThrow({error, invalid, _N, <<"'wrong_carrier' is not known by the system">>}
+                   ,knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, JObj2}])
+                   )
      }
     ,{"Verify carrier name is still changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN4))
      }
     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN4)))
     ,{"Verify setting carrier as non-admin is forbidden"
-     ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error5))
+     ,?_assertThrow({error, unauthorized}
+                   ,knm_number:update_phone_number(N4
+                                                  ,[{fun knm_phone_number:reset_doc/2, JObj3}]
+                                                  ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
+                                                  )
+                   )
      }
     ].
