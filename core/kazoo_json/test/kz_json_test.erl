@@ -586,6 +586,6 @@ flatten_expand_diff_test() ->
     X2 = kz_json:set_value(k20, v20, X),
     Delta = kz_json:set_value(k20, v20, X),
     [
-        ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
-        ,?_assertEqual(kz_json:diff(X, X2), Delta)
+     ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
+    ,?_assertEqual(kz_json:diff(X, X2), Delta)
     ].
