@@ -108,6 +108,11 @@
 -define(PORTING_MODULE_NAME,
         kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"porting_module_name">>, ?CARRIER_LOCAL)).
 
+-define(DIRTY(PN), begin
+                       lager:error("dirty"),
+                       PN#knm_phone_number{is_dirty = true}
+                   end).
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -717,10 +722,9 @@ set_number(N, <<"+",_:8,_/binary>>=NormalizedNum) ->
     case {N#knm_phone_number.number, N#knm_phone_number.number_db} of
         {NormalizedNum, NumberDb} -> N;
         _ ->
-            N#knm_phone_number{is_dirty = true
-                              ,number = NormalizedNum
-                              ,number_db = NumberDb
-                              }
+            ?DIRTY(N#knm_phone_number{number = NormalizedNum
+                                     ,number_db = NumberDb
+                                     })
     end.
 
 %%--------------------------------------------------------------------
@@ -744,13 +748,9 @@ assign_to(#knm_phone_number{assign_to=AssignTo}) ->
 -spec set_assign_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assign_to(N=#knm_phone_number{assign_to = V}, V) -> N;
 set_assign_to(N, AssignTo='undefined') ->
-    N#knm_phone_number{is_dirty = true
-                      ,assign_to = AssignTo
-                      };
+    ?DIRTY(N#knm_phone_number{assign_to = AssignTo});
 set_assign_to(N, AssignTo=?MATCH_ACCOUNT_RAW(_)) ->
-    N#knm_phone_number{is_dirty = true
-                      ,assign_to = AssignTo
-                      }.
+    ?DIRTY(N#knm_phone_number{assign_to = AssignTo}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -764,15 +764,13 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(N=#knm_phone_number{assigned_to = V}, V) -> N;
 set_assigned_to(N, AssignedTo='undefined') ->
-    N#knm_phone_number{is_dirty = true
-                      ,assigned_to = AssignedTo
-                      ,used_by = 'undefined'
-                      };
+    ?DIRTY(N#knm_phone_number{assigned_to = AssignedTo
+                             ,used_by = 'undefined'
+                             });
 set_assigned_to(N, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
-    N#knm_phone_number{is_dirty = true
-                      ,assigned_to = AssignedTo
-                      ,used_by = 'undefined'
-                      }.
+    ?DIRTY(N#knm_phone_number{assigned_to = AssignedTo
+                             ,used_by = 'undefined'
+                             }).
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(N=#knm_phone_number{assigned_to = V}, V, UsedBy) ->
@@ -796,13 +794,9 @@ prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
 -spec set_prev_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_prev_assigned_to(N=#knm_phone_number{prev_assigned_to = V}, V) -> N;
 set_prev_assigned_to(N, PrevAssignedTo='undefined') ->
-    N#knm_phone_number{is_dirty = true
-                      ,prev_assigned_to = PrevAssignedTo
-                      };
+    ?DIRTY(N#knm_phone_number{prev_assigned_to = PrevAssignedTo});
 set_prev_assigned_to(N, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
-    N#knm_phone_number{is_dirty = true
-                      ,prev_assigned_to = PrevAssignedTo
-                      }.
+    ?DIRTY(N#knm_phone_number{prev_assigned_to = PrevAssignedTo}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -815,15 +809,11 @@ used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 -spec set_used_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_used_by(N=#knm_phone_number{used_by = V}, V) -> N;
 set_used_by(N, UsedBy='undefined') ->
-    lager:debug("updating used_by from ~s to ~s", [N#knm_phone_number.used_by, UsedBy]),
-    N#knm_phone_number{is_dirty = true
-                      ,used_by = UsedBy
-                      };
+    lager:debug("unassigning ~s from ~s", [number(N), N#knm_phone_number.used_by]),
+    ?DIRTY(N#knm_phone_number{used_by = UsedBy});
 set_used_by(N, UsedBy=?NE_BINARY) ->
-    lager:debug("updating used_by from ~s to ~s", [N#knm_phone_number.used_by, UsedBy]),
-    N#knm_phone_number{is_dirty = true
-                      ,used_by = UsedBy
-                      }.
+    lager:debug("assigning ~s to ~s from ~s", [number(N), UsedBy, N#knm_phone_number.used_by]),
+    ?DIRTY(N#knm_phone_number{used_by = UsedBy}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -842,10 +832,7 @@ set_features(N, Features) ->
     'true' = kz_json:is_json_object(Features),
     case kz_json:are_equal(N#knm_phone_number.features, Features) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,features = Features
-                              }
+        false -> ?DIRTY(N#knm_phone_number{features = Features})
     end.
 
 -spec feature(knm_phone_number(), ne_binary()) -> kz_json:api_json_term().
@@ -865,33 +852,23 @@ set_feature(N0, Feature=?NE_BINARY, Data) ->
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_features_allowed(N=#knm_phone_number{features_allowed = undefined}, Features) ->
     true = lists:all(fun kz_term:is_ne_binary/1, Features),
-    N#knm_phone_number{is_dirty = true
-                      ,features_allowed = Features
-                      };
+    ?DIRTY(N#knm_phone_number{features_allowed = Features});
 set_features_allowed(N, Features) ->
     true = lists:all(fun kz_term:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,features_allowed = Features
-                              }
+        false -> ?DIRTY(N#knm_phone_number{features_allowed = Features})
     end.
 
 -spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_features_denied(N=#knm_phone_number{features_denied = undefined}, Features) ->
     true = lists:all(fun kz_term:is_ne_binary/1, Features),
-    N#knm_phone_number{is_dirty = true
-                      ,features_denied = Features
-                      };
+    ?DIRTY(N#knm_phone_number{features_denied = Features});
 set_features_denied(N, Features) ->
     true = lists:all(fun kz_term:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,features_denied = Features
-                              }
+        false -> ?DIRTY(N#knm_phone_number{features_denied = Features})
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
@@ -936,9 +913,7 @@ set_state(N, State)
        State =:= ?NUMBER_STATE_AGING
        ->
     lager:debug("updating state from ~s to ~s", [N#knm_phone_number.state, State]),
-    N#knm_phone_number{is_dirty = true
-                      ,state = State
-                      }.
+    ?DIRTY(N#knm_phone_number{state = State}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -962,9 +937,7 @@ add_reserve_history(#knm_phone_number{reserve_history=[AccountId|_]}=N
 add_reserve_history(#knm_phone_number{reserve_history=ReserveHistory}=N
                    ,?MATCH_ACCOUNT_RAW(AccountId)
                    ) ->
-    N#knm_phone_number{is_dirty = true
-                      ,reserve_history=[AccountId | ReserveHistory]
-                      }.
+    ?DIRTY(N#knm_phone_number{reserve_history=[AccountId | ReserveHistory]}).
 
 -spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
                             (knm_numbers:collection()) -> knm_numbers:collection().
@@ -991,9 +964,7 @@ ported_in(#knm_phone_number{ported_in=Ported}) -> Ported.
 set_ported_in(N=#knm_phone_number{ported_in = V}, V) -> N;
 set_ported_in(N, Ported) when is_boolean(Ported) ->
     lager:debug("updating ported_in from ~s to ~s", [N#knm_phone_number.ported_in, Ported]),
-    N#knm_phone_number{is_dirty = true
-                      ,ported_in = Ported
-                      }.
+    ?DIRTY(N#knm_phone_number{ported_in = Ported}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1020,10 +991,8 @@ set_module_name(N, 'undefined') ->
     set_module_name(N, ?CARRIER_LOCAL);
 set_module_name(N=#knm_phone_number{module_name = Name}, Name=?NE_BINARY) -> N;
 set_module_name(N0, Name=?NE_BINARY) ->
-    lager:debug("updating module_name from ~s to ~s", [N0#knm_phone_number.module_name, Name]),
-    N = N0#knm_phone_number{is_dirty = true
-                           ,module_name = Name
-                           },
+    lager:debug("updating module_name from ~p to ~p", [N0#knm_phone_number.module_name, Name]),
+    N = ?DIRTY(N0#knm_phone_number{module_name = Name}),
     Features = kz_json:delete_key(?FEATURE_LOCAL, features(N)),
     set_features(N, Features).
 
@@ -1038,9 +1007,7 @@ set_module_name_local(N0, Name) ->
         true -> N;
         false ->
             lager:debug("updating module_name from ~p to ~p", [N#knm_phone_number.module_name, Name]),
-            N#knm_phone_number{is_dirty = true
-                              ,module_name = Name
-                              }
+            ?DIRTY(N#knm_phone_number{module_name = Name})
     end.
 
 %%--------------------------------------------------------------------
@@ -1059,10 +1026,7 @@ set_carrier_data(N, Data) ->
     'true' = kz_json:is_json_object(Data),
     case kz_json:are_equal(N#knm_phone_number.carrier_data, Data) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,carrier_data = Data
-                              }
+        false -> ?DIRTY(N#knm_phone_number{carrier_data = Data})
     end.
 
 -spec update_carrier_data(knm_phone_number(), kz_json:object()) -> knm_phone_number().
@@ -1071,10 +1035,7 @@ update_carrier_data(N=#knm_phone_number{carrier_data = Data}, JObj) ->
     Updated = kz_json:merge_recursive(JObj, Data),
     case kz_json:are_equal(N#knm_phone_number.carrier_data, Updated) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,carrier_data = Updated
-                              }
+        false -> ?DIRTY(N#knm_phone_number{carrier_data = Updated})
     end.
 
 %%--------------------------------------------------------------------
@@ -1089,14 +1050,10 @@ region(#knm_phone_number{region=Region}) -> Region.
 set_region(N=#knm_phone_number{region = V}, V) -> N;
 set_region(N, Region='undefined') ->
     lager:debug("updating region from ~s to ~s", [N#knm_phone_number.region, Region]),
-    N#knm_phone_number{is_dirty = true
-                      ,region = Region
-                      };
+    ?DIRTY(N#knm_phone_number{region = Region});
 set_region(N, Region=?NE_BINARY) ->
     lager:debug("updating region from ~s to ~s", [N#knm_phone_number.region, Region]),
-    N#knm_phone_number{is_dirty = true
-                      ,region = Region
-                      }.
+    ?DIRTY(N#knm_phone_number{region = Region}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1184,10 +1141,7 @@ set_locality(N, JObj) ->
     'true' = kz_json:is_json_object(JObj),
     case kz_json:are_equal(JObj, N#knm_phone_number.locality) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,locality = JObj
-                              }
+        false -> ?DIRTY(N#knm_phone_number{locality = JObj})
     end.
 
 %%--------------------------------------------------------------------
@@ -1203,10 +1157,7 @@ set_doc(N, JObj) ->
     'true' = kz_json:is_json_object(JObj),
     case kz_json:are_equal(JObj, N#knm_phone_number.doc) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,doc = JObj
-                              }
+        false -> ?DIRTY(N#knm_phone_number{doc = JObj})
     end.
 
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
@@ -1216,10 +1167,7 @@ update_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     Data = kz_json:delete_key(<<"id">>, Updated),
     case kz_json:are_equal(Data, N#knm_phone_number.doc) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,doc = Data
-                              }
+        false -> ?DIRTY(N#knm_phone_number{doc = Data})
     end.
 
 -spec reset_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
@@ -1229,10 +1177,7 @@ reset_doc(N=#knm_phone_number{doc = Doc}, JObj) ->
     Data = maybe_update_rw_features(kz_json:delete_key(<<"id">>, Updated)),
     case kz_json:are_equal(Data, N#knm_phone_number.doc) of
         true -> N;
-        false ->
-            N#knm_phone_number{is_dirty = true
-                              ,doc = Data
-                              }
+        false -> ?DIRTY(N#knm_phone_number{doc = Data})
     end.
 
 %%--------------------------------------------------------------------
