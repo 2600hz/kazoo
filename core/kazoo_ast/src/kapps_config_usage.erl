@@ -6,6 +6,7 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).
@@ -40,10 +41,10 @@ maybe_update_account_schema(Name, AutoGenSchema) ->
 account_properties(JObj0) ->
     Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
     Keep = [ lists:droplast(K) || {K, V} <- Flat, V == <<"kapps_account_config">> ],
-    kz_json:expand(kz_json:from_list([ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ]})).
+    kz_json:expand(kz_json:from_list([ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ])).
 
 remove_source(JObj0) ->
-    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(?SOURCE, K) ]})).
+    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(?SOURCE, K) ])).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
