@@ -481,6 +481,8 @@ default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Defa
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_global', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_account_config', 'get', [_Account, _Category, _Key, Default])) ->
+    default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     '_system';
 default_value(?FUN_ARGS(_F, _Args)) ->
