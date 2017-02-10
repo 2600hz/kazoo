@@ -7,6 +7,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
+-define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
@@ -29,9 +30,8 @@ update_schema({Name, AutoGenSchema}) ->
 maybe_update_account_schema(Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
     case account_properties(AutoGenSchema) of
-        {[]} -> ok;
+        ?JSON_WRAPPER([]) -> ok;
         Properties ->
-            io:format("~p~n~n", [Properties]),
             JObj = static_account_fields(Name, remove_source(Properties)),
             'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj)))
     end.
@@ -40,10 +40,10 @@ maybe_update_account_schema(Name, AutoGenSchema) ->
 account_properties(JObj0) ->
     Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
     Keep = [ lists:droplast(K) || {K, V} <- Flat, V == <<"kapps_account_config">> ],
-    kz_json:expand({[ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ]}).
+    kz_json:expand(kz_json:from_list([ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ]})).
 
 remove_source(JObj0) ->
-    kz_json:expand({[ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(<<"source">>, K) ]}).
+    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(?SOURCE, K) ]})).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
@@ -417,7 +417,7 @@ guess_properties(Document, Source, Key, Type, Default)
     kz_json:from_list(
       props:filter_undefined(
         [{<<"type">>, Type}
-        ,{<<"source">>, erlang:atom_to_binary(Source, utf8)}
+        ,{?SOURCE, erlang:atom_to_binary(Source, utf8)}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
         ]
