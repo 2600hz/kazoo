@@ -458,6 +458,7 @@
     "notify.voicemail_to_email.html_content_transfer_encoding": "notify.voicemail_to_email html content transfer encoding",
     "notify.voicemail_to_email.text_content_transfer_encoding": "notify.voicemail_to_email text content transfer encoding",
     "number_manager.allow": "Number features a number is allowed to enable or disable",
+    "number_manager.allow_port_transition_from_submitted_to_scheduled": "Should number ports be allowed to transition from submitted to scheduled?",
     "number_manager.available_module_name": "number_manager available module name",
     "number_manager.bandwidth.debug": "number_manager.bandwidth debug",
     "number_manager.bandwidth.developer_key": "number_manager.bandwidth developer key",
