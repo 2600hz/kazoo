@@ -194,7 +194,7 @@ send_offnet(State, Command) ->
 
 wait_for_bridge(State, CtlQ, Timeout) ->
     case ts_callflow:wait_for_bridge(State, Timeout) of
-        {'done', _} -> lager:info("channel bridged, we're done here");
+        {'bridged', _} -> lager:info("channel bridged, we're done here");
         {'hangup', _} -> ts_callflow:send_hangup(State);
         {'error', #ts_callflow_state{aleg_callid='undefined'}} -> 'ok';
         {'error', #ts_callflow_state{aleg_callid=CallId}=State1} ->
