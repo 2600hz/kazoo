@@ -876,7 +876,7 @@ accept_override(Context) ->
 
 -spec flatten_jobj(cb_context:context()) -> iolist().
 flatten_jobj(Context) ->
-    JObj = kz_json:flatten(cb_context:resp_data(Context)),
+    JObj = kz_json:flatten(cb_context:resp_data(Context), binary_join),
     Routines = [fun check_integrity/1
                ,fun create_csv_header/1
                ,fun json_objs_to_csv/1

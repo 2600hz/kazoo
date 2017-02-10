@@ -580,3 +580,12 @@ from_list_recursive_test() ->
     ,?_assertEqual(kz_json:get_ne_binary_value(Key2, JObj1), kz_json:get_ne_binary_value(Key2, JObj2))
     ,?_assertEqual(true, kz_json:are_equal(JObj1, JObj2))
     ].
+
+flatten_expand_diff_test() ->
+    X = kz_json:set_value([k10, k11, k12], v10, kz_json:new()),
+    X2 = kz_json:set_value(k20, v20, X),
+    Delta = kz_json:set_value(k20, v20, X),
+    [
+     ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
+    ,?_assertEqual(kz_json:diff(X, X2), Delta)
+    ].
