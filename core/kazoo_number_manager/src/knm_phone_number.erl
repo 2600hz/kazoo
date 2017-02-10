@@ -22,8 +22,7 @@
         ]).
 
 -export([setters/2
-        ,new/0
-        ,number/1, set_number/2
+        ,number/1
         ,number_db/1
         ,assign_to/1, set_assign_to/2
         ,assigned_to/1, set_assigned_to/2
@@ -58,6 +57,13 @@
 -include("knm.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
+%% Used by from_json/1
+-define(DEFAULT_FEATURES, kz_json:new()).
+-define(DEFAULT_RESERVE_HISTORY, []).
+-define(DEFAULT_PORTED_IN, false).
+-define(DEFAULT_MODULE_NAME, knm_carriers:default_carrier()).
+-define(DEFAULT_CARRIER_DATA, kz_json:new()).
+-define(DEFAULT_DOC, kz_json:new()).
 -define(DEFAULT_FEATURES_ALLOWED, []).
 -define(DEFAULT_FEATURES_DENIED, []).
 
@@ -67,24 +73,24 @@
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
                           ,used_by :: api_ne_binary()
-                          ,features = kz_json:new() :: kz_json:object()
+                          ,features :: kz_json:object()
                           ,state :: ne_binary()
-                          ,reserve_history = [] :: ne_binaries()
-                          ,ported_in = 'false' :: boolean()
-                          ,module_name = knm_carriers:default_carrier() :: ne_binary()
-                          ,carrier_data = kz_json:new() :: kz_json:object()
+                          ,reserve_history :: ne_binaries()
+                          ,ported_in :: boolean()
+                          ,module_name :: ne_binary()
+                          ,carrier_data :: kz_json:object()
                           ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
                           ,mdn_run = false :: boolean()
-                          ,locality :: kz_json:object()
-                          ,doc = kz_json:new() :: kz_json:object()
+                          ,locality :: api_object()
+                          ,doc :: kz_json:object()
                           ,modified :: gregorian_seconds()
                           ,created :: gregorian_seconds()
                           ,is_dirty = 'false' :: boolean()
-                          ,features_allowed = ?DEFAULT_FEATURES_ALLOWED :: ne_binaries()
-                          ,features_denied = ?DEFAULT_FEATURES_DENIED :: ne_binaries()
+                          ,features_allowed :: ne_binaries()
+                          ,features_denied :: ne_binaries()
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
@@ -125,10 +131,14 @@ new_setters(Options) ->
      ).
 
 -spec do_new(ne_binary(), set_functions()) -> knm_phone_number().
-do_new(DID, Setters0) ->
-    Setters = [{fun set_number/2, knm_converters:normalize(DID)} | Setters0],
-    {ok, PhoneNumber} = setters(new(), Setters),
+do_new(DID, Setters) ->
+    {ok, PhoneNumber} = setters(from_number(DID), Setters),
     PhoneNumber.
+
+%% @public
+-spec from_number(ne_binary()) -> knm_phone_number().
+from_number(DID) ->
+    from_json(kz_doc:set_id(kz_json:new(), DID)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -322,7 +332,7 @@ authorize_release(PhoneNumber, AuthBy) ->
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PhoneNumber) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
-    Routines = [{fun set_features/2, kz_json:new()}
+    Routines = [{fun set_features/2, ?DEFAULT_FEATURES}
                ,{fun set_doc/2, kz_json:private_fields(doc(PhoneNumber))}
                ,{fun set_prev_assigned_to/2, assigned_to(PhoneNumber)}
                ,{fun set_assigned_to/2, 'undefined'}
@@ -407,28 +417,29 @@ from_json(JObj0) ->
     JObj = maybe_update_rw_features(JObj0),
     Features =
         case kz_json:get_ne_value(?PVT_FEATURES, JObj) of
-            'undefined' -> kz_json:new();
+            'undefined' -> ?DEFAULT_FEATURES;
             FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
             FeaturesJObj -> FeaturesJObj
         end,
-    Now = kz_util:current_tstamp(),
-    UsedBy = kz_json:get_value(?PVT_USED_BY, JObj),
     {'ok', PhoneNumber} =
-        setters(new(),
-                [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
-                ,{fun set_assigned_to/3, kz_json:get_value(?PVT_ASSIGNED_TO, JObj), UsedBy}
+        setters(#knm_phone_number{}
+               ,[{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
+                ,{fun set_assigned_to/3
+                 ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
+                 ,kz_json:get_value(?PVT_USED_BY, JObj)
+                 }
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
                 ,{fun set_features/2, maybe_rename_features(Features)}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
-                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, [])}
-                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj)}
-                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj)}
-                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj)}
+                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, ?DEFAULT_RESERVE_HISTORY)}
+                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, ?DEFAULT_PORTED_IN)}
+                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj, ?DEFAULT_MODULE_NAME)}
+                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj, ?DEFAULT_CARRIER_DATA)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
-                ,{fun set_modified/2, kz_doc:modified(JObj, Now)}
-                ,{fun set_created/2, kz_doc:created(JObj, Now)}
+                ,{fun set_modified/2, kz_doc:modified(JObj)}
+                ,{fun set_created/2, kz_doc:created(JObj)}
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
                 ]),
@@ -461,7 +472,7 @@ maybe_update_rw_features(JObj) ->
 %% Handle 3.22 -> 4.0 features migration.
 migrate_features(FeaturesList, JObj) ->
     F = fun (Feature, A) -> features_fold(Feature, A, JObj) end,
-    lists:foldl(F, kz_json:new(), FeaturesList).
+    lists:foldl(F, ?DEFAULT_FEATURES, FeaturesList).
 
 %% Note: if a feature matches here that means it was enabled in 3.22.
 features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
@@ -534,9 +545,6 @@ from_json_with_options(JObj, PhoneNumber) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec new() -> knm_phone_number().
-new() -> #knm_phone_number{}.
-
 -spec is_phone_number(any()) -> boolean().
 is_phone_number(#knm_phone_number{}) -> 'true';
 is_phone_number(_) -> 'false'.
@@ -720,7 +728,7 @@ features(#knm_phone_number{features=Features}) -> Features.
 
 -spec features_list(knm_phone_number()) -> ne_binaries().
 features_list(N) ->
-    sets:to_list(sets:from_list(kz_json:get_keys(features(N)))).
+    lists:usort(kz_json:get_keys(features(N))).
 
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(N, Features) ->
@@ -748,6 +756,11 @@ set_feature(N0, Feature=?NE_BINARY, Data) ->
 
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_allowed(N=#knm_phone_number{features_allowed = undefined}, Features) ->
+    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    N#knm_phone_number{is_dirty = true
+                      ,features_allowed = Features
+                      };
 set_features_allowed(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_allowed) =:= lists:usort(Features) of
@@ -759,6 +772,11 @@ set_features_allowed(N, Features) ->
     end.
 
 -spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
+set_features_denied(N=#knm_phone_number{features_denied = undefined}, Features) ->
+    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    N#knm_phone_number{is_dirty = true
+                      ,features_denied = Features
+                      };
 set_features_denied(N, Features) ->
     true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(N#knm_phone_number.features_denied) =:= lists:usort(Features) of
@@ -900,7 +918,7 @@ set_module_name(N0, Name=?NE_BINARY) ->
 set_module_name_local(N0, Name) ->
     Feature =
         case feature(N0, ?FEATURE_LOCAL) of
-            'undefined' -> kz_json:new();
+            'undefined' -> ?DEFAULT_FEATURES;
             LocalFeature -> LocalFeature
         end,
     N = set_feature(N0, ?FEATURE_LOCAL, Feature),
@@ -924,7 +942,7 @@ carrier_data(#knm_phone_number{carrier_data=Data}) -> Data.
 -spec set_carrier_data(knm_phone_number(), api_object()) -> knm_phone_number().
 set_carrier_data(N=#knm_phone_number{carrier_data = undefined}, undefined) -> N;
 set_carrier_data(N, 'undefined') ->
-    set_carrier_data(N, kz_json:new());
+    set_carrier_data(N, ?DEFAULT_CARRIER_DATA);
 set_carrier_data(N, Data) ->
     'true' = kz_json:is_json_object(Data),
     case kz_json:are_equal(N#knm_phone_number.carrier_data, Data) of
