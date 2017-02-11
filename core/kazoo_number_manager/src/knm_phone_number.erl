@@ -38,7 +38,8 @@
         ,module_name/1, set_module_name/2
         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
         ,region/1, set_region/2
-        ,auth_by/1, set_auth_by/2, is_authorized/1
+        ,auth_by/1, set_auth_by/2
+        ,is_authorized/1, is_admin/1
         ,dry_run/1, set_dry_run/2
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
@@ -72,7 +73,7 @@
                           ,ported_in = 'false' :: boolean()
                           ,module_name = knm_carriers:default_carrier() :: ne_binary()
                           ,carrier_data = kz_json:new() :: kz_json:object()
-                          ,region :: ne_binary()
+                          ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
                           ,dry_run = 'false' :: boolean()
                           ,batch_run = 'false' :: boolean()
@@ -881,7 +882,8 @@ set_features_denied(N, Features) ->
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
 -ifdef(TEST).
 features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>, <<"prepend">>, <<"ringback">>];
+    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>
+    ,<<"prepend">>, <<"ringback">>, <<"carrier_name">>];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
@@ -1096,6 +1098,27 @@ set_auth_by(N, AuthBy=?KNM_DEFAULT_AUTH_BY) ->
     N#knm_phone_number{auth_by=AuthBy};
 set_auth_by(N, ?MATCH_ACCOUNT_RAW(AuthBy)) ->
     N#knm_phone_number{auth_by=AuthBy}.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_admin(knm_phone_number() | api_ne_binary()) -> boolean().
+-ifdef(TEST).
+is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
+is_admin(?KNM_DEFAULT_AUTH_BY) -> true;
+is_admin(?MASTER_ACCOUNT_ID) -> true;
+is_admin(_) -> false.
+-else.
+is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
+is_admin(AuthBy) ->
+    IsBypassed = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
+    IsBypassed
+        andalso lager:info("bypassing auth"),
+    IsBypassed
+        orelse kz_util:is_system_admin(AuthBy).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

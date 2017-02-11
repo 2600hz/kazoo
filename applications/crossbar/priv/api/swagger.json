@@ -5698,6 +5698,11 @@
         "phone_numbers": {
             "description": "Schema for a number",
             "properties": {
+                "carrier_name": {
+                    "maxLength": 30,
+                    "minLength": 1,
+                    "type": "string"
+                },
                 "cnam": {
                     "properties": {
                         "display_name": {
