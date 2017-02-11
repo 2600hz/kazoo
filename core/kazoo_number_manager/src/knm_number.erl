@@ -41,7 +41,7 @@
 -export([ensure_can_load_to_create/1]).
 -export([ensure_can_create/2]).
 -export([create_or_load/3]).
--export([update_phone_number/2]).
+-export([update_phone_number/2, update_phone_number/3]).
 -include_lib("eunit/include/eunit.hrl").
 -endif.
 
@@ -367,9 +367,14 @@ update(Num, Routines, Options) ->
 
 -spec update_phone_number(knm_number(), knm_phone_number:set_functions()) ->
                                  knm_number_return().
+-spec update_phone_number(knm_number(), knm_phone_number:set_functions(), knm_number_options:options()) ->
+                                 knm_number_return().
 update_phone_number(Number, Routines) ->
+    update_phone_number(Number, Routines, []).
+update_phone_number(Number, Routines, Options) ->
+    Fix = knm_number_options:to_phone_number_setters(Options),
     PhoneNumber = phone_number(Number),
-    case knm_phone_number:setters(PhoneNumber, Routines) of
+    case knm_phone_number:setters(PhoneNumber, Fix++Routines) of
         {'error', _R}=Error -> Error;
         {'ok', NewPN} ->
             {'ok', save_number(set_phone_number(Number, NewPN))}
@@ -573,9 +578,7 @@ delete(Num, Options) ->
 
 -spec delete_number(knm_number(), ne_binary()) -> knm_number_return().
 delete_number(Number, AuthBy) ->
-    case ?KNM_DEFAULT_AUTH_BY =:= AuthBy
-        orelse kz_util:is_system_admin(AuthBy)
-    of
+    case knm_phone_number:is_admin(AuthBy) of
         'false' -> knm_errors:unauthorized();
         'true' ->
             N = knm_providers:delete(Number),

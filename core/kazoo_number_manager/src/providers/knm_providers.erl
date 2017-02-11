@@ -46,7 +46,7 @@
         ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES)).
 
 
--record(feature_parameters, {is_local = 'false' :: boolean()
+-record(feature_parameters, {is_local = false :: boolean()
                             ,assigned_to :: api_ne_binary()
                             ,used_by :: api_ne_binary()
                             ,allowed_features = [] :: ne_binaries()
@@ -161,8 +161,7 @@ feature_parameters(PhoneNumber) ->
                       ,knm_phone_number:features_denied(PhoneNumber)
                       ).
 
--spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) ->
-                                feature_parameters().
+-spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> feature_parameters().
 feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
     #feature_parameters{is_local = IsLocal
                        ,assigned_to = AssignedTo
@@ -293,6 +292,8 @@ provider_module(?FEATURE_PORT, _) ->
     <<"knm_port_notifier">>;
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
+provider_module(?FEATURE_RENAME_CARRIER, _) ->
+    <<"knm_rename_carrier">>;
 provider_module(Other, _) ->
     lager:debug("unmatched feature provider ~p, allowing", [Other]),
     Other.

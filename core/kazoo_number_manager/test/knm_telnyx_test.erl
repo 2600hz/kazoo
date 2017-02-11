@@ -164,3 +164,44 @@ is_cnam_activated(PN) ->
 cnam_name(PN) ->
     Outbound = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
     kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, Outbound).
+
+rename_carrier_test_() ->
+    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
+              ,{assign_to, ?RESELLER_ACCOUNT_ID}
+              ,{<<"auth_by_account">>, kz_json:new()}
+              ],
+    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
+    PN1 = knm_number:phone_number(N1),
+    JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"local">>}]),
+    {ok, N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj1}]),
+    PN2 = knm_number:phone_number(N2),
+    JObj2 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"wrong_carrier">>}]),
+    {ok, N4} = knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
+    PN4 = knm_number:phone_number(N4),
+    JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
+    [{"Verify carrier name is right"
+     ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
+     }
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN1)))
+    ,{"Verify carrier name is changed"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
+     }
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
+    ,{"Verify setting wrong carrier is forbidden"
+     ,?_assertThrow({error, invalid, _N, <<"'wrong_carrier' is not known by the system">>}
+                   ,knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, JObj2}])
+                   )
+     }
+    ,{"Verify carrier name is still changed"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN4))
+     }
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN4)))
+    ,{"Verify setting carrier as non-admin is forbidden"
+     ,?_assertThrow({error, unauthorized}
+                   ,knm_number:update_phone_number(N4
+                                                  ,[{fun knm_phone_number:reset_doc/2, JObj3}]
+                                                  ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
+                                                  )
+                   )
+     }
+    ].

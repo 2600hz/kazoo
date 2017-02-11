@@ -494,12 +494,9 @@ summary(Context) ->
 %% @private
 -spec view_account_phone_numbers(cb_context:context()) -> cb_context:context().
 view_account_phone_numbers(Context) ->
-    Context1 = crossbar_doc:load_view(?CB_LIST
-                                     ,[]
-                                     ,rename_qs_filters(Context)
-                                     ,fun normalize_view_results/2
-                                     ),
-    ListOfNumProps = lists:map(fun fix_available/1, cb_context:resp_data(Context1)),
+    Ctx = rename_qs_filters(Context),
+    Context1 = crossbar_doc:load_view(?CB_LIST, [], Ctx, fun normalize_view_results/2),
+    ListOfNumProps = [fix_available(NumJObj) || NumJObj <- cb_context:resp_data(Context1)],
     PortNumberJObj = maybe_add_port_request_numbers(Context),
     NumbersJObj = lists:foldl(fun kz_json:merge_jobjs/2, PortNumberJObj, ListOfNumProps),
     Service = kz_services:fetch(cb_context:account_id(Context)),
