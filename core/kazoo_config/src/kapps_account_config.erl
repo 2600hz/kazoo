@@ -18,7 +18,7 @@
         ,set_global/4
         ,flush/1, flush/2
         ,migrate/1
-        ,get_category/2, get_reseller_category/2, config_doc_id/1
+        ,config_doc_id/1
         ]).
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
@@ -43,49 +43,6 @@ get_global(Account, Category, Key, Default) ->
         {'error', 'unknown_object'} -> kapps_config:get(Category, Key, Default);
         {'error', _} -> get_from_reseller(Account, Category, Key, Default)
     end.
-
-%% get_category/2. go from account to reseller, then to system, then return empty
-
--spec get_category(api_account(), ne_binary()) -> kz_json:object().
-get_category(Account, Category) ->
-    Programm = [fun load_category_from_account/2, fun load_category_from_reseller/2, fun load_category_from_system/2, fun load_default_category/2],
-    get_category(Account, Category, Programm).
-
--spec get_reseller_category(api_account(), ne_binary()) -> kz_json:object().
-get_reseller_category(Account, Category) ->
-    Programm = [fun load_category_from_reseller/2, fun load_category_from_system/2, fun load_default_category/2],
-    get_category(Account, Category, Programm).
-
--spec load_category_from_account(api_account(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
-load_category_from_account(Account, Config) ->
-    AccountId = account_id(Account),
-    AccountDb = kz_util:format_account_id(AccountId, encoded),
-    kz_datamgr:open_cache_doc(AccountDb, config_doc_id(Config), [{cache_failures, [not_found]}]).
-
--spec load_category_from_reseller(api_account(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
-load_category_from_reseller(Account, Config) ->
-    ResellerId = kz_services:find_reseller_id(account_id(Account)),
-    load_category_from_account(ResellerId, Config).
-
--spec load_category_from_system(api_account(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
-load_category_from_system(_Account, Config) ->
-    kz_json:get_value(<<"default">>, ensure_value(kapps_config:get_category(Config))).
-
-ensure_value({ok, JObj}) -> JObj;
-ensure_value(_) -> kz_json:new().
-
--spec load_default_category(api_account(), ne_binary()) -> {ok, kz_json:object()}.
-load_default_category(_Account, Config) ->
-    {ok, kz_doc:set_id(kz_json:new(), config_doc_id(Config))}.
-
--spec get_category(api_account(), ne_binary(), [fun()]) -> kz_json:object().
-get_category(Account, Category, Programm) ->
-    Confs = [ maybe_new(P(Account, Category)) || P <- Programm ],
-    kz_json:merge_recursive(lists:reverse(Confs)).
-
--spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
-maybe_new({ok, JObj}) -> JObj;
-maybe_new(_) -> kz_json:new().
 
 %%--------------------------------------------------------------------
 %% @public

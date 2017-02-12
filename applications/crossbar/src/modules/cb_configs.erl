@@ -13,6 +13,8 @@
         ,resource_exists/0, resource_exists/1
         ,validate/2
         ,post/2
+        ,put/2
+        ,patch/2
         ,delete/2
         ]).
 
@@ -23,16 +25,18 @@
 %%% API
 %%%===================================================================
 
--spec init() -> 'ok'.
+-spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, patch),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, delete).
 
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(_Config) ->
+allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
 
 -spec resource_exists() -> false.
@@ -41,13 +45,19 @@ resource_exists() -> false.
 resource_exists(_) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context, Config) ->
+validate(Context, ConfigId) ->
     try
-        validate(Context, cb_context:req_verb(Context), Config)
+        validate(Context, cb_context:req_verb(Context), ConfigId)
     catch
-        _:{badmatch, {invalid_document, Errors}} ->
-            lager:error("schema validation error: ~p", [Errors]),
+        _:{badmatch, {invalid_document, Errors} = Error} ->
+            lager:error("schema validation error: ~p", [parse_error(Error)]),
             cb_context:failed(Context, Errors);
+        _:{badmatch,{error,enoent}} ->
+            lager:error("schema validation error: no schema for config"),
+            cb_context:add_system_error(bad_identifier, Context);
+        _:{badmatch,{error,not_found}} ->
+            lager:error("schema validation error: no schema for config"),
+            cb_context:add_system_error(bad_identifier, Context);
         _C:E ->
             lager:error("validation generic error: ~p", [E]),
             ST = erlang:get_stacktrace(),
@@ -57,54 +67,70 @@ validate(Context, Config) ->
 
 -spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
 
-validate(Context, ?HTTP_GET, Config) ->
-    JObj = kapps_account_config:get_category(cb_context:account_id(Context), Config),
-    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context);
+validate(Context, ?HTTP_GET, ConfigId) ->
+    JObj = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    crossbar_doc:handle_datamgr_success(set_id(ConfigId, JObj), Context);
 
-validate(Context, ?HTTP_DELETE, Config) ->
-    Document = kapps_account_config:get_category(cb_context:account_id(Context), Config),
+validate(Context, ?HTTP_DELETE, ConfigId) ->
+    Document = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
     pass_validation(Context, Document);
 
-validate(Context, ?HTTP_PUT, Config) ->
-    validate(Context, ?HTTP_POST, Config);
+validate(Context, ?HTTP_PUT, ConfigId) ->
+    validate(Context, ?HTTP_POST, ConfigId);
 
-validate(Context, ?HTTP_POST, Config) ->
-    JObj = strip_id(cb_context:req_data(Context)),
-    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
-    FullConfig = kz_json:merge_recursive(Parent, JObj),
-    maybe_validate(Config, FullConfig, Parent),
-    pass_validation(Context, FullConfig).
+validate(Context, ?HTTP_PATCH, ConfigId) ->
+    Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    validate_diff(Context, ConfigId, Parent);
+
+validate(Context, ?HTTP_POST, ConfigId) ->
+    Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
+    validate_diff(Context, ConfigId, Parent).
+
+-spec put(cb_context:context(), path_token()) -> cb_context:context().
+put(Context, ConfigId) -> post(Context, ConfigId).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, Config) ->
-    Parent = kapps_account_config:get_reseller_category(cb_context:account_id(Context), Config),
-    JObj = cb_context:doc(Context),
-    JObjDiff = kz_json:diff(JObj, Parent),
-    StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), Config)),
-    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
-    flush(crossbar_doc:save(Context, Document, [])),
-    crossbar_doc:handle_datamgr_success(set_id(Config, JObj), Context).
+post(Context, ConfigId) ->
+    Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
+    save_diff(Context, ConfigId, Parent).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, ConfigId) ->
+    Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    save_diff(Context, ConfigId, Parent).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _Config) ->
+delete(Context, _ConfigId) ->
     case kz_json:delete_key(<<"_id">>, cb_context:doc(Context)) of
         {[]} -> Context;
         _ ->
             flush(crossbar_doc:delete(Context, permanent))
     end.
 
-% shortcuts
+-spec save_diff(cb_context:context(), path_token(), kz_json:object()) -> cb_context:context().
+save_diff(Context, ConfigId, Parent) ->
+    JObj = cb_context:doc(Context),
+    JObjDiff = kz_json:diff(JObj, Parent),
+    StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
+    Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
+    flush(crossbar_doc:save(Context, Document, [])),
+    crossbar_doc:handle_datamgr_success(set_id(ConfigId, JObj), Context).
+
+-spec validate_diff(cb_context:context(), path_token(), kz_json:object()) -> cb_context:context().
+validate_diff(Context, ConfigId, Parent) ->
+    JObj = strip_id(cb_context:req_data(Context)),
+    FullConfig = kz_json:merge_recursive(Parent, JObj),
+    maybe_validate(ConfigId, FullConfig, Parent),
+    pass_validation(Context, FullConfig).
+
 -spec doc_id(ne_binary()) -> ne_binary().
-doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+doc_id(ConfigId) -> kapps_account_config:config_doc_id(ConfigId).
 
 -spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
-set_id(Config, JObj) -> kz_json:set_value(<<"id">>, doc_id(Config), JObj).
+set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, doc_id(ConfigId), JObj).
 
 -spec strip_id(kz_json:object()) -> kz_json:object().
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
-
--spec schema_name(ne_binary()) -> ne_binary().
-schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
 
 -spec pass_validation(cb_context:context(), kz_json:object()) -> cb_context:context().
 pass_validation(Context, JObj) ->
@@ -121,14 +147,14 @@ error_validation(Context) ->
     ]).
 
 -spec maybe_validate(ne_binary(), kz_json:object(), kz_json:object()) -> skip_validation | valid.
-maybe_validate(ConfigName, Config, Parent) ->
-    SchemaName = schema_name(ConfigName),
+maybe_validate(ConfigId, ConfigIdObj, Parent) ->
+    SchemaName = kapps_config_util:account_schema_name(ConfigId),
     case validate_schema(SchemaName, Parent) of
         valid ->
-            valid = validate_schema(SchemaName, Config);
+            valid = validate_schema(SchemaName, ConfigIdObj);
         Error ->
             ErrorMsg = parse_error(Error),
-            lager:error("Parent configuration for ~p doesn't pass schema ~p validation due to: ~p", [ConfigName, SchemaName, ErrorMsg]),
+            lager:error("Parent configuration for ~p doesn't pass schema ~p validation due to: ~p", [ConfigId, SchemaName, ErrorMsg]),
             skip_validation
     end.
 

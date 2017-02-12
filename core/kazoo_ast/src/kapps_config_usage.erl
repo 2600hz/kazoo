@@ -92,6 +92,7 @@ static_account_fields(Name, JObj) ->
     Required = fields_without_defaults(JObj),
     Values = [{<<"description">>, Description}
              ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
+             ,{<<"additionalProperties">>, false}
              ,{<<"type">>, <<"object">>}
               |[{<<"required">>, Required} || Required =/= []]
              ],
