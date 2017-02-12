@@ -18,6 +18,8 @@
         ,build_error_message/2
         ]).
 
+-export([default_object/1, filter/2]).
+
 -export_type([validation_error/0, validation_errors/0]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -751,3 +753,28 @@ get_types(JObj) ->
         Types when is_list(Types) -> kz_binary:join(Types);
         _TypeSchema -> <<"type schema">>
     end.
+
+-spec reduce_key(list()) -> list().
+reduce_key(K) when is_list(K) ->
+    [  Ki || {Ki, I} <- lists:zip(K, lists:seq(1, erlang:length(K))), not (I band 1 =:= 0 andalso Ki =:= <<"properties">>) ].
+
+-spec flatten(kz_json:object()) -> kz_json:object().
+flatten(Schema) ->
+    Flat = kz_json:flatten(kz_json:get_value(<<"properties">>, Schema, kz_json:new())),
+    kz_json:from_list([{reduce_key(K), V} || {K, V} <- kz_json:to_proplist(Flat) ]).
+
+-spec default_object(kz_json:object()) -> kz_json:object().
+default_object(Schema) ->
+    Flat = flatten(Schema),
+    Default = kz_json:from_list([ {lists:droplast(K), V} || {K, V} <- kz_json:to_proplist(Flat), lists:last(K) =:= <<"default">> ]),
+    kz_json:expand(Default).
+
+-spec filtering_list(kz_json:object()) -> list(list()).
+filtering_list(Schema) ->
+    Flat = flatten(Schema),
+    lists:usort([ lists:droplast(K) || {K, _} <- kz_json:to_proplist(Flat) ]).
+
+-spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().
+filter(JObj, Schema) ->
+    Filter = filtering_list(Schema),
+    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj)), lists:member(K, Filter) ])).
