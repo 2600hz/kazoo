@@ -134,8 +134,8 @@ start_builder(EndpointId, Member, Call) ->
       end
      ).
 
--spec member_active(kz_json:object()) -> boolean().
-member_active(Member) ->
+-spec is_member_active(kz_json:object()) -> boolean().
+is_member_active(Member) ->
     DisableUntil = kz_json:get_value(<<"disable_until">>, Member, 0),
     calendar:datetime_to_gregorian_seconds(calendar:universal_time()) > DisableUntil.
 
@@ -148,7 +148,7 @@ member_active(Member) ->
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
     Members = kz_json:get_value(<<"endpoints">>, Data, []),
-    FilteredMembers = lists:filter(fun member_active/1, Members),
+    FilteredMembers = lists:filter(fun is_member_active/1, Members),
     lager:debug("filtered members of ring group ~p", [FilteredMembers]),
     ResolvedEndpoints = resolve_endpoint_ids(FilteredMembers, [], Data, Call),
 
