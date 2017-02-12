@@ -85,6 +85,13 @@
         ,custom_channel_vars/1
         ]).
 
+-export([current_callflow_id/1
+        ,set_branched_callflow_id/2, branched_callflow_id/1
+        ,set_initial_callflow_id/2, initial_callflow_id/1
+        ]).
+
+-export([monster_group_id/1, set_monster_group_id/2]).
+
 -export([set_custom_sip_header/3
         ,set_custom_sip_headers/2
         ,custom_sip_header/2, custom_sip_header/3
@@ -186,6 +193,10 @@
                       ,{<<"Authorizing-ID">>, #kapps_call.authorizing_id}
                       ,{<<"Authorizing-Type">>, #kapps_call.authorizing_type}
                       ]).
+
+-define(CCV_CALLFLOW_ID, <<"Callflow-ID">>).
+-define(CCV_BRANCHED_CALLFLOW_ID, <<"Branched-Callflow-ID">>).
+-define(CCV_MONSTER_GROUP_ID, <<"Group-ID">>).
 
 -spec default_helper_function(Field, call()) -> Field.
 default_helper_function(Field, #kapps_call{}) -> Field.
@@ -1050,6 +1061,37 @@ custom_channel_var(Key, #kapps_call{ccvs=CCVs}) ->
 -spec custom_channel_vars(call()) -> kz_json:object().
 custom_channel_vars(#kapps_call{ccvs=CCVs}) ->
     CCVs.
+
+-spec current_callflow_id(call()) -> any().
+current_callflow_id(Call) ->
+    case branched_callflow_id(Call) of
+        'undefined' -> initial_callflow_id(Call);
+        Res -> Res
+    end.
+
+-spec set_branched_callflow_id(ne_binary(), call()) -> call().
+set_branched_callflow_id(Id, Call) ->
+    set_custom_channel_var(?CCV_BRANCHED_CALLFLOW_ID, Id, Call).
+
+-spec branched_callflow_id(call()) -> any().
+branched_callflow_id(Call) ->
+    custom_channel_var(?CCV_BRANCHED_CALLFLOW_ID, Call).
+
+-spec set_initial_callflow_id(ne_binary(), call()) -> call().
+set_initial_callflow_id(Id, Call) ->
+    set_custom_channel_var(?CCV_CALLFLOW_ID, Id, Call).
+
+-spec initial_callflow_id(call()) -> any().
+initial_callflow_id(Call) ->
+    custom_channel_var(?CCV_CALLFLOW_ID, Call).
+
+-spec set_monster_group_id(ne_binary(), call()) -> call().
+set_monster_group_id(Id, Call) ->
+    set_custom_channel_var(?CCV_MONSTER_GROUP_ID, Id, Call).
+
+-spec monster_group_id(call()) -> any().
+monster_group_id(Call) ->
+    custom_channel_var(?CCV_MONSTER_GROUP_ID, Call).
 
 -spec set_custom_sip_header(kz_json:path(), kz_json:json_term(), call()) -> call().
 set_custom_sip_header(Key, Value, #kapps_call{sip_headers=SHs}=Call) ->

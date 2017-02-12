@@ -31,5 +31,48 @@ handle(Data, Call) ->
         {'ok', JObj} ->
             lager:info("branching to new callflow ~s", [Id]),
             Flow = kzd_callflow:flow(JObj, kz_json:new()),
-            cf_exe:branch(Flow, Call)
+            cf_exe:branch(Flow, update_call(JObj, Call))
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Add information to CCVs, making call logs more useful
+%% @end
+%%--------------------------------------------------------------------
+-spec update_call(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+update_call(JObj, Call) ->
+    Updaters = [fun remove_old_values/1
+               ,{fun kapps_call:set_branched_callflow_id/2, kz_doc:id(JObj)}
+               ,{fun maybe_add_group_id/2, JObj}
+               ],
+    NewCall = kapps_call:exec(Updaters, Call),
+    cf_exe:set_call(NewCall),
+    NewCall.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Set the group_id field in the CCVs if the callflow is a baseGroup
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_add_group_id(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+maybe_add_group_id(JObj, Call) ->
+    case kz_json:get_value(<<"type">>, JObj) of
+        <<"baseGroup">> ->
+            GroupId = kz_json:get_value(<<"group_id">>, JObj),
+            kapps_call:set_monster_group_id(GroupId, Call);
+        _ ->
+            Call
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Clear fields that are no longer true for the call
+%% @end
+%%--------------------------------------------------------------------
+-spec remove_old_values(kapps_call:call()) -> kapps_call:call().
+remove_old_values(Call) ->
+    CCVsToRemove = [<<"Group-ID">>],
+    kapps_call:remove_custom_channel_vars(CCVsToRemove, Call).
