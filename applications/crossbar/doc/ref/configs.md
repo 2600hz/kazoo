@@ -36,16 +36,6 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
 ```
 
-#### Patch
-
-> PATCH /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-
-```shell
-curl -v -X PATCH \
-    -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
-```
-
 #### Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/configs/{CONFIG_ID}
