@@ -1533,6 +1533,20 @@
             "required": true,
             "type": "object"
         },
+        "callflows.log_in_out_ring_group": {
+            "description": "Validator for the log_in_out_ring_group callflow's data object",
+            "properties": {
+                "callflow_id": {
+                    "description": ""
+                },
+                "login": {
+                    "description": "",
+                    "type": "boolean"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.lookupcidname": {
             "description": "Validator for the Lookup callflow element",
             "properties": {
