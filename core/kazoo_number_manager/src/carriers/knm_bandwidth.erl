@@ -44,7 +44,10 @@
        ).
 
 -ifdef(TEST).
--define(BW_DEBUG(Format, Args), io:format(user, Format, Args)).
+-define(NPAN_RESPONSE, knm_util:fixture("bandwidth_numbersearch_response.xml")).
+-define(AREACODE_RESPONSE, knm_util:fixture("bandwidth_areacode_response.xml")).
+
+-define(BW_DEBUG(_Format, _Args), ok).
 -else.
 -define(BW_DEBUG, kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
 -define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
@@ -232,12 +235,11 @@ should_lookup_cnam() -> 'true'.
                                   {'error', any()}.
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
 make_numbers_request('npaNxxNumberSearch', _Props) ->
-    {Xml, _} = xmerl_scan:string(?BANDWIDTH_NPAN_RESPONSE),
+    {Xml, _} = xmerl_scan:string(?NPAN_RESPONSE),
     verify_response(Xml);
 make_numbers_request('areaCodeNumberSearch', _Props) ->
-    {Xml, _} = xmerl_scan:string(?BANDWIDTH_AREACODE_RESPONSE),
+    {Xml, _} = xmerl_scan:string(?AREACODE_RESPONSE),
     verify_response(Xml).
 -else.
 make_numbers_request(Verb, Props) ->
