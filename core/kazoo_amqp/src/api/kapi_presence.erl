@@ -476,16 +476,19 @@ mwi_extended_update(Prop) ->
     MessagesWaiting = case MessagesNew of 0 -> <<"no">>; _ -> <<"yes">> end,
     To = props:get_value(<<"To">>, Prop),
     [ToUsername, ToRealm] = binary:split(To, <<"@">>),
-    Prop ++ [{<<"From">>, <<"sip:", To/binary>>}
-            ,{<<"From-User">>, ToUsername}
-            ,{<<"From-Realm">>, ToRealm}
-            ,{<<"Message-Account">>, <<"sip:", To/binary>>}
-            ,{<<"Messages-Waiting">>, MessagesWaiting}
-            ,{<<"Messages-New">>, MessagesNew}
-            ,{<<"Messages-Saved">>, 0}
-            ,{<<"Messages-Urgent">>, 0}
-            ,{<<"Messages-Urgent-Saved">>, 0}
-            ].
+    CallId = ?FAKE_CALLID(To),
+    props:delete(<<"Call-ID">>, Prop)
+        ++ [{<<"From">>, <<"sip:", To/binary>>}
+           ,{<<"From-User">>, ToUsername}
+           ,{<<"From-Realm">>, ToRealm}
+           ,{<<"Message-Account">>, <<"sip:", To/binary>>}
+           ,{<<"Messages-Waiting">>, MessagesWaiting}
+           ,{<<"Messages-New">>, MessagesNew}
+           ,{<<"Messages-Saved">>, 0}
+           ,{<<"Messages-Urgent">>, 0}
+           ,{<<"Messages-Urgent-Saved">>, 0}
+           ,{<<"Call-ID">>, CallId}
+           ].
 
 -spec mwi_update(api_terms()) -> {'ok', iolist()} | {'error', string()}.
 mwi_update(Prop) when is_list(Prop) ->
@@ -505,7 +508,7 @@ mwi_update_v(JObj) -> mwi_update_v(kz_json:to_proplist(JObj)).
 publish_mwi_update(JObj) -> publish_mwi_update(JObj, ?DEFAULT_CONTENT_TYPE).
 publish_mwi_update(Req, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Req, ?MWI_REQ_VALUES, fun mwi_update/1),
-    amqp_util:presence_publish(mwi_update_routing_key(Payload), Payload, ContentType).
+    amqp_util:presence_publish(mwi_update_routing_key(Req), Payload, ContentType).
 
 -spec mwi_update_routing_key(api_terms() | api_binary()) -> ne_binary().
 mwi_update_routing_key(Prop) when is_list(Prop) ->
