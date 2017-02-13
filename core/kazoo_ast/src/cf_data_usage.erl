@@ -94,6 +94,9 @@ maybe_insert_schema('get_first_defined', _Ks, _Default, Schema) ->
     Schema;
 maybe_insert_schema('get_first_defined_keys', _Ks, _Default, Schema) ->
     Schema;
+maybe_insert_schema(_F, ['undefined' | _Keys], _Default, Schema) ->
+    ?DEBUG("skipping function ~p with key undefined (~p left)", [_F, _Keys]),
+    Schema;
 maybe_insert_schema(F, [K|Ks], Default, Schema) ->
     Section = kz_json:get_value([<<"properties">>, K], Schema, kz_json:new()),
     Updated = maybe_insert_schema(F, Ks, Default, Section),
@@ -471,8 +474,7 @@ arg_to_key(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 arg_to_key(?MOD_FUN_ARGS(M, F, As)) ->
     {M, F, length(As)};
-arg_to_key(?VAR(Arg)) ->
-    Arg;
+arg_to_key(?VAR(_Arg)) -> 'undefined';
 arg_to_key(?INTEGER(I)) ->
     I;
 arg_to_key(?EMPTY_LIST) ->

@@ -74,6 +74,19 @@
             "required": false,
             "type": "string"
         },
+        "ringtones": {
+            "properties": {
+                "external": {
+                    "description": "Ring tone for calls from external sources",
+                    "type": "string"
+                },
+                "internal": {
+                    "description": "Ring tone for calls from external sources",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "strategy": {
             "default": "simultaneous",
             "description": "How to ring the members of the group",

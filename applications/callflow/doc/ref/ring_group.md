@@ -18,5 +18,8 @@ Key | Description | Type | Default | Required
 `ignore_forward` | Whether to ring forwarded endpoints | `boolean` | `true` | `false`
 `repeats` | How many times to retry the ring group | `integer` | `1` | `false`
 `ringback` | Ringback to use | `string` |   | `false`
+`ringtones` |   | `object` |   | `false`
+`ringtones.external` | Ring tone for calls from external sources | `string` |   | `false`
+`ringtones.internal` | Ring tone for calls from external sources | `string` |   | `false`
 `strategy` | How to ring the members of the group | `string('simultaneous', 'single', 'weighted_random')` | `simultaneous` | `false`
 `timeout` | How long to ring the ring group before continuing, in seconds | `integer` | `20` | `false`
