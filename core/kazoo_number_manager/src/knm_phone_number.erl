@@ -12,13 +12,12 @@
         ,save/1
         ,delete/1
         ,release/1
-        ,new/1, new/2
         ]).
 
 -export([to_json/1
         ,to_public_json/1
         ,from_json/1, from_json_with_options/2
-        ,from_number/1
+        ,from_number/1, from_number_with_options/2
         ,is_phone_number/1
         ]).
 
@@ -110,21 +109,18 @@
         kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
 
 -define(DIRTY(PN), begin
-                       lager:error("dirty"),
+                       lager:debug("dirty"),
                        PN#knm_phone_number{is_dirty = true}
                    end).
 
-%%--------------------------------------------------------------------
 %% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec new(ne_binary()) -> knm_phone_number().
-new(DID) ->
-    new(DID, knm_number_options:default()).
+-spec from_number(ne_binary()) -> knm_phone_number().
+from_number(DID) ->
+    from_json(kz_doc:set_id(kz_json:new(), DID)).
 
--spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
-new(DID, Options) ->
+%% @public
+-spec from_number_with_options(ne_binary(), knm_number_options:options()) -> knm_phone_number().
+from_number_with_options(DID, Options) ->
     do_new(DID, new_setters(Options)).
 
 -spec new_setters(knm_number_options:options()) -> set_functions().
@@ -140,11 +136,6 @@ new_setters(Options) ->
 do_new(DID, Setters) ->
     {ok, PN} = setters(from_number(DID), Setters),
     PN.
-
-%% @public
--spec from_number(ne_binary()) -> knm_phone_number().
-from_number(DID) ->
-    from_json(kz_doc:set_id(kz_json:new(), DID)).
 
 %%--------------------------------------------------------------------
 %% @public

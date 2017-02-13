@@ -179,7 +179,7 @@ create_or_load(_Num, Options, {'ok', PhoneNumber}) ->
     create_phone_number(Options, set_phone_number(new(), NewPhoneNumber));
 create_or_load(Num, Options, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
-    PhoneNumber = knm_phone_number:new(Num, Options),
+    PhoneNumber = knm_phone_number:from_number_with_options(Num, Options),
     create_phone_number(Options, set_phone_number(new(), PhoneNumber)).
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
@@ -333,7 +333,7 @@ maybe_from_discovery(Num, Options) ->
 
 -spec from_not_found(ne_binary(), knm_number_options:options()) -> knm_number_return().
 from_not_found(Num, Options) ->
-    PN = knm_phone_number:new(Num, [{'state', ?NUMBER_STATE_IN_SERVICE} | Options]),
+    PN = knm_phone_number:from_number_with_options(Num, [{'state', ?NUMBER_STATE_IN_SERVICE} | Options]),
     Number = set_phone_number(new(), PN),
     attempt(fun move_to/1, [Number]).
 
