@@ -1,13 +1,13 @@
 -module(kapps_config_util).
 -include_lib("kazoo/include/kz_types.hrl").
 -export([
-    get_config/2,
-    get_reseller_config/2,
-    load_config_from_account/2,
-    account_schema_name/1,
-    account_schema/1,
-    system_schema/1
-]).
+         get_config/2
+        ,get_reseller_config/2
+        ,load_config_from_account/2
+        ,account_schema_name/1
+        ,account_schema/1
+        ,system_schema/1
+        ]).
 
 -spec doc_id(ne_binary()) -> ne_binary().
 doc_id(Config) -> kapps_account_config:config_doc_id(Config).
@@ -15,11 +15,11 @@ doc_id(Config) -> kapps_account_config:config_doc_id(Config).
 -spec get_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_config(Account, Config) ->
     Programm = [
-        fun load_config_from_account/2,
-        fun load_config_from_reseller/2,
-        fun load_config_from_system/2,
-        fun load_default_config/2
-    ],
+                fun load_config_from_account/2
+               ,fun load_config_from_reseller/2
+               ,fun load_config_from_system/2
+               ,fun load_default_config/2
+               ],
     Schema = account_schema(Config),
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
@@ -31,10 +31,10 @@ get_config(Account, Config, Programm) ->
 -spec get_reseller_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_reseller_config(Account, Config) ->
     Programm = [
-        fun load_config_from_reseller/2,
-        fun load_config_from_system/2,
-        fun load_default_config/2
-    ],
+                fun load_config_from_reseller/2
+               ,fun load_config_from_system/2
+               ,fun load_default_config/2
+               ],
     Schema = account_schema(Config),
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
