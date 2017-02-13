@@ -255,7 +255,7 @@ create_checks_test_() ->
         ++ load_existing_checks().
 
 load_existing_checks() ->
-    {ok, PN} = knm_phone_number:fetch(?TEST_AVAILABLE_NUM),
+    PN = knm_phone_number:from_json(?AVAILABLE_NUMBER),
     [existing_in_state(knm_phone_number:set_state(PN, State), IsAllowed)
      || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
                               ,{?NUMBER_STATE_DELETED, 'false'}
