@@ -830,16 +830,16 @@ reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 
 -spec set_reserve_history(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_reserve_history(PN0, History) when is_list(History) ->
-    Cons = fun (A, PN) -> add_reserve_history(PN, A) end,
+    Cons = fun add_reserve_history/2,
     lists:foldr(Cons, PN0#knm_phone_number{reserve_history=?DEFAULT_RESERVE_HISTORY}, History).
 
--spec add_reserve_history(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
-add_reserve_history(PN, undefined) -> PN;
-add_reserve_history(PN=#knm_phone_number{reserve_history=[AccountId|_]}
-                   ,?MATCH_ACCOUNT_RAW(AccountId)
+-spec add_reserve_history(api_ne_binary(), knm_phone_number()) -> knm_phone_number().
+add_reserve_history(undefined, PN) -> PN;
+add_reserve_history(?MATCH_ACCOUNT_RAW(AccountId)
+                   ,PN=#knm_phone_number{reserve_history=[AccountId|_]}
                    ) -> PN;
-add_reserve_history(PN=#knm_phone_number{reserve_history=ReserveHistory}
-                   ,?MATCH_ACCOUNT_RAW(AccountId)
+add_reserve_history(?MATCH_ACCOUNT_RAW(AccountId)
+                   ,PN=#knm_phone_number{reserve_history=ReserveHistory}
                    ) ->
     ?DIRTY(PN#knm_phone_number{reserve_history=[AccountId|ReserveHistory]}).
 

@@ -278,7 +278,7 @@ is_auth_by_authorized(Number) ->
 update_reserve_history(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AssignTo = knm_phone_number:assign_to(PhoneNumber),
-    PN = knm_phone_number:add_reserve_history(PhoneNumber, AssignTo),
+    PN = knm_phone_number:add_reserve_history(AssignTo, PhoneNumber),
     knm_number:set_phone_number(Number, PN).
 
 -spec move_to_port_in_state(kn()) -> kn().
