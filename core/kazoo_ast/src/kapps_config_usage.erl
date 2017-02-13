@@ -33,7 +33,7 @@ maybe_update_account_schema(Name, AutoGenSchema) ->
     case account_properties(AutoGenSchema) of
         ?JSON_WRAPPER([]) -> 'ok';
         Properties ->
-            JObj = static_account_fields(Name, remove_source(Properties)),
+            JObj = static_account_fields(Name, add_strictness(remove_source(Properties))),
             'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj)))
     end.
 
@@ -62,6 +62,12 @@ remove_source(JObj0) ->
         ]
        )
      ).
+
+-spec add_strictness(kz_json:object()) -> kz_json:object().
+add_strictness(JObj) ->
+    ObjectsKeys = [ lists:droplast(K) || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj)), lists:last(K) =:= <<"type">>, V =:= <<"object">> ],
+    Delta = [ {lists:append(K, [<<"additionalProperties">>]), false}|| K <- ObjectsKeys ],
+    lists:foldl( fun({K,V}, Obj) -> kz_json:set_value(K, V, Obj) end, JObj, Delta ).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
