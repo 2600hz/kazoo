@@ -80,4 +80,4 @@ system_schema(Config) when is_binary(Config) ->
 account_schema(Config) when is_binary(Config) ->
     Name = account_schema_name(Config),
     {ok, Schema} = kz_json_schema:load(Name),
-    kz_json:set_value(<<"additionalProperties">>, false, Schema).
+    Schema.
