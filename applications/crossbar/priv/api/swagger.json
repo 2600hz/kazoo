@@ -1534,7 +1534,7 @@
             "type": "object"
         },
         "callflows.log_in_out_ring_group": {
-            "description": "Validator for the log_in_out_ring_group callflow's data object",
+            "description": "Skeleton JSON schema",
             "properties": {
                 "callflow_id": {
                     "description": ""
