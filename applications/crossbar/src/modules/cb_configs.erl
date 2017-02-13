@@ -72,9 +72,9 @@ validate(Context, ?HTTP_GET, ConfigId) ->
 
 validate(Context, ?HTTP_DELETE, ConfigId) ->
     Doc = case kapps_config_util:load_config_from_account(cb_context:account_id(Context), ConfigId) of
-        {ok, Document} -> Document;
-        _ -> set_id(ConfigId, kz_json:new())
-    end,
+              {ok, Document} -> Document;
+              _ -> set_id(ConfigId, kz_json:new())
+          end,
     pass_validation(Context, Doc);
 
 validate(Context, ?HTTP_PUT, ConfigId) ->
@@ -132,16 +132,16 @@ strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
 -spec pass_validation(cb_context:context(), kz_json:object()) -> cb_context:context().
 pass_validation(Context, JObj) ->
     cb_context:setters(Context,[
-         {fun cb_context:set_doc/2, JObj}
-        ,{fun cb_context:set_resp_status/2, success}
-    ]).
+                                {fun cb_context:set_doc/2, JObj}
+                               ,{fun cb_context:set_resp_status/2, success}
+                               ]).
 
 -spec error_validation(cb_context:context()) -> cb_context:context().
 error_validation(Context) ->
     cb_context:setters(Context, [
-        {fun cb_context:set_resp_error_code/2, 400}
-        ,{fun cb_context:set_resp_status/2, error}
-    ]).
+                                 {fun cb_context:set_resp_error_code/2, 400}
+                                ,{fun cb_context:set_resp_status/2, error}
+                                ]).
 
 -spec maybe_validate(ne_binary(), kz_json:object(), kz_json:object()) -> skip_validation | valid.
 maybe_validate(ConfigId, ConfigIdObj, Parent) ->

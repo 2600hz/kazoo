@@ -756,7 +756,8 @@ get_types(JObj) ->
 
 -spec reduce_key(list()) -> list().
 reduce_key(K) when is_list(K) ->
-    [  Ki || {Ki, I} <- lists:zip(K, lists:seq(1, erlang:length(K))), not (I band 1 =:= 0 andalso Ki =:= <<"properties">>) ].
+    [  Ki || {Ki, I} <- lists:zip(K, lists:seq(1, erlang:length(K))), not (I band 1 =:= 0
+                                                                           andalso Ki =:= <<"properties">>) ].
 
 -spec flatten(kz_json:object()) -> kz_json:object().
 flatten(Schema) ->
