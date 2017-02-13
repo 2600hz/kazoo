@@ -388,5 +388,7 @@
 -type kz_node() :: #kz_node{}.
 -type kz_nodes() :: [kz_node()].
 
+-define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
+
 -define(KAZOO_TYPES_INCLUDED, 'true').
 -endif.
