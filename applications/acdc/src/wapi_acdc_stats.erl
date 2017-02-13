@@ -96,7 +96,7 @@
 -define(HANDLED_VALUES, ?CALL_REQ_VALUES(<<"handled">>)).
 -define(HANDLED_TYPES, []).
 
--define(PROCESS_HEADERS, [<<"Agent-ID">>, <<"Processed-Timestamp">>]).
+-define(PROCESS_HEADERS, [<<"Agent-ID">>, <<"Processed-Timestamp">>, <<"Hung-Up-By">>]).
 -define(PROCESS_VALUES, ?CALL_REQ_VALUES(<<"processed">>)).
 -define(PROCESS_TYPES, []).
 
