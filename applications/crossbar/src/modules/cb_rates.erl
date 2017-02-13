@@ -315,7 +315,7 @@ upload_csv(Context) ->
     Now = erlang:now(),
     {'ok', {Count, Rates}} = process_upload_file(Context),
     lager:debug("trying to save ~b rates (took ~b ms to process)", [Count, wh_util:elapsed_ms(Now)]),
-    _  = crossbar_doc:save(cb_context:set_doc(Context, Rates), [{'publish_doc', 'false'}]),
+    lists:foreach(fun(Rate) -> crossbar_doc:ensure_saved(cb_context:set_doc(Context, Rate), [{'publish_doc', 'false'}]) end, Rates),
     lager:debug("it took ~b milli to process and save ~b rates", [wh_util:elapsed_ms(Now), Count]).
 
 -spec process_upload_file(cb_context:context()) ->
@@ -364,6 +364,9 @@ csv_to_rates(CSV, Context) ->
 %%    [Prefix, ISO, Desc, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, Surcharge, InternalRate, Rate]
 %%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate]
+%%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate, Minimum]
+%%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate, Minimum, Increment]
+%%    [Prefix, ISO, Desc, InternalSurcharge, Surcharge, InternalRate, Rate, Minimum, Increment, Direction]
 
 -type rate_row() :: [string(),...] | string().
 -type rate_row_acc() :: {integer(), wh_json:objects()}.
@@ -403,12 +406,13 @@ process_row(Row, {Count, JObjs}=Acc) ->
                        ,{<<"pvt_rate_cost">>, InternalRate}
                        ,{<<"pvt_carrier">>, <<"default">>}
                        ,{<<"pvt_type">>, <<"rate">>}
-                       ,{<<"rate_increment">>, 60}
-                       ,{<<"rate_minimum">>, 60}
+                       ,{<<"rate_increment">>, get_row_increment(Row)}
+                       ,{<<"rate_minimum">>, get_row_minimum(Row)}
                        ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
                        ,{<<"rate_cost">>, get_row_rate(Row)}
                        ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
                        ,{<<"routes">>, [<<"^\\+", (wh_util:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                       ,{<<"direction">>, get_row_direction(Row)}
                        ,{?HTTP_OPTIONS, []}
                       ]),
 
@@ -478,6 +482,24 @@ get_row_rate([_, _, _, _, _, _, Rate | _]) -> wh_util:to_float(Rate);
 get_row_rate([_|_]=_R) ->
     lager:info("rate not found on row: ~p", [_R]),
     'undefined'.
+
+-spec get_row_minimum(rate_row()) -> api_integer().
+get_row_minimum([_, _, _, _, _, _, _, Minimum | _]) -> wh_util:to_integer(Minimum);
+get_row_minimum([_|_]=_R) ->
+    lager:info("minimum not found on row: ~p", [_R]),
+    60.
+
+-spec get_row_increment(rate_row()) -> api_integer().
+get_row_increment([_, _, _, _, _, _, _, _, Increment | _]) -> wh_util:to_integer(Increment);
+get_row_increment([_|_]=_R) ->
+    lager:info("increment not found on row: ~p", [_R]),
+    60.
+
+-spec get_row_direction(rate_row()) -> api_integer().
+get_row_direction([_, _, _, _, _, _, _, _, _, Direction | _]) -> [wh_util:to_binary(Direction)];
+get_row_direction([_|_]=_R) ->
+    lager:info("direction not found on row: ~p", [_R]),
+    undefined.
 
 -spec strip_quotes(ne_binary()) -> ne_binary().
 strip_quotes(Bin) ->
