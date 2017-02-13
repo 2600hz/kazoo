@@ -10663,7 +10663,7 @@
                     "type": "boolean"
                 },
                 "maximum_search_quantity": {
-                    "default": 500,
+                    "default": 50,
                     "description": "maximum number of returned DIDs in search query",
                     "type": "integer"
                 },
@@ -10697,6 +10697,11 @@
                 "should_age": {
                     "default": false,
                     "description": "number_manager should age",
+                    "type": "boolean"
+                },
+                "should_bulk_batch_writes": {
+                    "default": false,
+                    "description": "number_manager should bulk batch writes",
                     "type": "boolean"
                 },
                 "should_permanently_delete": {
