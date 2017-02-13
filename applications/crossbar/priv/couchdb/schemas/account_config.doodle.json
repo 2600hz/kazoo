@@ -10,6 +10,7 @@
             "type": "boolean"
         },
         "reschedule": {
+            "additionalProperties": false,
             "default": {},
             "description": "doodle reschedule",
             "type": "object"
