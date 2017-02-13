@@ -45,11 +45,9 @@ maybe_set_alert(Data, Call) ->
             kapps_call:set_custom_sip_header(<<"Alert-Info">>, Alert, Call)
     end.
 
--spec custom_alert_path() -> kz_json:path().
 -spec custom_alert_path(api_binary()) -> kz_json:path().
-custom_alert_path() -> [<<"ringtones">>].
-custom_alert_path(_Inception='undefined') -> custom_alert_path() ++ [<<"internal">>];
-custom_alert_path(_Inception) -> custom_alert_path() ++ [<<"external">>].
+custom_alert_path(_Inception='undefined') -> [<<"ringtones">>, <<"internal">>];
+custom_alert_path(_Inception) -> [<<"ringtones">>, <<"external">>].
 
 -spec repeat(kz_json:object(), kapps_call:call(), non_neg_integer()) -> 'ok'.
 repeat(_Data, Call, 0) ->
