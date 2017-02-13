@@ -53,7 +53,7 @@
 -type options() :: [option()].
 -export_type([option/0, options/0]).
 
--define(MAX_SEARCH, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 500)).
+-define(MAX_SEARCH, 500).
 
 -define(POLLING_INTERVAL, 5000).
 
@@ -245,10 +245,13 @@ find(Options, _) ->
 do_find(Options, 'true') ->
     next(Options);
 do_find(Options, 'false') ->
-    Payload = [{<<"Query-ID">>, query_id(Options)}
+    QueryId = query_id(Options),
+    Quantity = quantity(Options),
+    Offset = offset(Options),
+    Payload = [{<<"Query-ID">>, QueryId}
               ,{<<"Prefix">>, normalized_prefix(Options)}
-              ,{<<"Quantity">>, quantity(Options)}
-              ,{<<"Offset">>, offset(Options)}
+              ,{<<"Quantity">>, Quantity}
+              ,{<<"Offset">>, Offset}
               ,{<<"Account-ID">>, account_id(Options)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -355,8 +358,7 @@ create_discovery(JObj, Options) ->
 
 -spec quantity(options()) -> pos_integer().
 quantity(Options) ->
-    Quantity = props:get_integer_value('quantity', Options, 1),
-    min(Quantity, ?MAX_SEARCH).
+    props:get_integer_value('quantity', Options, 1).
 
 -spec prefix(options()) -> ne_binary().
 -spec prefix(options(), ne_binary()) -> ne_binary().
