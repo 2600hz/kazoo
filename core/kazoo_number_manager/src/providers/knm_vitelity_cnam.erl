@@ -133,7 +133,8 @@ outbound_cnam_options(DID, NewCNAM) ->
 %%--------------------------------------------------------------------
 -spec process_outbound_xml_resp(knm_number:knm_number(), ne_binary(), text()) ->
                                        knm_number:knm_number().
-process_outbound_xml_resp(Number, FeatureData, XML) ->
+process_outbound_xml_resp(Number, FeatureData, XML_binary) ->
+    XML = unicode:characters_to_list(XML_binary),
     try xmerl_scan:string(XML) of
         {#xmlElement{name='content'
                     ,content=Children
