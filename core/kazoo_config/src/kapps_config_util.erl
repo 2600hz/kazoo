@@ -3,6 +3,7 @@
 -export([
     get_config/2,
     get_reseller_config/2,
+    load_config_from_account/2,
     account_schema_name/1,
     account_schema/1,
     system_schema/1
