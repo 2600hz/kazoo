@@ -116,6 +116,7 @@
                     "type": "boolean"
                 },
                 "reschedule": {
+                    "additionalProperties": false,
                     "default": {},
                     "description": "doodle reschedule",
                     "type": "object"
@@ -15514,6 +15515,20 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/conference_id"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/config_id"
                     },
                     {
                         "$ref": "#/parameters/auth_token_header",
