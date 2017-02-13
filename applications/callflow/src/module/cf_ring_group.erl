@@ -33,7 +33,23 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    repeat(Data, Call, repeats(Data)).
+    repeat(Data, maybe_set_alert(Data, Call), repeats(Data)).
+
+-spec maybe_set_alert(kz_json:object(), kapps_call:call()) -> kapps_call:call().
+maybe_set_alert(Data, Call) ->
+    case kz_json:get_value(custom_alert_path(kapps_call:inception(Call)), Data) of
+        'undefined' ->
+            Call;
+        Alert ->
+            lager:debug("setting alert to ~s", [Alert]),
+            kapps_call:set_custom_sip_header(<<"Alert-Info">>, Alert, Call)
+    end.
+
+-spec custom_alert_path() -> kz_json:path().
+-spec custom_alert_path(api_binary()) -> kz_json:path().
+custom_alert_path() -> [<<"ringtones">>].
+custom_alert_path(_Inception='undefined') -> custom_alert_path() ++ [<<"internal">>];
+custom_alert_path(_Inception) -> custom_alert_path() ++ [<<"external">>].
 
 -spec repeat(kz_json:object(), kapps_call:call(), non_neg_integer()) -> 'ok'.
 repeat(_Data, Call, 0) ->
