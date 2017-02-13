@@ -303,7 +303,8 @@ location_options(AddressJObj) ->
 %%--------------------------------------------------------------------
 -spec process_xml_resp(text()) -> {'ok', kz_json:object() | ne_binary()} |
                                   {'error', ne_binary()}.
-process_xml_resp(RespXML) ->
+process_xml_resp(RespXML_binary) ->
+    RespXML = unicode:characters_to_list( RespXML_binary),
     try xmerl_scan:string(RespXML) of
         {XmlEl, _} -> process_xml_content_tag(XmlEl)
     catch
