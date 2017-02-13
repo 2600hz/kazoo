@@ -24,40 +24,21 @@
 
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
 
--define(COUNTRY,
-        kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
-
 -ifdef(TEST).
--define(PHONEBOOK_URL(Options), props:get_value(phonebook_url, Options)).
+-define(COUNTRY, ?KNM_DEFAULT_COUNTRY).
 -else.
--define(PHONEBOOK_URL(_Options),
-        kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
+-define(COUNTRY
+       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
 -endif.
 
 -ifdef(TEST).
--define(BLOCKS_RESP, kz_json:from_list(
-                       [{<<"status">>, <<"success">>}
-                       ,{<<"data">>
-                        ,[kz_json:from_list(
-                            [{<<"start_number">>, ?START_BLOCK}
-                            ,{<<"end_number">>, ?END_BLOCK}
-                            ])
-                         ]
-                        }
-                       ])).
-
-
--define(NUMBERS_DATA, kz_json:from_list(
-                        [{<<"+1415886790", (D + $0)>>, Ext}
-                         || D <- lists:seq(0, 9),
-                            Ext <- [kz_json:from_list([{<<"extension">>, D}])]
-                        ])).
-
--define(NUMBERS_RESPONSE
-       ,kz_json:from_list([{<<"status">>, <<"success">>}
-                          ,{<<"data">>, ?NUMBERS_DATA}
-                          ])).
+-define(PHONEBOOK_URL(Options)
+       ,props:get_value('phonebook_url', Options)).
+-else.
+-define(PHONEBOOK_URL(_Options)
+       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
 -endif.
+
 
 %%--------------------------------------------------------------------
 %% @public
