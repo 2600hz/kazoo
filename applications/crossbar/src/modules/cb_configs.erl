@@ -14,7 +14,6 @@
         ,validate/2
         ,post/2
         ,put/2
-        ,patch/2
         ,delete/2
         ]).
 
@@ -37,7 +36,7 @@ init() ->
 
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ConfigId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec resource_exists() -> false.
 -spec resource_exists(path_tokens()) -> true.
@@ -72,15 +71,18 @@ validate(Context, ?HTTP_GET, ConfigId) ->
     crossbar_doc:handle_datamgr_success(set_id(ConfigId, JObj), Context);
 
 validate(Context, ?HTTP_DELETE, ConfigId) ->
-    Document = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
-    pass_validation(Context, Document);
+    Doc = case kapps_config_util:load_config_from_account(cb_context:account_id(Context), ConfigId) of
+        {ok, Document} -> Document;
+        _ -> set_id(ConfigId, kz_json:new())
+    end,
+    pass_validation(Context, Doc);
 
 validate(Context, ?HTTP_PUT, ConfigId) ->
     validate(Context, ?HTTP_POST, ConfigId);
 
 validate(Context, ?HTTP_PATCH, ConfigId) ->
     Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
-    validate_diff(Context, ConfigId, Parent);
+    save_diff(validate_diff(Context, ConfigId, Parent), ConfigId, Parent);
 
 validate(Context, ?HTTP_POST, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
@@ -94,14 +96,9 @@ post(Context, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
     save_diff(Context, ConfigId, Parent).
 
--spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, ConfigId) ->
-    Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
-    save_diff(Context, ConfigId, Parent).
-
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
-    case kz_json:delete_key(<<"_id">>, cb_context:doc(Context)) of
+    case strip_id(cb_context:doc(Context)) of
         {[]} -> Context;
         _ ->
             flush(crossbar_doc:delete(Context, permanent))
