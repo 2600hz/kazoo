@@ -18,13 +18,14 @@
 -export([to_json/1
         ,to_public_json/1
         ,from_json/1, from_json_with_options/2
+        ,from_number/1
         ,is_phone_number/1
         ]).
 
 -export([setters/2
         ,number/1
         ,number_db/1
-        ,assign_to/1
+        ,assign_to/1, set_assign_to/2
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1, set_prev_assigned_to/2
         ,used_by/1, set_used_by/2
@@ -1220,9 +1221,11 @@ reset_doc(PN=#knm_phone_number{doc = Doc}, JObj) ->
 %%--------------------------------------------------------------------
 -spec modified(knm_phone_number()) -> gregorian_seconds().
 modified(#knm_phone_number{is_dirty = true}) -> kz_time:current_tstamp();
+modified(#knm_phone_number{modified = undefined}) -> kz_time:current_tstamp();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
 -spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_modified(PN=#knm_phone_number{modified = V}, V) -> PN;
 set_modified(PN, Modified)
   when is_integer(Modified), Modified > 0 ->
     PN#knm_phone_number{modified=Modified}.
@@ -1237,6 +1240,7 @@ created(#knm_phone_number{created = undefined}) -> kz_time:current_tstamp();
 created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created=Created}.
