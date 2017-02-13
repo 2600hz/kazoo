@@ -99,8 +99,8 @@
 -define(BULK_BATCH_WRITES,
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
--define(PORTING_MODULE_NAME,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"porting_module_name">>, ?CARRIER_LOCAL)).
+-define(PORT_IN_MODULE_NAME,
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -112,16 +112,22 @@ new(DID) ->
     new(DID, knm_number_options:default()).
 
 -spec new(ne_binary(), knm_number_options:options()) -> knm_phone_number().
-new(DID, Options0) ->
-    Options = case knm_number_options:state(Options0) of
-                  ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORTING_MODULE_NAME} | Options0];
-                  _ -> Options0
-              end,
-    {'ok', PhoneNumber} =
-        setters(new(),
-                [{fun set_number/2, knm_converters:normalize(DID)}
-                 | knm_number_options:to_phone_number_setters(Options)
-                ]),
+new(DID, Options) ->
+    do_new(DID, new_setters(Options)).
+
+-spec new_setters(knm_number_options:options()) -> set_functions().
+new_setters(Options) ->
+    knm_number_options:to_phone_number_setters(
+      case knm_number_options:state(Options) of
+          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
+          _ -> Options
+      end
+     ).
+
+-spec do_new(ne_binary(), set_functions()) -> knm_phone_number().
+do_new(DID, Setters0) ->
+    Setters = [{fun set_number/2, knm_converters:normalize(DID)} | Setters0],
+    {ok, PhoneNumber} = setters(new(), Setters),
     PhoneNumber.
 
 %%--------------------------------------------------------------------
