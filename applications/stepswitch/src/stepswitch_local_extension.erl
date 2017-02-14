@@ -269,7 +269,7 @@ build_local_extension(#state{number_props=Props
                             ,resource_req=JObj
                             ,queue=Q
                             }) ->
-    {CIDNum, CIDName} = local_extension_caller_id(JObj),
+    {CIDName, CIDNum} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),
@@ -341,11 +341,11 @@ get_account_realm(AccountId) ->
 
 -spec local_extension_caller_id(kz_json:object()) -> {api_binary(), api_binary()}.
 local_extension_caller_id(JObj) ->
-    {kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
-                               ,<<"Emergency-Caller-ID-Number">>
-                               ], JObj)
-    ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
+    {kz_json:get_first_defined([<<"Outbound-Caller-ID-Name">>
                                ,<<"Emergency-Caller-ID-Name">>
+                               ], JObj)
+    ,kz_json:get_first_defined([<<"Outbound-Caller-ID-Number">>
+                               ,<<"Emergency-Caller-ID-Number">>
                                ], JObj)
     }.
 
