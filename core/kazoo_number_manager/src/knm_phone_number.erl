@@ -740,10 +740,10 @@ set_feature(PN0, Feature=?NE_BINARY, Data) ->
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_features_allowed(PN=#knm_phone_number{features_allowed = undefined}, Features) ->
-    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
     PN#knm_phone_number{features_allowed = Features};
 set_features_allowed(PN, Features) ->
-    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(PN#knm_phone_number.features_allowed) =:= lists:usort(Features) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{features_allowed = Features})
@@ -751,10 +751,10 @@ set_features_allowed(PN, Features) ->
 
 -spec set_features_denied(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_features_denied(PN=#knm_phone_number{features_denied = undefined}, Features) ->
-    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
     PN#knm_phone_number{features_denied = Features};
 set_features_denied(PN, Features) ->
-    true = lists:all(fun kz_term:is_ne_binary/1, Features),
+    true = lists:all(fun kz_util:is_ne_binary/1, Features),
     case lists:usort(PN#knm_phone_number.features_denied) =:= lists:usort(Features) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{features_denied = Features})
@@ -1261,7 +1261,7 @@ handle_assignment(PN) ->
 -spec assign(knm_phone_number()) -> knm_phone_number().
 assign(PN) ->
     AssignedTo = assigned_to(PN),
-    case kz_term:is_empty(AssignedTo) of
+    case kz_util:is_empty(AssignedTo) of
         'true' -> PN;
         'false' -> assign(PN, AssignedTo)
     end.
@@ -1292,7 +1292,7 @@ assign(PN, AssignedTo) ->
 -spec unassign_from_prev(knm_phone_number()) -> knm_phone_number().
 unassign_from_prev(PN) ->
     PrevAssignedTo = prev_assigned_to(PN),
-    case kz_term:is_empty(PrevAssignedTo) of
+    case kz_util:is_empty(PrevAssignedTo) of
         'false' -> unassign_from_prev(PN, PrevAssignedTo);
         'true' ->
             lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
@@ -1367,7 +1367,7 @@ maybe_remove_number_from_account(PN) -> {ok, PN}.
 maybe_remove_number_from_account(PN) ->
     AssignedTo = assigned_to(PN),
     Num = number(PN),
-    case kz_term:is_empty(AssignedTo) of
+    case kz_util:is_empty(AssignedTo) of
         'true' ->
             lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
             {'ok', PN};
