@@ -192,14 +192,14 @@ hide_mode(?HIDE_NAME, ?HIDE_NAME) ->
     lager:info("overriding caller id name to maintain privacy"),
     ?HIDE_NAME;
 hide_mode(?HIDE_NAME, _HideMode) ->
-    lager:debug("not allowing ~s privacy mode", [_HideMode]),
-    ?NO_HIDE_MODE;
+    lager:debug("ignoring ccv's caller privacy hide number, just overriding caller id name", [_HideMode]),
+    ?HIDE_NAME;
 hide_mode(?HIDE_NUMBER, ?HIDE_NUMBER) ->
     lager:info("overriding caller id number to maintain privacy"),
     ?HIDE_NUMBER;
 hide_mode(?HIDE_NUMBER, _HideMode) ->
-    lager:debug("not allowing ~s privacy mode", [_HideMode]),
-    ?NO_HIDE_MODE.
+    lager:debug("ignoring ccv's caller privacy hide name, just overriding caller id number", [_HideMode]),
+    ?HIDE_NUMBER.
 
 -spec anonymize_cid(ne_binary(), cid(), ne_binary()) -> cid().
 anonymize_cid(_AccountId, Default, ?NO_HIDE_MODE) ->
