@@ -97,12 +97,11 @@
                         )
        ).
 
--define(DEFAULT_FORWARD_TYPE(AccountId)
-       ,kapps_account_config:get_global(AccountId
-                                       ,?CF_CONFIG_CAT
-                                       ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
-                                       ,<<"only_forward">>
-                                       )
+-define(DEFAULT_FORWARD_TYPE
+       ,kapps_config:get(?CF_CONFIG_CAT
+                        ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
+                        ,<<"only_forward">>
+                        )
        ).
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
@@ -1600,7 +1599,7 @@ get_mailbox_profile(Data, Call) ->
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
                     ,media_extension = kz_json:get_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
-                    ,forward_type = ?DEFAULT_FORWARD_TYPE(AccountId)
+                    ,forward_type = ?DEFAULT_FORWARD_TYPE
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
