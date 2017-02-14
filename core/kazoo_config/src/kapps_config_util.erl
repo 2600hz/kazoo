@@ -2,15 +2,28 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -export([
          get_config/2
+        ,get_system_config/1, get_system_config/2
         ,get_reseller_config/2
         ,load_config_from_account/2
         ,account_schema_name/1
+        ,system_schema_name/1
         ,account_schema/1
         ,system_schema/1
+        ,load_default_config/1
         ]).
 
 -spec doc_id(ne_binary()) -> ne_binary().
 doc_id(Config) -> kapps_account_config:config_doc_id(Config).
+
+-spec get_system_config(ne_binary()) -> kz_json:object().
+get_system_config(Config) -> get_system_config(Config, <<"default">>).
+
+-spec get_system_config(ne_binary(), ne_binary()) -> kz_json:object().
+get_system_config(Config, Node) ->
+    Default = maybe_new(load_default_config(Config)),
+    System = maybe_new(kapps_config:get_category(Config)),
+    SystemNode = kz_json:get_value(Node, System, kz_json:new()),
+    kz_json:merge_recursive(Default, SystemNode).
 
 -spec get_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_config(Account, Config) ->
@@ -50,15 +63,15 @@ load_config_from_reseller(Account, Config) ->
 
 -spec load_config_from_system(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_system(_Account, Config) ->
-    kz_json:get_value(<<"default">>, ensure_value(kapps_config:get_category(Config))).
+    kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config)), kz_json:new()).
 
 -spec load_default_config(ne_binary(), ne_binary()) -> {ok, kz_json:object()}.
-load_default_config(_Account, Config) ->
-    Schema = system_schema(Config),
-    {ok, kz_doc:set_id(kz_json_schema:default_object(Schema), doc_id(Config))}.
+load_default_config(_Account, Config) -> load_default_config(Config).
 
-ensure_value({ok, JObj}) -> JObj;
-ensure_value(_) -> kz_json:new().
+-spec load_default_config(ne_binary()) -> {ok, kz_json:object()}.
+load_default_config(Config) ->
+    Schema = system_schema(Config),
+    {ok, kz_json_schema:default_object(Schema)}.
 
 -spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
 maybe_new({ok, JObj}) -> JObj;
@@ -73,8 +86,7 @@ system_schema_name(Config) when is_binary(Config) -> <<"system_config.", Config/
 -spec system_schema(ne_binary()) -> kz_json:object().
 system_schema(Config) when is_binary(Config) ->
     Name = system_schema_name(Config),
-    {ok, Schema} = kz_json_schema:load(Name),
-    Schema.
+    maybe_new(kz_json_schema:load(Name)).
 
 -spec account_schema(ne_binary()) -> kz_json:object().
 account_schema(Config) when is_binary(Config) ->
