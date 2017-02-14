@@ -70,12 +70,12 @@ find_and_change_ring_group(Action, Call, DisableUntil) ->
 -spec maybe_modify_children(kz_json:object(), kapps_call:call(), integer()) -> kz_json:object().
 maybe_modify_children(Children, Call, DisableUntil) ->
     kz_json:foldl(fun(Branch, ChildAction, JObj) ->
-        SubModule = find_and_change_ring_group(ChildAction, Call, DisableUntil),
-        kz_json:set_value(Branch, SubModule, JObj)
-    end
-    ,Children
-    ,Children
-    ).
+                          SubModule = find_and_change_ring_group(ChildAction, Call, DisableUntil),
+                          kz_json:set_value(Branch, SubModule, JObj)
+                  end
+                 ,Children
+                 ,Children
+                 ).
 
 -spec alter_endpoints(kz_json:object(), kapps_call:call(), integer()) -> kz_json:object().
 alter_endpoints(Module, Call, DisableUntil) ->
