@@ -130,6 +130,9 @@
               ,prev = <<"4">>
               ,next = <<"6">>
               ,delete = <<"7">>
+
+              %% Greeting or instructions
+              ,continue = 'undefined'
          }).
 -type vm_keys() :: #keys{}.
 
@@ -430,6 +433,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
     end;
 compose_voicemail(#mailbox{keys=#keys{login=Login
                                      ,operator=Operator
+                                     ,continue=Continue
                                      }
                           ,media_extension=Ext
                           }=Box, _, Call) ->
@@ -455,6 +459,8 @@ compose_voicemail(#mailbox{keys=#keys{login=Login
                         {'ok', Flow} -> {'branch', Flow};
                         {'error', _R} -> record_voicemail(tmp_file(Ext), Box, Call)
                     end;
+                Continue ->
+                    lager:info("caller chose to continue to the next element in the callflow");
                 _Else ->
                     lager:info("caller pressed unbound '~s', skip to recording new message", [_Else]),
                     record_voicemail(tmp_file(Ext), Box, Call)
@@ -1662,6 +1668,7 @@ populate_keys(Call) ->
          ,prev = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"prev">>], JObj, Default#keys.prev)
          ,next = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"next">>], JObj, Default#keys.next)
          ,delete = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"delete">>], JObj, Default#keys.delete)
+         ,continue = kz_json:get_binary_value([?KEY_VOICEMAIL, <<"continue">>], JObj, Default#keys.continue)
          }.
 
 %%--------------------------------------------------------------------
