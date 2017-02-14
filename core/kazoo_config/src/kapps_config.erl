@@ -783,6 +783,9 @@ get_category(Category, 'false') ->
         ,{{<<"number_manager.port_request">>, <<"crawler_delay_time_ms">>}
          ,{<<"tasks">>, <<"crawler_delay_time_ms">>}
          }
+        ,{{<<"number_manager">>, <<"porting_module_name">>}
+         ,{<<"number_manager">>, <<"port_in_module_name">>}
+         }
 
         ,{{<<"notify.account_crawler">>, <<"interaccount_delay">>}
          ,{<<"tasks">>, <<"interaccount_delay_ms">>}

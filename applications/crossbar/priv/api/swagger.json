@@ -10341,11 +10341,6 @@
                     "description": "the kazoo number manager module name that completed port request numbers should be created with",
                     "type": "string"
                 },
-                "porting_module_name": {
-                    "default": "knm_local",
-                    "description": "number manager porting module name",
-                    "type": "string"
-                },
                 "providers": {
                     "description": "Number features sub accounts are allowed to enable or disable"
                 },

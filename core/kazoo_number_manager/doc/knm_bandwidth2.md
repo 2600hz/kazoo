@@ -17,10 +17,11 @@ For example:
        ]
 ```
 
-Optionally, you can also set the port in default module to Bandwidth if your port requests are primarily processed by Bandwidth.  This will cause numbers in completed port in requests to be associated with the Bandwidth module.
+Optionally, you can also set the `port in` default module to Bandwidth if your port requests are primarily processed by Bandwidth.
+This will cause numbers in completed port in requests to be associated with the Bandwidth module.
 
 ```json
-       "porting_module_name": "knm_bandwidth2"
+       "port_in_module_name": "knm_bandwidth2"
 ```
 
 #### Configuring the Bandwidth module
