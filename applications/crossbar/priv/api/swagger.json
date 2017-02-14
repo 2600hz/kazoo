@@ -21730,6 +21730,13 @@
                     }
                 ]
             },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    }
+                ]
+            },
             "post": {
                 "parameters": [
                     {
@@ -21766,7 +21773,27 @@
                     }
                 ]
             },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    },
+                    {
+                        "$ref": "#/parameters/node"
+                    }
+                ]
+            },
             "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    },
+                    {
+                        "$ref": "#/parameters/node"
+                    }
+                ]
+            },
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/system_config_id"
