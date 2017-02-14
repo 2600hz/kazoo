@@ -106,8 +106,8 @@
 -define(BULK_BATCH_WRITES,
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
--define(PORTING_MODULE_NAME,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"porting_module_name">>, ?CARRIER_LOCAL)).
+-define(PORT_IN_MODULE_NAME,
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
 
 -define(DIRTY(PN), begin
                        lager:debug("dirty"),
@@ -129,7 +129,7 @@ new(T=#{todo := Nums, options := Options}) ->
 new_setters(Options) ->
     knm_number_options:to_phone_number_setters(
       case knm_number_options:state(Options) of
-          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORTING_MODULE_NAME} | Options];
+          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
           _ -> Options
       end
      ).
