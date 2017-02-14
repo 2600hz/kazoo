@@ -18,7 +18,7 @@
         ,build_error_message/2
         ]).
 
--export([default_object/1, filter/2, flatten/1]).
+-export([default_object/1, filter/2]).
 
 -export_type([validation_error/0, validation_errors/0]).
 
@@ -755,31 +755,15 @@ get_types(JObj) ->
         _TypeSchema -> <<"type schema">>
     end.
 
--spec flatten(kz_json:object()) -> kz_json:object().
-flatten({[]} = Empty) -> Empty;
-flatten({L} = Schema) when is_list(L) ->
-    kz_json:from_list(lists:flatten(flatten_props(kz_json:get_value(<<"properties">>, Schema), [], Schema))).
-
-flatten_props(undefined, Path, Obj) -> flatten_prop(Path, Obj);
-flatten_props(?JSON_WRAPPER(L), Path, _) when is_list(L) ->
-   [ flatten_props(kz_json:get_value(<<"properties">>, V), Path ++ [K], V) || {K, V} <- L ].
-
-flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
-    case lists:last(Path) of
-        <<"default">> -> [{Path, Value}];
-        _ -> [{Path ++ [K], V} || {K,V} <- L]
-    end;
-flatten_prop(Path, V) -> [{Path, V}].
-
 -spec default_object(kz_json:object()) -> kz_json:object().
-default_object(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
-    Flat = flatten(Schema),
+default_object(Schema) ->
+    Flat = kz_json:flatten_schema(Schema),
     Default = kz_json:from_list([ {lists:droplast(K), V} || {K, V} <- kz_json:to_proplist(Flat), lists:last(K) =:= <<"default">> ]),
     kz_json:expand(Default).
 
 -spec filtering_list(kz_json:object()) -> list(list()).
-filtering_list(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
-    Flat = flatten(Schema),
+filtering_list(Schema) ->
+    Flat = kz_json:flatten_schema(Schema),
     lists:usort([ lists:droplast(K) || {K, _} <- kz_json:to_proplist(Flat) ]).
 
 -spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().

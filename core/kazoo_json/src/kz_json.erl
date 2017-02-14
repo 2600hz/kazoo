@@ -91,7 +91,7 @@
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
--export([flatten/1, flatten/2, expand/1, diff/2]).
+-export([flatten/1, flatten/2, expand/1, diff/2, flatten_schema/1]).
 
 -export([sum/2, sum/3]).
 -export_type([sumer/0]).
@@ -1217,6 +1217,23 @@ diff(J1, J2) ->
     ?JSON_WRAPPER(L1) = flatten(J1),
     ?JSON_WRAPPER(L2) = flatten(J2),
     expand(from_list(L1 -- L2)).
+
+-spec flatten_schema(kz_json:object()) -> kz_json:object().
+flatten_schema(?JSON_WRAPPER([]) = Empty) -> Empty;
+flatten_schema(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
+    kz_json:from_list(lists:flatten(flatten_props(kz_json:get_value(<<"properties">>, Schema), [], Schema))).
+
+flatten_props(undefined, Path, Obj) -> flatten_prop(Path, Obj);
+flatten_props(?JSON_WRAPPER(L), Path, _) when is_list(L) ->
+   [ flatten_props(kz_json:get_value(<<"properties">>, V), Path ++ [K], V) || {K, V} <- L ].
+
+flatten_prop(Path, ?JSON_WRAPPER(L) = Value) when is_list(L) ->
+    case lists:last(Path) of
+        <<"default">> -> [{Path, Value}];
+        _ -> [{Path ++ [K], V} || {K,V} <- L]
+    end;
+flatten_prop(Path, V) -> [{Path, V}].
+
 
 -type exec_fun_1() :: fun((object()) -> object()).
 -type exec_fun_2() :: {fun((_, object()) -> object()), _}.
