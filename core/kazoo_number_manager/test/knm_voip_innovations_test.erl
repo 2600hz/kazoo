@@ -53,7 +53,7 @@ matcher(Prefix) ->
 
 acquire_number_test_() ->
     N = <<"+14352154006">>,
-    PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
+    PhoneNumber = knm_phone_number:from_number(N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Result = knm_voip_innovations:acquire_number(Number),
     [{"Verify number is still one inputed"
@@ -63,7 +63,7 @@ acquire_number_test_() ->
 
 disconnect_number_test_() ->
     N = <<"+14352154974">>,
-    PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
+    PhoneNumber = knm_phone_number:from_number(N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Msg = <<"Number currently available">>,
     [{"Verify cannot release number not detained"

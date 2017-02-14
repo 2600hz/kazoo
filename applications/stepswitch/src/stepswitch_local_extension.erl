@@ -269,7 +269,7 @@ build_local_extension(#state{number_props=Props
                             ,resource_req=JObj
                             ,queue=Q
                             }) ->
-    {CIDNum, CIDName} = local_extension_caller_id(JObj),
+    {CIDName, CIDNum} = local_extension_caller_id(JObj),
     lager:debug("set outbound caller id to ~s '~s'", [CIDNum, CIDName]),
     Number = knm_number_options:number(Props),
     AccountId = knm_number_options:account_id(Props),

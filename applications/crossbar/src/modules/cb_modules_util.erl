@@ -189,8 +189,6 @@ send_mwi_update(BoxId, AccountId) ->
     _ = kz_util:spawn(fun send_mwi_update/4, [New, Saved, BoxNumber, AccountId]),
     lager:debug("sent MWI updates for vmbox ~s in account ~s (~b/~b)", [BoxNumber, AccountId, New, Saved]).
 
--define(FAKE_CALLID(C), kz_term:to_hex_binary(crypto:hash(md5, C))).
-
 -spec send_mwi_update(non_neg_integer(), non_neg_integer(), ne_binary(), ne_binary()) -> 'ok'.
 send_mwi_update(New, Saved, BoxNumber, AccountId) ->
     Realm = kz_util:get_account_realm(AccountId),

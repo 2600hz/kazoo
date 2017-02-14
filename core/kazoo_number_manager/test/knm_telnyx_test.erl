@@ -74,7 +74,7 @@ matcher(Dialcode, Prefix) ->
 
 acquire_number_test_() ->
     N = ?TEST_TELNYX_NUM,
-    PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
+    PhoneNumber = knm_phone_number:from_number(N),
     Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
     Result = knm_telnyx:acquire_number(Number),
     [{"Verify number is still one inputed"
