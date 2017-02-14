@@ -213,7 +213,9 @@ ensure_can_create(T0=#{todo := Nums, options := Options}) ->
     F = fun (Num, T) ->
                 case attempt(fun ensure_can_create/2, [Num, Options]) of
                     {error, R} -> knm_numbers:ko(Num, R, T);
-                    true -> knm_numbers:ok(knm_phone_number:new(Num, Options), T)
+                    true ->
+                        PN = knm_phone_number:from_number_with_options(Num, Options),
+                        knm_numbers:ok(PN, T)
                 end
         end,
     lists:foldl(F, T0, Nums).

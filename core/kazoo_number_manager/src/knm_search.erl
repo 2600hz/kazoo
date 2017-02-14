@@ -345,7 +345,7 @@ create_discovery(DID=?NE_BINARY, Carrier, Data, Options0) ->
                | Options0
               ],
     {'ok', PhoneNumber} =
-        knm_phone_number:setters(knm_phone_number:new(DID, Options)
+        knm_phone_number:setters(knm_phone_number:from_number_with_options(DID, Options)
                                 ,[{fun knm_phone_number:set_carrier_data/2, Data}
                                  ]),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).

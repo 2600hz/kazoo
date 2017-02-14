@@ -86,7 +86,7 @@ acquire_number() ->
 %%% Internals
 
 knm_number(N=?NE_BINARY) ->
-    PhoneNumber = knm_phone_number:set_number(knm_phone_number:new(), N),
+    PhoneNumber = knm_phone_number:from_number(N),
     knm_number:set_phone_number(knm_number:new(), PhoneNumber).
 
 %%% End of Module
