@@ -17,5 +17,5 @@ main(_) ->
 output_bad_module(M, [L]) ->
     io:format("module ~p has raw JSON on line ~p~n", [M, L]);
 output_bad_module(M, Ls) ->
-    Lines = kz_util:join_binary(Ls),
+    Lines = kz_binary:join(Ls),
     io:format("module ~p has raw JSON on lines ~s~n", [M, Lines]).
