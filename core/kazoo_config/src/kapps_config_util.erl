@@ -5,6 +5,7 @@
         ,get_system_config/1, get_system_config/2
         ,get_reseller_config/2
         ,load_config_from_account/2
+        ,load_config_from_system/2
         ,account_schema_name/1
         ,system_schema_name/1
         ,account_schema/1
@@ -63,7 +64,7 @@ load_config_from_reseller(Account, Config) ->
 
 -spec load_config_from_system(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_system(_Account, Config) ->
-    kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config)), kz_json:new()).
+    {ok, kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config)), kz_json:new())}.
 
 -spec load_default_config(ne_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_config(_Account, Config) -> load_default_config(Config).
