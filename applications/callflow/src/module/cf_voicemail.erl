@@ -132,7 +132,7 @@
               ,delete = <<"7">>
 
               %% Greeting or instructions
-              ,continue = <<"#">>
+              ,continue = 'undefined'
          }).
 -type vm_keys() :: #keys{}.
 
