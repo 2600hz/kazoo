@@ -28,6 +28,8 @@
         ,source_id/1, set_source_id/2
         ,to_sip/1, to_sip/2, set_to_sip/2
         ,utc_seconds/1
+
+        ,get_msg_id/1
         ]).
 
 -include("kz_documents.hrl").
@@ -179,6 +181,14 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
         ,{?KEY_MEDIA_ID, MediaId}
         ])
      ).
+
+-spec get_msg_id(kz_json:object()) -> ne_binary().
+get_msg_id(JObj) ->
+    Paths = [<<"_id">>
+            ,<<"media_id">>
+            ,[<<"metadata">>, <<"media_id">>]
+            ],
+    kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

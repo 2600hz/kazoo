@@ -243,7 +243,7 @@ move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId) ->
             Error
     end;
 move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
-    move_to_vmbox(AccountId, get_msg_id(JObj), OldBoxId, NewBoxId).
+    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId).
 
 -spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
@@ -286,7 +286,7 @@ copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds) ->
        )
      );
 copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes(AccountId, get_msg_id(JObj), OldBoxId, NewBoxIds).
+    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds).
 
 -spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict()) ->
                              dict:dict().
@@ -341,14 +341,6 @@ do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ) ->
             lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
     end.
-
--spec get_msg_id(kz_json:object()) -> ne_binary().
-get_msg_id(JObj) ->
-    Paths = [<<"_id">>
-            ,<<"media_id">>
-            ,[<<"metadata">>, <<"media_id">>]
-            ],
-    kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -427,11 +419,13 @@ save_generate_media_url(MsgJObj, AttachmentName) ->
 %% create a fake Destination Box JObj to pass to change vmbox functions
 %% Note: set pvt_account_id and db just to make sure for case when timezone is not passed
 %% so kzd_voicemail_box can find timezone from vmbox the owner or account
+-spec fake_vmbox_jobj(kapps_call:call(), kz_proplist()) -> kz_json:object().
 fake_vmbox_jobj(Call, Props) ->
     kz_json:from_list(
       [{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
       ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
-      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)},{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
+      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)}
+      ,{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
       ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
       ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
       ]
