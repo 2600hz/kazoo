@@ -1395,7 +1395,7 @@ tts_command(SayMe, Voice, Language, Terminators, Engine, Call) ->
         ,{<<"Terminators">>, tts_terminators(Terminators)}
         ,{<<"Voice">>, tts_voice(Voice)}
         ,{<<"Language">>, tts_language(Language, Call)}
-        ,{<<"Engine">>, tts_engine(Engine)}
+        ,{<<"Engine">>, tts_engine(Engine, Call)}
         ,{<<"Call-ID">>, kapps_call:call_id(Call)}
         ])).
 
@@ -1408,8 +1408,9 @@ tts_voice(Voice) -> Voice.
 tts_language('undefined', Call) -> kapps_call:language(Call);
 tts_language(Language, _Call) -> Language.
 
-tts_engine('undefined') -> <<"flite">>;
-tts_engine(Engine) -> Engine.
+-spec tts_engine(api_ne_binary(), kapps_call:call()) -> ne_binary().
+tts_engine('undefined', Call) -> ?DEFAULT_TTS_ENGINE(Call);
+tts_engine(Engine, _Call) -> Engine.
 
 -spec b_tts(api_binary(), kapps_call:call()) -> kapps_api_std_return().
 -spec b_tts(api_binary(), api_binary(), kapps_call:call()) -> kapps_api_std_return().
