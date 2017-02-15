@@ -143,6 +143,7 @@ pages:
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
   - 'Engineering':
+    - 'Install/Build Kazoo': 'doc/installation.md'
     - 'Call Recording': 'doc/engineering/call_recording.md'
     - 'Documentation':
       - 'How to write docs': 'doc/engineering/documentation.md'
