@@ -13,6 +13,8 @@ src/modules/kt_rates.hrl:
 clean: clean-headers
 
 clean-headers:
-	rm src/modules/kt_rates.hrl
+	@rm -f src/modules/kt_rates.hrl
+
+compile-test: headers
 
 include $(ROOT)/make/kz.mk
