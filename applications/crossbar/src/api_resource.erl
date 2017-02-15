@@ -878,7 +878,6 @@ accept_override(Context) ->
 flatten_jobj(Context) ->
     JObj = kz_json:flatten(cb_context:resp_data(Context)),
     Routines = [fun check_integrity/1
-               ,fun create_csv_header/1
                ,fun json_objs_to_csv/1
                ],
     lists:foldl(fun fold_over_funs/2, JObj, Routines).
@@ -912,8 +911,7 @@ check_integrity_fold(Header, JObj) ->
 
 -spec get_headers(kz_json:objects()) -> ne_binaries().
 get_headers(JObjs) ->
-    Headers = lists:foldl(fun fold_over_objects/2, [], JObjs),
-    lists:map(fun header_map/1, Headers).
+    lists:foldl(fun fold_over_objects/2, [], JObjs).
 
 -spec header_map(ne_binary()) -> ne_binary().
 header_map(Header) ->
@@ -933,18 +931,16 @@ fold_over_keys(Key, Hs) ->
         'true' -> Hs
     end.
 
--spec create_csv_header(list()) -> kz_json:objects().
-create_csv_header([]) -> [];
-create_csv_header([JObj|_]=JObjs) -> [JObj|JObjs].
+-spec create_csv_header(kz_json:objects()) -> iolist().
+create_csv_header(JObjs) ->
+    Headers = lists:map(fun header_map/1, get_headers(JObjs)),
+    csv_ize(lists:reverse(Headers)).
 
 -spec json_objs_to_csv(kz_json:objects()) -> iolist().
 json_objs_to_csv([]) -> [];
-json_objs_to_csv([J|JObjs]) ->
-    [csv_header(J), [json_to_csv(JObj) || JObj <- JObjs]].
+json_objs_to_csv(JObjs) ->
+    [create_csv_header(JObjs), [json_to_csv(JObj) || JObj <- JObjs]].
 
--spec csv_header(kz_json:object()) -> iolist().
-csv_header(JObj) ->
-    csv_ize(kz_json:get_keys(JObj)).
 
 -spec csv_ize(kz_json:path()) -> iolist().
 csv_ize([F|Rest]) ->
