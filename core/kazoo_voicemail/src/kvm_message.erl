@@ -243,7 +243,7 @@ move_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, NewBoxId) ->
             Error
     end;
 move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
-    move_to_vmbox(AccountId, get_msg_id(JObj), OldBoxId, NewBoxId).
+    move_to_vmbox(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxId).
 
 -spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
@@ -286,7 +286,7 @@ copy_to_vmboxes(AccountId, ?NE_BINARY = Id, OldBoxId, NewBoxIds) ->
        )
      );
 copy_to_vmboxes(AccountId, JObj, OldBoxId, NewBoxIds) ->
-    copy_to_vmboxes(AccountId, get_msg_id(JObj), OldBoxId, NewBoxIds).
+    copy_to_vmboxes(AccountId, kzd_box_message:get_msg_id(JObj), OldBoxId, NewBoxIds).
 
 -spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binaries(), dict:dict()) ->
                              dict:dict().
@@ -341,14 +341,6 @@ do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ) ->
             lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
     end.
-
--spec get_msg_id(kz_json:object()) -> ne_binary().
-get_msg_id(JObj) ->
-    Paths = [<<"_id">>
-            ,<<"media_id">>
-            ,[<<"metadata">>, <<"media_id">>]
-            ],
-    kz_json:get_first_defined(Paths, JObj).
 
 %%--------------------------------------------------------------------
 %% @public

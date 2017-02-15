@@ -243,7 +243,7 @@ move_to_vmbox(AccountId, [?NE_BINARY = _Msg | _] = MsgIds, OldBoxId, NewBoxId) -
     Results = do_move(AccountId, MsgIds, OldBoxId, NewBoxId, NBoxJ, dict:new()),
     kz_json:from_list(dict:to_list(Results));
 move_to_vmbox(AccountId, MsgJObjs, OldBoxId, NewBoxId) ->
-    MsgIds = get_ids(MsgJObjs),
+    MsgIds = [kzd_box_message:get_msg_id(J) || J <- MsgJObjs],
     move_to_vmbox(AccountId, MsgIds, OldBoxId, NewBoxId).
 
 -spec do_move(ne_binary(), ne_binaries(), ne_binary(), ne_binary(), kz_json:object(), dict:dict()) -> dict:dict().
@@ -259,17 +259,6 @@ do_move(AccountId, [FromId | FromIds], OldboxId, NewBoxId, NBoxJ, ResDict) ->
             Res = dict:append(<<"failed">>, Failed, ResDict),
             do_move(AccountId, FromIds, OldboxId, NewBoxId, NBoxJ, Res)
     end.
-
--spec get_ids(kz_json:object()) -> ne_binaries().
-get_ids(JObjs) ->
-    Paths = [<<"_id">>
-            ,<<"media_id">>
-            ,[<<"metadata">>, <<"media_id">>]
-            ],
-    lists:foldl(fun(M, Ids) -> [kz_json:get_first_defined(Paths, M) | Ids] end
-               ,[]
-               ,JObjs
-               ).
 
 %%--------------------------------------------------------------------
 %% @public
