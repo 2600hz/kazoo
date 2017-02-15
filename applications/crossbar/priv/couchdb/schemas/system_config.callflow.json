@@ -161,7 +161,7 @@
                 "vm_message_foraward_type": {
                     "properties": {
                         "default": "only_forward",
-                        "description": "Enable or diable the ability to prepend a message when forwarding a voicemail message",
+                        "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
                         "type": "string"
                     }
                 }
