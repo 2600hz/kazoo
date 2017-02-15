@@ -17,32 +17,41 @@ sudo apt-get install build-essential libxslt-dev \
 
 Note: `htmldoc` is required only if [you want to be able to download PDFs](./announcements.md#company-directory-pdf).
 
-1.  Docs-relatd
+1.  Docs-related
 
     When running `make docs`, some Python libraries are useful:
 
     ```shell
     sudo apt-get install python2.7 python-yaml
+    sudo pip install mkdocs mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
     ```
+
+    You can also run a local version of the docs with `make docs-serve` which will start a local server so you can view how the docs are rendered.
+
+    If you have a custom theme, you can copy it to `doc/mkdocs/theme` and build the docs again. When you serve the docs the theme should have been applied to the site.
 
 
 ### Erlang
 
 Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
 
--   From source. I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+1.  From Source
 
-```shell
-curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
-chmod a+x kerl
-mv kerl /usr/bin
-kerl list releases
-kerl build 18.2 r18.2 # this takes a while
-kerl install r18.2 /usr/local/erlang
-. /usr/local/erlang/activate
-```
+    I prefer to use a tool like [kerl](https://github.com/yrashk/kerl) to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
 
--   Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
+    ```shell
+    curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
+    chmod a+x kerl
+    mv kerl /usr/bin
+    kerl list releases
+    kerl build 18.2 r18.2 # this takes a while
+    kerl install r18.2 /usr/local/erlang
+    . /usr/local/erlang/activate
+    ```
+
+2.  Erlang Solutions
+
+    Install from the [Erlang Solutions](https://www.erlang-solutions.com/resources/download.html) packages. These tend to be kept up-to-date better than the default distro's packages.
 
 
 ## Building Kazoo
@@ -60,25 +69,33 @@ make
 
 ### Longer version
 
--   Once the dependencies are installed above, including Erlang 18+, clone the Kazoo repo:
+1.  Clone the Kazoo repo:
 
     ```shell
       git clone https://github.com/2600Hz/kazoo.git
     ```
--   Enter the kazoo directory and build the project:
+
+2.  Build Kazoo:
 
     ```shell
     cd kazoo
     make
     ```
--   When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
+
+3.  Additional make targets
+
+    When developing, one can `cd` into any app directory (within `applications/` or `core/`) and run:
+
     -   `make` (`make all` or `make clean`)
     -   `make xref` to look for calls to undefined functions (uses [Xref](http://www.erlang.org/doc/apps/tools/xref_chapter.html))
     -   `make dialyze` to statically type-check the app (uses [Dialyzer](http://www.erlang.org/doc/man/dialyzer.html))
     -   `make test` runs the app / sub-apps test suite, if any.
         -   **Note:** make sure to `make clean all` after running your tests, as test BEAMs are generated in `ebin/`!
 
--   To run the full test suite it is advised to
+4.  Running the tests
+
+    To run the full test suite it is advised to:
+
     1.  `cd` into the root of the project
     2.  `make compile-test` to compile every app with the `TEST` macro defined
         -   *This way apps can call code from other apps in a kind of `TEST` mode*
@@ -86,11 +103,11 @@ make
     3.  `make eunit` (instead of `make test`) to run the test suite without recompiling each app
     4.  `make proper` to run the test suite, including property-based tests (uses [PropEr](https://github.com/manopapad/proper))
 
--   `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
-    -   [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
+5.  Generate an Erlang release
 
--   `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
-    -   Copy or symlink this file to `/etc/bash_completion.d/sup.bash`
+    `make build-release` will generate a [deployable release](http://learnyousomeerlang.com/release-is-the-word)
+
+    -   [More on using releases with Kazoo](https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md)
 
 
 ## SUP
@@ -107,4 +124,8 @@ Make sure that the path to Kazoo's intallation directory is right (in `/usr/bin/
 alias sup='KAZOO_ROOT=/opt/kazoo sup'
 ```
 
-It is preferable but not required that one also adds autocompletion to the `sup` command. In order to do this, see [documentation about `make sup_completion`](#longer-version).
+1.  Auto-completion
+
+    `make sup_completion` creates `sup.bash`: a Bash completion file for the SUP command
+
+    -   Copy or symlink this file to `/etc/bash_completion.d/sup.bash`
