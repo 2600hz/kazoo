@@ -1183,7 +1183,7 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--type composite_key() :: key() | [keys()].
+-type composite_key() :: key() | [key()].
 
 -spec flatten(object() | objects()) -> object() | objects().
 flatten(L) when is_list(L) -> [flatten(JObj) || JObj <- L];
