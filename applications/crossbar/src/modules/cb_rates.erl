@@ -449,7 +449,7 @@ process_row(Row, {Count, JObjs}=Acc) ->
                         ,{fun kzd_rate:set_rate_cost/2, get_row_rate(Row)}
                         ,{fun kzd_rate:set_direction/2, get_row_direction(Row)}
                         ,{fun kzd_rate:set_private_surcharge/2, get_row_internal_surcharge(Row)}
-                        ,{fun kzd_rate:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)$">>]}
+                        ,{fun kzd_rate:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)\$">>]}
                         ,{fun kzd_rate:set_options/2, []}
                         ]),
 

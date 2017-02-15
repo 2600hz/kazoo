@@ -186,7 +186,7 @@ ctp(Context) ->
                     {cowboy_req:req(), cb_context:context()}.
 to_csv({Req, Context}) ->
     Filename = requested_attachment_name(Context),
-    Headers = props:set_values([{<<"content-type">>, <<"application/octet-stream">>}
+    Headers = props:set_values([{<<"content-type">>, <<"text/csv">>}
                                ,{<<"content-disposition">>, <<"attachment; filename=\"", Filename/binary, "\"">>}
                                ]
                               ,cowboy_req:get('resp_headers', Req)
