@@ -419,11 +419,13 @@ save_generate_media_url(MsgJObj, AttachmentName) ->
 %% create a fake Destination Box JObj to pass to change vmbox functions
 %% Note: set pvt_account_id and db just to make sure for case when timezone is not passed
 %% so kzd_voicemail_box can find timezone from vmbox the owner or account
+-spec fake_vmbox_jobj(kapps_call:call(), kz_proplist()) -> kz_json:object().
 fake_vmbox_jobj(Call, Props) ->
     kz_json:from_list(
       [{<<"_id">>, props:get_value(<<"Box-Id">>, Props)}
       ,{<<"mailbox">>, props:get_value(<<"Box-Num">>, Props)}
-      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)},{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
+      ,{<<"timezone">>, props:get_value(<<"Timezone">>, Props)}
+      ,{<<"owner_id">>, props:get_value(<<"Owner-Id">>, Props)}
       ,{<<"pvt_account_id">>, kapps_call:account_id(Call)}
       ,{<<"pvt_account_db">>, kapps_call:account_db(Call)}
       ]
