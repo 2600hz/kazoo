@@ -108,11 +108,11 @@ take_row(CSV=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec split_row(ne_binary()) -> {row(), binary()}.
+-spec split_row(ne_binary()) -> {row() | [], binary()}.
 split_row(Row=?NE_BINARY) ->
     split_fields(Row, []).
 
--spec split_fields(binary(), [binary()]) -> {row(), binary()}.
+-spec split_fields(binary(), [binary()]) -> {row() | [], binary()}.
 split_fields(<<>>, Fields) ->
     {lists:reverse(Fields), <<>>};
 
