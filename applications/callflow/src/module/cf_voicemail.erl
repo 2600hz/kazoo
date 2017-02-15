@@ -97,6 +97,13 @@
                         )
        ).
 
+-define(DEFAULT_FORWARD_TYPE
+       ,kapps_config:get(?CF_CONFIG_CAT
+                        ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
+                        ,<<"only_forward">>
+                        )
+       ).
+
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 
 -record(keys, {
@@ -167,6 +174,7 @@
                  ,not_configurable = 'false' :: boolean()
                  ,account_db :: api_binary()
                  ,media_extension :: api_binary()
+                 ,forward_type :: ne_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
@@ -873,17 +881,23 @@ play_prev_message(Messages, [H|T], Count, Box, Call) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec forward_message(kz_json:object(), mailbox(), kapps_call:call()) -> 'ok'.
-forward_message(Message, #mailbox{mailbox_id=SrcBoxId}, Call) ->
+forward_message(Message, #mailbox{mailbox_id=SrcBoxId} = SrcBox, Call) ->
     lager:info("enter destination mailbox number"),
     _ = kapps_call_command:b_flush(Call),
     PossibleBox = find_destination_mailbox(#mailbox{}, Call, SrcBoxId, 1),
-    forward_message(Message, SrcBoxId, PossibleBox, Call).
+    forward_message(Message, SrcBox, PossibleBox, Call).
 
--spec forward_message(kz_json:object(), ne_binary(), mailbox(), kapps_call:call()) -> 'ok'.
-forward_message(_Message, _SrcBoxId, #mailbox{exists='false'}, _Call) ->
+-spec forward_message(kz_json:object(), mailbox(), mailbox(), kapps_call:call()) -> 'ok'.
+forward_message(_Message, _SrcBox, #mailbox{exists='false'}, _Call) ->
     lager:info("unable to find destination mailbox, returning to message menu...");
-forward_message(Message, SrcBoxId, DestBox, Call) ->
-    case forward_message_menu(DestBox, Call) of
+forward_message(Message, #mailbox{mailbox_id = SrcBoxId
+                                 ,forward_type = ForwardType
+                                 }, DestBox, Call) ->
+    case ForwardType =:= <<"prepend_forward">>
+        andalso forward_message_menu(DestBox, Call)
+    of
+        'false' ->
+            forward_message('undefined', 0, Message, SrcBoxId, DestBox, Call);
         {'ok', 'return'} -> 'ok';
         {'ok', 'append'} ->
             compose_forward_message(Message, SrcBoxId, DestBox, Call);
@@ -1591,6 +1605,7 @@ get_mailbox_profile(Data, Call) ->
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
                     ,media_extension = kz_json:get_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
+                    ,forward_type = ?DEFAULT_FORWARD_TYPE
                     };
         {'error', R} ->
             lager:info("failed to load voicemail box ~s, ~p", [Id, R]),
