@@ -212,7 +212,7 @@ docs-clean:
 	@rm -rf $(DOCS_ROOT)/site $(DOCS_ROOT)/docs $(DOCS_ROOT)/mkdocs.local.yml
 
 docs-serve: docs-build
-	@mkdocs serve -f $(DOCS_ROOT)/mkdocs.local.yml
+	@mkdocs serve --dev-addr=0.0.0.0:9876 -f $(DOCS_ROOT)/mkdocs.local.yml
 
 fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
