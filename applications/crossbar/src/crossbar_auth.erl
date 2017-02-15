@@ -49,6 +49,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"method">>, kz_term:to_binary(AuthModule)}
                ,{<<"exp">>, Expiration}
+               ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"mfa_service_response">>, Data)}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
     case maybe_create_token(Claims) of
@@ -66,26 +67,81 @@ create_auth_token(Context, AuthModule, JObj) ->
             crossbar_util:response(Resp, cb_context:setters(Context, Setters));
         {'error', R} ->
             lager:debug("could not create new local auth token, ~s", [kz_term:to_binary(R)]),
-            cb_context:add_system_error('invalid_credentials', Context)
+            cb_context:add_system_error('invalid_credentials', Context);
+        {'error', Reason, RespJObj} ->
+            lager:debug("multi factor module initializes the secondary authentication process, ~s with response ~p"
+                       ,[kz_term:to_binary(Reason), RespJObj]
+                       ),
+            MFAReq = kz_json:from_list(
+                       [{<<"message">>, <<"needs multi factor authentication result to verify">>}
+                       ,{<<"mfa_request">>, RespJObj}
+                       ]
+                      ),
+            cb_context:add_system_error(401
+                                       ,'invalid_credentials'
+                                       ,MFAReq
+                                       ,Context
+                                       )
     end.
 
 -spec maybe_create_token(kz_proplist()) ->
                                 {'ok', ne_binary()} |
-                                {'error', any()}.
+                                {'error', any()} |
+                                {'error', any(), any()}.
 maybe_create_token(Claims) ->
     AuthConfigs = auth_configs(props:get_ne_binary_value(<<"account_id">>, Claims)),
     AuthModule = props:get_ne_binary_value(<<"method">>, Claims),
     maybe_create_token(Claims, AuthConfigs, is_auth_module_enabled(AuthModule, AuthConfigs)).
 
--spec maybe_create_token(kz_proplist(), kz_json:object(), api_boolean()) ->
+-spec maybe_create_token(kz_proplist(), kz_json:object(), boolean()) ->
                                 {'ok', ne_binary()} |
-                                {'error', any()}.
-maybe_create_token(Claims, _AuthConfigs, 'true') ->
-    %%TODO: check for 2FA here
-    kz_auth:create_token(Claims);
+                                {'error', any()} |
+                                {'error', any(), any()}.
+maybe_create_token(Claims, AuthConfigs, 'true') ->
+    IsMFA = kz_json:is_true([<<"multi_factor">>, <<"enabled">>], AuthConfigs, 'false'),
+    maybe_multi_factor_auth(Claims, AuthConfigs, IsMFA);
 maybe_create_token(Claims, _AuthConfigs, 'false') ->
     AuthModule = props:get_ne_binary_value(<<"method">>, Claims),
     {'error', <<"authentication module ", (kz_term:to_binary(AuthModule))/binary, " is disabled">>}.
+
+-spec maybe_multi_factor_auth(kz_proplist(), kz_json:object(), boolean()) ->
+                                     {'ok', ne_binary()} |
+                                     {'error', any()} |
+                                     {'error', any(), any()}.
+maybe_multi_factor_auth(Claims, _AuthConfigs, 'false') ->
+    kz_auth:create_token(Claims);
+maybe_multi_factor_auth(Claims, AuthConfigs, 'true') ->
+    AccountId = props:get_value(<<"account_id">>, Claims),
+    ConfigsFrom = kz_json:get_value(<<"from">>, AuthConfigs),
+    IncludeSubAccounts = kz_json:get_value(<<"from">>, AuthConfigs, 'false'),
+
+    case should_multi_factor_auth(AccountId, ConfigsFrom, IncludeSubAccounts) of
+        'false' -> kz_auth:create_token(Claims);
+        'true' -> multi_factor_auth(Claims, AuthConfigs)
+    end.
+
+-spec multi_factor_auth(kz_proplist(), kz_json:object()) ->
+                               {'ok', ne_binary()} |
+                               {'error', any()} |
+                               {'error', any(), any()}.
+multi_factor_auth(Claims, AuthConfigs) ->
+    NewClaims = props:filter_undefined(
+                  [{<<"mfa_options">>, mfa_options(AuthConfigs)}
+                   | Claims
+                  ]),
+    case kz_mfa_auth:authenticate(NewClaims) of
+        {'ok', 'authenticated'} ->
+            lager:debug("multi factor authentication was successful, creating local auth token"),
+            kz_auth:create_token(Claims);
+        {'error', 'no_provider'} ->
+            lager:debug("multi factor authentication is disabled, creating local auth token"),
+            kz_auth:create_token(Claims);
+        %% {'error', 'provider_disabled'} ->
+        %%     lager:debug("multi factor authentication is disabled, creating local auth token"),
+        %%     kz_auth:create_token(Claims);
+        {'error', _}=Error -> Error;
+        {'error', 401, _MFAReq}=Retry -> Retry
+    end.
 
 -spec validate_auth_token(map() | ne_binary()) ->
                                  {ok, kz_json:object()} | {error, any()}.
@@ -176,7 +232,7 @@ account_auth_configs(AccountId) ->
 auth_configs_from_doc({'ok', Configs}, AccountId, MasterId, _IsReseller) ->
     case kz_json:is_empty(Configs) of
         'true' -> account_auth_configs(account_parent(AccountId), MasterId);
-        'false' -> Configs
+        'false' -> kz_json:set_value(<<"from">>, AccountId, Configs)
     end;
 auth_configs_from_doc({'error', Reason}, _AccountId, _MasterId, 'true') ->
     Reason =:= 'not_found'
@@ -190,7 +246,7 @@ auth_configs_from_doc({'error', _Reason}, AccountId, MasterId, 'false') ->
 
 %%--------------------------------------------------------------------
 %% @private
-%% @doc Find out Account's parent
+%% @doc Find Account's parent
 %% @end
 %%--------------------------------------------------------------------
 -spec account_parent(ne_binary()) -> api_binary().
@@ -209,4 +265,41 @@ account_parent(AccountId) ->
 %%--------------------------------------------------------------------
 -spec system_auth_config() -> kz_json:object().
 system_auth_config() ->
-    kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID, kz_json:new()).
+    kz_json:set_value(<<"from">>
+                     ,<<"system">>
+                     ,kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID, kz_json:new())
+                     ).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Extract multi factor configuration_id from AuthConfigs
+%% @end
+%%--------------------------------------------------------------------
+-spec mfa_options(kz_json:object()) -> 'undefined' | kz_proplist().
+mfa_options(AuthConfigs) ->
+    From = kz_json:get_value(<<"from">>, AuthConfigs),
+    case kz_json:get_value([<<"multi_factor">>, <<"configuration_id">>], AuthConfigs) of
+        ?NE_BINARY=Id ->
+            maybe_system_config(From, Id);
+        _Other -> 'undefined'
+    end.
+
+maybe_system_config(<<"system">>, _Id) ->
+    %% auth config is from system, using default mfa system config
+    'undefined';
+maybe_system_config(?NE_BINARY=AccountId, Id) ->
+    [{<<"account_id">>, AccountId}
+    ,{<<"config_id">>, Id}
+    ].
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc If the configuration document is pulled from a parent account
+%% then should look for a property 'multi_factor.include_subaccounts',
+%% which if 'false' should cause authentication to proceed normally.
+%% @end
+%%--------------------------------------------------------------------
+-spec should_multi_factor_auth(api_binary(), ne_binary(), boolean()) -> boolean().
+should_multi_factor_auth(_AccountId, <<"system">>, _IncludeSubAcc) -> 'true';
+should_multi_factor_auth(AccountId, AccountId, _IncludeSubAcc) -> 'true';
+should_multi_factor_auth(_AccountId, _ParentAccount, IncludeSubAcc) -> IncludeSubAcc.

@@ -48,5 +48,16 @@
                     ,{<<"scope">>, <<"scope">>}
                     ]).
 
+-type mfa_errors() :: 'no_provider' |
+                      'provider_disabled' |
+                      'unauthorized' |
+                      ne_binary().
+
+-type mfa_result() :: 'authenticated' |
+                      {'error', mfa_errors()} |
+                      {'error', non_neg_integer(), kz_json:object()}.
+
+-define(TEST_DUO_SIGN_EXPIRE, 1234).
+
 -define(KAZOO_AUTH_HRL, 'true').
 -endif.
