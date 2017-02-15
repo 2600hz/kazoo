@@ -573,29 +573,29 @@ to_public_json(PN) ->
 -spec to_json(knm_phone_number()) -> kz_json:object().
 to_json(PN=#knm_phone_number{doc=JObj}) ->
     kz_json:from_list(
-      [{<<"_id">>, number(N)}
-      ,{?PVT_DB_NAME, number_db(N)}
-      ,{?PVT_STATE, state(N)}
-      ,{?PVT_PORTED_IN, ported_in(N)}
-      ,{?PVT_MODULE_NAME, module_name(N)}
-      ,{?PVT_MODIFIED, modified(N)}
-      ,{?PVT_CREATED, created(N)}
+      [{<<"_id">>, number(PN)}
+      ,{?PVT_DB_NAME, number_db(PN)}
+      ,{?PVT_STATE, state(PN)}
+      ,{?PVT_PORTED_IN, ported_in(PN)}
+      ,{?PVT_MODULE_NAME, module_name(PN)}
+      ,{?PVT_MODIFIED, modified(PN)}
+      ,{?PVT_CREATED, created(PN)}
       ,{?PVT_TYPE, <<"number">>}
        | kz_json:to_proplist(sanitize_public_fields(JObj))
       ]
       ++
           props:filter_empty(
-            [{<<"_rev">>, rev(N)}
-            ,{?PVT_ASSIGNED_TO, assigned_to(N)}
-            ,{?PVT_AUTH_BY, auth_by(N)}
-            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(N)}
-            ,{?PVT_USED_BY, used_by(N)}
-            ,{?PVT_FEATURES, features(N)}
-            ,{?PVT_FEATURES_ALLOWED, features_allowed(N)}
-            ,{?PVT_FEATURES_DENIED, features_denied(N)}
-            ,{?PVT_RESERVE_HISTORY, reserve_history(N)}
-            ,{?PVT_CARRIER_DATA, carrier_data(N)}
-            ,{?PVT_REGION, region(N)}
+            [{<<"_rev">>, rev(PN)}
+            ,{?PVT_ASSIGNED_TO, assigned_to(PN)}
+            ,{?PVT_AUTH_BY, auth_by(PN)}
+            ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
+            ,{?PVT_USED_BY, used_by(PN)}
+            ,{?PVT_FEATURES, features(PN)}
+            ,{?PVT_FEATURES_ALLOWED, features_allowed(PN)}
+            ,{?PVT_FEATURES_DENIED, features_denied(PN)}
+            ,{?PVT_RESERVE_HISTORY, reserve_history(PN)}
+            ,{?PVT_CARRIER_DATA, carrier_data(PN)}
+            ,{?PVT_REGION, region(PN)}
             ])
      ).
 
@@ -635,7 +635,7 @@ from_json(JObj) ->
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
-                 |props:filter_undefined([{fun set_rev/2, Rev}])
+                 |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
                 ]),
     PN.
 
