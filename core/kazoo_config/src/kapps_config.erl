@@ -846,20 +846,24 @@ migrate_config_setting({From, To}) ->
 -spec migrate_config_setting(kz_json:object(), migrate_values(), migrate_setting()) ->
                                     'ok' |
                                     {'error', any()}.
-migrate_config_setting(UpdatedFrom, Removed, To) ->
-    case add_config_setting(To, Removed) of
-        {'error', Reason} -> {'error', {'add', Reason}};
-        {'ok', UpdatedTo} ->
-            {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedTo),
-            {'ok', _} = kz_datamgr:ensure_saved(?KZ_CONFIG_DB, UpdatedFrom),
-            'ok'
+migrate_config_setting(UpdatedFrom, Removed, {ToId, ToSetting}) ->
+    case ToId =:= kz_doc:id(UpdatedFrom) of
+        true ->
+            case add_config_setting(UpdatedFrom, ToSetting, Removed) of
+                {error, Reason} -> {error, {add, Reason}};
+                {ok, Updated} ->
+                    {ok, _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, Updated),
+                    ok
+            end;
+        false ->
+            case add_config_setting(ToId, ToSetting, Removed) of
+                {'error', Reason} -> {'error', {'add', Reason}};
+                {'ok', UpdatedTo} ->
+                    {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedTo),
+                    {'ok', _} = kz_datamgr:save_doc(?KZ_CONFIG_DB, UpdatedFrom),
+                    'ok'
+            end
     end.
-
--spec add_config_setting(migrate_setting(), migrate_values()) ->
-                                'ok' |
-                                {'error', any()}.
-add_config_setting({Id, Setting}, Values) ->
-    add_config_setting(Id, Setting, Values).
 
 -spec add_config_setting(ne_binary(), config_key(), migrate_values()) ->
                                 'ok' |
