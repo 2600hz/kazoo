@@ -25,6 +25,7 @@ sudo apt-get install build-essential libxslt-dev \
 #+END_SRC
 
 Note: =htmldoc= is required only if [[./announcements.md#company-directory-pdf][you want to be able to download PDFs]].
+
 **** Docs-related
 When running =make docs=, some Python libraries are useful:
 
