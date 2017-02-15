@@ -151,14 +151,18 @@ wait_for_bridge(State, Timeout, {'error', 'timeout'}) ->
 process_event_for_bridge(State, JObj) ->
     process_event_for_bridge(State, JObj, get_event_type(JObj)).
 
-process_event_for_bridge(State, JObj, {<<"resource">>, <<"offnet_resp">>, _}) ->
+process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg} = State
+                        ,JObj
+                        ,{<<"resource">>, <<"offnet_resp">>, _}
+                        ) ->
+    CallId = kz_json:get_value(<<"Call-ID">>, JObj, ALeg),
     case is_success(<<"Response-Message">>, JObj)
         orelse was_bridge_blocked(JObj)
     of
-        'true' ->
+        'true' when CallId =:= ALeg ->
             lager:info("offnet bridge has finished"),
             {'hangup', State};
-        'false' ->
+        'false' when CallId =:= ALeg ->
             Failure = kz_json:get_first_defined([<<"Error-Message">>
                                                 ,<<"Response-Code">>
                                                 ]
@@ -167,7 +171,10 @@ process_event_for_bridge(State, JObj, {<<"resource">>, <<"offnet_resp">>, _}) ->
             lager:info("offnet failed: ~s ~s"
                       ,[Failure, kz_json:get_value(<<"Response-Message">>, JObj)]
                       ),
-            {'error', State}
+            {'error', State};
+        _Else ->
+            lager:debug("ignoring offnet response for call id ~s", [CallId]),
+            'ignore'
     end;
 process_event_for_bridge(#ts_callflow_state{aleg_callid=ALeg
                                            ,callctl_q=CtlQ
