@@ -23,3 +23,38 @@ Key | Description | Type | Default | Required
 `timeout` | How long, in seconds, to wait for the call to be answered | `integer` |   | `false`
 `to_did` | Statically set the DID to dial | `string` |   | `false`
 `use_local_resources` | Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources | `boolean` | `true` | `false`
+
+## Examples
+
+### Route to the system carriers
+
+```json
+{"module":"resources",
+ "data":{
+   "use_local_resources":false
+ }
+}
+```
+
+### Route to the account's local carriers
+
+```json
+{"module":"resources",
+ "data":{
+   "use_local_resources":true
+ }
+}
+```
+
+### Route to another account's local carriers
+
+```json
+{"module":"resources",
+ "data":{
+   "use_local_resources":true,
+   "hunt_account_id":"{OTHER_ACCOUNT_ID}"
+ }
+}
+```
+
+This is great for resellers; they can set their reseller account id as the `hunt_account_id` in callflows for their child accounts (such as in the `no_match` callflow).
