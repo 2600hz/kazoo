@@ -15525,20 +15525,6 @@
                     }
                 ]
             },
-            "patch": {
-                "parameters": [
-                    {
-                        "$ref": "#/parameters/config_id"
-                    },
-                    {
-                        "$ref": "#/parameters/auth_token_header",
-                        "required": true
-                    },
-                    {
-                        "$ref": "#/parameters/account_id"
-                    }
-                ]
-            },
             "post": {
                 "parameters": [
                     {
@@ -15682,6 +15668,20 @@
                 ]
             },
             "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/config_id"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "patch": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/config_id"
