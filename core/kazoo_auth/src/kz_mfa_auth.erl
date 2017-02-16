@@ -32,6 +32,9 @@ authenticate(Claims) ->
             {'error', 'provider_disabled'};
         ?NE_BINARY=Provider ->
             Module = module_name(Provider),
+            lager:debug("performing authentication factor with ~s(~p) provider"
+                       ,[Provider, Module]
+                       ),
             Module:authenticate(Claims, Configs);
         _ ->
             lager:debug("no provider is available or configured"),
@@ -73,23 +76,27 @@ get_configs(Options) when is_list(Options) ->
 get_account_configs('undefined', _ConfigId) -> get_system_configs();
 get_account_configs(_AccountId, 'undefined') -> get_system_configs();
 get_account_configs(AccountId, ConfigId) ->
-    case kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConfigId) of
-        {'ok', JObj} -> JObj;
+    AccountDb = kz_util:format_account_db(AccountId),
+    case kz_datamgr:open_cache_doc(AccountDb, ConfigId) of
+        {'ok', JObj} ->
+            lager:debug("fetched authentication factor config from ~s/~s"
+                       ,[AccountDb, ConfigId]
+                       ),
+            JObj;
         {'error', _Reason} ->
-            lager:debug("failed to open multi factor configuration from ~s/~s : ~p"
-                       ,[kz_util:format_account_db(AccountId), ConfigId, _Reason]
+            lager:debug("failed to open authentication factor configuration from ~s/~s : ~p"
+                       ,[AccountDb, ConfigId, _Reason]
                        ),
             get_system_configs()
     end.
 
 -spec get_system_configs() -> api_object().
 get_system_configs() ->
-    DefaultProvider = default_provider(),
-    case kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_provider">>) of
+    lager:debug("get authentication factor configuration from system config"),
+    case default_provider() of
         'undefined' -> 'undefined';
         DefaultProvider ->
-            P = [<<"providers">>, DefaultProvider],
-            case kapps_config:get_json(?MOD_CONFIG_CAT, P) of
+            case kapps_config:get_json(?MOD_CONFIG_CAT, [<<"providers">>, DefaultProvider]) of
                 'undefined' -> 'undefined';
                 JObj ->
                     kz_json:set_value(<<"provider">>, DefaultProvider, JObj)

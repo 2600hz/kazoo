@@ -11,11 +11,11 @@
 
 -include("kazoo_auth.hrl").
 
--define(REQ_VALUES, [<<"user_id">>
-                    ,<<"ikey">>
-                    ,<<"skey">>
-                    ,<<"akey">>
-                    ,<<"api_host">>
+-define(REQ_VALUES, [<<"user_name">>
+                    ,<<"integration_key">>
+                    ,<<"secret_key">>
+                    ,<<"application_secret_key">>
+                    ,<<"api_hostname">>
                     ]).
 
 -define(DUO_PREFIX, <<"TX">>).
@@ -61,13 +61,13 @@ authenticate(Claims, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec sign_request(map()) -> mfa_result().
-sign_request(#{<<"user_id">> := UserId
-              ,<<"ikey">> := IKey
-              ,<<"skey">> := SKey
-              ,<<"akey">> := AKey
+sign_request(#{<<"user_name">> := UserId
+              ,<<"integration_key">> := IKey
+              ,<<"secret_key">> := SKey
+              ,<<"application_secret_key">> := AKey
               ,<<"duo_expire">> := DuoExpire
               ,<<"app_expire">> := AppExpire
-              ,<<"api_host">> := Host
+              ,<<"api_hostname">> := Host
               }) ->
     Val = <<UserId/binary, (?VAL_PART_SEP)/binary, IKey/binary>>,
 
@@ -78,9 +78,9 @@ sign_request(#{<<"user_id">> := UserId
 
     {'error', 401, kz_json:from_list(
                      [{<<"sig_request">>, SiqReq}
-                     ,{<<"api_host">>, Host}
+                     ,{<<"api_hostname">>, Host}
                      ]
-                     )}.
+                    )}.
 
 -spec sign_value(ne_binary(), ne_binary(), ne_binary(), integer()) -> ne_binary().
 sign_value(Key, Value, Prefix, Exp) ->
@@ -100,9 +100,9 @@ signature(Key, Cookie) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec verify_response(map(), ne_binary()) -> mfa_result().
-verify_response(#{<<"ikey">> := IKey
-                 ,<<"skey">> := SKey
-                 ,<<"akey">> := AKey
+verify_response(#{<<"integration_key">> := IKey
+                 ,<<"secret_key">> := SKey
+                 ,<<"application_secret_key">> := AKey
                  }=Identity, SigResponse) ->
     lager:debug("verifing duo payload ~s", [SigResponse]),
     case binary:split(SigResponse, ?AUTH_PART_SEP, ['global']) of
@@ -122,8 +122,8 @@ verify_user(_Identity, _AuthUser, 'undefined') ->
     {'error', 'unauthorized'};
 verify_user(_Identity, User, User) ->
     {'ok', 'authenticated'};
-verify_user(#{<<"user_id">> := _UserId}, _AuthUser, _AppUser) ->
-    lager:debug("user ~s mismatched (user_id: ~s auth_user: ~s app_user: ~s)"
+verify_user(#{<<"user_name">> := _UserId}, _AuthUser, _AppUser) ->
+    lager:debug("user ~s mismatched (user_name: ~s auth_user: ~s app_user: ~s)"
                ,[_UserId, _AuthUser, _AppUser]
                ),
     {'error', 'unauthorized'}.
@@ -141,7 +141,7 @@ parse_value(IKey, Key, Value, Prefix) ->
                     ,original_ikey => IKey
                     ,current_seconds => MaxExpire
                     ,verify_result => 'true'
-                    ,user_id => 'undefined'
+                    ,user_name => 'undefined'
                     },
             do_parse(Maps);
         ?SIG_PARTS(U_Prefix, _Cookie, _Signature) ->
@@ -157,13 +157,13 @@ do_parse(Maps) ->
                ,fun extract_cookie/1
                ,fun verify_integeration_key/1
                ,fun verify_expiration/1
-               ,fun is_user_id/1
+               ,fun is_user_name/1
                ],
     do_parse_fold(Maps, Routines).
 
 -spec do_parse_fold(map(), list()) -> api_ne_binary().
 do_parse_fold(#{verify_result := 'false'}, _) -> 'undefined';
-do_parse_fold(#{user_id := UserId}, []) -> UserId;
+do_parse_fold(#{user_name := UserId}, []) -> UserId;
 do_parse_fold(Maps, [Fun | Funs]) ->
     do_parse_fold(Fun(Maps), Funs).
 
@@ -192,7 +192,7 @@ verify_signature(#{response_signature := UserSig
 extract_cookie(#{response_cookie := Cookie}=Maps) ->
     case binary:split(base64:decode(Cookie), ?VAL_PART_SEP, [global]) of
         ?SIG_PARTS(UserId, UserIKey, UserExpire) ->
-            Maps#{user_id => UserId
+            Maps#{user_name => UserId
                  ,user_ikey => UserIKey
                  ,user_expire => UserExpire
                  };
@@ -213,17 +213,20 @@ verify_integeration_key(#{user_ikey := UserIKey
 -spec verify_expiration(map()) -> map().
 verify_expiration(#{user_expire := UserExpire
                    ,current_seconds := MaxExpire
+                   ,response_prefix := RespPrefix
                    }=Maps) ->
-    CheckExpire = not (kz_term:to_integer(MaxExpire) >= kz_term:to_integer(UserExpire)),
+    CheckExpire = kz_term:to_integer(MaxExpire) =< kz_term:to_integer(UserExpire),
     CheckExpire
-        orelse lager:debug("duo response is expired"),
+        orelse lager:debug("~s part of duo response is expired (expects lower than ~b got ~b )"
+                          ,[RespPrefix, kz_term:to_integer(MaxExpire), kz_term:to_integer(UserExpire)]
+                          ),
     Maps#{verify_result => CheckExpire}.
 
--spec is_user_id(map()) -> map().
-is_user_id(#{user_id := UserId}=Maps) ->
+-spec is_user_name(map()) -> map().
+is_user_name(#{user_name := UserId}=Maps) ->
     Maps#{verify_result => kz_term:is_not_empty(UserId)};
-is_user_id(Maps) ->
-    lager:debug("failed to verify user_id"),
+is_user_name(Maps) ->
+    lager:debug("failed to verify user_name"),
     Maps#{verify_result => 'false'}.
 
 
@@ -233,18 +236,20 @@ is_user_id(Maps) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec map_config(kz_proplist(), kz_json:object()) ->
-                         map() |
-                         {'error', ne_binary()}.
+                        map() |
+                        {'error', ne_binary()}.
 map_config(Claims, JObj) ->
     Identity = maps:from_list(
-                 [{<<"user_id">>, props:get_value(<<"owner_id">>, Claims)}
-                 ,{<<"ikey">>, kz_json:get_value(<<"integration_key">>, JObj)}
-                 ,{<<"skey">>, kz_json:get_value(<<"secret_key">>, JObj)}
-                 ,{<<"akey">>, kz_json:get_value(<<"application_secret_key">>, JObj)}
-                 ,{<<"api_host">>, kz_json:get_value(<<"api_host">>, JObj)}
-                 ,{<<"duo_expire">>, kz_json:get_integer_value(<<"duo_expire">>, JObj, ?DUO_EXPIRE)}
-                 ,{<<"app_expire">>, kz_json:get_integer_value(<<"app_expire">>, JObj, ?APP_EXPIRE)}
-                 ]
+                 props:filter_undefined(
+                   [{<<"user_name">>, props:get_value(<<"owner_id">>, Claims)}
+                   ,{<<"integration_key">>, kz_json:get_value(<<"integration_key">>, JObj)}
+                   ,{<<"secret_key">>, kz_json:get_value(<<"secret_key">>, JObj)}
+                   ,{<<"application_secret_key">>, kz_json:get_value(<<"application_secret_key">>, JObj)}
+                   ,{<<"api_hostname">>, kz_json:get_value(<<"api_hostname">>, JObj)}
+                   ,{<<"duo_expire">>, kz_json:get_integer_value(<<"duo_expire">>, JObj, ?DUO_EXPIRE)}
+                   ,{<<"app_expire">>, kz_json:get_integer_value(<<"app_expire">>, JObj, ?APP_EXPIRE)}
+                   ]
+                  )
                 ),
     case validate_values(Identity) of
         'true' -> Identity;
@@ -258,41 +263,37 @@ map_config(Claims, JObj) ->
 %%--------------------------------------------------------------------
 -spec validate_values(map()) -> boolean().
 validate_values(Identity) ->
-    try validate_values(?REQ_VALUES, Identity)
+    try lists:all(fun(ReqV) ->
+                          validate_value(ReqV, Identity)
+                              orelse throw({'error', ReqV})
+                  end
+                 ,?REQ_VALUES
+                 )
     catch
-        {'error', ReqV} ->
-            lager:debug("duo ~s config's key is invalid", ReqV),
+        'error':{'badkey', Key} ->
+            lager:debug("duo ~s config key is missing", [Key]),
             'false';
-        {'badkey', Key} ->
-            lager:debug("duo ~s config's key is invalid", Key),
+        {'error', Key} ->
+            lager:debug("duo ~s config key is invalid", [Key]),
             'false'
     end.
 
--spec validate_values(ne_binaries(), map()) -> boolean().
-validate_values(ReqValues, Identity) ->
-    lists:all(fun(ReqV) ->
-                  validate_value(ReqV, Identity)
-                      orelse throw({'error', ReqV})
-              end
-             ,ReqValues
-             ).
-
 -spec validate_value(ne_binary(), map()) -> boolean().
-validate_value(<<"user_id">> = K, Identity) ->
+validate_value(<<"user_name">> = K, Identity) ->
     kz_term:is_ne_binary(maps:get(K, Identity));
-validate_value(<<"ikey">> = K, Identity) ->
+validate_value(<<"integration_key">> = K, Identity) ->
     IKey = maps:get(K, Identity),
     kz_term:is_ne_binary(IKey)
         andalso erlang:size(IKey) == ?IKEY_LEN;
-validate_value(<<"skey">> = K, Identity) ->
+validate_value(<<"secret_key">> = K, Identity) ->
     SKey = maps:get(K, Identity),
     kz_term:is_ne_binary(SKey)
         andalso erlang:size(SKey) >= ?SKEY_LEN;
-validate_value(<<"akey">> = K, Identity) ->
+validate_value(<<"application_secret_key">> = K, Identity) ->
     AKey = maps:get(K, Identity),
     kz_term:is_ne_binary(AKey)
         andalso erlang:size(AKey) >= ?AKEY_LEN;
-validate_value(<<"api_host">> = K, Identity) ->
+validate_value(<<"api_hostname">> = K, Identity) ->
     kz_term:is_ne_binary(maps:get(K, Identity));
 validate_value(_K, _Identity) ->
     'true'.
