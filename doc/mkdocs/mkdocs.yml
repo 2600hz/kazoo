@@ -124,6 +124,7 @@ pages:
     - 'Webhooks': 'applications/callflow/doc/webhooks.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
     - 'Preflows': 'applications/callflow/doc/preflow.md'
+    - 'Resources': 'applications/callflow/doc/resources.md'
   - 'Fax':
     - 'applications/fax/doc/README.md'
     - 'Postfix Settings': 'applications/fax/doc/postfix.md'
