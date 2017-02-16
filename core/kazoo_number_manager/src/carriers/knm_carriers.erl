@@ -34,8 +34,6 @@
         ,is_number_billable/1
         ]).
 
--export([options_to_jobj/1]).
-
 -define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
 
 -ifdef(TEST).
@@ -67,13 +65,6 @@
 -endif.
 -type options() :: [option()].
 -export_type([option/0, options/0]).
-
--spec options_to_jobj(options()) -> kz_json:object().
-options_to_jobj(Options) ->
-    lists:foldl(fun option_to_kv/2, kz_json:new(), Options).
-
-option_to_kv({K, V}, JObj) ->
-    kz_json:set_value(kz_term:to_binary(K), V, JObj).
 
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).

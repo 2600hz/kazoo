@@ -387,13 +387,13 @@ read(Context, Number) ->
 %%--------------------------------------------------------------------
 -spec find_numbers(cb_context:context()) -> cb_context:context().
 find_numbers(Context) ->
-    AccountId = cb_context:auth_account_id(Context),
+    AuthAccountId = cb_context:auth_account_id(Context),
     QS = cb_context:query_string(Context),
     Country = kz_json:get_ne_value(?COUNTRY, QS, ?KNM_DEFAULT_COUNTRY),
     Prefix = kz_binary:remove_white_spaces(kz_json:get_ne_value(?PREFIX, QS)),
     Offset = kz_json:get_integer_value(?OFFSET, QS, 0),
     Token = cb_context:auth_token(Context),
-    HashKey = <<AccountId/binary, "-", Token/binary>>,
+    HashKey = <<AuthAccountId/binary, "-", Token/binary>>,
     Hash = kz_base64url:encode(crypto:hash(sha, HashKey)),
     QueryId = list_to_binary([Country, "-", Prefix, "-", Hash]),
     Dialcode = knm_util:prefix_for_country(Country),
@@ -405,8 +405,8 @@ find_numbers(Context) ->
                 ,{'country', Country}
                 ,{'dialcode', Dialcode}
                 ,{'offset', Offset}
-                ,{'account_id', AccountId}
-                ,{'reseller_id', cb_context:reseller_id(Context)}
+                ,{'account_id', AuthAccountId}
+                ,{'reseller_id', kz_services:find_reseller_id(AuthAccountId)}
                 ,{'query_id', QueryId}
                 ]),
     OnSuccess =
@@ -418,7 +418,7 @@ find_numbers(Context) ->
                                    ])
         end,
     Schema = kz_json:decode(?FIND_NUMBER_SCHEMA),
-    Context1 = cb_context:set_req_data(Context, knm_carriers:options_to_jobj(Options)),
+    Context1 = cb_context:set_req_data(Context, kz_json:from_list(Options)),
     cb_context:validate_request_data(Schema, Context1, OnSuccess).
 
 %%--------------------------------------------------------------------
