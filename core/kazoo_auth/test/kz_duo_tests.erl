@@ -91,28 +91,28 @@ equal_sign_1234_test_() ->
 sign_request_test_() ->
     SignResult = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?TEST_CONFIG_JOBJ),
     [{"Verifying sign request without user"
-     ,?_assertEqual({'error', <<"invalid duo configuration">>}
-                   ,kz_mfa_duo:authenticate([], ?TEST_CONFIG_JOBJ)
+     ,?_assertEqual('true'
+                   ,is_invalid_error(kz_mfa_duo:authenticate([], ?TEST_CONFIG_JOBJ))
                    )
      }
     ,{"Verifying sign request with invalid ikey"
-     ,?_assertEqual({'error', <<"invalid duo configuration">>}
-                   ,kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"integration_key">>))
+     ,?_assertEqual('true'
+                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"integration_key">>)))
                    )
      }
     ,{"Verifying sign request with invalid skey"
-     ,?_assertEqual({'error', <<"invalid duo configuration">>}
-                   ,kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"secret_key">>))
+     ,?_assertEqual('true'
+                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"secret_key">>)))
                    )
      }
     ,{"Verifying sign request with invalid akey"
-     ,?_assertEqual({'error', <<"invalid duo configuration">>}
-                   ,kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>))
+     ,?_assertEqual('true'
+                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>)))
                    )
      }
     ,{"Verifying sign request without api_hostname"
-     ,?_assertEqual({'error', <<"invalid duo configuration">>}
-                   ,kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:delete_key(<<"api_hostname">>, ?TEST_CONFIG_JOBJ))
+     ,?_assertEqual('true'
+                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:delete_key(<<"api_hostname">>, ?TEST_CONFIG_JOBJ)))
                    )
      }
     ,{"Verifying sign request with extra config variable"
@@ -122,12 +122,15 @@ sign_request_test_() ->
      }
     ].
 
+is_invalid_error({'error', <<"invalid duo configuration", _/binary>>}) -> 'true';
+is_invalid_error(_) -> 'false'.
+
 verify_request_test_() ->
     {_, _, SignReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?TEST_CONFIG_JOBJ),
     [_, ValidAppSig] = binary:split(kz_json:get_value(<<"sig_request">>, SignReq), <<":">>, ['global']),
 
-                                                % {_, _,InvalidSigReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>, ?WRONG_AKEY)),
-                                                % [_, InvalidAppSig] = binary:split(InvalidSigReq, <<":">>, ['global']),
+    %% {_, _,InvalidSigReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>, ?WRONG_AKEY)),
+    %% [_, InvalidAppSig] = binary:split(InvalidSigReq, <<":">>, ['global']),
 
     [{"Verifying verify response with correct value"
      ,?_assertEqual({'ok', 'authenticated'}
