@@ -46,7 +46,9 @@
             "type": "boolean"
         },
         "outbound_flags": {
-            "description": ""
+            "default": [],
+            "description": "",
+            "type": "array"
         },
         "ringback": {
             "description": "",

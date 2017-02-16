@@ -1655,7 +1655,9 @@
                     "type": "boolean"
                 },
                 "outbound_flags": {
-                    "description": ""
+                    "default": [],
+                    "description": "",
+                    "type": "array"
                 },
                 "ringback": {
                     "description": "",
@@ -2001,7 +2003,9 @@
                     "type": "boolean"
                 },
                 "outbound_flags": {
-                    "description": "List of flags to use when matching resources to route the call"
+                    "default": [],
+                    "description": "List of flags to use when matching resources to route the call",
+                    "type": "array"
                 },
                 "ringback": {
                     "description": "Tone or file to play while waiting for the leg to be answered",
@@ -2017,7 +2021,7 @@
                 },
                 "use_local_resources": {
                     "default": true,
-                    "description": "",
+                    "description": "Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources",
                     "type": "boolean"
                 }
             },

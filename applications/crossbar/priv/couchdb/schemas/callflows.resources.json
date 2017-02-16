@@ -46,7 +46,9 @@
             "type": "boolean"
         },
         "outbound_flags": {
-            "description": "List of flags to use when matching resources to route the call"
+            "default": [],
+            "description": "List of flags to use when matching resources to route the call",
+            "type": "array"
         },
         "ringback": {
             "description": "Tone or file to play while waiting for the leg to be answered",
