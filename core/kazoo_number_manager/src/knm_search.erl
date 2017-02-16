@@ -295,6 +295,9 @@ search_carrier(Carrier, Options) ->
 wait_for_search(0, _Options) -> 'ok';
 wait_for_search(N, Options) ->
     receive
+        {_Carrier, {ok, []}} ->
+            lager:debug("~s found no numbers", [_Carrier]),
+            wait_for_search(N - 1, Options);
         {_Carrier, {'ok', Numbers}} ->
             lager:debug("~s found numbers", [_Carrier]),
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
