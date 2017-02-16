@@ -1622,7 +1622,6 @@
                     "type": "string"
                 },
                 "custom_sip_headers": {
-                    "default": {},
                     "description": "",
                     "type": "object"
                 },
@@ -1631,7 +1630,8 @@
                     "type": "boolean"
                 },
                 "dynamic_flags": {
-                    "description": ""
+                    "description": "",
+                    "type": "array"
                 },
                 "emit_account_id": {
                     "description": "",
@@ -1954,25 +1954,26 @@
             "description": "Validator for the resources callflow's data object",
             "properties": {
                 "bypass_e164": {
-                    "description": "",
+                    "description": "Use the original requested number instead of normalizing to E164",
                     "type": "boolean"
                 },
                 "caller_id_type": {
                     "default": "external",
-                    "description": "",
+                    "description": "Which configured caller-id to use (key in the 'caller_id' object)",
                     "type": "string"
                 },
                 "custom_sip_headers": {
-                    "default": {},
-                    "description": "",
+                    "default": null,
+                    "description": "Custom SIP Headers to include on the outgoing INVITE",
                     "type": "object"
                 },
                 "do_not_normalize": {
-                    "description": "",
+                    "description": "Use the original requested number instead of normalizing; otherwise try to apply the endpoint's dialplan to the requested number",
                     "type": "boolean"
                 },
                 "dynamic_flags": {
-                    "description": ""
+                    "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+                    "type": "array"
                 },
                 "emit_account_id": {
                     "description": "",

@@ -13,7 +13,6 @@
             "type": "string"
         },
         "custom_sip_headers": {
-            "default": {},
             "description": "",
             "type": "object"
         },
@@ -22,7 +21,8 @@
             "type": "boolean"
         },
         "dynamic_flags": {
-            "description": ""
+            "description": "",
+            "type": "array"
         },
         "emit_account_id": {
             "description": "",
