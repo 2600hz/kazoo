@@ -103,9 +103,9 @@ build_offnet_request(Data, Call) ->
       ,{?KEY_OUTBOUND_CALLER_ID_NUMBER, CIDNumber}
       ,{?KEY_PRESENCE_ID, kz_attributes:presence_id(Call)}
       ,{?KEY_RESOURCE_TYPE, ?RESOURCE_TYPE_AUDIO}
-      ,{?KEY_RINGBACK, kz_json:get_value(<<"ringback">>, Data)}
+      ,{?KEY_RINGBACK, kz_json:get_ne_binary_value(<<"ringback">>, Data)}
       ,{?KEY_T38_ENABLED, get_t38_enabled(Call)}
-      ,{?KEY_TIMEOUT, kz_json:get_value(<<"timeout">>, Data)}
+      ,{?KEY_TIMEOUT, kz_json:get_integer_value(<<"timeout">>, Data)}
       ,{?KEY_TO_DID, get_to_did(Data, Call)}
        | kz_api:default_headers(cf_exe:queue_name(Call), ?APP_NAME, ?APP_VERSION)
       ]).
@@ -154,7 +154,7 @@ get_bypass_e164(Data) ->
 
 -spec get_from_uri_realm(kz_json:object(), kapps_call:call()) -> api_binary().
 get_from_uri_realm(Data, Call) ->
-    case kz_json:get_ne_value(<<"from_uri_realm">>, Data) of
+    case kz_json:get_ne_binary_value(<<"from_uri_realm">>, Data) of
         'undefined' -> maybe_get_call_from_realm(Call);
         Realm -> Realm
     end.
@@ -205,12 +205,12 @@ get_hunt_account_id(Data, Call) ->
         'false' -> 'undefined';
         'true' ->
             AccountId = kapps_call:account_id(Call),
-            kz_json:get_value(<<"hunt_account_id">>, Data, AccountId)
+            kz_json:get_ne_binary_value(<<"hunt_account_id">>, Data, AccountId)
     end.
 
 -spec get_to_did(kz_json:object(), kapps_call:call()) -> ne_binary().
 get_to_did(Data, Call) ->
-    case kz_json:get_value(<<"to_did">>, Data) of
+    case kz_json:get_ne_binary_value(<<"to_did">>, Data) of
         'undefined' -> get_request_did(Data, Call);
         ToDID -> ToDID
     end.
@@ -327,7 +327,7 @@ maybe_get_endpoint_flags(_Data, Call, Flags) ->
 -spec get_endpoint_flags(ne_binaries(), kz_json:object()) ->
                                 ne_binaries().
 get_endpoint_flags(Flags, Endpoint) ->
-    case kz_json:get_value(<<"outbound_flags">>, Endpoint) of
+    case kz_json:get_list_value(<<"outbound_flags">>, Endpoint) of
         'undefined' -> Flags;
         EndpointFlags -> EndpointFlags ++ Flags
     end.
