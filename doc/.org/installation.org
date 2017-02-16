@@ -1,0 +1,116 @@
+#+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t broken-links:nil c:nil creator:nil
+#+OPTIONS: d:(not "LOGBOOK") date:t e:t email:nil f:t inline:t num:t
+#+OPTIONS: p:nil pri:nil prop:nil stat:t tags:t tasks:t tex:t
+#+OPTIONS: timestamp:t title:t toc:nil todo:t |:t
+#+TITLE: installation
+#+DATE: <2017-02-15 Wed>
+#+AUTHOR: James Aimonetti
+#+EMAIL: james@2600hz.com
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.1.91.1 (Org mode 9.0.4)
+
+* Kazoo Installation Guide
+This is a guide to building Kazoo from source on a Debian 8 (Jessie) base installation. Other GNU/Linux distros should work similarly, though the dependencies may differ a bit. If you want to just install and use Kazoo (and not build it) try using the [[https://docs.2600hz.com/sysadmin/doc/install/install_via_centos7/][installation instructions]]. The rest of this guide assumes you want to run a development environment for Kazoo.
+
+** Dependencies
+*** Packages Required
+#+BEGIN_SRC shell
+sudo apt-get install build-essential libxslt-dev \
+     zip unzip expat zlib1g-dev libssl-dev curl \
+     libncurses5-dev git-core libexpat1-dev \
+     htmldoc
+#+END_SRC
+
+Note: =htmldoc= is required only if [[./announcements.md#company-directory-pdf][you want to be able to download PDFs]].
+
+**** Docs-related
+When running =make docs=, some Python libraries are useful:
+
+#+BEGIN_SRC shell
+sudo apt-get install python2.7 python-yaml
+sudo pip install mkdocs mkdocs-bootstrap mkdocs-bootswatch pymdown-extensions
+#+END_SRC
+
+You can also run a local version of the docs with =make docs-serve= which will start a local server so you can view how the docs are rendered.
+
+If you have a custom theme, you can copy it to =doc/mkdocs/theme= and build the docs again. When you serve the docs the theme should have been applied to the site.
+
+*** Erlang
+Kazoo 4 targets Erlang 18+. There are a couple ways to install Erlang:
+
+**** From Source
+
+I prefer to use a tool like [[https://github.com/yrashk/kerl][kerl]] to manage my installations. If you want to play around with multiple versions of Erlang while hacking on Kazoo, this is probably the best way.
+
+#+BEGIN_SRC shell
+curl -O https://raw.githubusercontent.com/yrashk/kerl/master/kerl
+chmod a+x kerl
+mv kerl /usr/bin
+kerl list releases
+kerl build 18.2 r18.2 # this takes a while
+kerl install r18.2 /usr/local/erlang
+. /usr/local/erlang/activate
+#+END_SRC
+
+**** Erlang Solutions
+
+Install from the [[https://www.erlang-solutions.com/resources/download.html][Erlang Solutions]] packages. These tend to be kept up-to-date better than the default distro's packages.
+
+** Building Kazoo
+*** Short version
+#+BEGIN_SRC shell
+cd /opt
+git clone https://github.com/2600Hz/kazoo.git
+cd kazoo
+make
+#+END_SRC
+*** Longer version
+**** Clone the Kazoo repo:
+  #+BEGIN_SRC shell
+  git clone https://github.com/2600Hz/kazoo.git
+  #+END_SRC
+**** Build Kazoo:
+#+BEGIN_SRC shell
+cd kazoo
+make
+#+END_SRC
+
+**** Additional make targets
+When developing, one can =cd= into any app directory (within =applications/= or =core/=) and run:
+   -  =make= (=make all= or =make clean=)
+   -  =make xref= to look for calls to undefined functions (uses [[http://www.erlang.org/doc/apps/tools/xref_chapter.html][Xref]])
+   -  =make dialyze= to statically type-check the app (uses [[http://www.erlang.org/doc/man/dialyzer.html][Dialyzer]])
+   -  =make test= runs the app / sub-apps test suite, if any.
+      -  *Note:* make sure to =make clean all= after running your tests, as test BEAMs are generated in =ebin/=!
+
+**** Running the tests
+To run the full test suite it is advised to:
+   1. =cd= into the root of the project
+   2. =make compile-test= to compile every app with the =TEST= macro defined
+      -  /This way apps can call code from other apps in a kind of =TEST= mode/
+
+   3. =make eunit= (instead of =make test=) to run the test suite without recompiling each app
+   4. =make proper= to run the test suite, including property-based tests (uses [[https://github.com/manopapad/proper][PropEr]])
+
+**** Generate an Erlang release
+=make build-release= will generate a [[http://learnyousomeerlang.com/release-is-the-word][deployable release]]
+   -  [[https://github.com/2600Hz/kazoo/blob/master/doc/engineering/releases.md][More on using releases with Kazoo]]
+** SUP
+The SUP command (=sup=) is found under =core/sup/priv/sup= and should be copied or symlinked to =/usr/bin/sup= (or somewhere in your =$PATH=). It is a shell file that calls =sup.escript=.
+
+#+BEGIN_SRC shell
+sudo ln -s core/sup/priv/sup /usr/bin/sup
+#+END_SRC
+
+Make sure that the path to Kazoo's intallation directory is right (in =/usr/bin/sup=). Otherwise you can change it by setting the =KAZOO_ROOT= environment variable (not set by default). If one needs =KAZOO_ROOT=, an alias should be created:
+
+#+BEGIN_SRC shell
+alias sup='KAZOO_ROOT=/opt/kazoo sup'
+#+END_SRC
+
+**** Auto-completion
+=make sup_completion= creates =sup.bash=: a Bash completion file for the SUP command
+   -  Copy or symlink this file to =/etc/bash_completion.d/sup.bash=
