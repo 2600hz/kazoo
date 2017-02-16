@@ -33,10 +33,12 @@
             "type": "boolean"
         },
         "from_uri_realm": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "hunt_account_id": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "ignore_early_media": {
             "default": false,
@@ -47,13 +49,16 @@
             "description": ""
         },
         "ringback": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "timeout": {
-            "description": ""
+            "description": "",
+            "type": "integer"
         },
         "to_did": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "use_local_resources": {
             "default": true,
