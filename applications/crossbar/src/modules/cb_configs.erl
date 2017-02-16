@@ -15,6 +15,7 @@
         ,post/2
         ,put/2
         ,delete/2
+        ,patch/2
         ]).
 
 -include("crossbar.hrl").
@@ -82,11 +83,11 @@ validate(Context, ?HTTP_PUT, ConfigId) ->
 
 validate(Context, ?HTTP_PATCH, ConfigId) ->
     Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
-    save_diff(validate_diff(Context, ConfigId, Parent), ConfigId, Parent);
+    validate_request(Context, ConfigId, Parent);
 
 validate(Context, ?HTTP_POST, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
-    validate_diff(Context, ConfigId, Parent).
+    validate_request(Context, ConfigId, Parent).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ConfigId) -> post(Context, ConfigId).
@@ -96,12 +97,17 @@ post(Context, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
     save_diff(Context, ConfigId, Parent).
 
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, ConfigId) ->
+    Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    save_diff(Context, ConfigId, Parent).
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
     case strip_id(cb_context:doc(Context)) of
         {[]} -> Context;
         _ ->
-            flush(crossbar_doc:delete(Context, permanent))
+            crossbar_doc:delete(Context, permanent)
     end.
 
 -spec save_diff(cb_context:context(), path_token(), kz_json:object()) -> cb_context:context().
@@ -110,11 +116,11 @@ save_diff(Context, ConfigId, Parent) ->
     JObjDiff = kz_json:diff(JObj, Parent),
     StoredDocument = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
     Document = kz_json:merge_recursive(StoredDocument, JObjDiff),
-    flush(crossbar_doc:save(Context, Document, [])),
+    crossbar_doc:save(Context, Document, []),
     crossbar_doc:handle_datamgr_success(set_id(ConfigId, JObj), Context).
 
--spec validate_diff(cb_context:context(), path_token(), kz_json:object()) -> cb_context:context().
-validate_diff(Context, ConfigId, Parent) ->
+-spec validate_request(cb_context:context(), path_token(), kz_json:object()) -> cb_context:context().
+validate_request(Context, ConfigId, Parent) ->
     JObj = strip_id(cb_context:req_data(Context)),
     FullConfig = kz_json:merge_recursive(Parent, JObj),
     maybe_validate(ConfigId, FullConfig, Parent),
@@ -168,8 +174,3 @@ validate_schema(Name, JObj) ->
             end;
         _ -> no_schema_present
     end.
-
--spec flush(cb_context:context()) -> cb_context:context().
-flush(Context) ->
-    kapps_account_config:flush(cb_context:account_id(Context)),
-    Context.
