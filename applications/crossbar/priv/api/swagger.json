@@ -1963,7 +1963,6 @@
                     "type": "string"
                 },
                 "custom_sip_headers": {
-                    "default": null,
                     "description": "Custom SIP Headers to include on the outgoing INVITE",
                     "type": "object"
                 },
