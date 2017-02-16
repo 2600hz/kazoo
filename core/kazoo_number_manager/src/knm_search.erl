@@ -279,7 +279,7 @@ first(Options) ->
             | Options
            ],
     lists:foreach(fun(Carrier) -> search_spawn(Self, Carrier, Opts) end, Carriers),
-    wait_for_search(length(Carriers), Options),
+    wait_for_search(length(Carriers)),
     gen_listener:call(?MODULE, {'first', Options}).
 
 -spec search_spawn(pid(), atom(), kz_proplist()) -> any().
@@ -293,30 +293,30 @@ search_carrier(Carrier, Options) ->
     Quantity = quantity(Options),
     catch (Carrier:find_numbers(Prefix, Quantity, Options)).
 
--spec wait_for_search(integer(), options()) -> 'ok'.
-wait_for_search(0, _Options) -> 'ok';
-wait_for_search(N, Options) ->
+-spec wait_for_search(integer()) -> 'ok'.
+wait_for_search(0) -> 'ok';
+wait_for_search(N) ->
     receive
         {_Carrier, {ok, []}} ->
             lager:debug("~s found no numbers", [_Carrier]),
-            wait_for_search(N - 1, Options);
+            wait_for_search(N - 1);
         {_Carrier, {'ok', Numbers}} ->
             lager:debug("~s found numbers", [_Carrier]),
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
-            wait_for_search(N - 1, Options);
+            wait_for_search(N - 1);
         {_Carrier, {bulk, Numbers}} ->
             lager:debug("~s found bulk numbers", [_Carrier]),
             gen_listener:cast(?MODULE, {'add_result', Numbers}),
-            wait_for_search(N - 1, Options);
+            wait_for_search(N - 1);
         {_Carrier, {error, not_available}} ->
             lager:debug("~s had no results", [_Carrier]),
-            wait_for_search(N - 1, Options);
+            wait_for_search(N - 1);
         _Other ->
             lager:debug("unexpected search result ~p", [_Other]),
-            wait_for_search(N - 1, Options)
+            wait_for_search(N - 1)
     after ?NUMBER_SEARCH_TIMEOUT ->
             lager:debug("timeout (~B) collecting responses from search providers", [?NUMBER_SEARCH_TIMEOUT]),
-            wait_for_search(N - 1, Options)
+            wait_for_search(N - 1)
     end.
 
 -spec next(options()) -> kz_json:objects().
