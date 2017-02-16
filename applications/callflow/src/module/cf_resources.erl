@@ -327,16 +327,16 @@ maybe_get_endpoint_flags(_Data, Call, Flags) ->
 -spec get_endpoint_flags(ne_binaries(), kz_json:object()) ->
                                 ne_binaries().
 get_endpoint_flags(Flags, Endpoint) ->
-    case kz_json:get_list_value(<<"outbound_flags">>, Endpoint) of
-        'undefined' -> Flags;
+    case kz_json:get_list_value(<<"outbound_flags">>, Endpoint, []) of
+        [] -> Flags;
         EndpointFlags -> EndpointFlags ++ Flags
     end.
 
 -spec get_flow_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                             ne_binaries().
 get_flow_flags(Data, _Call, Flags) ->
-    case kz_json:get_value(<<"outbound_flags">>, Data) of
-        'undefined' -> Flags;
+    case kz_json:get_list_value(<<"outbound_flags">>, Data, []) of
+        [] -> Flags;
         FlowFlags -> FlowFlags ++ Flags
     end.
 
@@ -346,7 +346,7 @@ get_account_flags(_Data, Call, Flags) ->
     AccountId = kapps_call:account_id(Call),
     case kz_account:fetch(AccountId) of
         {'ok', AccountJObj} ->
-            AccountFlags = kz_json:get_value(<<"outbound_flags">>, AccountJObj, []),
+            AccountFlags = kz_json:get_list_value(<<"outbound_flags">>, AccountJObj, []),
             AccountFlags ++ Flags;
         {'error', _E} ->
             lager:error("not applying account outbound flags for ~s: ~p"
