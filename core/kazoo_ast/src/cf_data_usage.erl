@@ -137,6 +137,8 @@ guess_type('get_float_value', _) ->
     <<"float">>;
 guess_type('get_json_value', _) ->
     <<"object">>;
+guess_type('get_list_value', _) ->
+    <<"array">>;
 guess_type('find', _) ->
     'undefined';
 guess_type('get_ne_value', <<_/binary>>) ->
