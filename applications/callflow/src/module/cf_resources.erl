@@ -260,14 +260,19 @@ get_sip_headers(Data, Call) ->
                          kz_device:custom_sip_headers_outbound(AuthorizingEndpoint, kz_json:new());
                      _ -> kz_json:new()
                  end,
-    CSH = kz_json:get_value(<<"custom_sip_headers">>, Data, kz_json:new()),
-    Headers = kz_json:merge_jobjs(AuthEndCSH, CSH),
+    CSH = kz_json:get_json_value(<<"custom_sip_headers">>, Data),
+    Headers = maybe_merge(AuthEndCSH, CSH),
 
     JObj = lists:foldl(fun(F, J) -> F(J) end, Headers, Routines),
     case kz_term:is_empty(JObj) of
         'true' -> 'undefined';
         'false' -> JObj
     end.
+
+-spec maybe_merge(api_object(), api_object()) -> kz_json:object().
+maybe_merge(JObj1, 'undefined') -> JObj1;
+maybe_merge('undefined', JObj2) -> JObj2;
+maybe_merge(JObj1, JObj2) -> kz_json:merge_jobjs(JObj1, JObj2).
 
 -spec maybe_include_diversions(kz_json:object(), kapps_call:call()) ->
                                       kz_json:object().
@@ -353,7 +358,7 @@ get_account_flags(_Data, Call, Flags) ->
 -spec get_flow_dynamic_flags(kz_json:object(), kapps_call:call(), ne_binaries()) ->
                                     ne_binaries().
 get_flow_dynamic_flags(Data, Call, Flags) ->
-    case kz_json:get_value(<<"dynamic_flags">>, Data) of
+    case kz_json:get_list_value(<<"dynamic_flags">>, Data) of
         'undefined' -> Flags;
         DynamicFlags -> process_dynamic_flags(DynamicFlags, Flags, Call)
     end.
@@ -370,7 +375,7 @@ maybe_get_endpoint_dynamic_flags(_Data, Call, Flags) ->
 -spec get_endpoint_dynamic_flags(kapps_call:call(), ne_binaries(), kz_json:object()) ->
                                         ne_binaries().
 get_endpoint_dynamic_flags(Call, Flags, Endpoint) ->
-    case kz_json:get_value(<<"dynamic_flags">>, Endpoint) of
+    case kz_json:get_list_value(<<"dynamic_flags">>, Endpoint) of
         'undefined' -> Flags;
         DynamicFlags ->
             process_dynamic_flags(DynamicFlags, Flags, Call)
