@@ -38,7 +38,6 @@
         ]).
 
 
--include_lib("kazoo_json/include/kazoo_json.hrl").
 -include("knm.hrl").
 
 -type option() :: {'quantity', pos_integer()} |
@@ -111,9 +110,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
-    {'ok', #{node => kz_util:to_binary(node())
-            ,cache => ets:new(?ETS_DISCOVERY_CACHE, ?ETS_DISCOVERY_CACHE_OPTIONS)
-            }, ?POLLING_INTERVAL}.
+    State = #{node => kz_term:to_binary(node())
+             ,cache => ets:new(?ETS_DISCOVERY_CACHE, ?ETS_DISCOVERY_CACHE_OPTIONS)
+             },
+    {'ok', State, ?POLLING_INTERVAL}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -424,8 +424,8 @@ discovery(Num) ->
 -spec discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
 discovery(Num, Options) ->
     case local_discovery(Num, Options) of
-        {'error', 'not_found'} -> remote_discovery(Num, Options);
-        {'ok', _} = OK -> OK
+        {'ok', _}=OK -> OK;
+        {'error', 'not_found'} -> remote_discovery(Num, Options)
     end.
 
 -spec local_discovery(ne_binary(), knm_carriers:options()) -> knm_number:knm_number_return().
@@ -502,12 +502,12 @@ handle_number(JObj) ->
     'true' = kapi_discovery:number_req_v(JObj),
     Number = kapi_discovery:number(JObj),
     case local_discovery(Number, []) of
+        {'error', 'not_found'} -> 'ok';
         {'ok', KNumber} ->
             Payload = [{<<"Msg-ID">>, kz_api:msg_id(JObj)}
                       ,{<<"Results">>, knm_phone_number:to_json(knm_number:phone_number(KNumber))}
                        | kz_api:default_headers(kz_api:server_id(JObj), ?APP_NAME, ?APP_VERSION)
                       ],
             Publisher = fun(P) -> kapi_discovery:publish_resp(kz_api:server_id(JObj), P) end,
-            kz_amqp_worker:cast(Payload, Publisher);
-        {'error', 'not_found'} -> 'ok'
+            kz_amqp_worker:cast(Payload, Publisher)
     end.
