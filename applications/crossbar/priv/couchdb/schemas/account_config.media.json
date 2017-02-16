@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.media",
+    "additionalProperties": false,
     "description": "Schema for media account_config",
     "properties": {
         "call_recording": {

@@ -508,7 +508,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     end.
 
--spec prepend_forward_message(kapps_call:cal(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
+-spec prepend_forward_message(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
 prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     lager:debug("trying to prepend a message to forwarded voicemail message ~s", [ForwardId]),
     AccountId = kapps_call:account_id(Call),

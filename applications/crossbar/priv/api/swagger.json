@@ -36,6 +36,7 @@
             "type": "object"
         },
         "account_config.cdr": {
+            "additionalProperties": false,
             "description": "Schema for cdr account_config",
             "properties": {
                 "ignore_loopback_bowout": {
@@ -47,6 +48,7 @@
             "type": "object"
         },
         "account_config.conferences": {
+            "additionalProperties": false,
             "description": "Schema for conferences account_config",
             "properties": {
                 "entry_tone": {
@@ -88,6 +90,7 @@
             "type": "object"
         },
         "account_config.crossbar.sms": {
+            "additionalProperties": false,
             "description": "Schema for crossbar.sms account_config",
             "properties": {
                 "api_e164_convert_from": {
@@ -104,6 +107,7 @@
             "type": "object"
         },
         "account_config.doodle": {
+            "additionalProperties": false,
             "description": "Schema for doodle account_config",
             "properties": {
                 "api_preserve_caller_id": {
@@ -112,6 +116,7 @@
                     "type": "boolean"
                 },
                 "reschedule": {
+                    "additionalProperties": false,
                     "default": {},
                     "description": "doodle reschedule",
                     "type": "object"
@@ -120,6 +125,7 @@
             "type": "object"
         },
         "account_config.fax": {
+            "additionalProperties": false,
             "description": "Schema for fax account_config",
             "properties": {
                 "default_smtp_domain": {
@@ -141,6 +147,7 @@
             "type": "object"
         },
         "account_config.kazoo_endpoint": {
+            "additionalProperties": false,
             "description": "Schema for kazoo_endpoint account_config",
             "properties": {
                 "default_can_text_self": {
@@ -152,6 +159,7 @@
             "type": "object"
         },
         "account_config.media": {
+            "additionalProperties": false,
             "description": "Schema for media account_config",
             "properties": {
                 "call_recording": {
@@ -172,6 +180,7 @@
             "type": "object"
         },
         "account_config.number_manager": {
+            "additionalProperties": false,
             "description": "Schema for number_manager account_config",
             "properties": {
                 "unauthorized_numbers_lookup": {
@@ -183,6 +192,7 @@
             "type": "object"
         },
         "account_config.privacy": {
+            "additionalProperties": false,
             "description": "Schema for privacy account_config",
             "properties": {
                 "block_anonymous_caller_id": {
@@ -199,6 +209,7 @@
             "type": "object"
         },
         "account_config.webhooks": {
+            "additionalProperties": false,
             "description": "Schema for webhooks account_config",
             "properties": {
                 "attempt_failure_count": {
@@ -21726,6 +21737,13 @@
                     }
                 ]
             },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    }
+                ]
+            },
             "post": {
                 "parameters": [
                     {
@@ -21762,7 +21780,27 @@
                     }
                 ]
             },
+            "patch": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    },
+                    {
+                        "$ref": "#/parameters/node"
+                    }
+                ]
+            },
             "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/system_config_id"
+                    },
+                    {
+                        "$ref": "#/parameters/node"
+                    }
+                ]
+            },
+            "put": {
                 "parameters": [
                     {
                         "$ref": "#/parameters/system_config_id"

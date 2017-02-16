@@ -1,6 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "account_config.conferences",
+    "additionalProperties": false,
     "description": "Schema for conferences account_config",
     "properties": {
         "entry_tone": {
