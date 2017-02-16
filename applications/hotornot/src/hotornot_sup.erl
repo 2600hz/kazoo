@@ -35,7 +35,7 @@ start_link() ->
 %% @doc
 %% Add processes if necessary.
 %% @end
--spec upgrade() -> ok.
+-spec upgrade() -> 'ok'.
 upgrade() ->
     {'ok', {_, Specs}} = init([]),
 
@@ -66,7 +66,7 @@ init([]) ->
 
 -spec maybe_start_trie(list()) -> list().
 maybe_start_trie(Children) ->
-    case hon_util:use_trie() of
+    case hotornot_config:should_use_trie() of
         'false' -> Children;
-        'true' -> [?WORKER('hon_trie') | Children]
+        'true' -> [?WORKER('hon_tries_sup') | Children]
     end.

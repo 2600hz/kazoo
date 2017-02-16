@@ -12,35 +12,38 @@
 
 -include("hotornot.hrl").
 
--spec init() -> ok.
-init() -> kapps_maintenance:refresh(?KZ_RATES_DB).
+-spec init() -> 'ok'.
+init() ->
+    _ = [kapps_maintenance:refresh(kzd_ratedeck:format_ratedeck_db(Ratedeck))
+         || Ratedeck <- hotornot_config:ratedecks()
+        ],
+    'ok'.
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_req(JObj, _Props) ->
-    'true' = kapi_rate:req_v(JObj),
-    _ = kz_util:put_callid(JObj),
+-spec handle_req(kapi_rate:req(), kz_proplist()) -> 'ok'.
+handle_req(RateReq, _Props) ->
+    'true' = kapi_rate:req_v(RateReq),
+    _ = kz_util:put_callid(RateReq),
     lager:debug("valid rating request"),
-    case get_rate_data(JObj) of
+    case get_rate_data(RateReq) of
         {'error', 'no_rate_found'} ->
-            maybe_publish_no_rate_found(JObj);
+            maybe_publish_no_rate_found(RateReq);
         {'ok', Resp} ->
-            kapi_rate:publish_resp(kz_json:get_value(<<"Server-ID">>, JObj)
-                                  ,props:filter_undefined(Resp)
-                                  ),
-            kapi_rate:broadcast_resp(props:filter_undefined(Resp))
+            RespAPI = props:filter_undefined(Resp),
+            kapi_rate:publish_resp(kz_api:server_id(RateReq), RespAPI),
+            kapi_rate:broadcast_resp(RespAPI)
     end.
 
--spec maybe_publish_no_rate_found(kz_json:object()) -> 'ok'.
-maybe_publish_no_rate_found(JObj) ->
-    case kz_json:is_true(<<"Send-Empty">>, JObj, 'false') of
-        'true' -> publish_no_rate_found(JObj);
+-spec maybe_publish_no_rate_found(kapi_rate:req()) -> 'ok'.
+maybe_publish_no_rate_found(RateReq) ->
+    case kz_json:is_true(<<"Send-Empty">>, RateReq, 'false') of
+        'true' -> publish_no_rate_found(RateReq);
         'false' -> 'ok'
     end.
 
--spec publish_no_rate_found(kz_json:object()) -> 'ok'.
-publish_no_rate_found(JObj) ->
-    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
-    ServerId = kz_json:get_value(<<"Server-ID">>, JObj),
+-spec publish_no_rate_found(kapi_rate:req()) -> 'ok'.
+publish_no_rate_found(RateReq) ->
+    MsgId = kz_api:msg_id(RateReq),
+    ServerId = kz_api:server_id(RateReq),
 
     Resp = [{<<"Msg-ID">>, MsgId}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
@@ -48,13 +51,16 @@ publish_no_rate_found(JObj) ->
     lager:debug("publishing empty rate resp for ~s(~s)", [ServerId, MsgId]),
     kz_amqp_worker:cast(Resp, fun(P) -> kapi_rate:publish_resp(ServerId, P) end).
 
--spec get_rate_data(kz_json:object()) ->
+-spec get_rate_data(kapi_rate:req()) ->
                            {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
-get_rate_data(JObj) ->
-    ToDID = kz_json:get_value(<<"To-DID">>, JObj),
-    FromDID = kz_json:get_value(<<"From-DID">>, JObj),
-    case hon_util:candidate_rates(ToDID, FromDID) of
+get_rate_data(RateReq) ->
+    ToDID = kz_json:get_value(<<"To-DID">>, RateReq),
+    FromDID = kz_json:get_value(<<"From-DID">>, RateReq),
+    AccountId = kz_json:get_value(<<"Account-ID">>, RateReq),
+    RatedeckId = kz_json:get_value(<<"Ratedeck-ID">>, RateReq),
+
+    case hon_util:candidate_rates(ToDID, AccountId, RatedeckId) of
         {'ok', []} ->
             kz_notify:system_alert("no rate found for ~s to ~s", [FromDID, ToDID]),
             lager:debug("no rates found for ~s to ~s", [FromDID, ToDID]),
@@ -66,113 +72,85 @@ get_rate_data(JObj) ->
                        ),
             {'error', 'no_rate_found'};
         {'ok', Rates} ->
-            get_rate_data(JObj, ToDID, FromDID, Rates)
+            get_rate_data(RateReq, ToDID, FromDID, Rates)
     end.
 
--spec get_rate_data(kz_json:object(), ne_binary(), api_binary(), kz_json:objects()) ->
+-spec get_rate_data(kapi_rate:req(), ne_binary(), api_binary(), kz_json:objects()) ->
                            {'ok', api_terms()} |
                            {'error', 'no_rate_found'}.
-get_rate_data(JObj, ToDID, FromDID, Rates) ->
+get_rate_data(RateReq, ToDID, FromDID, Rates) ->
     lager:debug("candidate rates found, filtering"),
-    RouteOptions = kz_json:get_value(<<"Options">>, JObj, []),
-    RouteFlags   = kz_json:get_value(<<"Outbound-Flags">>, JObj, []),
-    Direction    = kz_json:get_value(<<"Direction">>, JObj),
-    ResourceFlag = case kz_json:get_value(<<"Account-ID">>, JObj) of
-                       'undefined' -> [];
-                       AccountId -> maybe_add_resource_flag(JObj, AccountId)
-                   end,
-    Matching     = hon_util:matching_rates(Rates, ToDID, Direction, RouteOptions++RouteFlags++ResourceFlag),
+    Matching = hon_util:matching_rates(Rates, RateReq),
 
-    case hon_util:sort_rates(Matching) of
-        [] ->
-            kz_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
-            lager:debug("no rates left for ~s to ~s after filter"
-                       ,[FromDID, ToDID]
-                       ),
-            {'error', 'no_rate_found'};
-        [Rate|_] ->
-            lager:debug("using rate ~s for ~s to ~s"
-                       ,[kz_json:get_value(<<"rate_name">>, Rate)
-                        ,FromDID
-                        ,ToDID
-                        ]
-                       ),
-            {'ok', rate_resp(Rate, JObj)}
-    end.
+    get_rate_data_from_matching(RateReq, ToDID, FromDID, Matching).
 
--spec maybe_add_resource_flag(kz_json:object(), ne_binary()) -> kz_proplist().
-maybe_add_resource_flag(JObj, AccountId) ->
-    case kapps_account_config:get_from_reseller(AccountId, ?APP_NAME, <<"filter_by_resource_id">>, 'false') of
-        'true' ->
-            case kz_json:get_value(<<"Resource-ID">>, JObj) of
-                'undefined' -> [];
-                ResourceId -> [ResourceId]
-            end;
-        'false' -> []
-    end.
+get_rate_data_from_matching(_RateReq, ToDID, FromDID, []) ->
+    kz_notify:system_alert("no matching rate found for ~s to ~s", [FromDID, ToDID]),
+    lager:debug("no matching rates for ~s to ~s", [FromDID, ToDID]),
+    {'error', 'no_rate_found'};
+get_rate_data_from_matching(RateReq, ToDID, FromDID, Matching) ->
+    get_rate_data_from_sorted(RateReq, ToDID, FromDID, hon_util:sort_rates(Matching)).
 
--spec maybe_get_rate_discount(kz_json:object()) -> api_binary().
--spec maybe_get_rate_discount(kz_json:object(), api_binary()) -> api_binary().
-maybe_get_rate_discount(JObj) ->
-    maybe_get_rate_discount(JObj, kz_json:get_value(<<"Account-ID">>, JObj)).
+get_rate_data_from_sorted(_RateReq, ToDID, FromDID, []) ->
+    kz_notify:system_alert("no rate found after filter/sort for ~s to ~s", [FromDID, ToDID]),
+    lager:debug("no rates left for ~s to ~s after filter",[FromDID, ToDID]),
+    {'error', 'no_rate_found'};
+get_rate_data_from_sorted(RateReq, _ToDID, _FromDID, [Rate|_]) ->
+    lager:debug("using rate ~s for ~s to ~s"
+               ,[kz_json:get_value(<<"rate_name">>, Rate), _FromDID, _ToDID]
+               ),
+    {'ok', rate_resp(Rate, RateReq)}.
 
-maybe_get_rate_discount(_JObj, 'undefined') -> 'undefined';
-maybe_get_rate_discount(JObj, AccountId) ->
+-spec maybe_get_rate_discount(kapi_rate:req()) -> api_binary().
+-spec maybe_get_rate_discount(kapi_rate:req(), api_binary()) -> api_binary().
+maybe_get_rate_discount(RateReq) ->
+    maybe_get_rate_discount(RateReq, kz_json:get_value(<<"Account-ID">>, RateReq)).
+
+maybe_get_rate_discount(_RateReq, 'undefined') -> 'undefined';
+maybe_get_rate_discount(RateReq, AccountId) ->
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, <<"limits">>) of
         {'error', _R} ->
             lager:debug("unable to open account ~s definition: ~p", [AccountId, _R]),
             'undefined';
         {'ok', Def} ->
-            Number = kz_json:get_value(<<"To-DID">>, JObj),
+            Number = kz_json:get_value(<<"To-DID">>, RateReq),
             Classification = knm_converters:classify(Number),
             lager:debug("~s number discount percentage: ~p", [Classification, Def]),
             kz_json:get_value([<<"pvt_discounts">>, Classification, <<"percentage">>], Def)
     end.
 
--spec rate_resp(kz_json:object(), kz_json:object()) -> kz_proplist().
-rate_resp(Rate, JObj) ->
-    RateCost = get_rate_cost(Rate),
-    RateSurcharge = get_surcharge(Rate),
-    RateMinimum = kz_json:get_integer_value(<<"rate_minimum">>, Rate, 60),
+-spec rate_resp(kz_json:object(), kapi_rate:req()) -> kz_proplist().
+rate_resp(Rate, RateReq) ->
+    RateCost = kzd_rate:rate_cost(Rate),
+    RateSurcharge = kzd_rate:surcharge(Rate),
+    RateMinimum = kzd_rate:minimum(Rate, hotornot_config:default_minimum()),
     BaseCost = wht_util:base_call_cost(RateCost, RateMinimum, RateSurcharge),
-    PrivateCost = get_private_cost(Rate),
+    PrivateCost = kzd_rate:private_cost(Rate),
     lager:debug("base cost for a minute call: ~p", [BaseCost]),
-    ShouldUpdateCalleeId = should_update_callee_id(JObj),
+    ShouldUpdateCalleeId = should_update_callee_id(RateReq),
+
     [{<<"Rate">>, kz_term:to_binary(RateCost)}
-    ,{<<"Rate-Increment">>, kz_json:get_binary_value(<<"rate_increment">>, Rate, <<"60">>)}
+    ,{<<"Rate-Increment">>, kzd_rate:increment(Rate, hotornot_config:default_increment())}
     ,{<<"Rate-Minimum">>, kz_term:to_binary(RateMinimum)}
-    ,{<<"Discount-Percentage">>, maybe_get_rate_discount(JObj)}
+    ,{<<"Discount-Percentage">>, maybe_get_rate_discount(RateReq)}
     ,{<<"Surcharge">>, kz_term:to_binary(RateSurcharge)}
-    ,{<<"Prefix">>, kz_json:get_binary_value(<<"prefix">>, Rate)}
-    ,{<<"Rate-Name">>, kz_json:get_binary_value(<<"rate_name">>, Rate)}
-    ,{<<"Rate-Description">>, kz_json:get_binary_value(<<"description">>, Rate)}
-    ,{<<"Rate-ID">>, kz_json:get_binary_value(<<"rate_id">>, Rate)}
+    ,{<<"Prefix">>, kzd_rate:prefix(Rate)}
+    ,{<<"Rate-Name">>, kzd_rate:name(Rate)}
+    ,{<<"Rate-Description">>, kzd_rate:description(Rate)}
+    ,{<<"Rate-ID">>, kz_doc:id(Rate)}
     ,{<<"Base-Cost">>, kz_term:to_binary(BaseCost)}
     ,{<<"Pvt-Cost">>, kz_term:to_binary(PrivateCost)}
-    ,{<<"Rate-NoCharge-Time">>, kz_json:get_binary_value(<<"rate_nocharge_time">>, Rate)}
-    ,{<<"Msg-ID">>, kz_json:get_value(<<"Msg-ID">>, JObj)}
-    ,{<<"Call-ID">>, kz_json:get_value(<<"Call-ID">>, JObj)}
+    ,{<<"Rate-NoCharge-Time">>, kzd_rate:no_charge(Rate, hotornot_config:default_nocharge())}
+    ,{<<"Msg-ID">>, kz_api:msg_id(RateReq)}
+    ,{<<"Call-ID">>, kz_api:call_id(RateReq)}
     ,{<<"Update-Callee-ID">>, ShouldUpdateCalleeId}
+    ,{<<"Rate-Version">>, kzd_rate:version(Rate)}
+    ,{<<"Ratedeck-ID">>, kzd_rate:ratedeck(Rate)}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ].
 
--spec get_surcharge(kz_json:object()) -> kz_transaction:units().
-get_surcharge(Rate) ->
-    Surcharge = kz_json:get_float_value(<<"rate_surcharge">>, Rate, 0.0),
-    wht_util:dollars_to_units(Surcharge).
-
--spec get_rate_cost(kz_json:object()) -> kz_transaction:units().
-get_rate_cost(Rate) ->
-    Cost = kz_json:get_float_value(<<"rate_cost">>, Rate, 0.0),
-    wht_util:dollars_to_units(Cost).
-
--spec get_private_cost(kz_json:object()) -> kz_transaction:units().
-get_private_cost(Rate) ->
-    Cost = kz_json:get_float_value(<<"pvt_internal_rate_cost">>, Rate, 0.0),
-    wht_util:dollars_to_units(Cost).
-
--spec should_update_callee_id(ne_binary() | kz_json:object()) -> boolean().
+-spec should_update_callee_id(ne_binary() | kapi_rate:req()) -> boolean().
 should_update_callee_id(?NE_BINARY = AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', AccountDoc} ->
@@ -181,8 +159,8 @@ should_update_callee_id(?NE_BINARY = AccountId) ->
             lager:debug("failed to load account ~p for update callee id ~p", [AccountId, _R]),
             'false'
     end;
-should_update_callee_id(JObj) ->
-    case kz_json:get_value(<<"Account-ID">>, JObj) of
+should_update_callee_id(RateReq) ->
+    case kz_api:account_id(RateReq) of
         'undefined' -> 'false';
         Id -> should_update_callee_id(Id)
     end.

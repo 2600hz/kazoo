@@ -34,8 +34,9 @@
 -type state() :: #state{}.
 
 
--define(CLEANUP_TIMER,
-        kapps_config:get_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)).
+-define(CLEANUP_TIMER
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)
+       ).
 
 
 %%%===================================================================

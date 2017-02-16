@@ -6,6 +6,11 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type != 'task' || doc.pvt_deleted) return;",
+                "  var csvs;",
+                "  if ('_attachments' in doc) {",
+                "    csvs = []; ",
+                "    for (var k in doc['_attachments']) { csvs.push(k); } ",
+                "  } ",
                 "  emit([doc.pvt_account_id, doc._id], {",
                 "    'id': doc._id,",
                 "    'account_id': doc.pvt_account_id,",
@@ -20,7 +25,8 @@
                 "    'end_timestamp': doc.pvt_ended_at,",
                 "    'failure_count': doc.pvt_total_rows_failed,",
                 "    'success_count': doc.pvt_total_rows_succeeded,",
-                "    'total_count': doc.pvt_total_rows",
+                "    'total_count': doc.pvt_total_rows,",
+                "    'csvs': csvs",
                 "  });",
                 "}"
             ]

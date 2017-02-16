@@ -118,7 +118,7 @@ to_number(X) when is_list(X) ->
         'error':'badarg' -> list_to_float(X)
     end.
 
--spec to_list(atom() | list() | binary() | integer() | float()) -> list().
+-spec to_list(ets:tab() | atom() | list() | binary() | integer() | float()) -> list().
 to_list(X) when is_float(X) -> kz_mochinum:digits(X);
 to_list(X) when is_integer(X) -> integer_to_list(X);
 to_list(X) when is_binary(X) -> binary_to_list(X);

@@ -578,7 +578,7 @@ from_list_recursive_test() ->
     Key2 = [<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>],
     [?_assertEqual(kz_json:get_integer_value(Key1, JObj1), kz_json:get_integer_value(Key1, JObj2))
     ,?_assertEqual(kz_json:get_ne_binary_value(Key2, JObj1), kz_json:get_ne_binary_value(Key2, JObj2))
-    ,?_assertEqual(true, kz_json:are_equal(JObj1, JObj2))
+    ,?_assertEqual('true', kz_json:are_equal(JObj1, JObj2))
     ].
 
 flatten_expand_diff_test() ->

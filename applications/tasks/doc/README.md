@@ -12,7 +12,6 @@ Kazoo Tasks has its own Crossbar module implementing a RESTful API over at [cb_t
 
 There is also a maintenance module whose entry points are [documented here](./maintenance.md).
 
-
 ## Task discovery
 
 The `tasks` application discovers the different kinds of tasks provided by Kazoo applications on a cluster using `tasks_bindings`.

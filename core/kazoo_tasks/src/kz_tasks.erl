@@ -52,11 +52,11 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
--type help_error() :: {error, unknown_category_action}.
+-type help_error() :: {'error', 'unknown_category_action'}.
 
--type return() :: ok | api_ne_binary() | kz_csv:row() | [kz_csv:row()].
+-type return() :: 'ok' | api_ne_binary() | kz_csv:row() | [kz_csv:row()].
 
--type iterator() :: init | stop | any().
+-type iterator() :: 'init' | 'stop' | any().
 
 -type extra_args() :: #{account_id => ne_binary()
                        ,auth_account_id => ne_binary()
@@ -71,12 +71,12 @@
              ,iterator/0
              ,extra_args/0
              ,args/0
+             ,task/0
              ]).
 
 -define(API_MANDATORY, <<"mandatory">>).
 -define(API_OPTIONAL, <<"optional">>).
 -define(API_INPUT_MIME, <<"expected_content">>).
-
 
 %%%===================================================================
 %%% API

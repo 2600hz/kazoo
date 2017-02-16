@@ -1160,22 +1160,20 @@ calculate_transactions_charge_fold(JObj, PlanCharges) ->
                                 ,kz_json:objects()
                                 ) -> kz_json:objects().
 dry_run_activation_charges(#kz_services{updates=Updates}=Services) ->
-    kz_json:foldl(
-      fun(CategoryId, CategoryJObj, Acc) ->
-              dry_run_activation_charges(CategoryId, CategoryJObj, Services, Acc)
-      end
+    kz_json:foldl(fun(CategoryId, CategoryJObj, Acc) ->
+                          dry_run_activation_charges(CategoryId, CategoryJObj, Services, Acc)
+                  end
                  ,[]
                  ,Updates
-     ).
+                 ).
 
 dry_run_activation_charges(CategoryId, CategoryJObj, Services, JObjs) ->
-    kz_json:foldl(
-      fun(ItemId, Quantity, Acc1) ->
-              dry_run_activation_charges(CategoryId, ItemId, Quantity, Services, Acc1)
-      end
+    kz_json:foldl(fun(ItemId, Quantity, Acc1) ->
+                          dry_run_activation_charges(CategoryId, ItemId, Quantity, Services, Acc1)
+                  end
                  ,JObjs
                  ,CategoryJObj
-     ).
+                 ).
 
 dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}=Services, JObjs) ->
     case kzd_services:item_quantity(JObj, CategoryId, ItemId) of
@@ -1185,14 +1183,13 @@ dry_run_activation_charges(CategoryId, ItemId, Quantity, #kz_services{jobj=JObj}
             Charges = activation_charges(CategoryId, ItemId, Plans),
             ServicePlan = kz_service_plans:public_json(Plans),
             ItemPlan = get_item_plan(CategoryId, ItemId, ServicePlan),
-            [kz_json:from_list(
-               [{<<"category">>, CategoryId}
-               ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
-               ,{<<"amount">>, Charges}
-               ,{<<"quantity">>, Quantity}
-               ,{<<"activate_quantity">>, Quantity - OldQuantity}
-               ])
-             |JObjs
+            [kz_json:from_list([{<<"category">>, CategoryId}
+                               ,{<<"item">>, kzd_item_plan:masquerade_as(ItemPlan, ItemId)}
+                               ,{<<"amount">>, Charges}
+                               ,{<<"quantity">>, Quantity}
+                               ,{<<"activate_quantity">>, Quantity - OldQuantity}
+                               ])
+             | JObjs
             ]
     end.
 
@@ -1229,6 +1226,7 @@ default_service_modules() ->
     ,'kz_service_users'
     ,'kz_service_whitelabel'
     ,'kz_service_billing'
+    ,'kz_service_ratedeck'
     ].
 
 %%--------------------------------------------------------------------

@@ -81,7 +81,7 @@ public_json([#kz_service_plans{plans=Plans}|ServicePlans], JObj) ->
 
 -spec merge_plans(kzd_service_plan:doc(), kz_json:object()) -> kz_json:object().
 merge_plans(SerivcePlan, JObj) ->
-    kz_json:merge_recursive(JObj, kzd_service_plan:plan(SerivcePlan)).
+    kz_json:merge(JObj, kzd_service_plan:plan(SerivcePlan)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -94,14 +94,14 @@ add_service_plan(PlanId, ResellerId, ServicesJObj) ->
     ResellerDb = kz_util:format_account_id(ResellerId, 'encoded'),
     case kz_datamgr:open_cache_doc(ResellerDb, PlanId) of
         {'error', _R} ->
+            lager:info("failed to load service plan ~s from ~s: ~p", [PlanId, ResellerDb, _R]),
             Plan = kz_json:from_list([{<<"account_id">>, ResellerId}]),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan);
-        {'ok', JObj} ->
+        {'ok', ServicePlan} ->
             Plan =
                 kz_json:from_list(
-                  props:filter_undefined([
-                                          {<<"account_id">>, ResellerId}
-                                         ,{<<"category">>, kz_json:get_value(<<"category">>, JObj)}
+                  props:filter_undefined([{<<"account_id">>, ResellerId}
+                                         ,{<<"category">>, kzd_service_plan:grouping_category(ServicePlan)}
                                          ])
                  ),
             kzd_services:set_plan(ServicesJObj, PlanId, Plan)

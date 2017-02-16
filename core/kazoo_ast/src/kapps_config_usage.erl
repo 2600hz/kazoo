@@ -31,7 +31,7 @@ update_schema({Name, AutoGenSchema}) ->
 maybe_update_account_schema(Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
     case account_properties(AutoGenSchema) of
-        ?JSON_WRAPPER([]) -> ok;
+        ?JSON_WRAPPER([]) -> 'ok';
         Properties ->
             JObj = static_account_fields(Name, remove_source(Properties)),
             'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj)))
@@ -40,11 +40,28 @@ maybe_update_account_schema(Name, AutoGenSchema) ->
 -spec account_properties(kz_json:object()) -> kz_json:object().
 account_properties(JObj0) ->
     Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
-    Keep = [ lists:droplast(K) || {K, V} <- Flat, V == <<"kapps_account_config">> ],
-    kz_json:expand(kz_json:from_list([ {K,V} || {K,V} <- Flat, lists:member(lists:droplast(K), Keep) ])).
+    Keep = [lists:droplast(K)
+            || {K, V} <- Flat,
+               V =:= <<"kapps_account_config">>
+           ],
+    kz_json:expand(
+      kz_json:from_list(
+        [KV
+         || {K,_V}=KV <- Flat,
+            lists:member(lists:droplast(K), Keep)
+        ]
+       )
+     ).
 
 remove_source(JObj0) ->
-    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj0)), not lists:member(?SOURCE, K) ])).
+    kz_json:expand(
+      kz_json:from_list(
+        [KV
+         || {K, _}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+            not lists:member(?SOURCE, K)
+        ]
+       )
+     ).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
@@ -356,7 +373,7 @@ key_to_key_path(?LIST(Head, Tail)) ->
     end;
 key_to_key_path(?BINARY_MATCH(K)) ->
     try [kz_ast_util:binary_match_to_binary(K)]
-    catch error:function_clause -> undefined
+    catch 'error':'function_clause' -> 'undefined'
     end.
 
 guess_type('is_true', _Default) -> <<"boolean">>;
@@ -376,6 +393,7 @@ guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('get_global', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _Default) -> 'undefined';
 guess_type('set', Default) -> guess_type_by_default(Default);
+guess_type('set_string', _) -> <<"string">>;
 guess_type('set_node', Default) -> guess_type_by_default(Default);
 guess_type('update_default', Default) -> guess_type_by_default(Default).
 

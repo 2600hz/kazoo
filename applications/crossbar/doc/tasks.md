@@ -14,6 +14,15 @@ Key | Description | Type | Default | Required
 
 
 
+#### Operations
+
+Ensure the endpoint and backend are started:
+
+```shell
+sup kapps_controller start_app tasks
+sup crossbar_maintenance start_module cb_tasks
+```
+
 #### List available tasks
 
 > GET /v2/tasks
@@ -110,10 +119,14 @@ curl -v -X GET \
 }
 ```
 
+#### Add a new system task
+
 
 #### Add a new task
 
 > PUT /v2/accounts/{ACCOUNT_ID}/tasks
+
+Note: There are tasks that run against system resources, only for use by the superduper admin (like rate uploading), which can omit `/accounts/{ACCOUNT_ID}` from the URI. Leaving the account in the URI should have no impact.
 
 With CSV input data:
 
@@ -376,7 +389,8 @@ curl -v -X GET \
             "node": "whistle_apps@qwd",
             "start_timestamp": 63633924909,
             "status": "executing",
-            "success_count": 50
+            "success_count": 50,
+            "csvs":["in.csv"]
         }
     },
     "request_id": "{REQUEST_ID}",
@@ -469,8 +483,20 @@ curl -v -X PATCH \
 }
 ```
 
+#### Retrieve a task's CSVs
 
-#### Retrieve a task's input CSV
+When you `GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}`, the JSON will include a `"csvs":[...]" array with input and output CSVs as appropriate. Use the name(s) in the array to specify which you would like to receive.
+
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Accept: text/csv"
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}?csv_name=in.csv
+```
+
+You can also use the old way:
 
 > GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/input
 
@@ -500,10 +526,18 @@ Streams back the task's input in CSV format.
 }
 ```
 
+##### Retrieve a task's output CSV
 
-#### Retrieve a task's output CSV
+> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}
 
-> GET /v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}/output
+```shell
+curl -v -X GET \
+    -H "Accept: text/csv" \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/tasks/{TASK_ID}?csv_name=out.csv
+```
+
+Or the old way:
 
 ```shell
 curl -v -X GET \

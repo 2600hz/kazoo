@@ -422,15 +422,15 @@ get_all_default_kvs(JObj) ->
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set_string(config_category(), config_key(), text() | binary() | string()) ->
-                        {ok, kz_json:object()}.
+                        {'ok', kz_json:object()}.
 -spec set_integer(config_category(), config_key(), text() | integer()) ->
-                         {ok, kz_json:object()}.
+                         {'ok', kz_json:object()}.
 -spec set_float(config_category(), config_key(), text() | float()) ->
-                       {ok, kz_json:object()}.
+                       {'ok', kz_json:object()}.
 -spec set_boolean(config_category(), config_key(), text() | boolean()) ->
-                         {ok, kz_json:object()}.
+                         {'ok', kz_json:object()}.
 -spec set_json(config_category(), config_key(), text() | kz_json:object()) ->
-                      {ok, kz_json:object()}.
+                      {'ok', kz_json:object()}.
 
 set_string(Category, Key, Value) ->
     set(Category, Key, kz_term:to_binary(Value)).

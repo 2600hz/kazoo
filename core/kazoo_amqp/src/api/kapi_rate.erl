@@ -16,6 +16,13 @@
         ,broadcast_resp/1, broadcast_resp/2
         ]).
 
+-type req()  :: kz_json:object().
+-type resp() :: kz_json:object().
+
+-export_type([req/0
+             ,resp/0
+             ]).
+
 -include_lib("amqp_util.hrl").
 
 -define(EVENT_CATEGORY, <<"rate">>).
@@ -24,9 +31,16 @@
 
 %% AMQP fields for Rating Request
 -define(RATE_REQ_HEADERS, [<<"To-DID">>]).
--define(OPTIONAL_RATE_REQ_HEADERS, [<<"Call-ID">>, <<"Account-ID">>, <<"From-DID">>
-                                   ,<<"Options">>, <<"Direction">>, <<"Resource-Type">>
-                                   ,<<"Send-Empty">>, <<"Outbound-Flags">>, <<"Resource-ID">>
+-define(OPTIONAL_RATE_REQ_HEADERS, [<<"Account-ID">>
+                                   ,<<"Call-ID">>
+                                   ,<<"Direction">>
+                                   ,<<"From-DID">>
+                                   ,<<"Options">>
+                                   ,<<"Outbound-Flags">>
+                                   ,<<"Ratedeck-ID">>
+                                   ,<<"Resource-ID">>
+                                   ,<<"Resource-Type">>
+                                   ,<<"Send-Empty">>
                                    ]).
 -define(RATE_REQ_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                          ,{<<"Event-Name">>, <<"req">>}
@@ -39,12 +53,21 @@
 
 %% AMQP fields for Rating Response
 -define(RATE_RESP_HEADERS, []).
--define(OPTIONAL_RATE_RESP_HEADERS, [<<"Rate">>, <<"Call-ID">>
-                                    ,<<"Rate-Increment">>, <<"Rate-Minimum">>
-                                    ,<<"Surcharge">>, <<"Base-Cost">>, <<"Pvt-Cost">>
-                                    ,<<"Prefix">>, <<"Rate-Name">>
-                                    ,<<"Rate-Description">>, <<"Discount-Percentage">>
-                                    ,<<"Update-Callee-ID">>, <<"Rate-NoCharge-Time">>
+-define(OPTIONAL_RATE_RESP_HEADERS, [<<"Base-Cost">>
+                                    ,<<"Call-ID">>
+                                    ,<<"Discount-Percentage">>
+                                    ,<<"Prefix">>
+                                    ,<<"Pvt-Cost">>
+                                    ,<<"Rate">>
+                                    ,<<"Rate-Description">>
+                                    ,<<"Rate-Increment">>
+                                    ,<<"Rate-Minimum">>
+                                    ,<<"Rate-Name">>
+                                    ,<<"Rate-NoCharge-Time">>
+                                    ,<<"Rate-Version">>
+                                    ,<<"Ratedeck-ID">>
+                                    ,<<"Surcharge">>
+                                    ,<<"Update-Callee-ID">>
                                     ]).
 -define(RATE_RESP_VALUES, [{<<"Event-Category">>, ?EVENT_CATEGORY}
                           ,{<<"Event-Name">>, <<"resp">>}

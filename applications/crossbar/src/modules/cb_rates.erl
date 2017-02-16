@@ -13,6 +13,7 @@
         ,allowed_methods/0, allowed_methods/1 ,allowed_methods/2
         ,resource_exists/0, resource_exists/1 ,resource_exists/2
         ,content_types_accepted/1
+        ,content_types_provided/1
         ,validate/1, validate/2, validate/3
         ,put/1
         ,post/1, post/2
@@ -31,11 +32,16 @@
                            ,{<<"text">>, <<"comma-separated-values">>}
                            ]).
 
--define(NUMBER_RESP_FIELDS, [<<"Prefix">>, <<"Rate-Name">>
-                            ,<<"Rate-Description">>, <<"Base-Cost">>
-                            ,<<"Rate">>, <<"Rate-Minimum">>
-                            ,<<"Rate-Increment">>, <<"Surcharge">>
+-define(NUMBER_RESP_FIELDS, [<<"Base-Cost">>
                             ,<<"E164-Number">>
+                            ,<<"Prefix">>
+                            ,<<"Rate">>
+                            ,<<"Rate-Description">>
+                            ,<<"Rate-Increment">>
+                            ,<<"Rate-Minimum">>
+                            ,<<"Rate-Name">>
+                            ,<<"Ratedeck-ID">>
+                            ,<<"Surcharge">>
                             ]).
 
 %%%===================================================================
@@ -50,6 +56,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.rates">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.rates">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.rates">>, ?MODULE, 'content_types_accepted'),
+    _ = crossbar_bindings:bind(<<"*.content_types_provided.rates">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.execute.put.rates">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.rates">>, ?MODULE, 'post'),
     _ = crossbar_bindings:bind(<<"*.execute.patch.rates">>, ?MODULE, 'patch'),
@@ -116,6 +123,19 @@ content_types_accepted(Context) ->
 content_types_accepted_by_verb(Context, ?HTTP_POST) ->
     cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]).
 
+-spec content_types_provided(cb_context:context()) -> cb_context:context().
+content_types_provided(Context) ->
+    content_types_provided_by_verb(Context, cb_context:req_verb(Context)).
+
+-spec content_types_provided_by_verb(cb_context:context(), http_method()) -> cb_context:context().
+content_types_provided_by_verb(Context, ?HTTP_GET) ->
+    lager:debug("adding csv ctp"),
+    cb_context:add_content_types_provided(Context, [{'to_csv', ?CSV_CONTENT_TYPES}
+                                                   ,{'to_json', ?JSON_CONTENT_TYPES}
+                                                   ]);
+content_types_provided_by_verb(Context, _Verb) ->
+    Context.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -180,12 +200,11 @@ validate_number(Phonenumber, Context) ->
         'true' ->
             rate_for_number(knm_converters:normalize(Phonenumber), Context);
         'false' ->
-            cb_context:add_validation_error(
-              <<"number format">>
+            cb_context:add_validation_error(<<"number format">>
                                            ,<<"error">>
                                            ,kz_json:from_list([{<<"message">>, <<"Number is un-rateable">>}])
                                            ,Context
-             )
+                                           )
     end.
 
 %%%===================================================================
@@ -409,31 +428,32 @@ process_row(Row, {Count, JObjs}=Acc) ->
             %% The idea here is the more expensive rate will have a higher CostF
             %% and decrement it from the weight so it has a lower weight #
             %% meaning it should be more likely used
-            Weight = constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
-                                      - trunc(InternalRate * 100)),
+            Weight = kzd_rate:constrain_weight(byte_size(kz_term:to_binary(Prefix)) * 10
+                                               - trunc(InternalRate * 100)
+                                              ),
             Id = <<ISO/binary, "-", (kz_term:to_binary(Prefix))/binary>>,
-            Props = props:filter_undefined(
-                      [{<<"_id">>, Id}
-                      ,{<<"prefix">>, kz_term:to_binary(Prefix)}
-                      ,{<<"weight">>, Weight}
-                      ,{<<"description">>, Description}
-                      ,{<<"rate_name">>, Id}
-                      ,{<<"iso_country_code">>, ISO}
-                      ,{<<"pvt_rate_cost">>, InternalRate}
-                      ,{<<"pvt_carrier">>, <<"default">>}
-                      ,{<<"pvt_type">>, <<"rate">>}
-                      ,{<<"routes">>, get_row_routes(Row)}
-                      ,{<<"rate_increment">>, get_row_increment(Row)}
-                      ,{<<"rate_minimum">>, get_row_minimum(Row)}
-                      ,{<<"rate_surcharge">>, get_row_surcharge(Row)}
-                      ,{<<"rate_cost">>, get_row_rate(Row)}
-                      ,{<<"direction">>, get_row_direction(Row)}
-                      ,{<<"pvt_rate_surcharge">>, get_row_internal_surcharge(Row)}
-                      ,{<<"routes">>, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)$">>]}
-                       ,{<<"options">>, []}
-                                         ]),
+            Setters = props:filter_undefined(
+                        [{fun kz_doc:set_id/2, Id}
+                        ,{fun kzd_rate:set_prefix/2, kz_term:to_binary(Prefix)}
+                        ,{fun kzd_rate:set_weight/2, Weight}
+                        ,{fun kzd_rate:set_description/2, Description}
+                        ,{fun kzd_rate:set_name/2, Id}
+                        ,{fun kzd_rate:set_iso_country_code/2, ISO}
+                        ,{fun kzd_rate:set_private_cost/2, InternalRate}
+                        ,{fun kzd_rate:set_carrier/2, <<"default">>}
+                        ,fun kzd_rate:set_type/1
+                        ,{fun kzd_rate:set_routes/2, get_row_routes(Row)}
+                        ,{fun kzd_rate:set_increment/2, get_row_increment(Row)}
+                        ,{fun kzd_rate:set_minimum/2, get_row_minimum(Row)}
+                        ,{fun kzd_rate:set_surcharge/2, get_row_surcharge(Row)}
+                        ,{fun kzd_rate:set_rate_cost/2, get_row_rate(Row)}
+                        ,{fun kzd_rate:set_direction/2, get_row_direction(Row)}
+                        ,{fun kzd_rate:set_private_surcharge/2, get_row_internal_surcharge(Row)}
+                        ,{fun kzd_rate:set_routes/2, [<<"^\\+", (kz_term:to_binary(Prefix))/binary, "(\\d*)\$">>]}
+                        ,{fun kzd_rate:set_options/2, []}
+                        ]),
 
-            {Count + 1, [kz_json:from_list(Props) | JObjs]}
+            {Count + 1, [kz_json:set_values(Setters, kz_json:new()) | JObjs]}
     end.
 
 -spec get_row_prefix(rate_row()) -> api_binary().
@@ -529,11 +549,6 @@ get_row_direction([_|_]) ->
 strip_quotes(Bin) ->
     binary:replace(Bin, [<<"\"">>, <<"\'">>], <<>>, ['global']).
 
--spec constrain_weight(integer()) -> 1..100.
-constrain_weight(X) when X =< 0 -> 1;
-constrain_weight(X) when X >= 100 -> 100;
-constrain_weight(X) -> X.
-
 -spec save_processed_rates(cb_context:context(), integer()) -> pid().
 save_processed_rates(Context, Count) ->
     kz_util:spawn(
@@ -546,11 +561,16 @@ save_processed_rates(Context, Count) ->
 
 -spec rate_for_number(ne_binary(), cb_context:context()) -> cb_context:context().
 rate_for_number(Phonenumber, Context) ->
-    case kz_amqp_worker:call([{<<"To-DID">>, Phonenumber}
-                             ,{<<"Send-Empty">>, 'true'}
-                             ,{<<"Msg-ID">>, cb_context:req_id(Context)}
-                              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-                             ]
+    Request = props:filter_undefined(
+                [{<<"To-DID">>, Phonenumber}
+                ,{<<"Send-Empty">>, 'true'}
+                ,{<<"Msg-ID">>, cb_context:req_id(Context)}
+                ,{<<"Account-ID">>, cb_context:account_id(Context)}
+                ,{<<"Ratedeck-ID">>, cb_context:req_value(Context, <<"ratedeck_id">>)}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]
+               ),
+    case kz_amqp_worker:call(Request
                             ,fun kapi_rate:publish_req/1
                             ,fun kapi_rate:resp_v/1
                             ,3 * ?MILLISECONDS_IN_SECOND

@@ -6364,6 +6364,11 @@
         "rates": {
             "description": "Defines a rate for a given prefix",
             "properties": {
+                "account_id": {
+                    "description": "Reseller's account ID",
+                    "required": false,
+                    "type": "string"
+                },
                 "carrier": {
                     "description": "Friendly name for the carrier providing this rate",
                     "required": false,
@@ -6375,10 +6380,6 @@
                     "type": "string"
                 },
                 "direction": {
-                    "default": [
-                        "inbound",
-                        "outbound"
-                    ],
                     "description": "Apply this rate based on the direction of the call (relative to FreeSWITCH)",
                     "items": {
                         "enum": [
@@ -6422,16 +6423,14 @@
                     "type": "number"
                 },
                 "rate_increment": {
-                    "default": 60,
                     "description": "The time slice, in seconds, to bill in.",
-                    "minimum": 10,
+                    "minimum": 1,
                     "required": false,
                     "type": "integer"
                 },
                 "rate_minimum": {
-                    "default": 60,
                     "description": "The minimum time slice, in seconds to bill a call",
-                    "minimum": 10,
+                    "minimum": 1,
                     "required": false,
                     "type": "integer"
                 },
@@ -6441,21 +6440,28 @@
                     "type": "string"
                 },
                 "rate_nocharge_time": {
-                    "default": 0,
                     "description": "If the call duration is shorter than this threshold (seconds), the call is not billed",
                     "minimum": 0,
                     "required": false,
                     "type": "integer"
                 },
                 "rate_surcharge": {
-                    "default": 0,
                     "description": "The upfront cost of connecting the call",
                     "minimum": 0,
                     "required": false,
                     "type": "number"
                 },
+                "rate_version": {
+                    "description": "Rate version",
+                    "required": false,
+                    "type": "string"
+                },
+                "ratedeck_id": {
+                    "description": "ID of the ratedeck this rate belongs to",
+                    "required": false,
+                    "type": "string"
+                },
                 "routes": {
-                    "default": [],
                     "description": "List of regexs that match valid DIDs for this rate",
                     "items": {
                         "required": false,
@@ -6907,12 +6913,130 @@
             "required": true,
             "type": "object"
         },
+        "service_plan": {
+            "description": "Describes a service plan",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "service_plan.category",
+                    "description": "Category name",
+                    "type": "object"
+                }
+            }
+        },
+        "service_plan.category": {
+            "description": "Describes a service plan category",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "service_plan.item",
+                    "description": "Item name",
+                    "type": "object"
+                }
+            },
+            "properties": {
+                "_all": {
+                    "$ref": "service_plan.item",
+                    "description": "Applies item rules to any item in this category",
+                    "properties": {
+                        "exceptions": {
+                            "description": "Items that are not included in this item plan",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "type": "object"
+                }
+            }
+        },
+        "service_plan.item": {
+            "description": "Describes a service plan item",
+            "properties": {
+                "activation_charge": {
+                    "description": "What to charge when activating an Item",
+                    "type": "float"
+                },
+                "as": {
+                    "description": "Count Item as if it was another Item",
+                    "type": "string"
+                },
+                "cascade": {
+                    "description": "Whether to count quantities among all sub-accounts or just the account",
+                    "type": "boolean"
+                },
+                "cumulative_discount": {
+                    "description": "Whether to give a discount based on quatities of the account and all sub-accounts",
+                    "type": "boolean"
+                },
+                "cumulative_discount_rate": {
+                    "description": "How much of a discount to apply",
+                    "type": "float"
+                },
+                "discounts": {
+                    "properties": {
+                        "cumulative": {
+                            "properties": {
+                                "maximum": {
+                                    "description": "The most number of Items to apply discount to",
+                                    "type": "integer"
+                                },
+                                "rate": {
+                                    "description": "The discount to apply, up to maximum Items (if applicable)",
+                                    "type": "float"
+                                }
+                            },
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
+                },
+                "minimum": {
+                    "description": "The minimum quantity to charge for, if 'quantity' is less than 'minimum'",
+                    "type": "integer"
+                },
+                "name": {
+                    "description": "Friendly name for this Item",
+                    "type": "string"
+                },
+                "quantity": {
+                    "description": "How many of the item are allowed",
+                    "type": "integer"
+                },
+                "rate": {
+                    "description": "How much is the item billed, per-item",
+                    "type": "float"
+                },
+                "rates": {
+                    "description": "Tiers of rates based on quantities",
+                    "patternProperties": {
+                        "^[0-9]+$": {
+                            "description": "The rate to charge when under the quantity indicated in the key",
+                            "type": "float"
+                        }
+                    },
+                    "type": "object"
+                },
+                "single_discount": {
+                    "description": "Whether to give a discount to the account",
+                    "type": "boolean"
+                },
+                "single_discount_rate": {
+                    "description": "How much of a discount to apply, per-item",
+                    "type": "float"
+                }
+            },
+            "type": "object"
+        },
         "service_plans": {
             "description": "Describes services offered to sub-accounts",
             "properties": {
                 "bookkeepers": {
                     "$ref": "bookkeepers",
                     "type": "object"
+                },
+                "category": {
+                    "description": "Optional category used for grouping service plans",
+                    "type": "string"
                 },
                 "description": {
                     "description": "Describes the service plan offering",
@@ -6928,6 +7052,12 @@
                 },
                 "plan": {
                     "description": "Outlines the service plan for various services",
+                    "patternProperties": {
+                        "^[0-9a-zA-Z_]+$": {
+                            "$ref": "service_plan",
+                            "type": "object"
+                        }
+                    },
                     "required": true,
                     "type": "object"
                 }
@@ -9553,12 +9683,73 @@
         "system_config.hotornot": {
             "description": "Schema for hotornot system_config",
             "properties": {
+                "default_rate_cost": {
+                    "default": 0.0,
+                    "description": "default cost per minute for rate",
+                    "type": "number"
+                },
+                "default_rate_increment": {
+                    "default": 60,
+                    "description": "default increment time for rate",
+                    "type": "integer"
+                },
+                "default_rate_internal_cost": {
+                    "default": 0.0,
+                    "description": "default internal cost per minute for rate",
+                    "type": "number"
+                },
+                "default_rate_minimum": {
+                    "default": 60,
+                    "description": "default minimal duration for rate",
+                    "type": "integer"
+                },
+                "default_rate_nocharge_time": {
+                    "default": 0,
+                    "description": "default nocharge time for rate",
+                    "type": "integer"
+                },
+                "default_rate_surcharge": {
+                    "default": 0.0,
+                    "description": "default surcharge amount for rate",
+                    "type": "number"
+                },
+                "default_ratedeck": {
+                    "default": "ratedeck",
+                    "description": "default ratedeck database to use",
+                    "type": "string"
+                },
+                "filter_list": {
+                    "default": [
+                        "direction",
+                        "route_options",
+                        "routes"
+                    ],
+                    "description": "List of filters for rates",
+                    "type": "array"
+                },
+                "rate_version": {
+                    "description": "If defined, use rates with this version",
+                    "type": "string"
+                },
+                "sort_by_weight": {
+                    "default": true,
+                    "description": "sort rates by weight (true) or cost (false)",
+                    "type": "boolean"
+                },
+                "trie_build_timeout_ms": {
+                    "default": 60000,
+                    "description": "build timeout (ms) for trie",
+                    "type": "integer"
+                },
                 "use_trie": {
                     "default": false,
-                    "description": "Whether to use the trie to store rates in the VM",
+                    "description": "whether to use the trie to store rates in the VM",
                     "type": "boolean"
                 }
             },
+            "required": [
+                "rate_version"
+            ],
             "type": "object"
         },
         "system_config.jonny5": {

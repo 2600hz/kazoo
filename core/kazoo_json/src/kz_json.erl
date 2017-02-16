@@ -858,7 +858,9 @@ get_values(Key, JObj) ->
     get_values(get_value(Key, JObj, new())).
 
 %% Figure out how to set the current key among a list of objects
--type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()}.
+
+-type set_value_fun() :: {fun((object(), json_term()) -> object()), json_term()} |
+                         fun((object()) -> object()).
 -type set_value_funs() :: [set_value_fun(),...].
 
 -spec set_values([{path(), json_term()}] | set_value_funs(), object()) -> object().
@@ -868,6 +870,8 @@ set_values(KVs, JObj) when is_list(KVs) ->
 -spec set_value_fold(set_value_fun() | {path(), json_term()}, object()) -> object().
 set_value_fold({F, V}, JObj) when is_function(F, 2) ->
     F(JObj, V);
+set_value_fold(F, JObj) when is_function(F, 1) ->
+    F(JObj);
 set_value_fold({K, V}, JObj) ->
     set_value(K, V, JObj).
 
@@ -1179,15 +1183,15 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--type composite_key() :: binary() | [binary()].
+-type composite_key() :: key() | [key()].
 
 -spec flatten(object() | objects()) -> object() | objects().
-flatten(L) when is_list(L) -> [ flatten(JObj) || JObj <- L ];
+flatten(L) when is_list(L) -> [flatten(JObj) || JObj <- L];
 flatten(?JSON_WRAPPER(L)) when is_list(L) ->
-    from_list(lists:flatten([ flatten_key(K,V) || {K,V} <- L ])).
+    from_list(lists:flatten([flatten_key(K,V) || {K,V} <- L])).
 
--spec flatten(object() | objects(), binary_join) -> object() | objects().
-flatten(L, binary_join) -> keys_to_binary(flatten(L)).
+-spec flatten(object() | objects(), 'binary_join') -> object() | objects().
+flatten(L, 'binary_join') -> keys_to_binary(flatten(L)).
 
 -spec keys_to_binary(object()) -> object().
 keys_to_binary(?JSON_WRAPPER(L)) when is_list(L) ->
@@ -1202,11 +1206,11 @@ join_keys(K1, K2) when is_list(K1) -> K1 ++ [K2];
 join_keys(K1, K2) -> [K1, K2].
 
 -spec flatten_key(composite_key(), any()) -> [{composite_key(), any()}].
-flatten_key(K, V = ?JSON_WRAPPER([])) -> [ {K, V} ];
+flatten_key(K, V = ?JSON_WRAPPER([])) -> [{K, V}];
 flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
-    [ flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L ];
+    [flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L];
 flatten_key(K, V) ->
-    [ {K, V} ].
+    [{K, V}].
 
 -spec expand(object()) -> object().
 expand(?JSON_WRAPPER(L)) when is_list(L) ->
