@@ -105,6 +105,8 @@ guess_type('get_value', <<_/binary>>) ->
     <<"string">>;
 guess_type('get_value', []) ->
     <<"array">>;
+guess_type('get_ne_value', []) ->
+    <<"array">>;
 guess_type('get_value', ?EMPTY_JSON_OBJECT) ->
     <<"object">>;
 guess_type('get_value', I) when is_integer(I) ->
