@@ -198,7 +198,7 @@ validate_schema(Name, JObj) ->
         _ -> no_schema_present
     end.
 
--spec flush(ne_binary(), ne_binarycb_context:context()) -> cb_context:context().
+-spec flush(ne_binary(), cb_context:context()) -> cb_context:context().
 flush(ConfigId, Context) ->
     kapps_config:flush(ConfigId),
     Context.
