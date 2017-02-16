@@ -120,11 +120,14 @@ maybe_multi_factor_auth(Claims, AuthConfigs, 'true') ->
             kz_auth:create_token(Claims);
         {'error', 'no_provider'} ->
             lager:debug("multi factor authentication is not configured, creating local auth token"),
+            maybe_log_failed_mfa_auth(NewClaims, AuthConfigs, 'no_provider'),
             kz_auth:create_token(Claims);
         %% {'error', 'provider_disabled'} ->
         %%     lager:debug("multi factor authentication is disabled, creating local auth token"),
         %%     kz_auth:create_token(Claims);
-        {'error', _}=Error -> Error;
+        {'error', Reason}=Error ->
+            maybe_log_failed_mfa_auth(NewClaims, AuthConfigs, Reason),
+            Error;
         {'error', 401, _MFAReq}=Retry -> Retry
     end.
 
@@ -148,6 +151,48 @@ authorize_auth_token(Token) ->
 
 maybe_db_token(AuthToken) ->
     kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken).
+
+-spec maybe_log_failed_mfa_auth(kz_proplist(), kz_json:object(), atom() | ne_binary()) -> 'ok'.
+maybe_log_failed_mfa_auth(Claims, AuthConfigs, Reason) ->
+    case should_log_failed_attempts(AuthConfigs) of
+        'true' -> log_failed_mfa_attempts(Claims, AuthConfigs, Reason);
+        'false' -> 'ok'
+    end.
+
+-spec log_failed_mfa_attempts(kz_proplist(), kz_json:object(), atom() | ne_binary()) -> 'ok'.
+log_failed_mfa_attempts(Claims, AuthConfigs, Reason) ->
+    AccountId = props:get_value(<<"account_id">>, Claims),
+
+    Now = kz_time:current_tstamp(),
+    ModDb = kz_util:format_account_mod_id(AccountId, Now),
+
+    Doc = kz_json:from_list(
+            props:filter_undefined(
+              [{<<"auth_type">>, <<"multi_factor">>}
+              ,{<<"reason">>, kz_term:to_binary(Reason)}
+              ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfigs)}
+              ,{<<"mfa_config_origin">>, props:get_value([<<"mfa_options">>, <<"account_id">>], Claims)}
+              ,{<<"pvt_account_db">>, ModDb}
+              ,{<<"pvt_account_id">>, AccountId}
+              ,{<<"pvt_type">>, <<"login_attempt">>}
+              ,{<<"pvt_created">>, Now}
+              ,{<<"pvt_modified">>, Now}
+              ]
+             )
+           ),
+    _ = kazoo_modb:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
+    'ok'.
+
+-spec should_log_failed_attempts(kz_json:object()) -> boolean().
+should_log_failed_attempts(AuthConfigs) ->
+    case kz_json:is_true([<<"multi_factor">>, <<"log_failed_login_attempts">>], AuthConfigs) of
+        'undefined' ->
+            kapps_config:get_is_true(?AUTH_CONFIG_CAT
+                                    ,[?AUTH_CONFIG_ID, <<"log_failed_login_attempts">>]
+                                    ,'false'
+                                    );
+        Boolean -> Boolean
+    end.
 
 %%--------------------------------------------------------------------
 %% @private

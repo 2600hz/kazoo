@@ -11,6 +11,15 @@
         "kazoo_auth_configs": {
             "default": {},
             "description": "Kazoo Auth modules' configurations",
+            "properties": {
+                "log_failed_login_attempts": {
+                    "properties": {
+                        "default": false,
+                        "description": "Should log failed login attempts",
+                        "type": "boolean"
+                    }
+                }
+            },
             "type": "object"
         }
     },

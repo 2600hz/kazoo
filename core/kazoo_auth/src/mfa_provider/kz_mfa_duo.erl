@@ -253,7 +253,7 @@ map_config(Claims, JObj) ->
                 ),
     case validate_values(Identity) of
         'true' -> Identity;
-        'false' -> {'error', <<"invalid duo configuration">>}
+        KeyError -> {'error', <<"invalid duo configuration, ", KeyError/binary>>}
     end.
 
 %%--------------------------------------------------------------------
@@ -261,7 +261,7 @@ map_config(Claims, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_values(map()) -> boolean().
+-spec validate_values(map()) -> boolean() | ne_binary().
 validate_values(Identity) ->
     try lists:all(fun(ReqV) ->
                           validate_value(ReqV, Identity)
@@ -271,11 +271,9 @@ validate_values(Identity) ->
                  )
     catch
         'error':{'badkey', Key} ->
-            lager:debug("duo ~s config key is missing", [Key]),
-            'false';
+            kz_term:to_binary(io_lib:format("duo ~s config key is missing", [Key]));
         {'error', Key} ->
-            lager:debug("duo ~s config key is invalid", [Key]),
-            'false'
+            kz_term:to_binary(io_lib:format("duo ~s config key is invalid", [Key]))
     end.
 
 -spec validate_value(ne_binary(), map()) -> boolean().

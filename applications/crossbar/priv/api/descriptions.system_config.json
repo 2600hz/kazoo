@@ -132,6 +132,7 @@
     "crossbar.api_auth_tokens": "crossbar api auth tokens",
     "crossbar.auth.basic_auth_type": "crossbar.auth basic auth type",
     "crossbar.auth.kazoo_auth_configs": "Kazoo Auth modules' configurations",
+    "crossbar.auth.log_failed_login_attempts": "Should log failed login attempts",
     "crossbar.autoload_modules": "crossbar autoload modules",
     "crossbar.braintree.max_account_credit": "crossbar.braintree maximum account credit",
     "crossbar.callflows.default_reconcile_numbers": "crossbar.callflows default reconcile numbers",
