@@ -22,7 +22,7 @@ function search_and_replace {
     SUFFIX=$4
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications,scripts}`; do
             replace_call $FROM $TO "$FUN" "$SUFFIX" $FILE
         done
     done
