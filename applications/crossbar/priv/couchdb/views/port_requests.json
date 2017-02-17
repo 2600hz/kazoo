@@ -27,7 +27,7 @@
             "map": [
                 "function(doc) {",
                 "  if (doc.pvt_type !== 'port_request' || doc.pvt_deleted) return;",
-                "  if (doc.pvt_port_state === 'unconfirmed' || doc.pvt_port_state === 'canceled')",
+                "  if (doc.pvt_port_state === 'unconfirmed' || doc.pvt_port_state === 'canceled' || doc.pvt_port_state == 'completed')",
                 "    return;",
                 "  for (var i in doc.numbers) {",
                 "    var number = doc.numbers[i];",

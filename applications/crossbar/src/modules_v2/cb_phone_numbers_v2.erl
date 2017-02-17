@@ -516,8 +516,9 @@ fix_available(NumJObj) ->
     NewJObj = kz_json:set_value(<<"features_available">>, Allowed, JObj),
     kz_json:from_list([{Num, NewJObj}]).
 
+-spec should_include_ports(cb_context:context()) -> boolean().
 should_include_ports(Context) ->
-    kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>)).
+    kz_util:is_true(cb_context:req_value(Context, <<"include_ports">>, 'true')).
 
 %% @private
 -spec maybe_add_port_request_numbers(cb_context:context()) -> kz_json:object().
@@ -545,7 +546,7 @@ maybe_add_port_request_numbers(Context, 'true') ->
 %% @private
 -spec maybe_filter_port_number(kz_json:object(), cb_context:context(), boolean()) ->
                                       boolean().
-maybe_filter_port_number(_Port, _Context, 'false') -> 'false';
+maybe_filter_port_number(_Port, _Context, 'false') -> 'true';
 maybe_filter_port_number(Port, Context, 'true') ->
     crossbar_doc:filtered_doc_by_qs(kz_json:get_value(<<"value">>, Port), Context).
 
