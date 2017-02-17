@@ -167,9 +167,9 @@ fetch('undefined', _) ->
 fetch(Account, 'account') ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
-    kz_datamgr:open_cache_doc(AccountDb, AccountId, ['cache_failures']);
+    kz_datamgr:open_cache_doc(AccountDb, AccountId, [{'cache_failures',false}]);
 fetch(AccountId, 'accounts') ->
-    kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, ['cache_failures']).
+    kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId, [{'cache_failures',false}]).
 
 %%--------------------------------------------------------------------
 %% @public
