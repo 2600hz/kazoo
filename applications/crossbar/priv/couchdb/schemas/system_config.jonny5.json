@@ -20,9 +20,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "default_inbound_trunks",
-        "default_twoway_trunks"
-    ],
     "type": "object"
 }

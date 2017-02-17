@@ -38,11 +38,5 @@
             "description": "kazoo_endpoint sip transport"
         }
     },
-    "required": [
-        "custom_sip_interface",
-        "default_caller_id_name",
-        "default_caller_id_number",
-        "sip_transport"
-    ],
     "type": "object"
 }

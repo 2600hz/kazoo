@@ -30,9 +30,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "cccp_cb_number",
-        "cccp_cc_number"
-    ],
     "type": "object"
 }

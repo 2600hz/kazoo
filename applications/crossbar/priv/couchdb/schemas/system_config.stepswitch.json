@@ -114,10 +114,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "default_emergency_cid_number",
-        "default_formatters",
-        "default_route"
-    ],
     "type": "object"
 }

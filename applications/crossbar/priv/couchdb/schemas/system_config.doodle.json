@@ -69,9 +69,5 @@
             "type": "object"
         }
     },
-    "required": [
-        "connections",
-        "inbound_queue_name"
-    ],
     "type": "object"
 }

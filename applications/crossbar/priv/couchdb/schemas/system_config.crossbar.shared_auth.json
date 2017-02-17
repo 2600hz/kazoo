@@ -8,8 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "authoritative_crossbar"
-    ],
     "type": "object"
 }

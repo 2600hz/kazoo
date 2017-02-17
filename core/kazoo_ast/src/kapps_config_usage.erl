@@ -1,7 +1,9 @@
 -module(kapps_config_usage).
 
--export([process_project/0, process_app/1, process_module/1
+-export([process_project/0, process_app/1
         ,to_schema_docs/0, to_schema_docs/1
+
+        ,expression_to_schema/2
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
@@ -78,41 +80,33 @@ filter_system_fold({[V | Vc], [K | Kc]}, JObj) ->
 static_fields(Name, JObj) ->
     Id = <<"system_config.", Name/binary>>,
     Description = <<"Schema for ", Name/binary, " system_config">>,
-    Required = fields_without_defaults(JObj),
+
     Values = [{<<"description">>, Description}
              ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
              ,{<<"type">>, <<"object">>}
-              |[{<<"required">>, Required} || Required =/= []]
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
 static_account_fields(Name, JObj) ->
     Id = <<"account_config.", Name/binary>>,
     Description = <<"Schema for ", Name/binary, " account_config">>,
-    Required = fields_without_defaults(JObj),
+
     Values = [{<<"description">>, Description}
              ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
              ,{<<"type">>, <<"object">>}
-              |[{<<"required">>, Required} || Required =/= []]
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
-
--define(NO_DEFAULTS_EXCEPTIONS, [<<"proxy_hostname">>]).
-
--spec fields_without_defaults(kz_json:object()) -> ne_binaries().
-fields_without_defaults(JObj0) ->
-    JObj = kz_json:get_value(?FIELD_PROPERTIES, JObj0, kz_json:new()),
-    lists:sort([Field
-                || {Field, Content} <- kz_json:to_proplist(JObj),
-                   'undefined' =:= kz_json:get_value(?FIELD_DEFAULT, Content),
-                   not lists:member(Field, ?NO_DEFAULTS_EXCEPTIONS)
-               ]).
 
 -spec process_project() -> kz_json:object().
 process_project() ->
     io:format("processing kapps_config/kapps_account_config usage: "),
-    Apps = kz_ast_util:project_apps(),
-    Usage = lists:foldl(fun process_app/2, kz_json:new(), Apps),
+
+    Options = [{'expression', fun expression_to_schema/2}
+              ,{'module', fun print_dot/2}
+              ,{'accumulator', kz_json:new()}
+              ],
+
+    Usage = kazoo_ast:walk_project(Options),
     io:format(" done~n"),
     Usage.
 
@@ -122,65 +116,18 @@ process_app(App) ->
     process_app(App, kz_json:new()).
 
 process_app(App, Schemas) ->
-    lists:foldl(fun module_to_schema/2, Schemas, kz_ast_util:app_modules(App)).
+    Options = [{'expression', fun expression_to_schema/2}
+              ,{'module', fun print_dot/2}
+              ,{'accumulator', Schemas}
+              ],
 
--spec process_module(module()) -> kz_json:object().
--spec module_to_schema(module(), kz_json:object()) -> kz_json:object().
-process_module(Module) ->
-    module_to_schema(Module, kz_json:new()).
+    kazoo_ast:walk_app(App, Options).
 
-module_to_schema(Module, Schemas) ->
+print_dot(_Module, Acc) ->
     io:format("."),
-    case kz_ast_util:module_ast(Module) of
-        'undefined' -> 'undefined';
-        {M, AST} ->
-            #module_ast{functions=Fs
-                       ,records=Rs
-                       } = kz_ast_util:add_module_ast(#module_ast{}, M, AST),
-            Routins = [{fun functions_to_schema/3, Fs}
-                      ,{fun records_to_schema/3, Rs}
-                      ],
-            lists:foldl(fun({Fun, Arg}, Acc) ->
-                                erlang:apply(Fun, [M, Arg, Acc])
-                        end
-                       ,Schemas
-                       ,Routins
-                       )
-    end.
+    Acc.
 
-%% look inside functions
-functions_to_schema(_Module, Fs, Schemas) ->
-    lists:foldl(fun function_to_schema/2, Schemas, Fs).
-
-%% look inside records
-records_to_schema(_Module, Rs, Schemas) ->
-    lists:foldl(fun record_fields_to_schema/2, Schemas, Rs).
-
-%% look inside record's fields
-record_fields_to_schema({_RecName, Fields}, Schemas) ->
-    lists:foldl(fun record_field_to_schema/2, Schemas, Fields).
-
-%% look inside a single record field
-record_field_to_schema(?RECORD_FIELD(_Key), Schemas) ->
-    Schemas;
-record_field_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
-    expression_to_schema(Value, Schemas);
-record_field_to_schema(?TYPED_RECORD_FIELD(RecordField, _Type), Schemas) ->
-    record_field_to_schema(RecordField, Schemas).
-
-%% look inside a single function
-function_to_schema({_Module, _Function, _Arity, Clauses}, Schemas) ->
-    clauses_to_schema(Clauses, Schemas).
-
-clauses_to_schema(Clauses, Schemas) ->
-    lists:foldl(fun clause_to_schema/2, Schemas, Clauses).
-
-clause_to_schema(?CLAUSE(_Args, _Guards, Expressions), Schemas) ->
-    expressions_to_schema(Expressions, Schemas).
-
-expressions_to_schema(Expressions, Schemas) ->
-    lists:foldl(fun expression_to_schema/2, Schemas, Expressions).
-
+-spec expression_to_schema(any(), kz_json:object()) -> kz_json:object().
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set', _), Schemas) ->
     Schemas;
 expression_to_schema(?MOD_FUN_ARGS('kapps_config', 'set_default', _), Schemas) ->
@@ -199,114 +146,8 @@ expression_to_schema(?MOD_FUN_ARGS(Source = 'ecallmgr_config', F, Args), Schemas
     config_to_schema(Source, F, [?BINARY_STRING(<<"ecallmgr">>, 0) | Args], Schemas);
 expression_to_schema(?MOD_FUN_ARGS(Source = 'kapps_account_config', F='get_global', Args), Schemas) ->
     config_to_schema(Source, F, Args, Schemas);
-expression_to_schema(?MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
-    expressions_to_schema(Args, Schemas);
-expression_to_schema(?DYN_MOD_FUN(_M, _F), Schemas) ->
-    Schemas;
-expression_to_schema(?FUN_ARGS(_F, Args), Schemas) ->
-    expressions_to_schema(Args, Schemas);
-expression_to_schema(?GEN_MFA(_M, _F, _Arity), Schemas) ->
-    Schemas;
-expression_to_schema(?FA(_F, _Arity), Schemas) ->
-    Schemas;
-expression_to_schema(?BINARY_OP(_Name, First, Second), Schemas) ->
-    expressions_to_schema([First, Second], Schemas);
-expression_to_schema(?UNARY_OP(_Name, First), Schemas) ->
-    expression_to_schema(First, Schemas);
-expression_to_schema(?CATCH(Expression), Schemas) ->
-    expression_to_schema(Expression, Schemas);
-expression_to_schema(?TRY_BODY(Body, Clauses), Schemas) ->
-    clauses_to_schema(Clauses
-                     ,expression_to_schema(Body, Schemas)
-                     );
-expression_to_schema(?TRY_EXPR(Expr, Clauses, CatchClauses), Schemas) ->
-    clauses_to_schema(Clauses ++ CatchClauses
-                     ,expressions_to_schema(Expr, Schemas)
-                     );
-expression_to_schema(?TRY_BODY_AFTER(Body, Clauses, CatchClauses, AfterBody), Schemas) ->
-    clauses_to_schema(Clauses ++ CatchClauses
-                     ,expressions_to_schema(Body ++ AfterBody, Schemas)
-                     );
-expression_to_schema(?LC(Expr, Qualifiers), Schemas) ->
-    expressions_to_schema([Expr | Qualifiers], Schemas);
-expression_to_schema(?LC_GENERATOR(Pattern, Expr), Schemas) ->
-    expressions_to_schema([Pattern, Expr], Schemas);
-expression_to_schema(?BC(Expr, Qualifiers), Schemas) ->
-    expressions_to_schema([Expr | Qualifiers], Schemas);
-expression_to_schema(?LC_BIN_GENERATOR(Pattern, Expr), Schemas) ->
-    expressions_to_schema([Pattern, Expr], Schemas);
-expression_to_schema(?ANON(Clauses), Schemas) ->
-    clauses_to_schema(Clauses, Schemas);
-expression_to_schema(?GEN_FUN_ARGS(?ANON(Clauses), Args), Schemas) ->
-    clauses_to_schema(Clauses
-                     ,expressions_to_schema(Args, Schemas)
-                     );
-expression_to_schema(?VAR(_), Schemas) ->
-    Schemas;
-expression_to_schema(?BINARY_MATCH(_), Schemas) ->
-    Schemas;
-expression_to_schema(?STRING(_), Schemas) ->
-    Schemas;
-expression_to_schema(?GEN_RECORD(_NameExpr, _RecName, Fields), Schemas) ->
-    expressions_to_schema(Fields, Schemas);
-expression_to_schema(?RECORD(_Name, Fields), Schemas) ->
-    expressions_to_schema(Fields, Schemas);
-expression_to_schema(?RECORD_FIELD_BIND(_Key, Value), Schemas) ->
-    expression_to_schema(Value, Schemas);
-expression_to_schema(?GEN_RECORD_FIELD_ACCESS(_RecordName, _Name, Value), Schemas) ->
-    expression_to_schema(Value, Schemas);
-expression_to_schema(?RECORD_INDEX(_Name, _Field), Schemas) ->
-    Schemas;
-expression_to_schema(?RECORD_FIELD_REST, Schemas) ->
-    Schemas;
-expression_to_schema(?DYN_FUN_ARGS(_F, Args), Schemas) ->
-    expressions_to_schema(Args, Schemas);
-expression_to_schema(?DYN_MOD_FUN_ARGS(_M, _F, Args), Schemas) ->
-    expressions_to_schema(Args, Schemas);
-expression_to_schema(?MOD_DYN_FUN_ARGS(_M, _F, Args), Schemas) ->
-    expressions_to_schema(Args, Schemas);
-expression_to_schema(?GEN_MOD_FUN_ARGS(MExpr, FExpr, Args), Schemas) ->
-    expressions_to_schema([MExpr, FExpr | Args], Schemas);
-expression_to_schema(?ATOM(_), Schemas) ->
-    Schemas;
-expression_to_schema(?INTEGER(_), Schemas) ->
-    Schemas;
-expression_to_schema(?FLOAT(_), Schemas) ->
-    Schemas;
-expression_to_schema(?CHAR(_), Schemas) ->
-    Schemas;
-expression_to_schema(?TUPLE(Elements), Schemas) ->
-    expressions_to_schema(Elements, Schemas);
-expression_to_schema(?EMPTY_LIST, Schemas) ->
-    Schemas;
-expression_to_schema(?LIST(Head, Tail), Schemas) ->
-    expressions_to_schema([Head, Tail], Schemas);
-expression_to_schema(?RECEIVE(Clauses), Schemas) ->
-    clauses_to_schema(Clauses, Schemas);
-expression_to_schema(?RECEIVE(Clauses, AfterExpr, AfterBody), Schemas) ->
-    expressions_to_schema([AfterExpr | AfterBody]
-                         ,clauses_to_schema(Clauses, Schemas)
-                         );
-expression_to_schema(?LAGER, Schemas) ->
-    Schemas;
-expression_to_schema(?MATCH(LHS, RHS), Schemas) ->
-    expressions_to_schema([LHS, RHS], Schemas);
-expression_to_schema(?BEGIN_END(Exprs), Schemas) ->
-    expressions_to_schema(Exprs, Schemas);
-expression_to_schema(?CASE(Expression, Clauses), Schemas) ->
-    clauses_to_schema(Clauses
-                     ,expression_to_schema(Expression, Schemas)
-                     );
-expression_to_schema(?IF(Clauses), Schemas) ->
-    clauses_to_schema(Clauses, Schemas);
-expression_to_schema(?MAP_CREATION(Exprs), Schemas) ->
-    expressions_to_schema(Exprs, Schemas);
-expression_to_schema(?MAP_UPDATE(_Var, Exprs), Schemas) ->
-    expressions_to_schema(Exprs, Schemas);
-expression_to_schema(?MAP_FIELD_ASSOC(K, V), Schemas) ->
-    expressions_to_schema([K, V], Schemas);
-expression_to_schema(?MAP_FIELD_EXACT(K, V), Schemas) ->
-    expressions_to_schema([K, V], Schemas).
+expression_to_schema(_Expression, Schema) ->
+    Schema.
 
 config_to_schema(_, 'get_all_kvs', _Args, Schemas) ->
     Schemas;

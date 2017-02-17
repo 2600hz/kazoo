@@ -45,10 +45,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "cluster_id",
-        "provisioning_type",
-        "provisioning_url"
-    ],
     "type": "object"
 }

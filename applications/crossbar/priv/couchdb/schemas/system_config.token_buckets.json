@@ -3,10 +3,31 @@
     "_id": "system_config.token_buckets",
     "description": "Schema for token_buckets system_config",
     "properties": {
+        "default": {
+            "properties": {
+                "max_bucket_tokens": {
+                    "properties": {
+                        "default": 100,
+                        "description": "token_buckets maximum bucket tokens",
+                        "type": "integer"
+                    }
+                }
+            }
+        },
         "inactivity_timeout_s": {
             "default": 600,
             "description": "token_buckets inactivity timeout in seconds",
             "type": "integer"
+        },
+        "tokens_fill_rate": {
+            "default": 10,
+            "description": "token_buckets tokens fill rate",
+            "type": "integer"
+        },
+        "tokens_fill_time": {
+            "default": "second",
+            "description": "token_buckets tokens fill time",
+            "type": "string"
         }
     },
     "type": "object"

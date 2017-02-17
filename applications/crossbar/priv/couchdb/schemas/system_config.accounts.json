@@ -17,8 +17,5 @@
             "description": "accounts master account id"
         }
     },
-    "required": [
-        "master_account_id"
-    ],
     "type": "object"
 }

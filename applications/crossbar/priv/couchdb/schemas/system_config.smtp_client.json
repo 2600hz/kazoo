@@ -47,8 +47,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "tls"
-    ],
     "type": "object"
 }

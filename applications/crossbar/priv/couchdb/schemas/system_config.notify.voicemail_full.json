@@ -12,8 +12,5 @@
             "description": "notify.voicemail_full default to"
         }
     },
-    "required": [
-        "default_to"
-    ],
     "type": "object"
 }

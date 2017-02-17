@@ -8,8 +8,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "url"
-    ],
     "type": "object"
 }

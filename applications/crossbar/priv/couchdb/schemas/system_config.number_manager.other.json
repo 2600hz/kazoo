@@ -15,9 +15,5 @@
             "description": "number_manager.other phonebook url"
         }
     },
-    "required": [
-        "endpoints",
-        "phonebook_url"
-    ],
     "type": "object"
 }

@@ -7,8 +7,5 @@
             "description": "notify.port_request_admin default to"
         }
     },
-    "required": [
-        "default_to"
-    ],
     "type": "object"
 }

@@ -70,9 +70,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "custom_sip_interface",
-        "sms"
-    ],
     "type": "object"
 }

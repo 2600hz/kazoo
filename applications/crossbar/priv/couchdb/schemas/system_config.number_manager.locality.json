@@ -7,8 +7,5 @@
             "description": "number_manager.locality url"
         }
     },
-    "required": [
-        "url"
-    ],
     "type": "object"
 }

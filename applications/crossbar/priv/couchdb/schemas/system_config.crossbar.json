@@ -162,9 +162,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "autoload_modules",
-        "ssl_ca_cert"
-    ],
     "type": "object"
 }
