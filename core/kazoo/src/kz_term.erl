@@ -17,6 +17,7 @@
         ,to_hex/1, to_hex_binary/1, to_hex_char/1
         ,to_list/1
         ,to_binary/1
+        ,to_api_binary/1
         ,to_atom/1, to_atom/2
         ,to_boolean/1
         ,to_date/1
@@ -134,6 +135,10 @@ to_binary(X) when is_atom(X) -> list_to_binary(atom_to_list(X));
 to_binary(X) when is_list(X) -> iolist_to_binary(X);
 to_binary(X) when is_pid(X) -> to_binary(pid_to_list(X));
 to_binary(X) when is_binary(X) -> X.
+
+-spec to_api_binary(atom() | string() | binary() | integer() | float() | pid() | iolist()) -> api_binary().
+to_api_binary('undefined') -> 'undefined';
+to_api_binary(Arg) -> to_binary(Arg).
 
 %% the safer version, won't let you leak atoms
 -spec to_atom(atom() | list() | binary() | integer() | float()) -> atom().
