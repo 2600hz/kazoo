@@ -111,9 +111,9 @@ del_doc(#{server := {App, Conn}}=Server, DbName, Doc, Options) ->
     DelDoc = prepare_doc_for_del(Server,DbName, Doc),
     {PreparedDoc, PublishDoc} = prepare_doc_for_save(DbName, DelDoc),
     try App:del_doc(Conn, DbName, PreparedDoc, Options) of
-        {'ok', [JObj | _]} -> kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
-                              kzs_cache:flush_cache_doc(DbName, JObj),
-                              {'ok', JObj};
+        {'ok', [JObj|_]} ->
+            kzs_publish:maybe_publish_doc(DbName, PublishDoc, JObj),
+            {'ok', JObj};
         Else -> Else
     catch
         Ex:Er -> lager:error("exception ~p : ~p", [Ex, Er]),
@@ -127,9 +127,9 @@ del_docs(#{server := {App, Conn}}=Server, DbName, Docs, Options) ->
     DelDocs = [prepare_doc_for_del(Server,DbName, D) || D <- Docs],
     {PreparedDocs, Publish} = lists:unzip([prepare_doc_for_save(DbName, D) || D <- DelDocs]),
     try App:del_docs(Conn, DbName, PreparedDocs, Options) of
-        {'ok', JObjs}=Ok -> kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
-                            kzs_cache:flush_cache_docs(DbName, JObjs),
-                            Ok;
+        {'ok', JObjs}=Ok ->
+            kzs_publish:maybe_publish_docs(DbName, Publish, JObjs),
+            Ok;
         Else -> Else
     catch
         _Ex:Er -> {'error', {_Ex, Er}}
