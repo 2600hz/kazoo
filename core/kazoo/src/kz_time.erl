@@ -97,6 +97,8 @@ iso8601_time(Timestamp) ->
     iso8601_time(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
 -spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601({_Y,_M,_D}=Date) ->
+    iso8601_date(Date);
 iso8601({{_Y,_M,_D}=Date, {0, 0, 0}}) ->
     iso8601_date(Date);
 iso8601({{_Y,_Mo,_D}=Date, {_H, _Mi, _S}=Time}) ->
