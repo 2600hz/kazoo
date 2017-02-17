@@ -457,9 +457,9 @@ remote_discovery(Number, Options) ->
                             )
     of
         {'ok', JObj} -> {'ok', create_discovery(kapi_discovery:results(JObj), Options)};
-        {'error', _Error} ->
-            lager:debug("error requesting number from amqp : ~p", [_Error]),
-            {'error', 'not_found'}
+        {'error', Error} ->
+            lager:debug("error requesting number from amqp: ~p", [Error]),
+            {'error', Error}
     end.
 -endif.
 
