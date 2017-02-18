@@ -10385,6 +10385,11 @@
                     "description": "number_manager force port out outbound",
                     "type": "boolean"
                 },
+                "local_feature_override": {
+                    "default": false,
+                    "description": "overrides the filtering of external features for local numbers",
+                    "type": "boolean"
+                },
                 "maximum_search_quantity": {
                     "default": 50,
                     "description": "maximum number of returned DIDs in search query",

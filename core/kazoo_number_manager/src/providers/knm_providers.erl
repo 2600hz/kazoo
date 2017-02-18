@@ -227,12 +227,12 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
 -spec local_denied_features(feature_parameters()) -> ne_binaries().
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
-    case kapps_config:get(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE) of
-        <<"true">> ->
+    case kapps_config:get_is_true(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE, 'false') of
+        'true' ->
             lager:debug("not denying external features on local number due to override"),
             [];
 
-        _NotEnabled ->
+        'false' ->
             lager:debug("denying external number features for local number"),
             ?EXTERNAL_NUMBER_FEATURES
     end.
