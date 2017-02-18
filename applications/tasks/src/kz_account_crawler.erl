@@ -327,11 +327,11 @@ maybe_test_for_low_balance(AccountId, AccountJObj) ->
 -spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
 test_for_low_balance(AccountId, AccountJObj) ->
     CurrentBalance = wht_util:current_balance(AccountId),
-    mayby_notify_for_low_balance(AccountJObj, CurrentBalance),
+    maybe_notify_for_low_balance(AccountJObj, CurrentBalance),
     maybe_topup_account(AccountJObj, CurrentBalance).
 
--spec mayby_notify_for_low_balance(kz_account:doc(), kz_transaction:units()) -> 'ok'.
-mayby_notify_for_low_balance(AccountJObj, CurrentBalance) ->
+-spec maybe_notify_for_low_balance(kz_account:doc(), kz_transaction:units()) -> 'ok'.
+maybe_notify_for_low_balance(AccountJObj, CurrentBalance) ->
     AccountId = kz_account:id(AccountJObj),
     Threshold = kz_account:low_balance_threshold(AccountJObj),
     lager:info("checking if account ~s balance $~w is below notification threshold $~w"
