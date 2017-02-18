@@ -13,7 +13,6 @@
             "type": "string"
         },
         "custom_sip_headers": {
-            "default": {},
             "description": "",
             "type": "object"
         },
@@ -22,7 +21,8 @@
             "type": "boolean"
         },
         "dynamic_flags": {
-            "description": ""
+            "description": "",
+            "type": "array"
         },
         "emit_account_id": {
             "description": "",
@@ -33,10 +33,12 @@
             "type": "boolean"
         },
         "from_uri_realm": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "hunt_account_id": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "ignore_early_media": {
             "default": false,
@@ -44,16 +46,21 @@
             "type": "boolean"
         },
         "outbound_flags": {
-            "description": ""
+            "default": [],
+            "description": "",
+            "type": "array"
         },
         "ringback": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "timeout": {
-            "description": ""
+            "description": "",
+            "type": "integer"
         },
         "to_did": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "use_local_resources": {
             "default": true,

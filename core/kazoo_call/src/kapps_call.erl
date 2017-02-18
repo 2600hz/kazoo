@@ -243,8 +243,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
             Prepend -> kvs_store('prepend_cid_name', Prepend, Call)
         end,
 
-    Call1#kapps_call{
-      call_id=CallId
+    Call1#kapps_call{call_id=CallId
                     ,request=Request
                     ,request_user=to_e164(RequestUser)
                     ,request_realm=RequestRealm
@@ -276,7 +275,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                     ,to_tag = kz_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
                     ,from_tag = kz_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
                     ,direction = kz_json:get_ne_value(<<"Call-Direction">>, RouteReq, direction(Call))
-     }.
+                    }.
 
 -spec from_route_win(kz_json:object()) -> call().
 from_route_win(RouteWin) ->
@@ -387,8 +386,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
     CCVs = kz_json:merge_recursive(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())),
     SHs = kz_json:merge_recursive(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, JObj, kz_json:new())),
     KVS = orddict:from_list(kz_json:to_proplist(kz_json:get_value(<<"Key-Value-Store">>, JObj, kz_json:new()))),
-    Call#kapps_call{
-      call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
+    Call#kapps_call{call_id = kz_json:get_ne_value(<<"Call-ID">>, JObj, call_id_direct(Call))
                    ,control_q = kz_json:get_ne_value(<<"Control-Queue">>, JObj, control_queue_direct(Call))
                    ,controller_q = kz_json:get_ne_value(<<"Controller-Queue">>, JObj, controller_queue(Call))
                    ,caller_id_name = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, caller_id_name(Call))
@@ -427,7 +425,7 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
                    ,from_tag = kz_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
                    ,direction = kz_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
-     }.
+                   }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -761,9 +759,9 @@ callee_id_number(#kapps_call{callee_id_number=CIDNumber}) -> CIDNumber.
 set_request(Request, #kapps_call{}=Call) when is_binary(Request) ->
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
     Call#kapps_call{request=Request
-                     ,request_user=to_e164(RequestUser)
-                     ,request_realm=RequestRealm
-                    }.
+                   ,request_user=to_e164(RequestUser)
+                   ,request_realm=RequestRealm
+                   }.
 
 -ifdef(TEST).
 to_e164(Number) -> Number.
@@ -1302,28 +1300,28 @@ get_recordings(Call) ->
 -include_lib("eunit/include/eunit.hrl").
 
 -define(UPDATERS, [fun(C) -> set_call_id(<<"123456789ABCDEF">>, C) end
-                   ,fun(C) -> set_control_queue(<<"control_queue">>, C) end
-                   ,fun(C) -> set_controller_queue(<<"controller_queue">>, C) end
-                   ,fun(C) -> set_caller_id_name(<<"caller_id_name">>, C) end
-                   ,fun(C) -> set_caller_id_number(<<"caller_id_number">>, C) end
-                   ,fun(C) -> set_callee_id_name(<<"callee_id_name">>, C) end
-                   ,fun(C) -> set_callee_id_number(<<"callee_id_number">>, C) end
-                   ,fun(C) -> set_request(<<"request_user@request_domain">>, C) end
-                   ,fun(C) -> set_from(<<"from_user@from_domain">>, C) end
-                   ,fun(C) -> set_to(<<"to_user@to_domain">>, C) end
-                   ,fun(C) -> set_account_db(<<"account%2F12%2F3456789">>, C) end
-                   ,fun(C) -> set_account_id(<<"123456789">>, C) end
-                   ,fun(C) -> set_authorizing_id(<<"987654321">>, C) end
-                   ,fun(C) -> set_authorizing_type(<<"test">>, C) end
-                   ,fun(C) -> set_owner_id(<<"abcdefghi">>, C) end
-                   ,fun(C) -> set_fetch_id(<<"1234567890ABCDEFG">>, C) end
-                   ,fun(C) -> set_bridge_id(<<"1234567890ABCDEF">>, C) end
-                   ,fun(C) -> set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
-                   ,fun(C) -> set_custom_channel_var(<<"key2">>, 2600, C) end
-                   ,fun(C) -> set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
-                   ,fun(C) -> kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
-                   ,fun(C) -> kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
-                   ,fun(C) -> kvs_store(<<"kvs_key_2">>, kz_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
+                  ,fun(C) -> set_control_queue(<<"control_queue">>, C) end
+                  ,fun(C) -> set_controller_queue(<<"controller_queue">>, C) end
+                  ,fun(C) -> set_caller_id_name(<<"caller_id_name">>, C) end
+                  ,fun(C) -> set_caller_id_number(<<"caller_id_number">>, C) end
+                  ,fun(C) -> set_callee_id_name(<<"callee_id_name">>, C) end
+                  ,fun(C) -> set_callee_id_number(<<"callee_id_number">>, C) end
+                  ,fun(C) -> set_request(<<"request_user@request_domain">>, C) end
+                  ,fun(C) -> set_from(<<"from_user@from_domain">>, C) end
+                  ,fun(C) -> set_to(<<"to_user@to_domain">>, C) end
+                  ,fun(C) -> set_account_db(<<"account%2F12%2F3456789">>, C) end
+                  ,fun(C) -> set_account_id(<<"123456789">>, C) end
+                  ,fun(C) -> set_authorizing_id(<<"987654321">>, C) end
+                  ,fun(C) -> set_authorizing_type(<<"test">>, C) end
+                  ,fun(C) -> set_owner_id(<<"abcdefghi">>, C) end
+                  ,fun(C) -> set_fetch_id(<<"1234567890ABCDEFG">>, C) end
+                  ,fun(C) -> set_bridge_id(<<"1234567890ABCDEF">>, C) end
+                  ,fun(C) -> set_custom_channel_var(<<"key1">>, <<"value1">>, C) end
+                  ,fun(C) -> set_custom_channel_var(<<"key2">>, 2600, C) end
+                  ,fun(C) -> set_custom_channel_var([<<"key3">>, <<"key4">>], 'true', C) end
+                  ,fun(C) -> kvs_store(<<"kvs_key_1">>, <<"kvs_value_1">>, C) end
+                  ,fun(C) -> kvs_store(<<"kvs_key_2">>, <<"kvs_value_2">>, C) end
+                  ,fun(C) -> kvs_store(<<"kvs_key_2">>, kz_json:from_list([{<<"sub_key_1">>, <<"sub_value_1">>}]), C) end
                   ]).
 
 %% TODO: I am out of the alloted time for this module, please add during another refactor

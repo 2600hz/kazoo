@@ -4,60 +4,67 @@
     "description": "Validator for the resources callflow's data object",
     "properties": {
         "bypass_e164": {
-            "description": "",
+            "description": "Use the original requested number instead of normalizing to E164",
             "type": "boolean"
         },
         "caller_id_type": {
             "default": "external",
-            "description": "",
+            "description": "Which configured caller-id to use (key in the 'caller_id' object)",
             "type": "string"
         },
         "custom_sip_headers": {
-            "default": {},
-            "description": "",
+            "description": "Custom SIP Headers to include on the outgoing INVITE",
             "type": "object"
         },
         "do_not_normalize": {
-            "description": "",
+            "description": "Use the original requested number instead of normalizing; otherwise try to apply the endpoint's dialplan to the requested number",
             "type": "boolean"
         },
         "dynamic_flags": {
-            "description": ""
+            "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+            "type": "array"
         },
         "emit_account_id": {
-            "description": "",
+            "description": "Toggles whether to put the account id in the SIP packets",
             "type": "boolean"
         },
         "format_from_uri": {
-            "description": "",
+            "description": "If true, puts the account realm in the From header",
             "type": "boolean"
         },
         "from_uri_realm": {
-            "description": ""
+            "description": "Override the From realm in the SIP packets",
+            "type": "string"
         },
         "hunt_account_id": {
-            "description": ""
+            "description": "When using local resources, use this account instead of the account making the call (useful for resellers)",
+            "type": "string"
         },
         "ignore_early_media": {
             "default": false,
-            "description": "",
+            "description": "Toggle whether to ignore early media",
             "type": "boolean"
         },
         "outbound_flags": {
-            "description": ""
+            "default": [],
+            "description": "List of flags to use when matching resources to route the call",
+            "type": "array"
         },
         "ringback": {
-            "description": ""
+            "description": "Tone or file to play while waiting for the leg to be answered",
+            "type": "string"
         },
         "timeout": {
-            "description": ""
+            "description": "How long, in seconds, to wait for the call to be answered",
+            "type": "integer"
         },
         "to_did": {
-            "description": ""
+            "description": "Statically set the DID to dial",
+            "type": "string"
         },
         "use_local_resources": {
             "default": true,
-            "description": "",
+            "description": "Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources",
             "type": "boolean"
         }
     },
