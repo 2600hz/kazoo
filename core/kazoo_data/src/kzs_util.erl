@@ -74,6 +74,7 @@ db_classification(?MATCH_MODB_SUFFIX_RAW(_Account,_Year,_Month)) -> 'modb';%   r
 db_classification(?MATCH_ACCOUNT_UNENCODED(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_encoded(_AccountId)) -> 'account';
 db_classification(?MATCH_ACCOUNT_ENCODED(_AccountId)) -> 'account';
+db_classification(?MATCH_PROVISIONER(_AccountId)) -> 'provisioner';
 db_classification(_Database) ->
     lager:warning("unknown type for database ~s", [_Database]),
     {current_stacktrace, ST} = erlang:process_info(self(),current_stacktrace),

@@ -287,6 +287,10 @@
         <<"account%2f", (A):2/binary, "%2f", (B):2/binary, "%2f", (Rest):28/binary>>
        ).
 
+-define(MATCH_PROVISIONER(Account),
+        <<"account/", (Account):34/binary, "-provisioner">>
+       ).
+
 -define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary
           ,"-", (Year):4/binary, (Month):2/binary
