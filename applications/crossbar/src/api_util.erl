@@ -1266,7 +1266,7 @@ do_create_resp_envelope(Context) ->
                    [{<<"auth_token">>, cb_context:auth_token(Context)}
                    ,{<<"status">>, <<"success">>}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_term:to_binary(node())}
+                   ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
                    ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
                    ,{<<"revision">>, kz_term:to_api_binary(cb_context:resp_etag(Context))}
@@ -1276,7 +1276,7 @@ do_create_resp_envelope(Context) ->
                    lager:debug("generating error ~b ~s response", [ErrorCode, ErrorMsg]),
                    [{<<"auth_token">>, kz_term:to_binary(cb_context:auth_token(Context))}
                    ,{<<"request_id">>, cb_context:req_id(Context)}
-                   ,{<<"node">>, kz_term:to_binary(node())}
+                   ,{<<"node">>, kz_nodes:node_encoded()}
                    ,{<<"version">>, kz_util:kazoo_version()}
                    ,{<<"timestamp">>, kz_time:iso8601(kz_time:current_tstamp())}
                    ,{<<"status">>, <<"error">>}
