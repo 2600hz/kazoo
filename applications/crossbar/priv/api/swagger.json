@@ -10344,6 +10344,16 @@
             },
             "type": "object"
         },
+        "system_config.nodes": {
+            "description": "Schema for nodes system_config",
+            "properties": {
+                "secret_for_node_leaking": {
+                    "description": "secret used for node leaking",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "system_config.notify": {
             "description": "Schema for notify system_config",
             "properties": {
