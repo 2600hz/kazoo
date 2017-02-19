@@ -458,7 +458,7 @@ init([]) ->
                 ," - "
                 ,(kz_term:to_binary(erlang:system_info('otp_release')))/binary
               >>,
-    
+
     self() ! {'heartbeat', State#state.heartbeat_ref},
     {'ok', State#state{version=Version, signature=node_encoded()}}.
 

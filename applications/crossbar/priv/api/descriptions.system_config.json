@@ -419,6 +419,7 @@
     "mobile_manager.url": "mobile_manager url",
     "modb.active_modbs": "modb active modbs",
     "modb.routines": "modb routines",
+    "nodes.secret_for_node_leaking": "secret used for node leaking",
     "notify.backoff_fudge_ms": "notify backoff fudge in milliseconds",
     "notify.cnam_request.default_to": "notify.cnam_request default to",
     "notify.content_transfer_encoding": "notify content transfer encoding",
