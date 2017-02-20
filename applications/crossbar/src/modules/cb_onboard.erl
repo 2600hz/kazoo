@@ -573,10 +573,11 @@ create_response(Context) ->
         'undefined' ->
             crossbar_util:response_invalid_data(JObj, Context);
         AccountId ->
+            TS = kz_time:current_tstamp(),
             Token = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, kz_json:get_value(<<"owner_id">>, JObj)}
-                    ,{<<"created">>, kz_time:current_tstamp()}
-                    ,{<<"modified">>, kz_time:current_tstamp()}
+                    ,{<<"created">>, TS}
+                    ,{<<"modified">>, TS}
                     ,{<<"method">>, kz_term:to_binary(?MODULE)}
                     ],
             case kz_datamgr:save_doc(?KZ_TOKEN_DB, kz_json:from_list(Token)) of
