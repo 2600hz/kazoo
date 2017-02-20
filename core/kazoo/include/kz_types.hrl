@@ -371,7 +371,7 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
-                 ,signature :: api_binary() | '_'
+                 ,md5 :: api_binary() | '_'
                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                  ,kapps = [] :: kapps_info() | '$1' | '_'
                  ,media_servers = [] :: media_servers() | '_'

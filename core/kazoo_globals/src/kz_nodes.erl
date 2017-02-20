@@ -70,7 +70,6 @@
 -define(FUDGE_FACTOR, 1.25).
 -define(APP_NAME, <<"kz_nodes">>).
 -define(APP_VERSION, <<"4.0.0">>).
--define(CONFIG_CAT, <<"nodes">>).
 
 %% kz_nodes lives in this app
 -define(APP_NAME_ATOM, 'kazoo_globals').
@@ -83,16 +82,12 @@
 -define(SIMPLE_ROW_STR, ?HEADER_COL ": ~s~n").
 -define(SIMPLE_ROW_NUM, ?HEADER_COL ": ~B~n").
 
--define(NODE_GEN_SECRET, kz_binary:rand_hex(16)).
--define(NODE_SIGNATURE_ID, <<"secret_for_node_leaking">>).
--define(NODE_SIGNATURE_SECRET, kapps_config:get_ne_binary(?CONFIG_CAT, ?NODE_SIGNATURE_ID, ?NODE_GEN_SECRET)).
-
 -record(state, {heartbeat_ref = erlang:make_ref() :: reference()
                ,tab :: ets:tid()
                ,notify_new = sets:new() :: sets:set()
                ,notify_expire = sets:new() :: sets:set()
                ,node = node() :: atom()
-               ,signature :: ne_binary()
+               ,md5 :: ne_binary()
                ,zone = 'local' :: atom()
                ,version :: ne_binary()
                ,zones = [] :: kz_proplist()
@@ -259,7 +254,7 @@ print_status(Nodes, Zone) ->
 -spec print_node_status(kz_node(), atom()) -> 'ok'.
 print_node_status(#kz_node{zone=NodeZone
                           ,node=N
-                          ,signature=Signature
+                          ,md5=MD5
                           ,version=Version
                           ,processes=Processes
                           ,ports=Ports
@@ -273,7 +268,7 @@ print_node_status(#kz_node{zone=NodeZone
                  ) ->
     MemoryUsage = kz_network_utils:pretty_print_bytes(UsedMemory),
     io:format(?SIMPLE_ROW_STR, [<<"Node">>, N]),
-    _ = maybe_print_signature(Signature),
+    _ = maybe_print_md5(MD5),
     io:format(?SIMPLE_ROW_STR, [<<"Version">>, Version]),
     io:format(?SIMPLE_ROW_STR, [<<"Memory Usage">>, MemoryUsage]),
     io:format(?SIMPLE_ROW_NUM, [<<"Processes">>, Processes]),
@@ -293,10 +288,10 @@ print_node_status(#kz_node{zone=NodeZone
 
     io:format("~n").
 
--spec maybe_print_signature(api_binary()) -> 'ok'.
-maybe_print_signature('undefined') -> 'ok';
-maybe_print_signature(Signature) ->
-    io:format(?SIMPLE_ROW_STR, [<<"Signature">>, Signature]).
+-spec maybe_print_md5(api_binary()) -> 'ok'.
+maybe_print_md5('undefined') -> 'ok';
+maybe_print_md5(MD5) ->
+    io:format(?SIMPLE_ROW_STR, [<<"md5">>, MD5]).
 
 -spec maybe_print_zone(ne_binary(), ne_binary()) -> 'ok'.
 maybe_print_zone(Zone, Zone) when Zone =/= <<"local">> ->
@@ -460,7 +455,7 @@ init([]) ->
               >>,
 
     self() ! {'heartbeat', State#state.heartbeat_ref},
-    {'ok', State#state{version=Version, signature=node_encoded()}}.
+    {'ok', State#state{version=Version, md5=node_encoded()}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -645,7 +640,7 @@ code_change(_OldVsn, State, _Extra) ->
 -spec create_node('undefined' | 5000..15000, nodes_state()) -> kz_node().
 create_node(Heartbeat, #state{zone=Zone
                              ,version=Version
-                             ,signature=Signature
+                             ,md5=MD5
                              }) ->
     add_kapps_data(#kz_node{expires=Heartbeat
                            ,broker=normalize_amqp_uri(kz_amqp_connections:primary_broker())
@@ -654,7 +649,7 @@ create_node(Heartbeat, #state{zone=Zone
                            ,ports=length(erlang:ports())
                            ,version=Version
                            ,zone=Zone
-                           ,signature=Signature
+                           ,md5=MD5
                            ,globals=kz_globals:stats()
                            ,node_info=node_info()
                            }).
@@ -737,10 +732,10 @@ advertise_payload(#kz_node{expires=Expires
                           ,registrations=Registrations
                           ,zone=Zone
                           ,globals=Globals
-                          ,signature=Signature
+                          ,md5=MD5
                           }) ->
     props:filter_undefined(
-      [{<<"Signature">>, Signature}
+      [{<<"md5">>, MD5}
       ,{<<"Expires">>, kz_term:to_binary(Expires)}
       ,{<<"WhApps">>, kapps_to_json(Whapps) }
       ,{<<"Media-Servers">>, media_servers_to_json(MediaServers)}
@@ -771,7 +766,7 @@ media_servers_from_json(Servers) ->
 from_json(JObj, State) ->
     Node = kz_json:get_value(<<"Node">>, JObj),
     #kz_node{node=kz_term:to_atom(Node, 'true')
-            ,signature=kz_json:get_value(<<"Signature">>, JObj)
+            ,md5=kz_json:get_value(<<"md5">>, JObj)
             ,expires=kz_term:to_integer(kz_json:get_integer_value(<<"Expires">>, JObj, 0) * ?FUDGE_FACTOR)
             ,kapps=kapps_from_json(kz_json:get_value(<<"WhApps">>, JObj, []))
             ,media_servers=media_servers_from_json(kz_json:get_value(<<"Media-Servers">>, JObj, kz_json:new()))
@@ -985,7 +980,7 @@ pool_state(Name, State, Workers, Overflow, Monitors) ->
 node_encoded() ->
     case application:get_env(?APP_NAME_ATOM, 'node_encoded') of
         'undefined' ->
-            Encoded = kz_base64url:encode(crypto:hmac(sha256, ?NODE_SIGNATURE_SECRET, kz_term:to_binary(node()))),
+            Encoded = kz_base64url:encode(crypto:hash(md5, kz_term:to_binary(node()))),
             application:set_env(?APP_NAME_ATOM, 'node_encoded', Encoded),
             Encoded;
         {'ok', Encoded} -> Encoded
