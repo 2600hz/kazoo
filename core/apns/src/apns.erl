@@ -210,7 +210,7 @@ send_message(
 -spec message_id() -> binary().
 message_id() ->
     {_, _, MicroSecs} = kz_time:now(),
-    Secs = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+    Secs = kz_time:current_tstamp(),
     First = Secs rem 65536,
     Last = MicroSecs rem 65536,
     <<First:2/unsigned-integer-unit:8, Last:2/unsigned-integer-unit:8>>.
@@ -227,8 +227,7 @@ message_id() ->
                     non_neg_integer().
 expiry(none) -> 0;
 expiry(Secs) when is_integer(Secs) ->
-    calendar:datetime_to_gregorian_seconds(calendar:universal_time())
-        - ?EPOCH + Secs;
+    kz_time:current_tstamp() - ?EPOCH + Secs;
 expiry(Date) ->
     calendar:datetime_to_gregorian_seconds(Date) - ?EPOCH.
 
