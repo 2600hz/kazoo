@@ -70,7 +70,7 @@ validate(Context, _, ConfigId) ->
     FullConfig = kz_json:merge_recursive(Config, strip_id(cb_context:req_data(Context))),
     Ctx1 = cb_context:validate_request_data(kapps_config_util:account_schema_name(ConfigId), cb_context:set_req_data(Context, FullConfig)),
     case cb_context:resp_status(Ctx1) of
-        success -> Context;
+        success -> cb_context:set_resp_status(Context, success);
         _ -> Ctx1
     end.
 
