@@ -94,7 +94,7 @@ post(Context, ConfigId) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
     case strip_id(cb_context:doc(Context)) of
-        ?JSON_WRAPPER([]) -> Context;
+        ?EMPTY_JSON_OBJECT -> Context;
         _ ->
             crossbar_doc:delete(Context, permanent)
     end.
