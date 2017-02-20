@@ -74,7 +74,7 @@ get_fax_doc(DataJObj, 'false') ->
     FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
     AccountDb = kapi_notifications:account_db(DataJObj),
 
-    case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
+    case kz_datamgr:open_cache_doc(AccountDb, {kzd_fax:type(), FaxId}) of
         {'ok', JObj} ->
             JObj;
         {'error', _E} ->
