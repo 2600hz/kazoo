@@ -12,10 +12,10 @@
         ,unix_timestamp_to_gregorian_seconds/1
         ,pretty_print_datetime/1
         ,rfc1036/1, rfc1036/2
-        ,iso8601/1
+        ,iso8601/1, iso8601_date/1, iso8601_time/1
         ,pretty_print_elapsed_s/1
         ,decr_timeout/2
-        ,pad_month/1
+        ,pad_month/1, pad_day/1
         ,microseconds_to_seconds/1
         ,milliseconds_to_seconds/1
         ,elapsed_s/1, elapsed_ms/1, elapsed_us/1
@@ -80,12 +80,29 @@ rfc1036({Date = {Y, Mo, D}, {H, Mi, S}}, TZ) ->
 rfc1036(Timestamp, TZ) when is_integer(Timestamp) ->
     rfc1036(calendar:gregorian_seconds_to_datetime(Timestamp), TZ).
 
+-spec iso8601_date(calendar:date() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601_date({Y,M,D}) ->
+    <<(kz_term:to_binary(Y))/binary, "-", (pad0(M))/binary, "-", (pad0(D))/binary>>;
+iso8601_date({{_Y,_M,_D}=Date, _}) ->
+    iso8601_date(Date);
+iso8601_date(Timestamp) ->
+    iso8601_date(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
+-spec iso8601_time(calendar:time() | calendar:datetime() | gregorian_seconds()) -> ne_binary().
+iso8601_time({H,M,S}) ->
+    <<(pad0(H))/binary, ":", (pad0(M))/binary, ":", (pad0(S))/binary>>;
+iso8601_time({{_,_,_}, {_H, _M, _S}=Time}) ->
+    iso8601_time(Time);
+iso8601_time(Timestamp) ->
+    iso8601_time(calendar:gregorian_seconds_to_datetime(Timestamp)).
+
 -spec iso8601(calendar:datetime() | gregorian_seconds()) -> ne_binary().
-iso8601({{Y,M,D},_}) ->
-    <<(kz_term:to_binary(Y))/binary, "-"
-      ,(kz_binary:pad_left(kz_term:to_binary(M), 2, <<"0">>))/binary, "-"
-      ,(kz_binary:pad_left(kz_term:to_binary(D), 2, <<"0">>))/binary
-    >>;
+iso8601({_Y,_M,_D}=Date) ->
+    iso8601_date(Date);
+iso8601({{_Y,_M,_D}=Date, {0, 0, 0}}) ->
+    iso8601_date(Date);
+iso8601({{_Y,_Mo,_D}=Date, {_H, _Mi, _S}=Time}) ->
+    <<(iso8601_date(Date))/binary, "T", (iso8601_time(Time))/binary>>;
 iso8601(Timestamp) when is_integer(Timestamp) ->
     iso8601(calendar:gregorian_seconds_to_datetime(Timestamp)).
 
@@ -227,10 +244,16 @@ format_datetime() ->
 format_datetime(Timestamp) ->
     list_to_binary([format_date(Timestamp), " ", format_time(Timestamp)]).
 
+-spec pad0(integer() | ne_binary()) -> ne_binary().
+pad0(<<_/binary>> = Number) ->
+    pad0(kz_term:to_integer(Number));
+pad0(Number) when Number < 10 ->
+    <<"0", (kz_term:to_binary(Number))/binary>>;
+pad0(Number) ->
+    kz_term:to_binary(Number).
+
 -spec pad_month(kz_month() | ne_binary()) -> ne_binary().
-pad_month(<<_/binary>> = Month) ->
-    pad_month(kz_term:to_integer(Month));
-pad_month(Month) when Month < 10 ->
-    <<"0", (kz_term:to_binary(Month))/binary>>;
-pad_month(Month) ->
-    kz_term:to_binary(Month).
+pad_month(Month) -> pad0(Month).
+
+-spec pad_day(kz_day() | ne_binary()) -> ne_binary().
+pad_day(Day) -> pad0(Day).

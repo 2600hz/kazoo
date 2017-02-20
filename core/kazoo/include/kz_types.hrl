@@ -360,7 +360,9 @@
        ).
 
 %% KZ_NODES types
--record(whapp_info, {startup :: gregorian_seconds()}).
+-record(whapp_info, {startup :: gregorian_seconds()
+                    ,roles = [] :: ne_binaries()
+                    }).
 
 -type whapp_info() :: #whapp_info{}.
 -type kapps_info() :: [{binary(), whapp_info()}].
@@ -369,6 +371,7 @@
 -type media_servers() :: [media_server()].
 
 -record(kz_node, {node = node() :: atom() | '$1' | '$2' | '_'
+                 ,md5 :: api_binary() | '_'
                  ,expires = 0 :: non_neg_integer() | 'undefined' | '$2' | '_'
                  ,kapps = [] :: kapps_info() | '$1' | '_'
                  ,media_servers = [] :: media_servers() | '_'

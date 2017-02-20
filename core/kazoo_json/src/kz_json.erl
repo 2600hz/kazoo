@@ -261,7 +261,7 @@ recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
 recursive_from_list(X) when is_list(X) -> X;
 recursive_from_list(X) when is_binary(X) -> X;
-recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601({Date, {0,0,0}});
+recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601_date(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
 recursive_from_list(_Else) -> null.
 

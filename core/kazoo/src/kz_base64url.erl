@@ -11,9 +11,6 @@
         ,encode/1
         ]).
 
--include("kazoo_auth.hrl").
-
-
 -spec encode(binary() | iolist()) -> binary().
 encode(Bin) when is_binary(Bin) ->
     << << (urlencode_digit(D)) >> || <<D>> <= base64:encode(Bin), D =/= $= >>;

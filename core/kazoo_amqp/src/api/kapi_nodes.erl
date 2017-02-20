@@ -29,6 +29,7 @@
                                     ,<<"Version">>
                                     ,<<"WhApps">>
                                     ,<<"Zone">>
+                                    ,<<"md5">>
                                     ]).
 -define(ADVERTISE_VALUES, [{<<"Event-Category">>, <<"nodes">>}
                           ,{<<"Event-Name">>, <<"advertise">>}
