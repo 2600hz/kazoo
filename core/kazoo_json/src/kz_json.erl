@@ -1208,9 +1208,9 @@ join_keys(K1, K2) -> [K1, K2].
 -spec flatten_key(composite_key(), any()) -> [{composite_key(), any()}].
 flatten_key(K, V = ?JSON_WRAPPER([])) -> [{K, V}];
 flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
-    [flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L];
-flatten_key(K, V) ->
-    [{K, V}].
+    [ flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L ];
+flatten_key(K, V) when is_list(K) -> [ {K, V} ];
+flatten_key(K, V) -> [ {[K], V} ].
 
 -spec expand(object()) -> object().
 expand(?JSON_WRAPPER(L)) when is_list(L) ->
