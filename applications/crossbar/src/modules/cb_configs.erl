@@ -19,6 +19,7 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 -define(DEFAULT_NODE, <<"default">>).
 
 %%%===================================================================
@@ -46,24 +47,7 @@ resource_exists(_) -> true.
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, ConfigId) ->
-    try
-        validate(Context, cb_context:req_verb(Context), ConfigId)
-    catch
-        _:{badmatch, {invalid_document, Errors} = Error} ->
-            lager:error("schema validation error: ~p", [parse_error(Error)]),
-            cb_context:failed(Context, Errors);
-        _:{badmatch,{error,enoent}} ->
-            lager:error("schema validation error: no schema for config"),
-            cb_context:add_system_error(bad_identifier, Context);
-        _:{badmatch,{error,not_found}} ->
-            lager:error("schema validation error: no schema for config"),
-            cb_context:add_system_error(bad_identifier, Context);
-        _C:E ->
-            lager:error("validation generic error: ~p", [E]),
-            ST = erlang:get_stacktrace(),
-            kz_util:log_stacktrace(ST),
-            error_validation(Context)
-    end.
+    validate(Context, cb_context:req_verb(Context), ConfigId).
 
 -spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
 
@@ -76,13 +60,19 @@ validate(Context, ?HTTP_DELETE, ConfigId) ->
               {ok, Document} -> Document;
               _ -> set_id(ConfigId, kz_json:new())
           end,
-    pass_validation(Context, Doc);
+    cb_context:setters(Context,[
+                                {fun cb_context:set_doc/2, Doc}
+                               ,{fun cb_context:set_resp_status/2, success}
+                               ]);
 
 validate(Context, _, ConfigId) ->
     Config = kapps_config_util:read(cb_context:account_id(Context), ConfigId),
     FullConfig = kz_json:merge_recursive(Config, strip_id(cb_context:req_data(Context))),
-    valid = kapps_config_util:validate_account_schema(ConfigId, FullConfig),
-    cb_context:set_resp_status(Context, success).
+    Ctx1 = cb_context:validate_request_data(kapps_config_util:account_schema_name(ConfigId), cb_context:set_req_data(Context, FullConfig)),
+    case cb_context:resp_status(Ctx1) of
+        success -> Context;
+        _ -> Ctx1
+    end.
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ConfigId) -> post(Context, ConfigId).
@@ -104,7 +94,7 @@ post(Context, ConfigId) ->
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
     case strip_id(cb_context:doc(Context)) of
-        {[]} -> Context;
+        ?JSON_WRAPPER([]) -> Context;
         _ ->
             crossbar_doc:delete(Context, permanent)
     end.
@@ -117,20 +107,3 @@ set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, doc_id(ConfigId), JObj).
 
 -spec strip_id(kz_json:object()) -> kz_json:object().
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
-
--spec pass_validation(cb_context:context(), kz_json:object()) -> cb_context:context().
-pass_validation(Context, JObj) ->
-    cb_context:setters(Context,[
-                                {fun cb_context:set_doc/2, JObj}
-                               ,{fun cb_context:set_resp_status/2, success}
-                               ]).
-
--spec error_validation(cb_context:context()) -> cb_context:context().
-error_validation(Context) ->
-    cb_context:setters(Context, [
-                                 {fun cb_context:set_resp_error_code/2, 400}
-                                ,{fun cb_context:set_resp_status/2, error}
-                                ]).
-
-parse_error({invalid_document, [{data_invalid, _Schema, Error, _Doc, Path}]}) -> {Error, Path};
-parse_error(X) -> X.

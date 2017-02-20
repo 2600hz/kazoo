@@ -8,7 +8,6 @@
         ,account_schema_name/1
         ,account_schema/1
         ,system_schema/1
-        ,validate_account_schema/2
         ]).
 
 -spec doc_id(ne_binary()) -> ne_binary().
@@ -97,17 +96,6 @@ account_schema(Config) when is_binary(Config) ->
     Name = account_schema_name(Config),
     {ok, Schema} = kz_json_schema:load(Name),
     Schema.
-
--spec validate_account_schema(api_binary(), kz_json:object()) -> no_schema_present | valid | {invalid_document, term()}.
-validate_account_schema(ConfigId, JObj) ->
-    case kz_json_schema:load(account_schema_name(ConfigId)) of
-        {ok, Schema} ->
-            case kz_json_schema:validate(Schema, JObj) of
-                {ok, _} -> valid;
-                {error, Error} -> {invalid_document, Error}
-            end;
-        _ -> no_schema_present
-    end.
 
 -spec account_db(ne_binary()) -> ne_binary().
 account_db(Account) when is_binary(Account) -> kz_util:format_account_id(Account, 'encoded').
