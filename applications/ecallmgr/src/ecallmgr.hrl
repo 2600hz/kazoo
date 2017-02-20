@@ -303,6 +303,7 @@
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
+                              ,{<<"X-Billing-Number">>, <<"sip_h_X-Billing-Number">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
