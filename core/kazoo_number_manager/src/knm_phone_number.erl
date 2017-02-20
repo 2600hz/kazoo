@@ -1120,10 +1120,12 @@ created(#knm_phone_number{created = undefined}) -> kz_util:current_tstamp();
 created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_created(PN=#knm_phone_number{created = undefined}, undefined) ->
+    PN#knm_phone_number{created = kz_time:current_tstamp()};
 set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
-    PN#knm_phone_number{created=Created}.
+    ?DIRTY(PN#knm_phone_number{created=Created}).
 
 %%--------------------------------------------------------------------
 %% @public
