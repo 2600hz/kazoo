@@ -22,7 +22,7 @@
 -define(U_CONFIG_CAT, <<"crossbar.ubiquiti">>).
 
 -define(UBIQUITI_AUTH_TOKENS, kapps_config:get_integer(?U_CONFIG_CAT, <<"tokens_per_request">>, 35)).
--define(UBIQUITI_PROVIDER_ID, kapps_config:get(?U_CONFIG_CAT, <<"sso_provider_id">>)).
+-define(UBIQUITI_PROVIDER_ID, kapps_config:get_binary(?U_CONFIG_CAT, <<"sso_provider_id">>)).
 
 -define(SSO_STAGING_URI, <<"https://sso-stage.ubnt.com/api/sso/v1/">>).
 -define(SSO_PROD_URI, <<"https://sso.ubnt.com/api/sso/v1/">>).
@@ -33,8 +33,8 @@
 
 -define(SSO_PROVIDER, <<"ubiquiti">>).
 
--define(SSO_ENV, kapps_config:get(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
--define(SSO_URL, kapps_config:get(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
+-define(SSO_ENV, kapps_config:get_binary(?U_CONFIG_CAT, <<"sso_environment">>, ?SSO_STAGING_ENV)).
+-define(SSO_URL, kapps_config:get_binary(?U_CONFIG_CAT, [?SSO_ENV, ?SSO_URL_KEY])).
 
 %%%===================================================================
 %%% API

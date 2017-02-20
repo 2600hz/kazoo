@@ -8854,7 +8854,8 @@
                     "type": "string"
                 },
                 "sso_provider_id": {
-                    "description": "crossbar.ubiquiti sso provider id"
+                    "description": "crossbar.ubiquiti sso provider id",
+                    "type": "string"
                 },
                 "staging": {
                     "properties": {
