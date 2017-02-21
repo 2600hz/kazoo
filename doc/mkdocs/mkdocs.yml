@@ -143,6 +143,10 @@ pages:
   - 'Teletype':
     - 'applications/teletype/doc/README.md'
     - 'applications/teletype/doc/maintenance.md'
+- 'Core':
+  - 'Kazoo Endpoints':
+    - 'Formatters': 'core/kazoo_endpoint/doc/formatters.md'
+    - 'CallerID Privacy': 'core/kazoo_endpoint/doc/privacy-cid.md'
 - 'Articles':
   - 'Introduction to Storage Plans - S3': 'doc/blog/storage.md'
   - 'Bypass Media Mode': 'doc/blog/bypass_media.md'
