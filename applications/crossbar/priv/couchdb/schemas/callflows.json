@@ -40,7 +40,8 @@
                 "type": "string"
             },
             "required": false,
-            "type": "array"
+            "type": "array",
+            "uniqueItems": true
         },
         "patterns": {
             "default": [],
