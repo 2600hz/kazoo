@@ -121,6 +121,8 @@ render(TemplateId, Macros) ->
 
 render(TemplateId, Macros, DataJObj) ->
     put('template_id', TemplateId),
+    JMacros = kz_json:from_list_recursive(Macros),
+    put('macros', JMacros),
     render(TemplateId, Macros, DataJObj, teletype_util:is_preview(DataJObj)).
 
 render(TemplateId, Macros, DataJObj, 'false') ->
