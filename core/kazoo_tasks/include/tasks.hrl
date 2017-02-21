@@ -1,6 +1,7 @@
 -ifndef(KAZOO_TASKS_HRL).
 
 -define(KZ_TASKS_BY_ACCOUNT, <<"tasks/listing_by_account">>).
+-define(KZ_TASKS_BY_CREATED, <<"tasks/listing_by_created">>).
 
 -define(KZ_TASKS_ANAME_IN, <<"in.csv">>).
 -define(KZ_TASKS_ANAME_OUT, <<"out.csv">>).
