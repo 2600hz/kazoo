@@ -656,9 +656,10 @@ maybe_publish_channel_state(Props, Node) ->
     %% NOTE: this will significantly reduce AMQP request however if a ecallmgr
     %%   becomes disconnected any calls it previsouly controlled will not produce
     %%   CDRs.  The long-term strategy is to round-robin CDR events from mod_kazoo.
+    Event = ecallmgr_call_events:get_event_name(Props),
     case props:is_true(<<"Publish-Channel-State">>, Props, 'true')
         andalso ecallmgr_config:get_boolean(<<"publish_channel_state">>, 'true', Node) of
-        'false' -> lager:debug("not publishing channel state");
+        'false' -> lager:debug("not publishing channel state ~s", [Event]);
         'true' ->
             case ecallmgr_config:get_boolean(<<"restrict_channel_state_publisher">>, 'false') of
                 'false' -> ecallmgr_call_events:process_channel_event(Props);
@@ -669,12 +670,13 @@ maybe_publish_channel_state(Props, Node) ->
 -spec maybe_publish_restricted(kz_proplist()) -> 'ok'.
 maybe_publish_restricted(Props) ->
     EcallmgrNode = kz_term:to_binary(node()),
+    Event = ecallmgr_call_events:get_event_name(Props),
 
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props) of
         'undefined' -> ecallmgr_call_events:process_channel_event(Props);
         EcallmgrNode -> ecallmgr_call_events:process_channel_event(Props);
         _EventEcallmgr ->
-            lager:debug("channel state for call controlled by another ecallmgr(~s), not publishing", [_EventEcallmgr])
+            lager:debug("channel state ~s for call controlled by another ecallmgr(~s), not publishing", [Event, _EventEcallmgr])
     end.
 
 -spec props_to_record(kz_proplist(), atom()) -> channel().

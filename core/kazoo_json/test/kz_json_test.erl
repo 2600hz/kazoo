@@ -561,10 +561,10 @@ sum_test_() ->
 from_list_recursive_test() ->
     Obj1 = kz_json:from_list([{<<"send_to">>, [<<"someone@somedomain.com">>]}]),
     Obj2 = kz_json:from_list([{<<"email">>, Obj1}]),
-    L1 = [{<<"fax_hangup_code">>,200}
-         ,{<<"fax_hangup_cause">>,<<"NORMAL_CLEARING">>}
+    L1 = [{<<"fax_hangup_codes">>, [200, 201, 202]}
+         ,{<<"fax_hangup_cause">>, <<"NORMAL_CLEARING">>}
          ],
-    L3 = [{<<"fax">>, [{<<"id">>,<<"201702-1b6cfec4e3ab0b7bb97ced78bf431f39">>}
+    L3 = [{<<"fax">>, [{<<"id">>, "201702-1b6cfec4e3ab0b7bb97ced78bf431f39"}
                       ,{<<"info">>, L1}
                       ,{<<"notifications">>, Obj2}
                       ]}],

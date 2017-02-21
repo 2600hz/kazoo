@@ -255,11 +255,15 @@ from_list_recursive(L)
 recursive_from_list([First | _]=List)
   when is_list(List)
        andalso is_tuple(First)  ->
-    set_values([{K, recursive_from_list(V)} || {K,V} <- List], new());
+    set_values([{kz_term:to_binary(K), recursive_from_list(V)} || {K,V} <- List], new());
 recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
-recursive_from_list(X) when is_list(X) -> X;
+recursive_from_list(X) when is_list(X) ->
+    case io_lib:printable_unicode_list(X) of
+        'true' -> kz_term:to_binary(X);
+        'false' -> [recursive_from_list(Xn) || Xn <- X]
+    end;
 recursive_from_list(X) when is_binary(X) -> X;
 recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601_date(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);

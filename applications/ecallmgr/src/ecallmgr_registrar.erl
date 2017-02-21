@@ -101,6 +101,7 @@
                       ,authorizing_id :: api_binary() | '_'
                       ,authorizing_type :: api_binary() | '_'
                       ,owner_id :: api_binary() | '_'
+                      ,presence_id :: api_binary() | '_'
                       ,initial = 'true' :: boolean() | '_'
                       ,account_realm :: api_binary() | '_' | '$2'
                       ,account_name :: api_binary() | '_'
@@ -883,6 +884,10 @@ augment_registration(Reg, JObj) ->
                                           ,[JObj, CCVs]
                                           ,Reg#registration.owner_id
                                           )
+                    ,presence_id=kz_json:find(<<"Presence-ID">>
+                                             ,[JObj, CCVs]
+                                             ,Reg#registration.presence_id
+                                             )
                     ,authorizing_id=kz_json:find(<<"Authorizing-ID">>
                                                 ,[JObj, CCVs]
                                                 ,Reg#registration.authorizing_id
@@ -1040,6 +1045,7 @@ update_registration(#registration{authorizing_id=AuthorizingId
                                  ,suppress_unregister=SuppressUnregister
                                  ,register_overwrite_notify=RegisterOverwrite
                                  ,owner_id=OwnerId
+                                 ,presence_id=PresenceId
                                  ,id=Id
                                  ,account_realm=AccountRealm
                                  ,account_name=AccountName
@@ -1049,6 +1055,7 @@ update_registration(#registration{authorizing_id=AuthorizingId
             ,{#registration.authorizing_id, AuthorizingId}
             ,{#registration.authorizing_type, AuthorizingType}
             ,{#registration.owner_id, OwnerId}
+            ,{#registration.presence_id, PresenceId}
             ,{#registration.suppress_unregister, SuppressUnregister}
             ,{#registration.register_overwrite_notify, RegisterOverwrite}
             ,{#registration.account_realm, AccountRealm}
@@ -1157,6 +1164,7 @@ to_props(Reg) ->
       ,{<<"Suppress-Unregister-Notify">>, Reg#registration.suppress_unregister}
       ,{<<"Register-Overwrite-Notify">>, Reg#registration.register_overwrite_notify}
       ,{<<"Owner-ID">>, Reg#registration.owner_id}
+      ,{<<"Presence-ID">>, Reg#registration.presence_id}
       ,{<<"Registrar-Node">>, Reg#registration.registrar_node}
       ,{<<"Registrar-Hostname">>, Reg#registration.registrar_hostname}
       ,{<<"Bridge-RURI">>, Reg#registration.bridge_uri}

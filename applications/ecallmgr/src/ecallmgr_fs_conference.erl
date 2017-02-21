@@ -117,7 +117,7 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('bind_to_events', #state{node=Node}=State) ->
-    case gproc:reg({'p', 'l', {'event', Node, <<"conference::maintenance">>}}) of
+    case gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"conference::maintenance">>)}) of
         'true' -> {'noreply', State};
         'false' -> {'stop', 'gproc_badarg', State}
     end;
@@ -256,7 +256,7 @@ publish_event(Action, Props, Node) ->
 
 publish_event(Action, #conference{handling_locally=IsLocal} = Conference, Props, _Node) ->
     case props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
-        orelse (props:is_true(<<"Publish-Event-State">>, Props, 'true')
+        orelse (props:is_true(<<"Publish-Channel-State">>, Props, 'true')
                 andalso IsLocal)
     of
         'true' -> publish_event(conference_event(Action, Conference, Props));
