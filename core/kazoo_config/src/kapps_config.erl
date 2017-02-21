@@ -16,6 +16,7 @@
 -export([get/2, get/3, get/4
         ,get_all_kvs/1
         ,get_current/2, get_current/3, get_current/4
+        ,get_category/1
         ]).
 
 -export([get_node_value/2, get_node_value/3, get_node_value/4]).
