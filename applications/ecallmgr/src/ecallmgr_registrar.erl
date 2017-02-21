@@ -885,9 +885,9 @@ augment_registration(Reg, JObj) ->
                                           ,Reg#registration.owner_id
                                           )
                     ,presence_id=kz_json:find(<<"Presence-ID">>
-                                                ,[JObj, CCVs]
-                                                ,Reg#registration.presence_id
-                                                )
+                                             ,[JObj, CCVs]
+                                             ,Reg#registration.presence_id
+                                             )
                     ,authorizing_id=kz_json:find(<<"Authorizing-ID">>
                                                 ,[JObj, CCVs]
                                                 ,Reg#registration.authorizing_id
