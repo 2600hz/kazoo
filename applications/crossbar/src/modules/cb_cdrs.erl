@@ -349,19 +349,17 @@ load_cdr_summary(Context, _, []) ->
     cb_context:set_resp_status(Context, 'success');
 load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
     Context1 = cb_context:set_account_db(Context, Db),
-    Context2 = crossbar_doc:load_view(
-                 ?CB_SUMMARY_VIEW
+    Context2 = crossbar_doc:load_view(?CB_SUMMARY_VIEW
                                      ,ViewOptions
                                      ,Context1
                                      ,fun normalize_summary_results/2
-                ),
+                                     ),
     case cb_context:resp_status(Context2) of
         'success' ->
-            load_cdr_summary(
-              combine_cdr_summary(Context, Context2)
+            load_cdr_summary(combine_cdr_summary(Context, Context2)
                             ,ViewOptions
                             ,Dbs
-             );
+                            );
         _Else -> Context2
     end.
 

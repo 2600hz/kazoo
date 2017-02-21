@@ -100,8 +100,7 @@ input_mime(APIJObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec all() -> kz_json:objects().
-all() ->
-    view([]).
+all() -> view([]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -109,9 +108,10 @@ all() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec all(ne_binary()) -> kz_json:objects().
-all(AccountId=?NE_BINARY) ->
-    view([{'startkey', [AccountId]}
-         ,{'endkey', [AccountId, kz_json:new()]}
+all(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    view([{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
+         ,{endkey, [AccountId]}
+         ,descending
          ]).
 
 %%--------------------------------------------------------------------
@@ -275,19 +275,13 @@ are_mandatories_unset(IsMandatory, Row) ->
 
 -spec view(list()) -> kz_json:objects().
 view(ViewOptions) ->
-    case kz_datamgr:get_results(?KZ_TASKS_DB, ?KZ_TASKS_BY_ACCOUNT, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_TASKS_DB, ?KZ_TASKS_BY_CREATED, ViewOptions) of
         {'ok', []} -> [];
-        {'ok', JObjs} ->
-            Found = [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs],
-            lists:sort(fun compare_tasks/2, Found);
+        {'ok', JObjs} -> [kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("error viewing tasks (~p): ~p", [ViewOptions, _R]),
             []
     end.
-
--spec compare_tasks(kz_json:object(), kz_json:object()) -> boolean().
-compare_tasks(JObjA, JObjB) ->
-    kz_doc:created(JObjA) =< kz_doc:created(JObjB).
 
 -spec save_new_task(task()) -> {'ok', kz_json:object()} |
                                {'error', any()}.

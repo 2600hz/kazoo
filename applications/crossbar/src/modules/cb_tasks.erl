@@ -506,21 +506,16 @@ read_attachment_file(TaskId, Context, AttachmentName) ->
 -spec summary(cb_context:context()) -> cb_context:context().
 summary(Context) ->
     AccountId = cb_context:account_id(Context),
-    ViewOptions = [{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
+    ViewOptions = [{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
+                  ,{endkey, [AccountId]}
+                  ,descending
                   ],
-    crossbar_doc:load_view(?KZ_TASKS_BY_ACCOUNT
+    crossbar_doc:load_view(?KZ_TASKS_BY_CREATED
                           ,ViewOptions
                           ,set_db(Context)
                           ,fun normalize_view_results/2
                           ).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Normalizes the resuts of a view
-%% @end
-%%--------------------------------------------------------------------
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj) | Acc].
