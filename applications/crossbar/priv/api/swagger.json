@@ -7794,6 +7794,16 @@
                     "description": "cdr ignore loopback bowout",
                     "type": "boolean"
                 },
+                "refresh_timeout": {
+                    "default": 900,
+                    "description": "time in seconds to to trigger cdrs view refresh",
+                    "type": "integer"
+                },
+                "refresh_view_threshold": {
+                    "default": 0,
+                    "description": "number of cdrs to trigger view refresh",
+                    "type": "integer"
+                },
                 "store_anonymous": {
                     "default": false,
                     "description": "cdr store anonymous",
@@ -8115,6 +8125,11 @@
         "system_config.crossbar.cdrs": {
             "description": "Schema for crossbar.cdrs system_config",
             "properties": {
+                "cdr_stale_view": {
+                    "default": false,
+                    "description": "force cdr to return stale records only",
+                    "type": "boolean"
+                },
                 "maximum_bulk": {
                     "default": 50,
                     "description": "crossbar.cdrs maximum bulk",
