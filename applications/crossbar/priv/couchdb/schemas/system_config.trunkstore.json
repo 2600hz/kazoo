@@ -28,8 +28,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "default_caller_id_number"
-    ],
     "type": "object"
 }

@@ -22,9 +22,5 @@
             "type": "array"
         }
     },
-    "required": [
-        "apple",
-        "google"
-    ],
     "type": "object"
 }

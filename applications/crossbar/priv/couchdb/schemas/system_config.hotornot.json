@@ -67,8 +67,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "rate_version"
-    ],
     "type": "object"
 }

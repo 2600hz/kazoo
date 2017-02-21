@@ -10,6 +10,7 @@
 -module(kz_doc).
 
 -include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
         ,public_fields/1
@@ -231,7 +232,7 @@ attachments(JObj, Default) ->
     A1 = kz_json:get_value(?KEY_ATTACHMENTS, JObj, kz_json:new()),
     A2 = kz_json:get_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, kz_json:new()),
     case kz_json:merge_jobjs(A1, A2) of
-        {[]} -> Default;
+        ?EMPTY_JSON_OBJECT -> Default;
         A3 -> A3
     end.
 
@@ -241,7 +242,7 @@ stub_attachments(JObj) ->
     stub_attachments(JObj, 'undefined').
 stub_attachments(JObj, Default) ->
     case kz_json:get_value(?KEY_ATTACHMENTS, JObj, kz_json:new()) of
-        {[]} -> Default;
+        ?EMPTY_JSON_OBJECT -> Default;
         A3 -> A3
     end.
 
@@ -251,7 +252,7 @@ external_attachments(JObj) ->
     external_attachments(JObj, 'undefined').
 external_attachments(JObj, Default) ->
     case kz_json:get_value(?KEY_EXTERNAL_ATTACHMENTS, JObj, kz_json:new()) of
-        {[]} -> Default;
+        ?EMPTY_JSON_OBJECT -> Default;
         A3 -> A3
     end.
 

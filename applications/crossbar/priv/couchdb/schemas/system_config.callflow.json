@@ -182,9 +182,5 @@
             }
         }
     },
-    "required": [
-        "call_recording",
-        "voicemail"
-    ],
     "type": "object"
 }

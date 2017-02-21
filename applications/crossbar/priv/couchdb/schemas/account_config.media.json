@@ -15,8 +15,5 @@
             }
         }
     },
-    "required": [
-        "call_recording"
-    ],
     "type": "object"
 }

@@ -28,8 +28,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "assume_inbound_e164"
-    ],
     "type": "object"
 }

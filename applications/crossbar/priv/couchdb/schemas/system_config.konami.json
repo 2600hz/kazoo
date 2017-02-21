@@ -37,8 +37,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "transfer"
-    ],
     "type": "object"
 }

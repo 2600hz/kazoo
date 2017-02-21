@@ -47,9 +47,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "token",
-        "user"
-    ],
     "type": "object"
 }

@@ -18,8 +18,5 @@
             }
         }
     },
-    "required": [
-        "outbound"
-    ],
     "type": "object"
 }

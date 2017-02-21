@@ -12,8 +12,5 @@
             "description": "number_manager.vitelity routesip"
         }
     },
-    "required": [
-        "routesip"
-    ],
     "type": "object"
 }

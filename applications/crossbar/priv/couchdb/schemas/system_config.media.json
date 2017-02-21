@@ -147,9 +147,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "call_recording",
-        "default_language"
-    ],
     "type": "object"
 }

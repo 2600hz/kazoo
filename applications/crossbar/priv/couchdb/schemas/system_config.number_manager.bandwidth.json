@@ -37,8 +37,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "endpoints"
-    ],
     "type": "object"
 }

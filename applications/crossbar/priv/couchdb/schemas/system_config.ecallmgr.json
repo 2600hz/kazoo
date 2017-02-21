@@ -367,12 +367,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "default_ringback",
-        "fs_reconnect_cmds",
-        "node_commands",
-        "should_detect_inband_dtmf",
-        "sofia_conf"
-    ],
     "type": "object"
 }

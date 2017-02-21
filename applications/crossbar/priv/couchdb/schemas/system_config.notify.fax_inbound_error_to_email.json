@@ -20,8 +20,5 @@
             "type": "array"
         }
     },
-    "required": [
-        "default_to"
-    ],
     "type": "object"
 }

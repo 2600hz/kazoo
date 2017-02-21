@@ -28,8 +28,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "subscriber_url"
-    ],
     "type": "object"
 }

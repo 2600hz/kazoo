@@ -28,16 +28,13 @@
             "type": "integer"
         },
         "sso_environment": {
-            "properties": {
-                "sso_url": {
-                    "properties": {
-                        "description": "crossbar.ubiquiti sso url"
-                    }
-                }
-            }
+            "default": "staging",
+            "description": "crossbar.ubiquiti sso environment",
+            "type": "string"
         },
         "sso_provider_id": {
-            "description": "crossbar.ubiquiti sso provider id"
+            "description": "crossbar.ubiquiti sso provider id",
+            "type": "string"
         },
         "staging": {
             "properties": {
@@ -56,12 +53,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "api_secret",
-        "production",
-        "sso_environment",
-        "sso_provider_id",
-        "staging"
-    ],
     "type": "object"
 }

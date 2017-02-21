@@ -7,8 +7,5 @@
             "description": "whitelabel domains"
         }
     },
-    "required": [
-        "domains"
-    ],
     "type": "object"
 }

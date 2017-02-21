@@ -13,8 +13,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "phonebook_url"
-    ],
     "type": "object"
 }

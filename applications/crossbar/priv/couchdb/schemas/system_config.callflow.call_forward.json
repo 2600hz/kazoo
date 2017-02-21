@@ -37,8 +37,5 @@
             "type": "integer"
         }
     },
-    "required": [
-        "keys"
-    ],
     "type": "object"
 }

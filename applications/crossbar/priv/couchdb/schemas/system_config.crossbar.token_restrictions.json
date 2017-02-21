@@ -13,8 +13,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "_"
-    ],
     "type": "object"
 }

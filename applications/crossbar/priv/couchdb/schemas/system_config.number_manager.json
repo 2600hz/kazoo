@@ -160,12 +160,5 @@
             "type": "boolean"
         }
     },
-    "required": [
-        "e164_converters",
-        "features",
-        "providers",
-        "released_state",
-        "should_permanently_delete"
-    ],
     "type": "object"
 }

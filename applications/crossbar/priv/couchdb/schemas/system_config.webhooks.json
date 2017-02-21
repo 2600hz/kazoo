@@ -33,8 +33,5 @@
             "type": "array"
         }
     },
-    "required": [
-        "object_types"
-    ],
     "type": "object"
 }

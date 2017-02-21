@@ -7,8 +7,5 @@
             "description": "notify.fax_outbound_to_email default to"
         }
     },
-    "required": [
-        "default_to"
-    ],
     "type": "object"
 }

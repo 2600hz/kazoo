@@ -25,3 +25,5 @@ Similar to `cb_api_endpoints`, the next step is to make this an escript that run
 *** kapps_config_usage
 
 This module looks in all Kazoo Erlang application modules for calls to kapps_config (docs in the `system_config` database) getters. Similar to `cf_data_usage`, `kapps_config_usage` will create schemas if missing, update existing schemas, guess types, and include defaults if appropriate.
+
+It also builds schemas for account config documents (account-overrides of system_config parameters).

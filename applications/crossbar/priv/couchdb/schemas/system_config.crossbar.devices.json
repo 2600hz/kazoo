@@ -32,13 +32,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "provisioner_host",
-        "provisioner_referer",
-        "provisioning_host",
-        "provisioning_referer",
-        "provisioning_type",
-        "provisioning_url"
-    ],
     "type": "object"
 }
