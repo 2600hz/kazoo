@@ -174,7 +174,7 @@ is_task_successful(TaskId, API, ExtraArgs, FAssoc, RawRow, IterValue) ->
             case tasks_bindings:apply(API, Args) of
                 ['stop'] -> 'stop';
                 [{'EXIT', {_Error, _ST}}] ->
-                    lager:debug("args: ~p", [Args]),
+                    lager:error("args: ~p", [Args]),
                     lager:error("error: ~p", [_Error]),
                     kz_util:log_stacktrace(_ST),
                     Written = store_return(TaskId, RawRow, ?WORKER_TASK_FAILED),

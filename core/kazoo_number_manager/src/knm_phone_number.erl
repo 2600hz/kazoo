@@ -744,6 +744,7 @@ number_db(#knm_phone_number{number_db=NumberDb}) ->
 assign_to(#knm_phone_number{assign_to=AssignTo}) ->
     AssignTo.
 
+%% This is not stored on number doc
 -spec set_assign_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assign_to(PN=#knm_phone_number{assign_to = V}, V) -> PN;
 set_assign_to(PN, AssignTo=undefined) ->
@@ -1241,10 +1242,12 @@ created(#knm_phone_number{created = undefined}) -> kz_time:current_tstamp();
 created(#knm_phone_number{created = Created}) -> Created.
 
 -spec set_created(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_created(PN=#knm_phone_number{created = undefined}, undefined) ->
+    PN#knm_phone_number{created = kz_time:current_tstamp()};
 set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
-    PN#knm_phone_number{created=Created}.
+    ?DIRTY(PN#knm_phone_number{created=Created}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1255,7 +1258,7 @@ set_created(PN, Created)
                                                            {'error', any()}.
 list_attachments(PN, AuthBy) ->
     AssignedTo = assigned_to(PN),
-    case state(PN) == ?NUMBER_STATE_PORT_IN
+    case state(PN) =:= ?NUMBER_STATE_PORT_IN
         andalso kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true')
     of
         'true' -> {'ok', kz_doc:attachments(doc(PN), kz_json:new())};
