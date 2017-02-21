@@ -49,7 +49,6 @@
                     ]).
 
 -type mfa_errors() :: 'no_provider' |
-                      'provider_disabled' |
                       'unauthorized' |
                       ne_binary().
 

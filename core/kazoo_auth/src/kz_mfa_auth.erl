@@ -8,11 +8,12 @@
 -module(kz_mfa_auth).
 
 -export([authenticate/1
+        ,get_configs/1
+        ,get_system_configs/0
+        ,provider/1
         ]).
 
 -include("kazoo_auth.hrl").
-
--define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".mfa">>).
 
 -type result() :: mfa_result().
 
@@ -28,14 +29,15 @@ authenticate(Claims) ->
     Configs = get_configs(props:get_value(<<"mfa_options">>, Claims)),
     case provider(Configs) of
         {'disabled', _Provider} ->
-            lager:debug("provider ~s is disabled", [_Provider]),
-            {'error', 'provider_disabled'};
+            ErrorMsg = io_lib:format("provider ~s is disabled", [_Provider]),
+            lager:debug(ErrorMsg),
+            {'error', kz_term:to_binary(ErrorMsg)};
         ?NE_BINARY=Provider ->
             Module = module_name(Provider),
             lager:debug("performing authentication factor with ~s(~p) provider"
                        ,[Provider, Module]
                        ),
-            Module:authenticate(Claims, Configs);
+            Module:authenticate(Claims, kz_json:get_value(<<"settings">>, Configs, kz_json:new()));
         _ ->
             lager:debug("no provider is available or configured"),
             {'error', 'no_provider'}
@@ -46,17 +48,18 @@ authenticate(Claims) ->
 %% @doc Get MFA provider and checks it's enabled or not
 %% @end
 %%--------------------------------------------------------------------
--spec provider(api_object()) -> api_binary() | {'disabled', api_binary()}.
+-spec provider(api_object()) -> ne_binary() | {'disabled', ne_binary()} | {'error', 'no_provider'}.
 provider(Configs) ->
-    Provider = kz_json:get_value(<<"provider">>, Configs),
+    Name = kz_json:get_value(<<"provider_name">>, Configs),
     case kz_json:is_true(<<"enabled">>, Configs, 'true') of
-        'true' -> Provider;
-        'false' -> {'disabled', Provider}
+        'true' when ?NE_BINARY =/= Name -> Name;
+        'false' when ?NE_BINARY =/= Name -> {'disabled', Name};
+        _ -> {'error', 'no_provider'}
     end.
 
 -spec default_provider() -> api_binary().
 default_provider() ->
-    kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_provider">>).
+    kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -82,12 +85,12 @@ get_account_configs(AccountId, ConfigId) ->
             lager:debug("fetched authentication factor config from ~s/~s"
                        ,[AccountDb, ConfigId]
                        ),
-            JObj;
+            kz_json:set_value(<<"from">>, AccountId, JObj);
         {'error', _Reason} ->
             lager:debug("failed to open authentication factor configuration from ~s/~s : ~p"
                        ,[AccountDb, ConfigId, _Reason]
                        ),
-            get_system_configs()
+            'undefined'
     end.
 
 -spec get_system_configs() -> api_object().
@@ -96,10 +99,11 @@ get_system_configs() ->
     case default_provider() of
         'undefined' -> 'undefined';
         DefaultProvider ->
-            case kapps_config:get_json(?MOD_CONFIG_CAT, [<<"providers">>, DefaultProvider]) of
-                'undefined' -> 'undefined';
-                JObj ->
-                    kz_json:set_value(<<"provider">>, DefaultProvider, JObj)
+            case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
+                {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
+                {'error', _R} ->
+                    lager:debug("failed to open default multi factor ~s provider", [DefaultProvider]),
+                    'undefined'
             end
     end.
 

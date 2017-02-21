@@ -119,12 +119,10 @@ maybe_multi_factor_auth(Claims, AuthConfigs, 'true') ->
             lager:debug("multi factor authentication was successful, creating local auth token"),
             kz_auth:create_token(Claims);
         {'error', 'no_provider'} ->
-            lager:debug("multi factor authentication is not configured, creating local auth token"),
-            maybe_log_failed_mfa_auth(NewClaims, AuthConfigs, 'no_provider'),
+            Reason = <<"no multi factor authentication provider is configured">>,
+            lager:debug("~s, creating local auth token", [Reason]),
+            maybe_log_failed_mfa_auth(NewClaims, AuthConfigs, Reason),
             kz_auth:create_token(Claims);
-        %% {'error', 'provider_disabled'} ->
-        %%     lager:debug("multi factor authentication is disabled, creating local auth token"),
-        %%     kz_auth:create_token(Claims);
         {'error', Reason}=Error ->
             maybe_log_failed_mfa_auth(NewClaims, AuthConfigs, Reason),
             Error;
@@ -169,7 +167,8 @@ log_failed_mfa_attempts(Claims, AuthConfigs, Reason) ->
     Doc = kz_json:from_list(
             props:filter_undefined(
               [{<<"auth_type">>, <<"multi_factor">>}
-              ,{<<"reason">>, kz_term:to_binary(Reason)}
+              ,{<<"debug_type">>, <<"failed">>}
+              ,{<<"message">>, kz_term:to_binary(Reason)}
               ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfigs)}
               ,{<<"mfa_config_origin">>, props:get_value([<<"mfa_options">>, <<"account_id">>], Claims)}
               ,{<<"pvt_account_db">>, ModDb}
@@ -185,10 +184,10 @@ log_failed_mfa_attempts(Claims, AuthConfigs, Reason) ->
 
 -spec should_log_failed_attempts(kz_json:object()) -> boolean().
 should_log_failed_attempts(AuthConfigs) ->
-    case kz_json:is_true([<<"multi_factor">>, <<"log_failed_login_attempts">>], AuthConfigs) of
+    case kz_json:is_true(<<"log_failed_login_attempts">>, AuthConfigs, 'undefined') of
         'undefined' ->
             kapps_config:get_is_true(?AUTH_CONFIG_CAT
-                                    ,[?AUTH_CONFIG_ID, <<"log_failed_login_attempts">>]
+                                    ,<<"log_failed_login_attempts">>
                                     ,'false'
                                     );
         Boolean -> Boolean
@@ -232,7 +231,7 @@ auth_configs(AccountId) ->
 account_auth_configs('undefined', _MasterId) ->
     system_auth_config();
 account_auth_configs(MasterId, ?NE_BINARY = MasterId) ->
-    lager:debug("reached the master account, get system wide configs"),
+    lager:debug("reached to the master account, getting auth configs from system_configs"),
     system_auth_config();
 account_auth_configs(AccountId, MasterId) ->
     IsReseller = kz_services:is_reseller(AccountId),
@@ -256,13 +255,15 @@ account_auth_configs(AccountId) ->
 auth_configs_from_doc({'ok', Configs}, AccountId, MasterId, _IsReseller) ->
     case kz_json:is_empty(Configs) of
         'true' -> account_auth_configs(account_parent(AccountId), MasterId);
-        'false' -> kz_json:set_value(<<"from">>, AccountId, Configs)
+        'false' ->
+          lager:debug("found auth config from ~s", [AccountId]),
+          kz_json:set_value(<<"from">>, AccountId, Configs)
     end;
 auth_configs_from_doc({'error', Reason}, _AccountId, _MasterId, 'true') ->
     Reason =:= 'not_found'
-        andalso lager:debug("no auth configs found for reseller account ~s getting system wide configs"),
+        andalso lager:debug("no auth configs found for reseller account ~s getting system wide configs", [_AccountId]),
     Reason =/= 'not_found'
-        andalso lager:debug("failed to get auth configs for reseller account ~s getting system wide configs"),
+        andalso lager:debug("failed to get auth configs for reseller account ~s getting system wide configs", [_AccountId]),
     system_auth_config();
 auth_configs_from_doc({'error', _Reason}, AccountId, MasterId, 'false') ->
     lager:debug("failed to get auth configs for account ~s getting parent account configs"),
@@ -291,7 +292,7 @@ account_parent(AccountId) ->
 system_auth_config() ->
     kz_json:set_value(<<"from">>
                      ,<<"system">>
-                     ,kapps_config:get_json(?AUTH_CONFIG_CAT, ?AUTH_CONFIG_ID, kz_json:new())
+                     ,kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
                      ).
 
 -spec master_account_id() -> api_ne_binary().
