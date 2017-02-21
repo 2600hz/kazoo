@@ -433,8 +433,11 @@ Processes JSON files:
 - Checks map functions in CouchDB views for 'Object.keys' usage
 ** validate-swagger.sh
 Validate Swagger file using online validator
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell :exports code :results no
 ./scripts/validate-swagger.sh
+#+END_SRC
+
+#+BEGIN_EXAMPLE
   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
                                  Dload  Upload   Total   Spent    Left  Speed
 100  2973  100  2973    0     0   4945      0 --:--:-- --:--:-- --:--:--  4938
@@ -564,7 +567,8 @@ Swagger file validation errors: 2
     ]
 }
 FIX THESE ISSUES
-#+END_SRC
+#+END_EXAMPLE
+
 ** =validate_mkdocs.py=
 Parses the mkdocs.yml and looks for non-existent docs
 ** =wh_to_kz.sh=

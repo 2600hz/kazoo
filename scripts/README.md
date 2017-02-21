@@ -480,7 +480,141 @@ Processes JSON files:
 
 ## validate-swagger.sh
 
-Validate Swagger file using online validator \\#+BEGIN\_EXAMPLE shell ./scripts/validate-swagger.sh % Total % Received % Xferd Average Speed Time Time Time Current Dload Upload Total Spent Left Speed 100 2973 100 2973 0 0 4945 0 &#x2013;:&#x2013;:&#x2013; &#x2013;:&#x2013;:&#x2013; &#x2013;:&#x2013;:&#x2013; 4938 Swagger file validation errors: 2 { "messages": [ "malformed or unreadable swagger supplied" ], "schemaValidationMessages": [ { "domain": "validation", "instance": { "pointer": "/definitions/allotments" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/domain\_hosts" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/metaflow" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"oneOf\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/metaflow\_children" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.attachments" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.connection.couchdb" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"definitions\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.connections" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.plan.database" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"definitions\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } } ] } FIX THESE ISSUES \\#+END\_SRC
+Validate Swagger file using online validator
+
+```shell
+./scripts/validate-swagger.sh
+```
+
+      % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                     Dload  Upload   Total   Spent    Left  Speed
+    100  2973  100  2973    0     0   4945      0 --:--:-- --:--:-- --:--:--  4938
+    Swagger file validation errors: 2
+    {
+        "messages": [
+            "malformed or unreadable swagger supplied"
+        ],
+        "schemaValidationMessages": [
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/allotments"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/domain_hosts"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/metaflow"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"oneOf\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/metaflow_children"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/storage"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/storage.attachments"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/storage.connection.couchdb"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"definitions\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/storage.connections"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"patternProperties\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            },
+            {
+                "domain": "validation",
+                "instance": {
+                    "pointer": "/definitions/storage.plan.database"
+                },
+                "keyword": "additionalProperties",
+                "level": "error",
+                "message": "object instance has properties which are not allowed by the schema: [\"definitions\"]",
+                "schema": {
+                    "loadingURI": "http://swagger.io/v2/schema.json#",
+                    "pointer": "/definitions/schema"
+                }
+            }
+        ]
+    }
+    FIX THESE ISSUES
 
 
 ## `validate_mkdocs.py`
