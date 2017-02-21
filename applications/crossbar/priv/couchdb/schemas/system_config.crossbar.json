@@ -16,6 +16,9 @@
         "autoload_modules": {
             "description": "crossbar autoload modules"
         },
+        "cdr_stale_view": {
+            "description": "force cdr to return stale records only"
+        },
         "compress_response_body": {
             "default": true,
             "description": "crossbar compress response body",
