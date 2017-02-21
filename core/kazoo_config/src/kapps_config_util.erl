@@ -39,21 +39,23 @@ get_reseller_config(Account, Config) ->
     Schema = account_schema(Config),
     kz_json_schema:filter(get_config(Account, Config, Programm), Schema).
 
--spec load_config_from_account(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+-spec load_config_from_account(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+load_config_from_account(undefined, _Config) -> kz_json:new();
 load_config_from_account(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, encoded),
     kz_datamgr:open_cache_doc(AccountDb, doc_id(Config), [{cache_failures, [not_found]}]).
 
--spec load_config_from_reseller(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+-spec load_config_from_reseller(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+load_config_from_reseller(undefined, _Config) -> kz_json:new();
 load_config_from_reseller(Account, Config) ->
     ResellerId = kz_services:find_reseller_id(Account),
     load_config_from_account(ResellerId, Config).
 
--spec load_config_from_system(ne_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
+-spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_system(_Account, Config) ->
     kz_json:get_value(<<"default">>, ensure_value(kapps_config:get_category(Config))).
 
--spec load_default_config(ne_binary(), ne_binary()) -> {ok, kz_json:object()}.
+-spec load_default_config(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_config(_Account, Config) ->
     Schema = system_schema(Config),
     {ok, kz_doc:set_id(kz_json_schema:default_object(Schema), doc_id(Config))}.
