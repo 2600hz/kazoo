@@ -1,7 +1,7 @@
 #+OPTIONS: ':nil *:t -:t ::t <:t H:3 \n:nil ^:t arch:headline ^:{}
 #+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
 #+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:t
-#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:t todo:t |:t
+#+OPTIONS: tags:t tasks:t tex:t timestamp:t title:t toc:nil todo:t |:t
 #+TITLE: README
 #+DATE: <2016-10-04 Tue>
 #+AUTHOR: James Aimonetti
@@ -19,20 +19,20 @@ Let's get a little more concrete though.
 
 ** apps-process-count.sh
 A simple script to query the Erlang VMs process count
-#+BEGIN_EXAMPLE bash
+#+BEGIN_SRC shell
 ./scripts/apps-process-count.sh
 10
-#+END_EXAMPLE
+#+END_SRC
 ** bump-copyright-year.sh
 Python script to walk the supplied files and bumps the copyright year if appropriate.
 #+BEGIN_EXAMPLE
 ./scripts/bump-copyright-year.sh [FILE]
-#+END_EXAMPLE
+#+END_SRC
 ** check-app-registered.sh
 Checks Erlang applications for registered processes and compares that to the application's .app.src file.
 #+BEGIN_EXAMPLE
 ./scripts/check-app-registered.sh [PATH/TO/APP]
-#+END_EXAMPLE
+#+END_SRC
 
 For example, I set `{registered, []} in callflow.app.src, then ran the script:
 #+BEGIN_EXAMPLE
@@ -41,7 +41,7 @@ cf_event_handler_sup, callflow_sup, cf_exe_sup
 applications/callflow has no registered modules??
 1 errors
 1 errors in total
-#+END_EXAMPLE
+#+END_SRC
 Now you have a listing of registered processes to put in your .app.src
 ** check-dialyzer.escript
 An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze:
@@ -49,13 +49,15 @@ An Erlang escript that dialyzes changed files. Run it using the makefile target 
 TO_DIALYZE=applications/callflow/ebin/callflow_sup.beam make dialyze
 scanning "applications/callflow/ebin/callflow_sup.beam"
 0 Dialyzer warnings
-#+END_EXAMPLE
+#+END_SRC
 
 Typically `TO_DIALYZE` would be a generated list of files.
 
 Do note: this will only check the file itself for issues. To really leverage Dialyzer, you'll want to include remote project modules for Dialyzer to use as well.
 ** check-release-startup.sh
 Creates a release, starts it, and issues some commands to test that the release starts up and appears to be running
+** check-scripts-readme.bash
+A quick script to check that all scripts in =$(ROOT)/scripts= are documented in this file!
 ** check-xref.escript
 An Erlang escript for cross referencing (xref) calls to remote modules. Set `TO_XREF` to ebin paths (or use the default):
 #+BEGIN_EXAMPLE
@@ -66,7 +68,7 @@ Running xref analysis...
 Xref: listing undefined_function_calls
 Xref: listing undefined_functions
 Done
-#+END_EXAMPLE
+#+END_SRC
 If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
 ** code_checks.bash
 Checks source code files for various formatting expectations and exits if any are found.
@@ -76,12 +78,12 @@ Check for andalso/orelse dropped lines
 Check for uses of module in lieu of ?MODULE
 Check for TAB characters
 Check for trailing whitespaces
-#+END_EXAMPLE
+#+END_SRC
 ** conn-to-apps.sh
 Opens a remote shell to the kazoo_apps@hostname VM.
 #+BEGIN_EXAMPLE
 ./scripts/conn-to-apps.sh [{VM@HOSTNAME}, {LOCAL_SHELL@HOSTNAME}]
-#+END_EXAMPLE
+#+END_SRC
 ** conn-to-ecallmgr.sh
 A convenience wrapper for connecting to ecallmgr@HOSTNAME via conn-to-apps.sh
 ** crash-apps.sh
@@ -95,14 +97,14 @@ Runs M:F(A) on the node:
 Starts a VM with an interactive shell. {VM_NAME} defaults to 'kazoo_apps'
 #+BEGIN_EXAMPLE shell
 ./scripts/dev-start-apps.sh {VM_NAME}
-#+END_EXAMPLE
+#+END_SRC
 ** dev-start-ecallmgr.sh
 Defaults node name to 'ecallmgr'; otherwise the same as dev-start-apps.sh
 ** dev/kazoo.sh
 When using releases, executes a release command against the running VM:
 #+BEGIN_EXAMPLE shell
 KAZOO_CONFIG=/etc/kazoo/core/config.ini ./scripts/dev/kazoo.sh {CMD}
-#+END_EXAMPLE
+#+END_SRC
 
 {CMD} can be:
 - 'attach': Attach to a running VM
@@ -123,23 +125,6 @@ KAZOO_CONFIG=/etc/kazoo/core/config.ini ./scripts/dev/kazoo.sh {CMD}
 - 'upgrade'/'downgrade'/'install': perform an upgrade/downgrade/installation
 ** dev/sup.sh
 Runs the SUP escript against the running release
-** dialyze-usage.bash
-Given a module name, such as 'props' or 'kz_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possilbe ;)
-
-The more heavily utilized the module is, the longer this will take to run!
-
-#+BEGIN_EXAMPLE shell
- ./scripts/dialyze-usage.bash kz_config
-dialyzing usages of kz_config
-  Checking whether the PLT .kazoo.plt is up-to-date... yes
-  Proceeding with analysis...
-kz_dataconfig.erl:26: Function connection/0 has no local return
-kz_dataconfig.erl:27: The call kz_config:get('data','config',['bigcouch',...]) breaks the contract (section(),atom(),Default) -> kz_proplist() | Default
-kz_dataconfig.erl:32: Function connection_options/1 will never be called
-...
- done in 0m4.08s
-done (warnings were emitted)
-#+END_EXAMPLE
 ** dialyze-changed.bash
 This script gets a diff set (against master) of .erl files from the current branch and dialyzes all changed files. You can include extra beam files on the end of the script (for things like gen_listener, kz_json, etc).
 
@@ -156,14 +141,31 @@ dialyzing changed files:
   ...Unknown types...
  done in 0m6.69s
 done (warnings were emitted)
-#+END_EXAMPLE
+#+END_SRC
+** dialyze-usage.bash
+Given a module name, such as 'props' or 'kz_json', search core/applications for modules that make calls to the supplied module and dialyze those beam files looking for dialyzer complaints. You will likely see complaints unrelated to your supplied module - go ahead and fix those too if possilbe ;)
+
+The more heavily utilized the module is, the longer this will take to run!
+
+#+BEGIN_EXAMPLE shell
+ ./scripts/dialyze-usage.bash kz_config
+dialyzing usages of kz_config
+  Checking whether the PLT .kazoo.plt is up-to-date... yes
+  Proceeding with analysis...
+kz_dataconfig.erl:26: Function connection/0 has no local return
+kz_dataconfig.erl:27: The call kz_config:get('data','config',['bigcouch',...]) breaks the contract (section(),atom(),Default) -> kz_proplist() | Default
+kz_dataconfig.erl:32: Function connection_options/1 will never be called
+...
+ done in 0m4.08s
+done (warnings were emitted)
+#+END_SRC
 ** ecallmgr-process-count.sh
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 ** format-json.sh
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
 #+BEGIN_EXAMPLE shell
 ./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
-#+END_EXAMPLE
+#+END_SRC
 ** generate-api-endpoints.escript
 Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps detect when Crossbar endpoints have changes to their functionality that is client-facing.
 
@@ -174,7 +176,7 @@ Parses the ecallmgr code looking for keys used to access values in the FreeSWITC
 Parses the core/applications code looking for calls to kapps_config (module used to access documents in the system_config database) and building a base JSON schema file for each document found.
 
 Also parses callflow's action modules looking for keys used to access values in the Data JSON object to build a base JSON schema file for each callflow action.
-** no_raw_json.escript
+** =no_raw_json.escript=
 Erlang has a handful of internal representations of JSON used by the various parses. The kz_json module handles these details and Kazoo programmers should treat the data structure used as opaque. This script parses the codebase looking for instances where the opaqueness of the data structure is violated.
 ** rabbitmq-generic.sh
 Wrapper for running rabbitmq script commands?
@@ -421,7 +423,7 @@ Documented but not matching any actual API endpoint:
 > GET /v2/search
 > GET /v2/accounts/{ACCOUNT_ID}/about
 > GET /v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/channels
-#+END_EXAMPLE
+#+END_SRC
 ** update-the-types.sh
 Used to search the code looking for deprecated Erlang functions and types and replace them with the newer versions as appropriate
 ** validate-js.sh
@@ -561,6 +563,24 @@ Swagger file validation errors: 2
     ]
 }
 FIX THESE ISSUES
-#+END_EXAMPLE
-** wh_to_kz.sh
+#+END_SRC
+** =wh_to_kz.sh=
 Part of the great rename, converts Whistle-related names to Kazoo-specific names
+** circleci-build-erlang.sh
+Fetches kerl and installs configured Erlang version (used in CircleCI)
+** =code_checks.bash=
+Checks source code for various style requirements of the project
+** =convert_org_files.bash=
+Script that is helpful when converting org files from 8.x to 9.x
+** cover.escript
+creates and sends coverage report for testing of codebase
+** =export_auth_token.bash=
+Script for exporting =AUTH_TOKEN= and =ACCOUNT_ID= when doing Crossbar authentication. Handy when running curl commands to use =$AUTH_TOKEN= instead of the raw value (and for re-authing when auth token expires).
+** generate-doc-schemas.sh
+Updates crossbar docs with the schema table from the ref (auto-gen) version
+** =kz_util_diaspora.bash=
+Script for updating Erlang code to account for functions that used to be in kz_util and are now moved to alternative modules.
+** =setup_docs.bash=
+Script for setting up a local environment for running the mkdocs-built docs site
+** =validate_mkdocs.py=
+Parses the mkdocs.yml and looks for non-existent docs
