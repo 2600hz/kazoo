@@ -197,6 +197,7 @@ apis:
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
 docs: docs-setup docs-build
+	@$(ROOT)/scripts/check-scripts-readme.bash
 
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
