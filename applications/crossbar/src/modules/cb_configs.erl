@@ -146,7 +146,7 @@ delete(Context, _) ->
     crossbar_doc:delete(Context).
 
 -spec make_schema_name(api_ne_binary()) -> ne_binary().
-make_schema_name(ConfigName) when is_binary(ConfigName) -> <<"system_config.", ConfigName/binary>>.
+make_schema_name(ConfigName) when is_binary(ConfigName) -> <<"account_config.", ConfigName/binary>>.
 
 %%--------------------------------------------------------------------
 %% @private
