@@ -314,6 +314,10 @@ process_mfa(#usage{data_var_name=DataName}=Acc
            ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
            ) ->
     Acc;
+process_mfa(#usage{}=Acc
+           ,'kz_json', _F, [{call, _, _, _}=_Key|_]
+           ) ->
+    Acc;
 process_mfa(#usage{data_var_name=DataName
                   ,usages=Usages
                   }=Acc
