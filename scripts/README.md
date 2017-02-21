@@ -51,9 +51,19 @@ A quick script to check that all scripts in `$(ROOT)/scripts` are documented in 
 An Erlang escript for cross referencing (xref) calls to remote modules. Set \`TO\_XREF\` to ebin paths (or use the default): \\#+BEGIN\_EXAMPLE make xref Pass: global Loading modules&#x2026; Running xref analysis&#x2026; Xref: listing undefined\_function\_calls Xref: listing undefined\_functions Done \\#+END\_SRC If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
 
 
+## circleci-build-erlang.sh
+
+Fetches kerl and installs configured Erlang version (used in CircleCI)
+
+
 ## code\_checks.bash
 
 Checks source code files for various formatting expectations and exits if any are found. \\#+BEGIN\_EXAMPLE ./scripts/code\_checks.bash applications/crossbar/src/cb\_context.erl Check for andalso/orelse dropped lines Check for uses of module in lieu of ?MODULE Check for TAB characters Check for trailing whitespaces \\#+END\_SRC
+
+
+## `code_checks.bash`
+
+Checks source code for various style requirements of the project
 
 
 ## conn-to-apps.sh
@@ -64,6 +74,16 @@ Opens a remote shell to the kazoo\_apps@hostname VM. \\#+BEGIN\_EXAMPLE ./script
 ## conn-to-ecallmgr.sh
 
 A convenience wrapper for connecting to ecallmgr@HOSTNAME via conn-to-apps.sh
+
+
+## `convert_org_files.bash`
+
+Script that is helpful when converting org files from 8.x to 9.x
+
+
+## cover.escript
+
+creates and sends coverage report for testing of codebase
 
 
 ## crash-apps.sh
@@ -141,6 +161,11 @@ The more heavily utilized the module is, the longer this will take to run!
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
 
+## `export_auth_token.bash`
+
+Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
+
+
 ## format-json.sh
 
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions. \\#+BEGIN\_EXAMPLE shell ./scripts/format-json.sh path/to/file.json [path/to/other/file.json,&#x2026;] \\#+END\_SRC
@@ -153,6 +178,11 @@ Builds the Crossbar reference docs in 'applications/crossbar/doc/ref'. Helps det
 Also builds the [Swagger](http://swagger.io/) JSON file in applications/crossbar/priv/api/swagger.json
 
 
+## generate-doc-schemas.sh
+
+Updates crossbar docs with the schema table from the ref (auto-gen) version
+
+
 ## generate-fs-headers-hrl.escript
 
 Parses the ecallmgr code looking for keys used to access values in the FreeSWITCH proplist and builds a header file at applications/ecallmgr/src/fs\_event\_filters.hrl for use when initializing mod\_kazoo.
@@ -163,6 +193,11 @@ Parses the ecallmgr code looking for keys used to access values in the FreeSWITC
 Parses the core/applications code looking for calls to kapps\_config (module used to access documents in the system\_config database) and building a base JSON schema file for each document found.
 
 Also parses callflow's action modules looking for keys used to access values in the Data JSON object to build a base JSON schema file for each callflow action.
+
+
+## `kz_util_diaspora.bash`
+
+Script for updating Erlang code to account for functions that used to be in kz\_util and are now moved to alternative modules.
 
 
 ## `no_raw_json.escript`
@@ -194,6 +229,11 @@ Script to setup a dev environment including:
 ## setup-git.sh
 
 Setup the username/email to use in Git commits and other Git settings
+
+
+## `setup_docs.bash`
+
+Script for setting up a local environment for running the mkdocs-built docs site
 
 
 ## src2any.escript
@@ -238,51 +278,11 @@ Processes JSON files:
 Validate Swagger file using online validator \\#+BEGIN\_EXAMPLE shell ./scripts/validate-swagger.sh % Total % Received % Xferd Average Speed Time Time Time Current Dload Upload Total Spent Left Speed 100 2973 100 2973 0 0 4945 0 &#x2013;:&#x2013;:&#x2013; &#x2013;:&#x2013;:&#x2013; &#x2013;:&#x2013;:&#x2013; 4938 Swagger file validation errors: 2 { "messages": [ "malformed or unreadable swagger supplied" ], "schemaValidationMessages": [ { "domain": "validation", "instance": { "pointer": "/definitions/allotments" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/domain\_hosts" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/metaflow" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"oneOf\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/metaflow\_children" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.attachments" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.connection.couchdb" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"definitions\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.connections" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"patternProperties\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } }, { "domain": "validation", "instance": { "pointer": "/definitions/storage.plan.database" }, "keyword": "additionalProperties", "level": "error", "message": "object instance has properties which are not allowed by the schema: [\\"definitions\\"]", "schema": { "loadingURI": "<http://swagger.io/v2/schema.json>#", "pointer": "/definitions/schema" } } ] } FIX THESE ISSUES \\#+END\_SRC
 
 
-## `wh_to_kz.sh`
-
-Part of the great rename, converts Whistle-related names to Kazoo-specific names
-
-
-## circleci-build-erlang.sh
-
-Fetches kerl and installs configured Erlang version (used in CircleCI)
-
-
-## `code_checks.bash`
-
-Checks source code for various style requirements of the project
-
-
-## `convert_org_files.bash`
-
-Script that is helpful when converting org files from 8.x to 9.x
-
-
-## cover.escript
-
-creates and sends coverage report for testing of codebase
-
-
-## `export_auth_token.bash`
-
-Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).
-
-
-## generate-doc-schemas.sh
-
-Updates crossbar docs with the schema table from the ref (auto-gen) version
-
-
-## `kz_util_diaspora.bash`
-
-Script for updating Erlang code to account for functions that used to be in kz\_util and are now moved to alternative modules.
-
-
-## `setup_docs.bash`
-
-Script for setting up a local environment for running the mkdocs-built docs site
-
-
 ## `validate_mkdocs.py`
 
 Parses the mkdocs.yml and looks for non-existent docs
+
+
+## `wh_to_kz.sh`
+
+Part of the great rename, converts Whistle-related names to Kazoo-specific names
