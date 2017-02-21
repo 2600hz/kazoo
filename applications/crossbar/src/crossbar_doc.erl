@@ -56,11 +56,7 @@
                   ]).
 
 -define(PAGINATION_PAGE_SIZE
-       ,kapps_config:get_integer(?CONFIG_CAT
-                                ,<<"pagination_page_size">>
-                                ,50
-                                )
-       ).
+       ,kapps_config:get_integer(?CONFIG_CAT, <<"pagination_page_size">>, 50)).
 
 -type direction() :: 'ascending' | 'descending'.
 
