@@ -1,6 +1,6 @@
 machine:
   environment:
-    OTP_VERSION: 18.2
+    OTP_VERSION: 19.2
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
     CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
   services:
