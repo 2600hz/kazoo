@@ -109,7 +109,7 @@ all() -> view([]).
 %%--------------------------------------------------------------------
 -spec all(ne_binary()) -> kz_json:objects().
 all(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    view([{startkey, [AccountId, kz_util:current_tstamp(), kz_json:new()]}
+    view([{startkey, [AccountId, kz_time:current_tstamp(), kz_json:new()]}
          ,{endkey, [AccountId]}
          ,descending
          ]).
