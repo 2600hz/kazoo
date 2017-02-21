@@ -1218,27 +1218,20 @@ add_pvt_account_id(JObj, Context) ->
 -spec add_pvt_created(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_created(JObj, _) ->
     case kz_doc:revision(JObj) of
-        'undefined' ->
-            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-            kz_doc:set_created(JObj, Timestamp);
-        _ ->
-            JObj
+        'undefined' -> kz_doc:set_created(JObj, kz_time:current_tstamp());
+        _ -> JObj
     end.
 
--spec add_pvt_modified(kz_json:object(), cb_context:context()) ->
-                              kz_json:object().
+-spec add_pvt_modified(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_modified(JObj, _) ->
-    Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
-    kz_doc:set_modified(JObj, Timestamp).
+    kz_doc:set_modified(JObj, kz_time:current_tstamp()).
 
--spec add_pvt_request_id(kz_json:object(), cb_context:context()) ->
-                                kz_json:object().
+-spec add_pvt_request_id(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_request_id(JObj, Context) ->
     RequestId = cb_context:req_id(Context),
     kz_json:set_value(<<"pvt_request_id">>, RequestId, JObj).
 
--spec add_pvt_auth(kz_json:object(), cb_context:context()) ->
-                          kz_json:object().
+-spec add_pvt_auth(kz_json:object(), cb_context:context()) -> kz_json:object().
 add_pvt_auth(JObj, Context) ->
     case cb_context:is_authenticated(Context) of
         'false' -> kz_json:set_value(<<"pvt_is_authenticated">>, 'false', JObj);

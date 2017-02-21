@@ -534,13 +534,13 @@ get_parked_calls(AccountDb, AccountId) ->
 fetch_parked_calls(AccountDb, AccountId) ->
     case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'error', 'not_found'} ->
-            Timestamp = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
+            TS = kz_time:current_tstamp(),
             Generators = [fun(J) -> kz_doc:set_id(J, <<"parked_calls">>) end
                          ,fun(J) -> kz_doc:set_type(J, <<"parked_calls">>) end
                          ,fun(J) -> kz_doc:set_account_id(J, AccountId) end
                          ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
-                         ,fun(J) -> kz_doc:set_created(J, Timestamp) end
-                         ,fun(J) -> kz_doc:set_modified(J, Timestamp) end
+                         ,fun(J) -> kz_doc:set_created(J, TS) end
+                         ,fun(J) -> kz_doc:set_modified(J, TS) end
                          ,fun(J) -> kz_doc:set_vsn(J, <<"1">>) end
                          ,fun(J) -> kz_json:set_value(<<"slots">>, kz_json:new(), J) end],
             lists:foldr(fun(F, J) -> F(J) end, kz_json:new(), Generators);

@@ -524,12 +524,12 @@ is_unique_realm(Realm) ->
 -spec cleanup_signups(#state{}) -> 'ok'.
 cleanup_signups(#state{signup_lifespan=Lifespan}) ->
     lager:debug("cleaning up signups"),
-    Expiration = calendar:datetime_to_gregorian_seconds(calendar:universal_time()) + Lifespan,
-    case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, [{'startkey', 0}
-                                                                      ,{'endkey', Expiration}
-                                                                      ,'include_docs'
-                                                                      ])
-    of
+    Expiration = kz_time:current_tstamp() + Lifespan,
+    ViewOptions = [{'startkey', 0}
+                  ,{'endkey', Expiration}
+                  ,'include_docs'
+                  ],
+    case kz_datamgr:get_results(?SIGNUP_DB, ?VIEW_ACTIVATION_CREATED, ViewOptions) of
         {'ok', Expired} ->
             _ = kz_datamgr:del_docs(?SIGNUP_DB
                                    ,[kz_json:get_value(<<"doc">>, JObj) || JObj <- Expired]

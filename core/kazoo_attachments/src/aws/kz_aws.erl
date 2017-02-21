@@ -302,9 +302,8 @@ get_metadata_credentials(Config) ->
     case application:get_env('kazoo_attachments', 'metadata_credentials') of
         'undefined' -> get_credentials_from_metadata(Config);
         {'ok', #metadata_credentials{expiration_gregorian_seconds = Expiration} = Credentials} ->
-            Now = calendar:datetime_to_gregorian_seconds(calendar:universal_time()),
             %% Get new credentials if these will expire in less than 5 minutes
-            case Expiration - Now < 300 of
+            case Expiration - kz_time:current_tstamp() < 300 of
                 'true' -> get_credentials_from_metadata(Config);
                 'false' -> {'ok', Credentials}
             end

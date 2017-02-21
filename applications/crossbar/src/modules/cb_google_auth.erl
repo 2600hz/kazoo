@@ -234,10 +234,11 @@ create_auth_token(Context) ->
         'false' ->
             AccountId = kz_json:get_value([<<"User">>,<<"pvt_account_id">>], JObj, <<>>),
             OwnerId = kz_json:get_value([<<"User">>,<<"_id">>], JObj, <<>>),
+            TS = kz_time:current_tstamp(),
             Token = [{<<"account_id">>, AccountId}
                     ,{<<"owner_id">>, OwnerId}
-                    ,{<<"created">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
-                    ,{<<"modified">>, calendar:datetime_to_gregorian_seconds(calendar:universal_time())}
+                    ,{<<"created">>, TS}
+                    ,{<<"modified">>, TS}
                     ,{<<"method">>, kz_term:to_binary(?MODULE)}
                     ],
             case kz_datamgr:save_doc(?KZ_TOKEN_DB, kz_json:from_list(Token)) of
