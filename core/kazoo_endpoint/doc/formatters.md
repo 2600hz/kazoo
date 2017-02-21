@@ -4,7 +4,7 @@
 
 It is all about control!
 
-With [numbers])https://github.com/2600hz/kazoo/blob/master/doc/internationalization/numbers.md) controlling how Kazoo processes phone numbers into and out of the system, it only made sense to add functionality to control the format of other fields that are commonly found.
+With [numbers](https://github.com/2600hz/kazoo/blob/master/doc/internationalization/numbers.md) controlling how Kazoo processes phone numbers into and out of the system, it only made sense to add functionality to control the format of other fields that are commonly found.
 
 Enter *formatters*!
 
