@@ -259,8 +259,11 @@ recursive_from_list([First | _]=List)
 recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
-recursive_from_list([X1 | _]=X) when is_list(X1) -> [kz_term:to_binary(Xn) || Xn <- X];
-recursive_from_list(X) when is_list(X) -> kz_term:to_binary(X);
+recursive_from_list(X) when is_list(X) ->
+    case io_lib:printable_unicode_list(X) of
+        'true' -> kz_term:to_binary(X);
+        'false' -> [recursive_from_list(Xn) || Xn <- X]
+    end;
 recursive_from_list(X) when is_binary(X) -> X;
 recursive_from_list({_Y, _M, _D}=Date) -> kz_time:iso8601_date(Date);
 recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime);
