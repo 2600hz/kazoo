@@ -434,22 +434,22 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', maybe_add_stale_to_options([{'startkey', [CreatedTo]}
-           ,{'endkey', [CreatedFrom, kz_json:new()]}
-           ,{'limit', pagination_page_size(Context)}
-           ,{'group', 'true'}
-           ,{'group_level', 2}
-           ,{'reduce', 'true'}
-           ,'descending'
-           ])};
+                                      ,{'endkey', [CreatedFrom, kz_json:new()]}
+                                      ,{'limit', pagination_page_size(Context)}
+                                      ,{'group', 'true'}
+                                      ,{'group_level', 2}
+                                      ,{'reduce', 'true'}
+                                      ,'descending'
+                                      ])};
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', maybe_add_stale_to_options([{'startkey', [OwnerId, CreatedTo]}
-           ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
-           ,{'limit', pagination_page_size(Context)}
-           ,{'group', 'true'}
-           ,{'group_level', 3}
-           ,{'reduce', 'true'}
-           ,'descending'
-           ])}.
+                                      ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
+                                      ,{'limit', pagination_page_size(Context)}
+                                      ,{'group', 'true'}
+                                      ,{'group_level', 3}
+                                      ,{'reduce', 'true'}
+                                      ,'descending'
+                                      ])}.
 
 -spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
 maybe_add_stale_to_options(Options) ->
