@@ -24,11 +24,10 @@
 
 -include("cdr.hrl").
 -define(VIEW_TO_UPDATE, <<"cdrs/interaction_listing">>).
+-define(THRESHOLD, kapps_config:get(?CONFIG_CAT, <<"refresh_view_threshold">>, 0)).
+-define(TIMEOUT, kapps_config:get(?CONFIG_CAT, <<"refresh_timeout">>, 60)).
 
--record(state, {counter = #{} :: map()
-               ,threshold = 0 :: non_neg_integer()
-               ,timeout = 0 :: non_neg_integer()
-               }).
+-record(state, {counter = #{} :: map()}).
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
@@ -78,11 +77,10 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    Threshold = kapps_config:get(?CONFIG_CAT, <<"refresh_view_threshold">>, 0),
-    Timeout = kapps_config:get(?CONFIG_CAT, <<"refresh_timeout">>, 60),
-    lager:info("cdr refresher threshold: ~p, timeout: ~p", [Threshold, Timeout]),
-    erlang:send_after(Timeout*1000, self(), timeout),
-    {ok, #state{ threshold = Threshold, timeout = Timeout }}.
+
+    lager:info("cdr refresher threshold: ~p, timeout: ~p", [?THRESHOLD, ?TIMEOUT]),
+    erlang:send_after(?TIMEOUT*1000, self(), timeout),
+    {ok, #state{}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -127,12 +125,14 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info(timeout, #state{counter = Counter, timeout = Timeout} = State) ->
+handle_info(timeout, #state{counter = Counter} = State) ->
     Now = kz_time:current_tstamp(),
+    Timeout = ?TIMEOUT,
     HandleTimeout =
         fun(AccountId, {Map, List}) ->
                 {From, Count} = maps:get(AccountId, Map),
-                case Now - From > Timeout andalso Count > 0 of
+                case Now - From > Timeout
+                    andalso Count > 0 of
                     true -> { Map#{ AccountId => {Now, 0} }, [{AccountId, From, Now} | List] };
                     false -> {Map, List}
                 end
@@ -146,8 +146,12 @@ handle_info(_Info, State) ->
     {'noreply', State}.
 
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(_JObj, #state{threshold = 0}) -> ignore;
-handle_event(JObj, #state{counter = Counter, threshold = Threshold} = State) ->
+handle_event(JObj, #state{} = State) -> handle_event(JObj, State, ?THRESHOLD);
+handle_event(_JObj, _State) -> {'reply', []}.
+
+-spec handle_event(kz_json:object(), state(), non_neg_integer()) -> gen_listener:handle_event_return().
+handle_event(_JObj, #state{}, 0) -> {reply, []};
+handle_event(JObj, #state{counter = Counter} = State, Threshold) ->
     AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Threshold} ->
@@ -155,9 +159,8 @@ handle_event(JObj, #state{counter = Counter, threshold = Threshold} = State) ->
                     {kz_time:current_tstamp(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
-    {ignore, State#state{ counter = Counter#{ AccountId => Count }} };
-handle_event(_JObj, _State) ->
-    {'reply', []}.
+    lager:notice("count:~p", [Count]),
+    {reply, [], State#state{ counter = Counter#{ AccountId => Count }} }.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -196,7 +199,7 @@ value(_) -> {kz_time:current_tstamp(), 0}.
 -spec update_account_view(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> any().
 update_account_view(AccountId, From, To) ->
     Dbs = kazoo_modb:get_range(AccountId, From, To),
-    lager:info("refresh cdr view db:~p from:~p to:~p", [Dbs, From, To]),
+    lager:info("refresh cdr view account:~p db:~p from:~p to:~p", [AccountId, Dbs, From, To]),
     [ kz_datamgr:get_results(Db, ?VIEW_TO_UPDATE, [{startkey, From}, {endkey, To}]) || Db <- Dbs ].
 
 -spec update_accounts_view([{ne_binary(), gregorian_seconds(), gregorian_seconds()}]) -> any().
