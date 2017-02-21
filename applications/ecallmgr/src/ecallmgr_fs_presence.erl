@@ -109,9 +109,13 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'event', [UUID | Props]}, #state{node=Node}=State) ->
-    _ = kz_util:spawn(fun process_event/3, [UUID, Props, Node]),
+handle_info({'event', [UUID | Props]}, #state{node=Node
+                                             ,options=Options
+                                             }=State) ->
+    _ = kz_util:spawn(fun handle_presence_event/4, [UUID, Props, Node, Options]),
     {'noreply', State};
+handle_info({'option', K, V}, #state{options=Options}=State) ->
+    {'noreply', State#state{options=props:set_value(K, V, Options)}};
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
     {'noreply', State}.
@@ -147,25 +151,67 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec process_event(api_binary(), kz_proplist(), atom()) -> any().
-process_event(UUID, Props, Node) ->
+-spec init_props(kz_proplist(), kz_proplist()) -> kz_proplist().
+init_props(Props, Options) ->
+    case props:get_is_true(<<"Publish-Channel-State">>, Props) of
+        'undefined' ->
+            case props:is_false(<<"Publish-Channel-State">>, Options, 'false') of
+                'true' -> props:set_value(<<"Publish-Channel-State">>, 'false', Props);
+                _ -> Props
+            end;
+        _Value -> Props
+    end.
+
+-spec handle_presence_event(api_binary(), kz_proplist(), atom(), kz_proplist()) -> any().
+handle_presence_event(UUID, FSProps, Node, Options) ->
     kz_util:put_callid(UUID),
+    Props = init_props(FSProps, Options),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
     process_specific_event(EventName, UUID, Props, Node).
 
 -spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
 process_specific_event(<<"PRESENCE_IN">>, UUID, Props, Node) ->
-    AuthType = props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props),
-    maybe_build_presence_event(Node, UUID, Props, AuthType);
+    maybe_build_presence_event(Node, UUID, Props);
 process_specific_event(_Event, _UUID, _Props, _Node) ->
     lager:debug("event ~s for callid ~s not handled in presence (~s)", [_Event, _UUID, _Node]).
 
+-spec maybe_build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
+maybe_build_presence_event(Node, UUID, Props) ->
+    Routines = [fun check_proto/3
+               ,fun check_publish_state/3
+               ,fun check_authz_type/3
+               ],
+    case lists:all(fun(F) -> F(Node, UUID, Props) end, Routines) of
+        'true' -> build_presence_event(Node, UUID, Props);
+        'false' -> 'ok'
+    end.
 
--spec maybe_build_presence_event(atom(), api_binary(), kz_proplist(), api_binary()) -> any().
-maybe_build_presence_event(Node, UUID, Props, <<"device">>) ->
-    build_presence_event(Node, UUID, Props);
-maybe_build_presence_event(_Node, _UUID, _Props, _AuthType) ->
-    lager:debug("Authorizing-Type ~p not handled", [_AuthType]).
+-spec check_authz_type(atom(), api_binary(), kz_proplist()) -> boolean().
+check_authz_type(_Node, _UUID, Props) ->
+    AuthType = props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props),
+    check_authz_type(AuthType).
+
+-spec check_authz_type(api_binary()) -> boolean().
+check_authz_type(<<"device">>) -> 'true';
+check_authz_type(_AuthType) ->
+    lager:debug("Authorizing-Type ~p not handled", [_AuthType]),
+    'false'.
+
+-spec check_proto(atom(), api_binary(), kz_proplist()) -> boolean().
+check_proto(_Node, _UUID, Props) ->
+    Proto = props:get_value(<<"proto">>, Props),
+    check_proto(Proto).
+
+-spec check_proto(api_binary()) -> boolean().
+check_proto(<<"any">>) -> 'true';
+check_proto(_Proto) ->
+    lager:debug("presence proto ~p not handled", [_Proto]),
+    'false'.
+
+-spec check_publish_state(atom(), api_binary(), kz_proplist()) -> boolean().
+check_publish_state(_Node, _UUID, Props) ->
+    props:is_true(<<"Force-Publish-Event-State">>, Props, 'false')
+        orelse props:is_true(<<"Publish-Channel-State">>, Props, 'true').
 
 -spec from(kz_proplist()) -> ne_binary().
 from(Props) ->

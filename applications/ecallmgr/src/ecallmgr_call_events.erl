@@ -38,6 +38,7 @@
 -export([transfer/3]).
 -export([handle_publisher_usurp/2]).
 -export([get_application_name/1]).
+-export([get_event_name/1]).
 -export([queue_name/1
         ,callid/1
         ,node/1
@@ -629,6 +630,9 @@ specific_call_channel_vars_props(<<"CHANNEL_DESTROY">>, Props) ->
     Vars = ecallmgr_util:custom_channel_vars(Props),
     lager:debug("checking interaction cache for ~s", [UUID]),
     case kz_cache:peek_local(?ECALLMGR_INTERACTION_CACHE, UUID) of
+        {'ok', 'undefined'} ->
+            lager:debug("interaction cache for ~s in null", [UUID]),
+            [{<<"Custom-Channel-Vars">>, kz_json:from_list(Vars)}];
         {'ok', CDR} ->
             NewVars = props:set_value(<<?CALL_INTERACTION_ID>>, CDR, Vars),
             lager:debug("found interaction cache ~s for ~s", [CDR, UUID]),

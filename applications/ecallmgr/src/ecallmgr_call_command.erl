@@ -67,9 +67,6 @@ fetch_dialplan(Node, UUID, JObj, _ControlPid) ->
 %% the FS ESL via mod_erlang_event
 %% @end
 %%--------------------------------------------------------------------
--type fs_app() :: {ne_binary(), ne_binary() | 'noop'} |
-                  {ne_binary(), ne_binary(), atom()}.
--type fs_apps() :: [fs_app(),...].
 -spec get_fs_app(atom(), ne_binary(), kz_json:object(), ne_binary()) ->
                         fs_app() | fs_apps() |
                         {'return', 'error' | ne_binary()} |
