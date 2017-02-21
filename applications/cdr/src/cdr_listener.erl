@@ -23,8 +23,12 @@
         ]).
 
 -include("cdr.hrl").
+-define(VIEW_TO_UPDATE, <<"cdrs/interaction_listing">>).
 
--record(state, {}).
+-record(state, {counter = #{} :: map()
+               ,threshold = 0 :: non_neg_integer()
+               ,timeout = 0 :: non_neg_integer()
+               }).
 -type state() :: #state{}.
 
 -define(SERVER, ?MODULE).
@@ -74,7 +78,11 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state()}.
 init([]) ->
-    {'ok', #state{}}.
+    Threshold = kapps_config:get(?CONFIG_CAT, <<"refresh_view_threshold">>, 0),
+    Timeout = kapps_config:get(?CONFIG_CAT, <<"refresh_timeout">>, 60),
+    lager:info("cdr refresher threshold: ~p, timeout: ~p", [Threshold, Timeout]),
+    erlang:send_after(Timeout*1000, self(), timeout),
+    {ok, #state{ threshold = Threshold, timeout = Timeout }}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -119,11 +127,35 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info(timeout, #state{counter = Counter, timeout = Timeout} = State) ->
+    Now = kz_time:current_tstamp(),
+    HandleTimeout =
+        fun(AccountId, {Map, List}) ->
+                {From, Count} = maps:get(AccountId, Map),
+                case Now - From > Timeout andalso Count > 0 of
+                    true -> { Map#{ AccountId => {Now, 0} }, [{AccountId, From, Now} | List] };
+                    false -> {Map, List}
+                end
+        end,
+    {NewCounter, RefreshList} = lists:foldl(HandleTimeout, {Counter, []}, maps:keys(Counter)),
+    _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]),
+    erlang:send_after(Timeout*1000, self(), timeout),
+    {noreply, State#state{ counter = NewCounter } };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
+handle_event(_JObj, #state{threshold = 0}) -> ignore;
+handle_event(JObj, #state{counter = Counter, threshold = Threshold} = State) ->
+    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+    Count = case value(maps:find(AccountId, Counter)) of
+                {From, Threshold} ->
+                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:current_tstamp()]),
+                    {kz_time:current_tstamp(), 0};
+                {From, Value} -> {From, Value + 1}
+            end,
+    {ignore, State#state{ counter = Counter#{ AccountId => Count }} };
 handle_event(_JObj, _State) ->
     {'reply', []}.
 
@@ -157,3 +189,16 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+value({ok, Value}) -> Value;
+value(_) -> {kz_time:current_tstamp(), 0}.
+
+-spec update_account_view(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> any().
+update_account_view(AccountId, From, To) ->
+    Dbs = kazoo_modb:get_range(AccountId, From, To),
+    lager:info("refresh cdr view db:~p from:~p to:~p", [Dbs, From, To]),
+    [ kz_datamgr:get_results(Db, ?VIEW_TO_UPDATE, [{startkey, From}, {endkey, To}]) || Db <- Dbs ].
+
+-spec update_accounts_view([{ne_binary(), gregorian_seconds(), gregorian_seconds()}]) -> any().
+update_accounts_view(UpdateList) ->
+    [ update_account_view(AccountId, From, To) || {AccountId, From, To} <- UpdateList ].

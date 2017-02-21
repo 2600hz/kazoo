@@ -349,17 +349,19 @@ load_cdr_summary(Context, _, []) ->
     cb_context:set_resp_status(Context, 'success');
 load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
     Context1 = cb_context:set_account_db(Context, Db),
-    Context2 = crossbar_doc:load_view(?CB_SUMMARY_VIEW
+    Context2 = crossbar_doc:load_view(
+                 ?CB_SUMMARY_VIEW
                                      ,ViewOptions
                                      ,Context1
                                      ,fun normalize_summary_results/2
-                                     ),
+                ),
     case cb_context:resp_status(Context2) of
         'success' ->
-            load_cdr_summary(combine_cdr_summary(Context, Context2)
+            load_cdr_summary(
+              combine_cdr_summary(Context, Context2)
                             ,ViewOptions
                             ,Dbs
-                            );
+             );
         _Else -> Context2
     end.
 
@@ -431,23 +433,30 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 -spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', [CreatedTo]}
+    {'ok', maybe_add_stale_to_options([{'startkey', [CreatedTo]}
            ,{'endkey', [CreatedFrom, kz_json:new()]}
            ,{'limit', pagination_page_size(Context)}
            ,{'group', 'true'}
            ,{'group_level', 2}
            ,{'reduce', 'true'}
            ,'descending'
-           ]};
+           ])};
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', [OwnerId, CreatedTo]}
+    {'ok', maybe_add_stale_to_options([{'startkey', [OwnerId, CreatedTo]}
            ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
            ,{'limit', pagination_page_size(Context)}
            ,{'group', 'true'}
            ,{'group_level', 3}
            ,{'reduce', 'true'}
            ,'descending'
-           ]}.
+           ])}.
+
+-spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
+maybe_add_stale_to_options(Options) ->
+    case kapps_config:get_boolean(?CONFIG_CAT, <<"cdr_stale_view">>) of
+        true -> [ {stale, ok} | Options ];
+        _ -> Options
+    end.
 
 -spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                          {'ok', crossbar_doc:view_options()}.
