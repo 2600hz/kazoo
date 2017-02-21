@@ -521,6 +521,8 @@
 -define(CUSTOMER_UPDATE_HEADERS, [<<"Account-ID">>]).
 -define(OPTIONAL_CUSTOMER_UPDATE_HEADERS, [<<"Recipient-ID">>
                                           ,<<"User-Type">>
+                                          ,<<"DataBag">>
+                                          ,<<"Template-ID">>
                                                | ?DEFAULT_OPTIONAL_HEADERS
                                           ]).
 -define(CUSTOMER_UPDATE_VALUES, [{<<"Event-Category">>, <<"notification">>}

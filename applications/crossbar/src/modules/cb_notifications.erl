@@ -383,6 +383,9 @@ post(Context, ?CUSTOMER_UPDATE, ?MESSAGE) ->
             crossbar_util:response('error', <<"Failed to send message">>, Context)
     end;
 
+post(Context, <<"customer_update_", _/binary>>, ?PREVIEW) ->
+    post(Context, ?CUSTOMER_UPDATE, ?PREVIEW);
+
 post(Context, Id, ?PREVIEW) ->
     Notification = cb_context:doc(Context),
     Preview = build_preview_payload(Context, Notification),
@@ -425,7 +428,8 @@ build_customer_update_payload(Context) ->
 -spec build_preview_payload(cb_context:context(), kz_json:object()) -> kz_proplist().
 build_preview_payload(Context, Notification) ->
     props:filter_empty(
-      [{<<"To">>, kz_json:get_value(<<"to">>, Notification)}
+      [{<<"Template-ID">>, kz_json:get_value(<<"id">>, Notification)}
+      ,{<<"To">>, kz_json:get_value(<<"to">>, Notification)}
       ,{<<"From">>, kz_json:get_value(<<"from">>, Notification)}
       ,{<<"Cc">>, kz_json:get_value(<<"cc">>, Notification)}
       ,{<<"Bcc">>, kz_json:get_value(<<"bcc">>, Notification)}
