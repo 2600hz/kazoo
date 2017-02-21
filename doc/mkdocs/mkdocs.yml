@@ -162,5 +162,6 @@ pages:
     - 'Flame Graphs': 'doc/engineering/flame_graphs.md'
     - 'Kazoo Globals Registry': 'doc/engineering/kz_globals.md'
     - 'Loopback Channels': 'doc/engineering/loopback.md'
+    - 'Helpful Scripts': 'scripts/README.md'
     - 'Using Dialyzer': 'doc/engineering/dialyzer.md'
     - 'Webhooks': 'doc/engineering/webhooks.md'
