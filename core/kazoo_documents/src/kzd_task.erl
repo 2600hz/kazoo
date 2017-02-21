@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% Task document
 %%% @end
@@ -37,23 +37,15 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec fetch(api_binary(), kz_tasks:id() | undefined) ->
+-spec fetch(ne_binary(), kz_tasks:id()) ->
                    {ok, kz_json:object()} |
                    {error, any()}.
-fetch('undefined', _) ->
-    {'error', 'account_id_undefined'};
-fetch(_, 'undefined') ->
-    {'error', 'task_id_undefined'};
-fetch(Account, Id) ->
-    AccountId = kz_util:format_account_db(Account),
-    case kz_datamgr:get_single_result(?KZ_TASKS_DB
-                                     ,?KZ_TASKS_BY_ACCOUNT
-                                     ,[{'key', [AccountId, Id]}]
-                                     )
-    of
+fetch(Account, TaskId) ->
+    View = ?KZ_TASKS_BY_ACCOUNT,
+    ViewOptions = [{'key', [kz_util:format_account_id(Account), TaskId]}],
+    case kz_datamgr:get_single_result(?KZ_TASKS_DB, View, ViewOptions) of
         {'error', _}=E -> E;
-        {'ok', JObj} ->
-            kz_json:get_value(<<"value">>, JObj)
+        {'ok', JObj} -> kz_json:get_value(<<"value">>, JObj)
     end.
 
 %%--------------------------------------------------------------------
