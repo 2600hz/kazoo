@@ -453,7 +453,7 @@ create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 
 -spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
 maybe_add_stale_to_options(Options) ->
-    case kapps_config:get_boolean(?CONFIG_CAT, <<"cdr_stale_view">>) of
+    case kapps_config:get(?CONFIG_CAT, <<"cdr_stale_view">>) of
         true -> [ {stale, ok} | Options ];
         _ -> Options
     end.
