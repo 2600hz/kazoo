@@ -10,6 +10,8 @@ A port request can be in one of five **states**:
 * `completed`: The port request has been finished, and numbers are activated.
 * `rejected`: The port request has been cancelled, or something has gone wrong during the port process. The port can be resubmitted.
 
+![porting state flow](http://i.imgur.com/js7JLs0.png)
+
 #### Schema
 
 Schema for a port request
