@@ -25,7 +25,7 @@
 -include("cdr.hrl").
 -define(VIEW_TO_UPDATE, <<"cdrs/interaction_listing">>).
 -define(THRESHOLD, kapps_config:get(?CONFIG_CAT, <<"refresh_view_threshold">>, 0)).
--define(TIMEOUT, kapps_config:get(?CONFIG_CAT, <<"refresh_timeout">>, 60)).
+-define(TIMEOUT, kapps_config:get(?CONFIG_CAT, <<"refresh_timeout">>, 900)).
 
 -record(state, {counter = #{} :: map()}).
 -type state() :: #state{}.
@@ -79,7 +79,7 @@ start_link() ->
 init([]) ->
 
     lager:info("cdr refresher threshold: ~p, timeout: ~p", [?THRESHOLD, ?TIMEOUT]),
-    erlang:send_after(?TIMEOUT*1000, self(), timeout),
+    erlang:send_after(?TIMEOUT*?MILLISECONDS_IN_SECOND, self(), timeout),
     {ok, #state{}}.
 
 %%--------------------------------------------------------------------
@@ -139,7 +139,7 @@ handle_info(timeout, #state{counter = Counter} = State) ->
         end,
     {NewCounter, RefreshList} = lists:foldl(HandleTimeout, {Counter, []}, maps:keys(Counter)),
     _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]),
-    erlang:send_after(Timeout*1000, self(), timeout),
+    erlang:send_after(Timeout*?MILLISECONDS_IN_SECOND, self(), timeout),
     {noreply, State#state{ counter = NewCounter } };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
