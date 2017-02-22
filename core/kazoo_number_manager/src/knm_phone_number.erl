@@ -492,7 +492,8 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
       ]
       ++
           props:filter_empty(
-            [{?PVT_ASSIGNED_TO, assigned_to(PN)}
+            [{<<"_rev">>, rev(PN)}
+            ,{?PVT_ASSIGNED_TO, assigned_to(PN)}
             ,{?PVT_AUTH_BY, auth_by(PN)}
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
             ,{?PVT_USED_BY, used_by(PN)}
@@ -745,9 +746,9 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 -spec number_db(knm_phone_number()) -> ne_binary().
 number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
 
-%% %% @private
-%% -spec rev(knm_phone_number()) -> api_ne_binary().
-%% rev(#knm_phone_number{rev=Rev}) -> Rev.
+%% @private
+-spec rev(knm_phone_number()) -> api_ne_binary().
+rev(#knm_phone_number{rev=Rev}) -> Rev.
 
 -spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
 set_rev(N, ?NE_BINARY=Rev) -> N#knm_phone_number{rev=Rev}.
