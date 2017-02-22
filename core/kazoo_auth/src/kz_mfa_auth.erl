@@ -103,7 +103,7 @@ get_system_configs() ->
             case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of
                 {'ok', JObj} -> kz_json:set_value(<<"from">>, <<"system">>, JObj);
                 {'error', _R} ->
-                    lager:debug("failed to open default multi factor ~s provider", [DefaultProvider]),
+                    lager:debug("failed to open default ~s multi factor provider config", [DefaultProvider]),
                     'undefined'
             end
     end.

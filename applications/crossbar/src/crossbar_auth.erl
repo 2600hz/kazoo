@@ -255,8 +255,8 @@ auth_configs_from_doc({'ok', Configs}, AccountId, MasterId, _IsReseller) ->
     case kz_json:is_empty(Configs) of
         'true' -> account_auth_configs(account_parent(AccountId), MasterId);
         'false' ->
-          lager:debug("found auth config from ~s", [AccountId]),
-          kz_json:set_value(<<"from">>, AccountId, Configs)
+            lager:debug("found auth config from ~s", [AccountId]),
+            kz_json:set_value(<<"from">>, AccountId, Configs)
     end;
 auth_configs_from_doc({'error', Reason}, _AccountId, _MasterId, 'true') ->
     Reason =:= 'not_found'

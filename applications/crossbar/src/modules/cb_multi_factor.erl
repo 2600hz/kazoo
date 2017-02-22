@@ -205,7 +205,7 @@ summary(Context) ->
                   ],
     add_available_providers(
       crossbar_doc:load_view(?LISTS_BY_TYPE, ViewOptions, Context, fun normalize_view_results/2)
-    ).
+     ).
 
 add_available_providers(Context) ->
     ViewOptions = [{'startkey', [<<"multi_factor">>]}
@@ -225,10 +225,10 @@ merge_summary(Context, Available) ->
 
 merge_summary(Context, Available, 'success') ->
     kz_json:from_list(
-        [{<<"configured">>, cb_context:doc(Context)}
-        ,{<<"available_system_provider">>, Available}
-        ]
-    );
+      [{<<"configured">>, cb_context:doc(Context)}
+      ,{<<"available_system_provider">>, Available}
+      ]
+     );
 merge_summary(_Context, Available, _) ->
     kz_json:from_list([{<<"available_system_provider">>, Available}]).
 
