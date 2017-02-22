@@ -8,10 +8,12 @@
                 "external": {
                     "properties": {
                         "name": {
-                            "description": ""
+                            "description": "Update external Caller ID Name",
+                            "type": "string"
                         },
                         "number": {
-                            "description": ""
+                            "description": "Update external Caller ID Number",
+                            "type": "string"
                         }
                     },
                     "type": "object"
@@ -21,16 +23,17 @@
         },
         "regex": {
             "default": ".*",
-            "description": "",
+            "description": "Determine match/nomatch when use_absolute_mode is false",
             "type": "string"
         },
         "use_absolute_mode": {
             "default": false,
-            "description": "",
+            "description": "If true, direct call down a branch that matches the caller ID",
             "type": "boolean"
         },
         "user_id": {
-            "description": ""
+            "description": "kazoo User ID to use as owner_id instead of detected owner_id",
+            "type": "string"
         }
     },
     "required": true,
