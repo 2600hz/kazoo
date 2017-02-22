@@ -9,8 +9,8 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
--define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+%%-define(DEBUG(_Fmt, _Args), 'ok').
+-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -22,18 +22,45 @@
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
+    ensure_ref_dir(),
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
     'ok'.
 
 -spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
+    ensure_ref_dir(),
     to_schema_doc(M, process(M)).
+
+-spec ensure_ref_dir() -> 'ok'.
+ensure_ref_dir() ->
+    'ok' = filelib:ensure_dir(filename:join([code:lib_dir('callflow'), "doc", "ref", ".placeholder"])).
 
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_term:to_binary(M),
     Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
     kz_ast_util:ensure_file_exists(Schema),
-    update_schema(Base, Schema, Usage).
+    update_schema(Base, Schema, Usage),
+    update_doc(Base, Schema).
+
+-define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+-define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
+
+update_doc(Base, Schema) ->
+    RefPath = filename:join([code:lib_dir('callflow'), "doc", "ref", <<Base/binary,".md">>]),
+    Contents = build_ref_doc(Base, Schema),
+
+    'ok' = file:write_file(RefPath, Contents).
+
+build_ref_doc(Base, Schema) ->
+    DocName = format_name(Base),
+    ["## ", DocName, "\n\n"
+    ,"### About ", DocName, "\n\n"
+    ,"### Schema\n\n"
+    ,kz_ast_util:schema_to_table(Schema)
+    ].
+
+format_name(Base) ->
+    [kz_binary:ucfirst(Piece) || Piece <- binary:split(Base, <<"_">>)].
 
 update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),
