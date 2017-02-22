@@ -290,9 +290,8 @@ move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
     Updates = knm_number_options:to_phone_number_setters(Options0),
     TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
-    {TDiscovered, NotExisting} = take_not_founds(do(fun discover/1, new(Options, NotFounds))),
-    TNew = do_move_not_founds(NotExisting, Options),
-    T = merge_okkos([TUpdated, TDiscovered, TNew]),
+    TDiscovered = do(fun discover/1, new(Options, NotFounds)),
+    T = merge_okkos(TUpdated, TDiscovered),
     ret(do(fun move_to/1, T)).
 
 %%--------------------------------------------------------------------
