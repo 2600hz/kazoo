@@ -4,7 +4,11 @@
 
 from glob import glob
 import re
-import sys
+import sys, os
+
+cwd = os.getcwd()
+script_dir = os.path.dirname(sys.argv[0])
+os.chdir(script_dir)
 
 print 'Undocumented API endpoints:'
 
@@ -19,8 +23,8 @@ def endpoints(wildcard_path):
 def sort_endpoints(APIs):
     return sorted(APIs, key=lambda x: x.split('}', 1)[-1])
 
-APIs = endpoints('applications/crossbar/doc/ref/*.md')
-MDs = endpoints('applications/crossbar/doc/*.md')
+APIs = endpoints('../applications/crossbar/doc/ref/*.md')
+MDs = endpoints('../applications/crossbar/doc/*.md')
 
 Wrong = set.difference(MDs, APIs)
 Undocumented = set.difference(APIs, MDs)
@@ -43,5 +47,7 @@ if 0 != wrong:
     for API in sort_endpoints(Wrong):
         print API
     #sys.exit(wrong)
+
+os.chdir(cwd)
 
 sys.exit(100 - percent_documented)
