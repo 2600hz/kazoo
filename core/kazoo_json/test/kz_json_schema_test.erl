@@ -149,26 +149,18 @@ validate_v4_test_() ->
 get_schema() ->
     kz_json:decode(<<"{\"properties\":{\"caller_id\":{\"description\":\"The default caller ID parameters\",\"type\":\"object\",\"properties\":{ \"internal\":{\"description\":\"The default caller ID used when dialing internal extensions\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Called ID Internal Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":30}}},\"external\":{\"description\":\"The default caller ID used when dialing external numbers\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID External Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15}}},\"emergency\":{\"description\":\"The caller ID used when external, internal, or emergency is not defined\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID Emergency Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15,\"default\":\"emer_default\"}}}},\"default\":{}}}}">>).
 
+get_schema_sms() ->
+    kz_json:decode(<<"{\"_id\":\"system_config.sms\",\"_rev\":\"3-0861f3d8db3f26883e3a69274aeb94bd\",\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"description\":\"Schema for sms system_config\",\"properties\":{\"outbound\":{\"properties\":{\"options\":{\"properties\":{\"default\":{\"delivery_mode\":2,\"mandatory\":true},\"description\":\"sms options\",\"type\":\"object\"}}}}},\"required\":[\"outbound\"],\"type\":\"object\",\"id\":\"system_config.sms\"}">>).
+
 default_object_test() ->
     Schema = get_schema(),
     Default = kz_json_schema:default_object(Schema),
     [?_assertMatch({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
 
-flatten_test() ->
-    Schema = get_schema(),
-    Flat = kz_json_schema:flatten(Schema),
+flatten_sms_schema_test() ->
+    Flat = kz_json_schema:flatten(get_schema_sms()),
     [?_assertMatch(Flat, {[
-        {[<<"caller_id">>,<<"internal">>,<<"name">>,<<"name">>], <<"Called ID Internal Name">>},
-        {[<<"caller_id">>,<<"internal">>,<<"name">>,<<"description">>], <<"The caller id name for the object type">>},
-        {[<<"caller_id">>,<<"internal">>,<<"name">>,<<"type">>], <<"string">>},
-        {[<<"caller_id">>,<<"internal">>,<<"name">>,<<"maxLength">>], 30},
-        {[<<"caller_id">>,<<"external">>,<<"name">>,<<"name">>], <<"Caller ID External Name">>},
-        {[<<"caller_id">>,<<"external">>,<<"name">>, <<"description">>], <<"The caller id name for the object type">>},
-        {[<<"caller_id">>,<<"external">>,<<"name">>,<<"type">>], <<"string">>},
-        {[<<"caller_id">>,<<"external">>,<<"name">>,<<"maxLength">>], 15},
-        {[<<"caller_id">>,<<"emergency">>,<<"name">>,<<"name">>], <<"Caller ID Emergency Name">>},
-        {[<<"caller_id">>,<<"emergency">>,<<"name">>, <<"description">>], <<"The caller id name for the object type">>},
-        {[<<"caller_id">>,<<"emergency">>,<<"name">>,<<"type">>], <<"string">>},
-        {[<<"caller_id">>,<<"emergency">>,<<"name">>, <<"maxLength">>], 15},
-        {[<<"caller_id">>,<<"emergency">>,<<"name">>,<<"default">>], <<"emer_default">>}]
+        {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
+        {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
+        {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
     })].
