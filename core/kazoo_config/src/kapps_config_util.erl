@@ -53,15 +53,12 @@ load_config_from_reseller(Account, Config) ->
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_system(_Account, Config) ->
-    kz_json:get_value(<<"default">>, ensure_value(kapps_config:get_category(Config))).
+    kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config))).
 
 -spec load_default_config(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_config(_Account, Config) ->
     Schema = system_schema(Config),
     {ok, kz_doc:set_id(kz_json_schema:default_object(Schema), doc_id(Config))}.
-
-ensure_value({ok, JObj}) -> JObj;
-ensure_value(_) -> kz_json:new().
 
 -spec maybe_new({ok, kz_json:object()}) -> kz_json:object().
 maybe_new({ok, JObj}) -> JObj;

@@ -160,7 +160,7 @@ default_object_test() ->
 flatten_sms_schema_test() ->
     Flat = kz_json_schema:flatten(get_schema_sms()),
     [?_assertEqual(Flat, {[
-        {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
-        {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
-        {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
-    })].
+                           {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
+                           {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
+                           {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
+                         })].
