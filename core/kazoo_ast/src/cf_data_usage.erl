@@ -337,10 +337,13 @@ process_mfa(#usage{data_var_name=DataName}=Acc
            ,'kz_json', 'merge_recursive', [?VAR(DataName), _Arg]
            ) ->
     Acc;
-process_mfa(#usage{data_var_name=DataName}=Acc
-           ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_json'=M, 'set_value'=F, [Key, Value, ?VAR(DataName)]
            ) ->
-    Acc;
+    ?DEBUG("adding set_value usage ~p, ~p, ~p~n", [Key, Value, DataName]),
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Value)})};
 process_mfa(#usage{}=Acc
            ,'kz_json', _F, [{call, _, _, _}=_Key|_]
            ) ->
@@ -597,7 +600,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
         ?VAR('_') -> Acc;
         ?EMPTY_LIST -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
-        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args) -> process_clause_body(Acc, Body);
+        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args)=_ClauseArgs ->
+            ?DEBUG("skipping set_value on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
+            process_clause_body(Acc, Body);
         ?VAR(NewName) ->
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages

@@ -854,8 +854,8 @@ maybe_create_endpoint(Endpoint, Properties, Call) ->
 -spec is_call_forward_enabled(kz_json:object(), kz_json:object()) -> boolean().
 is_call_forward_enabled(Endpoint, Properties) ->
     CallForwarding = kz_json:get_ne_value(<<"call_forward">>, Endpoint, kz_json:new()),
-    Source = kz_json:get_value(<<"source">>, Properties),
-    Number = kz_json:get_value(<<"number">>, CallForwarding),
+    Source = kz_json:get_ne_binary_value(<<"source">>, Properties),
+    Number = kz_json:get_ne_binary_value(<<"number">>, CallForwarding),
     kz_json:is_true(<<"enabled">>, CallForwarding)
         andalso not kz_term:is_empty(Number)
         andalso (kz_json:is_false(<<"direct_calls_only">>, CallForwarding, 'true')
@@ -1588,10 +1588,10 @@ get_to_did(Endpoint, Call) ->
 
 -spec get_to_user(kz_json:object(), kz_json:object()) -> api_binary().
 get_to_user(SIPJObj, Properties) ->
-    case kz_json:get_ne_value(<<"static_invite">>, Properties) of
+    case kz_json:get_ne_binary_value(<<"static_invite">>, Properties) of
         'undefined' ->
-            case kz_json:get_ne_value(<<"static_invite">>, SIPJObj) of
-                'undefined' -> kz_json:get_value(<<"username">>, SIPJObj);
+            case kz_json:get_ne_binary_value(<<"static_invite">>, SIPJObj) of
+                'undefined' -> kz_json:get_ne_binary_value(<<"username">>, SIPJObj);
                 To -> To
             end;
         To -> To
@@ -1599,7 +1599,7 @@ get_to_user(SIPJObj, Properties) ->
 
 -spec get_to_username(kz_json:object()) -> api_binary().
 get_to_username(SIPJObj) ->
-    kz_json:get_value(<<"username">>, SIPJObj).
+    kz_json:get_ne_binary_value(<<"username">>, SIPJObj).
 
 -spec get_timeout(kz_json:object()) -> api_binary().
 get_timeout(JObj) ->
