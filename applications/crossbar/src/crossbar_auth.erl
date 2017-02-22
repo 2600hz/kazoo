@@ -26,6 +26,14 @@
         kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
        ).
 
+-define(ATTEMPT_LOG_ID(Year, Month),
+        <<(kz_term:to_binary(Year))/binary
+          ,(kz_time:pad_month(Month))/binary
+          ,"-"
+          ,(kz_binary:rand_hex(16))/binary
+        >>
+       ).
+
 -spec create_auth_token(cb_context:context(), atom()) ->
                                cb_context:context().
 create_auth_token(Context, AuthModule) ->
@@ -167,13 +175,18 @@ log_failed_mfa_attempts(Claims, AuthConfigs, Reason) ->
     Now = kz_time:current_tstamp(),
     ModDb = kz_util:format_account_mod_id(AccountId, Now),
 
+    {Year, Month, _} = erlang:date(),
+    LogId = ?ATTEMPT_LOG_ID(Year, Month),
+
     Doc = kz_json:from_list(
             props:filter_undefined(
-              [{<<"auth_type">>, <<"multi_factor">>}
+              [{<<"_id">>, LogId}
+              ,{<<"auth_type">>, <<"multi_factor">>}
               ,{<<"debug_type">>, <<"failed">>}
               ,{<<"message">>, kz_term:to_binary(Reason)}
               ,{<<"auth_config_origin">>, kz_json:get_value(<<"from">>, AuthConfigs)}
               ,{<<"mfa_config_origin">>, props:get_value([<<"mfa_options">>, <<"account_id">>], Claims)}
+              ,{<<"timestamp">>, Now}
               ,{<<"pvt_account_db">>, ModDb}
               ,{<<"pvt_account_id">>, AccountId}
               ,{<<"pvt_type">>, <<"login_attempt">>}

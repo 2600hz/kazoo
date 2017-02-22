@@ -10,9 +10,9 @@
 -module(cb_multi_factor).
 
 -export([init/0
-        ,allowed_methods/0, allowed_methods/1
-        ,resource_exists/0, resource_exists/1
-        ,validate/1, validate/2
+        ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,resource_exists/0, resource_exists/1, resource_exists/2
+        ,validate/1, validate/2, validate/3
         ,put/1
         ,post/2
         ,patch/2
@@ -22,6 +22,11 @@
 -include("crossbar.hrl").
 
 -define(LISTS_BY_TYPE, <<"multi_factor/lists_by_type">>).
+-define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_time">>).
+
+-define(AUTH_PROVIDER, <<"auth_provider">>).
+-define(ATTEMPTS, <<"attempts">>).
+-define(ATTEMPTS_TYPE, <<"login_attempt">>).
 
 %%%===================================================================
 %%% API
@@ -52,11 +57,18 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods() -> http_methods().
--spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
+
+-spec allowed_methods(path_token()) -> http_methods().
+allowed_methods(?ATTEMPTS) ->
+    [?HTTP_GET];
 allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+
+-spec allowed_methods(path_token(), path_token()) -> http_methods().
+allowed_methods(?ATTEMPTS, _AttemptsId) ->
+    [?HTTP_GET].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -68,9 +80,14 @@ allowed_methods(_ConfigId) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec resource_exists() -> 'true'.
--spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
+
+-spec resource_exists(path_token()) -> 'true'.
+resource_exists(?ATTEMPTS) -> 'true';
 resource_exists(_ConfigId) -> 'true'.
+
+-spec resource_exists(path_token(), path_token()) -> 'true'.
+resource_exists(?ATTEMPTS, _AttemptsId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -83,11 +100,18 @@ resource_exists(_ConfigId) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
--spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_multi_factor(Context, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
+validate(Context, ?ATTEMPTS) ->
+    crossbar_view:load(Context, ?CB_LIST_ATTEMPT_LOG, [{mapper, fun normalize_attempt_view_result/1}]);
 validate(Context, ConfigId) ->
     validate_auth_config(Context, ConfigId, cb_context:req_verb(Context)).
+
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+validate(Context, ?ATTEMPTS, AttemptId) ->
+    read_attempt_log(AttemptId, Context).
 
 -spec validate_multi_factor(cb_context:context(), http_method()) -> cb_context:context().
 validate_multi_factor(Context, ?HTTP_GET) ->
@@ -183,6 +207,18 @@ update(Id, Context) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
+%% Load a login attempt log from MODB
+%% @end
+%%--------------------------------------------------------------------
+-spec read_attempt_log(ne_binary(), cb_context:context()) -> cb_context:context().
+read_attempt_log(?MATCH_MODB_PREFIX(YYYY, MM, _) = AttemptId, Context) ->
+    Year  = kz_term:to_integer(YYYY),
+    Month = kz_term:to_integer(MM),
+    crossbar_doc:load(AttemptId, cb_context:set_account_modb(Context, Year, Month), ?TYPE_CHECK_OPTION(?ATTEMPTS_TYPE)).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
 %% Update-merge an existing menu document with the data provided, if it is
 %% valid
 %% @end
@@ -207,6 +243,7 @@ summary(Context) ->
       crossbar_doc:load_view(?LISTS_BY_TYPE, ViewOptions, Context, fun normalize_view_results/2)
      ).
 
+-spec add_available_providers(cb_context:context()) -> cb_context:context().
 add_available_providers(Context) ->
     ViewOptions = [{'startkey', [<<"multi_factor">>]}
                   ,{'endkey', [<<"multi_factor">>, kz_json:new()]}
@@ -220,9 +257,11 @@ add_available_providers(Context) ->
             cb_context:set_resp_data(Context, merge_summary(Context, Available))
     end.
 
+-spec merge_summary(cb_context:context(), kz_json:objects()) -> kz_json:object().
 merge_summary(Context, Available) ->
     merge_summary(Context, Available, cb_context:resp_status(Context)).
 
+-spec merge_summary(cb_context:context(), kz_json:objects(), cb_context:crossbar_status()) -> kz_json:object().
 merge_summary(Context, Available, 'success') ->
     kz_json:from_list(
       [{<<"configured">>, cb_context:doc(Context)}
@@ -253,3 +292,7 @@ on_successful_validation(Id, Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
+
+-spec normalize_attempt_view_result(kz_json:object()) -> kz_json:object().
+normalize_attempt_view_result(JObj) ->
+    kz_json:get_value(<<"value">>, JObj).
