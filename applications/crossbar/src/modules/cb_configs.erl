@@ -91,10 +91,11 @@ patch(Context, ConfigId) -> post(Context, ConfigId).
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ConfigId) ->
     Stored = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
-    case cb_context:req_data(Context) of
-        ?EMPTY_JSON_OBJECT ->
+    case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
+        {?EMPTY_JSON_OBJECT, undefined} -> skip;
+        {?EMPTY_JSON_OBJECT, _} ->
             crossbar_doc:delete(cb_context:set_doc(Stored));
-        Diff ->
+        {Diff, _} ->
             crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
     end,
     set_config_to_context(ConfigId, Context).
