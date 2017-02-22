@@ -155,11 +155,11 @@ get_schema_sms() ->
 default_object_test() ->
     Schema = get_schema(),
     Default = kz_json_schema:default_object(Schema),
-    [?_assertMatch({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
+    [?_assertEqual({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
 
 flatten_sms_schema_test() ->
     Flat = kz_json_schema:flatten(get_schema_sms()),
-    [?_assertMatch(Flat, {[
+    [?_assertEqual(Flat, {[
         {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
         {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
         {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
