@@ -4,7 +4,15 @@
     "description": "Validator for the call_forward callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "description": "What action to perform on the caller's call forwarding",
+            "enum": [
+                "activate",
+                "deactivate",
+                "update",
+                "toggle",
+                "menu"
+            ],
+            "type": "string"
         }
     },
     "required": true,
