@@ -140,7 +140,7 @@
                     ,req_nouns = [{<<"404">>, []}] :: req_nouns() % {module, [id]} most typical
                     ,req_json = kz_json:new() :: req_json()
                     ,req_files = [] :: req_files()
-                    ,req_data :: kz_json:json_term()  % the "data" from the request JSON envelope
+                    ,req_data = kz_json:new() :: kz_json:json_term()  % the "data" from the request JSON envelope
                     ,req_headers = [] :: cowboy:http_headers()
                     ,query_json = kz_json:new() :: kz_json:object()
                     ,account_id :: api_ne_binary()

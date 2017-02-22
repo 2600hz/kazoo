@@ -342,7 +342,7 @@ patch_and_validate_doc(Id, Context, ValidateFun, _RespStatus) ->
                        cb_context:context().
 -spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer()) ->
                        cb_context:context().
--spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun() | 'undefined') ->
+-spec load_view(ne_binary() | 'all_docs', kz_proplist(), cb_context:context(), kz_json:json_term(), pos_integer(), filter_fun()) ->
                        cb_context:context().
 load_view(View, Options, Context) ->
     load_view(View, Options, Context
@@ -978,11 +978,12 @@ handle_datamgr_pagination_success([_|_]=JObjs
     end.
 
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
-                      fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()).
+                      fun((cb_context:context(), kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
+                      'undefined'.
 
--spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
+-spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction()) ->
                           kz_json:objects().
--spec apply_filter('undefined' | filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
+-spec apply_filter(filter_fun(), kz_json:objects(), cb_context:context(), direction(), boolean()) ->
                           kz_json:objects().
 apply_filter(FilterFun, JObjs, Context, Direction) ->
     apply_filter(FilterFun, JObjs, Context, Direction, has_qs_filter(Context)).
@@ -1004,7 +1005,7 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
         'descending' -> lists:reverse(Filtered)
     end.
 
--spec maybe_apply_custom_filter(cb_context:context(), 'undefined' | filter_fun(), kz_json:objects()) -> kz_json:objects().
+-spec maybe_apply_custom_filter(cb_context:context(), filter_fun(), kz_json:objects()) -> kz_json:objects().
 maybe_apply_custom_filter(_Context, 'undefined', JObjs) -> JObjs;
 maybe_apply_custom_filter(Context, FilterFun, JObjs) ->
     Fun = case is_function(FilterFun, 2) of
