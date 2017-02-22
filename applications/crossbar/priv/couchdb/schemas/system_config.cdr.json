@@ -16,7 +16,7 @@
             "type": "boolean"
         },
         "refresh_timeout": {
-            "default": 60,
+            "default": 900,
             "description": "time in seconds to to trigger cdrs view refresh",
             "type": "integer"
         },
