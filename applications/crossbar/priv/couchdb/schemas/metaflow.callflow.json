@@ -3,29 +3,12 @@
     "_id": "metaflow.callflow",
     "description": "callflow metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
-        },
-        "data": {
-            "properties": {
-                "id": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "id"
-            ],
-            "type": "object"
-        },
-        "module": {
-            "enum": [
-                "callflow"
-            ]
+        "id": {
+            "type": "string"
         }
     },
     "required": [
-        "module",
-        "data"
+        "id"
     ],
     "type": "object"
 }

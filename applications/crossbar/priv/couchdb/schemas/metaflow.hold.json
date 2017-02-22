@@ -3,33 +3,16 @@
     "_id": "metaflow.hold",
     "description": "hold metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "moh_aleg": {
+            "type": "string"
         },
-        "data": {
-            "properties": {
-                "moh_aleg": {
-                    "type": "string"
-                },
-                "moh_bleg": {
-                    "type": "string"
-                },
-                "unhold_key": {
-                    "default": "1",
-                    "type": "string"
-                }
-            },
-            "type": "object"
+        "moh_bleg": {
+            "type": "string"
         },
-        "module": {
-            "enum": [
-                "hold"
-            ]
+        "unhold_key": {
+            "default": "1",
+            "type": "string"
         }
     },
-    "required": [
-        "module",
-        "data"
-    ],
     "type": "object"
 }

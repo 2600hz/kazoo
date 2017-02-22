@@ -105,8 +105,8 @@ invalid_task_data4() ->
 validate_v3_test_() ->
     V3SchemaJObj = from_file("schemav3_tasks.json"),
     [?_assertMatch({ok,_}, kz_json_schema:validate(V3SchemaJObj, valid_task_data()))
-    ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
-                           ,{data_invalid,_,{missing_required_property,<<"do_it_now">>},_,_}
+    ,?_assertMatch({error, [{data_invalid,_,{missing_required_property,<<"do_it_now">>},_,_}
+                           ,{data_invalid,_,wrong_size,_,[<<"records">>]}
                            ]}
                   ,kz_json_schema:validate(V3SchemaJObj, invalid_task_data1())
                   )
@@ -127,8 +127,8 @@ validate_v3_test_() ->
 validate_v4_test_() ->
     V4SchemaJObj = from_file("schemav4_tasks.json"),
     [?_assertMatch({ok,_}, kz_json_schema:validate(V4SchemaJObj, valid_task_data()))
-    ,?_assertMatch({error, [{data_invalid,_,missing_required_property,_,_}
-                           ,{data_invalid,_,wrong_size,_,[<<"records">>]}
+    ,?_assertMatch({error, [{data_invalid,_,wrong_size,_,[<<"records">>]}
+                           ,{data_invalid,_,missing_required_property,_,_}
                            ]}
                   ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data1())
                   )

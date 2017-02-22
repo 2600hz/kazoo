@@ -2,52 +2,31 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "metaflow",
     "description": "A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to",
-    "oneOf": [
-        {
-            "$ref": "metaflow.audio_level"
+    "properties": {
+        "children": {
+            "description": "Children metaflows",
+            "patternProperties": {
+                ".+": {
+                    "$ref": "metaflow"
+                }
+            },
+            "type": "object"
         },
-        {
-            "$ref": "metaflow.break"
+        "data": {
+            "description": "The data/arguments of the metaflow module",
+            "kazoo-validation": true,
+            "type": "object"
         },
-        {
-            "$ref": "metaflow.callflow"
-        },
-        {
-            "$ref": "metaflow.hangup"
-        },
-        {
-            "$ref": "metaflow.hold"
-        },
-        {
-            "$ref": "metaflow.hold_control"
-        },
-        {
-            "$ref": "metaflow.intercept"
-        },
-        {
-            "$ref": "metaflow.move"
-        },
-        {
-            "$ref": "metaflow.play"
-        },
-        {
-            "$ref": "metaflow.record_call"
-        },
-        {
-            "$ref": "metaflow.resume"
-        },
-        {
-            "$ref": "metaflow.say"
-        },
-        {
-            "$ref": "metaflow.sound_touch"
-        },
-        {
-            "$ref": "metaflow.transfer"
-        },
-        {
-            "$ref": "metaflow.tts"
+        "module": {
+            "description": "The name of the metaflow module to execute at this node",
+            "kazoo-validation": true,
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
         }
+    },
+    "required": [
+        "module"
     ],
     "type": "object"
 }

@@ -3,40 +3,23 @@
     "_id": "metaflow.record_call",
     "description": "record_call metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
-        },
-        "data": {
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "start",
-                        "stop",
-                        "toggle"
-                    ]
-                },
-                "format": {
-                    "type": "string"
-                },
-                "media_name": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
-        },
-        "module": {
+        "action": {
+            "default": "toggle",
             "enum": [
-                "record_call"
+                "start",
+                "stop",
+                "toggle"
             ]
+        },
+        "format": {
+            "type": "string"
+        },
+        "media_name": {
+            "type": "string"
         }
     },
     "required": [
-        "module",
-        "data"
+        "action"
     ],
     "type": "object"
 }

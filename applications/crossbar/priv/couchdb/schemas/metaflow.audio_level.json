@@ -3,36 +3,18 @@
     "_id": "metaflow.audio_level",
     "description": "audio_level metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "action": {
+            "type": "string"
         },
-        "data": {
-            "properties": {
-                "action": {
-                    "type": "string"
-                },
-                "level": {
-                    "type": "string"
-                },
-                "mode": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "action"
-            ],
-            "type": "object"
+        "level": {
+            "type": "string"
         },
-        "module": {
-            "enum": [
-                "audio_level"
-            ],
+        "mode": {
             "type": "string"
         }
     },
     "required": [
-        "module",
-        "data"
+        "action"
     ],
     "type": "object"
 }

@@ -3,21 +3,6 @@
     "_id": "metaflow.break",
     "additionalProperties": false,
     "description": "break metaflow schema",
-    "properties": {
-        "children": {
-            "$ref": "metaflow_children"
-        },
-        "data": {
-            "type": "object"
-        },
-        "module": {
-            "enum": [
-                "break"
-            ]
-        }
-    },
-    "required": [
-        "module"
-    ],
+    "properties": {},
     "type": "object"
 }

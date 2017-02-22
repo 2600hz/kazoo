@@ -3,33 +3,19 @@
     "_id": "metaflow.transfer",
     "description": "transfer metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
-        },
-        "data": {
-            "properties": {
-                "Transfer-Type": {
-                    "default": "attended",
-                    "type": "string"
-                },
-                "captures": {
-                    "type": "string"
-                },
-                "target": {
-                    "type": "string"
-                }
-            },
-            "type": "object"
-        },
-        "module": {
+        "Transfer-Type": {
+            "default": "attended",
             "enum": [
-                "transfer"
+                "attended",
+                "blind"
             ]
+        },
+        "captures": {
+            "type": "string"
+        },
+        "target": {
+            "type": "string"
         }
     },
-    "required": [
-        "module",
-        "data"
-    ],
     "type": "object"
 }

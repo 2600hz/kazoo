@@ -3,37 +3,21 @@
     "_id": "metaflow.say",
     "description": "say metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "language": {
+            "type": "string"
         },
-        "data": {
-            "properties": {
-                "language": {
-                    "type": "string"
-                },
-                "method": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
-            ],
-            "type": "object"
+        "method": {
+            "type": "string"
         },
-        "module": {
-            "enum": [
-                "say"
-            ]
+        "text": {
+            "type": "string"
+        },
+        "type": {
+            "type": "string"
         }
     },
     "required": [
-        "module",
-        "data"
-    ]
+        "text"
+    ],
+    "type": "object"
 }

@@ -3,45 +3,28 @@
     "_id": "metaflow.intercept",
     "description": "intercept metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "auto_answer": {
+            "default": false,
+            "type": "boolean"
         },
-        "data": {
-            "properties": {
-                "auto_answer": {
-                    "default": false,
-                    "type": "boolean"
-                },
-                "target_id": {
-                    "type": "string"
-                },
-                "target_type": {
-                    "enum": [
-                        "device",
-                        "user",
-                        "number"
-                    ]
-                },
-                "unbridged_only": {
-                    "default": true,
-                    "type": "boolean"
-                }
-            },
-            "required": [
-                "target_type",
-                "target_id"
-            ],
-            "type": "object"
+        "target_id": {
+            "type": "string"
         },
-        "module": {
+        "target_type": {
             "enum": [
-                "intercept"
+                "device",
+                "user",
+                "number"
             ]
+        },
+        "unbridged_only": {
+            "default": true,
+            "type": "boolean"
         }
     },
     "required": [
-        "module",
-        "data"
+        "target_type",
+        "target_id"
     ],
     "type": "object"
 }

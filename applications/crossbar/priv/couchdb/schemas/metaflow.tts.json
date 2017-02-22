@@ -3,47 +3,33 @@
     "_id": "metaflow.tts",
     "description": "tts metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "engine": {
+            "default": "flite",
+            "type": "string"
         },
-        "data": {
-            "properties": {
-                "engine": {
-                    "default": "flite",
-                    "type": "string"
-                },
-                "language": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "self",
-                    "type": "string"
-                },
-                "terminators": {
-                    "type": "string"
-                },
-                "text": {
-                    "type": "string"
-                },
-                "voice": {
-                    "default": "female",
-                    "type": "string"
-                }
-            },
-            "required": [
-                "text"
-            ],
-            "type": "object"
+        "language": {
+            "type": "string"
         },
-        "module": {
+        "leg": {
+            "default": "self",
             "enum": [
-                "tts"
+                "self",
+                "peer"
             ]
+        },
+        "terminators": {
+            "type": "string"
+        },
+        "text": {
+            "type": "string"
+        },
+        "voice": {
+            "default": "female",
+            "type": "string"
         }
     },
     "required": [
-        "module",
-        "data"
+        "text"
     ],
     "type": "object"
 }

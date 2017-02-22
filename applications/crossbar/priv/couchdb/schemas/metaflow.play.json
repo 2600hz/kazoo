@@ -3,37 +3,20 @@
     "_id": "metaflow.play",
     "description": "play metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
+        "id": {
+            "type": "string"
         },
-        "data": {
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "leg": {
-                    "default": "both",
-                    "enum": [
-                        "both",
-                        "self",
-                        "peer"
-                    ]
-                }
-            },
-            "required": [
-                "id"
-            ],
-            "type": "object"
-        },
-        "module": {
+        "leg": {
+            "default": "both",
             "enum": [
-                "play"
+                "both",
+                "self",
+                "peer"
             ]
         }
     },
     "required": [
-        "module",
-        "data"
+        "id"
     ],
     "type": "object"
 }

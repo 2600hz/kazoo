@@ -33,6 +33,7 @@
 -spec load(ne_binary() | string()) -> {'ok', kz_json:object()} |
                                       {'error', any()}.
 load(<<"./", Schema/binary>>) -> load(Schema);
+load(<<"file://", Schema/binary>>) -> load(Schema);
 load(<<_/binary>> = Schema) ->
     case kz_datamgr:open_cache_doc(?KZ_SCHEMA_DB, Schema, [{'cache_failures', ['not_found']}]) of
         {'error', _E}=E -> E;
@@ -43,6 +44,7 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
 -spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
                                        {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
+fload(<<"file://", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
     case filelib:is_regular(Schema) of
         'true' -> fload_file(Schema);
@@ -64,9 +66,10 @@ find_and_fload(Schema) ->
 -spec fload_file(ne_binary()) -> {'ok', kz_json:object()}.
 fload_file(SchemaPath) ->
     Schema = filename:basename(SchemaPath, ".json"),
-    {'ok', SchemaJSON} = file:read_file(SchemaPath),
-    SchemaJObj = kz_json:decode(SchemaJSON),
-    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)}.
+    case file:read_file(SchemaPath) of
+        {'ok', SchemaJSON} -> {'ok', kz_json:insert_value(<<"id">>, Schema, kz_json:decode(SchemaJSON))};
+        Error -> Error
+    end.
 
 -spec maybe_add_ext(ne_binary()) -> ne_binary().
 maybe_add_ext(Schema) ->
@@ -145,12 +148,15 @@ maybe_default(Key, Default, JObj) ->
         _Value -> JObj
     end.
 
+-type extra_validator() :: fun((jesse:json_term(), jesse_state:state()) -> jesse_state:state()).
+
 -type jesse_option() :: {'parser_fun', fun((_) -> _)} |
 {'error_handler', fun((jesse_error:error_reason(), [jesse_error:error_reason()], non_neg_integer()) ->
  [jesse_error:error_reason()])} |
 {'allowed_errors', non_neg_integer() | 'infinity'} |
 {'default_schema_ver', binary()} |
-{'schema_loader_fun', fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | 'not_found')}.
+{'schema_loader_fun', fun((binary()) -> {'ok', jesse:json_term()} | jesse:json_term() | 'not_found')} |
+{'extra_validator', extra_validator()}.
 
 -type jesse_options() :: [jesse_option()].
 
@@ -163,6 +169,8 @@ maybe_default(Key, Default, JObj) ->
 validate(SchemaJObj, DataJObj) ->
     validate(SchemaJObj, DataJObj, [{'schema_loader_fun', fun load/1}
                                    ,{'allowed_errors', 'infinity'}
+                                   ,{'extra_validator', fun kz_json_schema_extensions:extra_validator/2}
+                                   ,{'setter_fun', fun kz_json:set_value/3}
                                    ]).
 
 validate(<<_/binary>> = Schema, DataJObj, Options) ->
@@ -197,6 +205,21 @@ errors_to_jobj(Errors, Options) ->
 error_to_jobj(Error) ->
     error_to_jobj(Error, [{'version', ?CURRENT_VERSION}]).
 
+error_to_jobj({'data_invalid'
+              ,_FailedSchemaJObj
+              ,'external_error'
+              ,Message
+              ,FailedKeyPath
+              }
+             ,Options
+             ) ->
+    validation_error(FailedKeyPath
+                    ,<<"error">>
+                    ,kz_json:from_list(
+                       [{<<"message">>, Message}
+                       ])
+                    ,Options
+                    );
 error_to_jobj({'data_invalid'
               ,FailedSchemaJObj
               ,'wrong_min_length'

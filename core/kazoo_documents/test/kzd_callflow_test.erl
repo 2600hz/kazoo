@@ -71,8 +71,8 @@ complex_failed_test_() ->
     Doc = kz_json:from_list([{?FLOW, Child}]),
 
     {'error', Errors} = kzd_callflow:validate_flow(Doc),
-    [?_assertMatch([{'data_invalid', _Key1SchemaJObj, 'missing_required_property', _Value, []}
-                   ,{'data_invalid', _Key2SchemaJObj, 'wrong_type', 'true', [<<"key2">>]}
+    [?_assertMatch([{'data_invalid', _Key2SchemaJObj, 'wrong_type', 'true', [<<"key2">>]}
+                   ,{'data_invalid', _Key1SchemaJObj, 'missing_required_property', _Value, []}
                    ]
                   ,Errors
                   )
@@ -112,12 +112,12 @@ action_failure_test_() ->
     [?_assertEqual(2, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"module">>
+                    ,<<"data">>
                     ,[]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"data">>
+                    ,<<"module">>
                     ,[]
                     }
                    ]
@@ -139,12 +139,12 @@ child_action_failure_test_() ->
     [?_assertEqual(2, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"module">>
+                    ,<<"data">>
                     ,[<<"ca1">>, <<"children">>]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"data">>
+                    ,<<"module">>
                     ,[<<"ca1">>, <<"children">>]
                     }
                    ]
@@ -194,22 +194,22 @@ multiple_child_action_failures_test_() ->
     [?_assertEqual(4, length(Errors))
     ,?_assertMatch([{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"module">>
-                    ,[<<"mp1">>, <<"children">>]
-                    }
-                   ,{'data_invalid', _SchemaJObj
-                    ,'missing_required_property'
                     ,<<"data">>
                     ,[<<"mp1">>, <<"children">>]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
                     ,<<"module">>
+                    ,[<<"mp1">>, <<"children">>]
+                    }
+                   ,{'data_invalid', _SchemaJObj
+                    ,'missing_required_property'
+                    ,<<"data">>
                     ,[<<"mp2">>, <<"children">>]
                     }
                    ,{'data_invalid', _SchemaJObj
                     ,'missing_required_property'
-                    ,<<"data">>
+                    ,<<"module">>
                     ,[<<"mp2">>, <<"children">>]
                     }
                    ]

@@ -3,30 +3,14 @@
     "_id": "metaflow.hold_control",
     "description": "hold_control metaflow schema",
     "properties": {
-        "children": {
-            "$ref": "metaflow_children"
-        },
-        "data": {
-            "properties": {
-                "action": {
-                    "default": "toggle",
-                    "enum": [
-                        "hold",
-                        "unhold",
-                        "toggle"
-                    ]
-                }
-            },
-            "type": "object"
-        },
-        "module": {
+        "action": {
+            "default": "toggle",
             "enum": [
-                "hold_control"
+                "hold",
+                "unhold",
+                "toggle"
             ]
         }
     },
-    "required": [
-        "module"
-    ],
     "type": "object"
 }
