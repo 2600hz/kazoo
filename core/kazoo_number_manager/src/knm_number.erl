@@ -327,15 +327,8 @@ move(Num, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
 maybe_from_discovery(Num, Options) ->
     case knm_search:discovery(Num, Options) of
         {'ok', Number} -> attempt(fun move_to/1, [Number]);
-        {'error', 'not_found'} -> from_not_found(Num, Options);
         {'error', _R}=E -> E
     end.
-
--spec from_not_found(ne_binary(), knm_number_options:options()) -> knm_number_return().
-from_not_found(Num, Options) ->
-    PN = knm_phone_number:from_number_with_options(Num, [{'state', ?NUMBER_STATE_IN_SERVICE} | Options]),
-    Number = set_phone_number(new(), PN),
-    attempt(fun move_to/1, [Number]).
 
 -spec move_to(knm_number()) -> knm_number_return().
 move_to(Number) ->
