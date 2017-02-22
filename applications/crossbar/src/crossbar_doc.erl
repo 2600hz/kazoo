@@ -15,7 +15,7 @@
         ,patch_and_validate/3
         ,load_view/3, load_view/4, load_view/5, load_view/6
         ,load_attachment/4, load_docs/2
-        ,save/1, save/2
+        ,save/1, save/2, save/3
         ,delete/1, delete/2
         ,save_attachment/4, save_attachment/5
         ,delete_attachment/3
