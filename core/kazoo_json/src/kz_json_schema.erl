@@ -40,12 +40,24 @@ load(Schema) -> load(kz_term:to_binary(Schema)).
                                        {'error', any()}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
+    case filelib:is_regular(Schema) of
+        'true' -> fload_file(Schema);
+        'false' -> find_and_fload(Schema)
+    end;
+fload(Schema) -> fload(kz_term:to_binary(Schema)).
+
+-spec find_and_fload(ne_binary()) -> {'ok', kz_json:object()}.
+find_and_fload(Schema) ->
     PrivDir = code:priv_dir('crossbar'),
     SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
+    fload_file(SchemaPath).
+
+-spec fload_file(ne_binary()) -> {'ok', kz_json:object()}.
+fload_file(SchemaPath) ->
+    Schema = filename:basename(SchemaPath, ".json"),
     {'ok', SchemaJSON} = file:read_file(SchemaPath),
     SchemaJObj = kz_json:decode(SchemaJSON),
-    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)};
-fload(Schema) -> fload(kz_term:to_binary(Schema)).
+    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)}.
 
 -spec maybe_add_ext(ne_binary()) -> ne_binary().
 maybe_add_ext(Schema) ->
