@@ -72,6 +72,7 @@ validate(Context, ?HTTP_POST, ConfigId) ->
     Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
     validate_with_parent(Context, ConfigId, Parent).
 
+-spec validate_with_parent(cb_context:context(), ne_binary(), kz_json:object()) -> cb_context:context().
 validate_with_parent(Context, ConfigId, Parent) ->
     RequestData = strip_id(cb_context:req_data(Context)),
     FullConfig = kz_json:merge_recursive(Parent, RequestData),
