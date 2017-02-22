@@ -15,6 +15,10 @@
 
 -include("kazoo_auth.hrl").
 
+-define(DEFAULT_PROVIDER,
+        kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>)
+       ).
+
 -type result() :: mfa_result().
 
 -export_type([result/0]).
@@ -50,16 +54,13 @@ authenticate(Claims) ->
 %%--------------------------------------------------------------------
 -spec provider(api_object()) -> ne_binary() | {'disabled', ne_binary()} | {'error', 'no_provider'}.
 provider(Configs) ->
-    Name = kz_json:get_value(<<"provider_name">>, Configs),
+    Name = kz_json:get_ne_value(<<"provider_name">>, Configs),
+    IsDefined = kz_term:is_not_empty(Name),
     case kz_json:is_true(<<"enabled">>, Configs, 'true') of
-        'true' when ?NE_BINARY =/= Name -> Name;
-        'false' when ?NE_BINARY =/= Name -> {'disabled', Name};
+        'true' when IsDefined -> Name;
+        'false' when IsDefined -> {'disabled', Name};
         _ -> {'error', 'no_provider'}
     end.
-
--spec default_provider() -> api_binary().
-default_provider() ->
-    kapps_config:get_binary(?CONFIG_CAT, <<"default_multi_factor_provider">>).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -96,7 +97,7 @@ get_account_configs(AccountId, ConfigId) ->
 -spec get_system_configs() -> api_object().
 get_system_configs() ->
     lager:debug("get authentication factor configuration from system config"),
-    case default_provider() of
+    case ?DEFAULT_PROVIDER of
         'undefined' -> 'undefined';
         DefaultProvider ->
             case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DefaultProvider) of

@@ -261,7 +261,7 @@ map_config(Claims, JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec validate_values(map()) -> boolean() | ne_binary().
+-spec validate_values(map()) -> 'true' | ne_binary().
 validate_values(Identity) ->
     try lists:all(fun(ReqV) ->
                           validate_value(ReqV, Identity)

@@ -17,7 +17,14 @@
 
 -define(TOKEN_AUTH_EXPIRY, kapps_config:get_integer(?APP_NAME, <<"token_auth_expiry">>, ?SECONDS_IN_HOUR)).
 
--define(AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
+-define(ACCOUNT_AUTH_CONFIG_ID, <<"kazoo_auth_configs">>).
+
+-define(SHOULD_LOG_FAILED,
+        kapps_config:get_is_true(?AUTH_CONFIG_CAT, <<"log_failed_login_attempts">>, 'false')
+       ).
+-define(SYSTEM_AUTH_CONFIG,
+        kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
+       ).
 
 -spec create_auth_token(cb_context:context(), atom()) ->
                                cb_context:context().
@@ -77,11 +84,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                        ,{<<"mfa_request">>, RespJObj}
                        ]
                       ),
-            cb_context:add_system_error(401
-                                       ,'invalid_credentials'
-                                       ,MFAReq
-                                       ,Context
-                                       )
+            cb_context:add_system_error(401, 'invalid_credentials', MFAReq, Context)
     end.
 
 -spec maybe_create_token(kz_proplist()) ->
@@ -185,11 +188,7 @@ log_failed_mfa_attempts(Claims, AuthConfigs, Reason) ->
 -spec should_log_failed_attempts(kz_json:object()) -> boolean().
 should_log_failed_attempts(AuthConfigs) ->
     case kz_json:is_true(<<"log_failed_login_attempts">>, AuthConfigs, 'undefined') of
-        'undefined' ->
-            kapps_config:get_is_true(?AUTH_CONFIG_CAT
-                                    ,<<"log_failed_login_attempts">>
-                                    ,'false'
-                                    );
+        'undefined' -> ?SHOULD_LOG_FAILED;
         Boolean -> Boolean
     end.
 
@@ -243,7 +242,7 @@ account_auth_configs(AccountId, MasterId, IsReseller) ->
 
 -spec account_auth_configs(ne_binary()) -> kz_std_return().
 account_auth_configs(AccountId) ->
-    kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ?AUTH_CONFIG_ID).
+    kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ?ACCOUNT_AUTH_CONFIG_ID).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -290,10 +289,7 @@ account_parent(AccountId) ->
 %%--------------------------------------------------------------------
 -spec system_auth_config() -> kz_json:object().
 system_auth_config() ->
-    kz_json:set_value(<<"from">>
-                     ,<<"system">>
-                     ,kapps_config:get_json(?AUTH_CONFIG_CAT, <<"auth_modules">>, kz_json:new())
-                     ).
+    kz_json:set_value(<<"from">>, <<"system">>, ?SYSTEM_AUTH_CONFIG).
 
 -spec master_account_id() -> api_ne_binary().
 master_account_id() ->
@@ -342,7 +338,6 @@ is_multi_factor_enabled(Claims, AuthConfigs) ->
     AuthModule =/= 'undefined'
         andalso kz_json:is_true([AuthModule, <<"multi_factor">>, <<"enabled">>]
                                ,AuthConfigs
-                               ,'false'
                                )
         andalso account_mfa_allowed(master_account_id(), AccountId, ConfigsFrom, IncludeSubAccounts).
 

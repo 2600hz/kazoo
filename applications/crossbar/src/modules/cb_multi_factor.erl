@@ -55,7 +55,7 @@ init() ->
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_PUT].
-allowed_methods(_) ->
+allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 %%--------------------------------------------------------------------
@@ -70,7 +70,7 @@ allowed_methods(_) ->
 -spec resource_exists() -> 'true'.
 -spec resource_exists(path_token()) -> 'true'.
 resource_exists() -> 'true'.
-resource_exists(_) -> 'true'.
+resource_exists(_ConfigId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -86,8 +86,8 @@ resource_exists(_) -> 'true'.
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context) ->
     validate_multi_factor(Context, cb_context:req_verb(Context)).
-validate(Context, Id) ->
-    validate_auth_config(Context, Id, cb_context:req_verb(Context)).
+validate(Context, ConfigId) ->
+    validate_auth_config(Context, ConfigId, cb_context:req_verb(Context)).
 
 -spec validate_multi_factor(cb_context:context(), http_method()) -> cb_context:context().
 validate_multi_factor(Context, ?HTTP_GET) ->
@@ -96,14 +96,14 @@ validate_multi_factor(Context, ?HTTP_PUT) ->
     create(Context).
 
 -spec validate_auth_config(cb_context:context(), path_token(), http_method()) -> cb_context:context().
-validate_auth_config(Context, Id, ?HTTP_GET) ->
-    read(Id, Context);
-validate_auth_config(Context, Id, ?HTTP_POST) ->
-    update(Id, Context);
-validate_auth_config(Context, Id, ?HTTP_PATCH) ->
-    validate_patch(Id, Context);
-validate_auth_config(Context, Id, ?HTTP_DELETE) ->
-    read(Id, Context).
+validate_auth_config(Context, ConfigId, ?HTTP_GET) ->
+    read(ConfigId, Context);
+validate_auth_config(Context, ConfigId, ?HTTP_POST) ->
+    update(ConfigId, Context);
+validate_auth_config(Context, ConfigId, ?HTTP_PATCH) ->
+    validate_patch(ConfigId, Context);
+validate_auth_config(Context, ConfigId, ?HTTP_DELETE) ->
+    read(ConfigId, Context).
 
 %%--------------------------------------------------------------------
 %% @public
