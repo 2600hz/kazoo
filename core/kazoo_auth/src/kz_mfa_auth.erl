@@ -34,7 +34,6 @@ authenticate(Claims) ->
     case provider(Configs) of
         {'disabled', _Provider} ->
             ErrorMsg = io_lib:format("provider ~s is disabled", [_Provider]),
-            lager:debug(ErrorMsg),
             {'error', kz_term:to_binary(ErrorMsg)};
         ?NE_BINARY=Provider ->
             Module = module_name(Provider),
@@ -43,7 +42,6 @@ authenticate(Claims) ->
                        ),
             Module:authenticate(Claims, kz_json:get_value(<<"settings">>, Configs, kz_json:new()));
         _ ->
-            lager:debug("no provider is available or configured"),
             {'error', 'no_provider'}
     end.
 

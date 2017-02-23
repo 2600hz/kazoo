@@ -21,7 +21,7 @@
 
 -include("crossbar.hrl").
 
--define(LISTS_BY_TYPE, <<"multi_factor/lists_by_type">>).
+-define(LISTS_BY_TYPE, <<"auth/providers_by_type">>).
 -define(CB_LIST_ATTEMPT_LOG, <<"auth/login_attempt_by_time">>).
 
 -define(AUTH_PROVIDER, <<"auth_provider">>).
@@ -67,7 +67,7 @@ allowed_methods(_ConfigId) ->
     [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?ATTEMPTS, _AttemptsId) ->
+allowed_methods(?ATTEMPTS, _AttemptId) ->
     [?HTTP_GET].
 
 %%--------------------------------------------------------------------
@@ -254,7 +254,7 @@ add_available_providers(Context) ->
             Available = [kz_json:get_value(<<"value">>, J)
                          || J <- JObjs
                         ],
-            cb_context:set_resp_data(Context, merge_summary(Context, Available))
+            crossbar_doc:handle_json_success(merge_summary(Context, Available), Context)
     end.
 
 -spec merge_summary(cb_context:context(), kz_json:objects()) -> kz_json:object().
