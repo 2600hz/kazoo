@@ -32,9 +32,9 @@ name_mapping() ->
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Value = kz_json:get_binary_value(<<"value">>, Data),
-    Name = props:get_value(kz_json:get_value(<<"variable">>, Data), name_mapping()),
-    Channel = kz_json:get_value(<<"channel">>, Data, <<"a">>),
+    Value = kz_json:get_ne_binary_value(<<"value">>, Data),
+    Name = props:get_value(kz_json:get_ne_binary_value(<<"variable">>, Data), name_mapping()),
+    Channel = kz_json:get_ne_binary_value(<<"channel">>, Data, <<"a">>),
     set_variable(Name, Value, Channel, Call),
     Call1 = kapps_call:insert_custom_channel_var(Name, Value, Call),
     cf_exe:set_call(Call1),
