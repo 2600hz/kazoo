@@ -145,3 +145,22 @@ validate_v4_test_() ->
                   ,kz_json_schema:validate(V4SchemaJObj, invalid_task_data4())
                   )
     ].
+
+get_schema() ->
+    kz_json:decode(<<"{\"properties\":{\"caller_id\":{\"description\":\"The default caller ID parameters\",\"type\":\"object\",\"properties\":{ \"internal\":{\"description\":\"The default caller ID used when dialing internal extensions\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Called ID Internal Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":30}}},\"external\":{\"description\":\"The default caller ID used when dialing external numbers\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID External Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15}}},\"emergency\":{\"description\":\"The caller ID used when external, internal, or emergency is not defined\",\"type\":\"object\",\"properties\":{\"name\":{\"name\":\"Caller ID Emergency Name\",\"description\":\"The caller id name for the object type\",\"type\":\"string\",\"maxLength\":15,\"default\":\"emer_default\"}}}},\"default\":{}}}}">>).
+
+get_schema_sms() ->
+    kz_json:decode(<<"{\"_id\":\"system_config.sms\",\"_rev\":\"3-0861f3d8db3f26883e3a69274aeb94bd\",\"$schema\":\"http://json-schema.org/draft-04/schema#\",\"description\":\"Schema for sms system_config\",\"properties\":{\"outbound\":{\"properties\":{\"options\":{\"properties\":{\"default\":{\"delivery_mode\":2,\"mandatory\":true},\"description\":\"sms options\",\"type\":\"object\"}}}}},\"required\":[\"outbound\"],\"type\":\"object\",\"id\":\"system_config.sms\"}">>).
+
+default_object_test() ->
+    Schema = get_schema(),
+    Default = kz_json_schema:default_object(Schema),
+    [?_assertEqual({[{<<"caller_id">>,{[{<<"emergency">>,{[{<<"name">>,<<"emer_default">>}]}}]}}]}, Default)].
+
+flatten_sms_schema_test() ->
+    Flat = kz_json_schema:flatten(get_schema_sms()),
+    [?_assertEqual(Flat, {[
+                           {[<<"outbound">>,<<"options">>,<<"default">>], {[{<<"delivery_mode">>,2},{<<"mandatory">>,true}]}},
+                           {[<<"outbound">>,<<"options">>,<<"description">>], <<"sms options">>},
+                           {[<<"outbound">>,<<"options">>,<<"type">>],<<"object">>}]
+                         })].

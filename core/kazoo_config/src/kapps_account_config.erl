@@ -18,6 +18,7 @@
         ,set_global/4
         ,flush/1, flush/2
         ,migrate/1
+        ,config_doc_id/1
         ]).
 
 -type account() :: ne_binary() | kapps_call:call() | kz_json:object().
