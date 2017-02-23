@@ -133,9 +133,6 @@ schema_to_table(<<"#/definitions/", _/binary>>=_S) ->
 schema_to_table(Schema=?NE_BINARY) ->
     case kz_json_schema:fload(Schema) of
         {'ok', JObj} -> schema_to_table(JObj);
-        {'error', 'no_schema'} ->
-            io:format("failed to find ~s~n", [Schema]),
-            [];
         {'error', 'not_found'} ->
             io:format("failed to find ~s~n", [Schema]),
             throw({'error', 'no_schema'})

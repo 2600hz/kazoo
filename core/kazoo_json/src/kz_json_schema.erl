@@ -37,7 +37,7 @@ load(<<_/binary>> = Schema) ->
 load(Schema) -> load(kz_term:to_binary(Schema)).
 
 -spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
+                                       {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
     case filelib:is_regular(Schema) of
@@ -46,11 +46,16 @@ fload(<<_/binary>> = Schema) ->
     end;
 fload(Schema) -> fload(kz_term:to_binary(Schema)).
 
--spec find_and_fload(ne_binary()) -> {'ok', kz_json:object()}.
+-spec find_and_fload(ne_binary()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', 'not_found'}.
 find_and_fload(Schema) ->
     PrivDir = code:priv_dir('crossbar'),
     SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
-    fload_file(SchemaPath).
+    case filelib:is_regular(SchemaPath) of
+        'true' -> fload_file(SchemaPath);
+        'false'-> {'error', 'not_found'}
+    end.
 
 -spec fload_file(ne_binary()) -> {'ok', kz_json:object()}.
 fload_file(SchemaPath) ->
