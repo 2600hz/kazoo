@@ -19,10 +19,10 @@ MFA process involves these steps:
 7. If the request doesn't have a response from MFA provider (if there is no `mfa_service_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the playlod of:
 ```json
 {
-    "data": {
-        "messages": "client needs to preform second-factor authentication",
-        "mfa_request": { //an json object which contains the neccessary information for performing the MFA with provider}
-    }
+  "data": {
+    "messages": "client needs to preform second-factor authentication",
+    "mfa_request": { //an json object which contains the neccessary information for performing the MFA with provider }
+  }
 }
 ```
 8. After the client performed the MFA with the provider, it should issue the same auth request this time with paylod included the response from MFA provider
@@ -56,44 +56,53 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 ###### Authenticate Users using Kazoo Duo integration
 
 1. Use Crossbar multi factor API endpoint to configure Duo by you IKey, SKey, AKey, API hostname.
-```json
-{
-    "data": {
-            "provider_name": "duo",
-            "provider_type": "multi_factor",
-            "enabled": true,
-            "settings": {
-                "integration_key": "{YOUR_DUO_IKEY}",
-                "secret_key": "{YOUR_DUO_SKEY}",
-                "application_secret_key": "{YOUR_DUO_AKEY}",
-                "api_hostname": "{YOUR_API_HOSTNAME}",
-                "duo_expire": 300, //optional
-                "app_expire": 3600 //optional
-            }
-    }
-}
-```
 2. Enable multi factor (See [Crossbar Auth Config](../../../applications/crossbar/doc/multi_factor.md)) for a Crossbar auth module.
 3. Users can now use a usual Crossbar authentication procedure (for example with `cb_user_auth`).
 4. Kazoo auth MFA and Crossbar will return `siq_request` and `api_hostname` to client.
-```json
-{
-    "data": {
-        "messages": "client needs to preform second-factor authentication",
-        "mfa_request": {
-            "sig_request": "{SIQ_REQUEST}",
-            "api_hostname": "{YOUR_DUO_API}"
-        }
-    }
-}
-```
 5. Use `Duo-Web-v2.js` to implement Duo client side for performing 2FA authentication. See [Duo Web](https://duo.com/docs/duoweb) (steps 3 and beyond in **Instructions** section).
 6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `mfa_service_response` as payload.
+7. If `siq_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
+
+####### Sample Duo configuration (see step 1 above)
+
 ```json
 {
-    "data": {
-        "mfa_service_response": "{SIG_RESPONSE}",
+  "data": {
+    "provider_name": "duo",
+    "provider_type": "multi_factor",
+    "enabled": true,
+    "settings": {
+      "integration_key": "{YOUR_DUO_IKEY}",
+      "secret_key": "{YOUR_DUO_SKEY}",
+      "application_secret_key": "{YOUR_DUO_AKEY}",
+      "api_hostname": "{YOUR_API_HOSTNAME}",
+      "duo_expire": 300, //optional
+      "app_expire": 3600 //optional
     }
+  }
 }
 ```
-7. If `siq_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
+
+####### Crossbar return `siq_request`
+
+```json
+{
+  "data": {
+    "messages": "client needs to preform second-factor authentication",
+    "mfa_request": {
+      "sig_request": "{SIQ_REQUEST}",
+      "api_hostname": "{YOUR_DUO_API}"
+    }
+  }
+}
+```
+
+####### Client sends Duo response to Kazoo with this payload
+
+```json
+{
+  "data": {
+    "mfa_service_response": "{SIG_RESPONSE}",
+  }
+}
+```
