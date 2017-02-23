@@ -280,6 +280,7 @@ maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
         'false' -> 'ok'
     end;
 maybe_system_report(State) ->
+    send_outbound_smtp_fax_error(State),
     case kapps_config:get(?CONFIG_CAT, <<"report_faxbox_system_errors">>, 'true') of
         'true' -> system_report(State);
         'false' -> 'ok'
@@ -891,3 +892,14 @@ write_tmp_file(Filename, Extension, Body) ->
             lager:debug("error writing file ~s : ~p", [Filename, Error]),
             Error
     end.
+
+send_outbound_smtp_fax_error(State) ->
+    Message = props:filter_empty(
+                [{<<"Account-ID">>, State#state.account_id}
+                ,{<<"Fax-From-Email">>, State#state.from}
+                ,{<<"Fax-To-Email">>, State#state.to}
+                ,{<<"Errors">>, State#state.errors}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    %% Do not crash if fields were undefined
+    catch kapi_notifications:publish_fax_outbound_smtp_error(Message).
