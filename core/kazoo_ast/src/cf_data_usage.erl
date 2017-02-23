@@ -544,8 +544,8 @@ process_mfa_call(#usage{data_var_name=DataName
                     Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                 {M, AST} ->
                     ?DEBUG("  added AST for ~p~n", [M]),
-                    #module_ast{functions=NewFs
-                               } = kz_ast_util:add_module_ast(#module_ast{functions=Fs}, M, AST),
+                    #module_ast{functions=NewFs}
+                        = kz_ast_util:add_module_ast(#module_ast{functions=Fs}, M, AST),
                     process_mfa_call(Acc#usage{functions=NewFs}
                                     ,M, F, As, 'false'
                                     )

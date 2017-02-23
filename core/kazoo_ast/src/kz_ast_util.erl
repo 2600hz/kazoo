@@ -18,8 +18,9 @@
 -include_lib("kazoo_ast/include/kz_ast.hrl").
 
 -type ast() :: [erl_parse:abstract_form()].
+-type abstract_code() :: {'raw_abstract_v1', ast()}.
 
--spec module_ast(atom()) -> {atom(), ast()} | 'undefined'.
+-spec module_ast(atom()) -> {atom(), abstract_code()} | 'undefined'.
 module_ast(M) ->
     case code:which(M) of
         'non_existing' -> 'undefined';
@@ -29,7 +30,7 @@ module_ast(M) ->
             {Module, AST}
     end.
 
--spec add_module_ast(module_ast(), module(), {'raw_abstract_v1',ast()}) -> ast().
+-spec add_module_ast(module_ast(), module(), abstract_code()) -> module_ast().
 add_module_ast(ModAST, Module, {'raw_abstract_v1', Attributes}) ->
     lists:foldl(fun(A, Acc) ->
                         add_module_ast_fold(A, Module, Acc)
@@ -38,7 +39,7 @@ add_module_ast(ModAST, Module, {'raw_abstract_v1', Attributes}) ->
                ,Attributes
                ).
 
--spec add_module_ast_fold(ast(), module(), ast()) -> module_ast().
+-spec add_module_ast_fold(ast(), module(), module_ast()) -> module_ast().
 add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functions=Fs}=Acc) ->
     Acc#module_ast{functions=[{Module, F, Arity, Clauses}|Fs]};
 add_module_ast_fold(?AST_RECORD(Name, Fields), _Module, #module_ast{records=Rs}=Acc) ->
@@ -61,7 +62,7 @@ binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
 
--spec schema_path(binary()) -> binary().
+-spec schema_path(binary()) -> filelib:filename_all().
 schema_path(Base) ->
     filename:join([code:priv_dir('crossbar')
                   ,<<"couchdb">>
