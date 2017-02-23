@@ -5,11 +5,16 @@
     "properties": {
         "action": {
             "default": "park",
-            "description": "",
+            "description": "Action to take for the caller",
+            "enum": [
+                "park",
+                "retrieve",
+                "auto"
+            ],
             "type": "string"
         },
         "default_callback_timeout": {
-            "description": "",
+            "description": "How long, in seconds, to wait before calling back the parker",
             "type": "integer"
         },
         "default_presence_type": {
@@ -21,11 +26,12 @@
             "type": "integer"
         },
         "slot": {
-            "description": ""
+            "description": "Static slot number to use",
+            "type": "string"
         },
         "slots": {
             "default": {},
-            "description": "",
+            "description": "Statically define slots and their configuration",
             "type": "object"
         }
     },
