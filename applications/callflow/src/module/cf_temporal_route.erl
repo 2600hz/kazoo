@@ -36,7 +36,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
     Temporal = get_temporal_route(Data, Call),
-    case kz_json:get_value(<<"action">>, Data) of
+    case kz_json:get_ne_binary_value(<<"action">>, Data) of
         <<"menu">> ->
             lager:info("temporal rules main menu"),
             Rules = kz_json:get_value(<<"rules">>, Data, []),
@@ -162,18 +162,17 @@ get_temporal_rules([Route|Routes], LSec, AccountDb, RuleSet, TZ, Now, Rules) ->
             lager:info("unable to find temporal rule ~s in ~s", [Route, AccountDb]),
             get_temporal_rules(Routes, LSec, AccountDb, RuleSet, TZ, Now, Rules);
         {'ok', JObj} ->
-            Days = lists:foldr(
-                     fun(Day, Acc) ->
-                             [kz_term:to_integer(Day)|Acc]
-                     end
+            Days = lists:foldr(fun(Day, Acc) ->
+                                       [kz_term:to_integer(Day)|Acc]
+                               end
                               ,[]
                               ,kz_json:get_value(<<"days">>, JObj, ?RULE_DEFAULT_DAYS)
-                    ),
+                              ),
             Rule = #rule{id = Route
                         ,enabled =
                              kz_json:is_true(<<"enabled">>, JObj, 'undefined')
                         ,name =
-                             kz_json:get_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
+                             kz_json:get_ne_binary_value(<<"name">>, JObj, ?RULE_DEFAULT_NAME)
                         ,cycle =
                              kz_json:get_value(<<"cycle">>, JObj, ?RULE_DEFAULT_CYCLE)
                         ,interval =
@@ -229,16 +228,16 @@ date_difference(Date1, Date2) ->
 -spec get_temporal_route(kz_json:object(), kapps_call:call()) -> temporal().
 get_temporal_route(Data, Call) ->
     lager:info("loading temporal route"),
-    Keys = case kz_json:get_value(<<"rules">>, Data, []) of
+    Keys = case kz_json:get_list_value(<<"rules">>, Data, []) of
                [] ->
                    {'branch_keys', Rules} = cf_exe:get_branch_keys(Call),
                    Rules;
                Rules -> Rules
            end,
     {IsRuleSet, Routes} =
-        case kz_json:get_value(<<"rule_set">>, Data) of
+        case kz_json:get_ne_binary_value(<<"rule_set">>, Data) of
             'undefined' -> {'false', Keys};
-            RuleSet -> {'true', get_rule_set(RuleSet, Call)}
+            RuleSetId -> {'true', get_rule_set(RuleSetId, Call)}
         end,
     load_current_time(#temporal{routes = Routes
                                ,rule_set = IsRuleSet
@@ -264,7 +263,7 @@ get_rule_set(RuleSetId, Call) ->
         {'error', _E} ->
             lager:error("failed to load ~s in ~s", [RuleSetId, AccountDb]),
             [];
-        {'ok', JObj} -> kz_json:get_value(<<"temporal_rules">>, JObj, [])
+        {'ok', JObj} -> kz_json:get_list_value(<<"temporal_rules">>, JObj, [])
     end.
 
 %%--------------------------------------------------------------------
