@@ -1,4 +1,4 @@
-### Backgroud Jobs
+### Background Jobs
 
 Kazoo Tasks enables listing, adding, starting & removing generic background tasks.
 
