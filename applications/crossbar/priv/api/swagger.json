@@ -866,25 +866,33 @@
             "description": "Validator for the acdc_agent callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "Set which action to perform",
+                    "enum": [
+                        "login",
+                        "logout",
+                        "paused",
+                        "resume"
+                    ],
+                    "type": "string"
                 },
                 "presence_id": {
-                    "description": "",
+                    "description": "Static presence ID to send BLF updates to",
                     "type": "string"
                 },
                 "presence_state": {
-                    "description": ""
-                },
-                "sip": {
-                    "properties": {
-                        "username": {
-                            "description": ""
-                        }
-                    },
-                    "type": "object"
+                    "description": "Custom presence state to send",
+                    "enum": [
+                        "early",
+                        "confirmed",
+                        "terminated",
+                        "red_flash",
+                        "red_solid",
+                        "green"
+                    ],
+                    "type": "string"
                 },
                 "timeout": {
-                    "description": "",
+                    "description": "Time, in seconds, for 'paused' state",
                     "type": "integer"
                 }
             },
@@ -906,7 +914,12 @@
             "description": "Validator for the acdc_queue callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform on the agent for this queue",
+                    "enum": [
+                        "login",
+                        "logout"
+                    ],
+                    "type": "string"
                 }
             },
             "required": true,
@@ -945,10 +958,20 @@
             "description": "Validator for the after_bridge callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform after a call is bridged",
+                    "enum": [
+                        "park",
+                        "transfer",
+                        "hangup"
+                    ],
+                    "type": "string"
                 },
                 "data": {
-                    "description": ""
+                    "description": "The number to transfer to, or a boolean, depending on the 'action'",
+                    "type": [
+                        "string",
+                        "boolean"
+                    ]
                 }
             },
             "required": true,
@@ -989,7 +1012,15 @@
             "description": "Validator for the call_forward callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform on the caller's call forwarding",
+                    "enum": [
+                        "activate",
+                        "deactivate",
+                        "update",
+                        "toggle",
+                        "menu"
+                    ],
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1032,10 +1063,12 @@
                         "external": {
                             "properties": {
                                 "name": {
-                                    "description": ""
+                                    "description": "Update external Caller ID Name",
+                                    "type": "string"
                                 },
                                 "number": {
-                                    "description": ""
+                                    "description": "Update external Caller ID Number",
+                                    "type": "string"
                                 }
                             },
                             "type": "object"
@@ -1045,16 +1078,17 @@
                 },
                 "regex": {
                     "default": ".*",
-                    "description": "",
+                    "description": "Determine match/nomatch when use_absolute_mode is false",
                     "type": "string"
                 },
                 "use_absolute_mode": {
                     "default": false,
-                    "description": "",
+                    "description": "If true, direct call down a branch that matches the caller ID",
                     "type": "boolean"
                 },
                 "user_id": {
-                    "description": ""
+                    "description": "kazoo User ID to use as owner_id instead of detected owner_id",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1210,64 +1244,38 @@
             "type": "object"
         },
         "callflows.device": {
-            "description": "Validator for the device callflow's data object",
             "properties": {
                 "can_call_self": {
-                    "default": false,
-                    "description": "Permits a user to call from one self-owned device to another",
-                    "required": false,
+                    "description": "Toggle whether devices of the same owner can call each other",
                     "type": "boolean"
                 },
                 "can_text_self": {
-                    "default": false,
-                    "description": "Permits a user to send a text from one self-owned device to another",
-                    "required": false,
+                    "description": "Toggle whether devices of the same owner can text each other",
                     "type": "boolean"
                 },
                 "delay": {
                     "default": 0,
-                    "description": "",
+                    "description": "How long to delay ringing the device, in seconds",
                     "type": "integer"
                 },
-                "fail_on_single_reject": {
-                    "descripption": "Should the call be ended on first REJECT (when multiple endpoints are being tried",
-                    "required": false,
-                    "type": "boolean"
-                },
-                "id": {
-                    "description": "The device ID",
-                    "maxLength": 32,
-                    "minLength": 32,
-                    "required": true,
+                "source": {
+                    "description": "Source of generating the endpoint (read-only)",
                     "type": "string"
                 },
-                "skype": {
-                    "description": "Skype configuration options",
-                    "properties": {},
-                    "required": false,
-                    "type": "object"
-                },
-                "source": {
-                    "description": ""
-                },
                 "static_invite": {
-                    "description": "Override SIP To header with this value",
-                    "required": false,
+                    "description": "Override the SIP Username",
                     "type": "string"
                 },
                 "suppress_clid": {
-                    "description": "If true, does not set Caller ID attributes on the endpoint",
-                    "required": false,
+                    "description": "Suppress sending caller ID",
                     "type": "boolean"
                 },
                 "timeout": {
-                    "default": 20,
-                    "description": "How long, in seconds, to bridge the endpoint(s)",
-                    "required": false,
+                    "default": 0,
+                    "description": "Time, in seconds, to wait for device to bridge",
                     "type": "integer"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "callflows.directory": {
@@ -1286,7 +1294,17 @@
             "description": "Validator for the do_not_disturb callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform",
+                    "enum": [
+                        "activate",
+                        "deactivate",
+                        "toggle"
+                    ],
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Document ID on which to update DND settings",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1296,37 +1314,59 @@
             "description": "Validator for the dynamic_cid callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform",
+                    "enum": [
+                        "manual",
+                        "list"
+                    ],
+                    "type": "string"
                 },
                 "caller_id": {
-                    "description": ""
+                    "description": "Static Caller ID settings",
+                    "properties": {
+                        "name": {
+                            "description": "Caller ID Name",
+                            "type": "string"
+                        },
+                        "number": {
+                            "description": "Caller ID Number",
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
                 },
                 "enforce_call_restriction": {
                     "default": true,
-                    "description": "",
+                    "description": "Check classification restrictions against endpoint",
                     "type": "boolean"
                 },
                 "id": {
-                    "description": ""
+                    "description": "List ID for caller IDs when 'action' is 'list'",
+                    "type": "string"
                 },
                 "idx_name": {
-                    "description": ""
+                    "description": "Named capture group to use",
+                    "type": "string"
                 },
                 "interdigit_timeout": {
-                    "description": "",
+                    "description": "How long, in seconds, to wait for keypresses",
                     "type": "integer"
                 },
                 "max_digits": {
-                    "description": ""
+                    "description": "Max number of digits allowed when collecting Caller ID Number",
+                    "type": "integer"
                 },
                 "media_id": {
-                    "description": ""
+                    "description": "Prompt to play to caller to enter Caller ID Number",
+                    "type": "string"
                 },
                 "min_digits": {
-                    "description": ""
+                    "description": "Minimum number of digits that must match the regex to collected DTMF",
+                    "type": "integer"
                 },
                 "whitelist_regex": {
-                    "description": ""
+                    "description": "Regex to match collected Caller ID Number",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1335,11 +1375,25 @@
         "callflows.eavesdrop": {
             "description": "Validator for the eavesdrop callflow's data object",
             "properties": {
+                "approved_device_id": {
+                    "description": "Restricts the calling device to this Device",
+                    "type": "string"
+                },
+                "approved_group_id": {
+                    "description": "Requires the calling device to be part of the Group",
+                    "type": "string"
+                },
+                "approved_user_id": {
+                    "description": "Requires the calling device to be part of the User",
+                    "type": "string"
+                },
                 "device_id": {
-                    "description": ""
+                    "description": "Device ID to eavesdrop",
+                    "type": "string"
                 },
                 "user_id": {
-                    "description": ""
+                    "description": "User ID to eavesdrop",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1348,8 +1402,21 @@
         "callflows.eavesdrop_feature": {
             "description": "Validator for the eavesdrop_feature callflow's data object",
             "properties": {
+                "approved_device_id": {
+                    "description": "Restricts the calling device to this Device",
+                    "type": "string"
+                },
+                "approved_group_id": {
+                    "description": "Requires the calling device to be part of the Group",
+                    "type": "string"
+                },
+                "approved_user_id": {
+                    "description": "Requires the calling device to be part of the User",
+                    "type": "string"
+                },
                 "group_id": {
-                    "description": ""
+                    "description": "ID of the group/user/device to eavesdrop",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1369,10 +1436,27 @@
         "callflows.faxbox": {
             "description": "Validator for the faxbox callflow's data object",
             "properties": {
+                "faxbox_id": {
+                    "description": "ID of the faxbox",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "ID of the faxbox",
+                    "type": "string"
+                },
                 "media": {
                     "properties": {
                         "fax_option": {
-                            "description": ""
+                            "description": "Caller flag for T38 settings",
+                            "enum": [
+                                "auto",
+                                true,
+                                false
+                            ],
+                            "type": [
+                                "string",
+                                "boolean"
+                            ]
                         }
                     },
                     "type": "object"
@@ -1390,7 +1474,8 @@
                     "type": "array"
                 },
                 "fail_on_single_reject": {
-                    "description": ""
+                    "description": "",
+                    "type": "boolean"
                 },
                 "ignore_forward": {
                     "default": true,
@@ -1403,7 +1488,8 @@
                     "type": "integer"
                 },
                 "ringback": {
-                    "description": ""
+                    "description": "",
+                    "type": "string"
                 },
                 "strategy": {
                     "default": "simultaneous",
@@ -1423,22 +1509,28 @@
             "description": "Validator for the group_pickup callflow's data object",
             "properties": {
                 "approved_device_id": {
-                    "description": ""
+                    "description": "Restrict calling device to Device",
+                    "type": "string"
                 },
                 "approved_group_id": {
-                    "description": ""
+                    "description": "Restrict calling device to Group",
+                    "type": "string"
                 },
                 "approved_user_id": {
-                    "description": ""
+                    "description": "Restrict calling device to User",
+                    "type": "string"
                 },
                 "device_id": {
-                    "description": ""
+                    "description": "Device to pickup",
+                    "type": "string"
                 },
                 "group_id": {
-                    "description": ""
+                    "description": "Group in which to find a call to pickup",
+                    "type": "string"
                 },
                 "user_id": {
-                    "description": ""
+                    "description": "User in which to find a call to pickup",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1448,7 +1540,14 @@
             "description": "Validator for the group_pickup_feature callflow's data object",
             "properties": {
                 "type": {
-                    "description": ""
+                    "description": "The type of collection to pickup",
+                    "enum": [
+                        "group",
+                        "user",
+                        "device",
+                        "extension"
+                    ],
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1464,10 +1563,17 @@
             "description": "Validator for the hotdesk callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "The action to take for hotdesking",
+                    "enum": [
+                        "logout",
+                        "login",
+                        "toggle",
+                        "bridge"
+                    ],
+                    "type": "string"
                 },
                 "interdigit_timeout": {
-                    "description": "",
+                    "description": "How long, in seconds, to wait between keypresses",
                     "type": "integer"
                 }
             },
@@ -1478,22 +1584,28 @@
             "description": "Validator for the intercept callflow's data object",
             "properties": {
                 "approved_device_id": {
-                    "description": ""
+                    "description": "Restrict calling device to Device",
+                    "type": "string"
                 },
                 "approved_group_id": {
-                    "description": ""
+                    "description": "Restrict calling device to Group",
+                    "type": "string"
                 },
                 "approved_user_id": {
-                    "description": ""
+                    "description": "Restrict calling device to User",
+                    "type": "string"
                 },
                 "device_id": {
-                    "description": ""
+                    "description": "Device to intercept",
+                    "type": "string"
                 },
                 "group_id": {
-                    "description": ""
+                    "description": "Group in which to find a call to intercept",
+                    "type": "string"
                 },
                 "user_id": {
-                    "description": ""
+                    "description": "User in which to find a call to intercept",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1503,16 +1615,24 @@
             "description": "Validator for the intercept_feature callflow's data object",
             "properties": {
                 "approved_device_id": {
-                    "description": ""
+                    "description": "Restricts the calling device to this Device",
+                    "type": "string"
                 },
                 "approved_group_id": {
-                    "description": ""
+                    "description": "Requires the calling device to be part of the Group",
+                    "type": "string"
                 },
                 "approved_user_id": {
-                    "description": ""
+                    "description": "Requires the calling device to be part of the User",
+                    "type": "string"
                 },
                 "type": {
-                    "description": ""
+                    "description": "The scope of devices to intercept",
+                    "enum": [
+                        "user",
+                        "device",
+                        "extension"
+                    ]
                 }
             },
             "required": true,
@@ -1584,8 +1704,13 @@
         "callflows.menu": {
             "description": "Validator for the menu callflow's data object",
             "properties": {
+                "id": {
+                    "description": "Menu ID to use",
+                    "type": "string"
+                },
                 "interdigit_timeout": {
-                    "description": ""
+                    "description": "Amount of time, in milliseconds, to wait between keypresses",
+                    "type": "integer"
                 }
             },
             "required": true,
@@ -1759,11 +1884,16 @@
             "properties": {
                 "action": {
                     "default": "park",
-                    "description": "",
+                    "description": "Action to take for the caller",
+                    "enum": [
+                        "park",
+                        "retrieve",
+                        "auto"
+                    ],
                     "type": "string"
                 },
                 "default_callback_timeout": {
-                    "description": "",
+                    "description": "How long, in seconds, to wait before calling back the parker",
                     "type": "integer"
                 },
                 "default_presence_type": {
@@ -1775,11 +1905,12 @@
                     "type": "integer"
                 },
                 "slot": {
-                    "description": ""
+                    "description": "Static slot number to use",
+                    "type": "string"
                 },
                 "slots": {
                     "default": {},
-                    "description": "",
+                    "description": "Statically define slots and their configuration",
                     "type": "object"
                 }
             },
@@ -1895,13 +2026,23 @@
                 "media": {
                     "properties": {
                         "fax_option": {
-                            "description": ""
+                            "description": "Caller flag for T38 settings",
+                            "enum": [
+                                "auto",
+                                true,
+                                false
+                            ],
+                            "type": [
+                                "string",
+                                "boolean"
+                            ]
                         }
                     },
                     "type": "object"
                 },
                 "owner_id": {
-                    "description": ""
+                    "description": "User ID to send fax to",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -2157,7 +2298,8 @@
                     "type": "array"
                 },
                 "fail_on_single_reject": {
-                    "description": ""
+                    "description": "If any leg rejects the call, cancel all other legs",
+                    "type": "boolean"
                 },
                 "ignore_forward": {
                     "default": true,
@@ -2246,15 +2388,20 @@
             "properties": {
                 "channel": {
                     "default": "a",
-                    "description": "",
+                    "description": "Which channel to set the variable on",
+                    "enum": [
+                        "a",
+                        "both"
+                    ],
                     "type": "string"
                 },
                 "value": {
-                    "description": "",
+                    "description": "The value to set 'variable'",
                     "type": "string"
                 },
                 "variable": {
-                    "description": ""
+                    "description": "The variable name to set on the leg(s)",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -2287,22 +2434,35 @@
             "description": "Validator for the temporal_route callflow's data object",
             "properties": {
                 "action": {
-                    "description": ""
+                    "description": "What action to perform",
+                    "enum": [
+                        "menu",
+                        "enable",
+                        "disable",
+                        "reset"
+                    ],
+                    "type": "string"
                 },
                 "interdigit_timeout": {
-                    "description": "",
+                    "description": "How long, in milliseconds, to wait for the next keypress",
                     "type": "integer"
                 },
                 "rule_set": {
-                    "description": ""
+                    "description": "ID of the rule set",
+                    "type": "string"
                 },
                 "rules": {
                     "default": [],
-                    "description": "",
+                    "description": "List of rule IDs to use",
+                    "items": {
+                        "description": "ID of the temporal rule set to use",
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "timezone": {
-                    "description": ""
+                    "description": "Timezone to use when processing temporal rules",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -2347,39 +2507,46 @@
             "description": "Validator for the user callflow's data object",
             "properties": {
                 "can_call_self": {
-                    "description": "",
+                    "description": "Toggle whether devices of this use can call each other",
                     "type": "boolean"
                 },
                 "can_text_self": {
-                    "description": "",
+                    "description": "Toggle whether devices of this use can text each other",
                     "type": "boolean"
                 },
                 "delay": {
                     "default": 0,
-                    "description": "",
+                    "description": "How long to delay the endpoint(s) before bridging",
                     "type": "integer"
                 },
                 "fail_on_single_reject": {
-                    "description": ""
+                    "description": "If any leg rejects the call, cancel all other legs",
+                    "type": "boolean"
                 },
                 "source": {
-                    "description": ""
+                    "description": "Source of the endpoint(s)",
+                    "type": "string"
                 },
                 "static_invite": {
-                    "description": ""
+                    "description": "Override the SIP Username",
+                    "type": "string"
                 },
                 "strategy": {
                     "default": "simultaneous",
-                    "description": "",
+                    "description": "Ringing strategy for the endpoint(s)",
+                    "enum": [
+                        "simultaneous",
+                        "single"
+                    ],
                     "type": "string"
                 },
                 "suppress_clid": {
-                    "description": "",
+                    "description": "Toggle whether to suppress caller ID",
                     "type": "boolean"
                 },
                 "timeout": {
                     "default": 20,
-                    "description": "",
+                    "description": "Timeout, in seconds, to wait for answer",
                     "type": "integer"
                 }
             },
