@@ -17,6 +17,7 @@ MFA process involves these steps:
 5. If the MFA provider is disabled based on the configuration, a HTTP `401 unauthorized` error will be returned.
 6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if something is invalid and provide an appropiate error message.
 7. If the request doesn't have a response from MFA provider (if there is no `mfa_service_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the playlod of:
+
 ```json
 {
   "data": {
@@ -25,6 +26,7 @@ MFA process involves these steps:
   }
 }
 ```
+
 8. After the client performed the MFA with the provider, it should issue the same auth request this time with paylod included the response from MFA provider
 9. In this second request, kazoo provider module will try to verifying the request and provider response, if the provider response that user is claiming could be verfied the request will be authorized and a token will be generated as before. Otherwise a HTTP `401 unauthorized` error will be returned.
 
@@ -97,12 +99,34 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
+Which `siq_request` is a string similiar to `TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
+
+Notice the `TX` and `APP` parts which seperated by `:`. You need the `APP` part later to merge it with response from Duo when you're sending it to Kazoo.
+
 ####### Client sends Duo response to Kazoo with this payload
+
+Duo will respond to client with a payload similiar to this:
+
+```json
+{
+    "response":{
+        "cookie": "AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef",
+        "result": "SUCCESS",
+        "reason": "User approved",
+        ....
+    },
+    "stat": "OK"
+}
+```
+
+You need to merge `cookie` with `APP` from previous part and send it to Kazoo with below payload.
+
+Given the `cookie` is `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef`, the `mfa_service_reponse` to send would be: `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
 
 ```json
 {
   "data": {
-    "mfa_service_response": "{SIG_RESPONSE}",
+    "mfa_service_response": "AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef`, the `mfa_service_reponse` to send would be: `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777",
   }
 }
 ```
