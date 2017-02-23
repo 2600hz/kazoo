@@ -261,6 +261,7 @@
     "fax.allow_all_addresses_when_empty": "fax allow all addresses when empty",
     "fax.allowed_content_types": "fax allowed content types",
     "fax.cloud_registration_pool_interval": "fax cloud registration pool interval",
+    "fax.conversion_command": "legacy fax conversion pdf command",
     "fax.conversion_image_command": "fax conversion image command",
     "fax.conversion_openoffice_document_command": "fax conversion openoffice document command",
     "fax.conversion_pdf_command": "fax conversion pdf command",
