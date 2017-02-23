@@ -204,7 +204,7 @@ include_sub_refs_from_schema(_Key, Value, Acc) ->
 
 -spec load_ref_schema(ne_binary()) -> api_object().
 load_ref_schema(SchemaName) ->
-    File = kz_ast_util:schema_path(<<SchemaName/binary, ".json">>),
+    File = schema_path(<<SchemaName/binary, ".json">>),
     case file:read_file(File) of
         {'ok', SchemaBin} -> kz_json:decode(SchemaBin);
         {'error', _E} -> 'undefined'
