@@ -39,7 +39,7 @@ handle(_Data, Call, <<"stop">>) ->
 -spec get_action(api_object()) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(Data) ->
-    case kz_json:get_value(<<"action">>, Data) of
+    case kz_json:get_ne_binary_value(<<"action">>, Data) of
         <<"stop">> -> <<"stop">>;
         _ -> <<"start">>
     end.
