@@ -33,6 +33,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 -define(MAX_BULK, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
+-define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, false)).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
@@ -453,7 +454,7 @@ create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 
 -spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
 maybe_add_stale_to_options(Options) ->
-    case kapps_config:get(?CONFIG_CAT, <<"cdr_stale_view">>) of
+    case ?STALE_CDR of
         true -> [ {stale, ok} | Options ];
         _ -> Options
     end.
