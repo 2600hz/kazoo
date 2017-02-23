@@ -516,7 +516,7 @@ update_doc(Updates, Id, Call) ->
 %%--------------------------------------------------------------------
 -spec get_menu_profile(kz_json:object(), kapps_call:call()) -> menu().
 get_menu_profile(Data, Call) ->
-    Id = kz_doc:id(Data),
+    Id = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountDb = kapps_call:account_db(Call),
     case kz_datamgr:open_doc(AccountDb, Id) of
         {'ok', JObj} ->
