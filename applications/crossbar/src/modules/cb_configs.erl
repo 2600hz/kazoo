@@ -95,7 +95,7 @@ post(Context, ConfigId) ->
     case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
         {?EMPTY_JSON_OBJECT, undefined} -> skip;
         {?EMPTY_JSON_OBJECT, _} ->
-            crossbar_doc:delete(cb_context:set_doc(Stored));
+            crossbar_doc:delete(cb_context:set_doc(Context, Stored));
         {Diff, _} ->
             crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
     end,
