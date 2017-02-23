@@ -60,7 +60,7 @@ build_ref_doc(Base, Schema) ->
     ].
 
 format_name(Base) ->
-    [kz_binary:ucfirst(Piece) || Piece <- binary:split(Base, <<"_">>)].
+    kz_binary:join([kz_binary:ucfirst(Piece) || Piece <- binary:split(Base, <<"_">>)], <<" ">>).
 
 update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),
