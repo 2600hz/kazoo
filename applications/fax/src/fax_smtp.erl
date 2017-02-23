@@ -39,7 +39,7 @@
                ,from :: api_ne_binary()
                ,to :: api_ne_binary()
                ,doc :: kz_json:object()
-               ,filename :: file:filename_all()
+               ,filename :: api_ne_binary()
                ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
