@@ -1052,17 +1052,15 @@ load_parent_tree(AccountId, Context) ->
     Tree = extract_tree(AccountId, RespData),
     Parents = find_accounts_from_tree(Tree, RespData, Context),
     RespEnv =
-        kz_json:set_value(
-          <<"page_size">>
-                         ,erlang:length(Parents)
+        kz_json:set_value(<<"page_size">>
+                         ,length(Parents)
                          ,cb_context:resp_envelope(Context)
-         ),
-    cb_context:setters(
-      Context
+                         ),
+    cb_context:setters(Context
                       ,[{fun cb_context:set_resp_data/2, Parents}
                        ,{fun cb_context:set_resp_envelope/2, RespEnv}
                        ]
-     ).
+                      ).
 
 %%--------------------------------------------------------------------
 %% @private

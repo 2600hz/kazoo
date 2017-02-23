@@ -85,7 +85,7 @@ open_cache_docs(DbName, DocIds, Options) ->
         {error, _}=E -> E;
         {ok, JObjs} ->
             JObjs2 = assemble_jobjs(JObjs1, disassemble_jobjs(DbName, Options, JObjs)),
-            {ok, JObjs2}
+            {ok, kz_json:order_by([<<"key">>], DocIds, JObjs2)}
     end.
 
 fetch_locals(DbName, DocIds) ->
