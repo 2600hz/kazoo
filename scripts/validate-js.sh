@@ -43,7 +43,12 @@ def couchjs((field, js)):
         code = call(['couchjs', TMP])
         if code != 0:
             print 'Key:', field
-            print 'Code:', js
+            print 'Code:'
+            if list == type(js):
+                for line in js:
+                    print line
+            else:
+                print js
             exit(1)
     finally:
         os.remove(TMP)
