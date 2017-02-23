@@ -434,30 +434,29 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
 -spec create_interaction_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
-    {'ok', maybe_add_stale_to_options([{'startkey', [CreatedTo]}
+    {'ok', [{'startkey', [CreatedTo]}
                                       ,{'endkey', [CreatedFrom, kz_json:new()]}
                                       ,{'limit', pagination_page_size(Context)}
                                       ,{'group', 'true'}
                                       ,{'group_level', 2}
                                       ,{'reduce', 'true'}
                                       ,'descending'
-                                      ])};
+                                      | maybe_add_stale_to_options(?STALE_CDR)
+                                      ]};
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
-    {'ok', maybe_add_stale_to_options([{'startkey', [OwnerId, CreatedTo]}
+    {'ok', [{'startkey', [OwnerId, CreatedTo]}
                                       ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
                                       ,{'limit', pagination_page_size(Context)}
                                       ,{'group', 'true'}
                                       ,{'group_level', 3}
                                       ,{'reduce', 'true'}
                                       ,'descending'
-                                      ])}.
+                                      | maybe_add_stale_to_options(?STALE_CDR)
+                                      ]}.
 
 -spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
-maybe_add_stale_to_options(Options) ->
-    case ?STALE_CDR of
-        true -> [ {stale, ok} | Options ];
-        _ -> Options
-    end.
+maybe_add_stale_to_options(true) ->[ {stale, ok} ];
+maybe_add_stale_to_options(_) ->[].
 
 -spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                          {'ok', crossbar_doc:view_options()}.

@@ -138,28 +138,35 @@ handle_info(timeout, #state{counter = Counter} = State) ->
                 end
         end,
     {NewCounter, RefreshList} = lists:foldl(HandleTimeout, {Counter, []}, maps:keys(Counter)),
-    _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]),
+    maybe_spawn_refresh_process(RefreshList),
     erlang:send_after(Timeout*?MILLISECONDS_IN_SECOND, self(), timeout),
     {noreply, State#state{ counter = NewCounter } };
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
 
+-spec maybe_spawn_refresh_process([{ne_binary(), gregorian_seconds(), gregorian_seconds()}]) -> any().
+maybe_spawn_refresh_process([]) -> ok;
+maybe_spawn_refresh_process(RefreshList) ->
+    _ = kz_util:spawn(fun update_accounts_view/1, [RefreshList]).
+
 -spec handle_event(kz_json:object(), state()) -> gen_listener:handle_event_return().
-handle_event(JObj, #state{} = State) -> handle_event(JObj, State, ?THRESHOLD);
-handle_event(_JObj, _State) -> {'reply', []}.
+handle_event(JObj, #state{} = State) -> handle_event(JObj, State, ?THRESHOLD).
 
 -spec handle_event(kz_json:object(), state(), non_neg_integer()) -> gen_listener:handle_event_return().
 handle_event(_JObj, #state{}, 0) -> {reply, []};
-handle_event(JObj, #state{counter = Counter} = State, Threshold) ->
-    AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+handle_event(JObj, State, Threshold) ->
+    handle_account(State, Threshold, kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj)).
+
+-spec handle_account(state(), non_neg_integer(), ne_binary()) -> gen_listener:handle_event_return().
+handle_account(#state{}, _, undefined) -> {reply, []};
+handle_account(#state{counter = Counter} = State, Threshold, AccountId) ->
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Threshold} ->
                     _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:current_tstamp()]),
                     {kz_time:current_tstamp(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
-    lager:notice("count:~p", [Count]),
     {reply, [], State#state{ counter = Counter#{ AccountId => Count }} }.
 
 %%--------------------------------------------------------------------
