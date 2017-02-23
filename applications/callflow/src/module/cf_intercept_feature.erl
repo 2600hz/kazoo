@@ -91,9 +91,9 @@ maybe_intercept(Call, Params) ->
 -spec intercept_restrictions(kz_json:object()) -> kz_proplist().
 intercept_restrictions(Data) ->
     props:filter_undefined(
-      [{<<"approved_device_id">>, kz_json:get_value(<<"approved_device_id">>, Data)}
-      ,{<<"approved_user_id">>, kz_json:get_value(<<"approved_user_id">>, Data)}
-      ,{<<"approved_group_id">>, kz_json:get_value(<<"approved_group_id">>, Data)}
+      [{<<"approved_device_id">>, kz_json:get_ne_binary_value(<<"approved_device_id">>, Data)}
+      ,{<<"approved_user_id">>, kz_json:get_ne_binary_value(<<"approved_user_id">>, Data)}
+      ,{<<"approved_group_id">>, kz_json:get_ne_binary_value(<<"approved_group_id">>, Data)}
       ]).
 
 -spec maybe_allowed_to_intercept(kapps_call:call(), kz_proplist()) -> boolean().
