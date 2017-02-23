@@ -916,11 +916,11 @@ create_binding(Binding, Props, Q) ->
             erlang:error({'api_module_undefined', Wapi})
     end.
 
--spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
+-spec stop_timer(api_reference()) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';
 stop_timer(Ref) when is_reference(Ref) -> erlang:cancel_timer(Ref).
 
--spec start_timer(any()) -> reference() | 'undefined'.
+-spec start_timer(kz_timeout()) -> api_reference().
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     'undefined';

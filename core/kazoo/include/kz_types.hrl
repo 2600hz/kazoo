@@ -34,6 +34,8 @@
 
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
+-type api_pid_ref() :: pid_ref() | 'undefined'.
+-type api_pid_refs() :: pid_refs() | 'undefined'.
 
 -type api_terms() :: kz_json:object() | kz_proplist().
 -type api_binary() :: binary() | 'undefined'.
