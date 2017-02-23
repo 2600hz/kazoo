@@ -222,8 +222,6 @@ property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, {_, _}=Acc) ->
 property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
     RequiredV4 = local_required(Names, SchemaJObj),
 
-    schema_type(Settings) =:= <<" ">> andalso io:format("schema ~p~n", [SchemaJObj]),
-
     maybe_sub_properties_to_row(SchemaJObj
                                ,kz_json:get_value(<<"type">>, Settings)
                                ,Names

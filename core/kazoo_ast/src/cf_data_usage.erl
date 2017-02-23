@@ -125,7 +125,7 @@ check_default(B) when is_binary(B) -> B;
 check_default(A) when is_atom(A) -> 'undefined';
 
 check_default(Default) ->
-    io:format("unchanged default ~p~n", [Default]),
+    ?DEBUG("unchanged default ~p~n", [Default]),
     Default.
 
 guess_type('get_value', <<_/binary>>) ->
@@ -277,7 +277,7 @@ process_expression(Acc, ?LC_BIN_GENERATOR(Pattern, Expr)) ->
     process_expressions(Acc, [Pattern, Expr]);
 
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
-    io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
+    ?DEBUG("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
 
 process_list(Acc, Head, Tail) ->
@@ -625,9 +625,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                      ,visited=Vs
                      };
         _Unexpected ->
-            io:format("unexpected arg(~p) at ~p in ~p, expected ~p~n"
-                     ,[_Unexpected, DataIndex, Args, DataName]
-                     ),
+            ?DEBUG("unexpected arg(~p) at ~p in ~p, expected ~p~n"
+                  ,[_Unexpected, DataIndex, Args, DataName]
+                  ),
             Acc
     end.
 
