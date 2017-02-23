@@ -30,7 +30,7 @@
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--type lookup_ret() :: {'ok', kz_json:object(), boolean()} | {'error', any()}.
+-type lookup_ret() :: {'ok', kzd_callflow:doc(), boolean()} | {'error', any()}.
 
 -spec lookup(kapps_call:call()) -> lookup_ret().
 lookup(Call) ->
