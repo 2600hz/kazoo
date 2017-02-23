@@ -97,17 +97,17 @@
              ]).
 
 -record(state, {current_msg_id :: api_binary()
-               ,client_pid :: pid()
+               ,client_pid :: api_pid()
                ,client_ref :: api_reference()
                ,client_from :: api_pid_ref() | 'relay'
-               ,client_vfun :: validate_fun()
+               ,client_vfun :: validate_fun() | 'undefined'
                ,client_cfun = collect_until_timeout() :: collect_until_fun()
                ,responses :: api_objects()
-               ,neg_resp :: kz_json:object()
+               ,neg_resp :: api_object()
                ,neg_resp_count = 0 :: non_neg_integer()
                ,neg_resp_threshold = 1 :: pos_integer()
-               ,req_timeout_ref :: reference()
-               ,req_start_time :: kz_now()
+               ,req_timeout_ref :: api_reference()
+               ,req_start_time :: kz_now() | 'undefined'
                ,callid :: api_binary()
                ,pool_ref :: server_ref()
                ,defer_response :: api_object()
