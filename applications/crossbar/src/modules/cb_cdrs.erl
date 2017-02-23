@@ -435,24 +435,24 @@ create_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
                                              {'ok', crossbar_doc:view_options()}.
 create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [CreatedTo]}
-                                      ,{'endkey', [CreatedFrom, kz_json:new()]}
-                                      ,{'limit', pagination_page_size(Context)}
-                                      ,{'group', 'true'}
-                                      ,{'group_level', 2}
-                                      ,{'reduce', 'true'}
-                                      ,'descending'
-                                      | maybe_add_stale_to_options(?STALE_CDR)
-                                      ]};
+           ,{'endkey', [CreatedFrom, kz_json:new()]}
+           ,{'limit', pagination_page_size(Context)}
+           ,{'group', 'true'}
+           ,{'group_level', 2}
+           ,{'reduce', 'true'}
+           ,'descending'
+            | maybe_add_stale_to_options(?STALE_CDR)
+           ]};
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
-                                      ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
-                                      ,{'limit', pagination_page_size(Context)}
-                                      ,{'group', 'true'}
-                                      ,{'group_level', 3}
-                                      ,{'reduce', 'true'}
-                                      ,'descending'
-                                      | maybe_add_stale_to_options(?STALE_CDR)
-                                      ]}.
+           ,{'endkey', [OwnerId, CreatedFrom, kz_json:new()]}
+           ,{'limit', pagination_page_size(Context)}
+           ,{'group', 'true'}
+           ,{'group_level', 3}
+           ,{'reduce', 'true'}
+           ,'descending'
+            | maybe_add_stale_to_options(?STALE_CDR)
+           ]}.
 
 -spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
 maybe_add_stale_to_options(true) ->[ {stale, ok} ];
