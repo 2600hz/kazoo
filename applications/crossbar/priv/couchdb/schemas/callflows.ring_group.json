@@ -53,7 +53,8 @@
             "type": "array"
         },
         "fail_on_single_reject": {
-            "description": ""
+            "description": "If any leg rejects the call, cancel all other legs",
+            "type": "boolean"
         },
         "ignore_forward": {
             "default": true,
