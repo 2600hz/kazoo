@@ -8331,9 +8331,6 @@
                 "autoload_modules": {
                     "description": "crossbar autoload modules"
                 },
-                "cdr_stale_view": {
-                    "description": "force cdr to return stale records only"
-                },
                 "compress_response_body": {
                     "default": true,
                     "description": "crossbar compress response body",
@@ -8574,6 +8571,11 @@
         "system_config.crossbar.cdrs": {
             "description": "Schema for crossbar.cdrs system_config",
             "properties": {
+                "cdr_stale_view": {
+                    "default": false,
+                    "description": "force cdr to return stale records only",
+                    "type": "boolean"
+                },
                 "maximum_bulk": {
                     "default": 50,
                     "description": "crossbar.cdrs maximum bulk",
