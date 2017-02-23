@@ -2,13 +2,17 @@
 
 Crossbar has multiple ways to authenticate a user or an API request.
 
-Some authentication modules has their own account's version configuration (multi_factor module for example). These configuration can be set for an account. If Crossbar couldn't find configuration inside the Account's database, it starts walking account's hierarchy up (going to account's parents) to find the the first account's that has the configurations. If it reached to the first reseller and still the configuration is missing then it goes to `system_configs` instead.
+Authentication module has their own account's version configuration to control some aspect of authentication process like enabling/disabling the module or shoyuld that modules utilized multi factor authentication.
 
-Configuration document inside an Account has a fixed `id`, `kazoo_auth_configs`. All modules' configs are inside `auth_modules` property.
+This configuration can be set per an account which in this case if Crossbar couldn't find configuration inside the Account's database, it starts walking account's hierarchy up (going to account's parents) to find the the first account that has the configuration. If it reaches to the first reseller and still the configuration is missing then it goes to `system_configs` instead.
 
-`auth_modules` is a JSON object which in keys are the name of the exact name of Crossbar auth modules and the values are the configuration for each of the modules.
+Configuration document inside an Account has a fixed `id` of `kazoo_auth_configs`. The module's configuration can be set inside `auth_modules` property in that document.
+
+`auth_modules` is a JSON object which keys are the name of the exact name of Crossbar auth modules and the values are the configuration for each of the modules.
 
 ##### Sample auth configs document
+
+This is sample configuration for `cb_user_auth` module which enables that module and set it to all authentication to be done via a multi factor service defined in `{CONFIG_ID}` document inside the same account that has the Crossbar Auth config document.
 
 ```json
 {
@@ -18,7 +22,7 @@ Configuration document inside an Account has a fixed `id`, `kazoo_auth_configs`.
       "enabled": true,
       "log_failed_login_attempts": true,
       "multi_factor": {
-        "enabled": false,
+        "enabled": true,
         "configuration_id": "{CONFIG_ID}"
       }
     }
@@ -33,34 +37,20 @@ Key | Description | Type | Default | Required
 `enabled` | whether or not this authentication module is enabled | `boolean` | `true` | `false`
 `log_failed_login_attempts` | should failed login attempts to be logged in database (useful for debuging) | `boolean` | `false` | `false`
 `multi_factor` | control multi factor authentication for this module | `object` |   | `false`
-`multi_factor.enabled` | should this module use multi factor for authenticating | `boolean` | `false | `false`
+`multi_factor.enabled` | should this module use multi factor for authenticating | `boolean` | `false` | `false`
 `multi_factor.include_subaccounts` | if this settings comes from an account's parent, should multi factor settings been applied to the account | `boolean` | `false` | `false`
 `multi_factor.configuration_id` | the `id` of the document that contains multi factor provider configs | `string` |  | `false`
 
 #### Control Multi Factor Authentication of an Crossbar auth module
 
-Base on previous section, you can specify the `id` of multi factor provider settings. If you miss this values, system's default MFA provider will be used.
+If you want to use multi factor authentication for a module, sets the `multi_factor.enabled` to `true` for that module. This is a good option to protect modules like `cb_user_auth`.
 
-#### Multi Factor Authentication (MFA) flow summary
+If authentication configuration comes a parent account and you don't want to use multi factor for child's account, sets `multi_factor.include_subaccounts` to `false`.
 
-MFA in Crossbar works as below:
+> **Note:** You can specify the `id` of multi factor provider settings. If you miss this value, system's default MFA provider will be used!
 
-1. Intiate the authentication with your auth module/method with your user name and password (or token) as before.
-2. If the auth method that you are using is configured to preforms the multi factor it goes to kazoo multi factor auth to process the request.
-3. Based on auth module configuration, MFA provider settings will be fetched either from account's that have configured the auth module or from default provider `system_auth`
-4. If no MFA provider configuration was found, the auth request will be succesful and a token will be generated as a normal auth request before
-5. If the MFA provider is disabled based on the configuration, a HTTP `401 unauthorized` error will be returned.
-6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if something is invalid and provide a appropiate error message.
-7. If the request doesn't have a response from MFA provider (if `mfa_service_response` inside the body of the request) it will generate the required information that the client needs to preform with MFA provider. Crossbar ten will reply with a HTTP `401 unauthorized` with the playlod of:
+##### Multi Factor Authentication (MFA) flow summary
 
-```json
-{
-    "data": {
-        "messages": "client needs to preform second-factor authentication",
-        "mfa_request": { //an json object which contains the neccessary information for performing the MFA with provider}
-    }
-}
-```
+The MFA process in Kazoo is straight forward. You configured the Kazoo integrated MFA service provider, and enabling the multi factor for an authentication endpoint. user authentication as usual by supplying their own Kazoo username and password. After first factor authentication (username and password) is validated to true, second-factor provider information would be returned to client by a HTTP `401 unauthorized`. User performs the second-factor authentication with the provider and sends the provider response to Kazoo, if the response was valid user will be authenicated successful, otherwise a HTTP `401 unauthorized` will be returned.
 
-8. After the client performed the MFA with the provider, it will issue the same auth request this time with paylod included the response from MFA provider
-9. In this second request, kazoo provider module will try to verifying the request, if the provider response that user is claiming could be verfied, the request will be authorized and MFA process was successful, so a token will be generated as before. Otherwise a HTTP `401 unauthorized` error will be returned.
+For more information about MFA see [Kazoo Auth multi factor](../../../core/kazoo_auth/doc/multi_factor.md) and for configuring multi factor provider see [Crossbar multi factor](./multi_factor.md).

@@ -2,27 +2,26 @@
 
 #### About Multi Factor
 
-After enabling multi factor for your desire authentication method from [Crossbar Auth Configs](authentication_configuration), you have to configure your MFA provider using this API endpoint.
+After enabling multi factor for your desire authentication method (see [Crossbar Auth Configs](./authentication_configuration.md)), you have to configure your MFA provider using this API endpoint.
 
-See Kazoo Auth multi factor documentation to learn more about available providers and how to setting them up.
+See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and how to setting them up.
 
-> *NOTE* This is only provide and API to create/change/get MFA settings. For more information about how MFA works and what settings are required please see Kazoo Auth MFA documentation for Crossbar Auth Configuration.
+> **Note:** This is only provide an API to create/change/get MFA settings. For more information about how MFA works and what settings are required please see Kazoo Auth MFA documentation and Crossbar Auth Configuration.
 
 #### Schema
 
-authentication providers
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `enabled` | whether or not this authentication provider is enabled | `boolean` | `true` | `false`
 `provider_name` | authentication provider name | `string` |   | `true`
 `provider_type` | the type of authentication provider | `multi_factor` |   | `true`
-`settings` | provider configurations | `object` |   | `false`
+`settings` | provider configuration | `object` |   | `false`
 
 
 #### Get a summary of configured providers
 
-Lists configured authentication provider for `{ACOUNT_ID}`. Also provides all of available providers which you can configure.
+Lists configured authentication providers for `{ACOUNT_ID}`. Also provides all of the available providers which you can configure.
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor
 
@@ -58,9 +57,9 @@ curl -v -X GET \
 #### Configure a provider
 
 Create configuration for a provider by issuing below request. You have to provide the name of provider and and the type of the provider
-which for for MFA is always `"multi_factor"`. `"settings"` contains the configs necessary for this provider.
+which for MFA is always `"multi_factor"`. `"settings"` contains the configs necessary for this provider.
 
-See Kazoo Auth multi-factor authentication documentation to find out required configuration for each provider.
+See [Kazoo Auth multi-factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to find out required configuration for each provider.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/multi_factor
 
@@ -68,7 +67,7 @@ See Kazoo Auth multi-factor authentication documentation to find out required co
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor
-    --data '{"data": {"provider_name": "duo", "provider_type": "multi_factor", "enabled": true, "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOS_NAME}", "duo_expire": 300,"app_expire": 3600}}}'
+    --data '{"data": {"provider_name": "duo", "provider_type": "multi_factor", "enabled": true, "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOST_NAME}", "duo_expire": 300,"app_expire": 3600}}}'
 ```
 
 ```json
@@ -81,7 +80,7 @@ curl -v -X PUT \
       "integration_key": "{DUO_IKEY}",
       "secret_key": "{DUO_SKEY}",
       "application_secret_key": "{DUO_AKEY}",
-      "api_hostname": "{DUO_HOS_NAME}",
+      "api_hostname": "{DUO_HOST_NAME}",
       "duo_expire": 300,
       "app_expire": 3600
     },
@@ -99,7 +98,7 @@ curl -v -X PUT \
 
 #### Fetch a provider configuration
 
-Gets account's configuration of a provider.
+Gets account's configuration of a provider in `{CONFIG_ID}`.
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/{CONFIG_ID}
 
@@ -119,7 +118,7 @@ curl -v -X GET \
       "integration_key": "{DUO_IKEY}",
       "secret_key": "{DUO_SKEY}",
       "application_secret_key": "{DUO_AKEY}",
-      "api_hostname": "{DUO_HOS_NAME}",
+      "api_hostname": "{DUO_HOST_NAME}",
       "duo_expire": 300,
       "app_expire": 3600
     },
@@ -144,7 +143,7 @@ curl -v -X GET \
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/multi_factor/c757665dca55edba2395df3ca6423f4f
-    --data '{"data": {"provider_name": "duo", "provider_type": "multi_factor", "enabled": true, "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOS_NAME}", "duo_expire": 500,"app_expire": 3600}}}'
+    --data '{"data": {"provider_name": "duo", "provider_type": "multi_factor", "enabled": true, "settings": {"integration_key": "{DUO_IKEY}", "secret_key": "{DUO_SKEY}", "application_secret_key": "{DUO_AKEY}", "api_hostname": "{DUO_HOST_NAME}", "duo_expire": 500,"app_expire": 3600}}}'
 ```
 
 ```json
@@ -157,7 +156,7 @@ curl -v -X POST \
       "integration_key": "{DUO_IKEY}",
       "secret_key": "{DUO_SKEY}",
       "application_secret_key": "{DUO_AKEY}",
-      "api_hostname": "{DUO_HOS_NAME}",
+      "api_hostname": "{DUO_HOST_NAME}",
       "duo_expire": 400,
       "app_expire": 3600
     },
@@ -194,7 +193,7 @@ curl -v -X PATCH \
       "integration_key": "{DUO_IKEY}",
       "secret_key": "{DUO_SKEY}",
       "application_secret_key": "{DUO_AKEY}",
-      "api_hostname": "{DUO_HOS_NAME}",
+      "api_hostname": "{DUO_HOST_NAME}",
       "duo_expire": 400,
       "app_expire": 3600
     },
@@ -222,7 +221,7 @@ curl -v -X DELETE \
 
 #### Get a summary of login attempts
 
-If the crossbar authentication modules is configured to save a buf log of login attempts, use this to get summary of the logs.
+If the crossbar authentication modules is configured to save a debug log of login attempts, use this to get summary of the logs.
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor/attempts
 

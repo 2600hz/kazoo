@@ -102,7 +102,6 @@ create_auth_token(Context, AuthModule, JObj) ->
                                 {'error', any(), any()}.
 maybe_create_token(Claims, Method) ->
     AuthConfig = auth_config(props:get_ne_binary_value(<<"account_id">>, Claims)),
-    io:format("~n AuthConfig ~p~n~n~n", [AuthConfig]),
     maybe_create_token(Claims, AuthConfig, Method, is_auth_module_enabled(Method, AuthConfig)).
 
 -spec maybe_create_token(kz_proplist(), kz_json:object(), ne_binary(), boolean()) ->
@@ -230,10 +229,6 @@ is_auth_module_enabled(Method, Config) ->
 %%--------------------------------------------------------------------
 -spec auth_config(kz_json:object()) -> kz_json:object().
 auth_config(AccountId) ->
-
-    %% FIXME: merge with configuration from system
-    %% For example if an auth module is disable system wide, if there's config
-    %% document in an account it suppress system configuration
     account_auth_config(AccountId, master_account_id()).
 
 %%--------------------------------------------------------------------
@@ -309,7 +304,7 @@ system_auth_config() ->
       [{<<"from">>, <<"system">>}
       ,{<<"auth_modules">>, ?SYSTEM_AUTH_CONFIG}
       ]
-    ).
+     ).
 
 -spec master_account_id() -> api_ne_binary().
 master_account_id() ->
@@ -336,7 +331,7 @@ mfa_options(Method, AuthConfig) ->
 
 maybe_system_config(<<"system">>, _Id) ->
     %% auth config is from system, using default mfa config
-    %% (see is is_multi_factor_enabled/2 TODO comment)
+    %% (see is_multi_factor_enabled/2 TODO comment)
     'undefined';
 maybe_system_config(?NE_BINARY=AccountId, Id) ->
     [{<<"account_id">>, AccountId}
@@ -357,7 +352,7 @@ is_multi_factor_enabled(Claims, AuthConfig) ->
     IncludeSubAccounts = kz_json:is_true(method_mfa_path(Method, <<"include_subaccounts">>), AuthConfig),
 
     %% TODO: is it good to check to see if there is a config_id here to force account to
-    %% use their own mfa config to prevent take advatnage of system default provder?
+    %% use their own mfa config to prevent the child account take advatnage of the system's default provider?
     kz_json:is_true(method_mfa_path(Method, <<"enabled">>), AuthConfig)
         andalso account_mfa_allowed(master_account_id(), AccountId, ConfigsFrom, IncludeSubAccounts).
 
