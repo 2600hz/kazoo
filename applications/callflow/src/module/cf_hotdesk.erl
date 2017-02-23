@@ -31,8 +31,6 @@
                  ,keep_logged_in_elsewhere = 'false' :: boolean()
                  ,owner_id :: api_binary()
                  ,endpoint_ids = [] :: ne_binaries()
-                 ,jobj = kz_json:new() :: kz_json:object()
-                 ,account_db :: ne_binary()
                  ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type hotdesk() :: #hotdesk{}.
@@ -48,8 +46,8 @@ handle(Data, Call) ->
     Action = kz_json:get_ne_binary_value(<<"action">>, Data),
 
     case get_hotdesk_profile(hotdesk_id(Data, Action, Call), Data, Call) of
-        #hotdesk{}=Hotdesk -> handle_action(Action, Hotdesk, Call);
-        {'error', _} -> cf_exe:continue(Call)
+        {'error', _} -> cf_exe:continue(Call);
+        Hotdesk -> handle_action(Action, Hotdesk, Call)
     end.
 
 hotdesk_id(Data, <<"logout">>, Call) ->
