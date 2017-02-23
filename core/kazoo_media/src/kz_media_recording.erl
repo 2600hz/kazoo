@@ -235,7 +235,7 @@ handle_cast('stop_recording', #state{media={_, MediaName}
     lager:debug("sent command to stop recording, waiting for record stop"),
     {'noreply', State};
 handle_cast('stop_recording', #state{is_recording='false'}=State) ->
-    lager:debug("received stop recording and we're not recording, exiting"),
+    lager:debug("received stop recording and we're not recording, yielding to other worker"),
     {'stop', 'normal', State};
 handle_cast({'record_stop', {_, MediaName}=Media, FS},
             #state{media={_, MediaName}
@@ -248,7 +248,7 @@ handle_cast({'record_stop', {_, MediaName}=Media, FS},
 handle_cast({'record_stop', {_, MediaName}, _FS}, #state{media={_, MediaName}
                                                         ,is_recording='false'
                                                         }=State) ->
-    lager:debug("received record_stop but we're not recording, exiting"),
+    lager:debug("received record_stop but we're not recording, yielding to other worker"),
     {'stop', 'normal', State};
 handle_cast({'record_stop', _Media, _FS}, State) ->
     {'noreply', State};
