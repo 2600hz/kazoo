@@ -1,6 +1,6 @@
-## PrependCid
+## Prepend Cid
 
-### About PrependCid
+### About Prepend Cid
 
 ### Schema
 

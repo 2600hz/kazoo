@@ -1,6 +1,6 @@
-## PageGroup
+## Page Group
 
-### About PageGroup
+### About Page Group
 
 ### Schema
 

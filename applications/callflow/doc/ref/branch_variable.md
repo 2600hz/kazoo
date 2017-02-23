@@ -1,6 +1,6 @@
-## BranchVariable
+## Branch Variable
 
-### About BranchVariable
+### About Branch Variable
 
 ### Schema
 

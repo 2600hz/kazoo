@@ -1,6 +1,6 @@
-## CollectDtmf
+## Collect Dtmf
 
-### About CollectDtmf
+### About Collect Dtmf
 
 ### Schema
 

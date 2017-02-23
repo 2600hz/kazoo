@@ -1,6 +1,6 @@
-## FaxDetect
+## Fax Detect
 
-### About FaxDetect
+### About Fax Detect
 
 ### Schema
 

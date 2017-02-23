@@ -1,6 +1,6 @@
-## DeadAir
+## Dead Air
 
-### About DeadAir
+### About Dead Air
 
 ### Schema
 

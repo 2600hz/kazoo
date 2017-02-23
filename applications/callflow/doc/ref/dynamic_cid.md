@@ -1,6 +1,6 @@
-## DynamicCid
+## Dynamic Cid
 
-### About DynamicCid
+### About Dynamic Cid
 
 ### Schema
 

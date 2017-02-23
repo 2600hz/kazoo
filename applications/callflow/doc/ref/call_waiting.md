@@ -1,6 +1,6 @@
-## CallWaiting
+## Call Waiting
 
-### About CallWaiting
+### About Call Waiting
 
 ### Schema
 

@@ -1,6 +1,6 @@
-## AfterBridge
+## After Bridge
 
-### About AfterBridge
+### About After Bridge
 
 ### Schema
 

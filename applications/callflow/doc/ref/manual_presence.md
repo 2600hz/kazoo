@@ -1,6 +1,6 @@
-## ManualPresence
+## Manual Presence
 
-### About ManualPresence
+### About Manual Presence
 
 ### Schema
 

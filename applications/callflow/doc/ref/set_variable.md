@@ -1,6 +1,6 @@
-## SetVariable
+## Set Variable
 
-### About SetVariable
+### About Set Variable
 
 ### Schema
 

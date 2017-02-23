@@ -1,6 +1,6 @@
-## RecordCaller
+## Record Caller
 
-### About RecordCaller
+### About Record Caller
 
 ### Schema
 

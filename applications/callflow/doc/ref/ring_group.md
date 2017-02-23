@@ -1,6 +1,6 @@
-## RingGroup
+## Ring Group
 
-### About RingGroup
+### About Ring Group
 
 ### Schema
 

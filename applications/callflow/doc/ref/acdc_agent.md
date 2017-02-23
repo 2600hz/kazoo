@@ -1,6 +1,6 @@
-## AcdcAgent
+## Acdc Agent
 
-### About AcdcAgent
+### About Acdc Agent
 
 ### Schema
 

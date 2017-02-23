@@ -1,6 +1,6 @@
-## TemporalRoute
+## Temporal Route
 
-### About TemporalRoute
+### About Temporal Route
 
 ### Schema
 

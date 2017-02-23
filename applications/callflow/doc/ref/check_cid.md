@@ -1,6 +1,6 @@
-## CheckCid
+## Check Cid
 
-### About CheckCid
+### About Check Cid
 
 ### Schema
 

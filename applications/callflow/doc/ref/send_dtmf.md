@@ -1,6 +1,6 @@
-## SendDtmf
+## Send Dtmf
 
-### About SendDtmf
+### About Send Dtmf
 
 ### Schema
 

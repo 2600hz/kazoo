@@ -1,6 +1,6 @@
-## InterceptFeature
+## Intercept Feature
 
-### About InterceptFeature
+### About Intercept Feature
 
 ### Schema
 

@@ -1,6 +1,6 @@
-## AcdcMember
+## Acdc Member
 
-### About AcdcMember
+### About Acdc Member
 
 ### Schema
 

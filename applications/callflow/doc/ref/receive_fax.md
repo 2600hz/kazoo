@@ -1,6 +1,6 @@
-## ReceiveFax
+## Receive Fax
 
-### About ReceiveFax
+### About Receive Fax
 
 ### Schema
 
