@@ -16,8 +16,12 @@
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
         ,build_error_message/2
-        ,flatten/1, default_object/1, filter/2
+        ,default_object/1, filter/2
         ]).
+
+-ifdef(TEST).
+-export([flatten/1]).
+-endif.
 
 -export_type([validation_error/0, validation_errors/0]).
 
