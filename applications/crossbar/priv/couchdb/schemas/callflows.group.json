@@ -9,7 +9,8 @@
             "type": "array"
         },
         "fail_on_single_reject": {
-            "description": ""
+            "description": "",
+            "type": "boolean"
         },
         "ignore_forward": {
             "default": true,
@@ -22,7 +23,8 @@
             "type": "integer"
         },
         "ringback": {
-            "description": ""
+            "description": "",
+            "type": "string"
         },
         "strategy": {
             "default": "simultaneous",

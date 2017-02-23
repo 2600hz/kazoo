@@ -6,13 +6,23 @@
         "media": {
             "properties": {
                 "fax_option": {
-                    "description": ""
+                    "description": "Caller flag for T38 settings",
+                    "enum": [
+                        "auto",
+                        true,
+                        false
+                    ],
+                    "type": [
+                        "string",
+                        "boolean"
+                    ]
                 }
             },
             "type": "object"
         },
         "owner_id": {
-            "description": ""
+            "description": "User ID to send fax to",
+            "type": "string"
         }
     },
     "required": true,
