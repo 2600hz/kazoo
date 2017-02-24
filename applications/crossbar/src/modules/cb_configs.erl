@@ -84,21 +84,18 @@ validate_with_parent(Context, ConfigId, Parent) ->
                                     ).
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(Context, ConfigId) -> post(Context, ConfigId).
+put(Context, ConfigId) ->
+    maybe_save_or_delete(Context, ConfigId),
+    set_config_to_context(ConfigId, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, ConfigId) -> post(Context, ConfigId).
+patch(Context, ConfigId) ->
+    maybe_save_or_delete(Context, ConfigId),
+    set_config_to_context(ConfigId, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ConfigId) ->
-    Stored = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
-    case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
-        {?EMPTY_JSON_OBJECT, undefined} -> skip;
-        {?EMPTY_JSON_OBJECT, _} ->
-            crossbar_doc:delete(cb_context:set_doc(Context, Stored));
-        {Diff, _} ->
-            crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
-    end,
+    maybe_save_or_delete(Context, ConfigId),
     set_config_to_context(ConfigId, Context).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
@@ -121,3 +118,14 @@ set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, doc_id(ConfigId), JObj).
 
 -spec strip_id(kz_json:object()) -> kz_json:object().
 strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
+
+-spec maybe_save_or_delete(cb_context:context(), path_token()) -> cb_context:context().
+maybe_save_or_delete(Context, ConfigId) ->
+    Stored = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
+    case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
+        {?EMPTY_JSON_OBJECT, undefined} -> Context;
+        {?EMPTY_JSON_OBJECT, _} ->
+            crossbar_doc:delete(cb_context:set_doc(Context, Stored));
+        {Diff, _} ->
+            crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
+    end.
