@@ -65,6 +65,7 @@
                ,record_min_sec            :: pos_integer()
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
+               ,stop_received = 'false'   :: boolean()
                ,retries = 0               :: integer()
                ,verb = 'put'              :: atom()
                }).
@@ -240,13 +241,16 @@ handle_cast('stop_recording', #state{is_recording='false'}=State) ->
 handle_cast({'record_stop', {_, MediaName}=Media, FS},
             #state{media={_, MediaName}
                   ,is_recording='true'
+                  ,stop_received='false'
                   ,call=Call
                   }=State) ->
+    lager:debug("received record_stop, storing recording"),
     Call1 = kapps_call:kvs_store(<<"FreeSwitch-Node">>, FS, Call),
     gen_server:cast(self(), 'store_recording'),
-    {'noreply', State#state{media=Media, call=Call1}};
+    {'noreply', State#state{media=Media, call=Call1, stop_received='true'}};
 handle_cast({'record_stop', {_, MediaName}, _FS}, #state{media={_, MediaName}
                                                         ,is_recording='false'
+                                                        ,stop_received='false'
                                                         }=State) ->
     lager:debug("received record_stop but we're not recording, exiting"),
     {'stop', 'normal', State};
@@ -287,6 +291,7 @@ handle_cast('store_recording', #state{should_store=Store
                                      ,is_recording='true'
                                      ,store_attempted='false'
                                      }=State) ->
+    lager:debug("attempting to save recording"),
     save_recording(State, Store),
     {'noreply', State#state{store_attempted='true'
                            ,is_recording='false'
