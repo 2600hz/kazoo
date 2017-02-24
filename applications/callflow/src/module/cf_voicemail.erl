@@ -1527,7 +1527,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 %%--------------------------------------------------------------------
 -spec get_mailbox_profile(kz_json:object(), kapps_call:call()) -> mailbox().
 get_mailbox_profile(Data, Call) ->
-    Id = kz_doc:id(Data),
+    Id = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountDb = kapps_call:account_db(Call),
     AccountId = kapps_call:account_id(Call),
 

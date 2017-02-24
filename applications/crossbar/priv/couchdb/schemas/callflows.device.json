@@ -14,6 +14,10 @@
             "description": "How long to delay ringing the device, in seconds",
             "type": "integer"
         },
+        "id": {
+            "description": "Device ID",
+            "type": "string"
+        },
         "source": {
             "description": "Source of generating the endpoint (read-only)",
             "type": "string"

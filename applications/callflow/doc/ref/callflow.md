@@ -8,4 +8,4 @@ Validator for the callflow callflow's data object
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`id` |  | `string` |   | `false`
+`id` | The Callflow ID to branch to | `string` |   | `false`

@@ -20,6 +20,10 @@
             "description": "If any leg rejects the call, cancel all other legs",
             "type": "boolean"
         },
+        "id": {
+            "description": "User ID",
+            "type": "string"
+        },
         "source": {
             "description": "Source of the endpoint(s)",
             "type": "string"

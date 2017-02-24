@@ -21,7 +21,8 @@
                 "user",
                 "device",
                 "extension"
-            ]
+            ],
+            "type": "string"
         }
     },
     "required": true,

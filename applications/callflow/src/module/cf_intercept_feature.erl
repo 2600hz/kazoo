@@ -58,7 +58,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
-    InterceptType = kz_json:get_value(<<"type">>, Data),
+    InterceptType = kz_json:get_ne_binary_value(<<"type">>, Data),
     case build_intercept_params(Number, InterceptType, Call) of
         {'ok', Params} ->
             maybe_intercept(Data, Call, Params);

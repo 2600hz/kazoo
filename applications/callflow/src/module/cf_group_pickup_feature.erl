@@ -109,10 +109,10 @@ build_pickup_params(_, Other, _) ->
                               {'ok', kz_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = kz_doc:id(Data),
+    EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = kz_doc:id(Data),
+    EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
 params_from_data(<<"ring_group">>, Data, _Call) ->
     [Endpoint |_Endpoints] = kz_json:get_list_value(<<"endpoints">>, Data, []),

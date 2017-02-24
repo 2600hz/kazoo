@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    UserId = kz_doc:id(Data),
+    UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
     Endpoints = get_endpoints(UserId, Data, Call),
     FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),

@@ -32,8 +32,8 @@ handle(Data, Call) ->
                 lager:info("not an agent calling in"),
                 cf_acdc_agent:play_not_an_agent(Call);
             {'ok', AgentId} ->
-                Action = kz_json:get_value(<<"action">>, Data),
-                QueueId = kz_doc:id(Data),
+                Action = kz_json:get_ne_binary_value(<<"action">>, Data),
+                QueueId = kz_json:get_ne_binary_value(<<"id">>, Data),
                 Status = cf_acdc_agent:find_agent_status(Call, AgentId),
 
                 update_queues(Call, AgentId, QueueId, Action),

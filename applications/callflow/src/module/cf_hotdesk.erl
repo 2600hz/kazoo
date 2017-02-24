@@ -51,13 +51,18 @@ handle(Data, Call) ->
     end.
 
 hotdesk_id(Data, <<"logout">>, Call) ->
-    case kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
-        [] -> kz_doc:id(Data);
-        [Id] -> kz_doc:id(Data, Id);
-        [_|_] -> kz_doc:id(Data)
+    UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
+
+    case UserId =:= 'undefined'
+        andalso kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call)
+    of
+        'false' -> UserId;
+        [Id] -> Id;
+        [] -> UserId;
+        [_|_] -> UserId
     end;
 hotdesk_id(Data, _, _) ->
-    kz_doc:id(Data).
+    kz_json:get_ne_binary_value(<<"id">>, Data).
 
 -spec handle_action(ne_binary(), hotdesk(), kapps_call:call()) -> 'ok'.
 handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->

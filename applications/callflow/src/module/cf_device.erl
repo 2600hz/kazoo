@@ -31,7 +31,7 @@ handle(Data, Call) ->
         {'fail', _}=Reason -> maybe_handle_bridge_failure(Reason, Call);
         {'error', _R} ->
             lager:info("error bridging to device: ~s"
-                      ,[kz_json:get_value(<<"Error-Message">>, _R)]
+                      ,[kz_json:get_ne_binary_value(<<"Error-Message">>, _R)]
                       ),
             cf_exe:continue(Call)
     end.
@@ -52,12 +52,12 @@ maybe_handle_bridge_failure(Reason, Call) ->
 -spec bridge_to_endpoints(kz_json:object(), kapps_call:call()) ->
                                  cf_api_bridge_return().
 bridge_to_endpoints(Data, Call) ->
-    EndpointId = kz_doc:id(Data),
+    EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     Params = kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Data),
     case kz_endpoint:build(EndpointId, Params, Call) of
         {'error', _}=E -> E;
         {'ok', Endpoints} ->
-            FailOnSingleReject = kz_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
+            FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
             Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
             IgnoreEarlyMedia = kz_endpoints:ignore_early_media(Endpoints),
             Command = [{<<"Application-Name">>, <<"bridge">>}
