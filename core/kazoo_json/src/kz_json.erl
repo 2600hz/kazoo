@@ -41,6 +41,7 @@
         ]).
 
 -export([filter/2, filter/3
+        ,filtermap/2
         ,map/2
         ,foldl/3,foldr/3
         ,find/2, find/3
@@ -555,9 +556,14 @@ filter(Pred, JObj, Key) ->
     filter(Pred, JObj, [Key]).
 
 -type mapper() :: fun((key(), json_term()) -> {key(), json_term()}).
--spec map(mapper(), object()) -> object().
+-spec map(mapper(), object() | flat_object()) -> object() | flat_object().
 map(F, ?JSON_WRAPPER(Prop)) when is_function(F, 2) ->
     from_list([F(K, V) || {K,V} <- Prop]).
+
+-type filtermapper() :: fun((key(), json_term()) -> boolean() | {'true', json_term()}).
+-spec filtermap(filtermapper(), object() | flat_object()) -> object() | flat_object().
+filtermap(F, ?JSON_WRAPPER(Prop)) when is_function(F, 2) ->
+    ?JSON_WRAPPER(lists:filtermap(fun({K, V}) -> F(K, V) end, Prop)).
 
 -type foreach_fun() :: fun(({key(), json_term()}) -> any()).
 -spec foreach(foreach_fun(), object()) -> 'ok'.

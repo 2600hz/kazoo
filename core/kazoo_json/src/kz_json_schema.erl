@@ -775,10 +775,17 @@ get_types(JObj) ->
         _TypeSchema -> <<"type schema">>
     end.
 
--spec flatten(kz_json:object()) -> kz_json:object().
+-spec flatten(kz_json:object()) -> kz_json:flat_object().
 flatten(?EMPTY_JSON_OBJECT=Empty) -> Empty;
 flatten(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
-    kz_json:from_list(lists:flatten(flatten_props(kz_json:get_value(<<"properties">>, Schema), [], Schema))).
+    kz_json:from_list(
+      lists:flatten(
+        flatten_props(kz_json:get_value(<<"properties">>, Schema)
+                     ,[]
+                     ,Schema
+                     )
+       )
+     ).
 
 flatten_props(undefined, Path, Obj) -> flatten_prop(Path, Obj);
 flatten_props(?JSON_WRAPPER(L), Path, _) when is_list(L) ->
@@ -794,15 +801,28 @@ flatten_prop(Path, V) -> [{Path, V}].
 -spec default_object(kz_json:object()) -> kz_json:object().
 default_object(Schema) ->
     Flat = flatten(Schema),
-    Default = kz_json:from_list([ {lists:droplast(K), V} || {K, V} <- kz_json:to_proplist(Flat), lists:last(K) =:= <<"default">> ]),
-    kz_json:expand(Default).
 
--spec filtering_list(kz_json:object()) -> list(list()).
+    FlatDefault = default_properties(Flat),
+    kz_json:expand(FlatDefault).
+
+-spec default_properties(kz_json:flat_object()) -> kz_json:flat_object().
+default_properties(Flat) ->
+    kz_json:filtermap(fun(Keys, Value) ->
+                              <<"default">> =:= lists:last(Keys)
+                                  andalso {'true', {lists:droplast(Keys), Value}}
+                      end
+                      ,Flat
+                     ).
+
+-spec filtering_list(kz_json:object()) -> list(kz_json:keys()).
 filtering_list(Schema) ->
-    Flat = flatten(Schema),
-    lists:usort([ lists:droplast(K) || {K, _} <- kz_json:to_proplist(Flat) ]).
+    lists:usort([lists:droplast(Keys) || Keys <- kz_json:get_keys(flatten(Schema))]).
 
 -spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().
 filter(JObj, Schema) ->
     Filter = filtering_list(Schema),
-    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj)), lists:member(K, Filter) ])).
+
+    FilteredFlat = kz_json:filter(fun({K, _}) -> lists:member(K, Filter) end
+                                 ,kz_json:flatten(JObj)
+                                 ),
+    kz_json:expand(FilteredFlat).
