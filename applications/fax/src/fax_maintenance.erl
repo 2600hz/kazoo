@@ -448,7 +448,6 @@ versions_in_use() ->
     AllCmds =
         [?CONVERT_IMAGE_COMMAND
         ,?CONVERT_OO_COMMAND
-        ,?CONVERT_pdf_COMMAND
         ,?CONVERT_PDF_COMMAND
         ],
     Executables = find_commands(AllCmds),

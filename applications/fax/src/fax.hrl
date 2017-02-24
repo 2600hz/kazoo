@@ -110,10 +110,8 @@
        ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_image_command">>, ?CONVERT_IMAGE_CMD)).
 -define(CONVERT_OO_COMMAND
        ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_openoffice_document_command">>, ?CONVERT_OO_DOC_CMD)).
--define(CONVERT_pdf_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_command">>, ?DEFAULT_CONVERT_PDF_CMD)).
 -define(CONVERT_PDF_COMMAND
-       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_pdf_command">>, ?CONVERT_pdf_COMMAND)).
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_pdf_command">>, ?DEFAULT_CONVERT_PDF_CMD)).
 
 -define(FAX_HRL, 'true').
 -endif.
