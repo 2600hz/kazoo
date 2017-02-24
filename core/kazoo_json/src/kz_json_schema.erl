@@ -814,9 +814,13 @@ default_properties(Flat) ->
                       ,Flat
                      ).
 
--spec filtering_list(kz_json:object()) -> list(kz_json:keys()).
+-spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).
 filtering_list(Schema) ->
-    lists:usort([lists:droplast(Keys) || Keys <- kz_json:get_keys(flatten(Schema))]).
+    Flattened = flatten(Schema),
+    lists:usort([lists:droplast(Keys)
+                 || Keys <- kz_json:get_keys(Flattened),
+                    [] =/= Keys
+                ]).
 
 -spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().
 filter(JObj, Schema) ->
