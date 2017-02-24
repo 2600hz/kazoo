@@ -82,6 +82,22 @@ prop_to_proplist() ->
                       end)
            ).
 
+prop_flatten_expand() ->
+    ?FORALL(JObj
+           ,object()
+           ,?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
+                     ,JObj =:= kz_json:expand(kz_json:flatten(JObj))
+                     )
+           ).
+
+prop_expand_flatten() ->
+    ?FORALL(JObj
+           ,flat_object()
+           ,?WHENFAIL(io:format("Failed to expand/flatten: ~p~n", [JObj])
+                     ,JObj =:= kz_json:flatten(kz_json:expand(JObj))
+                     )
+           ).
+
 -endif.
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}

@@ -91,7 +91,10 @@
 -export([decode/1, decode/2]).
 -export([unsafe_decode/1, unsafe_decode/2]).
 
--export([flatten/1, flatten/2, expand/1, diff/2]).
+-export([flatten/1, flatten/2
+        ,expand/1
+        ,diff/2
+        ]).
 
 -export([sum/2, sum/3]).
 -export_type([sumer/0]).
@@ -101,6 +104,7 @@
 
 -export_type([json_proplist/0
              ,object/0, objects/0
+             ,flat_object/0, flat_objects/0
              ,path/0, paths/0
              ,key/0, keys/0
              ,json_term/0, api_json_term/0, json_terms/0
@@ -927,7 +931,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
     end;
 
 %% Figure out how to set the current key in an existing object
-set_value1([_|_]=Keys, null, JObj) -> delete_key(Keys, JObj);
+set_value1([_|_]=Keys, 'null', JObj) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->
@@ -1187,38 +1191,37 @@ is_private_key(<<"_", _/binary>>) -> 'true';
 is_private_key(<<"pvt_", _/binary>>) -> 'true';
 is_private_key(_) -> 'false'.
 
--type composite_key() :: key() | [key()].
-
--spec flatten(object() | objects()) -> object() | objects().
+-spec flatten(object() | objects()) -> flat_object() | flat_objects().
 flatten(L) when is_list(L) -> [flatten(JObj) || JObj <- L];
 flatten(?JSON_WRAPPER(L)) when is_list(L) ->
-    from_list(lists:flatten([flatten_key(K,V) || {K,V} <- L])).
+    ?JSON_WRAPPER(lists:flatten([flatten_key(K,V) || {K,V} <- L])).
 
--spec flatten(object() | objects(), 'binary_join') -> object() | objects().
+-spec flatten(object() | objects(), 'binary_join') -> flat_object() | flat_objects().
 flatten(L, 'binary_join') -> keys_to_binary(flatten(L)).
 
 -spec keys_to_binary(object()) -> object().
 keys_to_binary(?JSON_WRAPPER(L)) when is_list(L) ->
-    from_list([ {key_to_binary(K), V} || {K,V} <-L ]).
+    from_list([{key_to_binary(K), V} || {K,V} <- L]).
 
--spec key_to_binary(composite_key()) -> binary().
+-spec key_to_binary(keys() | key()) -> binary().
 key_to_binary(K) when is_list(K) -> kz_binary:join(K, <<"_">>);
 key_to_binary(K) -> K.
 
--spec join_keys(composite_key(), binary()) -> [binary()].
+-spec join_keys(keys() | key(), key()) -> keys().
 join_keys(K1, K2) when is_list(K1) -> K1 ++ [K2];
 join_keys(K1, K2) -> [K1, K2].
 
--spec flatten_key(composite_key(), any()) -> [{composite_key(), any()}].
-flatten_key(K, V = ?JSON_WRAPPER([])) -> [{K, V}];
+-spec flatten_key(key() | keys(), any()) -> flat_proplist().
+flatten_key(K, V = ?EMPTY_JSON_OBJECT) when is_list(K) -> [{K, V}];
+flatten_key(K, V = ?EMPTY_JSON_OBJECT) -> [{[K], V}];
 flatten_key(K, ?JSON_WRAPPER(L)) when is_list(L) ->
     [flatten_key(join_keys(K, K1), V1) || {K1, V1} <- L];
 flatten_key(K, V) when is_list(K) -> [{K, V}];
 flatten_key(K, V) -> [{[K], V}].
 
--spec expand(object()) -> object().
+-spec expand(flat_object()) -> object().
 expand(?JSON_WRAPPER(L)) when is_list(L) ->
-    lists:foldl( fun({K,V}, JObj) -> set_value(K, V, JObj) end, new(), L ).
+    lists:foldl(fun({K,V}, JObj) -> set_value(K, V, JObj) end, new(), L).
 
 -spec diff(object(), object()) -> object().
 diff(J1, J2) ->
