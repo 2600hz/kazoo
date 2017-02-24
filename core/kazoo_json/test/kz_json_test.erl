@@ -83,19 +83,27 @@ prop_to_proplist() ->
            ).
 
 prop_flatten_expand() ->
-    ?FORALL(JObj
-           ,object()
-           ,?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
-                     ,JObj =:= kz_json:expand(kz_json:flatten(JObj))
-                     )
+    ?FORALL(Prop
+           ,json_proplist()
+           ,begin
+                L = props:unique(Prop),
+                JObj = kz_json:from_list(L),
+                ?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
+                         ,JObj =:= kz_json:expand(kz_json:flatten(JObj))
+                         )
+            end
            ).
 
 prop_expand_flatten() ->
-    ?FORALL(JObj
-           ,flat_object()
-           ,?WHENFAIL(io:format("Failed to expand/flatten: ~p~n", [JObj])
-                     ,JObj =:= kz_json:flatten(kz_json:expand(JObj))
-                     )
+    ?FORALL(Prop
+           ,flat_proplist()
+           ,begin
+                L = props:unique(Prop),
+                JObj = kz_json:from_list(L),
+                ?WHENFAIL(io:format("Failed to expand/flatten: ~p~n", [JObj])
+                         ,JObj =:= kz_json:flatten(kz_json:expand(JObj))
+                         )
+            end
            ).
 
 -endif.
