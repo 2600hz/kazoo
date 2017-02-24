@@ -4,7 +4,7 @@
     "description": "Validator for the fax_detect callflow's data object",
     "properties": {
         "duration": {
-            "description": "",
+            "description": "How long, in seconds, to try detecting fax tones",
             "type": "integer"
         }
     },

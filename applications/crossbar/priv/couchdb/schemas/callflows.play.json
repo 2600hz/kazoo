@@ -4,8 +4,12 @@
     "description": "Validator for the play callflow's data object",
     "properties": {
         "answer": {
-            "description": "",
+            "description": "Whether to answer an unanswered call",
             "type": "boolean"
+        },
+        "id": {
+            "description": "Media ID or URL of the media to play",
+            "type": "string"
         }
     },
     "required": true,

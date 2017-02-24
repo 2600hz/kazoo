@@ -5,12 +5,21 @@
     "properties": {
         "action": {
             "default": "toggle",
-            "description": "",
+            "description": "What action to perform",
+            "enum": [
+                "activate",
+                "deactivate",
+                "toggle"
+            ],
             "type": "string"
         },
         "scope": {
             "default": "device",
-            "description": "",
+            "description": "Apply the action to the calling device or user",
+            "enum": [
+                "device",
+                "user"
+            ],
             "type": "string"
         }
     },

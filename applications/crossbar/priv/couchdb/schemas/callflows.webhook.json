@@ -4,19 +4,23 @@
     "description": "Validator for the webhook callflow's data object",
     "properties": {
         "custom_data": {
-            "description": "",
+            "description": "JSON object of custom data included on the HTTP request",
             "type": "object"
         },
         "http_verb": {
-            "description": "",
+            "description": "What HTTP verb to use when sending the request",
+            "enum": [
+                "post",
+                "get"
+            ],
             "type": "string"
         },
         "retries": {
-            "description": "",
+            "description": "How many times to retry the request if the host isn't available",
             "type": "integer"
         },
         "uri": {
-            "description": "",
+            "description": "The HTTP URI to send the request",
             "type": "string"
         }
     },

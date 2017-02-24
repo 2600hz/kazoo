@@ -5,12 +5,12 @@
     "properties": {
         "caller_id_name": {
             "default": "",
-            "description": "",
+            "description": "Set caller ID Name",
             "type": "string"
         },
         "caller_id_number": {
             "default": "",
-            "description": "",
+            "description": "Set caller ID number",
             "type": "string"
         }
     },

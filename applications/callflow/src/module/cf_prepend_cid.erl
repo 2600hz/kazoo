@@ -18,28 +18,29 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    handle(kz_json:get_value(<<"action">>, Data, <<"prepend">>), Data, Call).
+    handle(Data, Call, kz_json:get_ne_binary_value(<<"action">>, Data, <<"prepend">>)).
 
 -spec handle(ne_binary(), kz_json:object(), kapps_call:call()) -> 'ok'.
-handle(<<"reset">>, _Data, Call) ->
+handle(_Data, Call, <<"reset">>) ->
     lager:info("reset prepend cid"),
     set_values('undefined', 'undefined', Call);
 
-handle(<<"prepend">>, Data, Call) ->
-    NamePre = kz_json:get_value(<<"caller_id_name_prefix">>, Data, <<"">>),
-    NumberPre = kz_json:get_value(<<"caller_id_number_prefix">>, Data, <<"">>),
+handle(Data, Call, <<"prepend">>) ->
+    NamePre = kz_json:get_ne_binary_value(<<"caller_id_name_prefix">>, Data, <<>>),
+    NumberPre = kz_json:get_ne_binary_value(<<"caller_id_number_prefix">>, Data, <<>>),
 
-    OrigPreName = kapps_call:kvs_fetch(<<"prepend_cid_name">>, <<"">>, Call),
-    OrigPreNum  = kapps_call:kvs_fetch(<<"prepend_cid_number">>, <<"">>, Call),
+    OrigPreName = kapps_call:kvs_fetch(<<"prepend_cid_name">>, <<>>, Call),
+    OrigPreNum  = kapps_call:kvs_fetch(<<"prepend_cid_number">>, <<>>, Call),
 
-    {Name, Number} = case kz_json:get_value(<<"apply_to">>, Data, <<"current">>) of
-                         <<"original">> ->
-                             {NamePre, NumberPre};
-                         <<"current">> ->
-                             {<<NamePre/binary, OrigPreName/binary>>
-                             ,<<NumberPre/binary, OrigPreNum/binary>>
-                             }
-                     end,
+    {Name, Number}
+        = case kz_json:get_ne_binary_value(<<"apply_to">>, Data, <<"current">>) of
+              <<"original">> ->
+                  {NamePre, NumberPre};
+              <<"current">> ->
+                  {<<NamePre/binary, OrigPreName/binary>>
+                  ,<<NumberPre/binary, OrigPreNum/binary>>
+                  }
+          end,
     lager:info("update prepend cid to <~s> ~s", [Name, Number]),
     set_values(Name, Number, Call).
 

@@ -25,7 +25,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     AccountId = kapps_call:account_id(Call),
-    Path = kz_doc:id(Data),
+    Path = kz_json:get_ne_binary_value(<<"id">>, Data),
     case kz_media_util:media_path(Path, AccountId) of
         'undefined' ->
             lager:info("invalid data in the play callflow"),

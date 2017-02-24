@@ -1,7 +1,7 @@
 {
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "allotments",
-    "description": "",
+    "description": "Create buckets of minutes per time-period",
     "patternProperties": {
         "^\\w+$": {
             "properties": {

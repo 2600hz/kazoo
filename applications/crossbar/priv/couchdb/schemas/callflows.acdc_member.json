@@ -3,8 +3,12 @@
     "_id": "callflows.acdc_member",
     "description": "Validator for the acdc_member callflow's data object",
     "properties": {
+        "id": {
+            "description": "ID of the ACDc Queue",
+            "type": "string"
+        },
         "priority": {
-            "description": "",
+            "description": "assign a priority to the caller",
             "type": "integer"
         }
     },

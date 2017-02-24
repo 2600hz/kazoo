@@ -420,7 +420,7 @@
             "type": "object"
         },
         "allotments": {
-            "description": "",
+            "description": "Create buckets of minutes per time-period",
             "patternProperties": {
                 "^\\w+$": {
                     "properties": {
@@ -902,8 +902,12 @@
         "callflows.acdc_member": {
             "description": "Validator for the acdc_member callflow's data object",
             "properties": {
+                "id": {
+                    "description": "ID of the ACDc Queue",
+                    "type": "string"
+                },
                 "priority": {
-                    "description": "",
+                    "description": "assign a priority to the caller",
                     "type": "integer"
                 }
             },
@@ -1031,12 +1035,21 @@
             "properties": {
                 "action": {
                     "default": "toggle",
-                    "description": "",
+                    "description": "What action to perform",
+                    "enum": [
+                        "activate",
+                        "deactivate",
+                        "toggle"
+                    ],
                     "type": "string"
                 },
                 "scope": {
                     "default": "device",
-                    "description": "",
+                    "description": "Apply the action to the calling device or user",
+                    "enum": [
+                        "device",
+                        "user"
+                    ],
                     "type": "string"
                 }
             },
@@ -1426,7 +1439,7 @@
             "description": "Validator for the fax_detect callflow's data object",
             "properties": {
                 "duration": {
-                    "description": "",
+                    "description": "How long, in seconds, to try detecting fax tones",
                     "type": "integer"
                 }
             },
@@ -1470,35 +1483,48 @@
             "properties": {
                 "endpoints": {
                     "default": [],
-                    "description": "",
+                    "description": "List of endpoint (device/user/group) IDs",
+                    "items": {
+                        "description": "ID of the endpoint",
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "fail_on_single_reject": {
-                    "description": "",
+                    "description": "If any leg rejects the call, cancel all other legs",
                     "type": "boolean"
+                },
+                "id": {
+                    "description": "Group ID",
+                    "type": "string"
                 },
                 "ignore_forward": {
                     "default": true,
-                    "description": "",
+                    "description": "Whether to ignore forwarded phones",
                     "type": "boolean"
                 },
                 "repeats": {
                     "default": 1,
-                    "description": "",
+                    "description": "How many times to repeat dialing the group",
                     "type": "integer"
                 },
                 "ringback": {
-                    "description": "",
+                    "description": "Ringback to use",
+                    "required": false,
                     "type": "string"
                 },
                 "strategy": {
                     "default": "simultaneous",
-                    "description": "",
+                    "description": "How to ring the endpoints",
+                    "enum": [
+                        "single",
+                        "simultaneous"
+                    ],
                     "type": "string"
                 },
                 "timeout": {
                     "default": 20,
-                    "description": "",
+                    "description": "How long to attempt the group",
                     "type": "integer"
                 }
             },
@@ -1642,7 +1668,7 @@
             "description": "Validator for the intercom callflow's data object",
             "properties": {
                 "barge_calls": {
-                    "description": "",
+                    "description": "Whether to barge in on the callee",
                     "type": "boolean"
                 }
             },
@@ -1747,67 +1773,67 @@
             "description": "Validator for the offnet callflow's data object",
             "properties": {
                 "bypass_e164": {
-                    "description": "",
+                    "description": "Use the original requested number instead of normalizing to E164",
                     "type": "boolean"
                 },
                 "caller_id_type": {
                     "default": "external",
-                    "description": "",
+                    "description": "Which configured caller-id to use (key in the 'caller_id' object)",
                     "type": "string"
                 },
                 "custom_sip_headers": {
-                    "description": "",
+                    "description": "Custom SIP Headers to include on the outgoing INVITE",
                     "type": "object"
                 },
                 "do_not_normalize": {
-                    "description": "",
+                    "description": "Use the original requested number instead of normalizing; otherwise try to apply the endpoint's dialplan to the requested number",
                     "type": "boolean"
                 },
                 "dynamic_flags": {
-                    "description": "",
+                    "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
                     "type": "array"
                 },
                 "emit_account_id": {
-                    "description": "",
+                    "description": "Toggles whether to put the account id in the SIP packets",
                     "type": "boolean"
                 },
                 "format_from_uri": {
-                    "description": "",
+                    "description": "If true, puts the account realm in the From header",
                     "type": "boolean"
                 },
                 "from_uri_realm": {
-                    "description": "",
+                    "description": "Override the From realm in the SIP packets",
                     "type": "string"
                 },
                 "hunt_account_id": {
-                    "description": "",
+                    "description": "When using local resources, use this account instead of the account making the call (useful for resellers)",
                     "type": "string"
                 },
                 "ignore_early_media": {
                     "default": false,
-                    "description": "",
+                    "description": "Toggle whether to ignore early media",
                     "type": "boolean"
                 },
                 "outbound_flags": {
                     "default": [],
-                    "description": "",
+                    "description": "List of flags to use when matching resources to route the call",
                     "type": "array"
                 },
                 "ringback": {
-                    "description": "",
+                    "description": "Tone or file to play while waiting for the leg to be answered",
                     "type": "string"
                 },
                 "timeout": {
-                    "description": "",
+                    "description": "How long, in seconds, to wait for the call to be answered",
                     "type": "integer"
                 },
                 "to_did": {
-                    "description": "",
+                    "description": "Statically set the DID to dial",
                     "type": "string"
                 },
                 "use_local_resources": {
                     "default": true,
-                    "description": "",
+                    "description": "Toggle whether to use the account's (or hunt_account_id's) resources vs the system resources",
                     "type": "boolean"
                 }
             },
@@ -1897,11 +1923,11 @@
                     "type": "integer"
                 },
                 "default_presence_type": {
-                    "description": "",
+                    "description": "Type of presence to update",
                     "type": "string"
                 },
                 "default_ringback_timeout": {
-                    "description": "",
+                    "description": "How long, in milliseconds, before ringing back",
                     "type": "integer"
                 },
                 "slot": {
@@ -1909,7 +1935,7 @@
                     "type": "string"
                 },
                 "slots": {
-                    "default": {},
+                    "default": null,
                     "description": "Statically define slots and their configuration",
                     "type": "object"
                 }
@@ -1968,8 +1994,12 @@
             "description": "Validator for the play callflow's data object",
             "properties": {
                 "answer": {
-                    "description": "",
+                    "description": "Whether to answer an unanswered call",
                     "type": "boolean"
+                },
+                "id": {
+                    "description": "Media ID or URL of the media to play",
+                    "type": "string"
                 }
             },
             "required": true,
@@ -1980,22 +2010,30 @@
             "properties": {
                 "action": {
                     "default": "prepend",
-                    "description": "",
+                    "description": "Action to perform",
+                    "enum": [
+                        "reset",
+                        "prepend"
+                    ],
                     "type": "string"
                 },
                 "apply_to": {
                     "default": "original",
-                    "description": "",
+                    "description": "Apply the prepend to which caller ID",
+                    "enum": [
+                        "original",
+                        "current"
+                    ],
                     "type": "string"
                 },
                 "caller_id_name_prefix": {
                     "default": "",
-                    "description": "",
+                    "description": "Prefix caller ID name",
                     "type": "string"
                 },
                 "caller_id_number_prefix": {
                     "default": "",
-                    "description": "",
+                    "description": "Prefix caller ID number",
                     "type": "string"
                 }
             },
@@ -2371,12 +2409,12 @@
             "properties": {
                 "caller_id_name": {
                     "default": "",
-                    "description": "",
+                    "description": "Set caller ID Name",
                     "type": "string"
                 },
                 "caller_id_number": {
                     "default": "",
-                    "description": "",
+                    "description": "Set caller ID number",
                     "type": "string"
                 }
             },
@@ -2418,12 +2456,20 @@
             "properties": {
                 "duration": {
                     "default": 0,
-                    "description": "",
+                    "description": "How long to pause before continuing the callflow",
+                    "maximum": 86400000,
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "unit": {
                     "default": "s",
-                    "description": "",
+                    "description": "What time unit is 'duration' in",
+                    "enum": [
+                        "ms",
+                        "s",
+                        "m",
+                        "h"
+                    ],
                     "type": "string"
                 }
             },
@@ -2568,7 +2614,7 @@
                 },
                 "callerid_match_login": {
                     "default": false,
-                    "description": "",
+                    "description": "Whether to match the caller ID to a voicemail box",
                     "type": "boolean"
                 },
                 "id": {
@@ -2592,7 +2638,7 @@
                 },
                 "single_mailbox_login": {
                     "default": false,
-                    "description": "",
+                    "description": "Allow login if caller has a single mailbox",
                     "type": "boolean"
                 }
             },
@@ -2603,19 +2649,23 @@
             "description": "Validator for the webhook callflow's data object",
             "properties": {
                 "custom_data": {
-                    "description": "",
+                    "description": "JSON object of custom data included on the HTTP request",
                     "type": "object"
                 },
                 "http_verb": {
-                    "description": "",
+                    "description": "What HTTP verb to use when sending the request",
+                    "enum": [
+                        "post",
+                        "get"
+                    ],
                     "type": "string"
                 },
                 "retries": {
-                    "description": "",
+                    "description": "How many times to retry the request if the host isn't available",
                     "type": "integer"
                 },
                 "uri": {
-                    "description": "",
+                    "description": "The HTTP URI to send the request",
                     "type": "string"
                 }
             },
@@ -3910,7 +3960,7 @@
                 "required": false,
                 "type": "object"
             },
-            "description": "",
+            "description": "Permit local dialing by converting the dialed number to a routable form",
             "properties": {
                 "system": {
                     "description": "List of system dial plans",

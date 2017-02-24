@@ -5,22 +5,30 @@
     "properties": {
         "action": {
             "default": "prepend",
-            "description": "",
+            "description": "Action to perform",
+            "enum": [
+                "reset",
+                "prepend"
+            ],
             "type": "string"
         },
         "apply_to": {
             "default": "original",
-            "description": "",
+            "description": "Apply the prepend to which caller ID",
+            "enum": [
+                "original",
+                "current"
+            ],
             "type": "string"
         },
         "caller_id_name_prefix": {
             "default": "",
-            "description": "",
+            "description": "Prefix caller ID name",
             "type": "string"
         },
         "caller_id_number_prefix": {
             "default": "",
-            "description": "",
+            "description": "Prefix caller ID number",
             "type": "string"
         }
     },

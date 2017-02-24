@@ -4,7 +4,7 @@
     "description": "Validator for the intercom callflow's data object",
     "properties": {
         "barge_calls": {
-            "description": "",
+            "description": "Whether to barge in on the callee",
             "type": "boolean"
         }
     },

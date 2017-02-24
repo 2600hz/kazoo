@@ -18,11 +18,11 @@
             "type": "integer"
         },
         "default_presence_type": {
-            "description": "",
+            "description": "Type of presence to update",
             "type": "string"
         },
         "default_ringback_timeout": {
-            "description": "",
+            "description": "How long, in milliseconds, before ringing back",
             "type": "integer"
         },
         "slot": {
@@ -30,7 +30,7 @@
             "type": "string"
         },
         "slots": {
-            "default": {},
+            "default": null,
             "description": "Statically define slots and their configuration",
             "type": "object"
         }

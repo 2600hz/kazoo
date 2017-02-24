@@ -187,7 +187,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case kz_json:get_value(<<"action">>, Data, <<"compose">>) of
+    case kz_json:get_ne_binary_value(<<"action">>, Data, <<"compose">>) of
         <<"compose">> ->
             kapps_call_command:answer(Call),
             lager:debug("answered the call and composing the voicemail"),
@@ -552,8 +552,7 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
-            IsCallUp = kz_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
-            case IsCallUp
+            case kz_call_event:hangup_cause(Msg) =:= 'undefined'
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
@@ -819,7 +818,7 @@ play_messages([H|T]=Messages, PrevMessages, Count, #mailbox{timezone=Timezone
              ,{'say', kz_term:to_binary(Count - length(Messages) + 1), <<"number">>}
              ,{'play', Message}
              ,{'prompt', <<"vm-received">>}
-             ,{'say',  get_unix_epoch(kz_json:get_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
+             ,{'say',  get_unix_epoch(kz_json:get_integer_value(<<"timestamp">>, H), Timezone), <<"current_date_time">>}
              ,{'prompt', <<"vm-message_menu">>}
              ],
     case message_menu(Prompt, Box, Call) of
@@ -962,8 +961,7 @@ record_forward(AttachmentName, Message, SrcBoxId, #mailbox{media_extension=Ext
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
-            IsCallUp = kz_json:get_value(<<"Hangup-Cause">>, Msg) =:= 'undefined',
-            case IsCallUp
+            case kz_call_event:hangup_cause(Msg) =:= 'undefined'
                 andalso review_recording(AttachmentName, 'false', DestBox, Call)
             of
                 'false' ->
@@ -1275,7 +1273,7 @@ record_unavailable_greeting(AttachmentName, #mailbox{unavailable_media_id=MediaI
 -spec check_media_source(ne_binary(), mailbox(), kapps_call:call(), kz_json:object()) ->
                                 'ok' | mailbox().
 check_media_source(AttachmentName, Box, Call, JObj) ->
-    case kz_json:get_value(<<"media_source">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"media_source">>, JObj) of
         <<"upload">> ->
             lager:debug("The voicemail greeting media is a web upload, let's not touch it,"
                         ++ " it may be in use in some other maibox. We create new media document."
@@ -1593,7 +1591,7 @@ get_mailbox_profile(Data, Call) ->
                     ,transcribe_voicemail =
                          kz_json:is_true(<<"transcribe">>, MailboxJObj, 'false')
                     ,notifications =
-                         kz_json:get_value(<<"notifications">>, MailboxJObj)
+                         kz_json:get_json_value(<<"notifications">>, MailboxJObj)
                     ,after_notify_action = AfterNotifyAction
                     ,interdigit_timeout =
                          kz_json:find(<<"interdigit_timeout">>, [MailboxJObj, Data], kapps_call_command:default_interdigit_timeout())
@@ -1604,7 +1602,7 @@ get_mailbox_profile(Data, Call) ->
                     ,not_configurable=
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
-                    ,media_extension = kz_json:get_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
+                    ,media_extension = kz_json:get_ne_binary_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
                     };
         {'error', R} ->
@@ -1710,7 +1708,7 @@ get_mailbox_doc(Db, Id, Data, Call) ->
                    ],
             case kz_datamgr:get_single_result(Db, <<"attributes/mailbox_number">>, Opts) of
                 {'ok', JObj} ->
-                    {'ok', kz_json:get_value(<<"doc">>, JObj, kz_json:new())};
+                    {'ok', kz_json:get_json_value(<<"doc">>, JObj, kz_json:new())};
                 E -> E
             end;
         'true' ->
@@ -1730,7 +1728,7 @@ get_user_mailbox_doc(Data, Call, 'undefined') ->
     DeviceId = kapps_call:authorizing_id(Call),
     case kz_datamgr:open_cache_doc(kapps_call:account_db(Call), DeviceId) of
         {'ok', DeviceJObj} ->
-            case kz_json:get_value(<<"owner_id">>, DeviceJObj) of
+            case kz_device:owner_id(DeviceJObj) of
                 'undefined' ->
                     lager:debug("device used to check voicemail has no owner assigned", []),
                     {'error', "request voicemail box number"};
@@ -1764,7 +1762,7 @@ get_user_mailbox_doc(Data, Call, OwnerId) ->
 maybe_match_callerid(Boxes, Data, Call) ->
     case kz_json:is_true(<<"callerid_match_login">>, Data, 'false') of
         'false' ->
-            lager:debug("found voicemail boxes but caller-id match disabled", []),
+            lager:debug("found voicemail boxes but caller-id match disabled"),
             {'error', "request voicemail box number"};
         'true' ->
             CallerId = kapps_call:caller_id_number(Call),
@@ -1778,7 +1776,7 @@ try_match_callerid([], _CallerId) ->
     lager:debug("no voicemail box found for owner with matching caller id ~s", [_CallerId]),
     {'error', "request voicemail box number"};
 try_match_callerid([Box|Boxes], CallerId) ->
-    case kz_json:get_value(<<"mailbox">>, Box) of
+    case kz_json:get_ne_binary_value(<<"mailbox">>, Box) of
         CallerId ->
             lager:debug("found mailbox from caller id ~s", [CallerId]),
             {'ok', Box};
@@ -1980,9 +1978,9 @@ tmp_file(Ext) ->
 %% encoded Unix epoch in the provided timezone
 %% @end
 %%--------------------------------------------------------------------
--spec get_unix_epoch(ne_binary(), ne_binary()) -> ne_binary().
+-spec get_unix_epoch(integer(), ne_binary()) -> ne_binary().
 get_unix_epoch(Epoch, Timezone) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(Epoch)),
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(Epoch),
     LocalDateTime = localtime:utc_to_local(UtcDateTime, Timezone),
     kz_term:to_binary(calendar:datetime_to_gregorian_seconds(LocalDateTime) - ?UNIX_EPOCH_IN_GREGORIAN).
 

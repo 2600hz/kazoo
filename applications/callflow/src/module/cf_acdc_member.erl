@@ -24,7 +24,7 @@
 -define(MEMBER_TIMEOUT, <<"member_timeout">>).
 -define(MEMBER_HANGUP, <<"member_hangup">>).
 
--record(member_call, {call              :: kapps_call:call()
+-record(member_call, {call             :: kapps_call:call()
                      ,queue_id         :: api_binary()
                      ,config_data = [] :: kz_proplist()
                      ,max_wait = 60 * ?MILLISECONDS_IN_SECOND :: max_wait()
@@ -38,7 +38,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    QueueId = kz_doc:id(Data),
+    QueueId = kz_json:get_ne_binary_value(<<"id">>, Data),
     lager:info("sending call to queue ~s", [QueueId]),
 
     Priority = lookup_priority(Data, Call),
