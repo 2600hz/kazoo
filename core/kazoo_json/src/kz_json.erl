@@ -356,7 +356,7 @@ merge_recursive(JObj1, JObj2, Pred) when is_function(Pred, 2) ->
     merge_recursive(JObj1, JObj2, Pred, []).
 
 %% inserts values from JObj2 into JObj1
--spec merge_recursive(object(), object() | json_term(), merge_pred(), keys()) -> object().
+-spec merge_recursive(object(), object() | json_term(), merge_pred(), keys() | []) -> object().
 merge_recursive(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Pred, Keys) when is_function(Pred, 2) ->
     foldl(fun(Key2, Value2, JObj1Acc) ->
                   merge_recursive(JObj1Acc, Value2, Pred, [Key2|Keys])
@@ -396,7 +396,7 @@ sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Sumer)
   when is_function(Sumer, 2) ->
     sum(JObj1, JObj2, Sumer, []).
 
--spec sum(object(), object(), sumer(), keys()) -> object().
+-spec sum(object(), object(), sumer(), keys() | []) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2, Sumer, Keys)
   when is_function(Sumer, 2) ->
     F = fun(Key2, Value2, JObj1Acc) -> sum(JObj1Acc, Value2, Sumer, [Key2|Keys]) end,
