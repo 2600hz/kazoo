@@ -377,10 +377,13 @@ numbers_not_in_account_nor_in_service(AccountId, Nums) ->
     [knm_phone_number:number(PN)
      || N <- Ns,
         PN <- [knm_number:phone_number(N)],
-        AccountId =/= knm_phone_number:assigned_to(PN),
-        ?NUMBER_STATE_IN_SERVICE =/= knm_phone_number:state(PN)
+        not is_in_account_and_in_service(AccountId, PN)
     ]
         ++ maps:keys(KOs).
+
+is_in_account_and_in_service(AccountId, PN) ->
+    AccountId =:= knm_phone_number:assigned_to(PN)
+        andalso ?NUMBER_STATE_IN_SERVICE =:= knm_phone_number:state(PN).
 
 %%--------------------------------------------------------------------
 %% @private
