@@ -3,6 +3,11 @@
     "_id": "system_config.crossbar.cdrs",
     "description": "Schema for crossbar.cdrs system_config",
     "properties": {
+        "cdr_stale_view": {
+            "default": false,
+            "description": "force cdr to return stale records only",
+            "type": "boolean"
+        },
         "maximum_bulk": {
             "default": 50,
             "description": "crossbar.cdrs maximum bulk",

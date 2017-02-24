@@ -33,6 +33,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".cdrs">>).
 -define(MAX_BULK, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"maximum_bulk">>, 50)).
+-define(STALE_CDR, kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"cdr_stale_view">>, false)).
 -define(CB_LIST_BY_USER, <<"cdrs/listing_by_owner">>).
 -define(CB_LIST, <<"cdrs/crossbar_listing">>).
 -define(CB_INTERACTION_LIST, <<"cdrs/interaction_listing">>).
@@ -349,17 +350,19 @@ load_cdr_summary(Context, _, []) ->
     cb_context:set_resp_status(Context, 'success');
 load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
     Context1 = cb_context:set_account_db(Context, Db),
-    Context2 = crossbar_doc:load_view(?CB_SUMMARY_VIEW
+    Context2 = crossbar_doc:load_view(
+                 ?CB_SUMMARY_VIEW
                                      ,ViewOptions
                                      ,Context1
                                      ,fun normalize_summary_results/2
-                                     ),
+                ),
     case cb_context:resp_status(Context2) of
         'success' ->
-            load_cdr_summary(combine_cdr_summary(Context, Context2)
+            load_cdr_summary(
+              combine_cdr_summary(Context, Context2)
                             ,ViewOptions
                             ,Dbs
-                            );
+             );
         _Else -> Context2
     end.
 
@@ -438,6 +441,7 @@ create_interaction_view_options('undefined', Context, CreatedFrom, CreatedTo) ->
            ,{'group_level', 2}
            ,{'reduce', 'true'}
            ,'descending'
+            | maybe_add_stale_to_options(?STALE_CDR)
            ]};
 create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
     {'ok', [{'startkey', [OwnerId, CreatedTo]}
@@ -447,7 +451,12 @@ create_interaction_view_options(OwnerId, Context, CreatedFrom, CreatedTo) ->
            ,{'group_level', 3}
            ,{'reduce', 'true'}
            ,'descending'
+            | maybe_add_stale_to_options(?STALE_CDR)
            ]}.
+
+-spec maybe_add_stale_to_options(crossbar_doc:view_options()) -> crossbar_doc:view_options().
+maybe_add_stale_to_options(true) ->[ {stale, ok} ];
+maybe_add_stale_to_options(_) ->[].
 
 -spec create_summary_view_options(api_binary(), cb_context:context(), pos_integer(), pos_integer()) ->
                                          {'ok', crossbar_doc:view_options()}.
