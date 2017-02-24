@@ -98,8 +98,10 @@ handle_req(DataJObj) ->
 -spec get_balance(kz_json:object()) -> ne_binary().
 get_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    Amount = wht_util:current_account_dollars(AccountId),
-    wht_util:pretty_print_dollars(Amount).
+    case wht_util:current_account_dollars(AccountId) of
+        {'error', _} -> <<"0">>;
+        Amount -> wht_util:pretty_print_dollars(Amount)
+    end.
 
 -spec get_topup_amount(kz_json:object()) -> ne_binary().
 get_topup_amount(DataJObj) ->

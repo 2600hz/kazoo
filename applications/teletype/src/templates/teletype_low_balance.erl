@@ -62,8 +62,10 @@ handle_low_balance(JObj, _Props) ->
 -spec get_current_balance(kz_json:object()) -> ne_binary().
 get_current_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    Dollars = wht_util:current_account_dollars(AccountId),
-    wht_util:pretty_print_dollars(Dollars).
+    case wht_util:current_account_dollars(AccountId) of
+        {'error', _R} -> <<"0">>;
+        Dollars -> wht_util:pretty_print_dollars(Dollars)
+    end.
 
 -spec get_balance_threshold(kz_json:object()) -> ne_binary().
 get_balance_threshold(DataJObj) ->

@@ -51,13 +51,20 @@ top_up_status(AccountId) ->
     io:format("| Current Balance | Notify threshold | Top up threshold | Top up Amount | Auto top up in 24 hours |~n"),
     io:format("+=================+==================+==================+===============+=========================+~n"),
     io:format("| ~-15w | ~-16w | ~-16w | ~-13w | ~-23w |~n"
-             ,[wht_util:units_to_dollars(wht_util:current_balance(AccountId))
+             ,[current_balance(AccountId)
               ,NotifyThreshold
               ,TopupThreshold
               ,TopupAmount
               ,is_topup_today(AccountId)
               ]),
     io:format("+-----------------+------------------+------------------+---------------+-------------------------+~n").
+
+-spec current_balance(ne_binary()) -> ne_binary().
+current_balance(AccountId) ->
+    case wht_util:current_balance(AccountId) of
+        {'error', _} -> 0;
+        Balance -> wht_util:units_to_dollars(Balance)
+    end.
 
 -spec get_topup_thresholds(ne_binary()) -> {api_integer(), integer() | string(), integer() | string()}.
 get_topup_thresholds(AccountId) ->

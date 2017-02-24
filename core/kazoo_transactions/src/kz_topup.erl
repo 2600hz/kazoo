@@ -46,8 +46,10 @@ init(Account, CurrentBalance) ->
 -spec should_topup(ne_binary()) -> boolean().
 -spec should_topup(ne_binary(), integer()) -> boolean().
 should_topup(AccountId) ->
-    CurrentBalance = wht_util:current_balance(AccountId),
-    should_topup(AccountId, CurrentBalance).
+    case wht_util:current_balance(AccountId) of
+        {'error', _} -> 'false';
+        CurrentBalance -> should_topup(AccountId, CurrentBalance)
+    end.
 
 should_topup(AccountId, CurrentBalance) ->
     Balance = wht_util:units_to_dollars(CurrentBalance),

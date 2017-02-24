@@ -606,8 +606,10 @@ select_bookkeeper(BillingId) ->
 check_bookkeeper(BillingId, Amount) ->
     case select_bookkeeper(BillingId) of
         'kz_bookkeeper_local' ->
-            Balance = wht_util:current_balance(BillingId),
-            Balance - Amount >= 0;
+            case wht_util:current_balance(BillingId) of
+                {'error', _} -> false;
+                Balance -> Balance - Amount >= 0
+            end;
         Bookkeeper ->
             CurrentStatus = current_service_status(BillingId),
             Bookkeeper:is_good_standing(BillingId, CurrentStatus)

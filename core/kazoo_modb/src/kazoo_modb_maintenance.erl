@@ -111,6 +111,7 @@ verify_rollups(Account) ->
     verify_rollups(Account, Y, M).
 
 verify_rollups(AccountDb, Year, Month) ->
+    kazoo_modb:maybe_create(AccountDb, Year, Month),
     AccountId = kz_util:format_account_id(AccountDb, 'raw'),
     case kazoo_modb:open_doc(AccountDb, <<"monthly_rollup">>, Year, Month) of
         {'ok', JObj} ->
@@ -142,10 +143,15 @@ fix_rollup(Account) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     {Y, M, _} = erlang:date(),
     {PYear, PMonth} =  kazoo_modb_util:prev_year_month(Y, M),
-    Balance = wht_util:previous_balance(AccountId
-                                       ,kz_term:to_binary(PYear)
-                                       ,kz_time:pad_month(PMonth)
-                                       ),
+    kazoo_modb:maybe_create(AccountId, PYear, PMonth),
+    Balance = case wht_util:previous_balance(AccountId
+                                            ,kz_term:to_binary(PYear)
+                                            ,kz_time:pad_month(PMonth)
+                                            )
+              of
+                  {'error', _} -> 0;
+                  Bal -> Bal
+              end,
     AccountMODb = kazoo_modb:get_modb(AccountId),
     lager:debug("rolling up ~p credits to ~s", [Balance, AccountMODb]),
     wht_util:rollup(AccountMODb, Balance).

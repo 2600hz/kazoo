@@ -212,14 +212,14 @@ validate_credits(Context, ?HTTP_GET) ->
     Doc = cb_context:doc(Context),
     BillingAccountId = kz_json:get_integer_value(<<"billing_account_id">>, Doc, AccountId),
     Resp =
-        kz_json:from_list([{<<"amount">>, wht_util:current_account_dollars(AccountId)}
+        kz_json:from_list([{<<"amount">>, current_account_dollars(AccountId)}
                           ,{<<"billing_account_id">>, BillingAccountId}
                           ]),
     crossbar_util:response(Resp, Context);
 validate_credits(Context, ?HTTP_PUT) ->
     Amount = kz_json:get_float_value(<<"amount">>, cb_context:req_data(Context)),
     MaxCredit = kapps_config:get_float(?MOD_CONFIG_CAT, <<"max_account_credit">>, 500.00),
-    FutureAmount = Amount + wht_util:current_account_dollars(cb_context:account_id(Context)),
+    FutureAmount = Amount + current_account_dollars(cb_context:account_id(Context)),
     case FutureAmount > MaxCredit of
         'true' ->
             error_max_credit(Context, MaxCredit, FutureAmount);
@@ -239,6 +239,15 @@ error_max_credit(Context, MaxCredit, FutureAmount) ->
                                       ])
                                    ,Context
                                    ).
+
+-spec current_account_dollars(ne_binary()) -> dollars().
+current_account_dollars(AccountId) ->
+    case wht_util:current_account_dollars(AccountId) of
+        {'error', _R} ->
+            lager:debug("failed to get current account ~s dollars, assuming 0: ~p", [AccountId, _R]),
+            0;
+        Dollars -> Dollars
+    end.
 
 -spec validate_token(cb_context:context(), path_token()) -> cb_context:context().
 validate_token(Context, ?HTTP_GET) ->
