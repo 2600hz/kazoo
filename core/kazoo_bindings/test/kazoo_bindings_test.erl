@@ -72,22 +72,25 @@ bindings_match_test_() ->
 %%     dbg:tpl(kazoo_bindings, [{'_', [], [$_]}]),
 %%     dbg:p(all, c),
 
-%%     Result = binding_matches(<<"#.Z.*.9.0.#">>,<<"1.Z.7.9.0.9.a.0">>),
+
+%%     Result = binding_matches(<<"W0.*.m.m.#">>, <<"W0.m.m.m.5">>),
+
 
 %%     dbg:stop_clear(),
 %%     dbg:stop(),
 %%     ?assertEqual('true', Result).
 
 weird_bindings_test_() ->
-    [?_assertEqual('true', binding_matches(<<"#.A.*">>,<<"A.a.A.a">>))
+    [?_assertEqual('true', binding_matches(<<"#.A.*">>, <<"A.a.A.a">>))
     ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo">>))
     ,?_assertEqual('true', binding_matches(<<"#.*">>, <<"foo.bar">>))
     ,?_assertEqual('false', binding_matches(<<"foo.#.*">>, <<"foo">>))
     ,?_assertEqual('false', binding_matches(<<"#.*">>, <<>>))
-    ,?_assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>,<<"6.a.a.6.a.1.4.a">>))
-    ,?_assertEqual('true', binding_matches(<<"*.u.*.7.7.#">>,<<"i.u.e.7.7.7.a">>))
+    ,?_assertEqual('true', binding_matches(<<"#.6.*.1.4.*">>, <<"6.a.a.6.a.1.4.a">>))
+    ,?_assertEqual('true', binding_matches(<<"*.u.*.7.7.#">>, <<"i.u.e.7.7.7.a">>))
     ,?_assertEqual('true', binding_matches(<<"#.c.#.c.#">>, <<"c.c">>))
-    ,?_assertEqual('true', binding_matches(<<"#.Z.*.9.0.#">>,<<"1.Z.7.9.0.9.a.0">>))
+    ,?_assertEqual('true', binding_matches(<<"#.Z.*.9.0.#">>, <<"1.Z.7.9.0.9.a.0">>))
+    ,?_assertEqual('true', binding_matches(<<"W0.*.m.m.#">>, <<"W0.m.m.m.5">>))
     ].
 
 %%% PropEr tests
