@@ -127,4 +127,3 @@ maybe_save_or_delete(Context, ConfigId) ->
             crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
     end,
     set_config_to_context(ConfigId, Context).
-
