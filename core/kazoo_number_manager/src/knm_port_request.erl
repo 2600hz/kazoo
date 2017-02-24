@@ -354,25 +354,15 @@ transition_numbers(PortReq) ->
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
-    Results = knm_numbers:create(Numbers, Options),
-    case lists:partition(fun was_number_operation_successul/1, Results) of
-        {_, []} ->
+    case knm_numbers:create(Numbers, Options) of
+        #{ko := KOs} when map_size(KOs) =:= 0 ->
             lager:debug("all numbers ported, removing from port request"),
             ClearedPortRequest = clear_numbers_from_port(PortReq),
             {'ok', ClearedPortRequest};
-        {_OK, _Errored} ->
-            lager:debug("failed to transition ~p/~p numbers", [length(_Errored), length(_OK)]),
+        #{ko := _KOs, ok := _OKs} ->
+            lager:debug("failed to transition ~p/~p numbers", [map_size(_KOs), length(_OKs)]),
             {'error', PortReq}
     end.
-
-%% @private
--spec was_number_operation_successul(knm_numbers:number_return()) -> boolean().
-was_number_operation_successul({_Num, {'ok', _}}) ->
-    lager:debug("~s success", [_Num]),
-    'true';
-was_number_operation_successul({_Num, _Error}) ->
-    lager:debug("~s error: ~p", [_Num, _Error]),
-    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -387,7 +377,7 @@ clear_numbers_from_port(PortReq) ->
             lager:debug("port numbers cleared"),
             PortReq1;
         {'error', 'conflict'} ->
-            lager:debug("port request doc was updated before we could re-save"),
+            lager:error("port request doc was updated before we could re-save"),
             PortReq;
         {'error', _E} ->
             lager:debug("failed to clear numbers: ~p", [_E]),
