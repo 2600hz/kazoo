@@ -1058,7 +1058,12 @@
         },
         "callflows.callflow": {
             "description": "Validator for the callflow callflow's data object",
-            "properties": {},
+            "properties": {
+                "id": {
+                    "description": "",
+                    "type": "string"
+                }
+            },
             "required": true,
             "type": "object"
         },
