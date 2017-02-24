@@ -85,18 +85,15 @@ validate_with_parent(Context, ConfigId, Parent) ->
 
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 put(Context, ConfigId) ->
-    maybe_save_or_delete(Context, ConfigId),
-    set_config_to_context(ConfigId, Context).
+    maybe_save_or_delete(Context, ConfigId).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
 patch(Context, ConfigId) ->
-    maybe_save_or_delete(Context, ConfigId),
-    set_config_to_context(ConfigId, Context).
+    maybe_save_or_delete(Context, ConfigId).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ConfigId) ->
-    maybe_save_or_delete(Context, ConfigId),
-    set_config_to_context(ConfigId, Context).
+    maybe_save_or_delete(Context, ConfigId).
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, _ConfigId) ->
@@ -128,4 +125,6 @@ maybe_save_or_delete(Context, ConfigId) ->
             crossbar_doc:delete(cb_context:set_doc(Context, Stored));
         {Diff, _} ->
             crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
-    end.
+    end,
+    set_config_to_context(ConfigId, Context).
+
