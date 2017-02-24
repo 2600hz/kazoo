@@ -154,7 +154,7 @@
                  ,temporary_unavailable_media_id :: api_binary()
                  ,name_media_id :: api_binary()
                  ,pin = <<>> :: binary()
-                 ,timezone :: ne_binary()
+                 ,timezone :: api_binary()
                  ,max_login_attempts = ?MAX_LOGIN_ATTEMPTS :: non_neg_integer()
                  ,require_pin = 'false' :: boolean()
                  ,check_if_owner = 'true' :: boolean()
@@ -162,11 +162,11 @@
                  ,is_setup = 'false' :: boolean()
                  ,message_count = 0 :: non_neg_integer()
                  ,max_message_count = 0 :: non_neg_integer()
-                 ,max_message_length :: pos_integer()
+                 ,max_message_length = ?MAILBOX_DEFAULT_MSG_MAX_LENGTH :: pos_integer()
                  ,min_message_length = ?MAILBOX_DEFAULT_MSG_MIN_LENGTH :: pos_integer()
                  ,keys = #keys{} :: vm_keys()
                  ,transcribe_voicemail = 'false' :: boolean()
-                 ,notifications :: kz_json:object()
+                 ,notifications :: api_object()
                  ,after_notify_action = 'nothing' :: 'nothing' | 'delete' | 'save'
                  ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  ,play_greeting_intro = 'false' :: boolean()
@@ -174,7 +174,7 @@
                  ,not_configurable = 'false' :: boolean()
                  ,account_db :: api_binary()
                  ,media_extension :: api_binary()
-                 ,forward_type :: ne_binary()
+                 ,forward_type :: api_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
