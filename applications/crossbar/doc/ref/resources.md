@@ -36,7 +36,7 @@ Key | Description | Type | Default | Required
 `gateways.[].progress_timeout` | The progress timeout to apply to the resource gateway | `integer` |   | `false`
 `gateways.[].realm` | This resource gateway authentication realm | `string(0..64)` |   | `false`
 `gateways.[].route` | A staticly configured SIP URI to route all call to | `string` |   | `false`
-`gateways.[].server` | This resource gateway server | `string(1..64)` |   | `true`
+`gateways.[].server` | This resource gateway server | `string(1..128)` |   | `true`
 `gateways.[].skype_interface` | The name of the Skype interface to route the call over | `string` |   | `false`
 `gateways.[].skype_rr` | Determines whether to round-robin calls amongst all interfaces (overrides "skype_interface" setting) | `boolean` | `true` | `false`
 `gateways.[].span` | The identity of the hardware on the media server | `string` |   | `false`
