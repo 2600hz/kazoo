@@ -75,7 +75,7 @@ save_docs(#server{}=Conn, DbName, Docs, Options) ->
                             couchbeam_error().
 lookup_doc_rev(#server{}=Conn, DbName, DocId) ->
     case do_fetch_rev(get_db(Conn, DbName), DocId) of
-        ?NE_BINARY = Rev -> {'ok', Rev};
+        ?NE_BINARY=Rev -> {'ok', Rev};
         {'error', _}=E -> E
     end.
 
