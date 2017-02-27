@@ -391,6 +391,7 @@
     "media.default_language": "media default language",
     "media.extension": "media extension",
     "media.fix_media_names": "media fix media names",
+    "media.ip": "media proxy ip",
     "media.max_recording_time_limit": "media maximum recording time limit",
     "media.normalize_destination_args": "media normalize destination args",
     "media.normalize_executable": "media normalize executable",
