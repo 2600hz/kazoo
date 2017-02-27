@@ -200,3 +200,38 @@ release_test_() ->
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret2)))
      }
     ].
+
+
+transition_port_in_test_() ->
+    Props = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+            ,{assign_to, ?RESELLER_ACCOUNT_ID}
+            ,{dry_run, false}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
+             }
+            ,{ported_in, true}
+            ],
+    #{ok := [N]} = knm_numbers:create([?TEST_PORT_IN_NUM], Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify phone number is assigned to reseller account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
+     }
+    ,{"Verify new phone number was authorized by master account"
+     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     }
+    ,{"Verify number is in service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN))
+     }
+    ,{"Verify reserve history is empty"
+     ,?_assertEqual([], knm_phone_number:reserve_history(PN))
+     }
+    ,{"Verify the local carrier module is being used"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
+     }
+    ,{"Verify local number is not billable"
+     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+     }
+    ,{"Verify number is not marked as ported_in"
+     ,?_assertEqual(false, knm_phone_number:ported_in(PN))
+     }
+    ].

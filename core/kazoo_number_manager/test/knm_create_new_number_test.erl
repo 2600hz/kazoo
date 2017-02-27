@@ -185,6 +185,9 @@ create_new_port_in_test_() ->
     ,{"Verify local number is not billable"
      ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
+    ,{"Verify number is not marked as ported_in"
+     ,?_assertEqual(false, knm_phone_number:ported_in(PN))
+     }
     ].
 
 create_existing_in_service_test_() ->
