@@ -1,9 +1,6 @@
 %%%-------------------------------------------------------------------
 %%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
-%%%
-%%% Listing of all expected v1 callbacks
-%%%
 %%% @end
 %%% @contributors:
 %%%   Karl Anderson
@@ -15,7 +12,6 @@
         ,allowed_methods/1
         ,resource_exists/0, resource_exists/1
         ,validate/2
-        ,get/2
         ,put/2
         ,post/2
         ,patch/2
@@ -23,190 +19,111 @@
         ]).
 
 -include("crossbar.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 %%%===================================================================
 %%% API
 %%%===================================================================
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Initializes the bindings this module will respond to.
-%% @end
-%%--------------------------------------------------------------------
--spec init() -> 'ok'.
+-spec init() -> ok.
 init() ->
-    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, 'allowed_methods'),
-    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, 'validate'),
-    _ = crossbar_bindings:bind(<<"*.execute.get.configs">>, ?MODULE, 'get'),
-    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, 'put'),
-    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, 'post'),
-    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, 'patch'),
-    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, 'delete').
+    _ = crossbar_bindings:bind(<<"*.allowed_methods.configs">>, ?MODULE, allowed_methods),
+    _ = crossbar_bindings:bind(<<"*.resource_exists.configs">>, ?MODULE, resource_exists),
+    _ = crossbar_bindings:bind(<<"*.validate.configs">>, ?MODULE, validate),
+    _ = crossbar_bindings:bind(<<"*.execute.post.configs">>, ?MODULE, post),
+    _ = crossbar_bindings:bind(<<"*.execute.put.configs">>, ?MODULE, put),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.configs">>, ?MODULE, patch),
+    _ = crossbar_bindings:bind(<<"*.execute.delete.configs">>, ?MODULE, delete).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Given the path tokens related to this module, what HTTP methods are
-%% going to be responded to.
-%% @end
-%%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods(_ConfigId) ->
-    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PUT, ?HTTP_PATCH, ?HTTP_DELETE].
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Does the path point to a valid resource
-%% So /configs => []
-%%    /configs/foo => [<<"foo">>]
-%%    /configs/foo/bar => [<<"foo">>, <<"bar">>]
-%% @end
-%%--------------------------------------------------------------------
--spec resource_exists() -> 'false'.
--spec resource_exists(path_tokens()) -> 'true'.
+-spec resource_exists() -> false.
+-spec resource_exists(path_tokens()) -> true.
 resource_exists() -> false.
 resource_exists(_) -> true.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% Check the request (request body, query string params, path tokens, etc)
-%% and load necessary information.
-%% /configs mights load a list of config objects
-%% /configs/123 might load the config object 123
-%% Generally, use crossbar_doc to manipulate the cb_context{} record
-%% @end
-%%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
-validate(Context, Config) ->
-    validate(Context, cb_context:req_verb(Context), Config).
+validate(Context, ConfigId) ->
+    validate(Context, cb_context:req_verb(Context), ConfigId).
 
 -spec validate(cb_context:context(), http_method(), path_token()) -> cb_context:context().
-validate(Context, ?HTTP_GET, Config) -> read(Config, Context);
-validate(Context, ?HTTP_PUT, Config) -> create(Config, Context);
-validate(Context, ?HTTP_POST, Config) -> update(Config, Context);
-validate(Context, ?HTTP_PATCH, Config) -> validate_patch(Config, Context);
-validate(Context, ?HTTP_DELETE, Config) -> read(Config, Context).
+validate(Context, ?HTTP_GET, ConfigId) -> set_config_to_context(ConfigId, Context);
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verb is a GET, execute necessary code to fulfill the GET
-%% request. Generally, this will involve stripping pvt fields and loading
-%% the resource into the resp_data, resp_headers, etc...
-%% @end
-%%--------------------------------------------------------------------
--spec get(cb_context:context(), path_token()) -> cb_context:context().
-get(Context, _) ->
-    Context.
+validate(Context, ?HTTP_DELETE, ConfigId) ->
+    Doc = case kapps_config_util:load_config_from_account(cb_context:account_id(Context), ConfigId) of
+              {ok, Document} -> Document;
+              _ -> set_id(ConfigId, kz_json:new())
+          end,
+    cb_context:setters(Context,[
+                                {fun cb_context:set_doc/2, Doc}
+                               ,{fun cb_context:set_resp_status/2, success}
+                               ]);
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
-%% @end
-%%--------------------------------------------------------------------
+validate(Context, ?HTTP_PUT, ConfigId) ->
+    validate(Context, ?HTTP_POST, ConfigId);
+
+validate(Context, ?HTTP_PATCH, ConfigId) ->
+    Parent = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    validate_with_parent(Context, ConfigId, Parent);
+
+validate(Context, ?HTTP_POST, ConfigId) ->
+    Parent = kapps_config_util:get_reseller_config(cb_context:account_id(Context), ConfigId),
+    validate_with_parent(Context, ConfigId, Parent).
+
+-spec validate_with_parent(cb_context:context(), ne_binary(), kz_json:object()) -> cb_context:context().
+validate_with_parent(Context, ConfigId, Parent) ->
+    RequestData = strip_id(cb_context:req_data(Context)),
+    FullConfig = kz_json:merge_recursive(Parent, RequestData),
+    Schema = kapps_config_util:account_schema_name(ConfigId),
+    cb_context:validate_request_data(Schema, cb_context:set_req_data(Context, FullConfig),
+                                     fun(Ctx) ->
+                                             cb_context:set_req_data(Ctx, kz_json:diff(RequestData, Parent))
+                                     end
+                                    ).
+
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
-put(Context, _) ->
-    crossbar_doc:save(Context).
+put(Context, ConfigId) ->
+    maybe_save_or_delete(Context, ConfigId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
-%% (after a merge perhaps).
-%% @end
-%%--------------------------------------------------------------------
--spec post(cb_context:context(), path_token()) -> cb_context:context().
-post(Context, _) ->
-    crossbar_doc:save(Context).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is PATCH, execute the actual action, usually a db save
-%% (after a merge).
-%% @end
-%%--------------------------------------------------------------------
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _) ->
-    crossbar_doc:save(Context).
+patch(Context, ConfigId) ->
+    maybe_save_or_delete(Context, ConfigId).
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
-%% @end
-%%--------------------------------------------------------------------
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ConfigId) ->
+    maybe_save_or_delete(Context, ConfigId).
+
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
-delete(Context, _) ->
-    crossbar_doc:delete(Context).
-
--spec make_schema_name(api_ne_binary()) -> ne_binary().
-make_schema_name(ConfigName) when is_binary(ConfigName) -> <<"account_config.", ConfigName/binary>>.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create(ne_binary(), cb_context:context()) -> cb_context:context().
-create(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    case kz_datamgr:lookup_doc_rev(cb_context:account_db(Context), Id) of
-        {'ok', _} -> cb_context:add_system_error('datastore_conflict', Context);
-        {'error', _} ->
-            JObj = kz_doc:set_id(cb_context:req_data(Context), Id),
-            Context1 = cb_context:set_req_data(Context, JObj),
-            cb_context:validate_request_data(make_schema_name(Config), Context1)
+delete(Context, _ConfigId) ->
+    case strip_id(cb_context:doc(Context)) of
+        ?EMPTY_JSON_OBJECT -> Context;
+        _ -> crossbar_doc:delete(Context, permanent)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Load an instance from the database
-%% @end
-%%--------------------------------------------------------------------
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
-read(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"account_config">>)).
+-spec set_config_to_context(ne_binary(), cb_context:context()) -> cb_context:context().
+set_config_to_context(ConfigId, Context) ->
+    Config = kapps_config_util:get_config(cb_context:account_id(Context), ConfigId),
+    crossbar_doc:handle_datamgr_success(set_id(ConfigId, Config), Context).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context()) -> cb_context:context().
-update(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    validate_request_data(Id, Context).
+-spec doc_id(ne_binary()) -> ne_binary().
+doc_id(ConfigId) -> kapps_account_config:config_doc_id(ConfigId).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update-merge partially an existing instance with the data provided, if it is
-%% valid
-%% @end
-%%--------------------------------------------------------------------
--spec validate_patch(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_patch(Config, Context) ->
-    Id = <<(?KZ_ACCOUNT_CONFIGS)/binary, Config/binary>>,
-    crossbar_doc:patch_and_validate(Id, Context, fun validate_request_data/2).
+-spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
+set_id(ConfigId, JObj) -> kz_json:set_value(<<"id">>, doc_id(ConfigId), JObj).
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Validates existing instance
-%% @end
-%%--------------------------------------------------------------------
--spec validate_request_data(ne_binary(), cb_context:context()) -> cb_context:context().
-validate_request_data(<<"configs_", Config/binary>> = Id, Context) ->
-    OnSuccess = fun(C) -> crossbar_doc:load_merge(Id, C, ?TYPE_CHECK_OPTION(<<"account_config">>)) end,
-    cb_context:validate_request_data(make_schema_name(Config), Context, OnSuccess).
+-spec strip_id(kz_json:object()) -> kz_json:object().
+strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj, prune).
+
+-spec maybe_save_or_delete(cb_context:context(), path_token()) -> cb_context:context().
+maybe_save_or_delete(Context, ConfigId) ->
+    Stored = kz_json:private_fields(kapps_account_config:get(cb_context:account_id(Context), ConfigId)),
+    case {cb_context:req_data(Context), kz_doc:revision(Stored)} of
+        {?EMPTY_JSON_OBJECT, undefined} -> Context;
+        {?EMPTY_JSON_OBJECT, _} ->
+            crossbar_doc:delete(cb_context:set_doc(Context, Stored));
+        {Diff, _} ->
+            crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
+    end,
+    set_config_to_context(ConfigId, Context).
