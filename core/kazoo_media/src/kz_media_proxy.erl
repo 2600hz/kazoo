@@ -126,11 +126,11 @@ get_binding_ip() ->
     IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
 
     %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
 
-    {'ok', DefaultIP} = inet:parse_address(kz_term:to_list(default_ip(IsIPv6Enabled))),
-    {'ok', DefaultIPv4} = inet:parse_address(kz_term:to_list(default_ip('false'))),
-    {'ok', DefaultIPv6} = inet:parse_address(kz_term:to_list(default_ip('true'))),
+    {'ok', DefaultIP} = inet:parse_address(kz_util:to_list(default_ip(IsIPv6Enabled))),
+    {'ok', DefaultIPv4} = inet:parse_address(kz_util:to_list(default_ip('false'))),
+    {'ok', DefaultIPv6} = inet:parse_address(kz_util:to_list(default_ip('true'))),
 
     case inet:parse_ipv6strict_address(IP) of
         {'ok', IPv6} when IsIPv6Enabled -> IPv6;
