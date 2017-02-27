@@ -1,12 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% data adapter behaviour
 %%% @end
 %%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kzs_publish).
-
 
 -export([maybe_publish_doc/3
         ,maybe_publish_docs/3
@@ -24,9 +23,9 @@ maybe_publish_docs(Db, Docs, JObjs) ->
     case kz_datamgr:change_notice()
         andalso should_publish_db_changes(Db)
     of
-        'true' ->
-            publish_docs(Db, Docs, JObjs);
-        'false' -> 'ok'
+        false -> ok;
+        true ->
+            publish_docs(Db, Docs, JObjs)
     end.
 
 -spec publish_docs(ne_binary(), kz_json:objects(), kz_json:objects()) -> 'ok'.
@@ -121,9 +120,7 @@ publish(Action, Db, Doc) ->
     IsSoftDeleted = kz_doc:is_soft_deleted(Doc),
     IsHardDeleted = kz_doc:is_deleted(Doc),
 
-    EventName = doc_change_event_name(Action, IsSoftDeleted
-                                      orelse IsHardDeleted
-                                     ),
+    EventName = doc_change_event_name(Action, IsSoftDeleted or IsHardDeleted),
 
     Props = props:filter_undefined(
               [{<<"ID">>, Id}

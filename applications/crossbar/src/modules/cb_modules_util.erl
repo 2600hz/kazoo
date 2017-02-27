@@ -441,7 +441,7 @@ get_cid_number(Context, Default) ->
 %% it has an extension (for the associated content type)
 %% @end
 %%--------------------------------------------------------------------
--spec attachment_name(ne_binary(), text()) -> ne_binary().
+-spec attachment_name(binary(), text()) -> ne_binary().
 attachment_name(Filename, CT) ->
     Generators = [fun(A) ->
                           case kz_term:is_empty(A) of
@@ -468,9 +468,7 @@ parse_media_type(MediaType) ->
 -spec bucket_name(cb_context:context()) -> ne_binary().
 -spec bucket_name(api_binary(), api_binary()) -> ne_binary().
 bucket_name(Context) ->
-    bucket_name(cb_context:client_ip(Context)
-               ,cb_context:account_id(Context)
-               ).
+    bucket_name(cb_context:client_ip(Context), cb_context:account_id(Context)).
 
 bucket_name('undefined', 'undefined') ->
     <<"no_ip/no_account">>;
@@ -482,7 +480,7 @@ bucket_name(IP, AccountId) ->
     <<IP/binary, "/", AccountId/binary>>.
 
 -spec token_cost(cb_context:context()) -> non_neg_integer().
--spec token_cost(cb_context:context(), non_neg_integer() | kz_json:path() | kz_json:path()) -> non_neg_integer().
+-spec token_cost(cb_context:context(), non_neg_integer() | kz_json:path()) -> non_neg_integer().
 -spec token_cost(cb_context:context(), non_neg_integer(), kz_json:path()) -> non_neg_integer().
 
 token_cost(Context) ->
@@ -495,8 +493,7 @@ token_cost(Context, [_|_]=Suffix) ->
 token_cost(Context, Default) ->
     token_cost(Context, Default, []).
 
-token_cost(Context, Default, Suffix) when is_integer(Default)
-                                          andalso Default >= 0 ->
+token_cost(Context, Default, Suffix) when is_integer(Default), Default >= 0 ->
     Costs = kapps_config:get(?CONFIG_CAT, <<"token_costs">>, 1),
     find_token_cost(Costs
                    ,Default
@@ -511,7 +508,7 @@ token_cost(Context, Default, Suffix) when is_integer(Default)
                      ,kz_json:path()
                      ,req_nouns()
                      ,http_method()
-                     ,api_binary()
+                     ,api_ne_binary()
                      ) ->
                              integer() | Default.
 find_token_cost(N, _Default, _Suffix, _Nouns, _ReqVerb, _AccountId) when is_integer(N) ->

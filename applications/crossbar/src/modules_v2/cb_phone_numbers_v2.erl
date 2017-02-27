@@ -67,8 +67,6 @@
 -define(COUNTRY, <<"country">>).
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
 
--define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -1018,11 +1016,8 @@ pick_release_or_delete(Context, Options) ->
 has_tokens(Context) -> has_tokens(Context, 1).
 has_tokens(Context, Count) ->
     Name = <<(cb_context:account_id(Context))/binary, "/", ?PHONE_NUMBERS_CONFIG_CAT/binary>>,
-    case kz_buckets:consume_tokens(?APP_NAME
-                                  ,Name
-                                  ,cb_modules_util:token_cost(Context, Count)
-                                  )
-    of
+    Cost = cb_modules_util:token_cost(Context, Count),
+    case kz_buckets:consume_tokens(?APP_NAME, Name, Cost) of
         'true' -> 'true';
         'false' ->
             lager:warning("rate limiting activation limit reached, rejecting"),
