@@ -40,11 +40,13 @@ maybe_start_plaintext(Dispatch) ->
         'false' -> lager:debug("plaintext media proxy support not enabled");
         'true' ->
             Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
+            IP = get_binding_ip(),
+            lager:info("trying to bind to address ~s port ~b", [inet:ntoa(IP), Port]),
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
             cowboy:start_http(?MODULE
                              ,Listeners
-                             ,[{'ip', {0,0,0,0,0,0,0,0}}
+                             ,[{'ip', IP}
                               ,{'port', Port}
                               ]
                              ,[{'env', [{'dispatch', Dispatch}]}]
@@ -72,9 +74,13 @@ maybe_start_ssl(Dispatch) ->
 
             Listeners = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_listeners">>, 25),
 
+            IP = get_binding_ip(),
+            lager:info("trying to bind SSL API server to address ~s port ~b", [inet:ntoa(IP), SSLPort]),
+
             try
                 cowboy:start_https('media_mgr_ssl', Listeners
-                                  ,[{'port', SSLPort}
+                                  ,[{'ip', IP}
+                                   ,{'port', SSLPort}
                                    ,{'certfile', find_file(SSLCert, RootDir)}
                                    ,{'keyfile', find_file(SSLKey, RootDir)}
                                    ,{'password', SSLPassword}
@@ -112,4 +118,54 @@ find_file(File, Root) ->
                     lager:info("failed to find file at ~s", [FromRoot]),
                     throw({'invalid_file', File})
             end
+    end.
+
+-spec get_binding_ip() -> inet:ip_address().
+get_binding_ip() ->
+    IsIPv6Enabled = is_ip_family_supported("localhost", 'inet6'),
+    IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
+
+    %% expilicty convert to list to allow save the default value in human readable value
+    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+
+    {'ok', DefaultIP} = inet:parse_address(kz_term:to_list(default_ip(IsIPv6Enabled))),
+    {'ok', DefaultIPv4} = inet:parse_address(kz_term:to_list(default_ip('false'))),
+    {'ok', DefaultIPv6} = inet:parse_address(kz_term:to_list(default_ip('true'))),
+
+    case inet:parse_ipv6strict_address(IP) of
+        {'ok', IPv6} when IsIPv6Enabled -> IPv6;
+        {'ok', _} when IsIPv4Enabled ->
+            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ipv4 ~s"
+                         ,[IP, inet:ntoa(DefaultIPv4)]
+                         ),
+            DefaultIPv4;
+        {'error', 'einval'} ->
+            case inet:parse_ipv4strict_address(IP) of
+                {'ok', IPv4} when IsIPv4Enabled -> IPv4;
+                {'ok', _} when IsIPv6Enabled->
+                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ipv6 ~s"
+                                 ,[IP, inet:ntoa(DefaultIPv6)]
+                                 ),
+                    DefaultIPv6;
+                {'error', 'einval'} ->
+                    lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
+                                 ,[IP, inet:ntoa(DefaultIP)]
+                                 ),
+                    DefaultIP
+            end
+    end.
+
+-spec default_ip() -> ne_binary().
+default_ip() ->
+    default_ip(is_ip_family_supported("localhost", 'inet6')).
+
+-spec default_ip(boolean()) -> ne_binary().
+default_ip('true') -> <<"::">>;
+default_ip('false') -> <<"0.0.0.0">>.
+
+-spec is_ip_family_supported(string(), inet:address_family()) -> boolean().
+is_ip_family_supported(Host, Family) ->
+    case inet:getaddr(Host, Family) of
+        {'ok', _} -> 'true';
+        {'error', _} -> 'false'
     end.
