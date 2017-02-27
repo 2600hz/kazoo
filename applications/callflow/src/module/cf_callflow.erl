@@ -61,7 +61,7 @@ maybe_add_group_id(JObj, Call) ->
     case kz_json:get_value(<<"type">>, JObj) of
         <<"baseGroup">> ->
             GroupId = kz_json:get_value(<<"group_id">>, JObj),
-            kapps_call:set_monster_group_id(GroupId, Call);
+            kapps_call:set_group_id(GroupId, Call);
         _ ->
             Call
     end.
