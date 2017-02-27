@@ -340,9 +340,9 @@ transition_numbers(PortReq) ->
     PortReqId = kz_doc:id(PortReq),
     Options = [{'assign_to', kz_json:get_value(?PVT_ACCOUNT_ID, PortReq)}
               ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+              ,{dry_run, false}
               ,{'ported_in', 'true'}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),

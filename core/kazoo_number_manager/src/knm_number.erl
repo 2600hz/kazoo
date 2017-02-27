@@ -114,6 +114,8 @@ get(Num, Options) ->
 %% @doc
 %% Attempts to create a new number in DB or modify an existing one.
 %% Note: `assign_to' number option MUST be set.
+%% Note: creating numbers with `ported_in` option set to true will
+%%   attempt to create them with state in_service.
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binary(), knm_number_options:options()) ->
@@ -139,14 +141,16 @@ create_or_load(Num, Options0) ->
 -ifdef(TEST).
 state_for_create(AccountId, Options) ->
     case {knm_number_options:state(Options)
+         ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
          ,AccountId
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
-        {_, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
-        {_, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
+        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
+        {_, _, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
         _ -> ?NUMBER_STATE_IN_SERVICE
     end.
 -else.
@@ -154,15 +158,19 @@ state_for_create(AccountId, Options) ->
     case knm_number_options:state(Options) of
         ?NUMBER_STATE_PORT_IN=PortIn -> PortIn;
         _ ->
-            case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
+            case knm_number_options:ported_in(Options) of
                 true -> ?NUMBER_STATE_IN_SERVICE;
                 _ ->
-                    case kz_services:is_reseller(AccountId)
-                        andalso kapps_util:get_master_account_id()
-                    of
-                        'false' -> ?NUMBER_STATE_IN_SERVICE;
-                        {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-                        {'ok', _} -> ?NUMBER_STATE_RESERVED
+                    case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
+                        true -> ?NUMBER_STATE_IN_SERVICE;
+                        _ ->
+                            case kz_services:is_reseller(AccountId)
+                                andalso kapps_util:get_master_account_id()
+                            of
+                                'false' -> ?NUMBER_STATE_IN_SERVICE;
+                                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                                {'ok', _} -> ?NUMBER_STATE_RESERVED
+                            end
                     end
             end
     end.
@@ -184,25 +192,39 @@ create_or_load(Num, Options, {'error', 'not_found'}) ->
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true'.
 ensure_can_load_to_create(PhoneNumber) ->
-    ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
+    ensure_state(PhoneNumber, [?NUMBER_STATE_AVAILABLE
+                              ,?NUMBER_STATE_PORT_IN
+                              ]).
 
--spec ensure_state(knm_phone_number:knm_phone_number(), ne_binary()) -> 'true'.
-ensure_state(PhoneNumber, ExpectedState) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ExpectedState -> 'true';
-        _State ->
-            lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
-            knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
+-spec ensure_state(knm_phone_number:knm_phone_number(), ne_binaries()) -> 'true'.
+ensure_state(PhoneNumber, AllowedStates) ->
+    State = knm_phone_number:state(PhoneNumber),
+    case lists:member(State, AllowedStates) of
+        true -> true;
+        false ->
+            Num = knm_phone_number:number(PhoneNumber),
+            lager:error("~s wrong state ~s, expected one of ~p", [Num, State, AllowedStates]),
+            knm_errors:number_exists(Num)
     end.
 
 -spec create_phone_number(knm_number_options:options(), knm_number()) ->
                                  dry_run_or_number_return().
 create_phone_number(Options, Number) ->
+    Number1 = maybe_set_ported_in(Options, Number),
     TargetState = knm_number_options:state(Options),
     Routines = [fun (N) -> knm_number_states:to_state(N, TargetState) end
                ,fun save_number/1
                ],
-    apply_number_routines(Number, Routines).
+    apply_number_routines(Number1, Routines).
+
+maybe_set_ported_in(Options, N) ->
+    case knm_number_options:ported_in(Options) of
+        false -> N;
+        true ->
+            Routines = [{fun knm_phone_number:set_ported_in/2, true}],
+            {ok, NewPN} = knm_phone_number:setters(phone_number(N), Routines),
+            set_phone_number(N, NewPN)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

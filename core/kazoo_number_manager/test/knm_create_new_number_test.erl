@@ -182,6 +182,9 @@ create_new_port_in_test_() ->
     ,{"Verify the local carrier module is being used"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
+    ,{"Verify number is not marked as ported_in"
+     ,?_assertEqual(false, knm_phone_number:ported_in(PN))
+     }
     ].
 
 create_existing_in_service_test_() ->
@@ -283,7 +286,7 @@ load_existing_checks() ->
                               ,{?NUMBER_STATE_DISCONNECTED, 'false'}
                               ,{?NUMBER_STATE_DISCOVERY, 'false'}
                               ,{?NUMBER_STATE_IN_SERVICE, 'false'}
-                              ,{?NUMBER_STATE_PORT_IN, 'false'}
+                              ,{?NUMBER_STATE_PORT_IN, true}
                               ,{?NUMBER_STATE_PORT_OUT, 'false'}
                               ,{?NUMBER_STATE_RELEASED, 'false'}
                               ,{?NUMBER_STATE_RESERVED, 'false'}
