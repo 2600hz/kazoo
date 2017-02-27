@@ -14,10 +14,10 @@
 -include("callflow.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
--record(pattern, {flow_id :: ne_binary(),
-                  has_groups :: boolean(),
-                  names = [] :: ne_binaries(),
-                  regex :: re:mp()
+-record(pattern, {flow_id :: ne_binary()
+                 ,has_groups :: boolean()
+                 ,names = [] :: ne_binaries()
+                 ,regex :: re:mp()
                  }).
 
 -type pattern() :: #pattern{}.

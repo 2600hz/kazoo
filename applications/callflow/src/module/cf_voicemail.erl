@@ -145,20 +145,20 @@
 
 -define(KEY_LENGTH, 1).
 
--record(mailbox, {mailbox_id :: api_binary()
+-record(mailbox, {mailbox_id :: api_ne_binary()
                  ,mailbox_number = <<>> :: binary()
                  ,exists = 'false' :: boolean()
                  ,skip_instructions = 'false' :: boolean()
                  ,skip_greeting = 'false' :: boolean()
-                 ,unavailable_media_id :: api_binary()
-                 ,temporary_unavailable_media_id :: api_binary()
-                 ,name_media_id :: api_binary()
+                 ,unavailable_media_id :: api_ne_binary()
+                 ,temporary_unavailable_media_id :: api_ne_binary()
+                 ,name_media_id :: api_ne_binary()
                  ,pin = <<>> :: binary()
-                 ,timezone :: api_binary()
+                 ,timezone :: api_ne_binary()
                  ,max_login_attempts = ?MAX_LOGIN_ATTEMPTS :: non_neg_integer()
                  ,require_pin = 'false' :: boolean()
                  ,check_if_owner = 'true' :: boolean()
-                 ,owner_id :: api_binary()
+                 ,owner_id :: api_ne_binary()
                  ,is_setup = 'false' :: boolean()
                  ,message_count = 0 :: non_neg_integer()
                  ,max_message_count = 0 :: non_neg_integer()
@@ -172,9 +172,9 @@
                  ,play_greeting_intro = 'false' :: boolean()
                  ,use_person_not_available = 'false' :: boolean()
                  ,not_configurable = 'false' :: boolean()
-                 ,account_db :: api_binary()
-                 ,media_extension :: api_binary()
-                 ,forward_type :: api_binary()
+                 ,account_db :: api_ne_binary()
+                 ,media_extension :: api_ne_binary()
+                 ,forward_type :: api_ne_binary()
                  }).
 -type mailbox() :: #mailbox{}.
 
