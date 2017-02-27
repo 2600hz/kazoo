@@ -202,28 +202,30 @@ release_test_() ->
     ].
 
 
+options_for_port_in_transition() ->
+    [{auth_by, ?MASTER_ACCOUNT_ID}
+    ,{assign_to, ?RESELLER_ACCOUNT_ID}
+    ,{dry_run, false}
+    ,{<<"auth_by_account">>
+     ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, false)
+     }
+    ].
+
 transition_port_in_test_() ->
-    Props = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
-            ,{assign_to, ?RESELLER_ACCOUNT_ID}
-            ,{dry_run, false}
-            ,{<<"auth_by_account">>
-             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'false')
-             }
-            ,{ported_in, true}
-            ],
-    #{ok := [N]} = knm_numbers:create([?TEST_PORT_IN_NUM], Props),
+    Options = [{ported_in,true} | options_for_port_in_transition()],
+    #{ok := [N]} = knm_numbers:create([?TEST_PORT_IN_NUM], Options),
     PN = knm_number:phone_number(N),
     [{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
-     ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
      }
     ,{"Verify number is in service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN))
      }
     ,{"Verify reserve history is empty"
-     ,?_assertEqual([], knm_phone_number:reserve_history(PN))
+     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the local carrier module is being used"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
@@ -232,6 +234,27 @@ transition_port_in_test_() ->
      ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
     ,{"Verify number is not marked as ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(PN))
+     ,?_assertEqual(true, knm_phone_number:ported_in(PN))
+     }
+    ].
+
+transition_existing_port_in_test_() ->
+    Options1 = options_for_port_in_transition(),
+    Options2 = [{auth_by,?KNM_DEFAULT_AUTH_BY} | options_for_port_in_transition()],
+    Error = kz_json:from_list(
+              [{<<"code">>,400},
+               {<<"error">>,<<"invalid_state_transition">>},
+               {<<"cause">>,<<"from port_in to reserved">>},
+               {<<"message">>,<<"invalid state transition">>}
+              ]),
+    [{"Verify cannot create in_service number if not specified as ported_in"
+     ,?_assertMatch(#{ko := #{?TEST_PORT_IN_NUM := Error}}
+                   ,knm_numbers:create([?TEST_PORT_IN_NUM], Options1)
+                   )
+     }
+    ,{"Verify cannot create in_service number if not specified as ported_in even as sudo"
+     ,?_assertMatch(#{ko := #{?TEST_PORT_IN_NUM := Error}}
+                   ,knm_numbers:create([?TEST_PORT_IN_NUM], Options2)
+                   )
      }
     ].

@@ -351,7 +351,6 @@ transition_numbers(PortReq) ->
               ,{'assign_to', AccountId}
               ,{dry_run, false}
               ,{'ported_in', 'true'}
-              ,{'state', ?NUMBER_STATE_IN_SERVICE}
               ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),

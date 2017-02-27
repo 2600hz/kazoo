@@ -294,7 +294,7 @@ load_existing_checks() ->
                               ,{?NUMBER_STATE_DISCONNECTED, 'false'}
                               ,{?NUMBER_STATE_DISCOVERY, 'false'}
                               ,{?NUMBER_STATE_IN_SERVICE, 'false'}
-                              ,{?NUMBER_STATE_PORT_IN, 'false'}
+                              ,{?NUMBER_STATE_PORT_IN, true}
                               ,{?NUMBER_STATE_PORT_OUT, 'false'}
                               ,{?NUMBER_STATE_RELEASED, 'false'}
                               ,{?NUMBER_STATE_RESERVED, 'false'}

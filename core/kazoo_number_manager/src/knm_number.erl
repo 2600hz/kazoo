@@ -192,16 +192,20 @@ ensure_can_load_to_create(T0=#{todo := PNs}) ->
                 end
         end,
     lists:foldl(F, T0, PNs);
-ensure_can_load_to_create(PhoneNumber) ->
-    ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
+ensure_can_load_to_create(PN) ->
+    ensure_state(PN, [?NUMBER_STATE_AVAILABLE
+                     ,?NUMBER_STATE_PORT_IN
+                     ]).
 
--spec ensure_state(knm_phone_number:knm_phone_number(), ne_binary()) -> 'true'.
-ensure_state(PhoneNumber, ExpectedState) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ExpectedState -> 'true';
-        _State ->
-            lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
-            knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
+-spec ensure_state(knm_phone_number:knm_phone_number(), ne_binaries()) -> true.
+ensure_state(PN, AllowedStates) ->
+    State = knm_phone_number:state(PN),
+    case lists:member(State, AllowedStates) of
+        true -> true;
+        false ->
+            Num = knm_phone_number:number(PN),
+            lager:error("~s wrong state ~s, expected one of ~p", [Num, State, AllowedStates]),
+            knm_errors:number_exists(Num)
     end.
 
 %%--------------------------------------------------------------------
