@@ -62,8 +62,8 @@ top_up_status(AccountId) ->
 -spec current_balance(ne_binary()) -> ne_binary().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
-        {'error', _} -> 0;
-        Balance -> wht_util:units_to_dollars(Balance)
+        {'ok', Balance} -> wht_util:units_to_dollars(Balance);
+        {'error', _} -> 0
     end.
 
 -spec get_topup_thresholds(ne_binary()) -> {api_integer(), integer() | string(), integer() | string()}.

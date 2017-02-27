@@ -20,7 +20,6 @@
         ,previous_balance/3
         ,current_account_dollars/1
         ]).
--export([get_balance_from_account/2]).
 -export([call_cost/1]).
 -export([calculate_call/1, calculate_call/5]).
 -export([per_minute_cost/1]).
@@ -126,14 +125,16 @@ base_call_cost(RateCost, RateMin, RateSurcharge)
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_balance(ne_binary()) -> units() | {'error', any()}.
+-type balance_ret() :: {'ok', units() | dollars()} | {'error', any()}.
+
+-spec current_balance(ne_binary()) -> balance_ret().
 current_balance(Account) -> get_balance(Account, []).
 
--spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> units() | {'error', any()}.
+-spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
     get_balance(Account, [{'year', Year}, {'month', Month}]).
 
--spec get_balance(ne_binary(), kazoo_modb:view_options()) -> units() | {'error', any()}.
+-spec get_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
@@ -151,12 +152,8 @@ get_balance(Account, Options) ->
             Error
     end.
 
--spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options()) ->
-                                       units() |
-                                       {'error', any()}.
--spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options(), integer()) ->
-                                       units() |
-                                       {'error', any()}.
+-spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
+-spec get_balance_from_previous(ne_binary(), kazoo_modb:view_options(), integer()) -> balance_ret().
 get_balance_from_previous(Account, ViewOptions) ->
     Retries = props:get_value('retry', ViewOptions, 3),
     get_balance_from_previous(Account, ViewOptions, Retries).
@@ -173,11 +170,11 @@ get_balance_from_previous(Account, ViewOptions, Retries) when Retries >= 0 ->
                ],
     lager:warning("could not find current balance trying previous month: ~p", [VOptions]),
     get_balance(Account, VOptions);
-get_balance_from_previous(Account, ViewOptions, _) ->
-    lager:warning("3rd attempt to find balance in previous modb getting from account"),
-    get_balance_from_account(Account, ViewOptions).
+get_balance_from_previous(_Account, _ViewOptions, _) ->
+    lager:warning("3rd attempt to find balance in previous modb getting from account ~s", [_Account]),
+    {'error', 'retries_exceeded'}.
 
--spec maybe_rollup(ne_binary(), kz_proplist(), units()) -> units().
+-spec maybe_rollup(ne_binary(), kz_proplist(), units()) -> balance_ret().
 maybe_rollup(Account, ViewOptions, Balance) ->
     case props:get_integer_value('retry', ViewOptions) of
         'undefined' when Balance =< 0 ->
@@ -187,36 +184,34 @@ maybe_rollup(Account, ViewOptions, Balance) ->
         'undefined' ->
             %% NOTE: if the balance is positive the rollup likey
             %%   occured without issue
-            Balance;
+            {'ok', Balance};
         _Else ->
             %% NOTE: if the balance required retries try to
             %%   create the rollup for this month
             maybe_rollup_previous_month(Account, Balance)
     end.
 
--spec verify_monthly_rollup_exists(ne_binary(), units()) -> units().
+-spec verify_monthly_rollup_exists(ne_binary(), units()) -> balance_ret().
 verify_monthly_rollup_exists(Account, Balance) ->
     case kazoo_modb:open_doc(Account, <<"monthly_rollup">>) of
-        {'ok', _} -> Balance;
+        {'ok', _} -> {'ok', Balance};
         {'error', 'not_found'} ->
             %% NOTE: if the monthly_rollup is not in the current modb
             %%   then try to rollup the value
             maybe_rollup_previous_month(Account, Balance);
-        {'error', _R} -> Balance
+        {'error', _R} -> {'ok', Balance}
     end.
 
--spec maybe_rollup_previous_month(ne_binary(), units()) -> units().
+-spec maybe_rollup_previous_month(ne_binary(), units()) -> balance_ret().
 maybe_rollup_previous_month(Account, Balance) ->
     case get_rollup_from_previous(Account) of
-        {'error', _} -> Balance;
+        {'error', _} -> {'ok', Balance};
         {'ok', PrevBalance} ->
             _ = rollup(Account, PrevBalance),
-            Balance - PrevBalance
+            {'ok', Balance - PrevBalance}
     end.
 
--spec get_rollup_from_previous(ne_binary()) ->
-                                      {'ok', units()} |
-                                      {'error', any()}.
+-spec get_rollup_from_previous(ne_binary()) -> balance_ret().
 get_rollup_from_previous(Account) ->
     {Y, M, _} = erlang:date(),
     {Year, Month} = kazoo_modb_util:prev_year_month(Y, M),
@@ -228,19 +223,12 @@ get_rollup_from_previous(Account) ->
             %% NOTE: the previous modb had a rollup, use its balance as
             %%  the value for the current rollup.
             get_rollup_balance(Account, ModbOptions);
-        {'error', 'not_found'} ->
-            %% NOTE: the previous modb did not have a rollup, this must be
-            %%   the first rollup of this series, move the balance from the
-            %%   account
-            get_balance_from_account(Account, ModbOptions);
         {'error', _R}=E ->
             lager:warning("unable to get previous monthly_rollup: ~p", [_R]),
             E
     end.
 
--spec get_rollup_balance(ne_binary(), kazoo_modb:view_options()) ->
-                                {'ok', units()} |
-                                {'error', any()}.
+-spec get_rollup_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_rollup_balance(Account, Options) ->
     View = <<"transactions/credit_remaining">>,
     ViewOptions = ['reduce'
@@ -265,31 +253,11 @@ get_rollup_balance(Account, Options) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec current_account_dollars(ne_binary()) -> dollars() | {'error', any()}.
+-spec current_account_dollars(ne_binary()) -> balance_ret().
 current_account_dollars(Account) ->
     case current_balance(Account) of
-        {'error', _} = Error -> Error;
-        Units -> units_to_dollars(Units)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_balance_from_account(ne_binary(), kazoo_modb:view_options()) -> units() | {'error', any()}.
-get_balance_from_account(Account, ViewOptions0) ->
-    View = <<"transactions/credit_remaining">>,
-    AccountId = kz_util:format_account_id(Account),
-    AccountDb = kz_util:format_account_db(AccountId),
-    ViewOptions = ['first_when_multiple' | ViewOptions0],
-    case kz_datamgr:get_results(AccountDb, View, kazoo_modb:strip_modb_options(ViewOptions)) of
-        {'ok', ViewRes} ->
-            kz_json:get_integer_value(<<"value">>, ViewRes, 0);
-        {'error', _R} = Error ->
-            lager:warning("unable to get current balance for ~s: ~p", [AccountId, _R]),
-            Error
+        {'ok', Units} -> {'ok', units_to_dollars(Units)};
+        {'error', _} = Error -> Error
     end.
 
 %%--------------------------------------------------------------------
@@ -473,14 +441,25 @@ collapse_call_transactions(Transactions) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec modb(ne_binary()) -> 'ok'.
-modb(AccountMODb) ->
-    Routines = [fun kazoo_modb_util:prev_year_month/1
-               ,fun({Year, Month}) -> previous_balance(AccountMODb, Year, Month) end
-               ,fun({'error', _}) -> 'ok';
-                   (Balance)      -> rollup(AccountMODb, Balance)
-                end
-               ],
-    lists:foldl(fun(F, A) -> F(A) end, AccountMODb, Routines).
+modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
+    case erlang:date() of
+        {Year, Month, _} -> rollup_current_modb(AccountMODb, 3);
+        _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
+    end.
+
+-spec rollup_current_modb(ne_binary(), 0..3) -> 'ok'.
+rollup_current_modb(_AccountMODb, 0) ->
+    lager:debug("retries exceeded during rollup current modb ~s", [_AccountMODb]);
+rollup_current_modb(AccountMODb, Loop) ->
+    {PYear, PMonth} = kazoo_modb_util:prev_year_month(AccountMODb),
+    case previous_balance(AccountMODb, PYear, PMonth) of
+        {'ok', Balance} ->
+            rollup(AccountMODb, Balance);
+        {'error', 'timeout'} ->
+            rollup_current_modb(AccountMODb, Loop - 1);
+        {'error', _R} ->
+            lager:debug("failed to rollup current modb ~s: ~p", [AccountMODb, _R])
+    end.
 
 -spec rollup(kz_transaction:transaction()) -> 'ok'.
 -spec rollup(ne_binary(), integer()) -> 'ok'.
@@ -496,10 +475,10 @@ rollup(Transaction) ->
             lager:debug("monthly rollup transaction success", [])
     end.
 
-rollup(<<_/binary>> = AccountMODb, Balance) when Balance >= 0 ->
+rollup(?NE_BINARY = AccountMODb, Balance) when Balance >= 0 ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:credit(AccountId, Balance));
-rollup(<<_/binary>> = AccountMODb, Balance) ->
+rollup(?NE_BINARY = AccountMODb, Balance) ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
     rollup(kz_transaction:debit(AccountId, -1*Balance)).
 

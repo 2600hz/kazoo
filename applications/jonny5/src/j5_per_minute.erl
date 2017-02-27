@@ -64,8 +64,8 @@ maybe_credit_available(Amount, Limits) -> maybe_credit_available(Amount, Limits,
 maybe_credit_available(Amount, Limits, IsReal) ->
     AccountId = j5_limits:account_id(Limits),
     Balance = case wht_util:current_balance(AccountId) of
-                  {'error', _} -> 0;
-                  Bal -> Bal
+                  {'ok', Bal} -> Bal;
+                  {'error', _} -> 0
               end,
     PerMinuteCost = case kz_term:is_true(IsReal) of
                         'true' -> j5_channels:real_per_minute_cost(AccountId);

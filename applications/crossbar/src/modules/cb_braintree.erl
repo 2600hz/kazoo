@@ -243,10 +243,10 @@ error_max_credit(Context, MaxCredit, FutureAmount) ->
 -spec current_account_dollars(ne_binary()) -> dollars().
 current_account_dollars(AccountId) ->
     case wht_util:current_account_dollars(AccountId) of
+        {'ok', Dollars} -> Dollars;
         {'error', _R} ->
             lager:debug("failed to get current account ~s dollars, assuming 0: ~p", [AccountId, _R]),
-            0;
-        Dollars -> Dollars
+            0
     end.
 
 -spec validate_token(cb_context:context(), path_token()) -> cb_context:context().

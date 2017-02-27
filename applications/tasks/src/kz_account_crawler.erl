@@ -331,12 +331,8 @@ test_for_low_balance(AccountId, AccountJObj, Loop) ->
     case wht_util:current_balance(AccountId) of
         {'error', 'timeout'} ->
             test_for_low_balance(AccountId, AccountJObj, Loop - 1);
-        {'error', 'not_found'} ->
-            {Year, Month, _} = erlang:date(),
-            kazoo_modb:maybe_create(kazoo_modb:get_modb(AccountId, Year, Month)),
-            test_for_low_balance(AccountId, AccountJObj, Loop - 1);
         {'error', _R} -> 'ok';
-        CurrentBalance ->
+        {'ok', CurrentBalance} ->
             maybe_notify_for_low_balance(AccountJObj, CurrentBalance),
             maybe_topup_account(AccountJObj, CurrentBalance)
     end.

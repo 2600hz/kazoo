@@ -242,6 +242,6 @@ pretty_print_field(Name, Value) ->
 -spec current_balance(ne_binary()) -> ne_binary().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
-        {'error', _R} -> kz_term:to_list(io_lib:format("not known at the moment: ~p", [_R]));
-        Balance -> kz_term:to_list(wht_util:units_to_dollars(Balance))
+        {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));
+        {'error', _R} -> kz_term:to_list(io_lib:format("not known at the moment: ~p", [_R]))
     end.

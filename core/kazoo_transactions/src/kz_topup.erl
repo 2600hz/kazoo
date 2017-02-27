@@ -47,8 +47,8 @@ init(Account, CurrentBalance) ->
 -spec should_topup(ne_binary(), integer()) -> boolean().
 should_topup(AccountId) ->
     case wht_util:current_balance(AccountId) of
-        {'error', _} -> 'false';
-        CurrentBalance -> should_topup(AccountId, CurrentBalance)
+        {'ok', CurrentBalance} -> should_topup(AccountId, CurrentBalance);
+        {'error', _} -> 'false'
     end.
 
 should_topup(AccountId, CurrentBalance) ->

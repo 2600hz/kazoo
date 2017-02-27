@@ -115,6 +115,6 @@ get_account_name(Account) ->
 -spec current_balance(ne_binary()) -> ne_binary().
 current_balance(AccountId) ->
     case wht_util:current_balance(AccountId) of
-        {'error', _} -> <<"not known at the moment">>;
-        Balance -> kz_term:to_binary(wht_util:units_to_dollars(Balance))
+        {'ok', Balance} -> kz_term:to_binary(wht_util:units_to_dollars(Balance));
+        {'error', _} -> <<"not known at the moment">>
     end.
