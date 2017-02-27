@@ -17,19 +17,43 @@ A simple script to query the Erlang VMs process count
 
 ## bump-copyright-year.sh
 
-Python script to walk the supplied files and bumps the copyright year if appropriate. \\#+BEGIN\_EXAMPLE ./scripts/bump-copyright-year.sh [FILE] \\#+END\_SRC
+Python script to walk the supplied files and bumps the copyright year if appropriate.
+
+```shell
+./scripts/bump-copyright-year.sh [FILE]
+```
 
 
 ## check-app-registered.sh
 
-Checks Erlang applications for registered processes and compares that to the application's .app.src file. \\#+BEGIN\_EXAMPLE ./scripts/check-app-registered.sh [PATH/TO/APP] \\#+END\_SRC
+Checks Erlang applications for registered processes and compares that to the application's .app.src file.
 
-For example, I set \`{registered, []} in callflow.app.src, then ran the script: \\#+BEGIN\_EXAMPLE ./scripts/check-app-registered.sh applications/callflow cf\_event\_handler\_sup, callflow\_sup, cf\_exe\_sup applications/callflow has no registered modules?? 1 errors 1 errors in total \\#+END\_SRC Now you have a listing of registered processes to put in your .app.src
+```shell
+./scripts/check-app-registered.sh [PATH/TO/APP]
+```
+
+For example, I set \`{registered, []} in callflow.app.src, then ran the script:
+
+```shell
+./scripts/check-app-registered.sh applications/callflow
+cf_event_handler_sup, callflow_sup, cf_exe_sup
+applications/callflow has no registered modules??
+1 errors
+1 errors in total
+```
+
+Now you have a listing of registered processes to put in your .app.src
 
 
 ## check-dialyzer.escript
 
-An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze: \\#+BEGIN\_EXAMPLE TO\_DIALYZE=applications/callflow/ebin/callflow\_sup.beam make dialyze scanning "applications/callflow/ebin/callflow\_sup.beam" 0 Dialyzer warnings \\#+END\_SRC
+An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze:
+
+```shell
+TO_DIALYZE=applications/callflow/ebin/callflow_sup.beam make dialyze
+scanning "applications/callflow/ebin/callflow_sup.beam"
+0 Dialyzer warnings
+```
 
 Typically \`TO\_DIALYZE\` would be a generated list of files.
 
@@ -48,7 +72,19 @@ A quick script to check that all scripts in `$(ROOT)/scripts` are documented in 
 
 ## check-xref.escript
 
-An Erlang escript for cross referencing (xref) calls to remote modules. Set \`TO\_XREF\` to ebin paths (or use the default): \\#+BEGIN\_EXAMPLE make xref Pass: global Loading modules&#x2026; Running xref analysis&#x2026; Xref: listing undefined\_function\_calls Xref: listing undefined\_functions Done \\#+END\_SRC If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
+An Erlang escript for cross referencing (xref) calls to remote modules. Set \`TO\_XREF\` to ebin paths (or use the default):
+
+```shell
+make xref
+Pass: global
+Loading modules...
+Running xref analysis...
+Xref: listing undefined_function_calls
+Xref: listing undefined_functions
+Done
+```
+
+If there are any calls to non-existant modules, or non-exported functions, you will get errors listed here.
 
 
 ## circleci-build-erlang.sh
@@ -58,7 +94,15 @@ Fetches kerl and installs configured Erlang version (used in CircleCI)
 
 ## code\_checks.bash
 
-Checks source code files for various formatting expectations and exits if any are found. \\#+BEGIN\_EXAMPLE ./scripts/code\_checks.bash applications/crossbar/src/cb\_context.erl Check for andalso/orelse dropped lines Check for uses of module in lieu of ?MODULE Check for TAB characters Check for trailing whitespaces \\#+END\_SRC
+Checks source code files for various formatting expectations and exits if any are found.
+
+```shell
+./scripts/code_checks.bash applications/crossbar/src/cb_context.erl
+Check for andalso/orelse dropped lines
+Check for uses of module in lieu of ?MODULE
+Check for TAB characters
+Check for trailing whitespaces
+```
 
 
 ## `code_checks.bash`
@@ -68,7 +112,11 @@ Checks source code for various style requirements of the project
 
 ## conn-to-apps.sh
 
-Opens a remote shell to the kazoo\_apps@hostname VM. \\#+BEGIN\_EXAMPLE ./scripts/conn-to-apps.sh [{VM@HOSTNAME}, {LOCAL\_SHELL@HOSTNAME}] \\#+END\_SRC
+Opens a remote shell to the kazoo\_apps@hostname VM.
+
+```shell
+./scripts/conn-to-apps.sh [{VM@HOSTNAME}, {LOCAL_SHELL@HOSTNAME}]
+```
 
 
 ## conn-to-ecallmgr.sh
@@ -103,7 +151,11 @@ Runs M:F(A) on the node: \\#+INCLUDE "../dev-exec-mfa.sh" :lines "3-6"
 
 ## dev-start-apps.sh
 
-Starts a VM with an interactive shell. {VM\_NAME} defaults to 'kazoo\_apps' \\#+BEGIN\_EXAMPLE shell ./scripts/dev-start-apps.sh {VM\_NAME} \\#+END\_SRC
+Starts a VM with an interactive shell. {VM\_NAME} defaults to 'kazoo\_apps'
+
+```shell
+./scripts/dev-start-apps.sh {VM_NAME}
+```
 
 
 ## dev-start-ecallmgr.sh
@@ -113,7 +165,11 @@ Defaults node name to 'ecallmgr'; otherwise the same as dev-start-apps.sh
 
 ## dev/kazoo.sh
 
-When using releases, executes a release command against the running VM: \\#+BEGIN\_EXAMPLE shell KAZOO\_CONFIG=/etc/kazoo/core/config.ini ./scripts/dev/kazoo.sh {CMD} \\#+END\_SRC
+When using releases, executes a release command against the running VM:
+
+```shell
+KAZOO_CONFIG=/etc/kazoo/core/config.ini ./scripts/dev/kazoo.sh {CMD}
+```
 
 {CMD} can be:
 
@@ -144,7 +200,20 @@ Runs the SUP escript against the running release
 
 This script gets a diff set (against master) of .erl files from the current branch and dialyzes all changed files. You can include extra beam files on the end of the script (for things like gen\_listener, kz\_json, etc).
 
-\#+BEGIN\_EXAMPLE shell ./scripts/dialyze-changed.bash core/kazoo/ebin/kz\_json.beam dialyzing changed files: Checking whether the PLT .kazoo.plt is up-to-date&#x2026; yes Compiling some key modules to native code&#x2026; done in 0m0.28s Proceeding with analysis&#x2026; &#x2026;Issues Found&#x2026; Unknown functions: &#x2026;Unknown functions&#x2026; Unknown types: &#x2026;Unknown types&#x2026; done in 0m6.69s done (warnings were emitted) \\#+END\_SRC
+```shell
+./scripts/dialyze-changed.bash core/kazoo/ebin/kz_json.beam
+dialyzing changed files:
+  Checking whether the PLT .kazoo.plt is up-to-date... yes
+  Compiling some key modules to native code... done in 0m0.28s
+  Proceeding with analysis...
+  ...Issues Found...
+  Unknown functions:
+  ...Unknown functions...
+  Unknown types:
+  ...Unknown types...
+ done in 0m6.69s
+done (warnings were emitted)
+```
 
 
 ## dialyze-usage.bash
@@ -153,7 +222,18 @@ Given a module name, such as 'props' or 'kz\_json', search core/applications for
 
 The more heavily utilized the module is, the longer this will take to run!
 
-\#+BEGIN\_EXAMPLE shell ./scripts/dialyze-usage.bash kz\_config dialyzing usages of kz\_config Checking whether the PLT .kazoo.plt is up-to-date&#x2026; yes Proceeding with analysis&#x2026; kz\_dataconfig.erl:26: Function connection/0 has no local return kz\_dataconfig.erl:27: The call kz\_config:get('data','config',['bigcouch',&#x2026;]) breaks the contract (section(),atom(),Default) -> kz\_proplist() | Default kz\_dataconfig.erl:32: Function connection\_options/1 will never be called &#x2026; done in 0m4.08s done (warnings were emitted) \\#+END\_SRC
+```shell
+ ./scripts/dialyze-usage.bash kz_config
+dialyzing usages of kz_config
+  Checking whether the PLT .kazoo.plt is up-to-date... yes
+  Proceeding with analysis...
+kz_dataconfig.erl:26: Function connection/0 has no local return
+kz_dataconfig.erl:27: The call kz_config:get('data','config',['bigcouch',...]) breaks the contract (section(),atom(),Default) -> kz_proplist() | Default
+kz_dataconfig.erl:32: Function connection_options/1 will never be called
+...
+ done in 0m4.08s
+done (warnings were emitted)
+```
 
 
 ## ecallmgr-process-count.sh
@@ -168,7 +248,11 @@ Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentic
 
 ## format-json.sh
 
-Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions. \\#+BEGIN\_EXAMPLE shell ./scripts/format-json.sh path/to/file.json [path/to/other/file.json,&#x2026;] \\#+END\_SRC
+Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
+
+```shell
+./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
+```
 
 
 ## generate-api-endpoints.escript

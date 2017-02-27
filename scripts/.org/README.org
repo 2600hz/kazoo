@@ -25,17 +25,17 @@ A simple script to query the Erlang VMs process count
 #+END_SRC
 ** bump-copyright-year.sh
 Python script to walk the supplied files and bumps the copyright year if appropriate.
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 ./scripts/bump-copyright-year.sh [FILE]
 #+END_SRC
 ** check-app-registered.sh
 Checks Erlang applications for registered processes and compares that to the application's .app.src file.
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 ./scripts/check-app-registered.sh [PATH/TO/APP]
 #+END_SRC
 
 For example, I set `{registered, []} in callflow.app.src, then ran the script:
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 ./scripts/check-app-registered.sh applications/callflow
 cf_event_handler_sup, callflow_sup, cf_exe_sup
 applications/callflow has no registered modules??
@@ -45,7 +45,7 @@ applications/callflow has no registered modules??
 Now you have a listing of registered processes to put in your .app.src
 ** check-dialyzer.escript
 An Erlang escript that dialyzes changed files. Run it using the makefile target 'dialyze' with the files to dialyze:
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 TO_DIALYZE=applications/callflow/ebin/callflow_sup.beam make dialyze
 scanning "applications/callflow/ebin/callflow_sup.beam"
 0 Dialyzer warnings
@@ -60,7 +60,7 @@ Creates a release, starts it, and issues some commands to test that the release 
 A quick script to check that all scripts in =$(ROOT)/scripts= are documented in this file!
 ** check-xref.escript
 An Erlang escript for cross referencing (xref) calls to remote modules. Set `TO_XREF` to ebin paths (or use the default):
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 make xref
 Pass: global
 Loading modules...
@@ -74,7 +74,7 @@ If there are any calls to non-existant modules, or non-exported functions, you w
 Fetches kerl and installs configured Erlang version (used in CircleCI)
 ** code_checks.bash
 Checks source code files for various formatting expectations and exits if any are found.
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 ./scripts/code_checks.bash applications/crossbar/src/cb_context.erl
 Check for andalso/orelse dropped lines
 Check for uses of module in lieu of ?MODULE
@@ -85,7 +85,7 @@ Check for trailing whitespaces
 Checks source code for various style requirements of the project
 ** conn-to-apps.sh
 Opens a remote shell to the kazoo_apps@hostname VM.
-#+BEGIN_EXAMPLE
+#+BEGIN_SRC shell
 ./scripts/conn-to-apps.sh [{VM@HOSTNAME}, {LOCAL_SHELL@HOSTNAME}]
 #+END_SRC
 ** conn-to-ecallmgr.sh
@@ -103,14 +103,14 @@ Runs M:F(A) on the node:
 #+INCLUDE "../dev-exec-mfa.sh" :lines "3-6"
 ** dev-start-apps.sh
 Starts a VM with an interactive shell. {VM_NAME} defaults to 'kazoo_apps'
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell
 ./scripts/dev-start-apps.sh {VM_NAME}
 #+END_SRC
 ** dev-start-ecallmgr.sh
 Defaults node name to 'ecallmgr'; otherwise the same as dev-start-apps.sh
 ** dev/kazoo.sh
 When using releases, executes a release command against the running VM:
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell
 KAZOO_CONFIG=/etc/kazoo/core/config.ini ./scripts/dev/kazoo.sh {CMD}
 #+END_SRC
 
@@ -136,7 +136,7 @@ Runs the SUP escript against the running release
 ** dialyze-changed.bash
 This script gets a diff set (against master) of .erl files from the current branch and dialyzes all changed files. You can include extra beam files on the end of the script (for things like gen_listener, kz_json, etc).
 
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell
 ./scripts/dialyze-changed.bash core/kazoo/ebin/kz_json.beam
 dialyzing changed files:
   Checking whether the PLT .kazoo.plt is up-to-date... yes
@@ -155,7 +155,7 @@ Given a module name, such as 'props' or 'kz_json', search core/applications for 
 
 The more heavily utilized the module is, the longer this will take to run!
 
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell
  ./scripts/dialyze-usage.bash kz_config
 dialyzing usages of kz_config
   Checking whether the PLT .kazoo.plt is up-to-date... yes
@@ -173,7 +173,7 @@ Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 Script for exporting =AUTH_TOKEN= and =ACCOUNT_ID= when doing Crossbar authentication. Handy when running curl commands to use =$AUTH_TOKEN= instead of the raw value (and for re-authing when auth token expires).
 ** format-json.sh
 Python script to format JSON files (like CouchDB views, JSON schemas) and write the formatted version back to the file. 'make apis' runs this as part of its instructions.
-#+BEGIN_EXAMPLE shell
+#+BEGIN_SRC shell
 ./scripts/format-json.sh path/to/file.json [path/to/other/file.json,...]
 #+END_SRC
 ** generate-api-endpoints.escript
