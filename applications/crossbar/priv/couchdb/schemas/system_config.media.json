@@ -39,6 +39,10 @@
             "description": "media fix media names",
             "type": "boolean"
         },
+        "ip": {
+            "description": "media proxy ip",
+            "type": "string"
+        },
         "max_recording_time_limit": {
             "default": 3600,
             "description": "media maximum recording time limit",
