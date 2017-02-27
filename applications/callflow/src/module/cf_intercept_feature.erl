@@ -58,7 +58,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
-    InterceptType = kz_json:get_value(<<"type">>, Data),
+    InterceptType = kz_json:get_ne_binary_value(<<"type">>, Data),
     case build_intercept_params(Number, InterceptType, Call) of
         {'ok', Params} ->
             maybe_intercept(Data, Call, Params);
@@ -91,9 +91,9 @@ maybe_intercept(Call, Params) ->
 -spec intercept_restrictions(kz_json:object()) -> kz_proplist().
 intercept_restrictions(Data) ->
     props:filter_undefined(
-      [{<<"approved_device_id">>, kz_json:get_value(<<"approved_device_id">>, Data)}
-      ,{<<"approved_user_id">>, kz_json:get_value(<<"approved_user_id">>, Data)}
-      ,{<<"approved_group_id">>, kz_json:get_value(<<"approved_group_id">>, Data)}
+      [{<<"approved_device_id">>, kz_json:get_ne_binary_value(<<"approved_device_id">>, Data)}
+      ,{<<"approved_user_id">>, kz_json:get_ne_binary_value(<<"approved_user_id">>, Data)}
+      ,{<<"approved_group_id">>, kz_json:get_ne_binary_value(<<"approved_group_id">>, Data)}
       ]).
 
 -spec maybe_allowed_to_intercept(kapps_call:call(), kz_proplist()) -> boolean().

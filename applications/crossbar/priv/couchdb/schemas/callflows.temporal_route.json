@@ -4,22 +4,35 @@
     "description": "Validator for the temporal_route callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "description": "What action to perform",
+            "enum": [
+                "menu",
+                "enable",
+                "disable",
+                "reset"
+            ],
+            "type": "string"
         },
         "interdigit_timeout": {
-            "description": "",
+            "description": "How long, in milliseconds, to wait for the next keypress",
             "type": "integer"
         },
         "rule_set": {
-            "description": ""
+            "description": "ID of the rule set",
+            "type": "string"
         },
         "rules": {
             "default": [],
-            "description": "",
+            "description": "List of rule IDs to use",
+            "items": {
+                "description": "ID of the temporal rule set to use",
+                "type": "string"
+            },
             "type": "array"
         },
         "timezone": {
-            "description": ""
+            "description": "Timezone to use when processing temporal rules",
+            "type": "string"
         }
     },
     "required": true,

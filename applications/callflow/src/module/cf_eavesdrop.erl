@@ -82,11 +82,11 @@ eavesdrop_a_channel(Channels, Call) ->
             lager:debug("no channels available to eavesdrop"),
             no_channels(Call);
         {[], [RemoteChannel | _Remote]} ->
-            lager:info("no calls on my media server, trying redirect to ~s", [kz_json:get_value(<<"node">>, RemoteChannel)]),
+            lager:info("no calls on my media server, trying redirect to ~s", [kz_json:get_ne_binary_value(<<"node">>, RemoteChannel)]),
             Contact = erlang:iolist_to_binary(["sip:", kapps_call:request(Call)]),
-            kapps_call_command:redirect_to_node(Contact, kz_json:get_value(<<"node">>, RemoteChannel), Call);
+            kapps_call_command:redirect_to_node(Contact, kz_json:get_ne_binary_value(<<"node">>, RemoteChannel), Call);
         {[LocalChannel | _Cs], _} ->
-            lager:info("found a call (~s) on my media server", [kz_json:get_value(<<"uuid">>, LocalChannel)]),
+            lager:info("found a call (~s) on my media server", [kz_json:get_ne_binary_value(<<"uuid">>, LocalChannel)]),
             eavesdrop_call(LocalChannel, Call)
     end.
 
@@ -95,14 +95,14 @@ eavesdrop_a_channel(Channels, Call) ->
 
 -spec channels_sort(kz_json:object(), channel_sort_acc()) -> channel_sort_acc().
 channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
-    lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_value(<<"uuid">>, Channel)
+    lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_ne_binary_value(<<"uuid">>, Channel)
                                                        ,kz_json:is_true(<<"answered">>, Channel)
-                                                       ,kz_json:get_value(<<"node">>, Channel)
-                                                       ,kz_json:get_value(<<"other_leg">>, Channel)
+                                                       ,kz_json:get_ne_binary_value(<<"node">>, Channel)
+                                                       ,kz_json:get_ne_binary_value(<<"other_leg">>, Channel)
                                                        ]),
-    case kz_json:get_value(<<"node">>, Channel) of
+    case kz_json:get_ne_binary_value(<<"node">>, Channel) of
         MyMediaServer ->
-            case kz_json:get_value(<<"uuid">>, Channel) of
+            case kz_json:get_ne_binary_value(<<"uuid">>, Channel) of
                 MyUUID -> Acc;
                 _LocalUUID ->
                     {MyUUID, MyMediaServer, {[Channel | Local], Remote}}
@@ -113,7 +113,7 @@ channels_sort(Channel, {MyUUID, MyMediaServer, {Local, Remote}} = Acc) ->
 
 -spec eavesdrop_call(kz_json:object(), kapps_call:call()) -> 'ok'.
 eavesdrop_call(Channel, Call) ->
-    UUID = kz_json:get_value(<<"uuid">>, Channel),
+    UUID = kz_json:get_ne_binary_value(<<"uuid">>, Channel),
     kapps_call_command:b_answer(Call),
     kapps_call_command:send_command(eavesdrop_cmd(UUID), Call),
     lager:info("caller ~s is being eavesdropper", [kapps_call:caller_id_name(Call)]),
@@ -133,7 +133,7 @@ verify_call_is_active(Call) ->
     lager:debug("timed out while waiting for hangup, checking call status"),
     case kapps_call_command:b_channel_status(Call) of
         {'ok', ChannelStatus} ->
-            case kz_json:get_value(<<"Status">>, ChannelStatus) of
+            case kz_json:get_ne_binary_value(<<"Status">>, ChannelStatus) of
                 <<"active">> -> wait_for_eavesdrop_complete(Call);
                 _Status ->
                     lager:debug("channel has status ~s", [_Status])
@@ -152,9 +152,9 @@ eavesdrop_cmd(TargetCallId) ->
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
                                 ne_binaries().
 find_sip_endpoints(Data, Call) ->
-    case kz_json:get_value(<<"device_id">>, Data) of
+    case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' ->
-            UserId = kz_json:get_value(<<"user_id">>, Data),
+            UserId = kz_json:get_ne_binary_value(<<"user_id">>, Data),
             sip_users_from_endpoints(
               cf_util:find_user_endpoints([UserId], [], Call), Call);
         DeviceId ->

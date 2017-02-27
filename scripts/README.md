@@ -241,6 +241,11 @@ done (warnings were emitted)
 Connects to the ecallmgr VM and outputs a count of running Erlang processes.
 
 
+## `empty_schema_descriptions.bash`
+
+Checks JSON schemas for empty "description" properties and exit(1) if any are found
+
+
 ## `export_auth_token.bash`
 
 Script for exporting `AUTH_TOKEN` and `ACCOUNT_ID` when doing Crossbar authentication. Handy when running curl commands to use `$AUTH_TOKEN` instead of the raw value (and for re-authing when auth token expires).

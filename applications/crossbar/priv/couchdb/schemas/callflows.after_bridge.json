@@ -4,10 +4,20 @@
     "description": "Validator for the after_bridge callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "description": "What action to perform after a call is bridged",
+            "enum": [
+                "park",
+                "transfer",
+                "hangup"
+            ],
+            "type": "string"
         },
         "data": {
-            "description": ""
+            "description": "The number to transfer to, or a boolean, depending on the 'action'",
+            "type": [
+                "string",
+                "boolean"
+            ]
         }
     },
     "required": true,

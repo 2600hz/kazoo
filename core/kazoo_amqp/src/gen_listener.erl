@@ -114,7 +114,7 @@
                ,params = [] :: kz_proplist()
                ,module :: atom()
                ,module_state :: module_state()
-               ,module_timeout_ref :: reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
+               ,module_timeout_ref :: api_reference() % when the client sets a timeout, gen_listener calls shouldn't negate it, only calls that pass through to the client
                ,other_queues = [] :: [{ne_binary(), {kz_proplist(), kz_proplist()}}] %% {QueueName, {proplist(), kz_proplist()}}
                ,federators = [] :: federator_listeners()
                ,self = self() :: pid()
@@ -250,7 +250,7 @@ delayed_cast(Name, Request, Wait) when is_integer(Wait), Wait > 0 ->
            end),
     'ok'.
 
--spec reply({pid(), reference()}, any()) -> no_return().
+-spec reply(pid_ref(), any()) -> no_return().
 reply(From, Msg) -> gen_server:reply(From, Msg).
 
 -type server_name() :: {'global' | 'local', atom()} | pid().
@@ -416,7 +416,7 @@ init(Module, Params, ModuleState, TimeoutRef) ->
 %%                                   {'stop', Reason, State}
 %% @end
 %%--------------------------------------------------------------------
--spec handle_call(any(), {pid(), reference()}, state()) -> handle_call_return().
+-spec handle_call(any(), pid_ref(), state()) -> handle_call_return().
 handle_call({'add_queue', QueueName, QueueProps, Bindings}, _From, State) ->
     {Q, S} = add_other_queue(QueueName, QueueProps, Bindings, State),
     {'reply', {'ok', Q}, S};
@@ -916,11 +916,11 @@ create_binding(Binding, Props, Q) ->
             erlang:error({'api_module_undefined', Wapi})
     end.
 
--spec stop_timer('undefined' | reference()) -> non_neg_integer() | 'false'.
+-spec stop_timer(api_reference()) -> non_neg_integer() | 'false'.
 stop_timer('undefined') -> 'false';
 stop_timer(Ref) when is_reference(Ref) -> erlang:cancel_timer(Ref).
 
--spec start_timer(any()) -> reference() | 'undefined'.
+-spec start_timer(kz_timeout()) -> api_reference().
 start_timer(0) ->
     self() ! ?CALLBACK_TIMEOUT_MSG,
     'undefined';

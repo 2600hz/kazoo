@@ -16,8 +16,12 @@
         ,error_to_jobj/1, error_to_jobj/2
         ,validation_error/4
         ,build_error_message/2
-        ,flatten/1, default_object/1, filter/2
+        ,default_object/1, filter/2
         ]).
+
+-ifdef(TEST).
+-export([flatten/1]).
+-endif.
 
 -export_type([validation_error/0, validation_errors/0]).
 
@@ -37,15 +41,32 @@ load(<<_/binary>> = Schema) ->
 load(Schema) -> load(kz_term:to_binary(Schema)).
 
 -spec fload(ne_binary() | string()) -> {'ok', kz_json:object()} |
-                                       {'error', any()}.
+                                       {'error', 'not_found'}.
 fload(<<"./", Schema/binary>>) -> fload(Schema);
 fload(<<_/binary>> = Schema) ->
+    case filelib:is_regular(Schema) of
+        'true' -> fload_file(Schema);
+        'false' -> find_and_fload(Schema)
+    end;
+fload(Schema) -> fload(kz_term:to_binary(Schema)).
+
+-spec find_and_fload(ne_binary()) ->
+                            {'ok', kz_json:object()} |
+                            {'error', 'not_found'}.
+find_and_fload(Schema) ->
     PrivDir = code:priv_dir('crossbar'),
     SchemaPath = filename:join([PrivDir, "couchdb", "schemas", maybe_add_ext(Schema)]),
+    case filelib:is_regular(SchemaPath) of
+        'true' -> fload_file(SchemaPath);
+        'false'-> {'error', 'not_found'}
+    end.
+
+-spec fload_file(ne_binary()) -> {'ok', kz_json:object()}.
+fload_file(SchemaPath) ->
+    Schema = filename:basename(SchemaPath, ".json"),
     {'ok', SchemaJSON} = file:read_file(SchemaPath),
     SchemaJObj = kz_json:decode(SchemaJSON),
-    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)};
-fload(Schema) -> fload(kz_term:to_binary(Schema)).
+    {'ok', kz_json:insert_value(<<"id">>, Schema, SchemaJObj)}.
 
 -spec maybe_add_ext(ne_binary()) -> ne_binary().
 maybe_add_ext(Schema) ->
@@ -754,10 +775,17 @@ get_types(JObj) ->
         _TypeSchema -> <<"type schema">>
     end.
 
--spec flatten(kz_json:object()) -> kz_json:object().
+-spec flatten(kz_json:object()) -> kz_json:flat_object().
 flatten(?EMPTY_JSON_OBJECT=Empty) -> Empty;
 flatten(?JSON_WRAPPER(L) = Schema) when is_list(L) ->
-    kz_json:from_list(lists:flatten(flatten_props(kz_json:get_value(<<"properties">>, Schema), [], Schema))).
+    kz_json:from_list(
+      lists:flatten(
+        flatten_props(kz_json:get_value(<<"properties">>, Schema)
+                     ,[]
+                     ,Schema
+                     )
+       )
+     ).
 
 flatten_props(undefined, Path, Obj) -> flatten_prop(Path, Obj);
 flatten_props(?JSON_WRAPPER(L), Path, _) when is_list(L) ->
@@ -773,15 +801,32 @@ flatten_prop(Path, V) -> [{Path, V}].
 -spec default_object(kz_json:object()) -> kz_json:object().
 default_object(Schema) ->
     Flat = flatten(Schema),
-    Default = kz_json:from_list([ {lists:droplast(K), V} || {K, V} <- kz_json:to_proplist(Flat), lists:last(K) =:= <<"default">> ]),
-    kz_json:expand(Default).
 
--spec filtering_list(kz_json:object()) -> list(list()).
+    FlatDefault = default_properties(Flat),
+    kz_json:expand(FlatDefault).
+
+-spec default_properties(kz_json:flat_object()) -> kz_json:flat_object().
+default_properties(Flat) ->
+    kz_json:filtermap(fun(Keys, Value) ->
+                              <<"default">> =:= lists:last(Keys)
+                                  andalso {'true', {lists:droplast(Keys), Value}}
+                      end
+                      ,Flat
+                     ).
+
+-spec filtering_list(kz_json:object()) -> list(kz_json:keys() | []).
 filtering_list(Schema) ->
-    Flat = flatten(Schema),
-    lists:usort([ lists:droplast(K) || {K, _} <- kz_json:to_proplist(Flat) ]).
+    Flattened = flatten(Schema),
+    lists:usort([lists:droplast(Keys)
+                 || Keys <- kz_json:get_keys(Flattened),
+                    [] =/= Keys
+                ]).
 
 -spec filter(kz_json:object(), kz_json:object()) -> kz_json:object().
 filter(JObj, Schema) ->
     Filter = filtering_list(Schema),
-    kz_json:expand(kz_json:from_list([ {K, V} || {K, V} <- kz_json:to_proplist(kz_json:flatten(JObj)), lists:member(K, Filter) ])).
+
+    FilteredFlat = kz_json:filter(fun({K, _}) -> lists:member(K, Filter) end
+                                 ,kz_json:flatten(JObj)
+                                 ),
+    kz_json:expand(FilteredFlat).

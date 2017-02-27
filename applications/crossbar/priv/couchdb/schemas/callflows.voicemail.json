@@ -15,7 +15,7 @@
         },
         "callerid_match_login": {
             "default": false,
-            "description": "",
+            "description": "Whether to match the caller ID to a voicemail box",
             "type": "boolean"
         },
         "id": {
@@ -39,7 +39,7 @@
         },
         "single_mailbox_login": {
             "default": false,
-            "description": "",
+            "description": "Allow login if caller has a single mailbox",
             "type": "boolean"
         }
     },

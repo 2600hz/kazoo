@@ -3,8 +3,13 @@
     "_id": "callflows.menu",
     "description": "Validator for the menu callflow's data object",
     "properties": {
+        "id": {
+            "description": "Menu ID to use",
+            "type": "string"
+        },
         "interdigit_timeout": {
-            "description": ""
+            "description": "Amount of time, in milliseconds, to wait between keypresses",
+            "type": "integer"
         }
     },
     "required": true,

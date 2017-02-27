@@ -4,7 +4,16 @@
     "description": "Validator for the acdc_queue callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "description": "What action to perform on the agent for this queue",
+            "enum": [
+                "login",
+                "logout"
+            ],
+            "type": "string"
+        },
+        "id": {
+            "description": "Queue ID",
+            "type": "string"
         }
     },
     "required": true,

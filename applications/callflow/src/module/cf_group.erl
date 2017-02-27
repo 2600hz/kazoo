@@ -26,14 +26,14 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    case kz_json:get_ne_value(<<"endpoints">>, Data) of
-        'undefined' -> attempt_group(Data, Call);
+    case kz_json:get_list_value(<<"endpoints">>, Data, []) of
+        [] -> attempt_group(Data, Call);
         _Else -> cf_ring_group:handle(Data, Call)
     end.
 
 -spec attempt_group(kz_json:object(), kapps_call:call()) -> 'ok'.
 attempt_group(Data, Call) ->
-    GroupId = kz_doc:id(Data),
+    GroupId = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountId = kapps_call:account_id(Call),
     AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
     case kz_datamgr:open_cache_doc(AccountDb, GroupId) of

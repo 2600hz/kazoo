@@ -14,12 +14,11 @@
 -include("callflow.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
--record(pattern, {
-          flow_id :: ne_binary(),
-          has_groups :: boolean(),
-          names = [] :: ne_binaries(),
-          regex :: re:mp()
-         }).
+-record(pattern, {flow_id :: ne_binary()
+                 ,has_groups :: boolean()
+                 ,names = [] :: ne_binaries()
+                 ,regex :: re:mp()
+                 }).
 
 -type pattern() :: #pattern{}.
 -type patterns() :: [pattern()].
@@ -30,7 +29,7 @@
 %% lookup the callflow based on the requested number in the account
 %% @end
 %%-----------------------------------------------------------------------------
--type lookup_ret() :: {'ok', kz_json:object(), boolean()} | {'error', any()}.
+-type lookup_ret() :: {'ok', kzd_callflow:doc(), boolean()} | {'error', any()}.
 
 -spec lookup(kapps_call:call()) -> lookup_ret().
 lookup(Call) ->
@@ -139,13 +138,13 @@ compile_patterns(AccountId, [JObj | JObjs], Acc) ->
     Regex = kz_json:get_value(<<"key">>, JObj),
     FlowId = kz_doc:id(JObj),
     case re:compile(Regex) of
-        {'ok', {re_pattern, Groups, _, _, _} = MP}
+        {'ok', {'re_pattern', Groups, _, _, _} = MP}
           when Groups =:= 0 ->
-            Pat = #pattern{flow_id=FlowId, regex = MP},
+            Pat = #pattern{flow_id=FlowId, regex=MP, has_groups='false'},
             compile_patterns(AccountId, JObjs, [Pat | Acc]);
         {'ok', MP} ->
             {'namelist', Names} = re:inspect(MP, 'namelist'),
-            Pat = #pattern{flow_id=FlowId, regex = MP, names = Names, has_groups = 'true'},
+            Pat = #pattern{flow_id=FlowId, regex=MP, names=Names, has_groups='true'},
             compile_patterns(AccountId, JObjs, [Pat | Acc]);
         _Err ->
             lager:debug("unexpected result compiling regular expression : ~p", [_Err]),

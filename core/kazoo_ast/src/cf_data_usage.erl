@@ -10,7 +10,7 @@
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
-%% -define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
+%%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt], [?LINE | Args])).
 
 -record(usage, {usages = [] %% places the Data is accessed
                ,data_var_name = 'Data' %% Tracks current var name
@@ -22,18 +22,45 @@
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
+    ensure_ref_dir(),
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
     'ok'.
 
 -spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
+    ensure_ref_dir(),
     to_schema_doc(M, process(M)).
+
+-spec ensure_ref_dir() -> 'ok'.
+ensure_ref_dir() ->
+    'ok' = filelib:ensure_dir(filename:join([code:lib_dir('callflow'), "doc", "ref", ".placeholder"])).
 
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_term:to_binary(M),
     Schema = kz_ast_util:schema_path(<<"callflows.", Base/binary, ".json">>),
     kz_ast_util:ensure_file_exists(Schema),
-    update_schema(Base, Schema, Usage).
+    update_schema(Base, Schema, Usage),
+    update_doc(Base, Schema).
+
+-define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+-define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
+
+update_doc(Base, Schema) ->
+    RefPath = filename:join([code:lib_dir('callflow'), "doc", "ref", <<Base/binary,".md">>]),
+    Contents = build_ref_doc(Base, Schema),
+
+    'ok' = file:write_file(RefPath, Contents).
+
+build_ref_doc(Base, Schema) ->
+    DocName = format_name(Base),
+    ["## ", DocName, "\n\n"
+    ,"### About ", DocName, "\n\n"
+    ,"### Schema\n\n"
+    ,kz_ast_util:schema_to_table(Schema)
+    ].
+
+format_name(Base) ->
+    kz_binary:join([kz_binary:ucfirst(Piece) || Piece <- binary:split(Base, <<"_">>)], <<" ">>).
 
 update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),
@@ -98,7 +125,7 @@ check_default(B) when is_binary(B) -> B;
 check_default(A) when is_atom(A) -> 'undefined';
 
 check_default(Default) ->
-    io:format("unchanged default ~p~n", [Default]),
+    ?DEBUG("unchanged default ~p~n", [Default]),
     Default.
 
 guess_type('get_value', <<_/binary>>) ->
@@ -250,7 +277,7 @@ process_expression(Acc, ?LC_BIN_GENERATOR(Pattern, Expr)) ->
     process_expressions(Acc, [Pattern, Expr]);
 
 process_expression(#usage{current_module=_M}=Acc, _Expression) ->
-    io:format("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
+    ?DEBUG("~nskipping expression in ~p: ~p~n", [_M, _Expression]),
     Acc.
 
 process_list(Acc, Head, Tail) ->
@@ -310,10 +337,13 @@ process_mfa(#usage{data_var_name=DataName}=Acc
            ,'kz_json', 'merge_recursive', [?VAR(DataName), _Arg]
            ) ->
     Acc;
-process_mfa(#usage{data_var_name=DataName}=Acc
-           ,'kz_json', 'set_value', [_Key, _Value, ?VAR(DataName)]
+process_mfa(#usage{data_var_name=DataName
+                  ,usages=Usages
+                  }=Acc
+           ,'kz_json'=M, 'set_value'=F, [Key, Value, ?VAR(DataName)]
            ) ->
-    Acc;
+    ?DEBUG("adding set_value usage ~p, ~p, ~p~n", [Key, Value, DataName]),
+    Acc#usage{usages=maybe_add_usage(Usages, {M, F, arg_to_key(Key), DataName, arg_to_key(Value)})};
 process_mfa(#usage{}=Acc
            ,'kz_json', _F, [{call, _, _, _}=_Key|_]
            ) ->
@@ -514,8 +544,8 @@ process_mfa_call(#usage{data_var_name=DataName
                     Acc#usage{visited=lists:usort([{M, F, As} | Vs])};
                 {M, AST} ->
                     ?DEBUG("  added AST for ~p~n", [M]),
-                    #module_ast{functions=NewFs
-                               } = kz_ast_util:add_module_ast(#module_ast{functions=Fs}, M, AST),
+                    #module_ast{functions=NewFs}
+                        = kz_ast_util:add_module_ast(#module_ast{functions=Fs}, M, AST),
                     process_mfa_call(Acc#usage{functions=NewFs}
                                     ,M, F, As, 'false'
                                     )
@@ -570,7 +600,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
         ?VAR('_') -> Acc;
         ?EMPTY_LIST -> Acc;
         ?VAR(DataName) -> process_clause_body(Acc, Body);
-        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args) -> process_clause_body(Acc, Body);
+        ?MOD_FUN_ARGS('kz_json', 'set_value', _Args)=_ClauseArgs ->
+            ?DEBUG("skipping set_value on ~p(~p)~n", [_Args, element(2, _ClauseArgs)]),
+            process_clause_body(Acc, Body);
         ?VAR(NewName) ->
             ?DEBUG("  data name changed from ~p to ~p~n", [DataName, NewName]),
             #usage{usages=ClauseUsages
@@ -593,9 +625,9 @@ process_mfa_clause(#usage{data_var_name=DataName}=Acc
                      ,visited=Vs
                      };
         _Unexpected ->
-            io:format("unexpected arg(~p) at ~p in ~p, expected ~p~n"
-                     ,[_Unexpected, DataIndex, Args, DataName]
-                     ),
+            ?DEBUG("unexpected arg(~p) at ~p in ~p, expected ~p~n"
+                  ,[_Unexpected, DataIndex, Args, DataName]
+                  ),
             Acc
     end.
 

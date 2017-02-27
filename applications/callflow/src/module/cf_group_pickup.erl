@@ -51,11 +51,11 @@ handle(Data, Call) ->
 
 -spec maybe_allowed_to_intercept(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_allowed_to_intercept(Data, Call) ->
-    case kz_json:get_value(<<"approved_device_id">>, Data) of
+    case kz_json:get_ne_binary_value(<<"approved_device_id">>, Data) of
         'undefined' ->
-            case kz_json:get_value(<<"approved_user_id">>, Data) of
+            case kz_json:get_ne_binary_value(<<"approved_user_id">>, Data) of
                 'undefined' ->
-                    case kz_json:get_value(<<"approved_group_id">>, Data) of
+                    case kz_json:get_ne_binary_value(<<"approved_group_id">>, Data) of
                         'undefined' -> 'true';
                         GroupId -> maybe_belongs_to_group(GroupId, Call)
                     end;
@@ -109,10 +109,10 @@ sort_channels(Channels, MyUUID, MyMediaServer) ->
     sort_channels(Channels, MyUUID, MyMediaServer, {[], []}).
 sort_channels([], _MyUUID, _MyMediaServer, Acc) -> Acc;
 sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
-    lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_value(<<"uuid">>, Channel)
+    lager:debug("channel: c: ~s a: ~s n: ~s oleg: ~s", [kz_json:get_ne_binary_value(<<"uuid">>, Channel)
                                                        ,kz_json:is_true(<<"answered">>, Channel)
-                                                       ,kz_json:get_value(<<"node">>, Channel)
-                                                       ,kz_json:get_value(<<"other_leg">>, Channel)
+                                                       ,kz_json:get_ne_binary_value(<<"node">>, Channel)
+                                                       ,kz_json:get_ne_binary_value(<<"other_leg">>, Channel)
                                                        ]),
     case kz_json:is_true(<<"answered">>, Channel) of
         'true' ->
@@ -124,9 +124,9 @@ sort_channels([Channel|Channels], MyUUID, MyMediaServer, Acc) ->
 -spec maybe_add_unanswered_leg(kz_json:objects(), ne_binary(), ne_binary(), {ne_binaries(), ne_binaries()}, kz_json:object()) ->
                                       {ne_binaries(), ne_binaries()}.
 maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, Channel) ->
-    case kz_json:get_value(<<"node">>, Channel) of
+    case kz_json:get_ne_binary_value(<<"node">>, Channel) of
         MyMediaServer ->
-            case kz_json:get_value(<<"uuid">>, Channel) of
+            case kz_json:get_ne_binary_value(<<"uuid">>, Channel) of
                 MyUUID ->
                     sort_channels(Channels, MyUUID, MyMediaServer, Acc);
                 _UUID ->
@@ -138,7 +138,7 @@ maybe_add_unanswered_leg(Channels, MyUUID, MyMediaServer, {Local, Remote}=Acc, C
 
 -spec maybe_add_other_leg(kz_json:object(), ne_binaries()) -> ne_binaries().
 maybe_add_other_leg(Channel, Legs) ->
-    case kz_json:get_value(<<"other_leg">>, Channel) of
+    case kz_json:get_ne_binary_value(<<"other_leg">>, Channel) of
         'undefined' -> Legs;
         Leg -> [Leg | Legs]
     end.
@@ -179,10 +179,10 @@ wait_for_pickup(Call) ->
                           {'error', 'failed' | 'timeout'} |
                           'ok'.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
-    lager:debug("error in dialplan: ~s", [kz_json:get_value(<<"Error-Message">>, Evt)]),
+    lager:debug("error in dialplan: ~s", [kz_json:get_ne_binary_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};
 pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
-    lager:debug("channel bridged to ~s", [kz_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
+    lager:debug("channel bridged to ~s", [kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, _Evt)]);
 pickup_event(Call, _Type, _Evt) ->
     lager:debug("unhandled evt ~p", [_Type]),
     wait_for_pickup(Call).
@@ -212,11 +212,11 @@ find_channels(DeviceIds) ->
 -spec find_sip_endpoints(kz_json:object(), kapps_call:call()) ->
                                 ne_binaries().
 find_sip_endpoints(Data, Call) ->
-    case kz_json:get_value(<<"device_id">>, Data) of
+    case kz_json:get_ne_binary_value(<<"device_id">>, Data) of
         'undefined' ->
-            case kz_json:get_value(<<"user_id">>, Data) of
+            case kz_json:get_ne_binary_value(<<"user_id">>, Data) of
                 'undefined' ->
-                    find_sip_users(kz_json:get_value(<<"group_id">>, Data), Call);
+                    find_sip_users(kz_json:get_ne_binary_value(<<"group_id">>, Data), Call);
                 UserId -> find_user_endpoints([UserId], [], Call)
             end;
         DeviceId -> [DeviceId]
@@ -245,7 +245,7 @@ find_group_endpoints(GroupId, Call) ->
 find_endpoints(Ids, GroupEndpoints, Call) ->
     {DeviceIds, UserIds} =
         lists:partition(fun(Id) ->
-                                kz_json:get_value([Id, <<"type">>], GroupEndpoints) =:= <<"device">>
+                                kz_json:get_ne_binary_value([Id, <<"type">>], GroupEndpoints) =:= <<"device">>
                         end, Ids),
     find_user_endpoints(UserIds, lists:sort(DeviceIds), Call).
 

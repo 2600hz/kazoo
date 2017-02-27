@@ -4,7 +4,17 @@
     "description": "Validator for the do_not_disturb callflow's data object",
     "properties": {
         "action": {
-            "description": ""
+            "description": "What action to perform",
+            "enum": [
+                "activate",
+                "deactivate",
+                "toggle"
+            ],
+            "type": "string"
+        },
+        "id": {
+            "description": "Document ID on which to update DND settings",
+            "type": "string"
         }
     },
     "required": true,

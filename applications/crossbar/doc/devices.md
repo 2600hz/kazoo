@@ -108,6 +108,8 @@ Key | Description | Type | Default | Required
 
 ##### dialplans
 
+Permit local dialing by converting the dialed number to a routable form
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `system` | List of system dial plans | `array()` |   | `false`

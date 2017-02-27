@@ -2,7 +2,12 @@
     "$schema": "http://json-schema.org/draft-03/schema#",
     "_id": "callflows.callflow",
     "description": "Validator for the callflow callflow's data object",
-    "properties": {},
+    "properties": {
+        "id": {
+            "description": "The Callflow ID to branch to",
+            "type": "string"
+        }
+    },
     "required": true,
     "type": "object"
 }

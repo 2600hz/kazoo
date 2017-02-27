@@ -5,12 +5,20 @@
     "properties": {
         "duration": {
             "default": 0,
-            "description": "",
+            "description": "How long to pause before continuing the callflow",
+            "maximum": 86400000,
+            "minimum": 0,
             "type": "integer"
         },
         "unit": {
             "default": "s",
-            "description": "",
+            "description": "What time unit is 'duration' in",
+            "enum": [
+                "ms",
+                "s",
+                "m",
+                "h"
+            ],
             "type": "string"
         }
     },

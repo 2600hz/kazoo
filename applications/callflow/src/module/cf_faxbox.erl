@@ -51,4 +51,7 @@ lookup_fax_option(Call, Data) ->
 
 -spec get_faxbox_id(kz_json:object()) -> api_binary().
 get_faxbox_id(JObj) ->
-    kz_json:get_first_defined([<<"id">>, <<"faxbox_id">>], JObj).
+    case kz_json:get_ne_binary_value(<<"id">>, JObj) of
+        'undefined' -> kz_json:get_ne_binary_value(<<"faxbox_id">>, JObj);
+        Id -> Id
+    end.

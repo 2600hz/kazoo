@@ -3,10 +3,27 @@
     "_id": "callflows.faxbox",
     "description": "Validator for the faxbox callflow's data object",
     "properties": {
+        "faxbox_id": {
+            "description": "ID of the faxbox",
+            "type": "string"
+        },
+        "id": {
+            "description": "ID of the faxbox",
+            "type": "string"
+        },
         "media": {
             "properties": {
                 "fax_option": {
-                    "description": ""
+                    "description": "Caller flag for T38 settings",
+                    "enum": [
+                        "auto",
+                        true,
+                        false
+                    ],
+                    "type": [
+                        "string",
+                        "boolean"
+                    ]
                 }
             },
             "type": "object"

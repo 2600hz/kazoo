@@ -21,8 +21,8 @@
 
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
-    NewCIDName = kz_json:get_ne_value(<<"caller_id_name">>, Data, <<>>),
-    NewCIDNumber = kz_json:get_ne_value(<<"caller_id_number">>, Data, <<>>),
+    NewCIDName = kz_json:get_ne_binary_value(<<"caller_id_name">>, Data, <<>>),
+    NewCIDNumber = kz_json:get_ne_binary_value(<<"caller_id_number">>, Data, <<>>),
 
     lager:info("update with name: ~s num: ~s", [NewCIDName, NewCIDNumber]),
 

@@ -31,8 +31,6 @@
                  ,keep_logged_in_elsewhere = 'false' :: boolean()
                  ,owner_id :: api_binary()
                  ,endpoint_ids = [] :: ne_binaries()
-                 ,jobj = kz_json:new() :: kz_json:object()
-                 ,account_db :: ne_binary()
                  ,interdigit_timeout = kapps_call_command:default_interdigit_timeout() :: pos_integer()
                  }).
 -type hotdesk() :: #hotdesk{}.
@@ -45,21 +43,26 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Action = kz_json:get_value(<<"action">>, Data),
+    Action = kz_json:get_ne_binary_value(<<"action">>, Data),
 
     case get_hotdesk_profile(hotdesk_id(Data, Action, Call), Data, Call) of
-        #hotdesk{}=Hotdesk -> handle_action(Action, Hotdesk, Call);
-        {'error', _} -> cf_exe:continue(Call)
+        {'error', _} -> cf_exe:continue(Call);
+        Hotdesk -> handle_action(Action, Hotdesk, Call)
     end.
 
 hotdesk_id(Data, <<"logout">>, Call) ->
-    case kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call) of
-        [] -> kz_doc:id(Data);
-        [Id] -> kz_doc:id(Data, Id);
-        [_|_] -> kz_doc:id(Data)
+    UserId = kz_json:get_ne_binary_value(<<"id">>, Data),
+
+    case UserId =:= 'undefined'
+        andalso kz_attributes:owner_ids(kapps_call:authorizing_id(Call), Call)
+    of
+        'false' -> UserId;
+        [Id] -> Id;
+        [] -> UserId;
+        [_|_] -> UserId
     end;
 hotdesk_id(Data, _, _) ->
-    kz_doc:id(Data).
+    kz_json:get_ne_binary_value(<<"id">>, Data).
 
 -spec handle_action(ne_binary(), hotdesk(), kapps_call:call()) -> 'ok'.
 handle_action(<<"bridge">>, #hotdesk{enabled='false'}, Call) ->
@@ -328,7 +331,7 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
     case kz_datamgr:get_results(AccountDb, <<"attributes/hotdesk_id">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:info("found hotdesk id ~s", [HotdeskId]),
-            from_json(kz_json:get_value(<<"doc">>, JObj), Data, Call);
+            from_json(kz_json:get_json_value(<<"doc">>, JObj), Data, Call);
         _Else ->
             lager:info("failed to load hotdesk id ~s", [HotdeskId]),
             _ = kapps_call_command:play(<<"hotdesk-invalid_entry">>, Call),
@@ -338,7 +341,7 @@ lookup_hotdesk_id(HotdeskId, Data, Call) ->
 -spec from_json(kz_json:object(), kz_json:object(), kapps_call:call()) -> hotdesk().
 from_json(JObj, Data, Call) ->
     OwnerId = kz_doc:id(JObj),
-    Hotdesk =  kz_json:get_value(<<"hotdesk">>, JObj),
+    Hotdesk =  kz_json:get_json_value(<<"hotdesk">>, JObj),
     lager:info("creating hotdesk profile from ~s", [OwnerId]),
     #hotdesk{hotdesk_id = kz_doc:id(Hotdesk)
             ,enabled = kz_json:is_true(<<"enabled">>, Hotdesk)

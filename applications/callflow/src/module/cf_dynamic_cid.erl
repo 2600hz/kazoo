@@ -58,7 +58,7 @@
 -spec handle(kz_json:object(), kapps_call:call(), api_binary(), api_binary()) -> 'ok'.
 handle(Data, Call) ->
     CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
-    Action = kz_json:get_value(<<"action">>, Data),
+    Action = kz_json:get_ne_binary_value(<<"action">>, Data),
     handle(Data, Call, Action, CaptureGroup).
 
 handle(Data, Call, <<"list">>, ?NE_BINARY = _CaptureGroup) ->
@@ -138,7 +138,7 @@ proceed_with_call(NewCallerIdName, NewCallerIdNumber, Dest, Data, Call) ->
 %% request, to and callee_number
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), api_binary()) -> 'ok'.
+-spec update_call(kapps_call:call(), ne_binary(), api_ne_binary()) -> kapps_call:call().
 update_call(Call, CIDNumber, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -154,7 +154,7 @@ update_call(Call, CIDNumber, CaptureGroup) ->
 %% @doc Same as update_call/3, but also sets caller id name
 %% @end
 %%--------------------------------------------------------------------
--spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
+-spec update_call(kapps_call:call(), ne_binary(), ne_binary(), api_ne_binary()) -> kapps_call:call().
 update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
     Updates = [{fun kapps_call:kvs_store/3, 'dynamic_cid', CIDNumber}
               ,{fun kapps_call:set_caller_id_number/2, CIDNumber}
@@ -175,7 +175,7 @@ update_call(Call, CIDNumber, CIDName, CaptureGroup) ->
 %% @doc If CaptureGroup exists correct request, to and callee_id_number
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_strip_features_code(kapps_call:call(), api_binary()) -> kapps_call:call().
+-spec maybe_strip_features_code(kapps_call:call(), api_ne_binary()) -> kapps_call:call().
 maybe_strip_features_code(Call, 'undefined') ->
     cf_exe:set_call(Call);
 maybe_strip_features_code(Call, CaptureGroup) ->
@@ -212,7 +212,7 @@ maybe_route_to_callflow(Data, Call, Number) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_restrict_call(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object()) -> 'ok'.
+-spec maybe_restrict_call(kz_json:object(), kapps_call:call(), ne_binary(), kzd_callflow:doc()) -> 'ok'.
 maybe_restrict_call(Data, Call, Number, Flow) ->
     case should_restrict_call(Data, Call, Number) of
         'true' ->
@@ -222,7 +222,7 @@ maybe_restrict_call(Data, Call, Number, Flow) ->
             _ = kapps_call_command:queued_hangup(Call),
             'ok';
         'false' ->
-            cf_exe:branch(kz_json:get_value(<<"flow">>, Flow), Call)
+            cf_exe:branch(kzd_callflow:flow(Flow), Call)
     end.
 
 %%--------------------------------------------------------------------
@@ -252,7 +252,7 @@ should_restrict_call(Call, Number) ->
         {'ok', JObj} ->
             Classification = knm_converters:classify(Number),
             lager:info("classified number as ~s", [Classification]),
-            kz_json:get_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
+            kz_json:get_ne_binary_value([<<"call_restriction">>, Classification, <<"action">>], JObj) =:= <<"deny">>
     end.
 
 %%--------------------------------------------------------------------
@@ -266,7 +266,7 @@ collect_cid_number(Data, Call) ->
     Prompts = DynamicCID#dynamic_cid.prompts,
     _ = kapps_call_command:b_play(<<"silence_stream://100">>, Call),
 
-    Media = case kz_json:get_ne_value(<<"media_id">>, Data) of
+    Media = case kz_json:get_ne_binary_value(<<"media_id">>, Data) of
                 'undefined' -> Prompts#prompts.default_prompt;
                 Else -> Else
             end,
@@ -276,9 +276,9 @@ collect_cid_number(Data, Call) ->
     DefaultRegex = DynamicCID#dynamic_cid.default_whitelist,
     DefaultCID = kapps_call:caller_id_number(Call),
 
-    Min = kz_json:get_ne_value(<<"min_digits">>, Data, DefaultMin),
-    Max = kz_json:get_ne_value(<<"max_digits">>, Data, DefaultMax),
-    Regex = kz_json:get_ne_value(<<"whitelist_regex">>, Data, DefaultRegex),
+    Min = kz_json:get_integer_value(<<"min_digits">>, Data, DefaultMin),
+    Max = kz_json:get_integer_value(<<"max_digits">>, Data, DefaultMax),
+    Regex = kz_json:get_ne_binary_value(<<"whitelist_regex">>, Data, DefaultRegex),
 
     Interdigit = kz_json:get_integer_value(<<"interdigit_timeout">>
                                           ,Data
@@ -317,7 +317,7 @@ collect_cid_number(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec get_static_cid_entry(kz_json:object(), kapps_call:call()) -> cid().
 get_static_cid_entry(Data, Call) ->
-    case kz_json:get_ne_value(<<"caller_id">>, Data) of
+    case kz_json:get_json_value(<<"caller_id">>, Data) of
         'undefined' ->
             maybe_set_default_cid('undefined', 'undefined', Call);
         NewCallerId ->
@@ -334,7 +334,7 @@ get_static_cid_entry(Data, Call) ->
 %%--------------------------------------------------------------------
 -spec get_list_entry(kz_json:object(), kapps_call:call()) -> list_cid_entry().
 get_list_entry(Data, Call) ->
-    ListId = kz_json:get_ne_value(<<"id">>, Data),
+    ListId = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountDb = kapps_call:account_db(Call),
 
     case kz_datamgr:open_cache_doc(AccountDb, ListId) of
@@ -347,18 +347,18 @@ get_list_entry(Data, Call) ->
             E
     end.
 
--spec find_key_and_dest(kz_json:object(), kz_json:object(), kapps_call:call()) -> {binary(), binary()}.
+-spec find_key_and_dest(kz_json:object(), kz_json:object(), kapps_call:call()) -> {ne_binary(), ne_binary()}.
 find_key_and_dest(ListJObj, Data, Call) ->
-    case kz_json:get_value(<<"idx_name">>, Data) of
+    case kz_json:get_ne_binary_value(<<"idx_name">>, Data) of
         'undefined' -> find_key_and_dest(ListJObj, Call);
         Idx ->
             Groups = kapps_call:kvs_fetch('cf_capture_groups', Call),
-            CIDKey = kz_json:get_value(Idx, Groups),
+            CIDKey = kz_json:get_ne_binary_value(Idx, Groups),
             Dest = kapps_call:kvs_fetch('cf_capture_group', Call),
             {CIDKey, Dest}
     end.
 
--spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {binary(), binary()}.
+-spec find_key_and_dest(kz_json:object(), kapps_call:call()) -> {ne_binary(), ne_binary()}.
 find_key_and_dest(ListJObj, Call) ->
     LengthDigits = kz_json:get_integer_value(<<"length">>, ListJObj, 2),
     lager:debug("digit length to limit lookup key in number: ~p", [LengthDigits]),
@@ -366,10 +366,10 @@ find_key_and_dest(ListJObj, Call) ->
     <<CIDKey:LengthDigits/binary, Dest/binary>> = CaptureGroup,
     {CIDKey, Dest}.
 
--spec get_new_caller_id(binary(), kz_json:object(), kapps_call:call()) -> cid().
+-spec get_new_caller_id(kz_json:key(), kz_json:object(), kapps_call:call()) -> cid().
 get_new_caller_id(CIDKey, ListJObj, Call) ->
-    JObj = kz_json:get_ne_value(<<"entries">>, ListJObj, kz_json:new()),
-    case kz_json:get_value(CIDKey, JObj) of
+    JObj = kz_json:get_json_value(<<"entries">>, ListJObj, kz_json:new()),
+    case kz_json:get_json_value(CIDKey, JObj) of
         'undefined' ->
             maybe_set_default_cid('undefined', 'undefined', Call);
         NewCallerId ->
@@ -380,9 +380,9 @@ get_new_caller_id(CIDKey, ListJObj, Call) ->
 
 -spec get_lists_entry(kz_json:object(), kapps_call:call()) -> list_cid_entry().
 get_lists_entry(Data, Call) ->
-    ListId = kz_json:get_ne_value(<<"id">>, Data),
+    ListId = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountDb = kapps_call:account_db(Call),
-    case kz_datamgr:get_results(AccountDb,<<"lists/entries">>,[{'key', ListId}]) of
+    case kz_datamgr:get_results(AccountDb, <<"lists/entries">>, [{'key', ListId}]) of
         {'ok', Entries} ->
             CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
             <<CIDKey:2/binary, Dest/binary>> = CaptureGroup,

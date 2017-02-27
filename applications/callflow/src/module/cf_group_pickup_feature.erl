@@ -65,7 +65,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     Number = kapps_call:kvs_fetch('cf_capture_group', Call),
-    PickupType = kz_json:get_value(<<"type">>, Data),
+    PickupType = kz_json:get_ne_binary_value(<<"type">>, Data),
     case build_pickup_params(Number, PickupType, Call) of
         {'ok', Params} ->
             cf_group_pickup:handle(kz_json:from_list(Params), Call);
@@ -93,9 +93,9 @@ build_pickup_params(Number, <<"extension">>, Call) ->
     AccountId = kapps_call:account_id(Call),
     case cf_flow:lookup(Number, AccountId) of
         {'ok', FlowDoc, 'false'} ->
-            Data = kz_json:get_value([<<"flow">>, <<"data">>], FlowDoc),
-            Module = kz_json:get_value([<<"flow">>, <<"module">>], FlowDoc),
-            params_from_data(Module, Data,Call);
+            Data = kz_json:get_json_value([<<"flow">>, <<"data">>], FlowDoc),
+            Module = kz_json:get_ne_binary_value([<<"flow">>, <<"module">>], FlowDoc),
+            params_from_data(Module, Data, Call);
         {'ok', _FlowDoc, 'true'} ->
             {'error', <<"no callflow with extension ", Number/binary>>};
         {'error', _} = E -> E
@@ -109,14 +109,14 @@ build_pickup_params(_, Other, _) ->
                               {'ok', kz_proplist()} |
                               {'error', ne_binary()}.
 params_from_data(<<"user">>, Data, _Call) ->
-    EndpointId = kz_doc:id(Data),
+    EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"user_id">>, EndpointId}]};
 params_from_data(<<"device">>, Data, _Call) ->
-    EndpointId = kz_doc:id(Data),
+    EndpointId = kz_json:get_ne_binary_value(<<"id">>, Data),
     {'ok', [{<<"device_id">>, EndpointId}]};
 params_from_data(<<"ring_group">>, Data, _Call) ->
-    [Endpoint |_Endpoints] = kz_json:get_value(<<"endpoints">>, Data, []),
-    EndpointType = kz_json:get_value(<<"endpoint_type">>, Endpoint),
+    [Endpoint |_Endpoints] = kz_json:get_list_value(<<"endpoints">>, Data, []),
+    EndpointType = kz_json:get_ne_binary_value(<<"endpoint_type">>, Endpoint),
     {'ok', [{<<EndpointType/binary,"_id">>
             ,kz_doc:id(Endpoint)}
            ]};

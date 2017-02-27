@@ -5,15 +5,20 @@
     "properties": {
         "channel": {
             "default": "a",
-            "description": "",
+            "description": "Which channel to set the variable on",
+            "enum": [
+                "a",
+                "both"
+            ],
             "type": "string"
         },
         "value": {
-            "description": "",
+            "description": "The value to set 'variable'",
             "type": "string"
         },
         "variable": {
-            "description": ""
+            "description": "The variable name to set on the leg(s)",
+            "type": "string"
         }
     },
     "required": true,

@@ -4,22 +4,28 @@
     "description": "Validator for the group_pickup callflow's data object",
     "properties": {
         "approved_device_id": {
-            "description": ""
+            "description": "Restrict calling device to Device",
+            "type": "string"
         },
         "approved_group_id": {
-            "description": ""
+            "description": "Restrict calling device to Group",
+            "type": "string"
         },
         "approved_user_id": {
-            "description": ""
+            "description": "Restrict calling device to User",
+            "type": "string"
         },
         "device_id": {
-            "description": ""
+            "description": "Device to pickup",
+            "type": "string"
         },
         "group_id": {
-            "description": ""
+            "description": "Group in which to find a call to pickup",
+            "type": "string"
         },
         "user_id": {
-            "description": ""
+            "description": "User in which to find a call to pickup",
+            "type": "string"
         }
     },
     "required": true,

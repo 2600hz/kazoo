@@ -8,7 +8,7 @@ for script in $(ls -p | grep -v / | grep -v "README.md"); do
     line=$(grep $script "README.md")
     if [ $? -eq 1 ]; then
        exit_signal=1
-       echo "$script is not documented!"
+       echo "./scripts/$script is not documented!"
     fi
 done
 

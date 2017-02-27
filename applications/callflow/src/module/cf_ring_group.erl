@@ -65,10 +65,10 @@ repeat(_Data, _Call, _N, 'fail') ->
 -spec attempt_endpoints(kz_json:objects(), kz_json:object(), kapps_call:call()) ->
                                'stop' | 'fail' | 'continue'.
 attempt_endpoints(Endpoints, Data, Call) ->
-    FailOnSingleReject = kz_json:get_value(<<"fail_on_single_reject">>, Data, 'undefined'),
+    FailOnSingleReject = kz_json:is_true(<<"fail_on_single_reject">>, Data, 'undefined'),
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, ?DEFAULT_TIMEOUT_S),
     Strategy = freeswitch_strategy(Data),
-    Ringback = kz_json:get_value(<<"ringback">>, Data),
+    Ringback = kz_json:get_ne_binary_value(<<"ringback">>, Data),
     IgnoreForward = kz_json:get_binary_boolean(<<"ignore_forward">>, Data, <<"true">>),
 
     Command = [{<<"Application-Name">>, <<"bridge">>}
@@ -142,7 +142,7 @@ start_builder(EndpointId, Member, Call) ->
 
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
-    Members = kz_json:get_value(<<"endpoints">>, Data, []),
+    Members = kz_json:get_list_value(<<"endpoints">>, Data, []),
     ResolvedEndpoints = resolve_endpoint_ids(Members, [], Data, Call),
 
     FilteredEndpoints = [{Weight, {Id, kz_json:set_value(<<"source">>, kz_term:to_binary(?MODULE), Member)}}
@@ -178,7 +178,7 @@ resolve_endpoint_ids(Members, EndpointIds, Data, Call) ->
                                  endpoint_intermediates().
 resolve_endpoint_id(Member, EndpointIds, Data, Call) ->
     Id = kz_doc:id(Member),
-    Type = kz_json:get_value(<<"endpoint_type">>, Member, <<"device">>),
+    Type = kz_json:get_ne_binary_value(<<"endpoint_type">>, Member, <<"device">>),
     Weight = group_weight(Member, 20),
     case kz_term:is_empty(Id)
         orelse lists:keymember(Id, 2, EndpointIds)
@@ -236,18 +236,17 @@ maybe_order_group_members(Weight, Member, JObj, Data) ->
 -spec unordered_group_members(group_weight(), kz_json:object(), kz_json:object()) ->
                                      kz_json:objects().
 unordered_group_members(Weight, Member, JObj) ->
-    Endpoints = kz_json:get_ne_value(<<"endpoints">>, JObj, kz_json:new()),
-    kz_json:foldl(
-      fun(Key, Endpoint, Acc) ->
-              [create_group_member(Key, Endpoint, Weight, Member) | Acc]
-      end
+    Endpoints = kz_json:get_json_value(<<"endpoints">>, JObj, kz_json:new()),
+    kz_json:foldl(fun(Key, Endpoint, Acc) ->
+                          [create_group_member(Key, Endpoint, Weight, Member) | Acc]
+                  end
                  ,[]
                  ,Endpoints
-     ).
+                 ).
 
 -spec order_group_members(group_weight(), kz_json:object(), kz_json:object()) -> kz_json:objects().
 order_group_members(GroupWeight, Member, JObj) ->
-    Endpoints = kz_json:get_ne_value(<<"endpoints">>, JObj, kz_json:new()),
+    Endpoints = kz_json:get_json_value(<<"endpoints">>, JObj, kz_json:new()),
     GroupMembers =
         kz_json:foldl(
           fun(Key, Endpoint, Acc) ->
@@ -273,17 +272,16 @@ order_group_member_fold(Key, Endpoint, Acc, GroupWeight, Member) ->
 -spec create_group_member(ne_binary(), kz_json:object(), group_weight(), kz_json:object()) ->
                                  kz_json:object().
 create_group_member(Key, Endpoint, GroupWeight, Member) ->
-    DefaultDelay = kz_json:get_value(<<"delay">>, Member),
-    DefaultTimeout = kz_json:get_value(<<"timeout">>, Member),
-    kz_json:set_values(
-      [{<<"endpoint_type">>, kz_json:get_value(<<"type">>, Endpoint)}
-      ,{<<"id">>, Key}
-      ,{<<"delay">>, kz_json:get_integer_value(<<"delay">>, Endpoint, DefaultDelay)}
-      ,{<<"timeout">>, kz_json:get_integer_value(<<"timeout">>, Endpoint, DefaultTimeout)}
-      ,{<<"weight">>, GroupWeight}
-      ]
+    DefaultDelay = kz_json:get_integer_value(<<"delay">>, Member),
+    DefaultTimeout = kz_json:get_integer_value(<<"timeout">>, Member),
+    kz_json:set_values([{<<"endpoint_type">>, kz_json:get_ne_binary_value(<<"type">>, Endpoint)}
+                       ,{<<"id">>, Key}
+                       ,{<<"delay">>, kz_json:get_integer_value(<<"delay">>, Endpoint, DefaultDelay)}
+                       ,{<<"timeout">>, kz_json:get_integer_value(<<"timeout">>, Endpoint, DefaultTimeout)}
+                       ,{<<"weight">>, GroupWeight}
+                       ]
                       ,Member
-     ).
+                      ).
 
 -spec weighted_random_sort(weighted_endpoints()) -> endpoints().
 weighted_random_sort(Endpoints) ->

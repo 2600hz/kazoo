@@ -55,11 +55,11 @@ update_parked_call_presence(SlotNumber, Slot, ParkedCallId, AccountId) ->
 
 -spec get_slot_call_id(kz_json:path(), kz_json:object()) -> api_binary().
 get_slot_call_id(SlotNumber, ParkedCalls) ->
-    kz_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
+    kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls).
 
 -spec get_slot(kz_json:path(), kz_json:object()) -> api_object().
 get_slot(SlotNumber, ParkedCalls) ->
-    kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls).
+    kz_json:get_json_value([<<"slots">>, SlotNumber], ParkedCalls).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -72,7 +72,7 @@ get_slot(SlotNumber, ParkedCalls) ->
 handle(Data, Call) ->
     ParkedCalls = get_parked_calls(Call),
     AutoSlotNumber = get_slot_number(ParkedCalls, kapps_call:kvs_fetch('cf_capture_group', Call)),
-    SlotNumber = kz_json:get_value(<<"slot">>, Data, AutoSlotNumber),
+    SlotNumber = kz_json:get_ne_binary_value(<<"slot">>, Data, AutoSlotNumber),
     ReferredTo = kapps_call:custom_channel_var(<<"Referred-To">>, <<>>, Call),
     PresenceType = presence_type(SlotNumber, Data, Call),
 
@@ -102,7 +102,7 @@ handle_nomatch(Data, Call, PresenceType, ParkedCalls, SlotNumber, ReferredTo) ->
 -spec handle_nomatch_with_empty_referred_to(kz_json:object(), kapps_call:call(), ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, SlotNumber) ->
     lager:info("call was the result of a direct dial"),
-    case kz_json:get_value(<<"action">>, Data, <<"park">>) of
+    case kz_json:get_ne_binary_value(<<"action">>, Data, <<"park">>) of
         <<"park">> ->
             lager:info("action is to park the call"),
             Slot = create_slot(<<>>, PresenceType, Call),
@@ -135,12 +135,12 @@ handle_nomatch_with_empty_referred_to(Data, Call, PresenceType, ParkedCalls, Slo
                       {'ok', 'channel_hungup'} |
                       {'error', 'slot_empty' | 'timeout' | 'failed'}.
 retrieve(SlotNumber, ParkedCalls, Call) ->
-    case kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
+    case kz_json:get_json_value([<<"slots">>, SlotNumber], ParkedCalls) of
         'undefined' ->
             lager:info("the parking slot ~s is empty, unable to retrieve caller", [SlotNumber]),
             {'error', 'slot_empty'};
         Slot ->
-            ParkedCall = kz_json:get_ne_value(<<"Call-ID">>, Slot),
+            ParkedCall = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
             lager:info("the parking slot ~s currently has a parked call ~s, attempting to retrieve caller", [SlotNumber, ParkedCall]),
             case maybe_retrieve_slot(SlotNumber, Slot, ParkedCall, Call) of
                 'ok' ->
@@ -189,10 +189,10 @@ wait_for_pickup(Call) ->
                           'ok' |
                           {'error', 'failed'}.
 pickup_event(_Call, {<<"error">>, <<"dialplan">>}, Evt) ->
-    lager:debug("error in dialplan: ~s", [kz_json:get_value(<<"Error-Message">>, Evt)]),
+    lager:debug("error in dialplan: ~s", [kz_json:get_ne_binary_value(<<"Error-Message">>, Evt)]),
     {'error', 'failed'};
 pickup_event(_Call, {<<"call_event">>,<<"CHANNEL_BRIDGE">>}, _Evt) ->
-    lager:debug("channel bridged to ~s", [kz_json:get_value(<<"Other-Leg-Call-ID">>, _Evt)]);
+    lager:debug("channel bridged to ~s", [kz_json:get_ne_binary_value(<<"Other-Leg-Call-ID">>, _Evt)]);
 pickup_event(Call, _Type, _Evt) ->
     wait_for_pickup(Call).
 
@@ -230,7 +230,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
         %% blind transfer and but the provided slot number is occupied
         {_, {'error', 'occupied'}} ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
-            case ringback_parker(kz_json:get_value(<<"Ringback-ID">>, Slot), SlotNumber, Data, Call) of
+            case ringback_parker(kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot), SlotNumber, Data, Call) of
                 'answered' -> cf_exe:transfer(Call);
                 'channel_hungup' -> cf_exe:stop(Call);
                 'failed' ->
@@ -240,7 +240,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             'ok';
         %% blind transfer and allowed to update the provided slot number
         {_, {'ok', _}} ->
-            ParkedCallId = kz_json:get_value(<<"Call-ID">>, Slot),
+            ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
             lager:info("call ~s parked in slot ~s", [ParkedCallId, SlotNumber]),
             _ = publish_parked(Call, SlotNumber),
             update_presence(Slot),
@@ -317,8 +317,8 @@ find_slot_number([A|[B|_]=Slots]) ->
                        {'ok', kz_json:object()} |
                        {'error', atom()}.
 save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
-    ParkedCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
-    ParkerCallId = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Parker-Call-ID">>], ParkedCalls),
+    ParkedCallId = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
+    ParkerCallId = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Parker-Call-ID">>], ParkedCalls),
     case kz_term:is_empty(ParkedCallId)
         orelse ParkedCallId =:= ParkerCallId
     of
@@ -341,7 +341,7 @@ save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                           {'error', atom()}.
 do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    CallId = kz_json:get_value(<<"Call-ID">>, Slot),
+    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
     case kapps_call_command:b_channel_status(CallId) of
         {'ok', _} ->
             lager:debug("attempting to update parked calls document for slot ~s with call ~s", [SlotNumber, CallId]),
@@ -364,9 +364,9 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                                     {'error', atom()}.
 maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    ExpectedParkedCall = kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
+    ExpectedParkedCall = kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], ParkedCalls),
     {'ok', JObj1} = kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME),
-    case kz_json:get_ne_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
+    case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
         ExpectedParkedCall ->
             UpdatedJObj = kz_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
             {'ok', JObj2}=Ok = kz_datamgr:save_doc(AccountDb, UpdatedJObj),
@@ -407,7 +407,7 @@ update_call_id(_, _, _, Loops) when Loops > 5 ->
 update_call_id(Replaces, ParkedCalls, Call, Loops) ->
     CallId = cf_exe:callid(Call),
     lager:info("update parked call id ~s with new call id ~s", [Replaces, CallId]),
-    Slots = kz_json:get_value(<<"slots">>, ParkedCalls, kz_json:new()),
+    Slots = kz_json:get_json_value(<<"slots">>, ParkedCalls, kz_json:new()),
     case find_slot_by_callid(Slots, Replaces) of
         {'ok', SlotNumber, Slot} ->
             lager:info("found parked call id ~s in slot ~s", [Replaces, SlotNumber]),
@@ -444,7 +444,7 @@ update_call_id(Replaces, ParkedCalls, Call, Loops) ->
 
 -spec maybe_set_ringback_id(kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_set_ringback_id(JObj, Call) ->
-    case kz_json:get_value(<<"Ringback-ID">>, JObj) =:= 'undefined'
+    case kz_json:get_ne_binary_value(<<"Ringback-ID">>, JObj) =:= 'undefined'
         andalso maybe_get_ringback_id(Call)
     of
         'undefined' -> JObj; %% no found ringback id
@@ -455,8 +455,8 @@ maybe_set_ringback_id(JObj, Call) ->
 
 -spec maybe_set_hold_media(kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_set_hold_media(JObj, Call) ->
-    RingbackId = kz_json:get_value(<<"Ringback-ID">>, JObj),
-    HoldMedia = kz_json:get_value(<<"Hold-Media">>, JObj),
+    RingbackId = kz_json:get_ne_binary_value(<<"Ringback-ID">>, JObj),
+    HoldMedia = kz_json:get_ne_binary_value(<<"Hold-Media">>, JObj),
     case RingbackId =/= 'undefined'
         andalso HoldMedia =:= 'undefined'
     of
@@ -501,11 +501,11 @@ find_slot_by_callid(Slots, CallId) ->
 find_slot_by_callid([], _, _) ->
     {'error', 'not_found'};
 find_slot_by_callid([SlotNumber|SlotNumbers], Slots, CallId) ->
-    Slot = kz_json:get_value(SlotNumber, Slots),
-    case kz_json:get_value(<<"Call-ID">>, Slot) of
+    Slot = kz_json:get_json_value(SlotNumber, Slots),
+    case kz_json:get_ne_binary_value(<<"Call-ID">>, Slot) of
         CallId -> {'ok', SlotNumber, Slot};
         _ ->
-            case kz_json:get_value(<<"Slot-Call-ID">>, Slot) of
+            case kz_json:get_ne_binary_value(<<"Slot-Call-ID">>, Slot) of
                 CallId -> {'ok', SlotNumber, Slot};
                 _ -> find_slot_by_callid(SlotNumbers, Slots, CallId)
             end
@@ -557,11 +557,11 @@ maybe_cleanup_slot(SlotNumber, Call, OldCallId) ->
     AccountDb   = kapps_call:account_db(Call),
 
     lager:info("maybe cleaning up parking slot ~p with old call-id ~p", [SlotNumber, OldCallId]),
-    case kz_json:get_value([<<"slots">>, SlotNumber], ParkedCalls) of
+    case kz_json:get_json_value([<<"slots">>, SlotNumber], ParkedCalls) of
         'undefined' ->
             lager:info("slot not found, not doing anything");
         Slot ->
-            ParkedCallId = kz_json:get_ne_value(<<"Call-ID">>, Slot),
+            ParkedCallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
             maybe_cleanup_slot(SlotNumber, OldCallId, ParkedCallId, AccountDb)
     end.
 
@@ -585,12 +585,12 @@ maybe_cleanup_slot(_SlotNumber, _OldCallId, _NewCallId, _AccountDb) ->
 cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
     case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
         {'ok', JObj} ->
-            case kz_json:get_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
+            case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj) of
                 ParkedCallId ->
                     lager:info("delete parked call ~s in slot ~s", [ParkedCallId, SlotNumber]),
                     case kz_datamgr:save_doc(AccountDb, kz_json:delete_key([<<"slots">>, SlotNumber], JObj)) of
                         {'ok', _}=Ok ->
-                            Slot = kz_json:get_value([<<"slots">>, SlotNumber], JObj),
+                            Slot = kz_json:get_json_value([<<"slots">>, SlotNumber], JObj),
                             update_presence(<<"terminated">>, Slot),
                             Ok;
                         {'error', 'conflict'} -> cleanup_slot(SlotNumber, ParkedCallId, AccountDb);
@@ -615,8 +615,8 @@ cleanup_slot(SlotNumber, ParkedCallId, AccountDb) ->
 %%--------------------------------------------------------------------
 -spec wait_for_pickup(ne_binary(), kz_json:object(), kz_json:object(), kapps_call:call()) -> 'ok'.
 wait_for_pickup(SlotNumber, Slot, Data, Call) ->
-    RingbackId = kz_json:get_value(<<"Ringback-ID">>, Slot),
-    HoldMedia = kz_json:get_value(<<"Hold-Media">>, Slot),
+    RingbackId = kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot),
+    HoldMedia = kz_json:get_ne_binary_value(<<"Hold-Media">>, Slot),
     Timeout = case kz_term:is_empty(RingbackId) of
                   'true' -> 'infinity';
                   'false' -> ringback_timeout(Data, SlotNumber)
@@ -695,11 +695,11 @@ presence_type(SlotNumber, Data, Call) ->
 
 -spec slots_configuration(kz_json:object()) -> kz_json:object().
 slots_configuration(Data) ->
-    kz_json:get_value(<<"slots">>, Data, kz_json:new()).
+    kz_json:get_json_value(<<"slots">>, Data, kz_json:new()).
 
 -spec slot_configuration(kz_json:object(), ne_binary()) -> kz_json:object().
 slot_configuration(Data, SlotNumber) ->
-    kz_json:get_value(SlotNumber, slots_configuration(Data), kz_json:new()).
+    kz_json:get_json_value(SlotNumber, slots_configuration(Data), kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -749,7 +749,7 @@ wait_for_ringback(Fun, Timeout, Call) ->
             lager:info("completed successful bridge to the ringback device"),
             'answered';
         {'fail', JObj} ->
-            case kz_json:get_value(<<"Event-Name">>, JObj) of
+            case kz_api:event_name(JObj) of
                 <<"CHANNEL_DESTROY">> ->
                     lager:info("channel hungup during ringback"),
                     'channel_hungup';
@@ -769,21 +769,21 @@ expires(<<"terminated">>) -> 10.
 -spec update_presence(api_object()) -> 'ok'.
 update_presence('undefined') -> 'ok';
 update_presence(Slot) ->
-    update_presence(kz_json:get_value(?PRESENCE_TYPE_KEY, Slot, <<"early">>), Slot).
+    update_presence(kz_json:get_ne_binary_value(?PRESENCE_TYPE_KEY, Slot, <<"early">>), Slot).
 
 -spec update_presence(ne_binary(), api_object()) -> 'ok'.
 update_presence(_State, 'undefined') -> 'ok';
 update_presence(State, Slot) ->
-    PresenceUser = kz_json:get_value(<<"Presence-User">>, Slot),
-    PresenceRealm = kz_json:get_value(<<"Presence-Realm">>, Slot),
+    PresenceUser = kz_json:get_ne_binary_value(<<"Presence-User">>, Slot),
+    PresenceRealm = kz_json:get_ne_binary_value(<<"Presence-Realm">>, Slot),
     PresenceId = <<PresenceUser/binary, "@", PresenceRealm/binary>>,
     PresenceURI = <<"sip:", PresenceId/binary>>,
 
-    SwitchURI = kz_json:get_value(<<"Switch-URI">>, Slot),
-    CallId = kz_json:get_value(<<"Call-ID">>, Slot),
-    _SlotCallId = kz_json:get_value(<<"Slot-Call-ID">>, Slot),
-    ToUser = kz_json:get_value(<<"CID-Name">>, Slot),
-    To = kz_json:get_value(<<"CID-URI">>, Slot),
+    SwitchURI = kz_json:get_ne_binary_value(<<"Switch-URI">>, Slot),
+    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, Slot),
+    _SlotCallId = kz_json:get_ne_binary_value(<<"Slot-Call-ID">>, Slot),
+    ToUser = kz_json:get_ne_binary_value(<<"CID-Name">>, Slot),
+    To = kz_json:get_ne_binary_value(<<"CID-URI">>, Slot),
     Expires = expires(State),
 
     Command = props:filter_undefined(

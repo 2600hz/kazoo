@@ -50,7 +50,7 @@
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
     CallerIdNumber = kapps_call:caller_id_number(Call),
-    Regex = kz_json:get_value(<<"regex">>, Data, <<".*">>),
+    Regex = kz_json:get_ne_binary_value(<<"regex">>, Data, <<".*">>),
 
     lager:debug("comparing caller id ~s against regex ~s", [CallerIdNumber, Regex]),
 
@@ -124,9 +124,9 @@ is_callflow_child(Name, Call) ->
 %%--------------------------------------------------------------------
 -spec update_caller_identity(kz_json:object(), kapps_call:call()) -> 'ok'.
 update_caller_identity(Data, Call) ->
-    Name = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"name">>], Data),
-    Number = kz_json:get_ne_value([<<"caller_id">>, <<"external">>, <<"number">>], Data),
-    UserId =  kz_json:get_ne_value([<<"user_id">>], Data),
+    Name = kz_json:get_ne_binary_value([<<"caller_id">>, <<"external">>, <<"name">>], Data),
+    Number = kz_json:get_ne_binary_value([<<"caller_id">>, <<"external">>, <<"number">>], Data),
+    UserId =  kz_json:get_ne_binary_value([<<"user_id">>], Data),
     case is_valid_caller_identity(Name, Number, UserId) of
         'true' ->
             lager:info("setting caller id to ~s <~s>", [Number, Name]),

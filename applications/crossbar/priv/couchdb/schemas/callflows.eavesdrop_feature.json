@@ -3,8 +3,21 @@
     "_id": "callflows.eavesdrop_feature",
     "description": "Validator for the eavesdrop_feature callflow's data object",
     "properties": {
+        "approved_device_id": {
+            "description": "Restricts the calling device to this Device",
+            "type": "string"
+        },
+        "approved_group_id": {
+            "description": "Requires the calling device to be part of the Group",
+            "type": "string"
+        },
+        "approved_user_id": {
+            "description": "Requires the calling device to be part of the User",
+            "type": "string"
+        },
         "group_id": {
-            "description": ""
+            "description": "ID of the group/user/device to eavesdrop",
+            "type": "string"
         }
     },
     "required": true,

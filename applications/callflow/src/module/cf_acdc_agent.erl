@@ -183,9 +183,12 @@ send_new_status(Call, AgentId, Data, PubFun, Timeout) ->
                ]),
     PubFun(Update).
 
-presence_id(JObj) -> kz_device:presence_id(JObj).
-presence_state(JObj) ->
-    format_presence_state(kz_json:get_value(<<"presence_state">>, JObj)).
+-spec presence_id(kz_json:object()) -> api_ne_binary().
+presence_id(Data) -> kz_json:get_ne_binary_value(<<"presence_id">>, Data).
+
+-spec presence_state(kz_json:object()) -> api_ne_binary().
+presence_state(Data) ->
+    format_presence_state(kz_json:get_ne_binary_value(<<"presence_state">>, Data)).
 
 format_presence_state(<<"green">>) -> <<"terminated">>;
 format_presence_state(<<"terminated">> = T) -> T;

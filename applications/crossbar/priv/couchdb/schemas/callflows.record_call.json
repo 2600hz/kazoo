@@ -10,7 +10,7 @@
                 "start",
                 "stop"
             ],
-            "required": false,
+            "required": true,
             "type": "string"
         },
         "format": {

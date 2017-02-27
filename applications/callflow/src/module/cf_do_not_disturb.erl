@@ -39,7 +39,7 @@ handle(Data, Call) ->
             cf_exe:stop(Call);
         {'ok', #dnd{}=DND} ->
             _ = kapps_call_command:answer(Call),
-            Action = kz_json:get_value(<<"action">>, Data),
+            Action = kz_json:get_ne_binary_value(<<"action">>, Data),
             _ = maybe_execute_action(Action, DND, Call),
             cf_exe:continue(Call)
     end.
@@ -61,10 +61,10 @@ maybe_build_dnd_record(Data, Call) ->
 
 -spec maybe_get_data_id(ne_binary(), kz_json:object(), kapps_call:call()) -> kz_jobj_return().
 maybe_get_data_id(AccountDb, Data, Call) ->
-    Id = kz_doc:id(Data),
+    Id = kz_json:get_ne_binary_value(<<"id">>, Data),
     case maybe_get_doc(AccountDb, Id) of
         {'error', _} ->
-            lager:info("dnd feature callflow does not specify a document", []),
+            lager:info("dnd feature callflow does not specify a document"),
             maybe_get_owner(AccountDb, Call);
         {'ok', _}=Ok -> Ok
     end.
@@ -74,7 +74,7 @@ maybe_get_owner(AccountDb, Call) ->
     OwnerId = kapps_call:owner_id(Call),
     case maybe_get_doc(AccountDb, OwnerId) of
         {'error', _} ->
-            lager:info("dnd feature could not find the owner document", []),
+            lager:info("dnd feature could not find the owner document"),
             maybe_get_authorizing_device(AccountDb, Call);
         {'ok', _}=Ok -> Ok
     end.

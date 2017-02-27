@@ -196,8 +196,13 @@ apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 DOCS_ROOT=$(ROOT)/doc/mkdocs
-docs: docs-setup docs-build
+docs: docs-validate docs-setup docs-build
+
+docs-validate:
 	@$(ROOT)/scripts/check-scripts-readme.bash
+	@$(ROOT)/scripts/empty_schema_descriptions.bash
+
+docs-validate:
 
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py

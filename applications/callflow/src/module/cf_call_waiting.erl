@@ -62,7 +62,7 @@ handle(Data, Call) ->
                                              {'error', any()}.
 maybe_build_call_waiting_record(Data, Call) ->
     AccountDb = kapps_call:account_db(Call),
-    DocId = get_doc_id(kz_json:get_value(<<"scope">>, Data, <<"device">>), Call),
+    DocId = get_doc_id(kz_json:get_ne_binary_value(<<"scope">>, Data, <<"device">>), Call),
     case maybe_get_doc(AccountDb, DocId) of
         {'error', _}= _E -> _E;
         {'ok', JObj} ->
@@ -70,7 +70,7 @@ maybe_build_call_waiting_record(Data, Call) ->
             {'ok', #call_waiting{enabled = kz_json:is_true([<<"call_waiting">>, <<"enabled">>], JObj, 'true')
                                 ,jobj = JObj
                                 ,account_db = AccountDb
-                                ,action = kz_json:get_value(<<"action">>, Data, <<"toggle">>)
+                                ,action = kz_json:get_ne_binary_value(<<"action">>, Data, <<"toggle">>)
                                 }
             }
     end.
@@ -87,7 +87,7 @@ maybe_get_doc(_, 'undefined') ->
 maybe_get_doc('undefined', _) ->
     {'error', 'no_account_db'};
 maybe_get_doc(AccountDb, Id) ->
-    kz_datamgr:open_doc(AccountDb, Id).
+    kz_datamgr:open_cache_doc(AccountDb, Id).
 
 -spec maybe_execute_action(call_waiting(), kapps_call:call()) -> 'ok' | 'error'.
 maybe_execute_action(#call_waiting{action = Action}=CW, Call) ->

@@ -4,7 +4,14 @@
     "description": "Validator for the group_pickup_feature callflow's data object",
     "properties": {
         "type": {
-            "description": ""
+            "description": "The type of collection to pickup",
+            "enum": [
+                "group",
+                "user",
+                "device",
+                "extension"
+            ],
+            "type": "string"
         }
     },
     "required": true,

@@ -96,24 +96,24 @@
              ,cast_return/0
              ]).
 
--record(state, {current_msg_id :: ne_binary()
-               ,client_pid :: pid()
-               ,client_ref :: reference()
-               ,client_from :: {pid(), reference()} | 'relay'
-               ,client_vfun :: validate_fun()
+-record(state, {current_msg_id :: api_binary()
+               ,client_pid :: api_pid()
+               ,client_ref :: api_reference()
+               ,client_from :: api_pid_ref() | 'relay'
+               ,client_vfun :: validate_fun() | 'undefined'
                ,client_cfun = collect_until_timeout() :: collect_until_fun()
-               ,responses :: kz_json:objects()
-               ,neg_resp :: kz_json:object()
+               ,responses :: api_objects()
+               ,neg_resp :: api_object()
                ,neg_resp_count = 0 :: non_neg_integer()
                ,neg_resp_threshold = 1 :: pos_integer()
-               ,req_timeout_ref :: reference()
-               ,req_start_time :: kz_now()
-               ,callid :: ne_binary()
+               ,req_timeout_ref :: api_reference()
+               ,req_start_time :: kz_now() | 'undefined'
+               ,callid :: api_binary()
                ,pool_ref :: server_ref()
                ,defer_response :: api_object()
                ,queue :: api_binary()
                ,confirms = 'false' :: boolean()
-               ,flow = 'undefined' :: boolean() | 'undefined'
+               ,flow = 'undefined' :: api_boolean()
                ,acc = 'undefined' :: any()
                ,defer = 'undefined' :: 'undefined' | {any(), {pid(), reference()}}
                }).
@@ -589,7 +589,7 @@ handle_call({'request', ReqProp, PublishFun, VFun, Timeout}
                         ,client_ref = erlang:monitor('process', ClientPid)
                         ,client_from = From
                         ,client_vfun = VFun
-                        ,responses = 'undefined' % how we know not to collect many responses
+                        ,responses = 'undefined' % how we know not to collect any responses
                         ,neg_resp_count = 0
                         ,current_msg_id = MsgId
                         ,req_timeout_ref = start_req_timeout(Timeout)

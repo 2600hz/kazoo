@@ -57,14 +57,16 @@ handle(Data, Call) ->
         CF ->
             kapps_call_command:answer(Call),
             CaptureGroup = kapps_call:kvs_fetch('cf_capture_group', Call),
-            lager:debug("executing ~s", [kz_json:get_value(<<"action">>, Data)]),
 
-            CF1 = case kz_json:get_value(<<"action">>, Data) of
+            CF1 = case kz_json:get_ne_binary_value(<<"action">>, Data) of
                       <<"activate">> -> cf_activate(CF, CaptureGroup, Call);       %% Support for NANPA *72
                       <<"deactivate">> -> cf_deactivate(CF, Call);                 %% Support for NANPA *73
                       <<"update">> -> cf_update_number(CF, CaptureGroup, Call);    %% Support for NANPA *56
                       <<"toggle">> -> cf_toggle(CF, CaptureGroup, Call);
-                      <<"menu">> -> cf_menu(CF, CaptureGroup, Call)
+                      <<"menu">> -> cf_menu(CF, CaptureGroup, Call);
+                      _Action ->
+                          lager:info("improper action in Data: ~p", [_Action]),
+                          'undefined'
                   end,
             {'ok', _} = update_callfwd(CF1, Call),
             cf_exe:continue(Call)
@@ -220,14 +222,16 @@ cf_update_number(CF, CaptureGroup, _) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_callfwd(callfwd(), kapps_call:call()) ->
-                            {'ok', kz_json:object()} |
+                            {'ok', api_object()} |
                             {'error', atom()}.
+update_callfwd('undefined', _Call) -> {'ok', 'undefined'};
 update_callfwd(#callfwd{doc_id=Id
                        ,enabled=Enabled
                        ,number=Num
                        ,require_keypress=_RK
                        ,keep_caller_id=_KCI
-                       }=CF, Call) ->
+                       }=CF
+              ,Call) ->
     lager:info("updating call forwarding settings on ~s", [Id]),
     AccountDb = kapps_call:account_db(Call),
     {'ok', JObj} = kz_datamgr:open_doc(AccountDb, Id),

@@ -4,39 +4,50 @@
     "description": "Validator for the user callflow's data object",
     "properties": {
         "can_call_self": {
-            "description": "",
+            "description": "Toggle whether devices of this use can call each other",
             "type": "boolean"
         },
         "can_text_self": {
-            "description": "",
+            "description": "Toggle whether devices of this use can text each other",
             "type": "boolean"
         },
         "delay": {
             "default": 0,
-            "description": "",
+            "description": "How long to delay the endpoint(s) before bridging",
             "type": "integer"
         },
         "fail_on_single_reject": {
-            "description": ""
+            "description": "If any leg rejects the call, cancel all other legs",
+            "type": "boolean"
+        },
+        "id": {
+            "description": "User ID",
+            "type": "string"
         },
         "source": {
-            "description": ""
+            "description": "Source of the endpoint(s)",
+            "type": "string"
         },
         "static_invite": {
-            "description": ""
+            "description": "Override the SIP Username",
+            "type": "string"
         },
         "strategy": {
             "default": "simultaneous",
-            "description": "",
+            "description": "Ringing strategy for the endpoint(s)",
+            "enum": [
+                "simultaneous",
+                "single"
+            ],
             "type": "string"
         },
         "suppress_clid": {
-            "description": "",
+            "description": "Toggle whether to suppress caller ID",
             "type": "boolean"
         },
         "timeout": {
             "default": 20,
-            "description": "",
+            "description": "Timeout, in seconds, to wait for answer",
             "type": "integer"
         }
     },
