@@ -1,0 +1,23 @@
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.ring_group_toggle",
+    "description": "Validator for the ring_group_toggle callflow's data object",
+    "properties": {
+        "action": {
+            "description": "What the module should do. Options are 'login' and 'logout'",
+            "enum": [
+                "login",
+                "logout"
+            ],
+            "required": true,
+            "type": "string"
+        },
+        "callflow_id": {
+            "description": "The callflow containing the ring group to log in and out of",
+            "required": true,
+            "type": "string"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
