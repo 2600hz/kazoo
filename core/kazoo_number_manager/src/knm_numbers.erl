@@ -256,6 +256,8 @@ do_get_pn(Nums, Options, Error) ->
 %% @doc
 %% Attempts to create new numbers in DB or modify existing ones.
 %% Note: `assign_to' number option MUST be set.
+%% Note: creating numbers with `ported_in` option set to true will
+%%   attempt to create them with state in_service.
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
