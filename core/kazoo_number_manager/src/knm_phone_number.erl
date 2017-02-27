@@ -909,9 +909,6 @@ set_state(PN=#knm_phone_number{state = V}, V) -> PN;
 set_state(PN=#knm_phone_number{state = undefined}, State) ->
     true = is_state(State),
     PN#knm_phone_number{state = State};
-set_state(PN=#knm_phone_number{state = ?NUMBER_STATE_PORT_IN}, State=?NUMBER_STATE_IN_SERVICE) ->
-    lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
-    ?DIRTY(PN#knm_phone_number{state = State});
 set_state(PN, State) ->
     true = is_state(State),
     lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),

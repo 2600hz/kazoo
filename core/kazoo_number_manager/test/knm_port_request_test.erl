@@ -45,7 +45,7 @@ transition_port_from_port_in_test_() ->
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the local carrier module is being used"
-     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
+     ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify local number is not billable"
      ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
