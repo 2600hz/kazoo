@@ -226,6 +226,7 @@ matches([<<"#">>], []) -> 'true';
 matches([<<"#">>, <<"*">>], []) -> 'false';
 matches([<<"#">>, <<"*">>], [<<>>]) -> 'false';
 matches([<<"#">>, <<"*">>], [_]) -> 'true'; % match one item:  #.* matches foo
+matches([<<"#">>, <<"*">>, K],[_, K]) -> 'true';
 matches([<<"#">>], [_]) -> 'true';
 
 matches([<<"#">>, <<"#">> | Bs], Rs) ->
