@@ -195,7 +195,7 @@
                     },
                     "server": {
                         "description": "This resource gateway server",
-                        "maxLength": 64,
+                        "maxLength": 128,
                         "minLength": 1,
                         "required": true,
                         "type": "string"
