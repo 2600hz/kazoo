@@ -532,6 +532,8 @@ print_account_info(AccountDb, AccountId) ->
             io:format("  Realm: ~s~n", [kz_account:realm(JObj)]),
             io:format("  Enabled: ~s~n", [kz_account:is_enabled(JObj)]),
             io:format("  System Admin: ~s~n", [kz_account:is_superduper_admin(JObj)]);
+        {'error', not_found} ->
+            io:format("Account ID: ~s (~s) does not exist~n", [AccountId, AccountDb]);
         {'error', _} ->
             io:format("Account ID: ~s (~s)~n", [AccountId, AccountDb])
     end,

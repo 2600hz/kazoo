@@ -6,7 +6,6 @@
 %%% @contributors
 %%%   Luis Azedo
 %%%-------------------------------------------------------------------
-
 -module(fax_smtp).
 -behaviour(gen_smtp_server_session).
 
