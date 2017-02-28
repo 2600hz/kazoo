@@ -280,35 +280,35 @@
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(BW_EXISTING_JSON
        ,kz_json:from_list(
-          [{<<"_id">>, <<"+14122065197">>},
-           {?PVT_DB_NAME, <<"numbers%2F%2B1412">>},
-           {?PVT_FEATURES, kz_json:new()},
-           {?PVT_STATE, ?NUMBER_STATE_DISCOVERY},
-           {?PVT_RESERVE_HISTORY, []},
-           {?PVT_PORTED_IN, 'false'},
-           {?PVT_MODULE_NAME, <<"knm_bandwidth">>},
-           {?PVT_CARRIER_DATA
+          [{<<"_id">>, <<"+14122065197">>}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1412">>}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_STATE, ?NUMBER_STATE_DISCOVERY}
+          ,{?PVT_RESERVE_HISTORY, []}
+          ,{?PVT_PORTED_IN, 'false'}
+          ,{?PVT_MODULE_NAME, <<"knm_bandwidth">>}
+          ,{?PVT_CARRIER_DATA
            ,kz_json:from_list(
-              [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>},
-               {<<"ten_digit">>,<<"4122065197">>},
-               {<<"formatted_number">>,<<"1-412-206-5197">>},
-               {<<"e164">>,<<"+14122065197">>},
-               {<<"npa_nxx">>,<<"412206">>},
-               {<<"status">>,<<"Available">>},
-               {<<"rate_center">>
+              [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>}
+              ,{<<"ten_digit">>, <<"4122065197">>}
+              ,{<<"formatted_number">>, <<"1-412-206-5197">>}
+              ,{<<"e164">>, <<"+14122065197">>}
+              ,{<<"npa_nxx">>, <<"412206">>}
+              ,{<<"status">>, <<"Available">>}
+              ,{<<"rate_center">>
                ,kz_json:from_list(
-                  [{<<"name">>,<<"PITTSBURGH SUBURBAN ZONE 13">>},
-                   {<<"lata">>,<<"234">>},
-                   {<<"state">>,<<"PA">>}
+                  [{<<"name">>, <<"PITTSBURGH SUBURBAN ZONE 13">>}
+                  ,{<<"lata">>, <<"234">>}
+                  ,{<<"state">>, <<"PA">>}
                   ])
                }
               ])
-           },
-           {?PVT_MODIFIED, 63610268576},
-           {?PVT_CREATED, 63610268576},
-           {?PVT_TYPE,<<"number">>}]
-         )
-       ).
+           }
+          ,{?PVT_MODIFIED, 63610268576}
+          ,{?PVT_CREATED, 63610268576}
+          ,{?PVT_TYPE,<<"number">>}
+          ])).
 -else.
 
 -define(LOG_WARN(F,A), lager:warning(F,A)).
