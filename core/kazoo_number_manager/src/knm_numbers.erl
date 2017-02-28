@@ -628,6 +628,7 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
+-spec maybe_set_ported_in(t_pn()) -> t_pn().
 maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
     case knm_number_options:ported_in(Options) of
         false -> ok(PNs, T);
