@@ -454,6 +454,7 @@ versions_in_use() ->
     lists:foreach(fun print_cmd_version/1, Executables),
     no_return.
 
+-spec print_cmd_version(nonempty_string()) -> ok.
 print_cmd_version(Exe) ->
     Options = [exit_status
               ,use_stdio
@@ -463,6 +464,7 @@ print_cmd_version(Exe) ->
     Port = open_port({spawn_executable, Exe}, Options),
     listen_to_port(Port, Exe).
 
+-spec listen_to_port(port(), nonempty_string()) -> ok.
 listen_to_port(Port, Exe) ->
     receive
         {Port, {data, Str0}} ->
@@ -473,6 +475,7 @@ listen_to_port(Port, Exe) ->
         {Port, {exit_status, _}} -> no_executable(Exe)
     end.
 
+-spec find_commands(ne_binaries()) -> [nonempty_string()].
 find_commands(Cmds) ->
     Commands =
         lists:usort(
@@ -486,10 +489,12 @@ find_commands(Cmds) ->
           Exe =/= false
       ]).
 
+-spec no_executable(nonempty_string()) -> ok.
 no_executable(Exe) ->
     io:format("* ~s:\n\tERROR! missing executable\n", [Exe]),
     lager:error("missing executable: ~s", [Exe]).
 
+-spec cmd_to_executable(nonempty_string()) -> false | nonempty_string().
 cmd_to_executable("/"++_=Exe) -> Exe;
 cmd_to_executable(Cmd) ->
     case os:find_executable(Cmd) of
