@@ -1366,6 +1366,7 @@ should_filter(Val, FilterVal) ->
     try kz_json:unsafe_decode(FilterVal) of
         List when is_list(List) ->
             lists:member(Val, List);
+        Val -> 'true';
         _Data ->
             lager:debug("data is not a list: ~p", [_Data]),
             'false'
