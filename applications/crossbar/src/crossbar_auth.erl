@@ -197,7 +197,7 @@ log_failed_mfa_attempts(Claims, AuthConfig, Reason) ->
               ]
              )
            ),
-    _ = kazoo_modb:save_doc(ModDb, Doc, [{'publish_change_notice', 'false'}]),
+    _ = kazoo_modb:save_doc(ModDb, Doc),
     'ok'.
 
 -spec should_log_failed_attempts(kz_json:object(), ne_binary()) -> boolean().

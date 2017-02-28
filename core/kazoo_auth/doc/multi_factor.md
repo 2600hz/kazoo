@@ -92,8 +92,9 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
   "data": {
     "messages": "client needs to preform second-factor authentication",
     "mfa_request": {
-      "sig_request": "{SIQ_REQUEST}",
-      "api_hostname": "{YOUR_DUO_API}"
+      "duo_sig_request": "{SIQ_REQUEST}",
+      "duo_api_hostname": "{YOUR_DUO_API}",
+      "provider": "duo"
     }
   }
 }

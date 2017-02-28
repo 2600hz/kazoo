@@ -77,8 +77,9 @@ sign_request(#{<<"user_name">> := UserId
     SiqReq = <<DuoAuth/binary, (?AUTH_PART_SEP)/binary, AppAuth/binary>>,
 
     {'error', 401, kz_json:from_list(
-                     [{<<"sig_request">>, SiqReq}
-                     ,{<<"api_hostname">>, Host}
+                     [{<<"duo_sig_request">>, SiqReq}
+                     ,{<<"duo_api_hostname">>, Host}
+                     ,{<<"provider">>, <<"duo">>}
                      ]
                     )}.
 
