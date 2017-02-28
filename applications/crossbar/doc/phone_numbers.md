@@ -29,7 +29,7 @@ Key | Description | Type | Default | Required
 `e911.longitude` | The e911 provisioning system calculated service address longitude | `string` |   | `false`
 `e911.plus_four` | The extended zip/postal code where the number is in service | `string` |   | `false`
 `e911.postal_code` | The zip/postal code where the number is in service | `string` |   | `true`
-`e911.region` | The region (state) where the number is in service | `string` |   | `true`
+`e911.region` | The region (state) where the number is in service | `string(2)` |   | `true`
 `e911.status` | The e911 provisioning system status for this service address | `string('INVALID', 'GEOCODED', 'PROVISIONED', 'REMOVED', 'ERROR')` |   | `false`
 `e911.street_address` | The street address where the number is in service | `string` |   | `true`
 `porting` | Porting (in) information for the phone number | `object` |   | `false`
@@ -1339,14 +1339,14 @@ curl -v -X PUT \
 {
     "data": {
         "used_by": "callflow",
-        "id": "{{NUMBER}}",
+        "id": "{NUMBER}",
         "e911": {
-            "caller_name": "{{NAME}}",
-            "postal_code": "{{ZIP_CODE}}",
-            "street_address": "{{ADDRESS}}",
-            "extended_address": "{{EXTENDED}}",
-            "locality": "{{CITY}}",
-            "region": "{{STATE}}"
+            "caller_name": "{NAME}",
+            "postal_code": "{ZIP_CODE}",
+            "street_address": "{ADDRESS}",
+            "extended_address": "{EXTENDED}",
+            "locality": "{CITY}",
+            "region": "{STATE}"
         }
     }
 }
@@ -1362,12 +1362,12 @@ curl -v -X PUT \
         "address": {
             "invalid": {
                 "cause": {
-                    "caller_name": "{{NAME}}",
-                    "postal_code": "{{ZIP_CODE}}",
-                    "street_address": "{{ADDRESS}}",
-                    "extended_address": "{{EXTENDED}}",
-                    "locality": "{{CITY}}",
-                    "region": "{{STATE}}"
+                    "caller_name": "{NAME}",
+                    "postal_code": "{ZIP_CODE}",
+                    "street_address": "{ADDRESS}",
+                    "extended_address": "{EXTENDED}",
+                    "locality": "{CITY}",
+                    "region": "{STATE}"
                 },
                 "message": "Location is not geocoded"
             }
@@ -1386,24 +1386,24 @@ curl -v -X PUT \
         "multiple_choice": {
             "e911": {
                 "cause": {
-                    "postal_code": "{{ZIP_CODE}}",
-                    "street_address": "{{ADDRESS}}",
-                    "extended_address": "{{EXTENDED}}",
-                    "locality": "{{CITY}}",
-                    "region": "{{STATE}}"
+                    "postal_code": "{ZIP_CODE}",
+                    "street_address": "{ADDRESS}",
+                    "extended_address": "{EXTENDED}",
+                    "locality": "{CITY}",
+                    "region": "{STATE}"
                 },
                 "details": [{
-                    "postal_code": "{{ZIP_CODE}}",
-                    "street_address": "{{ADDRESS}}",
-                    "extended_address": "{{EXTENDED}}",
-                    "locality": "{{CITY}}",
-                    "region": "{{STATE}}"
+                    "postal_code": "{ZIP_CODE}",
+                    "street_address": "{ADDRESS}",
+                    "extended_address": "{EXTENDED}",
+                    "locality": "{CITY}",
+                    "region": "{STATE}"
                 }, {
-                    "postal_code": "{{ZIP_CODE}}",
-                    "street_address": "{{ADDRESS}}",
-                    "extended_address": "{{EXTENDED}}",
-                    "locality": "{{CITY}}",
-                    "region": "{{STATE}}"
+                    "postal_code": "{ZIP_CODE}",
+                    "street_address": "{ADDRESS}",
+                    "extended_address": "{EXTENDED}",
+                    "locality": "{CITY}",
+                    "region": "{STATE}"
                 }],
                 "message": "more than one address found"
             }
@@ -1421,7 +1421,7 @@ curl -v -X PUT \
 {
     "data": {
         "used_by": "callflow",
-        "id": "{{NUMBER}}",
+        "id": "{NUMBER}",
         "e911": {
             "street_address": "116 NATOMA ST",
             "extended_address": "APT 116",
