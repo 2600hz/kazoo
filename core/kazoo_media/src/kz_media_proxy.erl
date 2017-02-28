@@ -122,11 +122,11 @@ find_file(File, Root) ->
 
 -spec get_binding_ip() -> inet:ip_address().
 get_binding_ip() ->
-    IsIPv6Enabled = is_ip_family_supported("localhost", 'inet6'),
-    IsIPv4Enabled = is_ip_family_supported("localhost", 'inet'),
+    IsIPv6Enabled = is_ip_family_supported('inet6'),
+    IsIPv4Enabled = is_ip_family_supported('inet'),
 
     %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"ip">>, default_ip())),
+    IP = kz_util:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"proxy_ip">>, default_ip())),
 
     {'ok', DefaultIP} = inet:parse_address(kz_util:to_list(default_ip(IsIPv6Enabled))),
     {'ok', DefaultIPv4} = inet:parse_address(kz_util:to_list(default_ip('false'))),
@@ -157,15 +157,15 @@ get_binding_ip() ->
 
 -spec default_ip() -> ne_binary().
 default_ip() ->
-    default_ip(is_ip_family_supported("localhost", 'inet6')).
+    default_ip(is_ip_family_supported('inet')).
 
 -spec default_ip(boolean()) -> ne_binary().
 default_ip('true') -> <<"::">>;
 default_ip('false') -> <<"0.0.0.0">>.
 
--spec is_ip_family_supported(string(), inet:address_family()) -> boolean().
-is_ip_family_supported(Host, Family) ->
-    case inet:getaddr(Host, Family) of
+-spec is_ip_family_supported(inet:address_family()) -> boolean().
+is_ip_family_supported(Family) ->
+    case inet:getaddr("localhost", Family) of
         {'ok', _} -> 'true';
         {'error', _} -> 'false'
     end.
