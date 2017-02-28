@@ -442,8 +442,9 @@ collapse_call_transactions(Transactions) ->
 %%--------------------------------------------------------------------
 -spec modb(ne_binary()) -> 'ok'.
 modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
-    case erlang:date() of
-        {Year, Month, _} -> rollup_current_modb(AccountMODb, 3);
+    {Y, M, _} = erlang:date(),
+    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
+        {Year, Month} -> rollup_current_modb(AccountMODb, 3);
         _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
     end.
 
