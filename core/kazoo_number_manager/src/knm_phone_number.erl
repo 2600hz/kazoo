@@ -5,6 +5,7 @@
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
+%%%   Pierre Fenoll
 %%%-------------------------------------------------------------------
 -module(knm_phone_number).
 
@@ -17,7 +18,7 @@
 
 -export([to_json/1
         ,to_public_json/1
-        ,from_json/1, from_json_with_options/2
+        ,from_json_with_options/2
         ,from_number/1, from_number_with_options/2
         ,is_phone_number/1
         ]).
@@ -70,6 +71,7 @@
 
 -record(knm_phone_number, {number :: ne_binary()
                           ,number_db :: ne_binary()
+                          ,rev :: api_ne_binary()
                           ,assign_to :: api_ne_binary()
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
@@ -162,16 +164,16 @@ fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
-    F = fun ({NumberDb, NormalizedNums}, T) ->
+    F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
-                        lager:warning("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
                     {ok, JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
                     {ok, JObj} -> do_handle_fetch(T, JObj)
                 end
         end,
-    lists:foldl(F, T0, Pairs).
+    maps:fold(F, T0, Pairs).
 
 -ifdef(TEST).
 fetch_in(NumberDb, Nums, _Options) ->
@@ -200,6 +202,7 @@ bulk_fetch(T0, JObjs) ->
                 case kz_json:get_ne_value(<<"doc">>, JObj) of
                     undefined ->
                         R = kz_json:get_ne_value(<<"error">>, JObj),
+                        lager:warning("failed reading ~s: ~p", [Num, R]),
                         knm_numbers:ko(Num, kz_term:to_atom(R, true), T);
                     Doc ->
                         do_handle_fetch(T, Doc)
@@ -218,7 +221,7 @@ group_by_db(Nums) ->
                 Key = knm_converters:to_db(Num),
                 M#{Key => [Num | maps:get(Key, M, [])]}
         end,
-    maps:to_list(lists:foldl(F, #{}, Nums)).
+    lists:foldl(F, #{}, Nums).
 
 -ifdef(TEST).
 fetch(Num, Options) ->
@@ -396,8 +399,12 @@ release(PN, ?NUMBER_STATE_RESERVED) -> authorize_release(PN);
 release(PN, ?NUMBER_STATE_PORT_IN) -> authorize_release(PN);
 release(PN, ?NUMBER_STATE_IN_SERVICE) -> authorize_release(PN);
 release(PN, FromState) ->
-    To = ?NUMBER_STATE_RELEASED,
-    knm_errors:invalid_state_transition(PN, FromState, To).
+    case module_name(PN) of
+        ?CARRIER_LOCAL -> authorize_release(PN);
+        _ ->
+            To = ?NUMBER_STATE_RELEASED,
+            knm_errors:invalid_state_transition(PN, FromState, To)
+    end.
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 -spec authorize_release(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -485,7 +492,8 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
       ]
       ++
           props:filter_empty(
-            [{?PVT_ASSIGNED_TO, assigned_to(PN)}
+            [{<<"_rev">>, rev(PN)}
+            ,{?PVT_ASSIGNED_TO, assigned_to(PN)}
             ,{?PVT_AUTH_BY, auth_by(PN)}
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
             ,{?PVT_USED_BY, used_by(PN)}
@@ -512,28 +520,32 @@ from_json(JObj0) ->
             FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
             FeaturesJObj -> FeaturesJObj
         end,
-    {ok, PN} =
-        setters(#knm_phone_number{}
-               ,[{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
-                ,{fun set_assigned_to/3
-                 ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
-                 ,kz_json:get_value(?PVT_USED_BY, JObj)
-                 }
-                ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
-                ,{fun set_features/2, maybe_rename_features(Features)}
-                ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
-                ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, ?DEFAULT_RESERVE_HISTORY)}
-                ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, ?DEFAULT_PORTED_IN)}
-                ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj, ?DEFAULT_MODULE_NAME)}
-                ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj, ?DEFAULT_CARRIER_DATA)}
-                ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
-                ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
-                ,{fun set_doc/2, sanitize_public_fields(JObj)}
-                ,{fun set_modified/2, kz_doc:modified(JObj)}
-                ,{fun set_created/2, kz_doc:created(JObj)}
-                ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
-                ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
-                ]),
+
+    BaseSettings =
+        [{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
+        ,{fun set_assigned_to/3
+         ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
+         ,kz_json:get_value(?PVT_USED_BY, JObj)
+         }
+        ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+        ,{fun set_features/2, maybe_rename_features(Features)}
+        ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
+        ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, ?DEFAULT_RESERVE_HISTORY)}
+        ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, ?DEFAULT_PORTED_IN)}
+        ,{fun set_module_name/2, kz_json:get_value(?PVT_MODULE_NAME, JObj, ?DEFAULT_MODULE_NAME)}
+        ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj, ?DEFAULT_CARRIER_DATA)}
+        ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
+        ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
+        ,{fun set_doc/2, sanitize_public_fields(JObj)}
+        ,{fun set_modified/2, kz_doc:modified(JObj)}
+        ,{fun set_created/2, kz_doc:created(JObj)}
+        ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
+        ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
+        ],
+    Settings = props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}
+                                      ])
+        ++ BaseSettings,
+    {ok, PN} = setters(#knm_phone_number{}, Settings),
     PN.
 
 %% Handle moving away from provider-specific E911
@@ -732,8 +744,14 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db(knm_phone_number()) -> ne_binary().
-number_db(#knm_phone_number{number_db=NumberDb}) ->
-    NumberDb.
+number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
+
+%% @private
+-spec rev(knm_phone_number()) -> api_ne_binary().
+rev(#knm_phone_number{rev=Rev}) -> Rev.
+
+-spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_rev(N, ?NE_BINARY=Rev) -> N#knm_phone_number{rev=Rev}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1463,7 +1481,6 @@ get_number_in_account(AccountId, Num) ->
     kz_datamgr:open_cache_doc(AccountDb, Num).
 -endif.
 
-%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
@@ -1479,7 +1496,6 @@ delete_number_doc(PN) ->
     end.
 -endif.
 
-%%--------------------------------------------------------------------
 %% @private
 %% @doc
 %% @end
