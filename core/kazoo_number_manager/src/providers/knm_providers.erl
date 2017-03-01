@@ -269,9 +269,14 @@ legacy_provider_to_feature(Else) -> Else.
 requested_modules(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     AccountId = knm_phone_number:assigned_to(PhoneNumber),
-    RequestedFeatures = kz_json:get_keys(knm_phone_number:doc(PhoneNumber)),
+    Doc = knm_phone_number:doc(PhoneNumber),
+    RequestedFeatures = [Key || Key <- ?FEATURES_ROOT_KEYS,
+                                undefined =/= kz_json:get_value(Key, Doc)
+                        ],
     ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
-    provider_modules(RequestedFeatures ++ ExistingFeatures, AccountId).
+    %% ?FEATURE_LOCAL is never user-writable thus must not be included.
+    Features = (RequestedFeatures ++ ExistingFeatures) -- [?FEATURE_LOCAL],
+    provider_modules(Features, AccountId).
 
 -spec allowed_modules(knm_number:knm_number()) -> ne_binaries().
 allowed_modules(Number) ->
@@ -347,15 +352,21 @@ exec(Number, Action=delete) ->
     lager:debug("requested number features: ~p", [RequestedModules]),
     exec(Number, Action, RequestedModules);
 exec(Number, Action) ->
+    {AllowedRequests, DeniedRequests} = split_requests(Number),
+    lager:debug("allowing number features ~p", [AllowedRequests]),
+    case DeniedRequests =:= [] of
+        true -> exec(Number, Action, AllowedRequests);
+        false ->
+            lager:debug("denied number features ~p", [DeniedRequests]),
+            knm_errors:unauthorized()
+    end.
+
+split_requests(Number) ->
     RequestedModules = requested_modules(Number),
     lager:debug("requested number features: ~p", [RequestedModules]),
     AllowedModules = allowed_modules(Number),
-    Filter = fun (Feature) -> lists:member(Feature, AllowedModules) end,
-    {AllowedRequests, DeniedRequests} = lists:partition(Filter, RequestedModules),
-    lager:debug("allowing number features ~p", [AllowedRequests]),
-    Number1 = exec(Number, Action, AllowedRequests),
-    lager:debug("denied number features ~p", [DeniedRequests]),
-    exec(Number1, delete, DeniedRequests).
+    F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
+    lists:partition(F, RequestedModules).
 
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->

@@ -44,15 +44,6 @@
        ).
 
 
--define(DEFAULT_ALLOWED_FEATURES, [?FEATURE_CNAM
-                                  ,?FEATURE_E911
-                                  ,?FEATURE_FAILOVER
-                                  ,?FEATURE_PORT
-                                  ,?FEATURE_PREPEND
-                                  ]).
-
-
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
