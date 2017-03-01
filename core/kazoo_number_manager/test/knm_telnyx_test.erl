@@ -179,6 +179,13 @@ rename_carrier_test_() ->
     {ok, N4} = knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
     PN4 = knm_number:phone_number(N4),
     JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
+    {error, Error5} = knm_number:update_phone_number(N4
+                                                    ,[{fun knm_phone_number:reset_doc/2, JObj3}]
+                                                    ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
+                                                    ),
+    JObj4 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"gen_carrier">>}]),
+    {error, Error6} =
+        knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, JObj4}]),
     [{"Verify carrier name is right"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
      }
@@ -203,5 +210,8 @@ rename_carrier_test_() ->
                                                   ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
                                                   )
                    )
+     }
+    ,{"Verify setting carrier as non-admin is forbidden"
+     ,?_assertEqual(<<"invalid">>, knm_errors:error(Error6))
      }
     ].
