@@ -421,10 +421,12 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
 %% Both lists MUST be of same size.
 %% @end
 %%--------------------------------------------------------------------
--spec order_by(path(), ne_binaries(), objects()) -> objects().
-order_by(Path, Ids, JObjs)
-  when is_list(Ids), is_list(JObjs) ->
-    _ = [put(get_value(Path, JObj), JObj) || JObj <- JObjs],
+-spec order_by(path(), ne_binaries(), [objects()]) -> objects().
+order_by(Path, Ids, ListOfJObjs)
+  when is_list(Ids), is_list(ListOfJObjs) ->
+    _ = [[put(get_value(Path, JObj), JObj) || JObj <- JObjs]
+         || JObjs <- ListOfJObjs
+        ],
     [erase(Id) || Id <- Ids].
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
