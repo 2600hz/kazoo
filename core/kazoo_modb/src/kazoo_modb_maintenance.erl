@@ -195,7 +195,7 @@ fix_rollup(Account) ->
     {Year, Month, _} = erlang:date(),
     fix_rollup(Account, Year, Month).
 
--spec fix_rollup(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+-spec fix_rollup(ne_binary(), kz_year(), kz_month()) -> 'ok'.
 fix_rollup(Account, Year, Month) ->
     AccountId = kz_util:format_account_id(Account, 'raw'),
     Y = kz_util:to_integer(Year),
