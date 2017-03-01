@@ -10,7 +10,7 @@ missing_count=0
 function check_index {
     line=$(grep "$1" ./doc/mkdocs/mkdocs.yml)
 
-    if [[ -z $line ]]; then
+    if [ -f "$1" ] && [ -z "$line" ]; then
         ((missing_count+=1))
         echo "'$1' missing"
     fi
