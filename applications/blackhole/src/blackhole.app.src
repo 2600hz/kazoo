@@ -12,6 +12,7 @@
                  , inets
 
                  , kazoo_apps
+                 , kazoo_auth
 
                  , lager
                  , ranch
