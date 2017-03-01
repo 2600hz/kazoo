@@ -9,13 +9,14 @@ missing_count=0
 
 function check_index {
     line=$(grep "$1" ./doc/mkdocs/mkdocs.yml)
-    if [ $? -ne 1 ]; then
+
+    if [[ -z $line ]]; then
         ((missing_count+=1))
-        echo "$1 missing"
+        echo "'$1' missing"
     fi
 }
 
-for doc in $(find {scripts,doc,core,applications} -type f -path "doc/mkdocs*" -prune -o -regex ".+\.md$"); do
+for doc in $(find {scripts,doc,core,applications} -type f -path "doc/mkdocs*" -prune -path "ref/" -prune -o -regex ".+\.md$"); do
     ((doc_count+=1))
     check_index $doc
 done
