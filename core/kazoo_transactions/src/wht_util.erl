@@ -514,7 +514,7 @@ update_rollup(Account, Balance, JObj) ->
             EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
             {'ok', _} = kz_datamgr:del_doc(EncodedMODb, JObj),
             rollup(Account, abs(Balance))
-     end.
+    end.
 
 -spec update_existing_rollup(ne_binary(), integer(), kz_transaction:transaction()) -> 'ok'.
 update_existing_rollup(_Account, Balance, Transaction) ->

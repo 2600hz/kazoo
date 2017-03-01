@@ -114,7 +114,7 @@ current_rollups([Account|Accounts]) ->
             Else ->
                 io:format("[~p] account ~s error getting monthly rollup ~p~n", [Remaining, AccountId, Else])
         end,
-     current_rollups(Accounts).
+    current_rollups(Accounts).
 
 -spec verify_rollups() -> 'ok'.
 verify_rollups() ->
@@ -131,7 +131,7 @@ verify_all_rollups() ->
     'ok'.
 
 -spec verify_db_rollup(ne_binary(), {pos_integer(), pos_integer(), kz_proplist()}) ->
-                              {pos_integer(), pos_integer()}.
+                              {pos_integer(), pos_integer(), kz_proplist()}.
 verify_db_rollup(AccountDb, {Current, Total, Options}) ->
     io:format("verify rollup accounts (~p/~p) '~s'~n"
              ,[Current, Total, AccountDb]),
