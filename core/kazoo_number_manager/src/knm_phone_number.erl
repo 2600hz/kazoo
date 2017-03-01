@@ -764,8 +764,14 @@ set_features_denied(PN, Features) ->
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
 -ifdef(TEST).
 features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [<<"cnam">>, <<"e911">>, <<"failover">>, <<"force_outbound">>
-    ,<<"prepend">>, <<"ringback">>, <<"carrier_name">>];
+    [?FEATURE_CNAM
+    ,?FEATURE_E911
+    ,?FEATURE_FAILOVER
+    ,?FEATURE_FORCE_OUTBOUND
+    ,?FEATURE_PREPEND
+    ,?FEATURE_RINGBACK
+    ,?FEATURE_RENAME_CARRIER
+    ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
@@ -774,7 +780,9 @@ features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -spec features_denied(knm_phone_number()) -> ne_binaries().
 -ifdef(TEST).
 features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
-    [<<"port">>, <<"failover">>];
+    [?FEATURE_PORT
+    ,?FEATURE_FAILOVER
+    ];
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
 -else.
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
