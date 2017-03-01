@@ -16,10 +16,10 @@ listen kazoo-fax-smtp
   timeout connect 5s
  balance roundrobin
 
- server kapps-01 kapps-01:19025 check check-send-proxy send-proxy
- server kapps-02 kapps-02:19025 check check-send-proxy send-proxy
- server kapps-03 kapps-03:19025 check check-send-proxy send-proxy
- server kapps-04 kapps-04:19025 check check-send-proxy send-proxy
+ server kapps-01 kapps-01:19025 check
+ server kapps-02 kapps-02:19025 check
+ server kapps-03 kapps-03:19025 check
+ server kapps-04 kapps-04:19025 check
 ```
 # haproxy version
-at least haproxy-1.5-dev23 (check-send-proxy send-proxy)
+at least haproxy-1.5
