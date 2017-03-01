@@ -27,11 +27,9 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?WORKER_NAME_ARGS('kazoo_etsmgr_srv', 'omnipresence_subscriptions_tbl', [?SUBS_ETS_OPTS])
-                  ,?CACHE(?CACHE_NAME)
                   ,?WORKER('omnip_subscriptions')
                   ,?WORKER('omnipresence_listener')
                   ,?WORKER('omnipresence_shared_listener')
-                  ,?SUPER('omnip_sup')
                   ]).
 
 %% ===================================================================
