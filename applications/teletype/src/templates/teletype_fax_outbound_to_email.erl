@@ -9,7 +9,7 @@
 -module(teletype_fax_outbound_to_email).
 
 -export([init/0
-        ,handle_fax_outbound/2
+        ,handle_fax_outbound/1
         ]).
 
 -include("teletype.hrl").
@@ -58,10 +58,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"outbound_fax">>, ?MODULE, 'handle_fax_inbound').
 
--spec handle_fax_outbound(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_fax_outbound(JObj, _Props) ->
+-spec handle_fax_outbound(kz_json:object()) -> 'ok'.
+handle_fax_outbound(JObj) ->
     'true' = kapi_notifications:fax_outbound_v(JObj),
     kz_util:put_callid(JObj),
 

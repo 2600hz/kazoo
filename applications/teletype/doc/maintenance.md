@@ -14,3 +14,14 @@ Most operators will be interested in whether emails are sending or not.
     ok
 
 If the relay is a postfix running locally, grep /var/log/mail.log (or equivalent) for the receipt ID.
+
+## Start a Teletype Module
+
+Running `sup teletype_maintenance start_module {MODULE_NAME}` will start the specified teletype
+module. If this is not already in `autoload_modules` then it will be added.
+
+## Stop a Teletype Module
+
+Running `sup teletype_maintenance stop_module {MODULE_NAME}` will unbind the specified teletype
+module from notification events. This has the effect of disabling the module. If the module is in
+`autoload_modules` then it will be removed.

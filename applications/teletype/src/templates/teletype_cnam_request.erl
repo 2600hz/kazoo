@@ -9,7 +9,7 @@
 -module(teletype_cnam_request).
 
 -export([init/0
-        ,handle_cnam_request/2
+        ,handle_cnam_request/1
         ]).
 
 -include("teletype.hrl").
@@ -49,10 +49,12 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"cnam_request">>, ?MODULE, 'handle_cnam_request').
 
--spec handle_cnam_request(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_cnam_request(JObj, _Props) ->
+
+-spec handle_cnam_request(kz_json:object()) -> 'ok'.
+handle_cnam_request(JObj) ->
     'true' = kapi_notifications:cnam_request_v(JObj),
     kz_util:put_callid(JObj),
     %% Gather data for template

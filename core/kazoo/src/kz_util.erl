@@ -612,10 +612,10 @@ get_account_realm(Db, AccountId) ->
 %% the vm if possible.
 %% @end
 %%--------------------------------------------------------------------
--spec try_load_module(atom() | string() | binary()) -> atom() | false.
-try_load_module(undefined) -> false;
-try_load_module("undefined") -> false;
-try_load_module(<<"undefined">>) -> false;
+-spec try_load_module(atom() | string() | binary()) -> atom() | 'false'.
+try_load_module('undefined') -> 'false';
+try_load_module("undefined") -> 'false';
+try_load_module(<<"undefined">>) -> 'false';
 try_load_module(Name) ->
     Module = kz_term:to_atom(Name, 'true'),
     try

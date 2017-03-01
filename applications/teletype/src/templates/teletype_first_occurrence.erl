@@ -9,7 +9,7 @@
 -module(teletype_first_occurrence).
 
 -export([init/0
-        ,first_occurrence/2
+        ,first_occurrence/1
         ]).
 
 -include("teletype.hrl").
@@ -46,10 +46,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"first_occurrence">>, ?MODULE, 'first_occurrence').
 
--spec first_occurrence(kz_json:object(), kz_proplist()) -> 'ok'.
-first_occurrence(JObj, _Props) ->
+-spec first_occurrence(kz_json:object()) -> 'ok'.
+first_occurrence(JObj) ->
     'true' = kapi_notifications:first_occurrence_v(JObj),
     kz_util:put_callid(JObj),
 

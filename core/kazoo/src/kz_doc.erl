@@ -256,7 +256,7 @@ external_attachments(JObj, Default) ->
         A3 -> A3
     end.
 
--spec attachment_names(kz_json:object()) -> ne_binaries().
+-spec attachment_names(kz_json:object()) -> ne_binaries() | [].
 attachment_names(JObj) ->
     kz_json:get_keys(attachments(JObj, kz_json:new())).
 

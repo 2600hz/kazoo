@@ -9,7 +9,7 @@
 -module(teletype_voicemail_full).
 
 -export([init/0
-        ,handle_full_voicemail/2
+        ,handle_full_voicemail/1
         ]).
 
 -include("teletype.hrl").
@@ -51,10 +51,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"voicemail_full">>, ?MODULE, 'handle_full_voicemail').
 
--spec handle_full_voicemail(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_full_voicemail(JObj, _Props) ->
+-spec handle_full_voicemail(kz_json:object()) -> 'ok'.
+handle_full_voicemail(JObj) ->
     'true' = kapi_notifications:voicemail_full_v(JObj),
     kz_util:put_callid(JObj),
 

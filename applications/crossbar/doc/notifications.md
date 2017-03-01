@@ -66,23 +66,14 @@ Key | Description | Type | Default | Required
 
 
 
-#### Crossbar
-
-Using Crossbar to modify notifications is very simple:
-
-* GET - Gets the current notification(s).
-* PUT - Add a notification.
-* POST - Updates a notification, or adds/updates a template.
-* DELETE - Removes a notification.
+#### API Notes
 
 To modify an account notification, the requester must be a reseller of that account or the master account.
-
-##### Account Temporal Rules Sets URI
 
 * `/v2/accounts/{ACCOUNT_ID}/notifications`: modify an account's template(s)
 * `/v2/notifications`: Modify the system default templates
 
-###### Fetch available notification templates from the system
+#### Fetch available notification templates from the system
 
 > GET /v2/notifications
 
@@ -120,6 +111,8 @@ curl -v -X GET \
         "status": "success"
 }
 ```
+
+#### Fetch notifications overridden in the account
 
 To see what notification templates an account overrides, include the account ID in the URI:
 
@@ -161,11 +154,18 @@ curl -v -X GET \
 
 The key `account_overridden` will exist on any templates that are account-specific.
 
-###### Fetch a notification's configuration
+#### Fetch a notification's configuration
+
+> GET /v2/notifications/{NOTIFICATION_ID}
 
 Using the ID from the system listing above, get the template JSON. This document allows you to set some "static" properties (things not derived from the event causing the notification, e.g. call data, system alert, etc).
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v2/notifications/{NOTIFICATION_ID}
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/notifications/{NOTIFICATION_ID}
+```
+```json
     {
         "auth_token": "{AUTH_TOKEN}",
         "data": {
@@ -184,10 +184,11 @@ Using the ID from the system listing above, get the template JSON. This document
         "revision": "{REVISION}",
         "status": "success"
     }
+```
 
 Performing a GET with an account ID will return the notification object, again with the `account_overridden` flag added if it is account-specific; lack of the key indicates it is the system default notification.
 
-###### Create a notification template
+#### Create a notification template
 
 Now that you've fetched the system default template, modify and PUT it back to the account.
 
@@ -247,7 +248,7 @@ curl -v -X PUT \
 
 This request will fail if `id` does not already exist in the system defaults. To create a new system notification template, a superduper admin can use the above PUT, but to `/v2/notifications` instead of a specific account.
 
-###### Fetch a specific notification
+#### Fetch a specific notification
 
 Now that you've created an account-specific notification, you can fetch it to feed into a WYSIWYG editor or for other purposes:
 
@@ -272,7 +273,7 @@ curl -v -X GET \
 }
 ```
 
-###### Update a notification's config
+#### Update a notification's config
 
 Similar to the PUT, POST will update an existing config:
 
@@ -310,7 +311,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-###### Remove a notification template
+#### Remove a notification template
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -324,11 +325,11 @@ curl -v -X DELETE \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-##### Template Formats
+### Template Formats
 
 Creating the configuration documents is all well and good, but it is necessary to be able to attach the templates in their various forms as well. Currently supported formats are `text/html` and `text/plain`.
 
-###### Get notification template:
+#### Get notification template:
 
 > GET /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -352,7 +353,7 @@ Note that the only difference is the `Accept` attribute. This will determine whi
 
 For clients that do not support setting the `Accept` header, a querystring parameter can be included (eg `http://server:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}?accept=text/html` to get the HTML template.
 
-###### Update notification template:
+#### Update notification template:
 
 > POST /v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 
@@ -374,8 +375,7 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/notifications/{NOTIFICATION_ID}
 ```
 
-
-###### Preview a new template
+#### Preview a new template
 
 It can be helpful to preview the resulting email when modifying templates, but before actually saving the template.
 
@@ -454,7 +454,7 @@ curl -v -X GET \
 }
 ```
 
-## Customer update
+#### Customer update
 
 Send a message to all reseller's children or to a particular account.
 
@@ -589,7 +589,7 @@ You can send a message with changed subject, html and plain text templates by pr
 
 To send an update to a customer from your kapp, you can build payload including you apps data (see <<"DataBag">> field) and send it over amqp using predefined particular template (see <<"Template-ID">> field) or your own hardcoded templates (see <<"HTML">> and <<"Text">> fields):
 
-```
+```erlang
 -spec send_account_update(ne_binary()) -> 'ok'.
 send_account_update(AccountId) ->
     case kz_amqp_worker:call(build_customer_update_payload(AccountId)

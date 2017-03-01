@@ -7,8 +7,6 @@
 %%%-----------------------------------------------------------------------------
 -module(kzs_attachments).
 
-
-
 %% Attachment-related
 -export([fetch_attachment/4
         ,stream_attachment/5
@@ -17,11 +15,9 @@
         ,attachment_url/6
         ]).
 
-
 -include("kz_data.hrl").
 
 -define(KEY_STUB_ATTACHMENTS, <<"pvt_attachments">>).
-
 
 %% Attachment-related functions ------------------------------------------------
 -spec fetch_attachment(map(), ne_binary(), ne_binary(), ne_binary()) ->

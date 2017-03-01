@@ -4,6 +4,8 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_config.hrl").
 
+-include("teletype_default_modules.hrl").
+
 -define(APP_NAME, <<"teletype">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 
@@ -141,6 +143,9 @@
                        ,timestamp :: gregorian_seconds()
                        }).
 -type email_receipt() :: #email_receipt{}.
+
+-define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
+-define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
 
 -define(TELETYPE_HRL, 'true').
 -endif.

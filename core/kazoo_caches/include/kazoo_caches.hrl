@@ -20,8 +20,8 @@
                    ,value :: any() | '_' | '$1' | '$2'
                    ,expires :: kz_timeout() | '_' | '$3'
                    ,timestamp = kz_time:current_tstamp() :: gregorian_seconds() | '_' | '$4'
-                   ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5'
-                   ,origin :: origin_tuple() | origin_tuples() | '$1' | '_'
+                   ,callback :: callback_fun() | '_' | '$2' | '$3' | '$5' | 'undefined'
+                   ,origin :: origin_tuple() | origin_tuples() | '$1' | '_' | 'undefined'
                    }).
 
 -type cache_obj() :: #cache_obj{}.

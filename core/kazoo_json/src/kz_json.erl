@@ -745,7 +745,7 @@ get_binary_boolean(Key, JObj, Default) ->
     end.
 
 -spec get_keys(object() | flat_object()) -> keys() | [keys(),...] | [].
--spec get_keys(path(), object() | flat_object()) -> keys() | [keys()] | [].
+-spec get_keys(path(), object() | flat_object()) -> keys() | [keys(),...] | [].
 get_keys(JObj) -> get_keys1(JObj).
 
 get_keys([], JObj) -> get_keys1(JObj);
@@ -880,7 +880,7 @@ values(Key, JObj) ->
     values(get_value(Key, JObj, new())).
 
 %% split the json object into values and the corresponding keys
--spec get_values(object()) -> {json_terms(), keys()}.
+-spec get_values(object()) -> {json_terms(), keys()} | {[], []}.
 get_values(JObj) ->
     lists:foldr(fun(Key, {Vs, Ks}) ->
                         {[get_value(Key, JObj)|Vs], [Key|Ks]}

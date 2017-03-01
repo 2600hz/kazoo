@@ -9,7 +9,7 @@
 -module(teletype_password_recovery).
 
 -export([init/0
-        ,handle_password_recovery/2
+        ,handle_password_recovery/1
         ]).
 
 -include("teletype.hrl").
@@ -45,10 +45,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"password_recovery">>, ?MODULE, 'handle_password_recovery').
 
--spec handle_password_recovery(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_password_recovery(JObj, _Props) ->
+-spec handle_password_recovery(kz_json:object()) -> 'ok'.
+handle_password_recovery(JObj) ->
     'true' = kapi_notifications:password_recovery_v(JObj),
     kz_util:put_callid(JObj),
 
