@@ -9,7 +9,7 @@
 -module(teletype_low_balance).
 
 -export([init/0
-        ,handle_low_balance/2
+        ,handle_low_balance/1
         ]).
 
 -include("teletype.hrl").
@@ -43,10 +43,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"low_balance">>, ?MODULE, 'handle_low_balance').
 
--spec handle_low_balance(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_low_balance(JObj, _Props) ->
+-spec handle_low_balance(kz_json:object()) -> 'ok'.
+handle_low_balance(JObj) ->
     'true' = kapi_notifications:low_balance_v(JObj),
     kz_util:put_callid(JObj),
 

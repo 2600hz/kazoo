@@ -10,7 +10,7 @@
 
 -export([
          init/0
-        ,handle_account_zone_change/2
+        ,handle_account_zone_change/1
         ]).
 
 -include("teletype.hrl").
@@ -41,10 +41,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"account_zone_change">>, ?MODULE, 'handle_account_zone_change').
 
--spec handle_account_zone_change(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_account_zone_change(JObj, _Props) ->
+-spec handle_account_zone_change(kz_json:object()) -> 'ok'.
+handle_account_zone_change(JObj) ->
     'true' = kapi_notifications:account_zone_change_v(JObj),
 
     kz_util:put_callid(JObj),

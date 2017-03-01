@@ -9,7 +9,7 @@
 -module(teletype_deregister).
 
 -export([init/0
-        ,handle_deregister/2
+        ,handle_deregister/1
         ]).
 
 -include("teletype.hrl").
@@ -61,10 +61,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"deregister">>, ?MODULE, 'handle_deregister').
 
--spec handle_deregister(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_deregister(JObj, _Props) ->
+-spec handle_deregister(kz_json:object()) -> 'ok'.
+handle_deregister(JObj) ->
     'true' = kapi_notifications:deregister_v(JObj),
     kz_util:put_callid(JObj),
 

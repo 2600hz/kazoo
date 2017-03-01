@@ -15,6 +15,7 @@
         ,handle_cast/2
         ,handle_info/2
         ,handle_event/2
+        ,handle_message/2
         ,terminate/2
         ,code_change/3
         ]).
@@ -26,134 +27,12 @@
 -record(state, {}).
 -type state() :: #state{}.
 
--define(RESPONDERS, [{{'teletype_voicemail_to_email', 'handle_new_voicemail'}
-                     ,[{<<"notification">>, <<"voicemail_new">>}]
-                     }
-                    ,{{'teletype_voicemail_full', 'handle_full_voicemail'}
-                     ,[{<<"notification">>, <<"voicemail_full">>}]
-                     }
-                    ,{{'teletype_fax_inbound_to_email', 'handle_fax_inbound'}
-                     ,[{<<"notification">>, <<"inbound_fax">>}]
-                     }
-                    ,{{'teletype_fax_inbound_error_to_email', 'handle_fax_inbound_error'}
-                     ,[{<<"notification">>, <<"inbound_fax_error">>}]
-                     }
-                    ,{{'teletype_fax_outbound_to_email', 'handle_fax_outbound'}
-                     ,[{<<"notification">>, <<"outbound_fax">>}]
-                     }
-                    ,{{'teletype_fax_outbound_error_to_email', 'handle_fax_outbound_error'}
-                     ,[{<<"notification">>, <<"outbound_fax_error">>}]
-                     }
-                    ,{{'teletype_new_account', 'handle_new_account'}
-                     ,[{<<"notification">>, <<"new_account">>}]
-                     }
-                    ,{{'teletype_account_zone_change', 'handle_account_zone_change'}
-                     ,[{<<"notification">>, <<"account_zone_change">>}]
-                     }
-                    ,{{'teletype_new_user', 'handle_req'}
-                     ,[{<<"notification">>, <<"new_user">>}]
-                     }
-                    ,{'teletype_template_skel'
-                     ,[{<<"notification">>, <<"skel">>}]
-                     }
-                    ,{{'teletype_customer_update', 'handle_req'}
-                     ,[{<<"notification">>, <<"customer_update">>}]
-                     }
-                    ,{{'teletype_deregister', 'handle_deregister'}
-                     ,[{<<"notification">>, <<"deregister">>}]
-                     }
-                    ,{{'teletype_transaction', 'handle_transaction'}
-                     ,[{<<"notification">>, <<"transaction">>}]
-                     }
-                    ,{{'teletype_password_recovery', 'handle_password_recovery'}
-                     ,[{<<"notification">>, <<"password_recovery">>}]
-                     }
-                    ,{{'teletype_system_alert', 'handle_system_alert'}
-                     ,[{<<"notification">>, <<"system_alert">>}]
-                     }
-                    ,{{'teletype_topup', 'handle_topup'}
-                     ,[{<<"notification">>, <<"topup">>}]
-                     }
-                    ,{{'teletype_cnam_request', 'handle_cnam_request'}
-                     ,[{<<"notification">>, <<"cnam_request">>}]
-                     }
-                    ,{{'teletype_low_balance', 'handle_low_balance'}
-                     ,[{<<"notification">>, <<"low_balance">>}]
-                     }
-                    ,{{'teletype_first_occurrence', 'first_occurrence'}
-                     ,[{<<"notification">>, <<"first_occurrence">>}]
-                     }
-                    ,{'teletype_port_unconfirmed'
-                     ,[{<<"notification">>, <<"port_unconfirmed">>}]
-                     }
-                    ,{'teletype_port_request'
-                     ,[{<<"notification">>, <<"port_request">>}]
-                     }
-                    ,{'teletype_port_request_admin'
-                     ,[{<<"notification">>, <<"port_request">>}]
-                     }
-                    ,{'teletype_port_pending'
-                     ,[{<<"notification">>, <<"port_pending">>}]
-                     }
-                    ,{'teletype_port_scheduled'
-                     ,[{<<"notification">>, <<"port_scheduled">>}]
-                     }
-                    ,{'teletype_port_rejected'
-                     ,[{<<"notification">>, <<"port_rejected">>}]
-                     }
-                    ,{'teletype_port_cancel'
-                     ,[{<<"notification">>, <<"port_cancel">>}]
-                     }
-                    ,{'teletype_ported'
-                     ,[{<<"notification">>, <<"ported">>}]
-                     }
-                    ,{'teletype_port_comment'
-                     ,[{<<"notification">>, <<"port_comment">>}]
-                     }
-                    ,{{'teletype_webhook_disabled', 'handle_webhook_disabled'}
-                     ,[{<<"notification">>, <<"webhook_disabled">>}]
-                     }
-                    ,{'teletype_denied_emergency_bridge'
-                     ,[{<<"notification">>, <<"denied_emergency_bridge">>}]
-                     }
-                    ,{'teletype_service_added'
-                     ,[{<<"notification">>, <<"service_added">>}]
+-define(RESPONDERS, [{{?MODULE, 'handle_message'}
+                     ,[{<<"*">>, <<"*">>}]
                      }
                     ]).
 
--define(RESTRICT_TO, ['cnam_requests'
-                     ,'denied_emergency_bridge'
-                     ,'deregister'
-                     ,'inbound_fax'
-                     ,'inbound_fax_error'
-                     ,'low_balance'
-                     ,'new_account'
-                     ,'account_zone_change'
-                     ,'new_user'
-                     ,'new_voicemail'
-                     ,'outbound_fax'
-                     ,'outbound_fax_error'
-                     ,'password_recovery'
-                     ,'ported'
-                     ,'port_cancel'
-                     ,'port_comment'
-                     ,'port_pending'
-                     ,'port_rejected'
-                     ,'port_request'
-                     ,'port_scheduled'
-                     ,'port_unconfirmed'
-                     ,'system_alerts'
-                     ,'topup'
-                     ,'transaction'
-                     ,'voicemail_full'
-                     ,'webhook_disabled'
-                     ,'customer_update'
-                     ,'service_added'
-                     ,'first_occurrence'
-                      %%,'skel'
-                     ]).
-
--define(BINDINGS, [{'notifications', [{'restrict_to', ?RESTRICT_TO} | ?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
+-define(BINDINGS, [{'notifications', [?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT)]}
                   ,{'self', []}
                   ]).
 -define(QUEUE_NAME, <<"teletype_shared_listener">>).
@@ -267,6 +146,10 @@ handle_event(JObj, _State) ->
         'false' -> 'ignore';
         'true' -> {'reply', []}
     end.
+
+-spec handle_message(kz_json:object(), kz_proplist()) -> 'ok'.
+handle_message(JObj, _Props) ->
+    teletype_bindings:notification(JObj).
 
 %%--------------------------------------------------------------------
 %% @private

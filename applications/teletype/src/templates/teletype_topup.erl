@@ -9,7 +9,7 @@
 -module(teletype_topup).
 
 -export([init/0
-        ,handle_topup/2
+        ,handle_topup/1
         ,get_balance/1
         ]).
 
@@ -54,10 +54,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"topup">>, ?MODULE, 'handle_topup').
 
--spec handle_topup(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_topup(JObj, _Props) ->
+-spec handle_topup(kz_json:object()) -> 'ok'.
+handle_topup(JObj) ->
     'true' = kapi_notifications:topup_v(JObj),
     kz_util:put_callid(JObj),
 
