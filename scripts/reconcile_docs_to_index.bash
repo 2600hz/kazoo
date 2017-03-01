@@ -16,12 +16,15 @@ function check_index {
     fi
 }
 
-for doc in $(find {scripts,doc,core,applications} -type f -path "doc/mkdocs*" -prune -path "ref/" -prune -o -regex ".+\.md$"); do
+docs=$(find {scripts,doc,core,applications} \( -path 'doc/mkdocs' -o -path 'applications/*/doc/ref' \) -prune -o -type f -regex ".+\.md$")
+for doc in $docs; do
     ((doc_count+=1))
     check_index $doc
 done
 
-ratio=$((100 * $missing_count / $doc_count))
-echo "Missing $missing_count / $doc_count: $ratio%"
+# if [[ $missing ]]; then
+    ratio=$((100 * $missing_count / $doc_count))
+    echo "Missing $missing_count / $doc_count: $ratio%"
+# fi
 
 popd > /dev/null
