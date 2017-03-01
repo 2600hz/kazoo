@@ -11,4 +11,7 @@ main(_) ->
     ok = code:add_pathsa([filename:join(filename:dirname(Path), "ebin") || Path <- All]),
     Id = os:getenv("TRAVIS_JOB_ID"),
     true = is_list(Id),
-    coveralls:convert_and_send_file(All, Id, "travis-ci", "").
+    try coveralls:convert_and_send_file(All, Id, "travis-ci", "")
+    catch
+        _E:_R -> io:format("\ncoveralls ~p:\n\t~p\n", [_E, _R])
+    end.
