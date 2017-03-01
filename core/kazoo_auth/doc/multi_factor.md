@@ -16,13 +16,18 @@ MFA process involves these steps:
 4. If no MFA provider configuration was found, the auth request will be succesful and a token will be generated as a normal auth-request as before
 5. If the MFA provider is disabled based on the configuration, a HTTP `401 unauthorized` error will be returned.
 6. Provider module will try to validate the request and settings and return a HTTP `401 unauthorized` if something is invalid and provide an appropiate error message.
-7. If the request doesn't have a response from MFA provider (if there is no `mfa_service_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the playlod of:
+7. If the request doesn't have a response from MFA provider (if there is no `multi_factor_response` inside the body of the request) it will generate the required information that the client needs to preform second-factor auth with the provider. Crossbar will reply a HTTP `401 unauthorized` with the playlod of:
 
 ```json
 {
   "data": {
     "messages": "client needs to preform second-factor authentication",
-    "mfa_request": { //an json object which contains the neccessary information for performing the MFA with provider }
+    "multi_factor_request": {
+      "provider_name": "{PROVIDER_NAME}",
+      "settings": {
+        //any arbitrary data from the multi factor provider
+      }
+    }
   }
 }
 ```
@@ -62,7 +67,7 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 3. Users can now use a usual Crossbar authentication procedure (for example with `cb_user_auth`).
 4. Kazoo auth MFA and Crossbar will return `siq_request` and `api_hostname` to client.
 5. Use `Duo-Web-v2.js` to implement Duo client side for performing 2FA authentication. See [Duo Web](https://duo.com/docs/duoweb) (steps 3 and beyond in **Instructions** section).
-6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `mfa_service_response` as payload.
+6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `multi_factor_response` as payload.
 7. If `siq_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
 
 ####### Sample Duo configuration (see step 1 above)
@@ -85,16 +90,18 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
-####### Crossbar return `siq_request`
+####### Crossbar return `siq_request` (see step 4 above)
 
 ```json
 {
   "data": {
     "messages": "client needs to preform second-factor authentication",
-    "mfa_request": {
-      "duo_sig_request": "{SIQ_REQUEST}",
-      "duo_api_hostname": "{YOUR_DUO_API}",
-      "provider": "duo"
+    "multi_factor_request": {
+      "provider_name": "duo",
+      "settings": {
+        "duo_sig_request": "{SIQ_REQUEST}",
+        "duo_api_hostname": "{YOUR_DUO_API}"
+      }
     }
   }
 }
@@ -106,7 +113,7 @@ Notice the `TX` and `APP` parts which seperated by `:`. You need the `APP` part 
 
 ####### Client sends Duo response to Kazoo with this payload
 
-Duo will respond to client with a payload similiar to this:
+Duo will authenticate user by the whatever methods user has chosen and then will respond to Duo JavaScript client with a payload similiar to this:
 
 ```json
 {
@@ -120,14 +127,14 @@ Duo will respond to client with a payload similiar to this:
 }
 ```
 
-You need to merge `cookie` with `APP` from previous part and send it to Kazoo with below payload.
-
-Given the `cookie` is `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef`, the `mfa_service_reponse` to send would be: `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
+You need to merge `cookie` with `APP` from previous part and send it to Kazoo with a payload like below.
 
 ```json
 {
   "data": {
-    "mfa_service_response": "AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef`, the `mfa_service_reponse` to send would be: `AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777",
+    "multi_factor_response": "AUTH|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTYxNTcyNzI0Mw==|d20ad0d1e62d84b00a3e74ec201a5917e77b6aef:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777",
   }
 }
 ```
+
+Notice that the cookie Duo sent to you (`AUTH|...|...`) was merged with `APP|...|...` from previous step (seperated with a colon): `AUTH|...|...:APP|...|...`.

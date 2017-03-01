@@ -65,7 +65,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                ,{<<"as">>, kz_json:get_value(<<"as">>, Data)}
                ,{<<"method">>, Method}
                ,{<<"exp">>, Expiration}
-               ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"mfa_service_response">>, Data)}
+               ,{<<"mfa_resp">>, kz_json:get_ne_value(<<"multi_factor_response">>, Data)}
                 | kz_json:to_proplist(kz_json:get_value(<<"Claims">>, JObj, kz_json:new()))
                ]),
     case maybe_create_token(Claims, Method) of
@@ -90,7 +90,7 @@ create_auth_token(Context, AuthModule, JObj) ->
                        ),
             MFAReq = kz_json:from_list(
                        [{<<"message">>, <<"client needs to preform second-factor authentication">>}
-                       ,{<<"mfa_request">>, RespJObj}
+                       ,{<<"multi_factor_request">>, RespJObj}
                        ]
                       ),
             cb_context:add_system_error(401, 'invalid_credentials', MFAReq, Context)

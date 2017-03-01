@@ -76,12 +76,16 @@ sign_request(#{<<"user_name">> := UserId
 
     SiqReq = <<DuoAuth/binary, (?AUTH_PART_SEP)/binary, AppAuth/binary>>,
 
-    {'error', 401, kz_json:from_list(
-                     [{<<"duo_sig_request">>, SiqReq}
-                     ,{<<"duo_api_hostname">>, Host}
-                     ,{<<"provider">>, <<"duo">>}
-                     ]
-                    )}.
+    Resp = [{<<"provider_name">>, <<"duo">>}
+           ,{<<"settings">>
+            ,kz_json:from_list(
+               [{<<"duo_sig_request">>, SiqReq}
+               ,{<<"duo_api_hostname">>, Host}
+               ]
+              )
+            }
+           ],
+    {'error', 401, kz_json:from_list(Resp)}.
 
 -spec sign_value(ne_binary(), ne_binary(), ne_binary(), integer()) -> ne_binary().
 sign_value(Key, Value, Prefix, Exp) ->
