@@ -351,6 +351,7 @@
     "media.normalize_executable": "media normalize executable",
     "media.normalize_source_args": "media normalize source args",
     "media.proxy_hostname": "media proxy hostname to be used with haproxy",
+    "media.proxy_ip": "media proxy ip",
     "media.proxy_listeners": "media proxy listeners",
     "media.proxy_password": "media proxy password",
     "media.proxy_port": "media proxy port",
