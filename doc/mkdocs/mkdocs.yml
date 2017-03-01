@@ -39,15 +39,21 @@ pages:
     - 'applications/crossbar/doc/rates.md'
     - 'applications/crossbar/doc/resources.md'
     - 'applications/crossbar/doc/resource_templates.md'
+    - 'applications/crossbar/doc/resource_selectors.md'
+    - 'applications/crossbar/doc/rate_limits.md'
+    - 'applications/crossbar/doc/access_lists.md'
   - 'Media Management':
     - 'applications/crossbar/doc/media.md'
   - 'Misc':
     - 'applications/crossbar/doc/comments.md'
+    - 'applications/crossbar/doc/freeswitch.md'
+    - 'applications/crossbar/doc/lists.md'
   - 'PBX Features':
     - 'applications/crossbar/doc/blacklists.md'
     - 'applications/crossbar/doc/callflows.md'
     - 'applications/crossbar/doc/clicktocall.md'
     - 'applications/crossbar/doc/conference.md'
+    - 'applications/crossbar/doc/contact_list.md'
     - 'applications/crossbar/doc/devices.md'
     - 'applications/crossbar/doc/dialplans.md'
     - 'applications/crossbar/doc/directories.md'
@@ -67,6 +73,8 @@ pages:
   - 'Call Queues':
     - 'applications/crossbar/doc/agents.md'
     - 'applications/crossbar/doc/queues.md'
+  - 'Calling Cards':
+    - 'applications/crossbar/doc/cccps.md'
   - 'Status':
     - 'applications/crossbar/doc/about.md'
     - 'applications/crossbar/doc/acls.md'
@@ -78,6 +86,8 @@ pages:
     - 'applications/crossbar/doc/storage.md'
   - 'System Management':
     - 'applications/crossbar/doc/apps_store.md'
+    - 'applications/crossbar/doc/apps_link.md'
+    - 'applications/crossbar/doc/braintree.md'
     - 'applications/crossbar/doc/call_inspector.md'
     - 'applications/crossbar/doc/configuration.md'
     - 'applications/crossbar/doc/maintenance.md'
@@ -85,9 +95,17 @@ pages:
     - 'applications/crossbar/doc/reverse_proxy.md'
     - 'applications/crossbar/doc/securing_crossbar.md'
     - 'applications/crossbar/doc/sup.md'
+    - 'applications/crossbar/doc/tasks.md'
     - 'applications/crossbar/doc/configs.md'
     - 'applications/crossbar/doc/system_configs.md'
     - 'applications/crossbar/doc/token_restrictions.md'
+  - 'Deprecated':
+    - 'applications/crossbar/doc/bulk.md'
+    - 'applications/crossbar/doc/global_provisioner_templates.md'
+    - 'applications/crossbar/doc/local_provisioner_templates.md'
+    - 'applications/crossbar/doc/signup.md'
+    - 'applications/crossbar/doc/onboard.md'
+    - 'applications/crossbar/doc/onboarding.md'
 - 'Integrations':
   - 'Pivot':
     - 'Intro': 'applications/pivot/doc/README.md'
@@ -146,6 +164,7 @@ pages:
     - 'applications/callflow/doc/README.md'
     - 'Call Parking': 'applications/callflow/doc/park.md'
     - 'Call Recording': 'applications/callflow/doc/record_call.md'
+    - 'Call Priorities': 'applications/callflow/doc/call_priorities.md'
     - 'Custom SIP Headers': 'applications/callflow/doc/custom_sip_headers.md'
     - 'Incoming Fax Detection': 'applications/callflow/doc/fax_detect.md'
     - 'Change Language': 'applications/callflow/doc/language.md'
