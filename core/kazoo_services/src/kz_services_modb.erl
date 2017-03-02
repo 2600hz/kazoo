@@ -29,8 +29,7 @@ modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, _Year, _Month) = AccountMODb) ->
 modb(?MATCH_MODB_SUFFIX_RAW(AccountId, _Year, _Month) = AccountMODb) ->
     ServicesJObj = kz_services:to_json(kz_services:fetch(AccountId)),
     save_services_to_modb(AccountMODb, ServicesJObj, ?SERVICES_BOM),
-    maybe_save_to_previous_modb(AccountMODb, ServicesJObj),
-    wht_util:modb(AccountMODb).
+    maybe_save_to_previous_modb(AccountMODb, ServicesJObj).
 
 -spec save_services_to_modb(ne_binary(), kz_json:object(), ne_binary()) -> 'ok'.
 save_services_to_modb(AccountMODb, ServicesJObj, Id) ->
