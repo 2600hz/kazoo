@@ -113,13 +113,11 @@ save_fax_attachment(JObj, _FileContents, _CT, _Name, 0) ->
     {'error', <<"max retry saving attachment">>};
 save_fax_attachment(JObj, FileContents, CT, Name, Count) ->
     DocId = kz_doc:id(JObj),
+    _ = attempt_save(JObj, FileContents, CT, Name),
     case check_fax_attachment(DocId, Name) of
         {'ok', J} -> save_fax_doc_completed(J);
         {'missing', J} ->
             lager:warning("missing fax attachment on fax id ~s",[DocId]),
-
-            _ = attempt_save(JObj, FileContents, CT, Name),
-
             timer:sleep(?RETRY_SAVE_ATTACHMENT_DELAY),
             save_fax_attachment(J, FileContents, CT, Name, Count-1);
         {'error', _R} ->
