@@ -139,7 +139,7 @@ post(Context) ->
         fun() ->
                 crossbar_doc:save(Context)
         end,
-    crossbar_services:maybe_dry_run(Context, Callback).
+    crossbar_services:maybe_dry_run(Context, Callback, ?PVT_TYPE).
 
 %%%===================================================================
 %%% Internal functions
