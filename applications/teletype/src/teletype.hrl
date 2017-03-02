@@ -142,5 +142,40 @@
                        }).
 -type email_receipt() :: #email_receipt{}.
 
+-define(DEFAULT_MODULES, [teletype_account_zone_change
+                         ,teletype_cnam_request
+                         ,teletype_customer_update
+                         ,teletype_denied_emergency_bridge
+                         ,teletype_deregister
+                         ,teletype_fax_inbound_error_to_email
+                         ,teletype_fax_inbound_to_email
+                         ,teletype_fax_outbound_error_to_email
+                         ,teletype_fax_outbound_to_email
+                         ,teletype_first_occurrence
+                         ,teletype_low_balance
+                         ,teletype_new_account
+                         ,teletype_new_user
+                         ,teletype_password_recovery
+                         ,teletype_port_cancel
+                         ,teletype_port_comment
+                         ,teletype_ported
+                         ,teletype_port_pending
+                         ,teletype_port_rejected
+                         ,teletype_port_request_admin
+                         ,teletype_port_request
+                         ,teletype_port_scheduled
+                         ,teletype_port_unconfirmed
+                         ,teletype_service_added
+                         ,teletype_system_alert
+                         ,teletype_template_skel
+                         ,teletype_topup
+                         ,teletype_transaction
+                         ,teletype_voicemail_full
+                         ,teletype_voicemail_to_email
+                         ,teletype_webhook_disabled
+                         ]).
+-define(AUTOLOAD_MODULES_KEY, <<"autoload_modules">>).
+-define(AUTOLOAD_MODULES, kapps_config:get(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, ?DEFAULT_MODULES)).
+
 -define(TELETYPE_HRL, 'true').
 -endif.
