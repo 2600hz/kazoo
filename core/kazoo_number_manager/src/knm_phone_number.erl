@@ -105,9 +105,6 @@
 -define(BULK_BATCH_WRITES,
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
--define(PORT_IN_MODULE_NAME,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
-
 -define(DIRTY(PN), begin
                        lager:debug("dirty"),
                        PN#knm_phone_number{is_dirty = true}
@@ -183,6 +180,8 @@ fetch(?TEST_OLD5_NUM, Options) ->
 fetch(?TEST_OLD6_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json"))),
     handle_fetch(JObj, Options);
+fetch(?TEST_PORT_IN_NUM, Options) ->
+    handle_fetch(?PORT_IN_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
