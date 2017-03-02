@@ -135,15 +135,10 @@ attempt_setting_e911_on_disallowed_number_test_() ->
     Num = ?BW_EXISTING_DID,
     {ok, N} = knm_number:get(Num),
     PN = knm_number:phone_number(N),
-    Msg = kz_json:from_list(
-            [{<<"code">>, 403}
-            ,{<<"error">>, <<"forbidden">>}
-            ,{<<"message">>, <<"requestor is unauthorized to perform operation">>}
-            ]),
     [{"Verify feature is not set"
      ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
      }
-    ,{"Verify feature is still not set"
-     ,?_assertEqual({error, Msg}, knm_number:update_phone_number(N, Updates, Options))
+    ,{"Verify feature cannot be set"
+     ,?_assertThrow({error, unauthorized}, knm_number:update_phone_number(N, Updates, Options))
      }
     ].
