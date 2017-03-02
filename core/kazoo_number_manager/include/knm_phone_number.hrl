@@ -73,8 +73,8 @@
 -define(FEATURE_LOCAL, <<"local">>).
 -define(FEATURE_PORT, <<"port">>).
 -define(FEATURE_PREPEND, <<"prepend">>).
--define(FEATURE_RINGBACK, <<"ringback">>).
 -define(FEATURE_RENAME_CARRIER, <<"carrier_name">>).
+-define(FEATURE_RINGBACK, <<"ringback">>).
 
 -define(LEGACY_DASH_E911, <<"dash_e911">>).
 -define(LEGACY_TELNYX_E911, <<"telnyx_e911">>).
@@ -92,6 +92,18 @@
                                   ,?FEATURE_E911
                                   ,?FEATURE_PORT
                                   ]).
+
+%% Keys on number document's root reserved to update features
+-define(FEATURES_ROOT_KEYS, [?FEATURE_CNAM
+                            ,?FEATURE_E911
+                            ,?FEATURE_FAILOVER
+                            ,?FEATURE_FORCE_OUTBOUND
+                            ,?FEATURE_LOCAL
+                            ,?FEATURE_PORT
+                            ,?FEATURE_PREPEND
+                            ,?FEATURE_RENAME_CARRIER
+                            ,?FEATURE_RINGBACK
+                            ]).
 
 -define(CNAM_DISPLAY_NAME, <<"display_name">>).
 -define(CNAM_INBOUND_LOOKUP, <<"inbound_lookup">>).

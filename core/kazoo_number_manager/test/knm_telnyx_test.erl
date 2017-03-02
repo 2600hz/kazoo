@@ -179,6 +179,7 @@ rename_carrier_test_() ->
     {ok, N4} = knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
     PN4 = knm_number:phone_number(N4),
     JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
+    JObj4 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"gen_carrier">>}]),
     [{"Verify carrier name is right"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
      }
@@ -186,7 +187,12 @@ rename_carrier_test_() ->
     ,{"Verify carrier name is changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
      }
-    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
+    ,{"Verify feature is now removed"
+     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
+     }
+    ,{"Verify local feature is now set"
+     ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN4)))
+     }
     ,{"Verify setting wrong carrier is forbidden"
      ,?_assertThrow({error, invalid, _N, <<"'wrong_carrier' is not known by the system">>}
                    ,knm_number:update_phone_number(N2, [{fun knm_phone_number:reset_doc/2, JObj2}])
@@ -203,5 +209,36 @@ rename_carrier_test_() ->
                                                   ,[{auth_by, ?RESELLER_ACCOUNT_ID}]
                                                   )
                    )
+     }
+    ,{"Verify setting not a carrier is invalid"
+     ,?_assertThrow({error, invalid, _, _}
+                   ,knm_number:update_phone_number(N2
+                                                  ,[{fun knm_phone_number:reset_doc/2, JObj4}]
+                                                  ,[{auth_by, ?MASTER_ACCOUNT_ID}]
+                                                  )
+                   )
+     }
+    ].
+
+rename_from_local_test_() ->
+    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
+              ],
+    {ok, N1} = knm_number:get(?TEST_IN_SERVICE_NUM, Options),
+    PN1 = knm_number:phone_number(N1),
+    JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
+    {ok, N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:reset_doc/2, JObj1}], Options),
+    PN2 = knm_number:phone_number(N2),
+    [{"Verify carrier name is right"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN1))
+     }
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN1)))
+    ,{"Verify carrier name is changed"
+     ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN2))
+     }
+    ,{"Verify feature is now removed"
+     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
+     }
+    ,{"Verify local feature is now set"
+     ,?_assertEqual(false, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
      }
     ].
