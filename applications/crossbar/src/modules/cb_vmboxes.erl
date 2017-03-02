@@ -647,7 +647,7 @@ load_message_summary(BoxId, Context) ->
             NormlizeFun = fun(J, Acc) ->
                                   message_summary_normalizer(BoxId, J, Acc, RetenTimestamp)
                           end,
-            C1 = cb_context:set_resp_status(Context, 'success'),
+            C1 = prefix_qs_filter_keys(cb_context:set_resp_status(Context, 'success')),
             ViewResults = crossbar_doc:load_view(?MSG_LISTING_BY_MAILBOX
                                                 ,ViewOptions
                                                 ,C1
@@ -656,6 +656,29 @@ load_message_summary(BoxId, Context) ->
             maybe_fix_envelope(ViewResults);
         Ctx -> Ctx
     end.
+
+-spec prefix_qs_filter_keys(cb_context:context()) -> cb_context:context().
+prefix_qs_filter_keys(Context) ->
+    NewQs = kz_json:map(fun(K, V) ->
+                                prefix_filter_key(K, V)
+                        end
+                       ,cb_context:query_string(Context)
+                       ),
+    cb_context:set_query_string(Context, NewQs).
+
+-spec prefix_filter_key(ne_binary(), any()) -> {ne_binary(), any()}.
+prefix_filter_key(<<"filter_not_", Key/binary>>, Val) ->
+    {<<"filter_not_metadata.", Key/binary>>, Val};
+prefix_filter_key(<<"filter_", Key/binary>>, Val) ->
+    {<<"filter_metadata.", Key/binary>>, Val};
+prefix_filter_key(<<"has_key">>, Key) ->
+    {<<"has_key">>, <<"metadata.", Key/binary>>};
+prefix_filter_key(<<"key_missing">>, Key) ->
+    {<<"key_missing">>, <<"metadata.", Key/binary>>};
+prefix_filter_key(<<"has_value">>, Key) ->
+    {<<"has_value">>, <<"metadata.", Key/binary>>};
+prefix_filter_key(Key, Value) ->
+    {Key, Value}.
 
 -spec message_summary_normalizer(api_binary(), kz_json:object(), kz_json:objects(), gregorian_seconds()) ->
                                         kz_json:objects().
