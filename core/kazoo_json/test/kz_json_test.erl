@@ -583,12 +583,13 @@ sum_test_() ->
     ].
 
 order_by_test_() ->
-    Unordered = [kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"3">>}]}])
-                ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"5">>}]}])
-                ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"1">>}]}])
-                ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"2">>}]}])
-                ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"4">>}]}])
-                ],
+    Unordered = [H1, H2|T] =
+        [kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"3">>}]}])
+        ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"5">>}]}])
+        ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"1">>}]}])
+        ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"2">>}]}])
+        ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"4">>}]}])
+        ],
     InOrder = [kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"1">>}]}])
               ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"2">>}]}])
               ,kz_json:from_list_recursive([{<<"a">>, [{<<"k">>, <<"3">>}]}])
@@ -597,7 +598,9 @@ order_by_test_() ->
               ],
     Ids = [<<"1">>, <<"2">>, <<"3">>, <<"4">>, <<"5">>],
     [?_assertEqual([], kz_json:order_by([<<"a">>, <<"k">>], [], []))
-    ,?_assertEqual(InOrder, kz_json:order_by([<<"a">>, <<"k">>], Ids, Unordered))
+    ,?_assertEqual([], kz_json:order_by([<<"a">>, <<"k">>], [], [[]]))
+    ,?_assertEqual(InOrder, kz_json:order_by([<<"a">>, <<"k">>], Ids, [Unordered]))
+    ,?_assertEqual(InOrder, kz_json:order_by([<<"a">>, <<"k">>], Ids, [[H1,H2], T]))
     ].
 
 from_list_recursive_test() ->
