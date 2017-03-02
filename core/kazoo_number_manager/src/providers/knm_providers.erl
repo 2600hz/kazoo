@@ -24,6 +24,8 @@
 -define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
 -define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
 
+-define(LOCAL_FEATURE_OVERRIDE, <<"local_feature_override">>).
+
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
 
@@ -225,8 +227,15 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
 -spec local_denied_features(feature_parameters()) -> ne_binaries().
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
-    lager:debug("denying external number features for local number"),
-    ?EXTERNAL_NUMBER_FEATURES.
+    case kapps_config:get_is_true(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE, 'false') of
+        'true' ->
+            lager:debug("not denying external features on local number due to override"),
+            [];
+
+        'false' ->
+            lager:debug("denying external number features for local number"),
+            ?EXTERNAL_NUMBER_FEATURES
+    end.
 
 -spec used_by_denied_features(feature_parameters()) -> ne_binaries().
 used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
