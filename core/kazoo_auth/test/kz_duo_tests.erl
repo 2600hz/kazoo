@@ -48,12 +48,18 @@
 -define(SIG_REQ_EXPIRE_1234
        ,<<"TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777">>
        ).
--define(VALID_401_MFA_RESP, {'error', 401, kz_json:from_list(
-                                             [{<<"sig_request">>, ?SIG_REQ_EXPIRE_1234}
-                                             ,{<<"api_hostname">>, ?API_HOST}
-                                             ]
-                                            )
-                            }
+-define(VALID_401_SETTINGS, kz_json:from_list(
+                              [{<<"duo_sig_request">>, ?SIG_REQ_EXPIRE_1234}
+                              ,{<<"duo_api_hostname">>, ?API_HOST}
+                              ]
+                             )
+       ).
+-define(VALID_401_MFA_RESP
+       ,{'error', 401, kz_json:from_list([{<<"provider_name">>, <<"duo">>}
+                                         ,{<<"settings">>, ?VALID_401_SETTINGS}
+                                         ]
+                                        )
+        }
        ).
 
 %% helper
@@ -127,7 +133,7 @@ is_invalid_error(_) -> 'false'.
 
 verify_request_test_() ->
     {_, _, SignReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?TEST_CONFIG_JOBJ),
-    [_, ValidAppSig] = binary:split(kz_json:get_value(<<"sig_request">>, SignReq), <<":">>, ['global']),
+    [_, ValidAppSig] = binary:split(kz_json:get_value([<<"settings">>, <<"duo_sig_request">>], SignReq), <<":">>, ['global']),
 
     %% {_, _,InvalidSigReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>, ?WRONG_AKEY)),
     %% [_, InvalidAppSig] = binary:split(InvalidSigReq, <<":">>, ['global']),
