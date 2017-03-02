@@ -145,14 +145,16 @@ create(Num, Options) ->
 -ifdef(TEST).
 state_for_create(AccountId, Options) ->
     case {knm_number_options:state(Options)
+         ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
          ,AccountId
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
-        {_, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
-        {_, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
+        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
+        {_, _, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
         _ -> ?NUMBER_STATE_IN_SERVICE
     end.
 -else.
@@ -160,15 +162,19 @@ state_for_create(AccountId, Options) ->
     case knm_number_options:state(Options) of
         ?NUMBER_STATE_PORT_IN=PortIn -> PortIn;
         _ ->
-            case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
+            case knm_number_options:ported_in(Options) of
                 true -> ?NUMBER_STATE_IN_SERVICE;
                 _ ->
-                    case kz_services:is_reseller(AccountId)
-                        andalso kapps_util:get_master_account_id()
-                    of
-                        'false' -> ?NUMBER_STATE_IN_SERVICE;
-                        {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-                        {'ok', _} -> ?NUMBER_STATE_RESERVED
+                    case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
+                        true -> ?NUMBER_STATE_IN_SERVICE;
+                        _ ->
+                            case kz_services:is_reseller(AccountId)
+                                andalso kapps_util:get_master_account_id()
+                            of
+                                'false' -> ?NUMBER_STATE_IN_SERVICE;
+                                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
+                                {'ok', _} -> ?NUMBER_STATE_RESERVED
+                            end
                     end
             end
     end.
@@ -186,16 +192,20 @@ ensure_can_load_to_create(T0=#{todo := PNs}) ->
                 end
         end,
     lists:foldl(F, T0, PNs);
-ensure_can_load_to_create(PhoneNumber) ->
-    ensure_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE).
+ensure_can_load_to_create(PN) ->
+    ensure_state(PN, [?NUMBER_STATE_AVAILABLE
+                     ,?NUMBER_STATE_PORT_IN
+                     ]).
 
--spec ensure_state(knm_phone_number:knm_phone_number(), ne_binary()) -> 'true'.
-ensure_state(PhoneNumber, ExpectedState) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ExpectedState -> 'true';
-        _State ->
-            lager:debug("wrong state: expected ~s, got ~s", [ExpectedState, _State]),
-            knm_errors:number_exists(knm_phone_number:number(PhoneNumber))
+-spec ensure_state(knm_phone_number:knm_phone_number(), ne_binaries()) -> true.
+ensure_state(PN, AllowedStates) ->
+    State = knm_phone_number:state(PN),
+    case lists:member(State, AllowedStates) of
+        true -> true;
+        false ->
+            Num = knm_phone_number:number(PN),
+            lager:error("~s wrong state ~s, expected one of ~p", [Num, State, AllowedStates]),
+            knm_errors:number_exists(Num)
     end.
 
 %%--------------------------------------------------------------------

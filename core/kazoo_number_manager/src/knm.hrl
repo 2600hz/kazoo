@@ -11,6 +11,9 @@
 
 -define(KNM_USER_AGENT, "Kazoo Number Manager " ++ binary_to_list(?APP_VERSION)).
 
+-define(PORT_IN_MODULE_NAME,
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"port_in_module_name">>, ?CARRIER_LOCAL)).
+
 -define(IS_US_TOLLFREE(Prefix)
        ,Prefix == <<"800">>
             orelse Prefix == <<"822">>
@@ -71,6 +74,7 @@
 -define(TEST_OLD5_NUM, <<"+19377038880">>).
 -define(TEST_OLD6_NUM, <<"+12156774700">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
+-define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -208,6 +212,23 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1435">>}
           ,{?PVT_CREATED, 63565934344}
+          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
+          ]
+         )
+       ).
+
+-define(PORT_IN_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_PORT_IN_NUM}
+          ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3a8e69">>}
+          ,{?PVT_MODIFIED, 63565934327}
+          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, ?PORT_IN_MODULE_NAME}
+          ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565934000}
           ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ]
          )

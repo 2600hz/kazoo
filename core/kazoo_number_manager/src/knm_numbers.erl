@@ -256,6 +256,8 @@ do_get_pn(Nums, Options, Error) ->
 %% @doc
 %% Attempts to create new numbers in DB or modify existing ones.
 %% Note: `assign_to' number option MUST be set.
+%% Note: creating numbers with `ported_in` option set to true will
+%%   attempt to create them with state in_service.
 %% @end
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
@@ -269,7 +271,8 @@ create(Nums, Options) ->
             lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
             NewOptions = [{'state', ToState} | Options],
             ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
-                    ,[fun knm_number:new/1
+                    ,[fun maybe_set_ported_in/1
+                     ,fun knm_number:new/1
                      ,fun knm_number_states:to_options_state/1
                      ,fun save_numbers/1
                      ]))
@@ -624,6 +627,15 @@ take_not_founds(T=#{ko := KOs}) ->
     {NumsNotFound, NewKOs} = lists:partition(F, maps:to_list(KOs)),
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
+
+-spec maybe_set_ported_in(t_pn()) -> t_pn().
+maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
+    case knm_number_options:ported_in(Options) of
+        false -> ok(PNs, T);
+        true ->
+            Routines = [{fun knm_phone_number:set_ported_in/2, true}],
+            knm_phone_number:setters(T, Routines)
+    end.
 
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
