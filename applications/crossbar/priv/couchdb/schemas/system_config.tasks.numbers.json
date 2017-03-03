@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.tasks.numbers",
+    "description": "Schema for tasks.numbers system_config",
+    "properties": {
+        "import_defaults_to_carrier": {
+            "default": "knm_local",
+            "description": "carrier module to use if none provided during numbers import",
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
