@@ -491,7 +491,7 @@ maybe_resource_to_endpoints(#resrc{id=Id
 
 -spec check_diversion_fields(kapi_offnet_resource:req()) -> ne_binary().
 check_diversion_fields(OffnetJObj) ->
-    case kz_json:get_value([<<"Custom-SIP-Headers">>,<<"Diversions">>], OffnetJObj) of
+    case kapi_offnet_resource:custom_sip_header(OffnetJObj, <<"Diversions">>) of
         [Diversion|_] ->
             [_,CallerIdNumber,_] = binary:split(Diversion, [<<":">>,<<"@">>], ['global']),
             CallerIdNumber;

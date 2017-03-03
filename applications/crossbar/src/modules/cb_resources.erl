@@ -18,6 +18,7 @@
         ,validate/1, validate/2, validate/3
         ,put/1, put/2
         ,post/2
+        ,patch/2
         ,delete/2
         ]).
 
@@ -49,6 +50,7 @@ init() ->
                           ,{<<"*.validate.resources">>, 'validate'}
                           ,{<<"*.execute.put.resources">>, 'put'}
                           ,{<<"*.execute.post.resources">>, 'post'}
+                          ,{<<"*.execute.patch.resources">>, 'patch'}
                           ,{<<"*.execute.delete.resources">>, 'delete'}
 
                           ,{<<"*.allowed_methods.global_resources">>, 'allowed_methods'}
@@ -131,7 +133,7 @@ allowed_methods(?COLLECTION) ->
 allowed_methods(?JOBS) ->
     [?HTTP_GET, ?HTTP_PUT];
 allowed_methods(_ResourceId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE].
 
 allowed_methods(?JOBS, _JobId) ->
     [?HTTP_GET].
@@ -225,8 +227,19 @@ validate_resource(Context, Id, ?HTTP_POST) ->
         ?KZ_OFFNET_DB -> update(Id, Context);
         _AccountDb -> update_local(Context, Id)
     end;
+validate_resource(Context, Id, ?HTTP_PATCH) ->
+    validate_patch(read(Id, Context), Id);
 validate_resource(Context, Id, ?HTTP_DELETE) ->
     read(Id, Context).
+
+validate_patch(Context, Id) ->
+    case cb_context:resp_status(Context) of
+        'success' ->
+            PatchJObj = kz_doc:public_fields(cb_context:req_data(Context)),
+            JObj = kz_json:merge_jobjs(PatchJObj, cb_context:doc(Context)),
+            validate_resource(cb_context:set_req_data(Context, JObj), Id, ?HTTP_POST);
+        _Status -> Context
+    end.
 
 validate_collection(Context) ->
     lists:foldl(fun validate_collection_fold/2
@@ -303,6 +316,10 @@ validate_jobs(Context, ?HTTP_PUT) ->
 post(Context, ?COLLECTION) ->
     do_collection(Context, cb_context:account_db(Context));
 post(Context, Id) ->
+    do_post(Context, Id, cb_context:account_db(Context)).
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+patch(Context, Id) ->
     do_post(Context, Id, cb_context:account_db(Context)).
 
 -spec do_collection(cb_context:context(), ne_binary()) -> cb_context:context().

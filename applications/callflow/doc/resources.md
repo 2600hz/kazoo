@@ -58,3 +58,23 @@ Key | Description | Type | Default | Required
 ```
 
 This is great for resellers; they can set their reseller account id as the `hunt_account_id` in callflows for their child accounts (such as in the `no_match` callflow).
+
+### Custom SIP Headers
+
+You can include a couple macros that will be replaced at the time of a call in the SIP headers. For instance, if you need to send the Caller-ID number as an "X-" SIP header:
+
+```json
+{"module":"resources",
+ "data":{
+   "use_local_resources":true,
+   "hunt_account_id":"{OTHER_ACCOUNT_ID}",
+   "custom_sip_headers":{
+     "X-Billing-Number":"{caller_id_number}"
+   }
+ }
+}
+```
+
+By using `{caller_id_number}`, Kazoo will replace the header value with the actual Caller-ID number for that call. If the number was `4158867900` then the SIP INVITE would include the header `X-Billing-Number: 4158867900`.
+
+You can find the listing of available macros in the `/v2/schemas/ecallmgr` API call; look for the `expandable_macros` defaults.

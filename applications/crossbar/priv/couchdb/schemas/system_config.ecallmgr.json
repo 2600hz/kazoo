@@ -149,6 +149,17 @@
             "description": "ecallmgr event stream idle alert",
             "type": "integer"
         },
+        "expandable_macros": {
+            "default": {
+                "{account_id}": "${ecallmgr_Account-ID}",
+                "{billing_id}": "${ecallmgr_Billing-ID}",
+                "{caller_id_name}": "${caller_id_name}",
+                "{caller_id_number}": "${caller_id_number}",
+                "{reseller_id}": "${ecallmgr_Reseller-ID}"
+            },
+            "description": "macros that will be expanded at call-time, for use in custom SIP headers",
+            "type": "object"
+        },
         "expires_deviation_time": {
             "default": 180,
             "description": "ecallmgr expires deviation time",

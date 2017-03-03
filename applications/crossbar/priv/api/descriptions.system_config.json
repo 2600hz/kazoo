@@ -250,6 +250,7 @@
     "ecallmgr.default_ringback": "ecallmgr default ringback",
     "ecallmgr.delete_on_success": "ecallmgr delete on success",
     "ecallmgr.event_stream_idle_alert": "ecallmgr event stream idle alert",
+    "ecallmgr.expandable_macros": "macros that will be expanded at call-time, for use in custom SIP headers",
     "ecallmgr.expires_deviation_time": "ecallmgr expires deviation time",
     "ecallmgr.fax_file_path": "ecallmgr fax file path",
     "ecallmgr.fetch_timeout": "ecallmgr fetch timeout",
