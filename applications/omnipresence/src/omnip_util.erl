@@ -51,7 +51,7 @@ request_probe(<<"message-summary">>, Username, Realm) ->
           ,{<<"Realm">>, Realm}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kz_amqp_worker:cast(API, fun kapi_presence:publish_mwi_query/1);    
+    kz_amqp_worker:cast(API, fun kapi_presence:publish_mwi_query/1);
 request_probe(Package, Username, Realm) ->
     API = [{<<"Event-Package">>, Package}
           ,{<<"Username">>, Username}
