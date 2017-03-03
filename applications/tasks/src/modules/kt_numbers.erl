@@ -32,9 +32,13 @@
         ,delete/3
         ]).
 
--include_lib("kazoo/include/kz_types.hrl").
--include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
+-include("tasks.hrl").
+
+-define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".numbers">>).
+-define(IMPORT_DEFAULTS_TO_CARRIER
+        %% Defaults to knm_carriers:default_carrier()
+       ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)).
 
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
@@ -385,8 +389,8 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
     ModuleName = case kz_util:is_system_admin(Account)
                      andalso Carrier
                  of
-                     false -> ?CARRIER_LOCAL;
-                     undefined -> ?CARRIER_LOCAL;
+                     false -> ?IMPORT_DEFAULTS_TO_CARRIER;
+                     undefined -> ?IMPORT_DEFAULTS_TO_CARRIER;
                      _ -> Carrier
                  end,
     CNAMInbound = kz_term:is_true(CNAMInbound0),
