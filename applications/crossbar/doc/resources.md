@@ -343,6 +343,76 @@ curl -v -X POST \
 }
 ```
 
+#### Patch a resource
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data":{"custom_sip_headers":{"X-Reseller-ID":"a1b2c3"}}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "caller_id_options": {
+            "type": "external"
+        },
+        "custom_sip_headers": {
+            "X-Reseller-ID": "a1b2c3"
+        },
+        "emergency": false,
+        "enabled": true,
+        "flags": [],
+        "gateways": [
+            {
+                "channel_selection": "ascending",
+                "codecs": ["PCMU", "PCMA"],
+                "custom_sip_headers": {},
+                "emergency": false,
+                "enabled": true,
+                "endpoint_type": "sip",
+                "format_from_uri": false,
+                "invite_format": "route",
+                "password": "DrWoody",
+                "prefix": "+1",
+                "progress_timeout": "6",
+                "realm": "carrier1.com",
+                "server": "carrier1.com",
+                "skype_rr": true,
+                "suffix": "100",
+                "username": "blazemore"
+            }
+        ],
+        "grace_period": 5,
+        "id": "{RESOURCE_ID}",
+        "media": {
+            "audio": {
+                "codecs": ["PCMU"]
+            },
+            "video": {
+                "codecs": []
+            }
+        },
+        "name": "Carrier 3",
+        "peer": false,
+        "rules": [
+            "^\\+{0,1}1{0,1}(\\d{10})$"
+        ],
+        "type": "local",
+        "weight_cost": "50"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION_ID}",
+    "status": "success"
+}
+```
+
+
 #### Fetch a listing of jobs
 
 Do note you can use the `created_from` and `created_to` flags to change to time period queried.

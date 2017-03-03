@@ -101,6 +101,16 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
 ```
 
+#### Patch
+
+> PATCH /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}
+```
+
 #### Remove
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/resources/{RESOURCE_ID}

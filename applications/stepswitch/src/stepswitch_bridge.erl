@@ -33,11 +33,11 @@
 
 -record(state, {endpoints = [] :: kz_json:objects()
                ,resource_req :: kapi_offnet_resource:req()
-               ,request_handler :: pid()
+               ,request_handler :: api_pid()
                ,control_queue :: api_binary()
                ,response_queue :: api_binary()
                ,queue :: api_binary()
-               ,timeout :: reference()
+               ,timeout :: api_reference()
                ,call_id :: api_binary()
                }).
 -type state() :: #state{}.
@@ -59,9 +59,9 @@
                                        ]
                               }).
 
--define(SHOULD_ENSURE_E911_CID_VALID,
-        kapps_config:get_is_true(?SS_CONFIG_CAT, <<"ensure_valid_emergency_cid">>, false)).
-
+-define(SHOULD_ENSURE_E911_CID_VALID
+       ,kapps_config:get_is_true(?SS_CONFIG_CAT, <<"ensure_valid_emergency_cid">>, 'false')
+       ).
 
 %%%===================================================================
 %%% API
@@ -284,10 +284,9 @@ maybe_bridge(#state{endpoints=Endpoints
         'false' ->
             Name = bridge_outbound_cid_name(OffnetReq),
             Number = bridge_outbound_cid_number(OffnetReq),
-            kapi_dialplan:publish_command(
-              ControlQ
+            kapi_dialplan:publish_command(ControlQ
                                          ,build_bridge(State, Number, Name)
-             ),
+                                         ),
             lager:debug("sent bridge command to ~s", [ControlQ])
     end.
 

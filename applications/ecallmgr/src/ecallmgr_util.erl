@@ -684,12 +684,14 @@ endpoint_jobj_to_record(Endpoint, IncludeVars) ->
 
 -spec endpoint_jobj_to_record_vars(kz_json:object(), bridge_endpoint()) -> bridge_endpoint().
 endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='true'}=Bridge) ->
-    Bridge#bridge_endpoint{channel_vars = ecallmgr_fs_xml:get_leg_vars(Endpoint)};
+    Bridge#bridge_endpoint{channel_vars=ecallmgr_fs_xml:get_leg_vars(Endpoint)};
 endpoint_jobj_to_record_vars(Endpoint, #bridge_endpoint{include_channel_vars='false'}=Bridge) ->
-    Props = lists:filter(fun({<<"Custom-SIP-Headers">>, _}) -> true;
-                            (_) -> false
-                         end, kz_json:to_proplist(Endpoint)),
-    Bridge#bridge_endpoint{header_vars = ecallmgr_fs_xml:get_leg_vars(Props)}.
+    Props = lists:filter(fun({<<"Custom-SIP-Headers">>, _}) -> 'true';
+                            (_) -> 'false'
+                         end
+                        ,kz_json:to_proplist(Endpoint)
+                        ),
+    Bridge#bridge_endpoint{header_vars=ecallmgr_fs_xml:get_leg_vars(Props)}.
 
 -spec get_endpoint_span(kz_json:object()) -> ne_binary().
 get_endpoint_span(Endpoint) ->
@@ -870,6 +872,20 @@ maybe_failover(Endpoint) ->
     end.
 
 -spec get_sip_contact(bridge_endpoint()) -> ne_binary().
+-ifdef(TEST).
+get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route = <<"loopback/", Route/binary>>}) ->
+    <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
+    Route;
+get_sip_contact(#bridge_endpoint{invite_format = <<"loopback">>, route=Route}) ->
+    <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
+get_sip_contact(#bridge_endpoint{ip_address='undefined'
+                                ,realm=Realm
+                                ,username=Username
+                                }) ->
+    <<Username/binary, "@", Realm/binary>>;
+get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
+-else.
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route = <<"loopback/", Route/binary>>}) ->
     <<"loopback/", Route/binary, "/", (?DEFAULT_FREESWITCH_CONTEXT)/binary>>;
 get_sip_contact(#bridge_endpoint{invite_format = <<"route">>, route=Route}) ->
@@ -883,6 +899,7 @@ get_sip_contact(#bridge_endpoint{ip_address='undefined'
     {'ok', Contact} = ecallmgr_registrar:lookup_contact(Realm, Username),
     binary:replace(Contact, <<">">>, <<>>);
 get_sip_contact(#bridge_endpoint{ip_address=IPAddress}) -> IPAddress.
+-endif.
 
 -spec maybe_clean_contact(ne_binary(), bridge_endpoint()) -> ne_binary().
 maybe_clean_contact(<<"sip:", Contact/binary>>, _Endpoint) -> Contact;
@@ -1270,8 +1287,9 @@ maybe_add_expires_deviation_ms(Expires) ->
     maybe_add_expires_deviation(Expires) * ?MILLISECONDS_IN_SECOND.
 
 -spec get_dial_separator(api_object() | ne_binary(), kz_json:objects()) -> ne_binary().
-get_dial_separator(?DIAL_METHOD_SIMUL, [_|T]) when T =/= [] -> ?SEPARATOR_SIMULTANEOUS;
 get_dial_separator(?DIAL_METHOD_SINGLE, _Endpoints) -> ?SEPARATOR_SINGLE;
+get_dial_separator(?DIAL_METHOD_SIMUL, [_, _|_]) -> ?SEPARATOR_SIMULTANEOUS;
+get_dial_separator(?DIAL_METHOD_SIMUL, [_]) -> ?SEPARATOR_SINGLE;
 get_dial_separator('undefined', _Endpoints) -> ?SEPARATOR_SINGLE;
 get_dial_separator(JObj, Endpoints) ->
     get_dial_separator(kz_json:get_value(<<"Dial-Endpoint-Method">>, JObj, ?DIAL_METHOD_SINGLE)

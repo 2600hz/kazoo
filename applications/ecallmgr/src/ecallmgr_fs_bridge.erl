@@ -20,7 +20,7 @@
 
 -spec call_command(atom(), ne_binary(), kz_json:object()) -> {'error', binary()} | {binary(), kz_proplist()}.
 call_command(Node, UUID, JObj) ->
-    Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    Endpoints = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     case kapi_dialplan:bridge_v(JObj) of
         'false' -> {'error', <<"bridge failed to execute as JObj did not validate">>};
         'true' when Endpoints =:= [] -> {'error', <<"bridge request had no endpoints">>};
@@ -35,7 +35,7 @@ call_command(Node, UUID, JObj) ->
             {'ok', Channel} = ecallmgr_fs_channel:fetch(UUID, 'record'),
 
             _ = handle_ringback(Node, UUID, JObj),
-            _ = maybe_early_media(Node, UUID, JObj),
+            _ = maybe_early_media(Node, UUID, JObj, Endpoints),
             _ = maybe_b_leg_events(Node, UUID, JObj),
 
             Routines = [fun handle_hold_media/5
@@ -92,17 +92,16 @@ handle_ringback(Node, UUID, JObj) ->
             ecallmgr_fs_command:set(Node, UUID, [{<<"ringback">>, Stream}])
     end.
 
--spec maybe_early_media(atom(), ne_binary(), kz_json:object()) -> ecallmgr_util:send_cmd_ret().
-maybe_early_media(Node, UUID, JObj) ->
-    Endpoints = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
+-spec maybe_early_media(atom(), ne_binary(), kz_json:object(), kz_json:objects()) -> ecallmgr_util:send_cmd_ret().
+maybe_early_media(Node, UUID, JObj, Endpoints) ->
     Separator = ecallmgr_util:get_dial_separator(JObj, Endpoints),
-    maybe_early_media(Node, UUID, JObj, Separator).
+    maybe_early_media_separator(Node, UUID, JObj, Separator).
 
--spec maybe_early_media(atom(), ne_binary(), kz_json:object(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
-maybe_early_media(Node, UUID, _JObj, ?SEPARATOR_SIMULTANEOUS) ->
+-spec maybe_early_media_separator(atom(), ne_binary(), kz_json:object(), ne_binary()) -> ecallmgr_util:send_cmd_ret().
+maybe_early_media_separator(Node, UUID, _JObj, ?SEPARATOR_SIMULTANEOUS) ->
     lager:debug("bridge is simultaneous to multiple endpoints, starting local ringing"),
     ecallmgr_util:send_cmd(Node, UUID, <<"ring_ready">>, "");
-maybe_early_media(_Node, _UUID, _, _) -> 'ok'.
+maybe_early_media_separator(_Node, _UUID, _, _) -> 'ok'.
 
 -spec handle_hold_media(kz_proplist(), atom(), ne_binary(), channel(), kz_json:object()) -> kz_proplist().
 handle_hold_media(DP, _Node, UUID, _Channel, JObj) ->
@@ -224,7 +223,7 @@ pre_exec(DP, _Node, _UUID, _Channel, _JObj) ->
 create_command(DP, _Node, _UUID, #channel{profile=ChannelProfile}, JObj) ->
     BypassAfterBridge = ?BYPASS_MEDIA_AFTER_BRIDGE,
     BridgeProfile = kz_term:to_binary(kz_json:get_value(<<"SIP-Interface">>, JObj, ?DEFAULT_FS_PROFILE)),
-    EPs = kz_json:get_ne_value(<<"Endpoints">>, JObj, []),
+    EPs = kz_json:get_list_value(<<"Endpoints">>, JObj, []),
     Endpoints = maybe_bypass_after_bridge(BypassAfterBridge, BridgeProfile, ChannelProfile, EPs),
     BridgeCmd = list_to_binary(["bridge "
                                ,build_channels_vars(Endpoints, JObj)

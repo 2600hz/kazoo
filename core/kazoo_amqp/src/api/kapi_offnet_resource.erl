@@ -26,6 +26,7 @@
         ,control_queue/1, control_queue/2
         ,custom_channel_vars/1, custom_channel_vars/2
         ,custom_sip_headers/1, custom_sip_headers/2
+        ,custom_sip_header/2
         ,emergency_caller_id_name/1, emergency_caller_id_name/2
         ,emergency_caller_id_number/1, emergency_caller_id_number/2
         ,fax_identity_name/1, fax_identity_name/2
@@ -364,6 +365,11 @@ custom_sip_headers(Req) ->
     custom_sip_headers(Req, 'undefined').
 custom_sip_headers(?REQ_TYPE(JObj), Default) ->
     kz_json:get_json_value(?KEY_CSHS, JObj, Default).
+
+-spec custom_sip_header(req(), kz_json:key()) -> kz_json:json_term() | 'undefined'.
+custom_sip_header(Req, Header) ->
+    SipHeaders = custom_sip_headers(Req, kz_json:new()),
+    kz_json:get_value(Header, SipHeaders).
 
 -spec timeout(req()) -> api_integer().
 -spec timeout(req(), Default) -> integer() | Default.

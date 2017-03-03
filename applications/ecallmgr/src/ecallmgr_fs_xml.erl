@@ -456,11 +456,19 @@ check_dtmf_type(Props) ->
     end.
 
 -spec get_leg_vars(kz_json:object() | kz_proplist()) -> iolist().
+get_leg_vars([]) -> [];
 get_leg_vars([_|_]=Prop) ->
-    ["[", string:join([kz_term:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], Prop)], ","), "]"];
+    ["["
+    ,string:join([kz_term:to_list(V)
+                  || V <- lists:foldr(fun get_channel_vars/2, [], Prop)]
+                ,","
+                )
+    ,"]"
+    ];
 get_leg_vars(JObj) -> get_leg_vars(kz_json:to_proplist(JObj)).
 
 -spec get_channel_vars(kz_json:object() | kz_proplist()) -> iolist().
+get_channel_vars([]) -> [];
 get_channel_vars([_|_]=Prop) ->
     P = Prop ++ [{<<"Overwrite-Channel-Vars">>, <<"true">>}],
     ["{", string:join([kz_term:to_list(V) || V <- lists:foldr(fun get_channel_vars/2, [], P)], ","), "}"];
@@ -556,7 +564,35 @@ get_channel_vars(_, Vars) -> Vars.
 sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
     diversion_headers_fold(Vs, Vars0);
 sip_headers_fold(K, V, Vars0) ->
-    [list_to_binary(["sip_h_", K, "=", kz_term:to_binary(V)]) | Vars0].
+    [list_to_binary(["sip_h_", K, "=", maybe_expand_macro(kz_term:to_binary(V))]) | Vars0].
+
+-ifdef(TEST).
+-define(EXPANDABLE_MACROS
+       ,kz_json:from_list([{<<"{caller_id_name}">>, <<"${caller_id_name}">>}
+                          ,{<<"{caller_id_number}">>, <<"${caller_id_number}">>}
+                          ,{<<"{account_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Account-ID}">>}
+                          ,{<<"{reseller_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Reseller-ID}">>}
+                          ,{<<"{billing_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Billing-ID}">>}
+                          ]
+                         )
+       ).
+-else.
+-define(EXPANDABLE_MACROS
+       ,ecallmgr_config:get(<<"expandable_macros">>
+                           ,kz_json:from_list([{<<"{caller_id_name}">>, <<"${caller_id_name}">>}
+                                              ,{<<"{caller_id_number}">>, <<"${caller_id_number}">>}
+                                              ,{<<"{account_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Account-ID}">>}
+                                              ,{<<"{reseller_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Reseller-ID}">>}
+                                              ,{<<"{billing_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Billing-ID}">>}
+                                              ]
+                                             )
+                           )
+       ).
+-endif.
+
+-spec maybe_expand_macro(ne_binary()) -> ne_binary().
+maybe_expand_macro(HeaderValue) ->
+    kz_json:get_ne_binary_value(HeaderValue, ?EXPANDABLE_MACROS, HeaderValue).
 
 -spec diversion_headers_fold(ne_binaries(), iolist()) -> iolist().
 diversion_headers_fold(Vs, Vars0) ->
