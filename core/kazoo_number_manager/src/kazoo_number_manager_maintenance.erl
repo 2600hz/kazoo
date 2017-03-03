@@ -445,7 +445,7 @@ fix_unassign_doc(DID) ->
 -type dids() :: gb_sets:set(ne_binary()).
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
-    case kz_datamgr:get_result_keys(AccountDb, View, []) of
+    case kz_datamgr:get_result_keys(AccountDb, View) of
         {'ok', DIDs} -> gb_sets:from_list(DIDs);
         {'error', _R} ->
             ?LOG("failed to get ~s DIDs from ~s: ~p", [View, AccountDb, _R]),
