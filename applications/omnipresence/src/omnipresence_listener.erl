@@ -23,7 +23,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {subs_pid = 'undefined' :: api_pid()
-               ,subs_ref :: reference()
+               ,subs_ref = 'undefined' :: api_reference()
                ,queue = 'undefined' :: api_binary()
                ,consuming = 'false' :: boolean()
                ,sync = 'false' :: boolean()
