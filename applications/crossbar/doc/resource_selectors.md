@@ -2,7 +2,7 @@
 
 ## About
 
-Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organaized in "chanin" (rules).
+Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organaized in "chain" (rules).
 
 #### Schema
 
@@ -332,4 +332,3 @@ CSV columns:
  * stat_time
  * stop_time
  * value
-

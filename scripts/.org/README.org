@@ -198,6 +198,8 @@ Erlang has a handful of internal representations of JSON used by the various par
 Wrapper for running rabbitmq script commands?
 ** rabbitmq-server.init
 Init.d script for rabbitmq
+** =reconcile_docs_to_index.bash=
+Finds all docs in the repo and checks which are included in the [[file:~/local/git/2600hz/kazoo/doc/mkdocs/mkdocs.yml][mkdocs.yml]] index
 ** setup-dev.sh
 Script to setup a dev environment including:
 - Symlink SUP to /usr/bin
