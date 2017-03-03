@@ -9,6 +9,7 @@
 -behaviour(gen_listener).
 
 -export([start_link/0]).
+-export([add_binding/1]).
 
 -export([init/1
         ,handle_call/3
@@ -48,7 +49,8 @@
 %%--------------------------------------------------------------------
 -spec start_link() -> startlink_ret().
 start_link() ->
-    gen_listener:start_link(?SERVER
+    gen_listener:start_link({'local', ?SERVER}
+                           ,?SERVER
                            ,[{'bindings', ?BINDINGS}
                             ,{'responders', ?RESPONDERS}
                             ,{'queue_name', ?QUEUE_NAME}
@@ -57,6 +59,13 @@ start_link() ->
                             ]
                            ,[]
                            ).
+
+%%--------------------------------------------------------------------
+%% @doc Allows teletype modules to bind to separate kazoo API modules
+%%--------------------------------------------------------------------
+-spec add_binding(gen_listener:binding()) -> 'ok'.
+add_binding({Binding, Props}) ->
+    gen_listener:add_binding(?SERVER, {Binding, [?FEDERATE_BINDING(?NOTIFY_CONFIG_CAT) | Props]}).
 
 %%%===================================================================
 %%% gen_server callbacks
