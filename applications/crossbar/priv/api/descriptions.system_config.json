@@ -426,6 +426,7 @@
     "mobile_manager.url": "mobile_manager url",
     "modb.active_modbs": "modb active modbs",
     "modb.routines": "modb routines",
+    "notify.autoload_modules": "teletype modules to start when teletype is started",
     "notify.backoff_fudge_ms": "notify backoff fudge in milliseconds",
     "notify.cnam_request.default_to": "notify.cnam_request default to",
     "notify.content_transfer_encoding": "notify content transfer encoding",

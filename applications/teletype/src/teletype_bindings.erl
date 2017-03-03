@@ -7,7 +7,7 @@
         ,notification/1
         ]).
 
-% gen_server callbacks
+%% gen_server callbacks
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -65,14 +65,14 @@ handle_call({'bind', Event, Responder}, _From, #state{bindings=BindMap}=State) -
     CurrentResponders = maps:get(Event, BindMap, []),
     %% Prevent duplicate bindings
     NewResponders = case lists:member(Responder, CurrentResponders) of
-                         'true' -> CurrentResponders;
-                         'false' -> [Responder | CurrentResponders]
+                            'true' -> CurrentResponders;
+                            'false' -> [Responder | CurrentResponders]
                     end,
     {'reply', 'ok', State#state{bindings=BindMap#{Event => NewResponders}}};
 handle_call({'flush_mod', Module}, _From, #state{bindings=BindMap}=State) ->
     %% Slow, but will be rarely called, and binding structure should be small.
     NewBindMap = maps:fold(fun(K, V, Map) ->
-                               Map#{K => [B || {Mod, _}=B <- V, Mod =/= Module]}
+                                   Map#{K => [B || {Mod, _}=B <- V, Mod =/= Module]}
                            end, BindMap, BindMap),
     {'reply', 'ok', State#state{bindings=NewBindMap}};
 handle_call({'notification', Event, JObj}, _From, #state{bindings=BindMap}=State) ->

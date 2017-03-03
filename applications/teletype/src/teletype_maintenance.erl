@@ -179,7 +179,7 @@ maybe_add_module_to_autoload(Module) when is_binary(Module) ->
     end;
 maybe_add_module_to_autoload(Module) ->
     maybe_add_module_to_autoload(kz_term:to_binary(Module)).
-    
+
 -spec maybe_remove_module_from_autoload(module()) -> 'ok'.
 maybe_remove_module_from_autoload(Module) when is_binary(Module) ->
     Autoload = ?AUTOLOAD_MODULES,
