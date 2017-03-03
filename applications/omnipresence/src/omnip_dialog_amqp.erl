@@ -114,6 +114,13 @@ handle_cast({'omnipresence',{'probe', <<"dialog">> = Package, User,
                             }}, State) ->
     omnip_util:request_probe(Package, User),
     {'noreply', State};
+handle_cast({'omnipresence',{_, <<"dialog">>, <<"*", _/binary>>,
+                             #omnip_subscription{realm=Realm
+                                                ,normalized_user=User
+                                                }
+                            }}, State) ->
+    _ = kz_util:spawn(fun maybe_probe_mwi_for_blf/2, [User, Realm]),
+    {'noreply', State};
 handle_cast({'omnipresence', _}, State) ->
     {'noreply', State};
 handle_cast(_Msg, State) ->
@@ -439,3 +446,16 @@ mwi_event(JObj) ->
               ,{<<"Call-Direction">>, <<"inbound">>}
               ]),
     handle_update(kz_json:from_list(Props), State, 60 * ?SECONDS_IN_DAY).
+
+-spec maybe_probe_mwi_for_blf(ne_binary(), ne_binary()) -> 'ok'.
+maybe_probe_mwi_for_blf(User, Realm) ->
+    case kapps_util:get_account_by_realm(Realm) of
+        {'ok', Account} ->
+            VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
+            S = size(VM),
+            case User of
+                <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New);
+                _ -> 'ok'
+            end;
+        _ -> 'ok'
+    end.
