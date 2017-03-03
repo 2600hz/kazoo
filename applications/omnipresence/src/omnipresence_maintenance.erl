@@ -104,8 +104,7 @@ send_mwi_update(User, New, Saved) ->
               ,{<<"To">>, User}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
-    kapps_util:amqp_pool_send(Command, fun kapi_presence:publish_mwi_update/1),
-    'ok'.
+    kz_amqp_worker:cast(Command, fun kapi_presence:publish_mwi_update/1).
 
 -spec reset_subscription(ne_binary()) -> any().
 reset_subscription(User) ->
@@ -114,11 +113,12 @@ reset_subscription(User) ->
 
 -spec reset_subscription(ne_binary(), ne_binary()) -> any().
 reset_subscription(User, Realm) ->
-    JObj = kz_json:from_list(
-             [{<<"Realm">>, Realm}
-             ,{<<"Username">>, User}
-             ]),
-    omnip_subscriptions:reset(JObj).
+    API = [{<<"Realm">>, Realm}
+          ,{<<"Username">>, User}
+          ,{<<"Msg-ID">>, kz_binary:rand_hex(16)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
 
 -spec reset_subscriber(ne_binary()) -> any().
 reset_subscriber(User) ->
