@@ -11,6 +11,8 @@
 
 -export([start_link/0]).
 
+-export([find_user_subscriptions/2]).
+
 -export([handle_kamailio_subscribe/2
         ,handle_kamailio_notify/2
         ,handle_mwi_update/2
@@ -38,6 +40,10 @@
 -define(EXPIRE_MESSAGE, 'clear_expired').
 -define(DEFAULT_EVENT, ?BLF_EVENT).
 -define(DEFAULT_SEND_EVENT_LIST, [?BLF_EVENT, ?PRESENCE_EVENT]).
+
+-define(DEFAULT_VM_NUMBER, <<"*98">>).
+-define(VM_NUMBER_KEY, <<"dialog_subscribed_mwi_prefix">>).
+-define(VM_NUMBER(A), kapps_account_config:get_global(A, ?CONFIG_CAT, ?VM_NUMBER_KEY, ?DEFAULT_VM_NUMBER)).
 
 -record(state, {expire_ref :: reference()
                ,ready = 'false' :: boolean()
@@ -144,7 +150,7 @@ handle_cast({'sync', {<<"End">>, Node}}, #state{sync_nodes=Nodes} = State) ->
 
 handle_cast({'subscribe', #omnip_subscription{}=Sub},  State) ->
     _ = subscribe(Sub),
-    {'reply', State};
+    {'noreply', State};
 handle_cast({'subscribe', Props}, State) when is_list(Props) ->
     handle_cast({'subscribe', kz_json:from_list(Props)}, State);
 handle_cast({'subscribe', JObj}, State) ->
@@ -152,7 +158,28 @@ handle_cast({'subscribe', JObj}, State) ->
 
 handle_cast({'notify', JObj}, State) ->
     _ = notify(JObj),
-    {'reply', State};
+    {'noreply', State};
+
+handle_cast({'dialog', _JObj}, State) ->
+    {'noreply', State};
+
+handle_cast({'mwi', _JObj}, State) ->
+    {'noreply', State};
+
+handle_cast({'after', {'notify', Msg}}, State) ->
+    kz_util:spawn(fun on_notify/1, [Msg]),
+    {'noreply', State};
+
+handle_cast({'after', {'subscribe', Msg}}, State) ->
+    kz_util:spawn(fun on_subscribe/1, [Msg]),
+    {'noreply', State};
+
+handle_cast({'after', {'resubscribe', Msg}}, State) ->
+    kz_util:spawn(fun on_resubscribe/1, [Msg]),
+    {'noreply', State};
+
+handle_cast({'after', _Msg}, State) ->
+    {'noreply', State};
 
 handle_cast(_Msg, State) ->
     lager:debug("unhandled info msg : ~p", [_Msg]),
@@ -224,35 +251,6 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%% -spec notify_packages(any()) -> 'ok'.
-%% notify_packages(Msg) ->
-%%     _ = [gen_server:cast(Pid, Msg)
-%%          || {_, Pid, _, _} <- supervisor:which_children('omnip_sup'),
-%%             is_pid(Pid)
-%%         ],
-%%     'ok'.
-%% 
-%% -spec resubscribe_notify(subscription()) -> 'ok'.
-%% resubscribe_notify(#omnip_subscription{event=Package
-%%                                       ,user=User
-%%                                       }=Subscription) ->
-%%     Msg = {'omnipresence', {'resubscribe_notify', Package, User, Subscription}},
-%%     notify_packages(Msg).
-%% 
-%% -spec subscribe_notify(subscription()) -> 'ok'.
-%% subscribe_notify(#omnip_subscription{event=Package
-%%                                     ,user=User
-%%                                     }=Subscription) ->
-%%     Msg = {'omnipresence', {'subscribe_notify', Package, User, Subscription}},
-%%     notify_packages(Msg).
-%% 
-%% -spec probe(subscription()) -> 'ok'.
-%% probe(#omnip_subscription{event=Package
-%%                          ,user=User
-%%                          }=Subscription) ->
-%%     Msg = {'omnipresence', {'probe', Package, User, Subscription}},
-%%     notify_packages(Msg).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -366,6 +364,40 @@ find_subscription(CallId) ->
         [#omnip_subscription{}=Sub] -> {'ok', Sub}
     end.
 
+-spec find_user_subscriptions(ne_binary(), ne_binary()) ->
+                                     {'ok', subscriptions()} |
+                                     {'error', 'not_found'}.
+find_user_subscriptions(?OMNIPRESENCE_EVENT_ALL, User) ->
+    U = kz_term:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_from='$1'
+                                     ,_='_'
+                                     }
+                 ,[{'=:=', '$1', {'const', U}}]
+                 ,['$_']
+                 }],
+    find_subscriptions(MatchSpec);
+find_user_subscriptions(Event, User) ->
+    U = kz_term:to_lower_binary(User),
+    MatchSpec = [{#omnip_subscription{normalized_from='$1'
+                                     ,event=Event
+                                     ,_='_'
+                                     }
+                 ,[{'=:=', '$1', {'const', U}}]
+                 ,['$_']
+                 }],
+    find_subscriptions(MatchSpec).
+
+-spec find_subscriptions(ets:match_spec()) -> {'ok', subscriptions()} |
+                                              {'error', 'not_found'}.
+find_subscriptions(MatchSpec) ->
+    try ets:select(table_id(), MatchSpec) of
+        [] -> {'error', 'not_found'};
+        Subs -> {'ok', Subs}
+    catch
+        _E:_M -> lager:error("error fetching subscriptions : ~p : ~p", [_E, _M]),
+                 {'error', 'not_found'}
+    end.
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -402,6 +434,9 @@ subscribe(#omnip_subscription{user=_U
                              ,call_id=CallId
                              ,stalker=Stalker
                              ,contact=Contact
+                             ,normalized_user=User
+                             ,realm=Realm
+                             ,event=Event
                              }=S) ->
     case find_subscription(CallId) of
         {'ok', #omnip_subscription{timestamp=_T
@@ -417,11 +452,11 @@ subscribe(#omnip_subscription{user=_U
                                ,{#omnip_subscription.stalker, Stalker}
                                ,{#omnip_subscription.contact, Contact}
                                ]),
-            gen_server:cast(self(), {'post_resubscribe', CallId});
+            gen_server:cast(self(), {'after', {'resubscribe', {Event, User, Realm, CallId}}});
         {'error', 'not_found'} ->
             lager:debug("subscribe ~s/~s/~s expires in ~ps", [_U, _F, CallId, E1]),
             ets:insert(table_id(), S),
-            gen_server:cast(self(), {'post_subscribe', CallId})
+            gen_server:cast(self(), {'after', {'subscribe', {Event, User, Realm, CallId}}})
     end.
 
 -spec notify(kz_json:object()) -> 'ok' | {'error', any()}.
@@ -431,8 +466,9 @@ notify(JObj) ->
     Body = kz_json:get_ne_binary_value(<<"Body">>, JObj),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
     case find_subscription(CallId) of
-        {'ok', #omnip_subscription{from = From
-                                  ,user = User
+        {'ok', #omnip_subscription{normalized_from=From
+                                  ,normalized_user=User
+                                  ,realm=Realm
                                   ,event = Event
                                   }} ->
             lager:debug("received notify reply ~B for ~s subscription (~s) of ~s to ~s", [Reply, Event, CallId, From, User]),
@@ -441,7 +477,50 @@ notify(JObj) ->
                                ,{#omnip_subscription.last_reply, Reply}
                                ,{#omnip_subscription.last_body, Body}
                                ]),
-            gen_server:cast(self(), {'post_notify', CallId});
+            gen_server:cast(self(), {'after', {'notify', {Event, User, Realm, CallId}}});
         {'error', _} ->
             lager:debug("notify received for unexistent subscription ~s", [CallId])
+    end.
+
+-type msg() :: {ne_binary(), ne_binary(), ne_binary(), ne_binary()}.
+-type exec_fun() :: fun((atom(), msg()) -> 'ok').
+
+-spec on_subscribe(msg()) -> 'ok'.
+on_subscribe(Msg) ->
+    Routines = [fun maybe_probe/2],
+    exec(Routines, 'subscribe', Msg).
+
+-spec on_resubscribe(msg()) -> 'ok'.
+on_resubscribe(Msg) ->
+    Routines = [fun maybe_probe/2],
+    exec(Routines, 'resubscribe', Msg).
+
+-spec on_notify(msg()) -> 'ok'.
+on_notify(Msg) ->
+    Routines = [],
+    exec(Routines, 'notify', Msg).
+
+-spec exec([exec_fun()], atom(), msg()) -> 'ok'.
+exec([], _Reason, _Msg) -> 'ok';
+exec([Fun|Funs], Reason, Msg) ->
+    Fun(Reason, Msg),
+    exec(Funs, Reason, Msg).
+
+-spec maybe_probe(atom(), msg()) -> 'ok'.
+maybe_probe(_, {<<"message-summary">> = Package, User, Realm, _}) ->
+    omnip_util:request_probe(Package, User, Realm);
+maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = User, Realm, _}) ->
+    case kapps_util:get_account_by_realm(Realm) of
+        {'ok', Account} ->
+            VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
+            maybe_probe_mwi_for_blf(VM, Realm, User);
+        _ -> 'ok'
+    end;
+maybe_probe(_, _) -> 'ok'.
+
+maybe_probe_mwi_for_blf(VM, Realm, User) ->
+    S = size(VM),
+    case User of
+        <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);
+        _ -> 'ok'
     end.
