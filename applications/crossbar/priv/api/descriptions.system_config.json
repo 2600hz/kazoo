@@ -615,6 +615,7 @@
     "tasks.discovery_expiry_d": "tasks discovery expiry in days",
     "tasks.interaccount_delay_ms": "tasks interaccount delay in milliseconds",
     "tasks.low_balance_repeat_s": "tasks low balance repeat in seconds",
+    "tasks.numbers.import_defaults_to_carrier": "carrier module to use if none provided during numbers import",
     "tasks.send_progress_after_processed": "tasks send progress after processed",
     "tasks.should_archive_modbs": "tasks should archive modbs",
     "tasks.should_crawl_for_first_occurrence": "tasks should crawl for first occurrence",
