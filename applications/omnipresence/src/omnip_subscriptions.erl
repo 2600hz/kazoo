@@ -11,7 +11,9 @@
 
 -export([start_link/0]).
 
--export([find_user_subscriptions/2]).
+-export([find_user_subscriptions/2
+        ,search_for_subscriptions/2, search_for_subscriptions/3
+        ]).
 
 -export([handle_kamailio_subscribe/2
         ,handle_kamailio_notify/2
@@ -398,6 +400,27 @@ find_subscriptions(MatchSpec) ->
                  {'error', 'not_found'}
     end.
 
+-spec search_for_subscriptions(ne_binary() | '_', ne_binary()) -> subscriptions().
+-spec search_for_subscriptions(ne_binary() | '_', ne_binary(), ne_binary() | '_') -> subscriptions().
+search_for_subscriptions(Event, Realm) ->
+    MatchSpec =
+        #omnip_subscription{realm=kz_term:to_lower_binary(Realm)
+                           ,event=Event
+                           ,_='_'
+                           },
+    ets:match_object(table_id(), MatchSpec).
+
+search_for_subscriptions(Event, Realm, '_') ->
+    search_for_subscriptions(Event, Realm);
+search_for_subscriptions(Event, Realm, Username) ->
+    MatchSpec =
+        #omnip_subscription{username=kz_term:to_lower_binary(Username)
+                           ,realm=kz_term:to_lower_binary(Realm)
+                           ,event=Event
+                           ,_='_'
+                           },
+    ets:match_object(table_id(), MatchSpec).
+
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -513,14 +536,11 @@ maybe_probe(_, {<<"dialog">>, <<"*", _/binary>> = User, Realm, _}) ->
     case kapps_util:get_account_by_realm(Realm) of
         {'ok', Account} ->
             VM = ?VM_NUMBER(kz_util:format_account_id(Account)),
-            maybe_probe_mwi_for_blf(VM, Realm, User);
+            S = size(VM),
+            case User of
+                <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New);
+                _ -> 'ok'
+            end;
         _ -> 'ok'
     end;
 maybe_probe(_, _) -> 'ok'.
-
-maybe_probe_mwi_for_blf(VM, Realm, User) ->
-    S = size(VM),
-    case User of
-        <<VM:S/binary, New/binary>> -> omnip_util:request_probe(<<"message-summary">>, New, Realm);
-        _ -> 'ok'
-    end.

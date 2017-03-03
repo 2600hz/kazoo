@@ -179,6 +179,17 @@
             },
             "type": "object"
         },
+        "account_config.omnipresence": {
+            "description": "Schema for omnipresence account_config",
+            "properties": {
+                "dialog_subscribed_mwi_prefix": {
+                    "default": "*98",
+                    "description": "prefix used when subsribing vm updates for dialog",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "account_config.privacy": {
             "description": "Schema for privacy account_config",
             "properties": {
@@ -11252,6 +11263,11 @@
         "system_config.omnipresence": {
             "description": "Schema for omnipresence system_config",
             "properties": {
+                "dialog_subscribed_mwi_prefix": {
+                    "default": "*98",
+                    "description": "prefix used when subsribing vm updates for dialog",
+                    "type": "string"
+                },
                 "expire_check_ms": {
                     "default": 1000,
                     "description": "omnipresence expire check in milliseconds",
@@ -11262,23 +11278,9 @@
                     "description": "omnipresence expires fudge in seconds",
                     "type": "integer"
                 },
-                "modules": {
-                    "default": [
-                        "omnip_dialog_amqp",
-                        "omnip_message_summary_amqp",
-                        "omnip_presence_amqp"
-                    ],
-                    "description": "omnipresence modules",
-                    "type": "array"
-                },
                 "subscriptions_sync_enabled": {
                     "default": false,
                     "description": "omnipresence subscriptions sync enabled",
-                    "type": "boolean"
-                },
-                "use_fast_pickup_cookies": {
-                    "default": true,
-                    "description": "omnipresence use fast pickup cookies",
                     "type": "boolean"
                 }
             },
