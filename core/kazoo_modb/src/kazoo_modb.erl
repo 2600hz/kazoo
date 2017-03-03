@@ -376,7 +376,7 @@ add_routine(Module) ->
 
 -spec add_migrate_routines(ne_binaries(), ne_binary()) -> ne_binaries().
 add_migrate_routines(Routines, Module) ->
-    lists:usort([Module | migrate_routines(Routines, [])]).
+    lists:usort([Module | migrate_routines(Routines, [])] ++ [<<"wht_util">>]).
 
 -spec migrate_routines(ne_binaries(), ne_binaries()) -> ne_binaries().
 migrate_routines([], Acc) -> Acc;
