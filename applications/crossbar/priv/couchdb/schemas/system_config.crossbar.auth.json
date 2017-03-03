@@ -3,15 +3,20 @@
     "_id": "system_config.crossbar.auth",
     "description": "Schema for crossbar.auth system_config",
     "properties": {
+        "auth_modules": {
+            "default": {},
+            "description": "Default crossbar authentication modules configuration",
+            "type": "object"
+        },
         "basic_auth_type": {
             "default": "md5",
             "description": "crossbar.auth basic auth type",
             "type": "string"
         },
-        "kazoo_auth_configs": {
-            "default": {},
-            "description": "Kazoo Auth modules' configurations",
-            "type": "object"
+        "log_failed_login_attempts": {
+            "default": false,
+            "description": "Should log failed login attempts",
+            "type": "boolean"
         }
     },
     "type": "object"

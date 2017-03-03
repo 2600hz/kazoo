@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "auth_provider",
+    "additionalProperties": true,
+    "description": "authentication providers",
+    "properties": {
+        "enabled": {
+            "default": true,
+            "description": "whether or not this authentication provider is enabled",
+            "type": "boolean"
+        },
+        "provider_name": {
+            "description": "authentication provider name",
+            "type": "string"
+        },
+        "provider_type": {
+            "description": "the type of authentication provider",
+            "enum": [
+                "multi_factor",
+                "oauth"
+            ],
+            "type": "string"
+        },
+        "settings": {
+            "description": "provider configurations",
+            "type": "object"
+        }
+    },
+    "required": [
+        "provider_name",
+        "provider_type"
+    ],
+    "type": "object"
+}

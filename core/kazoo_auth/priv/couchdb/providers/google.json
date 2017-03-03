@@ -1,7 +1,9 @@
 {
     "_id": "google",
+    "enabled": true,
     "oauth_url": "https://accounts.google.com/o/oauth2/token",
     "profile_url": "https://www.googleapis.com/plus/v1/people/me",
+    "provider_type": "oauth",
     "pvt_type": "provider",
     "scopes": {
         "prediction": "https://www.googleapis.com/auth/prediction",
