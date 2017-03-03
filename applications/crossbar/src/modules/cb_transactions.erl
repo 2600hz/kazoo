@@ -322,7 +322,11 @@ validate_transactions(Context, ?HTTP_GET) ->
     end.
 
 validate_transaction(Context, ?CURRENT_BALANCE, ?HTTP_GET) ->
-    Balance = wht_util:units_to_dollars(wht_util:current_balance(cb_context:account_id(Context))),
+    CurrentBalance = case wht_util:current_balance(cb_context:account_id(Context)) of
+                         {'ok', Bal} -> Bal;
+                         {'error', _} -> 0
+                     end,
+    Balance = wht_util:units_to_dollars(CurrentBalance),
     JObj = kz_json:from_list([{<<"balance">>, Balance}]),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
@@ -426,7 +430,10 @@ validate_debit(Context, Amount) ->
         'true' ->
             cb_context:set_resp_status(Context, 'success');
         'false' ->
-            FuturAmount = wht_util:current_account_dollars(AccountId) - Amount,
+            FuturAmount = case wht_util:current_account_dollars(AccountId) of
+                              {'ok', AccBal} -> AccBal - Amount;
+                              {'error', _} -> 0 - Amount
+                          end,
             case FuturAmount < 0 of
                 'false' ->
                     cb_context:set_resp_status(Context, 'success');

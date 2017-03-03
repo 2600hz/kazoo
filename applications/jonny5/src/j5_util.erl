@@ -92,12 +92,7 @@ add_limit_details(Account, Prefix, Props) ->
     ,{<<Prefix/binary, "-Twoway-Trunks">>, kz_term:to_binary(j5_limits:twoway_trunks(Limits))}
     ,{<<Prefix/binary, "-Burst-Trunks">>, kz_term:to_binary(j5_limits:burst_trunks(Limits))}
     ,{<<Prefix/binary, "-Allow-Prepay">>, kz_term:to_binary(j5_limits:allow_prepay(Limits))}
-    ,{<<Prefix/binary, "-Balance">>
-     ,kz_term:to_binary(
-        wht_util:units_to_dollars(
-          wht_util:current_balance(AccountId)
-         )
-       )}
+    ,{<<Prefix/binary, "-Balance">>, current_balance(AccountId)}
     ,{<<Prefix/binary, "-Allow-Postpay">>, kz_term:to_binary(j5_limits:allow_postpay(Limits))}
     ,{<<Prefix/binary, "-Max-Postpay">>
      ,kz_term:to_binary(
@@ -115,4 +110,11 @@ get_account_name(Account) ->
     case kz_datamgr:open_cache_doc(?KZ_ACCOUNTS_DB, AccountId) of
         {'error', _} -> AccountId;
         {'ok', JObj} -> kz_json:get_ne_value(<<"name">>, JObj, AccountId)
+    end.
+
+-spec current_balance(ne_binary()) -> ne_binary().
+current_balance(AccountId) ->
+    case wht_util:current_balance(AccountId) of
+        {'ok', Balance} -> kz_term:to_binary(wht_util:units_to_dollars(Balance));
+        {'error', _} -> <<"not known at the moment">>
     end.

@@ -162,12 +162,7 @@ limits_summary_prepay(Limit) ->
     case j5_limits:allow_prepay(Limit) of
         'false' -> "disabled";
         'true' ->
-            AccountId = j5_limits:account_id(Limit),
-            kz_term:to_list(
-              wht_util:units_to_dollars(
-                wht_util:current_balance(AccountId)
-               )
-             )
+            current_balance(j5_limits:account_id(Limit))
     end.
 
 -spec limits_summary_postpay(j5_limits:limits()) -> string().
@@ -199,7 +194,7 @@ limits_details(Account) ->
     io:format("Account Info:~n", []),
     pretty_print_field("  Account ID", props:get_value('account_id', Props)),
     pretty_print_field("  Account DB", props:get_value('account_db', Props)),
-    pretty_print_field("  Current Balance", wht_util:units_to_dollars(wht_util:current_balance(AccountId))),
+    pretty_print_field("  Current Balance", current_balance(AccountId)),
     io:format("Configuration:~n", []),
     pretty_print_field("  Enabled", props:get_value('enabled', Props)),
     pretty_print_field("  Prepay Allowed", props:get_value('allow_prepay', Props)),
@@ -243,3 +238,10 @@ pretty_print_field(Name, Value) when is_number(Value) ->
     io:format("~-25s: ~w~n", [Name, Value]);
 pretty_print_field(Name, Value) ->
     io:format("~-25s: ~s~n", [Name, Value]).
+
+-spec current_balance(ne_binary()) -> ne_binary().
+current_balance(AccountId) ->
+    case wht_util:current_balance(AccountId) of
+        {'ok', Balance} -> kz_term:to_list(wht_util:units_to_dollars(Balance));
+        {'error', _R} -> kz_term:to_list(io_lib:format("not known at the moment: ~p", [_R]))
+    end.

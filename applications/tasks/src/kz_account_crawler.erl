@@ -321,14 +321,21 @@ notify_initial_call(AccountJObj) ->
 maybe_test_for_low_balance(AccountId, AccountJObj) ->
     case ?SHOULD_CRAWL_FOR_LOW_BALANCE of
         'false' -> 'ok';
-        'true' -> test_for_low_balance(AccountId, AccountJObj)
+        'true' -> test_for_low_balance(AccountId, AccountJObj, 3)
     end.
 
--spec test_for_low_balance(ne_binary(), kz_account:doc()) -> 'ok'.
-test_for_low_balance(AccountId, AccountJObj) ->
-    CurrentBalance = wht_util:current_balance(AccountId),
-    maybe_notify_for_low_balance(AccountJObj, CurrentBalance),
-    maybe_topup_account(AccountJObj, CurrentBalance).
+-spec test_for_low_balance(ne_binary(), kz_account:doc(), 0..3) -> 'ok'.
+test_for_low_balance(_AccountId, _AccountJObj, 0) ->
+    lager:debug("max try to get account ~s current balance", [_AccountId]);
+test_for_low_balance(AccountId, AccountJObj, Loop) ->
+    case wht_util:current_balance(AccountId) of
+        {'error', 'timeout'} ->
+            test_for_low_balance(AccountId, AccountJObj, Loop - 1);
+        {'error', _R} -> 'ok';
+        {'ok', CurrentBalance} ->
+            maybe_notify_for_low_balance(AccountJObj, CurrentBalance),
+            maybe_topup_account(AccountJObj, CurrentBalance)
+    end.
 
 -spec maybe_notify_for_low_balance(kz_account:doc(), kz_transaction:units()) -> 'ok'.
 maybe_notify_for_low_balance(AccountJObj, CurrentBalance) ->
@@ -360,7 +367,7 @@ maybe_topup_account(AccountJObj, CurrentBalance) ->
             lager:error("topup failed for ~s: ~p", [AccountId, _Error])
     end.
 
--spec maybe_reset_low_balance_sent(kz_account:doc()) -> 'ok' | {'error', any()}.
+-spec maybe_reset_low_balance_sent(kz_account:doc()) -> 'ok'.
 maybe_reset_low_balance_sent(AccountJObj) ->
     case kz_account:low_balance_sent(AccountJObj)
         orelse kz_account:low_balance_tstamp(AccountJObj) =/= 'undefined'
@@ -369,7 +376,7 @@ maybe_reset_low_balance_sent(AccountJObj) ->
         'false' -> 'ok'
     end.
 
--spec reset_low_balance_sent(kz_account:doc()) ->  'ok' | {'error', any()}.
+-spec reset_low_balance_sent(kz_account:doc()) ->  'ok'.
 reset_low_balance_sent(AccountJObj0) ->
     lager:debug("resetting low balance sent"),
     AccountJObj1 = kz_account:reset_low_balance_sent(AccountJObj0),
