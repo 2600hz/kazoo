@@ -114,7 +114,7 @@ handle_cast({'omnipresence',{'probe', <<"dialog">> = Package, User,
                             }}, State) ->
     omnip_util:request_probe(Package, User),
     {'noreply', State};
-handle_cast({'omnipresence',{_, <<"dialog">> = Package, <<"*", _/binary>>,
+handle_cast({'omnipresence',{_, <<"dialog">>, <<"*", _/binary>>,
                              #omnip_subscription{realm=Realm
                                                 ,normalized_user=User
                                                 }
