@@ -355,12 +355,15 @@ put(Context, ?COLLECTION) ->
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 put(Context, Number) ->
+    ReqData = cb_context:req_data(Context),
+    ModuleName = kz_json:get_ne_value(<<"module_name">>, ReqData),
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'public_fields', cb_context:doc(Context)}
+              ,{'public_fields', kz_json:delete_key(<<"module_name">>, ReqData)}
+              ,{'module_name', ModuleName}
               ],
-    Result = knm_number:create(Number, Options),
+    Result = knm_number:create(Number, props:filter_undefined(Options)),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
     set_response(Result, Context, CB).
 
@@ -976,12 +979,15 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
               ],
     knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
+    ReqData = cb_context:req_data(Context),
+    ModuleName = kz_json:get_ne_value(<<"module_name">>, ReqData),
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'public_fields', cb_context:req_data(Context)}
+              ,{'public_fields', kz_json:delete_key(<<"module_name">>, ReqData)}
+              ,{'module_name', ModuleName}
               ],
-    knm_numbers:create(Numbers, Options);
+    knm_numbers:create(Numbers, props:filter_undefined(Options));
 numbers_action(Context, ?HTTP_POST, Numbers) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'assign_to', cb_context:account_id(Context)}
