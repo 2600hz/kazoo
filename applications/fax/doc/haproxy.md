@@ -14,6 +14,9 @@ listen kazoo-fax-smtp
   timeout client 1m
   timeout server 1m
   timeout connect 5s
+  option tcp-check
+  tcp-check send NOOP\r\n
+  tcp-check expect string 250 Ok\r\n
  balance roundrobin
 
  server kapps-01 kapps-01:19025 check check-send-proxy send-proxy
