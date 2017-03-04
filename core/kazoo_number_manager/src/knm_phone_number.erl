@@ -21,7 +21,7 @@
         ,is_phone_number/1
         ]).
 
--export([setters/2
+-export([setters/2, is_dirty/1
         ,number/1
         ,number_db/1
         ,assign_to/1, set_assign_to/2
@@ -106,7 +106,7 @@
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
 -define(DIRTY(PN), begin
-                       lager:debug("dirty"),
+                       ?LOG_DEBUG("dirty ~s", [number(PN)]),
                        PN#knm_phone_number{is_dirty = true}
                    end).
 
@@ -161,7 +161,7 @@ fetch(?TEST_IN_SERVICE_WITH_HISTORY_NUM, Options) ->
 fetch(?BW_EXISTING_DID, Options) ->
     handle_fetch(?BW_EXISTING_JSON, Options);
 fetch(?TEST_TELNYX_NUM, Options) ->
-    handle_fetch(?TELNY_NUMBER, Options);
+    handle_fetch(?TELNYX_NUMBER, Options);
 fetch(?TEST_OLD_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
     handle_fetch(JObj, Options);
@@ -1011,6 +1011,14 @@ is_admin(AuthBy) ->
     IsBypassed
         orelse kz_util:is_system_admin(AuthBy).
 -endif.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec is_dirty(knm_phone_number()) -> boolean().
+is_dirty(#knm_phone_number{is_dirty = IsDirty}) -> IsDirty.
 
 %%--------------------------------------------------------------------
 %% @public
