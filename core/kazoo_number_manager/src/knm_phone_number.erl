@@ -960,9 +960,7 @@ set_module_name(PN0, Name=?NE_BINARY) ->
     set_features(PN, Features).
 
 set_module_name_local(PN=#knm_phone_number{module_name = Name}, Name) -> PN;
-set_module_name_local(PN0=#knm_phone_number{module_name = undefined, features = undefined}
-                     ,Name
-                     ) ->
+set_module_name_local(PN0=#knm_phone_number{module_name = undefined}, Name) ->
     PN = set_feature(PN0, ?FEATURE_LOCAL, local_feature(PN0)),
     PN#knm_phone_number{module_name = Name};
 set_module_name_local(PN0, Name) ->

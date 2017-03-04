@@ -478,11 +478,11 @@ is_dirty6_test_() ->
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, NewJObj))
 
-    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertNotEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertNotEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, NewJObj))
+    ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, JObj))
+    ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, NewJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
 
