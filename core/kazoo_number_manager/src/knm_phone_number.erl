@@ -432,7 +432,8 @@ from_json(JObj0) ->
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
                 ]),
-    %% Note: the above setters may not have set any features yet
+    %% Note: the above setters may not have set any features yet,
+    %% since more than one of them may set features.
     case PN#knm_phone_number.features =:= undefined of
         false -> PN;
         true -> PN#knm_phone_number{features = ?DEFAULT_FEATURES}
@@ -557,7 +558,7 @@ setters(PN, Routines) ->
         'throw':{'stop', Error} -> Error;
         'error':'function_clause' ->
             {_M, FName, [_aPN,Arg|_], _Info} = hd(erlang:get_stacktrace()),
-            lager:error("~s failed, argument: ~p", [FName, Arg]),
+            ?LOG_ERROR("~s failed, argument: ~p", [FName, Arg]),
             kz_util:log_stacktrace(),
             {'error', FName};
         'error':Reason -> {'error', Reason}
@@ -720,7 +721,6 @@ set_used_by(PN, UsedBy=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec features(knm_phone_number()) -> kz_json:object().
-features(#knm_phone_number{features=undefined}) -> ?DEFAULT_FEATURES;
 features(#knm_phone_number{features=Features}) -> Features.
 
 -spec features_list(knm_phone_number()) -> ne_binaries().
@@ -748,8 +748,11 @@ feature(PN, Feature) ->
 -spec set_feature(knm_phone_number(), ne_binary(), kz_json:json_term()) ->
                          knm_phone_number().
 set_feature(PN0, Feature=?NE_BINARY, Data) ->
-    Features = kz_json:set_value(Feature, Data, features(PN0)),
-    PN = set_features(PN0, Features),
+    Features = case PN0#knm_phone_number.features of
+                   undefined -> ?DEFAULT_FEATURES;
+                   F -> F
+               end,
+    PN = set_features(PN0, kz_json:set_value(Feature, Data, Features)),
     PN#knm_phone_number.is_dirty
         andalso lager:debug("setting ~s feature ~s: ~s", [number(PN), Feature, kz_json:encode(Data)]),
     PN.
@@ -848,9 +851,25 @@ is_state(_) -> false.
 reserve_history(#knm_phone_number{reserve_history=History}) -> History.
 
 -spec set_reserve_history(knm_phone_number(), ne_binaries()) -> knm_phone_number().
-set_reserve_history(PN0, History) when is_list(History) ->
-    Cons = fun add_reserve_history/2,
-    lists:foldr(Cons, PN0#knm_phone_number{reserve_history=?DEFAULT_RESERVE_HISTORY}, History).
+set_reserve_history(PN=#knm_phone_number{reserve_history = V}, V) -> PN;
+set_reserve_history(PN0=#knm_phone_number{reserve_history = undefined}, History)
+  when is_list(History) ->
+    PN1 = PN0#knm_phone_number{reserve_history=?DEFAULT_RESERVE_HISTORY},
+    PN2 = lists:foldr(fun add_reserve_history/2, PN1, History),
+    case not PN0#knm_phone_number.is_dirty
+        andalso History =:= PN2#knm_phone_number.reserve_history
+    of
+        false -> PN2;
+        %% Since add_reserve_history/2 is exported, it has to dirty things itself.
+        %% Us reverting here is the only way to work around that.
+        true ->
+            ?LOG_DEBUG("un-dirty ~s", [number(PN2)]),
+            PN2#knm_phone_number{is_dirty = false}
+    end;
+set_reserve_history(PN0, History)
+  when is_list(History) ->
+    PN1 = PN0#knm_phone_number{reserve_history=?DEFAULT_RESERVE_HISTORY},
+    lists:foldr(fun add_reserve_history/2, PN1, History).
 
 -spec add_reserve_history(api_ne_binary(), knm_phone_number()) -> knm_phone_number().
 add_reserve_history(undefined, PN) -> PN;
@@ -914,10 +933,17 @@ set_module_name(PN, ?CARRIER_MDN=Name) ->
 
 set_module_name(PN=#knm_phone_number{module_name = Name}, Name=?NE_BINARY) -> PN;
 
-set_module_name(PN0=#knm_phone_number{module_name = undefined}, Name=?NE_BINARY) ->
+set_module_name(PN=#knm_phone_number{module_name = undefined, features = undefined}
+               ,Name=?NE_BINARY
+               ) ->
+    %% Only during from_json/1
+    PN#knm_phone_number{module_name = Name};
+set_module_name(PN0=#knm_phone_number{module_name = undefined, features = Features}
+               ,Name=?NE_BINARY
+               ) ->
     PN = PN0#knm_phone_number{module_name = Name},
-    Features = kz_json:delete_key(?FEATURE_LOCAL, features(PN)),
-    set_features(PN, Features);
+    NewFeatures = kz_json:delete_key(?FEATURE_LOCAL, Features),
+    set_features(PN, NewFeatures);
 
 set_module_name(PN0, Name=?NE_BINARY) ->
     lager:debug("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
@@ -925,19 +951,21 @@ set_module_name(PN0, Name=?NE_BINARY) ->
     Features = kz_json:delete_key(?FEATURE_LOCAL, features(PN)),
     set_features(PN, Features).
 
+set_module_name_local(PN=#knm_phone_number{module_name = Name}, Name) -> PN;
+set_module_name_local(PN0=#knm_phone_number{module_name = undefined, features = undefined}
+                     ,Name
+                     ) ->
+    PN = set_feature(PN0, ?FEATURE_LOCAL, local_feature(PN0)),
+    PN#knm_phone_number{module_name = Name};
 set_module_name_local(PN0, Name) ->
-    Feature =
-        case feature(PN0, ?FEATURE_LOCAL) of
-            'undefined' -> kz_json:new();
-            LocalFeature -> LocalFeature
-        end,
-    PN = set_feature(PN0, ?FEATURE_LOCAL, Feature),
-    case PN0#knm_phone_number.module_name of
-        undefined -> PN#knm_phone_number{module_name = Name};
-        Name -> PN;
-        _ ->
-            lager:debug("updating module_name from ~p to ~p", [PN#knm_phone_number.module_name, Name]),
-            ?DIRTY(PN#knm_phone_number{module_name = Name})
+    lager:debug("updating module_name from ~p to ~p", [PN0#knm_phone_number.module_name, Name]),
+    PN = set_feature(PN0, ?FEATURE_LOCAL, local_feature(PN0)),
+    ?DIRTY(PN#knm_phone_number{module_name = Name}).
+
+local_feature(PN) ->
+    case feature(PN, ?FEATURE_LOCAL) of
+        undefined -> kz_json:new();
+        LocalFeature -> LocalFeature
     end.
 
 %%--------------------------------------------------------------------
