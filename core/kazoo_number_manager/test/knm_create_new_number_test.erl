@@ -50,6 +50,7 @@ create_new_number_test_() ->
 reseller_new_number_test_() ->
     Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'module_name', <<"knm_bandwidth2">>}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
              ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
@@ -72,7 +73,7 @@ reseller_new_number_test_() ->
     ,{"Verify the reseller account is listed in reserve history"
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
-    ,{"Verify the local carrier module is being used"
+    ,{"Verify the local carrier module is being used (Also checks only master account can set module_name)"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ].
@@ -279,6 +280,22 @@ create_non_existing_mobile_number_test_() ->
      ,?_assertEqual(true, kz_json:are_equal(MobileField
                                            ,kz_json:get_value(<<"mobile">>, knm_number:to_public_json(N))
                                            ))
+     }
+    ].
+
+create_number_with_module_name_test_() ->
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{'module_name', <<"knm_bandwidth2">>}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             }
+            ],
+    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    PN = knm_number:phone_number(N),
+    [{"Verify the bandwidth2 carrier module is being used (and only master account can set module name)"
+     ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
      }
     ].
 
