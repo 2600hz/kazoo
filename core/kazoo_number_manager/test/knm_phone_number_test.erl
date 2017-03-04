@@ -75,6 +75,8 @@ is_dirty1_test_() ->
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_created">>, NewJObj))
 
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
     ,?_assertEqual(<<"undefined">>, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_modified">>, JObj))
     ,?_assertNotEqual(<<"undefined">>, kz_json:get_value(<<"pvt_modified">>, NewJObj))
@@ -149,9 +151,11 @@ is_dirty2_test_() ->
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63637990840, kz_json:get_value(<<"pvt_created">>, NewJObj))
 
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
     ,?_assertEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertNotEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertNotEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, NewJObj))
+    ,?_assertEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, JObj))
+    ,?_assertEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, NewJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
 
@@ -225,9 +229,11 @@ is_dirty3_test_() ->
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_created">>, NewJObj))
 
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
     ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertNotEqual(63646110391, kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertNotEqual(63646110391, kz_json:get_value(<<"pvt_modified">>, NewJObj))
+    ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_modified">>, JObj))
+    ,?_assertEqual(63646110391, kz_json:get_value(<<"pvt_modified">>, NewJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
 
@@ -298,9 +304,11 @@ is_dirty4_test_() ->
     ,?_assertEqual(63627551737, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63627551737, kz_json:get_value(<<"pvt_created">>, NewJObj))
 
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
     ,?_assertEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertNotEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertNotEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, NewJObj))
+    ,?_assertEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, JObj))
+    ,?_assertEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, NewJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
 
@@ -392,6 +400,8 @@ is_dirty5_test_() ->
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_created">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_created">>, NewJObj)))
 
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
@@ -467,6 +477,8 @@ is_dirty6_test_() ->
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_created">>, NewJObj))
+
+    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertNotEqual(63640935218, kz_json:get_value(<<"pvt_modified">>, JObj))
