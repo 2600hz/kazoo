@@ -48,6 +48,7 @@
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-define(LOG_ERROR(F,A), ?debugFmt(F ++ "\n",A)).
 -define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
 -define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
 -define(LOG_DEBUG(F), ?debugFmt(F ++ "\n",[])).
@@ -304,6 +305,7 @@
           ])).
 -else.
 
+-define(LOG_ERROR(F,A), lager:error(F,A)).
 -define(LOG_WARN(F,A), lager:warning(F,A)).
 -define(LOG_DEBUG(F,A), lager:debug(F,A)).
 -define(LOG_DEBUG(F), lager:debug(F)).
