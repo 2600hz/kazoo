@@ -105,10 +105,17 @@
 -define(BULK_BATCH_WRITES,
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
+-ifdef(FUNCTION_NAME).
+-define(DIRTY(PN), begin
+                       ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+                       PN#knm_phone_number{is_dirty = true}
+                   end).
+-else.
 -define(DIRTY(PN), begin
                        ?LOG_DEBUG("dirty ~s", [number(PN)]),
                        PN#knm_phone_number{is_dirty = true}
                    end).
+-endif.
 
 %% @public
 -spec from_number(ne_binary()) -> knm_phone_number().
