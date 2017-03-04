@@ -51,7 +51,7 @@
         }
     },
     "pvt_module_name": "knm_bandwidth2",
-    "pvt_number_state": "in_service",
+    "pvt_state": "in_service",
     "pvt_type": "number",
     "state": "in_service",
     "ui_metadata": {

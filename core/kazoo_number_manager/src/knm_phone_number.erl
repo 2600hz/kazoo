@@ -419,6 +419,7 @@ from_json(JObj0) ->
         end,
     {ok, PN} =
         setters(#knm_phone_number{}
+                %% Ordering matters
                ,[{fun set_number/2, knm_converters:normalize(kz_doc:id(JObj))}
                 ,{fun set_assigned_to/3
                  ,kz_json:get_value(?PVT_ASSIGNED_TO, JObj)
@@ -438,13 +439,20 @@ from_json(JObj0) ->
                 ,{fun set_created/2, kz_doc:created(JObj)}
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
+
+                ,fun ensure_features_defined/1
+                ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
                 ]),
-    %% Note: the above setters may not have set any features yet,
-    %% since more than one of them may set features.
-    case PN#knm_phone_number.features =:= undefined of
-        false -> PN;
-        true -> PN#knm_phone_number{features = ?DEFAULT_FEATURES}
-    end.
+    PN.
+
+%% Note: the above setters may not have set any features yet,
+%% since more than one of them may set features.
+ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
+    PN#knm_phone_number{features = ?DEFAULT_FEATURES};
+ensure_features_defined(PN) -> PN.
+
+ensure_pvt_state_legacy_undefined(PN, undefined) -> PN;
+ensure_pvt_state_legacy_undefined(PN, _) -> ?DIRTY(PN).
 
 %% Handle moving away from provider-specific E911
 maybe_rename_features(Features) ->
