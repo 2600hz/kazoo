@@ -116,14 +116,10 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
 
 -spec convert_carrier_module_number(ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module_number(Num, Target) ->
-    case lists:member(Target, knm_carriers:all_modules()) of
-        false -> io:format("Bad carrier module: ~s\n", [Target]);
-        true ->
-            Routines = [{fun knm_phone_number:set_module_name/2, Target}],
-            case knm_number:update(Num, Routines) of
-                {ok, _} -> io:format("updated ~s carrier module to ~s~n", [Num, Target]);
-                {error, _R} -> io:format("updating ~s carrier module failed: ~p~n", [Num, _R])
-            end
+    Routines = [{fun knm_phone_number:set_module_name/2, Target}],
+    case knm_number:update(Num, Routines) of
+        {ok, _} -> io:format("updated ~s carrier module to ~s~n", [Num, Target]);
+        {error, _R} -> io:format("updating ~s carrier module failed: ~p~n", [Num, _R])
     end.
 
 %%--------------------------------------------------------------------
