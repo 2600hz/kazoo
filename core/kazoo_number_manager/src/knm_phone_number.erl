@@ -108,12 +108,12 @@
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN), begin
                        ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
-                       PN#knm_phone_number{is_dirty = true}
+                       (PN)#knm_phone_number{is_dirty = true}
                    end).
 -else.
 -define(DIRTY(PN), begin
                        ?LOG_DEBUG("dirty ~s", [number(PN)]),
-                       PN#knm_phone_number{is_dirty = true}
+                       (PN)#knm_phone_number{is_dirty = true}
                    end).
 -endif.
 
@@ -940,15 +940,16 @@ module_name(#knm_phone_number{module_name = Name}) -> Name.
 
 -spec set_module_name(knm_phone_number(), ne_binary()) -> knm_phone_number().
 %% knm_bandwidth is deprecated, updating to the new module
-set_module_name(PN, <<"wnm_bandwidth">>) ->
-    set_module_name(PN, <<"knm_bandwidth2">>);
 set_module_name(PN, <<"wnm_", Name/binary>>) ->
-    set_module_name(PN, <<"knm_", Name/binary>>);
+    ?DIRTY(set_module_name(PN, <<"knm_", Name/binary>>));
+set_module_name(PN, <<"knm_bandwidth">>) ->
+    ?DIRTY(set_module_name(PN, <<"knm_bandwidth2">>));
 %% Some old docs have these as module name
 set_module_name(PN, <<"undefined">>) ->
-    set_module_name(PN, ?CARRIER_LOCAL);
-set_module_name(PN, 'undefined') ->
-    set_module_name(PN, ?CARRIER_LOCAL);
+    ?DIRTY(set_module_name(PN, ?CARRIER_LOCAL));
+
+set_module_name(PN, undefined) ->
+    ?DIRTY(set_module_name(PN, ?CARRIER_LOCAL));
 
 set_module_name(PN, ?CARRIER_LOCAL=Name) ->
     set_module_name_local(PN, Name);
