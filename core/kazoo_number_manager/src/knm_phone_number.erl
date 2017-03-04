@@ -810,7 +810,8 @@ used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 -spec set_used_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_used_by(PN=#knm_phone_number{used_by = V}, V) -> PN;
 set_used_by(PN=#knm_phone_number{used_by = undefined}, UsedBy=?NE_BINARY) ->
-    PN#knm_phone_number{used_by = UsedBy};
+    lager:debug("assigning ~s to ~s", [number(PN), UsedBy]),
+    ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
 set_used_by(PN, UsedBy='undefined') ->
     lager:debug("unassigning ~s from ~s", [number(PN), PN#knm_phone_number.used_by]),
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
