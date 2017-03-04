@@ -63,6 +63,8 @@
 -define(TEST_EXISTING_TOLL, <<"+18005551212">>).
 -define(TEST_OLD_NUM, <<"+15045551226">>).
 -define(TEST_OLD2_NUM, <<"+12014370855">>).
+-define(TEST_OLD2_1_NUM, <<"+12014370856">>).
+-define(TEST_OLD2_2_NUM, <<"+12014370857">>).
 -define(TEST_OLD3_NUM, <<"+14082141750">>).
 -define(TEST_OLD4_NUM, <<"+14242424247">>).
 -define(TEST_OLD5_NUM, <<"+19377038880">>).

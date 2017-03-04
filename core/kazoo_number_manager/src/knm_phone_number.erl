@@ -175,6 +175,12 @@ fetch(?TEST_OLD_NUM, Options) ->
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
     handle_fetch(JObj, Options);
+fetch(?TEST_OLD2_1_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1_in.json"))),
+    handle_fetch(JObj, Options);
+fetch(?TEST_OLD2_2_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.2_in.json"))),
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD3_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
     handle_fetch(JObj, Options);
@@ -452,7 +458,9 @@ ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
 ensure_features_defined(PN) -> PN.
 
 ensure_pvt_state_legacy_undefined(PN, undefined) -> PN;
-ensure_pvt_state_legacy_undefined(PN, _) -> ?DIRTY(PN).
+ensure_pvt_state_legacy_undefined(PN, _Something) ->
+    ?LOG_DEBUG("~s was set to ~p, moving to ~s", [?PVT_STATE_LEGACY, _Something, ?PVT_STATE]),
+    ?DIRTY(PN).
 
 %% Handle moving away from provider-specific E911
 maybe_rename_features(Features) ->

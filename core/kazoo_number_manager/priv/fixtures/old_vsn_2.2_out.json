@@ -1,0 +1,30 @@
+{
+    "_id": "+12014370857",
+    "pvt_assigned_to": "aac9151d9c1319c46f2677eeae2958f6",
+    "pvt_authorizing_account": "system",
+    "pvt_created": 63637990840,
+    "pvt_db_name": "numbers%2F%2B1201",
+    "pvt_features_allowed": [
+        "failover",
+        "force_outbound",
+        "prepend",
+        "ringback"
+    ],
+    "pvt_features_denied": [
+        "failover"
+    ],
+    "pvt_is_billable": true,
+    "pvt_modified": 63637990853,
+    "pvt_module_name": "knm_pacwest",
+    "pvt_ported_in": false,
+    "pvt_reserve_history": [
+        "aac9151d9c1319c46f2677eeae2958f6"
+    ],
+    "pvt_state": "in_service",
+    "pvt_type": "number",
+    "ui_metadata": {
+        "origin": "common",
+        "ui": "monster-ui",
+        "version": "3.22-34"
+    }
+}
