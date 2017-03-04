@@ -432,7 +432,11 @@ from_json(JObj0) ->
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
                 ]),
-    PN.
+    %% Note: the above setters may not have set any features yet
+    case PN#knm_phone_number.features =:= undefined of
+        false -> PN;
+        true -> PN#knm_phone_number{features = ?DEFAULT_FEATURES}
+    end.
 
 %% Handle moving away from provider-specific E911
 maybe_rename_features(Features) ->
@@ -716,6 +720,7 @@ set_used_by(PN, UsedBy=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec features(knm_phone_number()) -> kz_json:object().
+features(#knm_phone_number{features=undefined}) -> ?DEFAULT_FEATURES;
 features(#knm_phone_number{features=Features}) -> Features.
 
 -spec features_list(knm_phone_number()) -> ne_binaries().
@@ -725,7 +730,10 @@ features_list(PN) ->
 -spec set_features(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 set_features(PN=#knm_phone_number{features = undefined}, Features) ->
     true = kz_json:is_json_object(Features),
-    PN#knm_phone_number{features = Features};
+    case kz_json:is_empty(Features) of
+        true -> PN;  %% See last part of from_json/1
+        false -> PN#knm_phone_number{features = Features}
+    end;
 set_features(PN, Features) ->
     'true' = kz_json:is_json_object(Features),
     case kz_json:are_equal(PN#knm_phone_number.features, Features) of
