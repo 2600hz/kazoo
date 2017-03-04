@@ -857,6 +857,7 @@ set_reserve_history(PN0=#knm_phone_number{reserve_history = undefined}, History)
     PN1 = PN0#knm_phone_number{reserve_history=?DEFAULT_RESERVE_HISTORY},
     PN2 = lists:foldr(fun add_reserve_history/2, PN1, History),
     case not PN0#knm_phone_number.is_dirty
+        andalso PN2#knm_phone_number.is_dirty
         andalso History =:= PN2#knm_phone_number.reserve_history
     of
         false -> PN2;
