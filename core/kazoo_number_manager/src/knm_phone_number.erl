@@ -656,12 +656,22 @@ set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
 
 %% This is used only by from_json/1
 -spec set_assigned_to(knm_phone_number(), api_ne_binary(), api_ne_binary()) -> knm_phone_number().
-set_assigned_to(PN0, AssignedTo='undefined', UsedBy) ->
-    PN = set_used_by(PN0, UsedBy),
-    PN#knm_phone_number{assigned_to = AssignedTo};
-set_assigned_to(PN0, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy) ->
-    PN = set_used_by(PN0, UsedBy),
-    PN#knm_phone_number{assigned_to = AssignedTo}.
+set_assigned_to(PN, AssignedTo=undefined, UsedBy=undefined) ->
+    PN#knm_phone_number{assigned_to = AssignedTo
+                       ,used_by = UsedBy
+                       };
+set_assigned_to(PN, AssignedTo=undefined, UsedBy=?NE_BINARY) ->
+    PN#knm_phone_number{assigned_to = AssignedTo
+                       ,used_by = UsedBy
+                       };
+set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy=undefined) ->
+    PN#knm_phone_number{assigned_to = AssignedTo
+                       ,used_by = UsedBy
+                       };
+set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy=?NE_BINARY) ->
+    PN#knm_phone_number{assigned_to = AssignedTo
+                       ,used_by = UsedBy
+                       }.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -690,11 +700,9 @@ set_prev_assigned_to(PN, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
 -spec used_by(knm_phone_number()) -> api_ne_binary().
 used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 
+%% This is never called from from_json/1. See set_assigned_to/3
 -spec set_used_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_used_by(PN=#knm_phone_number{used_by = V}, V) -> PN;
-set_used_by(PN=#knm_phone_number{used_by = undefined}, UsedBy=?NE_BINARY) ->
-    lager:debug("assigning ~s to ~s", [number(PN), UsedBy]),
-    ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
 set_used_by(PN, UsedBy='undefined') ->
     lager:debug("unassigning ~s from ~s", [number(PN), PN#knm_phone_number.used_by]),
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
