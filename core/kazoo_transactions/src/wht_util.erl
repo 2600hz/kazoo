@@ -446,7 +446,15 @@ modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = AccountMODb) ->
     case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
         {Year, Month} -> rollup_current_modb(AccountMODb, 3);
         _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
-    end.
+    end;
+modb(?MATCH_MODB_SUFFIX_ENCODED(_AccountId, Year, Month) = AccountMODb) ->
+    {Y, M, _} = erlang:date(),
+    case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
+        {Year, Month} -> rollup_current_modb(AccountMODb, 3);
+        _ -> lager:debug("~s is not current month, ignoring...", [AccountMODb])
+    end;
+modb(AccountMODb) ->
+    lager:debug("~s was not matched as a account modb database, ignoring...", [AccountMODb]).
 
 -spec rollup_current_modb(ne_binary(), 0..3) -> 'ok'.
 rollup_current_modb(_AccountMODb, 0) ->
