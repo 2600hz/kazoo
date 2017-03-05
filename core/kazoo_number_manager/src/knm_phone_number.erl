@@ -106,16 +106,24 @@
         kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
 -ifdef(FUNCTION_NAME).
--define(DIRTY(PN), begin
-                       ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
-                       (PN)#knm_phone_number{is_dirty = true}
-                   end).
+-define(DIRTY(PN),
+        begin
+            ?LOG_DEBUG("dirty ~s ~s/~p", [number(PN), ?FUNCTION_NAME, ?FUNCTION_ARITY]),
+            (PN)#knm_phone_number{is_dirty = true
+                                 ,modified = kz_util:current_tstamp()
+                                 }
+        end).
 -else.
--define(DIRTY(PN), begin
-                       ?LOG_DEBUG("dirty ~s", [number(PN)]),
-                       (PN)#knm_phone_number{is_dirty = true}
-                   end).
+-define(DIRTY(PN),
+        begin
+            ?LOG_DEBUG("dirty ~s", [number(PN)]),
+            (PN)#knm_phone_number{is_dirty = true
+                                 ,modified = kz_util:current_tstamp()
+                                 }
+        end).
 -endif.
+
+
 
 %% @public
 -spec from_number(ne_binary()) -> knm_phone_number().
@@ -183,6 +191,9 @@ fetch(?TEST_OLD2_2_NUM, Options) ->
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD3_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
+    handle_fetch(JObj, Options);
+fetch(?TEST_OLD3_1_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1_in.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD4_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
@@ -432,6 +443,8 @@ from_json(JObj0) ->
                  ,kz_json:get_value(?PVT_USED_BY, JObj)
                  }
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+                ,{fun set_modified/2, kz_doc:modified(JObj)}
+                ,{fun set_created/2, kz_doc:created(JObj)}
                 ,{fun set_features/2, maybe_rename_features(Features)}
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, ?DEFAULT_RESERVE_HISTORY)}
@@ -441,8 +454,6 @@ from_json(JObj0) ->
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
                 ,{fun set_doc/2, sanitize_public_fields(JObj)}
-                ,{fun set_modified/2, kz_doc:modified(JObj)}
-                ,{fun set_created/2, kz_doc:created(JObj)}
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
 
@@ -887,8 +898,10 @@ set_reserve_history(PN0=#knm_phone_number{reserve_history = undefined}, History)
         %% Since add_reserve_history/2 is exported, it has to dirty things itself.
         %% Us reverting here is the only way to work around that.
         true ->
-            ?LOG_DEBUG("un-dirty ~s", [number(PN2)]),
-            PN2#knm_phone_number{is_dirty = false}
+            ?LOG_DEBUG("undirty ~s", [number(PN2)]),
+            PN2#knm_phone_number{is_dirty = false
+                                ,modified = PN0#knm_phone_number.modified
+                                }
     end;
 set_reserve_history(PN0, History)
   when is_list(History) ->
@@ -1187,7 +1200,6 @@ reset_doc(PN=#knm_phone_number{doc = Doc}, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec modified(knm_phone_number()) -> gregorian_seconds().
-modified(#knm_phone_number{is_dirty = true}) -> kz_util:current_tstamp();
 modified(#knm_phone_number{modified = undefined}) -> kz_util:current_tstamp();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
