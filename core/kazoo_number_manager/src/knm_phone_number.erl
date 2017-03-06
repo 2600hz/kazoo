@@ -177,8 +177,11 @@ fetch(?BW_EXISTING_DID, Options) ->
     handle_fetch(?BW_EXISTING_JSON, Options);
 fetch(?TEST_TELNYX_NUM, Options) ->
     handle_fetch(?TELNYX_NUMBER, Options);
-fetch(?TEST_OLD_NUM, Options) ->
+fetch(?TEST_OLD1_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
+    handle_fetch(JObj, Options);
+fetch(?TEST_OLD1_1_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_in.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
@@ -426,14 +429,7 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from_json(kz_json:object()) -> knm_phone_number().
-from_json(JObj0) ->
-    JObj = maybe_update_rw_features(JObj0),
-    Features =
-        case kz_json:get_ne_value(?PVT_FEATURES, JObj) of
-            'undefined' -> ?DEFAULT_FEATURES;
-            FeaturesList when is_list(FeaturesList) -> migrate_features(FeaturesList, JObj);
-            FeaturesJObj -> FeaturesJObj
-        end,
+from_json(JObj) ->
     {ok, PN} =
         setters(#knm_phone_number{}
                 %% Ordering matters
@@ -443,9 +439,13 @@ from_json(JObj0) ->
                  ,kz_json:get_value(?PVT_USED_BY, JObj)
                  }
                 ,{fun set_prev_assigned_to/2, kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)}
+
                 ,{fun set_modified/2, kz_doc:modified(JObj)}
                 ,{fun set_created/2, kz_doc:created(JObj)}
-                ,{fun set_features/2, maybe_rename_features(Features)}
+
+                ,{fun set_doc/2, sanitize_public_fields(JObj)}
+                ,{fun maybe_migrate_features/2, kz_json:get_ne_value(?PVT_FEATURES, JObj)}
+
                 ,{fun set_state/2, kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], JObj)}
                 ,{fun set_reserve_history/2, kz_json:get_value(?PVT_RESERVE_HISTORY, JObj, ?DEFAULT_RESERVE_HISTORY)}
                 ,{fun set_ported_in/2, kz_json:is_true(?PVT_PORTED_IN, JObj, ?DEFAULT_PORTED_IN)}
@@ -453,7 +453,6 @@ from_json(JObj0) ->
                 ,{fun set_carrier_data/2, kz_json:get_value(?PVT_CARRIER_DATA, JObj, ?DEFAULT_CARRIER_DATA)}
                 ,{fun set_region/2, kz_json:get_value(?PVT_REGION, JObj)}
                 ,{fun set_auth_by/2, kz_json:get_value(?PVT_AUTH_BY, JObj)}
-                ,{fun set_doc/2, sanitize_public_fields(JObj)}
                 ,{fun set_features_allowed/2, kz_json:get_list_value(?PVT_FEATURES_ALLOWED, JObj, ?DEFAULT_FEATURES_ALLOWED)}
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
 
@@ -462,6 +461,20 @@ from_json(JObj0) ->
                 ]),
     PN.
 
+maybe_migrate_features(PN, undefined) ->
+    set_features(PN, ?DEFAULT_FEATURES);
+maybe_migrate_features(PN, FeaturesList)
+  when is_list(FeaturesList) ->
+    Features1 = migrate_features(FeaturesList, doc(PN)),
+    Features = maybe_rename_features(Features1),
+    ?DIRTY(set_features(PN, Features));
+maybe_migrate_features(PN, FeaturesJObj) ->
+    Features = maybe_rename_features(FeaturesJObj),
+    case kz_json:are_equal(FeaturesJObj, Features) of
+        true -> set_features(PN, Features);
+        false -> ?DIRTY(set_features(PN, Features))
+    end.
+
 %% Note: the above setters may not have set any features yet,
 %% since more than one of them may set features.
 ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
@@ -469,8 +482,8 @@ ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
 ensure_features_defined(PN) -> PN.
 
 ensure_pvt_state_legacy_undefined(PN, undefined) -> PN;
-ensure_pvt_state_legacy_undefined(PN, _Something) ->
-    ?LOG_DEBUG("~s was set to ~p, moving to ~s", [?PVT_STATE_LEGACY, _Something, ?PVT_STATE]),
+ensure_pvt_state_legacy_undefined(PN, _State) ->
+    ?LOG_DEBUG("~s was set to ~p, moving to ~s", [?PVT_STATE_LEGACY, _State, ?PVT_STATE]),
     ?DIRTY(PN).
 
 %% Handle moving away from provider-specific E911
@@ -486,7 +499,7 @@ maybe_rename_features(Features) ->
         {_Dash, Vitelity} -> kz_json:set_value(?FEATURE_E911, Vitelity, Fs)
     end.
 
-maybe_update_rw_features(JObj) ->
+maybe_rename_public_features(JObj) ->
     case {kz_json:get_ne_value(?LEGACY_DASH_E911, JObj)
          ,kz_json:get_ne_value(?LEGACY_VITELITY_E911, JObj)
          }
@@ -1164,35 +1177,44 @@ set_locality(PN, JObj) ->
 doc(#knm_phone_number{doc=Doc}) -> Doc.
 
 -spec set_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-set_doc(PN=#knm_phone_number{doc = undefined}, JObj) ->
-    true = kz_json:is_json_object(JObj),
-    PN#knm_phone_number{doc = JObj};
-set_doc(PN, JObj) ->
-    'true' = kz_json:is_json_object(JObj),
+set_doc(PN=#knm_phone_number{doc = undefined}, JObj0) ->
+    true = kz_json:is_json_object(JObj0),
+    JObj = doc_from_public_fields(JObj0),
+    case kz_json:are_equal(JObj, JObj0) of
+        true -> PN#knm_phone_number{doc = JObj};
+        false -> ?DIRTY(PN#knm_phone_number{doc = JObj})
+    end;
+set_doc(PN, JObj0) ->
+    true = kz_json:is_json_object(JObj0),
+    JObj = doc_from_public_fields(JObj0),
     case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{doc = JObj})
     end.
 
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-update_doc(PN=#knm_phone_number{doc = Doc}, JObj) ->
-    'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), Doc),
-    Data = kz_json:delete_key(<<"id">>, Updated),
-    case kz_json:are_equal(Data, PN#knm_phone_number.doc) of
+update_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
+    true = kz_json:is_json_object(JObj0),
+    JObj1 = kz_json:merge_recursive(kz_json:public_fields(JObj0), Doc),
+    JObj = doc_from_public_fields(JObj1),
+    case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;
-        false -> ?DIRTY(PN#knm_phone_number{doc = Data})
+        false -> ?DIRTY(PN#knm_phone_number{doc = JObj})
     end.
 
 -spec reset_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
-reset_doc(PN=#knm_phone_number{doc = Doc}, JObj) ->
-    'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_recursive(kz_json:public_fields(JObj), kz_json:private_fields(Doc)),
-    Data = maybe_update_rw_features(kz_json:delete_key(<<"id">>, Updated)),
-    case kz_json:are_equal(Data, PN#knm_phone_number.doc) of
+reset_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
+    true = kz_json:is_json_object(JObj0),
+    JObj1 = kz_json:merge_recursive(kz_json:public_fields(JObj0), kz_json:private_fields(Doc)),
+    JObj = doc_from_public_fields(JObj1),
+    case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;
-        false -> ?DIRTY(PN#knm_phone_number{doc = Data})
+        false -> ?DIRTY(PN#knm_phone_number{doc = JObj})
     end.
+
+doc_from_public_fields(JObj) ->
+    maybe_rename_public_features(
+      sanitize_public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1204,10 +1226,12 @@ modified(#knm_phone_number{modified = undefined}) -> kz_util:current_tstamp();
 modified(#knm_phone_number{modified = Modified}) -> Modified.
 
 -spec set_modified(knm_phone_number(), gregorian_seconds()) -> knm_phone_number().
+set_modified(PN=#knm_phone_number{modified = undefined}, undefined) ->
+    ?DIRTY(PN#knm_phone_number{modified = kz_util:current_tstamp()});
 set_modified(PN=#knm_phone_number{modified = V}, V) -> PN;
 set_modified(PN, Modified)
   when is_integer(Modified), Modified > 0 ->
-    PN#knm_phone_number{modified=Modified}.
+    PN#knm_phone_number{modified = Modified}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1222,9 +1246,9 @@ created(#knm_phone_number{created = Created}) -> Created.
 set_created(PN=#knm_phone_number{created = undefined}, Created)
   when is_integer(Created), Created > 0 ->
     PN#knm_phone_number{created = Created};
-set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN=#knm_phone_number{created = undefined}, undefined) ->
     ?DIRTY(PN#knm_phone_number{created = kz_util:current_tstamp()});
+set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
     ?DIRTY(PN#knm_phone_number{created=Created}).

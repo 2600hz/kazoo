@@ -10,8 +10,32 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
+is_dirty1_1_test_() ->
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD1_1_NUM),
+    JObj = knm_phone_number:to_json(PN),
+    NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_out.json"))),
+    OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_in.json"))),
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
+    ,?_assertEqual(63648122255, kz_json:get_value(<<"pvt_created">>, OldJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
+                  ,kz_json:get_value(<<"pvt_created">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
+                  ,kz_json:get_value(<<"pvt_created">>, JObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
+                  ,knm_phone_number:created(PN))
+
+    ,?_assertEqual(63648133355, kz_json:get_value(<<"pvt_modified">>, OldJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+                  ,kz_json:get_value(<<"pvt_modified">>, NewJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+                  ,kz_json:get_value(<<"pvt_modified">>, JObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+                  ,knm_phone_number:modified(PN))
+    ].
+
 is_dirty1_test_() ->
-    {ok, PN} = knm_phone_number:fetch(?TEST_OLD_NUM),
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD1_NUM),
     JObj = knm_phone_number:to_json(PN),
     NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_out.json"))),
     OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
@@ -95,7 +119,7 @@ is_dirty1_test_() ->
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_created">>, JObj)))
     ,?_assertEqual(true, is_integer(knm_phone_number:created(PN)))
 
-    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(false, is_integer(kz_json:get_value(<<"pvt_modified">>, OldJObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
