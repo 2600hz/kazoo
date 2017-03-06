@@ -68,17 +68,21 @@
 -define(DEFAULT_FEATURES_ALLOWED, []).
 -define(DEFAULT_FEATURES_DENIED, []).
 
--record(knm_phone_number, {number :: ne_binary()
-                          ,number_db :: ne_binary()
+%% The '%%%' suffixes show what Dialyzer requires for that one record instanciation in from_json/1.
+%% Without 'undefined' there, Dialyzer outputs false positives.
+%% It has trouble infering what is happening in from_json/1's setters.
+%% And all this is because we need to set is_dirty reliably.
+-record(knm_phone_number, {number :: api_ne_binary()             %%%
+                          ,number_db :: api_ne_binary()          %%%
                           ,assign_to :: api_ne_binary()
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
                           ,used_by :: api_ne_binary()
                           ,features :: kz_json:object()
-                          ,state :: ne_binary()
-                          ,reserve_history :: ne_binaries()
-                          ,ported_in :: boolean()
-                          ,module_name :: ne_binary()
+                          ,state :: api_ne_binary()              %%%
+                          ,reserve_history :: api_ne_binaries()  %%%
+                          ,ported_in :: api_boolean()            %%%
+                          ,module_name :: api_ne_binary()        %%%
                           ,carrier_data :: kz_json:object()
                           ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
@@ -87,11 +91,11 @@
                           ,mdn_run = false :: boolean()
                           ,locality :: api_object()
                           ,doc :: kz_json:object()
-                          ,modified :: gregorian_seconds()
-                          ,created :: gregorian_seconds()
+                          ,modified :: api_seconds()             %%%
+                          ,created :: api_seconds()              %%%
                           ,is_dirty = 'false' :: boolean()
-                          ,features_allowed :: ne_binaries()
-                          ,features_denied :: ne_binaries()
+                          ,features_allowed :: api_ne_binaries() %%%
+                          ,features_denied :: api_ne_binaries()  %%%
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
