@@ -67,18 +67,22 @@ mdn_transitions_test_() ->
     [{"Verify MDN can move from in_service to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N1)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N1)))
     ,{"Verify releasing MDN results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(knm_number:phone_number(N2)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N2)))
     ,{"Verify MDN can reconcile from in_service to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N3)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N3)))
     ,{"Verify MDN cannot be reserved"
      ,?_assertMatch({error,_}, knm_number:reserve(Num, knm_number_options:default()))
      }
     ,{"Verify MDN creation forces state to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N4)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N4)))
     ,{"Verify MDN creation creates local feature"
      ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
      }
