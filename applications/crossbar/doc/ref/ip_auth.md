@@ -1,6 +1,6 @@
-### Ip_auth
+### IP Authentication
 
-#### About Ip_auth
+#### About IP Authentication
 
 #### Schema
 

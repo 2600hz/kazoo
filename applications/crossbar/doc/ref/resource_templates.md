@@ -1,6 +1,6 @@
-### Resource_templates
+### Resource Templates
 
-#### About Resource_templates
+#### About Resource Templates
 
 #### Schema
 

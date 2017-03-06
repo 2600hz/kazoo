@@ -1,6 +1,6 @@
-### Contact_list
+### Contact List
 
-#### About Contact_list
+#### About Contact List
 
 #### Schema
 

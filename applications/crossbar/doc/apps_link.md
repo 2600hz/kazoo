@@ -1,6 +1,6 @@
-### Apps_link
+### Apps Link
 
-#### About Apps_link
+#### About Apps Link
 
 #### Schema
 

@@ -1,6 +1,6 @@
-### Auth
+### Authentication
 
-#### About Auth
+#### About Authentication
 
 #### Schema
 

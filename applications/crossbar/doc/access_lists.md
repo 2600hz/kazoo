@@ -1,11 +1,11 @@
-### Access_lists
+### Access Lists
 
 SBC-level per-account and per-device access lists allow setting individual IP-based access filtering rules which
 significantly increases security for users working on-premise.
 
 Rules can be applied at account level or at individual device level
 
-#### About Access_lists
+#### About Access Lists
 
 `access_lists` API works at the level of both `accounts` and `devices` documents.
 

@@ -1,6 +1,6 @@
-# Resource selectors
+### Resource Selectors
 
-## About
+#### About Resource Selectors
 
 Resource selectors is a new way to route Offnet-calls. Old way used regex rules and "flags" for select proper resources (gateways). With new "resource selectors" you have several small modules, which can be organaized in "chain" (rules).
 
@@ -20,7 +20,7 @@ Key | Description | Type | Default | Required
 
 
 
-## Rules
+#### Rules
 
 Rules is array of JSON objects. Each object contain one item where key is name of the module, and value is another object, with parameters for that module.
 
@@ -43,7 +43,7 @@ Rules can be managed via `http://{IP}:8000/v2/resource_selectors` or `http://{IP
 
 Rules storred in `resource_selector_rules` file in Account database. System-wide rules is stored in Master-Account database, so `http://{IP}:8000/v2/resource_selectors/rules` is equal to `http://{IP}:8000/v2/accounts/{MASTER_ACCOUNT_ID}/resource_selectors/rules`
 
-### Show rules
+#### Show rules
 
 > GET /v2/resource_selectors/rules
 
@@ -100,7 +100,7 @@ curl -X GET \
 }
 ```
 
-### Update rules
+#### Update rules
 
 > POST /v2/resource_selectors/rules
 
@@ -138,7 +138,7 @@ curl -X POST \
 }
 ```
 
-## Database selectors
+### Database selectors
 
 Database selectors - selectors stored in special database. Name of this database `account/XX/XX/XXXXXXXXXXXXXXXXXXXXXXXXXXXX-selectors`, where `XXX...XXX` - Account ID. System-wide selectors database use Master Account ID.
 

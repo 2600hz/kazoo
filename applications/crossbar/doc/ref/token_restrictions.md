@@ -1,6 +1,6 @@
-### Token_restrictions
+### Token Restrictions
 
-#### About Token_restrictions
+#### About Token Restrictions
 
 #### Schema
 

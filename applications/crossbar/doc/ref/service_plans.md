@@ -1,6 +1,6 @@
-### Service_plans
+### Service Plans
 
-#### About Service_plans
+#### About Service Plans
 
 #### Schema
 

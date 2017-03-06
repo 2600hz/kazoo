@@ -1,6 +1,6 @@
-### Token_auth
+### Token Authentication
 
-#### About Token_auth
+#### About Token Authentication
 
 #### Schema
 

@@ -1,6 +1,6 @@
-### Apps_store
+### Apps Store
 
-#### About Apps_store
+#### About Apps Store
 
 #### Schema
 

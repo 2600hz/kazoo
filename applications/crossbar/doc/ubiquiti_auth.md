@@ -1,8 +1,8 @@
-### Ubiquiti auth
+### Ubiquiti Authentication
+
+#### About Ubiquiti Authentication
 
 Ubiquiti Single Sign On.
-
-#### About
 
 #### Schema
 

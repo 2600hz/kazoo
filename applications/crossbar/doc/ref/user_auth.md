@@ -1,6 +1,6 @@
-### User_auth
+### User Authentication
 
-#### About User_auth
+#### About User Authentication
 
 #### Schema
 

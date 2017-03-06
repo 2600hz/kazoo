@@ -1,6 +1,6 @@
-### Shared_auth
+### Shared Authentication
 
-#### About Shared_auth
+#### About Shared Authentication
 
 #### Schema
 

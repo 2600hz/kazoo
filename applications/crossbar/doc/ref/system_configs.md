@@ -1,6 +1,6 @@
-### System_configs
+### System Configs
 
-#### About System_configs
+#### About System Configs
 
 #### Schema
 

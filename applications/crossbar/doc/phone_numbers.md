@@ -1,6 +1,6 @@
 ### Phone Numbers
 
-#### About Phone_numbers
+#### About Phone Numbers
 
 The 2600hz mobile API set: manage numbers.
 

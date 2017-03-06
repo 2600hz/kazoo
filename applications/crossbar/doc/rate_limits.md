@@ -1,4 +1,6 @@
+### Rate Limits
 
+#### About Rate Limits
 
 The rate-limits API allows setting per-second and per-minute incoming SIP packets rate limits for devices and whole accounts (realms) that can be used at SBC level. The system level packet rate limits can also be set to protect the whole cluster.
 

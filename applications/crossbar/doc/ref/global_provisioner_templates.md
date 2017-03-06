@@ -1,6 +1,6 @@
-### Global_provisioner_templates
+### Global Provisioner Templates
 
-#### About Global_provisioner_templates
+#### About Global Provisioner Templates
 
 #### Schema
 
