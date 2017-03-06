@@ -794,3 +794,36 @@ is_dirty6_test_() ->
     ,?_assertEqual(kz_json:to_map(kz_json:public_fields(JObj))
                   ,kz_json:to_map(kz_json:public_fields(kz_json:delete_key(<<"used_by">>, OldJObj))))
     ].
+
+
+all_gets_should_not_be_dirty_test_() ->
+    [[{"Verify reading test num "++binary_to_list(Num)++" is not dirty"
+      ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+      }
+     ,?_assertEqual(Num, knm_phone_number:number(PN))
+     ]
+     || Num <- nums(),
+        PN <- [pn(Num)]
+    ].
+
+pn(Num) ->
+    {ok, N} = knm_number:get(Num),
+    knm_number:phone_number(N).
+
+nums() ->
+    [?TEST_AVAILABLE_NUM
+    ,?TEST_IN_SERVICE_NUM
+    ,?TEST_IN_SERVICE_MDN
+    ,?TEST_IN_SERVICE_BAD_CARRIER_NUM
+    ,?TEST_IN_SERVICE_WITH_HISTORY_NUM
+    ,?TEST_EXISTING_TOLL
+    ,?TEST_OLD1_1_NUM
+    ,?TEST_OLD2_1_NUM
+    ,?TEST_OLD3_1_NUM
+    ,?TEST_OLD4_1_NUM
+    ,?TEST_OLD5_1_NUM
+    ,?TEST_OLD6_NUM
+    ,?TEST_TELNYX_NUM
+    ,?TEST_PORT_IN_NUM
+    ,?BW_EXISTING_DID
+    ].

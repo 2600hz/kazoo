@@ -43,8 +43,6 @@
             orelse Prefix == <<"88*">>
        ).
 
--define(DEFAULT_E911_FEATURE, ?DASH_KEY).
-
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -71,9 +69,11 @@
 -define(TEST_OLD4_NUM, <<"+14242424247">>).
 -define(TEST_OLD4_1_NUM, <<"+14242424248">>).
 -define(TEST_OLD5_NUM, <<"+19377038880">>).
+-define(TEST_OLD5_1_NUM, <<"+19377038881">>).
 -define(TEST_OLD6_NUM, <<"+12156774700">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
+-define(BW_EXISTING_DID, <<"+14122065197">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -89,13 +89,15 @@
          )
        ).
 
+-define(FEATURES_FOR_LOCAL_NUM, kz_json:from_list([{?FEATURE_LOCAL, kz_json:new()}])).
+
 -define(AVAILABLE_NUMBER
        ,kz_json:from_list(
           [{<<"_id">>, ?TEST_AVAILABLE_NUM}
           ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{<<"my_key">>, <<"my string">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -113,7 +115,7 @@
           [{<<"_id">>, ?TEST_IN_SERVICE_NUM}
           ,{<<"_rev">>, <<"3-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -152,7 +154,7 @@
           ,{?PVT_FEATURES, kz_json:new()}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
-          ,{?PVT_MODULE_NAME, <<"wnm_pacwest">>}
+          ,{?PVT_MODULE_NAME, <<"knm_pacwest">>}
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
@@ -167,7 +169,7 @@
           [{<<"_id">>, ?TEST_IN_SERVICE_WITH_HISTORY_NUM}
           ,{<<"_rev">>, <<"3-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -186,7 +188,7 @@
           [{<<"_id">>, ?TEST_EXISTING_TOLL}
           ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
@@ -204,7 +206,6 @@
           [{<<"_id">>, ?TEST_TELNYX_NUM}
           ,{<<"_rev">>, <<"10-7dd6a1523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934349}
-          ,{?PVT_FEATURES, kz_json:new()}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, <<"knm_telnyx">>}
@@ -221,7 +222,7 @@
           [{<<"_id">>, ?TEST_PORT_IN_NUM}
           ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3a8e69">>}
           ,{?PVT_MODIFIED, 63565934327}
-          ,{?PVT_FEATURES, kz_json:new()}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?PORT_IN_MODULE_NAME}
@@ -276,17 +277,15 @@
        ,knm_util:fixture("bandwidth_areacode_response.xml")
        ).
 
--define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(BW_EXISTING_JSON
        ,kz_json:from_list(
           [{<<"_id">>, <<"+14122065197">>}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1412">>}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
-          ,{?PVT_FEATURES, kz_json:new()}
           ,{?PVT_STATE, ?NUMBER_STATE_DISCOVERY}
           ,{?PVT_RESERVE_HISTORY, []}
           ,{?PVT_PORTED_IN, 'false'}
-          ,{?PVT_MODULE_NAME, <<"knm_bandwidth">>}
+          ,{?PVT_MODULE_NAME, <<"knm_bandwidth2">>}
           ,{?PVT_CARRIER_DATA
            ,kz_json:from_list(
               [{<<"number_id">>, <<"0C107941-CDDA-42FE-823C-042EADBD3719">>}
