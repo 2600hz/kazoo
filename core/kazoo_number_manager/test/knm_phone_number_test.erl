@@ -450,6 +450,20 @@ is_dirty3_test_() ->
     ].
 
 
+is_dirty4_1_test_() ->
+    {ok, PN} = knm_phone_number:fetch(?TEST_OLD4_1_NUM),
+    JObj = knm_phone_number:to_json(PN),
+    FixtureJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4.1.json"))),
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
+
+    ,?_assertEqual(kz_json:to_map(kz_json:get_value(<<"pvt_features">>, FixtureJObj))
+                  ,kz_json:to_map(kz_json:get_value(<<"pvt_features">>, JObj)))
+    ,?_assert(kz_json:are_equal(kz_json:get_value(<<"pvt_features">>, FixtureJObj)
+                               ,knm_phone_number:features(PN)
+                               )
+             )
+    ].
+
 is_dirty4_test_() ->
     {ok, PN} = knm_phone_number:fetch(?TEST_OLD4_NUM),
     JObj = knm_phone_number:to_json(PN),

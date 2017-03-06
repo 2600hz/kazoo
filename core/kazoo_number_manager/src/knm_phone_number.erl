@@ -201,6 +201,9 @@ fetch(?TEST_OLD3_1_NUM, Options) ->
 fetch(?TEST_OLD4_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
     handle_fetch(JObj, Options);
+fetch(?TEST_OLD4_1_NUM, Options) ->
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4.1.json"))),
+    handle_fetch(JObj, Options);
 fetch(?TEST_OLD5_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5_in.json"))),
     handle_fetch(JObj, Options);
