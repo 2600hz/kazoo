@@ -60,7 +60,9 @@
 
 -define(EOT, '$end_of_table').
 
--type state() :: #{}.
+-type state() :: #{node => ne_binary()
+                  ,cache => ets:tid() | atom()
+                  }.
 
 -define(ETS_DISCOVERY_CACHE, 'knm_discovery_cache').
 -define(ETS_DISCOVERY_CACHE_OPTIONS, ['bag', 'named_table', {'read_concurrency', 'true'}]).
