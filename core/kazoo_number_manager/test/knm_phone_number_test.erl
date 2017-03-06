@@ -525,7 +525,8 @@ is_dirty4_test_() ->
     ,?_assertEqual(63627551737, kz_json:get_value(<<"pvt_created">>, NewJObj))
     ,?_assertEqual(63627551737, knm_phone_number:created(PN))
 
-    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+     %% Migrating doc and module_name makes this dirty
+    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(63627551739, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
@@ -651,7 +652,8 @@ is_dirty5_test_() ->
                   ,knm_phone_number:created(PN)
                   )
 
-    ,?_assertEqual(false, knm_phone_number:is_dirty(PN))
+     %% Migrating doc, features & setting created, modified makes this dirty
+    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
