@@ -1,0 +1,20 @@
+{
+    "_id": "+15045551227",
+    "_rev": "11-f8653b9aed4756a3bb512a734b620a7e",
+    "pvt_assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+    "pvt_authorizing_account": "009afc511c97b2ae693c6cc4920988e8",
+    "pvt_created": 63648122255,
+    "pvt_db_name": "numbers%2F%2B1504",
+    "pvt_features_available": [
+        "cnam",
+        "e911",
+        "failover",
+        "port",
+        "prepend"
+    ],
+    "pvt_modified": 63648133355,
+    "pvt_module_name": "knm_local",
+    "pvt_ported_in": false,
+    "pvt_state": "in_service",
+    "pvt_type": "number"
+}

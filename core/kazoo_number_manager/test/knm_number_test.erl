@@ -67,18 +67,22 @@ mdn_transitions_test_() ->
     [{"Verify MDN can move from in_service to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N1)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N1)))
     ,{"Verify releasing MDN results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(knm_number:phone_number(N2)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N2)))
     ,{"Verify MDN can reconcile from in_service to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N3)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N3)))
     ,{"Verify MDN cannot be reserved"
      ,?_assertMatch({error,_}, knm_number:reserve(Num, knm_number_options:default()))
      }
     ,{"Verify MDN creation forces state to in_service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N4)))
      }
+    ,?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N4)))
     ,{"Verify MDN creation creates local feature"
      ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
      }
@@ -140,5 +144,24 @@ attempt_setting_e911_on_disallowed_number_test_() ->
      }
     ,{"Verify feature cannot be set"
      ,?_assertThrow({error, unauthorized}, knm_number:update_phone_number(N, Updates, Options))
+     }
+    ].
+
+
+assign_to_app_test_() ->
+    MyApp = <<"my_app">>,
+    {ok, N0} = knm_number:get(?TEST_IN_SERVICE_NUM),
+    PN0 = knm_number:phone_number(N0),
+    {ok, N1} = knm_number:assign_to_app(?TEST_IN_SERVICE_NUM, MyApp),
+    PN1 = knm_number:phone_number(N1),
+    [{"Verify number is not already assigned to MyApp"
+     ,?_assertNotEqual(MyApp, knm_phone_number:used_by(PN0))
+     }
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN0))
+    ,{"Verify number is now used by MyApp"
+     ,?_assertEqual(MyApp, knm_phone_number:used_by(PN1))
+     }
+    ,{"Verify updated number will get saved"
+     ,?_assertEqual(true, knm_phone_number:is_dirty(PN1))
      }
     ].

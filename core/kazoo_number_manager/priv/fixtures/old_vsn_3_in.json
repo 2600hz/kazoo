@@ -44,8 +44,8 @@
         "e911"
     ],
     "pvt_modified": 63646110391,
-    "pvt_module_name": "knm_bandwidth2",
-    "pvt_number_state": "in_service",
+    "pvt_module_name": "wnm_bandwidth",
+    "pvt_state": "in_service",
     "pvt_type": "number",
     "pvt_used_by": "callflow",
     "state": "in_service",
