@@ -68,17 +68,20 @@
 -define(DEFAULT_FEATURES_ALLOWED, []).
 -define(DEFAULT_FEATURES_DENIED, []).
 
--record(knm_phone_number, {number :: ne_binary()
-                          ,number_db :: ne_binary()
+%% The '|undefined' suffixes show what Dialyzer requires for that one usage in from_json/1.
+%% Without them Dialyzer outputs false positives.
+%% It has trouble infering what is happening in from_json/1.
+-record(knm_phone_number, {number :: ne_binary()             |undefined
+                          ,number_db :: ne_binary()          |undefined
                           ,assign_to :: api_ne_binary()
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
                           ,used_by :: api_ne_binary()
                           ,features :: kz_json:object()
-                          ,state :: ne_binary()
-                          ,reserve_history :: ne_binaries()
-                          ,ported_in :: boolean()
-                          ,module_name :: ne_binary()
+                          ,state :: ne_binary()              |undefined
+                          ,reserve_history :: ne_binaries()  |undefined
+                          ,ported_in :: boolean()            |undefined
+                          ,module_name :: ne_binary()        |undefined
                           ,carrier_data :: kz_json:object()
                           ,region :: api_ne_binary()
                           ,auth_by :: api_ne_binary()
@@ -87,11 +90,11 @@
                           ,mdn_run = false :: boolean()
                           ,locality :: api_object()
                           ,doc :: kz_json:object()
-                          ,modified :: gregorian_seconds()
-                          ,created :: gregorian_seconds()
+                          ,modified :: gregorian_seconds()   |undefined
+                          ,created :: gregorian_seconds()    |undefined
                           ,is_dirty = 'false' :: boolean()
-                          ,features_allowed :: ne_binaries()
-                          ,features_denied :: ne_binaries()
+                          ,features_allowed :: ne_binaries() |undefined
+                          ,features_denied :: ne_binaries()  |undefined
                           }).
 -opaque knm_phone_number() :: #knm_phone_number{}.
 
