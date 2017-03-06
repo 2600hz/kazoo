@@ -13,24 +13,19 @@
 is_dirty1_1_test_() ->
     {ok, PN} = knm_phone_number:fetch(?TEST_OLD1_1_NUM),
     JObj = knm_phone_number:to_json(PN),
-    NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_out.json"))),
-    OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_in.json"))),
+    FixtureJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1.json"))),
     [?_assertEqual(false, knm_phone_number:is_dirty(PN))
 
-    ,?_assertEqual(63648122255, kz_json:get_value(<<"pvt_created">>, OldJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
-                  ,kz_json:get_value(<<"pvt_created">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
+    ,?_assertEqual(63648122255, kz_json:get_value(<<"pvt_created">>, FixtureJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, FixtureJObj)
                   ,kz_json:get_value(<<"pvt_created">>, JObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, OldJObj)
+    ,?_assertEqual(kz_json:get_value(<<"pvt_created">>, FixtureJObj)
                   ,knm_phone_number:created(PN))
 
-    ,?_assertEqual(63648133355, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
-                  ,kz_json:get_value(<<"pvt_modified">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+    ,?_assertEqual(63648133355, kz_json:get_value(<<"pvt_modified">>, FixtureJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, FixtureJObj)
                   ,kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, FixtureJObj)
                   ,knm_phone_number:modified(PN))
     ].
 
@@ -158,30 +153,25 @@ is_dirty1_test_() ->
 is_dirty2_1_test_() ->
     {ok, PN} = knm_phone_number:fetch(?TEST_OLD2_1_NUM),
     JObj = knm_phone_number:to_json(PN),
-    NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1_out.json"))),
-    OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1_in.json"))),
+    FixtureJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1.json"))),
     [?_assertEqual(false, knm_phone_number:is_dirty(PN))
 
-    ,?_assertEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, OldJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+    ,?_assertEqual(63637990853, kz_json:get_value(<<"pvt_modified">>, FixtureJObj))
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, FixtureJObj)
                   ,kz_json:get_value(<<"pvt_modified">>, JObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
-                  ,kz_json:get_value(<<"pvt_modified">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, OldJObj)
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, FixtureJObj)
                   ,knm_phone_number:modified(PN))
 
-    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, OldJObj))
+    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, FixtureJObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
-    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, OldJObj)
+    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, FixtureJObj)
                   ,knm_phone_number:state(PN)
                   )
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, JObj))
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, NewJObj))
+    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, FixtureJObj))
 
-    ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
+    ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, FixtureJObj))
     ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
-    ,?_assertEqual(<<"knm_pacwest">>, kz_json:get_value(<<"pvt_module_name">>, NewJObj))
     ,?_assertEqual(<<"knm_pacwest">>, knm_phone_number:module_name(PN))
     ].
 
@@ -325,22 +315,19 @@ is_dirty2_test_() ->
 is_dirty3_1_test_() ->
     {ok, PN} = knm_phone_number:fetch(?TEST_OLD3_1_NUM),
     JObj = knm_phone_number:to_json(PN),
-    NewJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1_out.json"))),
-    OldJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1_in.json"))),
+    FixtureJObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1.json"))),
     [?_assertEqual(false, knm_phone_number:is_dirty(PN))
 
-    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, OldJObj))
+    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, FixtureJObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
-    ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, OldJObj)
+    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, FixtureJObj)
                   ,knm_phone_number:state(PN)
                   )
     ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, JObj))
-    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, NewJObj))
+    ,?_assertEqual(undefined, kz_json:get_value(<<"pvt_number_state">>, FixtureJObj))
 
-    ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, OldJObj))
+    ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, FixtureJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, JObj))
-    ,?_assertEqual(<<"knm_bandwidth2">>, kz_json:get_value(<<"pvt_module_name">>, NewJObj))
     ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
     ].
 

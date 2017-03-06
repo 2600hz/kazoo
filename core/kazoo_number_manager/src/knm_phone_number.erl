@@ -181,13 +181,13 @@ fetch(?TEST_OLD1_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD1_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1_in.json"))),
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1.1.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2_in.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD2_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1_in.json"))),
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.1.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD2_2_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_2.2_in.json"))),
@@ -196,7 +196,7 @@ fetch(?TEST_OLD3_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3_in.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD3_1_NUM, Options) ->
-    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1_in.json"))),
+    JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_3.1.json"))),
     handle_fetch(JObj, Options);
 fetch(?TEST_OLD4_NUM, Options) ->
     JObj = kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_4_in.json"))),
