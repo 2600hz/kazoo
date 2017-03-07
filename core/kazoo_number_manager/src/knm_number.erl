@@ -402,7 +402,7 @@ update_phone_number(Number, Routines, Options) ->
 %%--------------------------------------------------------------------
 -spec save(knm_number()) -> knm_number_return().
 save(Number) ->
-    Num =
+    N =
         case is_carrier_search_result(Number) of
             'false' -> knm_services:update_services(Number);
             'true' ->
@@ -410,8 +410,8 @@ save(Number) ->
                 %%  thus has no services associated with it
                 Number
         end,
-    PhoneNumber = knm_phone_number:save(phone_number(Num)),
-    wrap_phone_number_return(PhoneNumber, Num).
+    PN = knm_phone_number:save(phone_number(N)),
+    wrap_phone_number_return(PN, N).
 
 %% @private
 -spec is_carrier_search_result(knm_number()) -> boolean().
@@ -523,11 +523,11 @@ release_number(Number, Options) ->
                ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
-    N = unwind_or_disconnect(N1, Options),
-    PN = phone_number(N),
-    case ?NUMBER_STATE_DELETED =:= knm_phone_number:state(PN) of
-        true -> N;
-        false -> save_wrap_phone_number(PN, N)
+    N2 = unwind_or_disconnect(N1, Options),
+    NewPN = phone_number(N2),
+    case ?NUMBER_STATE_DELETED =:= knm_phone_number:state(NewPN) of
+        true -> {ok, N2};
+        false -> save_wrap_phone_number(NewPN, N2)
     end.
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
