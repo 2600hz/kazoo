@@ -328,7 +328,7 @@ release(PN, FromState) ->
     case module_name(PN) of
         ?CARRIER_LOCAL -> authorize_release(PN);
         _ ->
-            To = ?NUMBER_STATE_RELEASED,
+            To = knm_config:released_state(),
             knm_errors:invalid_state_transition(PN, FromState, To)
     end.
 
