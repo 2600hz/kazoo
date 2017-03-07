@@ -116,7 +116,7 @@
                           ,bridge_password = ?BRIDGE_PWD :: ne_binary()
                           ,member_pins = [] :: ne_binaries()
                           ,moderator_pins = [] :: ne_binaries()
-                          ,moderator :: boolean()
+                          ,moderator :: api_boolean()
                           ,member_join_muted = 'false' :: boolean()
                           ,member_join_deaf = 'false' :: boolean()
                           ,moderator_join_muted = 'false' :: boolean()
