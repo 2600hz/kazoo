@@ -399,8 +399,12 @@ release(PN, ?NUMBER_STATE_RESERVED) -> authorize_release(PN);
 release(PN, ?NUMBER_STATE_PORT_IN) -> authorize_release(PN);
 release(PN, ?NUMBER_STATE_IN_SERVICE) -> authorize_release(PN);
 release(PN, FromState) ->
-    To = ?NUMBER_STATE_RELEASED,
-    knm_errors:invalid_state_transition(PN, FromState, To).
+    case module_name(PN) of
+        ?CARRIER_LOCAL -> authorize_release(PN);
+        _ ->
+            To = knm_config:released_state(),
+            knm_errors:invalid_state_transition(PN, FromState, To)
+    end.
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 authorize_release(PN) ->
