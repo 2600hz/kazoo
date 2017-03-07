@@ -524,7 +524,11 @@ release_number(Number, Options) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
     N = unwind_or_disconnect(N1, Options),
-    save_wrap_phone_number(phone_number(N), N).
+    PN = phone_number(N),
+    case ?NUMBER_STATE_DELETED =:= knm_phone_number:state(PN) of
+        true -> N;
+        false -> save_wrap_phone_number(PN, N)
+    end.
 
 -spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
 unwind_or_disconnect(Number, Options) ->
