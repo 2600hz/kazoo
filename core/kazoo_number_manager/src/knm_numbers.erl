@@ -262,21 +262,27 @@ do_get_pn(Nums, Options, Error) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
+    create(Nums, Options, knm_number_options:assign_to(Options)).
+
+-spec create(ne_binaries(), knm_number_options:options(), api_ne_binary()) -> ret().
+create(Nums, Options, AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     T0 = do_get_pn(Nums, Options, knm_errors:to_json(not_reconcilable)),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
-            case options_for_create(Nums, Options) of
-                #{}=Ret -> Ret;
-                NewOptions ->
-                    ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
-                            ,[fun maybe_set_ported_in/1
-                             ,fun knm_number:new/1
-                             ,fun knm_number_states:to_options_state/1
-                             ,fun save_numbers/1
-                             ]))
-            end
-    end.
+            ToState = knm_number:state_for_create(AccountId, Options),
+            lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
+            NewOptions = [{'state', ToState} | pick_module(Options)],
+            ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
+                    ,[fun maybe_set_ported_in/1
+                     ,fun knm_number:new/1
+                     ,fun knm_number_states:to_options_state/1
+                     ,fun save_numbers/1
+                     ]))
+    end;
+create(Nums, Options, _) ->
+    Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
+    ret(new(Options, [], Nums, Error)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -638,43 +644,11 @@ maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
     end.
 
 %% @private
-%% Generates options for number creation, can return error if the correct options
-%% are not passed
--spec options_for_create(ne_binaries(), knm_number_options:options()) ->
-                                knm_number_options:options() |
-                                ret().
-options_for_create(Nums, Options0) ->
-    Fs = [fun state_create_option/2
-         ,fun module_name_create_option/2
-         ],
-    lists:foldl(fun(_F, #{}=Ret) -> Ret;
-                   (F, AccOptions) -> F(Nums, AccOptions)
-                end
-               ,Options0
-               ,Fs
-               ).
-
-%% @private
--spec state_create_option(ne_binaries(), knm_number_options:options()) ->
-                                 knm_number_options:options() |
-                                 ret().
-state_create_option(Nums, Options) ->
-    case knm_number_options:assign_to(Options) of
-        ?MATCH_ACCOUNT_RAW(AccountId) ->
-            ToState = knm_number:state_for_create(AccountId, Options),
-            lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
-            [{'state', ToState} | Options];
-        _ ->
-            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
-            ret(new(Options, [], Nums, Error))
-    end.
-
-%% @private
--spec module_name_create_option(ne_binaries(), knm_number_options:options()) -> knm_number_options:options().
-module_name_create_option(_Nums, Options) ->
+-spec pick_module(knm_number_options:options()) -> knm_number_options:options().
+pick_module(Options) ->
     AuthBy = knm_number_options:auth_by(Options),
     case kz_term:is_not_empty(AuthBy)
-        andalso {props:get_ne_binary_value('module_name', Options), kapps_util:get_master_account_id()}
+        andalso {knm_number_options:module_name(Options), kapps_util:get_master_account_id()}
     of
         'false' -> Options;
         {?CARRIER_LOCAL, _} -> Options;

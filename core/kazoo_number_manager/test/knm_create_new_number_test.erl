@@ -50,7 +50,6 @@ create_new_number_test_() ->
 reseller_new_number_test_() ->
     Props = [{'auth_by', ?RESELLER_ACCOUNT_ID}
             ,{'assign_to', ?RESELLER_ACCOUNT_ID}
-            ,{'module_name', <<"knm_bandwidth2">>}
             ,{'dry_run', 'false'}
             ,{<<"auth_by_account">>
              ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
@@ -73,7 +72,7 @@ reseller_new_number_test_() ->
     ,{"Verify the reseller account is listed in reserve history"
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
-    ,{"Verify the local carrier module is being used (Also checks only master account can set module_name)"
+    ,{"Verify the local carrier module is being used"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ].
@@ -293,9 +292,14 @@ create_number_with_module_name_test_() ->
              }
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    {'ok', N2} = knm_number:create(?TEST_CREATE_NUM, props:set_value('auth_by', ?RESELLER_ACCOUNT_ID, Props)),
     PN = knm_number:phone_number(N),
-    [{"Verify the bandwidth2 carrier module is being used (and only master account can set module name)"
+    PN2 = knm_number:phone_number(N2),
+    [{"Verify that only master account can set module module"
      ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
+     }
+    ,{"Verify the local module is being used if any other account than the master tries to set module name"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
      }
     ].
 
