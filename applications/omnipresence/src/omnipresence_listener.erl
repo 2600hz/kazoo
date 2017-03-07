@@ -23,7 +23,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {subs_pid = 'undefined' :: api_pid()
-               ,subs_ref :: reference()
+               ,subs_ref = 'undefined' :: api_reference()
                ,queue = 'undefined' :: api_binary()
                ,consuming = 'false' :: boolean()
                ,sync = 'false' :: boolean()
@@ -32,17 +32,20 @@
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS, [{'self', []}
-                  ,{'presence', [{'restrict_to', ['subscribe']}]}
-                  ,{'omnipresence', [{'restrict_to', ['notify']}]}
+                  ,{'presence', [{'restrict_to', ['dialog', 'mwi_update']}]}
+                  ,{'omnipresence', [{'restrict_to', ['subscribe', 'notify']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_subscribe'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
                      ,[{<<"presence">>, <<"subscription">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_sync'}
-                     ,[{<<"presence">>, <<"sync">>}]
                      }
                     ,{{'omnip_subscriptions', 'handle_kamailio_notify'}
                      ,[{<<"presence">>, <<"notify">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
+                     ,[{<<"presence">>, <<"mwi_update">>}]
+                     }
+                    ,{{'omnip_subscriptions', 'handle_dialog_update'}
+                     ,[{<<"presence">>, <<"dialog_update">>}]
                      }
                     ]).
 

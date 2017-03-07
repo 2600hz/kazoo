@@ -76,24 +76,24 @@
 -type state() :: #state{}.
 
 -record(registration, {id :: {ne_binary(), ne_binary()} | '_' | '$1'
-                      ,username :: ne_binary() | '_'
-                      ,realm :: ne_binary() | '_' | '$1'
-                      ,network_port :: ne_binary() | '_'
-                      ,network_ip :: ne_binary() | '_'
+                      ,username :: api_ne_binary() | '_'
+                      ,realm :: api_ne_binary() | '_' | '$1'
+                      ,network_port :: api_ne_binary() | '_'
+                      ,network_ip :: api_ne_binary() | '_'
                       ,to_host = ?DEFAULT_REALM :: ne_binary() | '_'
                       ,to_user = <<"nouser">> :: ne_binary() | '_'
                       ,from_host = ?DEFAULT_REALM :: ne_binary() | '_'
                       ,from_user = <<"nouser">> :: ne_binary() | '_'
-                      ,call_id :: ne_binary() | '_'
-                      ,user_agent :: ne_binary() | '_'
+                      ,call_id :: api_ne_binary() | '_'
+                      ,user_agent :: api_ne_binary() | '_'
                       ,expires = ?EXPIRES_MISSING_VALUE :: non_neg_integer() | '_' | '$1'
-                      ,contact :: ne_binary() | '_'
+                      ,contact :: api_ne_binary() | '_'
                       ,previous_contact :: api_binary() | '_'
-                      ,original_contact :: ne_binary() | '_'
+                      ,original_contact :: api_ne_binary() | '_'
                       ,last_registration = kz_time:current_tstamp() :: gregorian_seconds() | '_' | '$2'
                       ,initial_registration = kz_time:current_tstamp() :: gregorian_seconds() | '_'
-                      ,registrar_node :: ne_binary() | '_'
-                      ,registrar_hostname :: ne_binary() | '_'
+                      ,registrar_node :: api_ne_binary() | '_'
+                      ,registrar_hostname :: api_ne_binary() | '_'
                       ,suppress_unregister = 'true' :: boolean() | '_'
                       ,register_overwrite_notify = 'false' :: boolean() | '_'
                       ,account_db :: api_binary() | '_'
@@ -106,6 +106,8 @@
                       ,account_realm :: api_binary() | '_' | '$2'
                       ,account_name :: api_binary() | '_'
                       ,proxy :: api_binary() | '_'
+                      ,proxy_ip :: api_binary() | '_'
+                      ,proxy_port :: api_integer() | '_'
                       ,bridge_uri :: api_binary() | '_'
                       ,source_ip :: api_binary() | '_'
                       ,source_port :: api_binary() | '_'
@@ -788,6 +790,8 @@ create_registration(JObj) ->
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     Reg = existing_or_new_registration(Username, Realm),
     Proxy = kz_json:get_value(<<"Proxy-Path">>, JObj, Reg#registration.proxy),
+    ProxyIP = kz_json:get_value(<<"Proxy-IP">>, JObj, Reg#registration.proxy_ip),
+    ProxyPort = kz_json:get_integer_value(<<"Proxy-Port">>, JObj, Reg#registration.proxy_port),
     OriginalContact =
         kz_json:get_first_defined([<<"Original-Contact">>
                                   ,<<"Contact">>
@@ -818,6 +822,8 @@ create_registration(JObj) ->
       Reg#registration{username=Username
                       ,realm=Realm
                       ,proxy=Proxy
+                      ,proxy_ip=ProxyIP
+                      ,proxy_port=ProxyPort
                       ,expires=Expires
                       ,registrar_node=RegistrarNode
                       ,registrar_hostname=RegistrarHostname
@@ -1154,6 +1160,8 @@ to_props(Reg) ->
       ,{<<"Original-Contact">>, Reg#registration.original_contact}
       ,{<<"Previous-Contact">>, Reg#registration.previous_contact}
       ,{<<"Proxy-Path">>, Reg#registration.proxy}
+      ,{<<"Proxy-IP">>, Reg#registration.proxy_ip}
+      ,{<<"Proxy-Port">>, Reg#registration.proxy_port}
       ,{<<"Expires">>, Reg#registration.expires}
       ,{<<"Account-ID">>, Reg#registration.account_id}
       ,{<<"Account-DB">>, Reg#registration.account_db}

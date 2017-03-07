@@ -555,6 +555,7 @@
     "number_manager.voip_innovations.password": "number_manager.voip_innovations password",
     "number_manager.voip_innovations.sandbox_provisioning": "number_manager.voip_innovations sandbox provisioning",
     "omnipresence.cache_terminated_callid_s": "omnipresence cache terminated callid in seconds",
+    "omnipresence.dialog_subscribed_mwi_prefix": "prefix used when subsribing vm updates for dialog",
     "omnipresence.expire_check_ms": "omnipresence expire check in milliseconds",
     "omnipresence.expires_fudge_s": "omnipresence expires fudge in seconds",
     "omnipresence.modules": "omnipresence modules",

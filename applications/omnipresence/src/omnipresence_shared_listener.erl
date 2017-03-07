@@ -25,53 +25,20 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {subs_pid :: pid()
-               ,subs_ref :: reference()
+-record(state, {subs_pid = 'undefined' :: api_pid()
+               ,subs_ref = 'undefined'  :: api_reference()
                }).
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}
-                   %% channel events that toggle presence lights
-                  ,{'call', [{'restrict_to', ['CHANNEL_CREATE'
-                                             ,'CHANNEL_ANSWER'
-                                             ,'CHANNEL_DESTROY'
-                                             ,'CHANNEL_CONNECTED'
-                                             ,'CHANNEL_DISCONNECTED'
-                                             ]
-                             }
-                            ,'federate'
-                            ]}
-                  ,{'presence', [{'restrict_to', ['update'
-                                                 ,'mwi_update'
-                                                 ,'reset'
-                                                 ,'flush'
-                                                 ,'search_req'
+                  ,{'presence', [{'restrict_to', ['mwi_update'
                                                  ]
                                  }
                                 ,'federate'
                                 ]}
-                  ,{'omnipresence', [{'restrict_to', ['subscribe']}]}
                   ]).
--define(RESPONDERS, [{{'omnip_subscriptions', 'handle_channel_event'}
-                     ,[{<<"call_event">>, <<"*">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_presence_update'}
-                     ,[{<<"presence">>, <<"update">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_mwi_update'}
+-define(RESPONDERS, [{{'omnip_subscriptions', 'handle_mwi_update'}
                      ,[{<<"presence">>, <<"mwi_update">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_reset'}
-                     ,[{<<"presence">>, <<"reset">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_flush'}
-                     ,[{<<"presence">>, <<"flush">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_kamailio_subscribe'}
-                     ,[{<<"presence">>, <<"subscription">>}]
-                     }
-                    ,{{'omnip_subscriptions', 'handle_search_req'}
-                     ,[{<<"presence">>, <<"search_req">>}]
                      }
                     ]).
 -define(QUEUE_NAME, <<"omnip_shared_listener">>).
