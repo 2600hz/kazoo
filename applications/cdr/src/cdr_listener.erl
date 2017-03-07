@@ -126,7 +126,7 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info(timeout, #state{counter = Counter} = State) ->
-    Now = kz_time:current_tstamp(),
+    Now = kz_util:current_tstamp(),
     Timeout = ?TIMEOUT,
     HandleTimeout =
         fun(AccountId, {Map, List}) ->
@@ -163,8 +163,8 @@ handle_account(#state{}, _, undefined) -> {reply, []};
 handle_account(#state{counter = Counter} = State, Threshold, AccountId) ->
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Threshold} ->
-                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:current_tstamp()]),
-                    {kz_time:current_tstamp(), 0};
+                    _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_util:current_tstamp()]),
+                    {kz_util:current_tstamp(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
     {reply, [], State#state{ counter = Counter#{ AccountId => Count }} }.
@@ -201,7 +201,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 
 value({ok, Value}) -> Value;
-value(_) -> {kz_time:current_tstamp(), 0}.
+value(_) -> {kz_util:current_tstamp(), 0}.
 
 -spec update_account_view(ne_binary(), gregorian_seconds(), gregorian_seconds()) -> any().
 update_account_view(AccountId, From, To) ->
