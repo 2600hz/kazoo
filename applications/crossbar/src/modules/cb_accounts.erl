@@ -318,15 +318,15 @@ put(Context, PathAccountId) ->
             case cb_context:is_context(C) of
                 'true' -> delete(C, NewAccountId);
                 'false' ->
-                    C = cb_context:add_system_error('unspecified_fault', Context),
-                    delete(C, NewAccountId)
+                    _ = delete(Context, NewAccountId),
+                    cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
             end;
         _E:_R ->
             ST = erlang:get_stacktrace(),
             lager:debug("unexpected failure when creating account: ~s: ~p", [_E, _R]),
             kz_util:log_stacktrace(ST),
-            C = cb_context:add_system_error('unspecified_fault', Context),
-            delete(C, NewAccountId)
+            _ = delete(Context, NewAccountId),
+            cb_context:add_system_error('unspecified_fault', <<"internal error, unable to create the account">>, Context)
     end.
 
 put(Context, AccountId, ?RESELLER) ->
