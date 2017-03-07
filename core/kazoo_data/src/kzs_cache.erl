@@ -80,12 +80,11 @@ open_cache_doc(Server, DbName, DocId, Options) ->
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
     lager:debug("misses ~p", [MissedDocIds]),
-    JObjs1 = assemble_jobjs(Cached),
     case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
         {error, _}=E -> E;
-        {ok, JObjs} ->
-            JObjs2 = assemble_jobjs(JObjs1, disassemble_jobjs(DbName, Options, JObjs)),
-            {ok, JObjs2}
+        {ok, Opened} ->
+            FromBulk = disassemble_jobjs(DbName, Options, Opened),
+            {ok, assemble_jobjs(DocIds, Cached, FromBulk)}
     end.
 
 fetch_locals(DbName, DocIds) ->
@@ -100,9 +99,9 @@ fetch_locals(DbName, DocIds) ->
         end,
     lists:foldl(F, {[], []}, DocIds).
 
--type docs_returned() :: [{ne_binary(), ok, kz_json:object()} |
-                          {ne_binary(), error, ne_binary()}
-                         ].
+-type doc_returned() :: {ne_binary(), ok, kz_json:object()} |
+                        {ne_binary(), error, ne_binary()}.
+-type docs_returned() :: [doc_returned()].
 -spec disassemble_jobjs(ne_binary(), kz_proplist(), kz_json:objects()) -> docs_returned().
 disassemble_jobjs(DbName, Options, JObjs) ->
     [case kz_json:get_ne_value(<<"doc">>, JObj) of
@@ -118,25 +117,23 @@ disassemble_jobjs(DbName, Options, JObjs) ->
         DocId <- [kz_json:get_ne_value(<<"key">>, JObj)]
     ].
 
--spec assemble_jobjs(docs_returned()) -> kz_json:objects().
--spec assemble_jobjs(kz_json:objects(), docs_returned()) -> kz_json:objects().
-assemble_jobjs(DocsReturned) ->
-    assemble_jobjs([], DocsReturned).
-assemble_jobjs(JObjs, DocsReturned) ->
-    [case Returned of
-         {DocId, ok, Doc} ->
-             kz_json:from_list(
-               [{<<"key">>, DocId}
-               ,{<<"doc">>, Doc}
-               ]);
-         {DocId, error, Reason} ->
-             kz_json:from_list(
-               [{<<"key">>, DocId}
-               ,{<<"error">>, kz_term:to_atom(Reason, true)}
-               ])
-     end
-     || Returned <- DocsReturned
-    ] ++ JObjs.
+-spec assemble_jobjs(ne_binaries(), docs_returned(), docs_returned()) -> kz_json:objects().
+assemble_jobjs(DocIds, Cached, DocsReturned) ->
+    JObjs1 = [to_nonbulk_format(Returned) || Returned <- Cached],
+    JObjs2 = [to_nonbulk_format(Returned) || Returned <- DocsReturned],
+    kz_json:order_by([<<"key">>], DocIds, [JObjs1,JObjs2]).
+
+-spec to_nonbulk_format(doc_returned()) -> kz_json:object().
+to_nonbulk_format({DocId, ok, Doc}) ->
+    kz_json:from_list(
+      [{<<"key">>, DocId}
+      ,{<<"doc">>, Doc}
+      ]);
+to_nonbulk_format({DocId, error, Reason}) ->
+    kz_json:from_list(
+      [{<<"key">>, DocId}
+      ,{<<"error">>, kz_term:to_atom(Reason, true)}
+      ]).
 
 -spec remove_cache_options(kz_proplist()) -> kz_proplist().
 remove_cache_options(Options) ->
@@ -154,10 +151,9 @@ maybe_cache_failure(DbName, DocId, Options, Error) ->
     end.
 
 maybe_cache_failure(DbName, DocId, _Options, {'error', ErrorCode}=Error, ErrorCodes) ->
-    case lists:member(ErrorCode, ErrorCodes) of
-        'true' -> add_to_doc_cache(DbName, DocId, Error);
-        'false' -> 'ok'
-    end.
+    _ = lists:member(ErrorCode, ErrorCodes)
+        andalso add_to_doc_cache(DbName, DocId, Error),
+    ok.
 
 -spec add_to_doc_cache(ne_binary(), ne_binary(), kz_json:object() | data_error()) -> 'ok'.
 add_to_doc_cache(DbName, DocId, CacheValue) ->

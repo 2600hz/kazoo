@@ -100,6 +100,8 @@
 -export([sum/2, sum/3]).
 -export_type([sumer/0]).
 
+-export([order_by/3]).
+
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo_json/include/kazoo_json.hrl").
 
@@ -371,12 +373,14 @@ merge_recursive(?JSON_WRAPPER(_)=JObj1, Value, Pred, Keys) when is_function(Pred
         'true' -> set_value(Syek, Value, JObj1)
     end.
 
+%%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% Sum two (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
 %% the value from JObj1 is kept untouched. If it is undefined it's the one from JObj2.
 %% @end
+%%--------------------------------------------------------------------
 -spec sum(object(), object()) -> object().
 sum(?JSON_WRAPPER(_)=JObj1, ?JSON_WRAPPER(_)=JObj2) ->
     sum(JObj1, JObj2, fun default_sumer/2).
@@ -406,6 +410,24 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     Syek = lists:reverse(Keys),
     V = get_value(Syek, JObj1),
     set_value(Syek, Sumer(V, Value), JObj1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Reorder JSON objects according to the given list of binaries.
+%% Given Path MUST resolve to all distinct values in the given objects.
+%% These resolved values MUST all be in the list of binaries too.
+%% List of binaries MUST NOT contain duplicates.
+%% Both lists MUST be of same size.
+%% @end
+%%--------------------------------------------------------------------
+-spec order_by(path(), ne_binaries(), [objects()]) -> objects().
+order_by(Path, Ids, ListOfJObjs)
+  when is_list(Ids), is_list(ListOfJObjs) ->
+    _ = [[put(get_value(Path, JObj), JObj) || JObj <- JObjs]
+         || JObjs <- ListOfJObjs
+        ],
+    [erase(Id) || Id <- Ids].
 
 -spec to_proplist(object() | objects()) -> json_proplist() | json_proplists().
 -spec to_proplist(path(), object() | objects()) -> json_proplist() | json_proplists().
