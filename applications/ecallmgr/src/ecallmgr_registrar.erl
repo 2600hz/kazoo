@@ -106,6 +106,8 @@
                       ,account_realm :: api_binary() | '_' | '$2'
                       ,account_name :: api_binary() | '_'
                       ,proxy :: api_binary() | '_'
+                      ,proxy_ip :: api_binary() | '_'
+                      ,proxy_port :: integer() | '_'
                       ,bridge_uri :: api_binary() | '_'
                       ,source_ip :: api_binary() | '_'
                       ,source_port :: api_binary() | '_'
@@ -788,6 +790,8 @@ create_registration(JObj) ->
     Realm = kz_json:get_value(<<"Realm">>, JObj),
     Reg = existing_or_new_registration(Username, Realm),
     Proxy = kz_json:get_value(<<"Proxy-Path">>, JObj, Reg#registration.proxy),
+    ProxyIP = kz_json:get_value(<<"Proxy-IP">>, JObj, Reg#registration.proxy_ip),
+    ProxyPort = kz_json:get_integer_value(<<"Proxy-Port">>, JObj, Reg#registration.proxy_port),
     OriginalContact =
         kz_json:get_first_defined([<<"Original-Contact">>
                                   ,<<"Contact">>
@@ -818,6 +822,8 @@ create_registration(JObj) ->
       Reg#registration{username=Username
                       ,realm=Realm
                       ,proxy=Proxy
+                      ,proxy_ip=ProxyIP
+                      ,proxy_port=ProxyPort
                       ,expires=Expires
                       ,registrar_node=RegistrarNode
                       ,registrar_hostname=RegistrarHostname
@@ -1154,6 +1160,8 @@ to_props(Reg) ->
       ,{<<"Original-Contact">>, Reg#registration.original_contact}
       ,{<<"Previous-Contact">>, Reg#registration.previous_contact}
       ,{<<"Proxy-Path">>, Reg#registration.proxy}
+      ,{<<"Proxy-IP">>, Reg#registration.proxy_ip}
+      ,{<<"Proxy-Port">>, Reg#registration.proxy_port}
       ,{<<"Expires">>, Reg#registration.expires}
       ,{<<"Account-ID">>, Reg#registration.account_id}
       ,{<<"Account-DB">>, Reg#registration.account_db}
