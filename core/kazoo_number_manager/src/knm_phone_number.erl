@@ -403,25 +403,11 @@ release(PN, FromState) ->
     knm_errors:invalid_state_transition(PN, FromState, To).
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
--spec authorize_release(knm_phone_number(), ne_binary()) -> knm_phone_number().
 authorize_release(PN) ->
-    authorize_release(PN, auth_by(PN)).
-
--ifdef(TEST).
-authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) -> authorized_release(PN);
-authorize_release(PN, ?MASTER_ACCOUNT_ID) -> authorized_release(PN);
-authorize_release(_PN, _AuthBy) -> knm_errors:unauthorized().
--else.
-authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    authorized_release(PN);
-authorize_release(PN, AuthBy) ->
-    AssignedTo = assigned_to(PN),
-    case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-        'false' -> knm_errors:unauthorized();
-        'true' -> authorized_release(PN)
+    case is_authorized(PN) of
+        false -> knm_errors:unauthorized();
+        true -> authorized_release(PN)
     end.
--endif.
 
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PN) ->
