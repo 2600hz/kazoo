@@ -20,7 +20,7 @@
         ,authorize/1
         ,authenticate/1
         ,put/2, put/3
-        ,post/2
+        ,post/2, post/3
         ,delete/2
 
         ,set_response/2
@@ -157,6 +157,8 @@ allowed_methods(?CHECK) ->
 allowed_methods(_PhoneNumber) ->
     [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_DELETE].
 
+allowed_methods(?FIX, _PhoneNumber) ->
+    [?HTTP_POST];
 allowed_methods(?COLLECTION, ?ACTIVATE) ->
     [?HTTP_PUT];
 allowed_methods(?CLASSIFIERS, _PhoneNumber) ->
@@ -190,6 +192,7 @@ resource_exists(?CHECK) -> 'true';
 resource_exists(?CLASSIFIERS) -> 'true';
 resource_exists(_PhoneNumber) -> 'true'.
 
+resource_exists(?FIX, _PhoneNumber) -> 'true';
 resource_exists(_PhoneNumber, ?ACTIVATE) -> 'true';
 resource_exists(_PhoneNumber, ?RESERVE) -> 'true';
 resource_exists(_PhoneNumber, ?PORT) -> 'true';
@@ -275,6 +278,10 @@ validate_number(Context, _Number, ?HTTP_PUT) ->
 validate_number(Context, _Number, ?HTTP_DELETE) ->
     validate_delete(Context).
 
+validate(Context, ?FIX, _Num) ->
+    cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
+                            ,kz_json:new()
+                            );
 validate(Context, ?COLLECTION, ?ACTIVATE) ->
     validate_collection_request(Context);
 validate(Context, ?CLASSIFIERS, Number) ->
@@ -325,6 +332,13 @@ classified_number(Context, Number, Classifier) ->
                       ,[{fun cb_context:set_resp_data/2, RespData}
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
+
+-spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+post(Context, ?FIX, Num) ->
+    AccountDb = cb_context:account_db(Context),
+    AuthBy = cb_context:auth_account_id(Context),
+    Result = kazoo_number_manager_maintenance:fix_number(Num, AuthBy, AccountDb),
+    set_response(Result, Context).
 
 -spec post(cb_context:context(), path_token()) -> cb_context:context().
 post(Context, ?FIX) ->
