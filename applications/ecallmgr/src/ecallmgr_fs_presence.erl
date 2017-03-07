@@ -24,6 +24,7 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {node = 'undefined' :: atom()
+               ,event :: ne_binary()
                ,options = [] :: kz_proplist()
                }).
 -type state() :: #state{}.
@@ -59,8 +60,9 @@ start_link(Node, Options) ->
 -spec init([atom() | kz_proplist()]) -> {'ok', state()}.
 init([Node, Options]) ->
     kz_util:put_callid(Node),
+    Event = application:get_env(?APP, 'presence_event', <<"PRESENCE_IN">>),
     gen_server:cast(self(), 'bind_to_record'),
-    {'ok', #state{node=Node, options=Options}}.
+    {'ok', #state{node=Node, event = Event, options=Options}}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -91,8 +93,8 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
-handle_cast('bind_to_record', #state{node=Node}=State) ->
-    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, <<"PRESENCE_IN">>)}),
+handle_cast('bind_to_record', #state{node=Node, event=Event}=State) ->
+    gproc:reg({'p', 'l', ?FS_EVENT_REG_MSG(Node, Event)}),
     {'noreply', State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
@@ -111,8 +113,9 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info({'event', [UUID | Props]}, #state{node=Node
                                              ,options=Options
+                                             ,event=Event
                                              }=State) ->
-    _ = kz_util:spawn(fun handle_presence_event/4, [UUID, Props, Node, Options]),
+    _ = kz_util:spawn(fun handle_presence_event/5, [Event, UUID, Props, Node, Options]),
     {'noreply', State};
 handle_info({'option', K, V}, #state{options=Options}=State) ->
     {'noreply', State#state{options=props:set_value(K, V, Options)}};
@@ -162,40 +165,28 @@ init_props(Props, Options) ->
         _Value -> Props
     end.
 
--spec handle_presence_event(api_binary(), kz_proplist(), atom(), kz_proplist()) -> any().
-handle_presence_event(UUID, FSProps, Node, Options) ->
+-spec handle_presence_event(ne_binary(), api_binary(), kz_proplist(), atom(), kz_proplist()) -> any().
+handle_presence_event(BindingEvent, UUID, FSProps, Node, Options) ->
     kz_util:put_callid(UUID),
     Props = init_props(FSProps, Options),
     EventName = props:get_value(<<"Event-Subclass">>, Props, props:get_value(<<"Event-Name">>, Props)),
-    process_specific_event(EventName, UUID, Props, Node).
+    process_specific_event(BindingEvent, EventName, UUID, Props, Node).
 
--spec process_specific_event(ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
-process_specific_event(<<"PRESENCE_IN">>, UUID, Props, Node) ->
+-spec process_specific_event(ne_binary(), ne_binary(), api_binary(), kz_proplist(), atom()) -> any().
+process_specific_event(Event, Event, UUID, Props, Node) ->
     maybe_build_presence_event(Node, UUID, Props);
-process_specific_event(_Event, _UUID, _Props, _Node) ->
-    lager:debug("event ~s for callid ~s not handled in presence (~s)", [_Event, _UUID, _Node]).
+process_specific_event(_BindingEvent, _Event, _UUID, _Props, _Node) ->
+    lager:debug("event ~s not binded (~s) in presence (~s)", [_Event, _BindingEvent, _Node]).
 
 -spec maybe_build_presence_event(atom(), api_binary(), kz_proplist()) -> any().
 maybe_build_presence_event(Node, UUID, Props) ->
     Routines = [fun check_proto/3
                ,fun check_publish_state/3
-               ,fun check_authz_type/3
                ],
     case lists:all(fun(F) -> F(Node, UUID, Props) end, Routines) of
         'true' -> build_presence_event(Node, UUID, Props);
         'false' -> 'ok'
     end.
-
--spec check_authz_type(atom(), api_binary(), kz_proplist()) -> boolean().
-check_authz_type(_Node, _UUID, Props) ->
-    AuthType = props:get_value(?GET_CCV(<<"Authorizing-Type">>), Props),
-    check_authz_type(AuthType).
-
--spec check_authz_type(api_binary()) -> boolean().
-check_authz_type(<<"device">>) -> 'true';
-check_authz_type(_AuthType) ->
-    lager:debug("Authorizing-Type ~p not handled", [_AuthType]),
-    'false'.
 
 -spec check_proto(atom(), api_binary(), kz_proplist()) -> boolean().
 check_proto(_Node, _UUID, Props) ->
@@ -305,6 +296,7 @@ presence_status(Props) ->
 
 -spec presence_status(ne_binary(), ne_binary(), ne_binary()) -> ne_binary().
 presence_status(_, _, <<"answered">>) -> <<"confirmed">>;
+presence_status(_, _, <<"hangup">>) -> <<"terminated">>;
 presence_status(_, <<"hangup">>, _) -> <<"terminated">>;
 presence_status(Direction, <<"cs_", Status/binary>>, AnswerState) -> presence_status(Direction, Status, AnswerState);
 presence_status(<<"initiator">>, _, <<"ringing">>) -> <<"confirmed">>;
