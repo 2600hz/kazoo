@@ -11326,23 +11326,9 @@
                     "description": "omnipresence expires fudge in seconds",
                     "type": "integer"
                 },
-                "modules": {
-                    "default": [
-                        "omnip_dialog_amqp",
-                        "omnip_message_summary_amqp",
-                        "omnip_presence_amqp"
-                    ],
-                    "description": "omnipresence modules",
-                    "type": "array"
-                },
                 "subscriptions_sync_enabled": {
                     "default": false,
                     "description": "omnipresence subscriptions sync enabled",
-                    "type": "boolean"
-                },
-                "use_fast_pickup_cookies": {
-                    "default": true,
-                    "description": "omnipresence use fast pickup cookies",
                     "type": "boolean"
                 }
             },
