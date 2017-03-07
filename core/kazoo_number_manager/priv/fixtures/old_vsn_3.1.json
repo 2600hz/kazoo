@@ -1,5 +1,6 @@
 {
-    "_id": "+14082141750",
+    "_id": "+14082141751",
+    "_rev": "5-d8c63d6bdc3e8376e9ffe157904ce114",
     "e911": {
         "extended_address": "",
         "locality": "SAN FRANCISCO",
@@ -7,8 +8,11 @@
         "region": "CA",
         "street_address": "140 GEARY ST"
     },
+    "features": [
+        "e911"
+    ],
     "pvt_assigned_to": "eda33e3561baf133f9a088340643e35c",
-    "pvt_authorizing_account": "system",
+    "pvt_authorizing_account": "eda33e3561baf133f9a088340643e35c",
     "pvt_carrier_data": {
         "number": "+14082141750",
         "order_id": "6c7e81e558cc48e1a55c783ff06244cc",
@@ -30,19 +34,17 @@
             "street_address": "140 GEARY ST"
         }
     },
-    "pvt_features_allowed": [
+    "pvt_features_available": [
+        "cnam",
+        "dash_e911",
         "failover",
-        "force_outbound",
+        "port",
         "prepend",
-        "ringback"
+        "vitelity_e911",
+        "e911"
     ],
-    "pvt_features_denied": [
-        "failover"
-    ],
-    "pvt_is_billable": true,
     "pvt_modified": 63646110391,
     "pvt_module_name": "knm_bandwidth2",
-    "pvt_ported_in": false,
     "pvt_state": "in_service",
     "pvt_type": "number",
     "pvt_used_by": "callflow",
