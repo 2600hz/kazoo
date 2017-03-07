@@ -645,6 +645,20 @@ maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
 
 %% @private
 -spec pick_module(knm_number_options:options()) -> knm_number_options:options().
+-ifdef(TEST).
+pick_module(Options) ->
+    AuthBy = knm_number_options:auth_by(Options),
+    case kz_term:is_not_empty(AuthBy)
+        andalso {knm_number_options:module_name(Options), {'ok', ?MASTER_ACCOUNT_ID}}
+    of
+        'false' -> Options;
+        {?CARRIER_LOCAL, _} -> Options;
+        {?CARRIER_MDN, _} -> Options;
+        {?CARRIER_OTHER, _} -> Options; %% cb_jobs_listener
+        {_, {'ok', AuthBy}} -> Options;
+        {_, _} -> props:delete('module_name', Options)
+    end.
+-else.
 pick_module(Options) ->
     AuthBy = knm_number_options:auth_by(Options),
     case kz_term:is_not_empty(AuthBy)
@@ -657,6 +671,7 @@ pick_module(Options) ->
         {_, {'ok', AuthBy}} -> Options;
         {_, _} -> props:delete('module_name', Options)
     end.
+-endif.
 
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
