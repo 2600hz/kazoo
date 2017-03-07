@@ -1,6 +1,6 @@
-### Local_provisioner_templates
+### Local Provisioner Templates
 
-#### About Local_provisioner_templates
+#### About Local Provisioner Templates
 
 #### Schema
 

@@ -1,6 +1,6 @@
-### Access_lists
+### Access Lists
 
-#### About Access_lists
+#### About Access Lists
 
 #### Schema
 

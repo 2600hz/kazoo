@@ -1,6 +1,6 @@
-### Api_auth
+### API Authentication
 
-#### About Api_auth
+#### About API Authentication
 
 #### Schema
 

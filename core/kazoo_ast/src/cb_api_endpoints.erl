@@ -124,10 +124,29 @@ method_as_action(?HTTP_DELETE) -> <<"Remove">>;
 method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
 ref_doc_header(BaseName) ->
+    CleanedUpName = smash_snake(BaseName),
     [[maybe_add_schema(BaseName)]
-    ,["#### About ", kz_binary:ucfirst(BaseName), "\n\n"]
-    ,["### ", kz_binary:ucfirst(BaseName), "\n\n"]
+    ,["#### About ", CleanedUpName, "\n\n"]
+    ,["### ", CleanedUpName, "\n\n"]
     ].
+
+%% user_auth -> User Auth
+-spec smash_snake(ne_binary()) -> iolist().
+smash_snake(BaseName) ->
+    case binary:split(BaseName, <<"_">>, ['global']) of
+        [Part] -> format_name_part(Part);
+        [H|Parts] ->
+            [format_name_part(H)
+             | [[<<" ">>, format_name_part(Part)] || Part <- Parts]
+            ]
+    end.
+
+-spec format_name_part(ne_binary()) -> ne_binary().
+format_name_part(<<"api">>) -> <<"API">>;
+format_name_part(<<"ip">>) -> <<"IP">>;
+format_name_part(<<"auth">>) -> <<"Authentication">>;
+format_name_part(Part) ->
+    kz_binary:ucfirst(Part).
 
 maybe_add_schema(BaseName) ->
     case kz_ast_util:load_ref_schema(BaseName) of

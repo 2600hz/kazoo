@@ -1,6 +1,6 @@
-### Resource_selectors
+### Resource Selectors
 
-#### About Resource_selectors
+#### About Resource Selectors
 
 #### Schema
 

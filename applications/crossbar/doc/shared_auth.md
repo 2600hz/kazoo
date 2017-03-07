@@ -1,6 +1,6 @@
-### Shared_auth
+### Shared Authentication
 
-#### About Shared_auth
+#### About Shared Authentication
 
 #### Schema
 
@@ -13,12 +13,22 @@ Key | Description | Type | Default | Required
 
 
 
-#### Detail a shared token
+#### Fetch
 
 > GET /v2/shared_auth
 
 ```shell
 curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/shared_auth
+```
+
+#### Create
+
+> PUT /v2/shared_auth
+
+```shell
+curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/shared_auth
 ```

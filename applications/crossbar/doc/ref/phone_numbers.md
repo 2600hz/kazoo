@@ -1,6 +1,6 @@
-### Phone_numbers
+### Phone Numbers
 
-#### About Phone_numbers
+#### About Phone Numbers
 
 #### Schema
 

@@ -1,6 +1,6 @@
-### Multi_factor
+### Multi Factor
 
-#### About Multi_factor
+#### About Multi Factor
 
 #### Schema
 

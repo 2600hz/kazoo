@@ -1,6 +1,6 @@
-### Call_inspector
+### Call Inspector
 
-#### About Call_inspector
+#### About Call Inspector
 
 #### Schema
 

@@ -1,8 +1,8 @@
-### System_configs
+### System Configs
 
 Manipulate documents in the `system_config` database via Crossbar.
 
-#### About System_configs
+#### About System Configs
 
 You must be `super_duper_admin` to access this resource.
 

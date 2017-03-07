@@ -1,6 +1,6 @@
-### Ubiquiti_auth
+### Ubiquiti Authentication
 
-#### About Ubiquiti_auth
+#### About Ubiquiti Authentication
 
 #### Schema
 

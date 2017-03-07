@@ -1,8 +1,8 @@
-### Token_auth
+### Token Authentication
 
 Authentication tokens are generated using one of the authentication endpoints exposed by Crossbar. See [User Authentication](./user_authentication.md) and [API Authentication](./api_authentication.md) as examples of generating authentication tokens.
 
-#### About Token_auth
+#### About Token Authentication
 
 Once you have an authentication token, you can access various Crossbar resource endpoints to manipulate the system or your account (provided you have the access).
 

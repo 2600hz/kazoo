@@ -1,6 +1,6 @@
-### Rate_limits
+### Rate Limits
 
-#### About Rate_limits
+#### About Rate Limits
 
 #### Schema
 

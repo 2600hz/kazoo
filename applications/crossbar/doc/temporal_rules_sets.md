@@ -1,6 +1,6 @@
-### Temporal rules sets
+### Temporal Rules Sets
 
-#### About
+#### About Temporal Rules Sets
 
 A temporal rule set is a collection of temporal rules that can be used in a callflow to match more that one rule. And can also be re-used.
 
@@ -29,38 +29,71 @@ Ex:
 ```json
     "name": "July",
     "temporal_rules": [
-        "452d5706f66377970996b2ec1c0fc04a",
-        "b771eb3eee6ea48f4321e3cc31c050ab"
+        "{RULE_ID}",
+        "{RULE_ID}"
    ]
 ```
 
-#### Crossbar
+#### Fetch Rule Sets
 
-Using Crossbar to modify Temporal Rules Sets is very simple:
+> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
-* GET - Gets the current set(s).
-* PUT - Add a set.
-* POST - Updates a set.
-* DELETE - Removes a set.
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
+```
 
-##### Account Temporal Rules Sets URI
+#### Create a new rule set
 
-`/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets`
+> PUT /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
 
-###### GET - Fetch account temporal_rules_sets:
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data": {"name": "July","temporal_rules": ["{RULE_ID}","{RULE_ID}"]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets
+```
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets
+#### Fetch a rule set
 
-    curl -v -X GET -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets/{SET_ID
+> GET /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
-###### PUT - Add account temporal_rules_sets:
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+```
 
-    curl -v -X PUT -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets -d '{"data": {"name": "July","temporal_rules": ["452d5706f66377970996b2ec1c0fc04a","b771eb3eee6ea48f4321e3cc31c050ab"]}}'
+#### Change a rule set
 
-###### POST - Update account temporal_rules_sets:
+> POST /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
 
-    curl -v -X POST -H "X-Auth-Token: {AUTH_TOKEN}" -H "Content-Type: application/json" http://server:8000/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets/{SET_ID} -d '{"data": {"name": "July","temporal_rules": ["452d5706f66377970996b2ec1c0fc04a","b771eb3eee6ea48f4321e3cc31c050ab"]}}'
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"data": {"name": "July","temporal_rules": ["{RULE_ID}","{RULE_ID}"]}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+```
 
-###### DELETE - Remove account temporal_rules_sets:
+#### Patch a rule set
 
-    curl -v -X DELETE -H "X-Auth-Token: {AUTH_TOKEN}" http://server:8000/v1/accounts/{ACCOUNT_ID}/temporal_rules_sets/{SET_ID}
+> PATCH /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+```
+
+#### Remove a rule set
+
+> DELETE /v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+
+```shell
+curl -v -X DELETE \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/temporal_rules_sets/{TEMPORAL_RULE_SET}
+```

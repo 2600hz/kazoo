@@ -1,6 +1,6 @@
-### Token restrictions
+### Token Restrictions
 
-#### About token restrictions
+#### About Token Restrictions
 
 Token restrictions - set of rules saved in auth token document. These rules grant access to API URIs.
 

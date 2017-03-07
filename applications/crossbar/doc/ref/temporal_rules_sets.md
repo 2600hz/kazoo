@@ -1,6 +1,6 @@
-### Temporal_rules_sets
+### Temporal Rules Sets
 
-#### About Temporal_rules_sets
+#### About Temporal Rules Sets
 
 #### Schema
 

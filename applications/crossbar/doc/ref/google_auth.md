@@ -1,6 +1,6 @@
-### Google_auth
+### Google Authentication
 
-#### About Google_auth
+#### About Google Authentication
 
 #### Schema
 
