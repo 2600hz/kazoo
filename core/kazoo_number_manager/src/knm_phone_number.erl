@@ -355,12 +355,11 @@ authorize_release(PN, AuthBy) ->
 
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PN) ->
-    ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines = [{fun set_features/2, ?DEFAULT_FEATURES}
                ,{fun set_doc/2, kz_json:private_fields(doc(PN))}
                ,{fun set_prev_assigned_to/2, assigned_to(PN)}
                ,{fun set_assigned_to/2, undefined}
-               ,{fun set_state/2, ReleasedState}
+               ,{fun set_state/2, knm_config:released_state()}
                ],
     {'ok', NewPN} = setters(PN, Routines),
     NewPN.
