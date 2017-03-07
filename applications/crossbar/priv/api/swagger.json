@@ -18289,6 +18289,30 @@
                 ]
             }
         },
+        "/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}": {
+            "post": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "phone_numbers",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/phone_numbers"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/phone_number"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
         "/accounts/{ACCOUNT_ID}/phone_numbers/locality": {
             "post": {
                 "parameters": [
