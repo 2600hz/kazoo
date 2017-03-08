@@ -247,7 +247,7 @@ update_message_array(BoxJObj, MODbFailed, Failed) ->
     Messages = kz_json:get_value(<<"messages">>, BoxJObj),
     %% check if messages are failed or not, if not remove them from message array
     Fun = fun(Msg, Acc) ->
-                  Timestamp = kz_json:get_value(<<"timestamp">>, Msg),
+                  Timestamp = kz_json:get_integer_value(<<"timestamp">>, Msg),
                   {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
                   MsgId = ?MODB_MSG_ID(Year, Month, kz_json:get_value(<<"media_id">>, Msg)),
                   M = dict:is_key(MsgId, MODbFailed),
@@ -303,18 +303,19 @@ generate_lagecy_view_result(BoxJObj) ->
     Messages = kz_json:get_value(?VM_KEY_MESSAGES, BoxJObj, []),
 
     Fun = fun(M, Acc) ->
+                  Timestamp = kz_json:get_integer_value(<<"timestamp">>, M),
                   Value = kz_json:from_list(
                             props:filter_empty(
                               [{<<"source_id">>, BoxId}
                               ,{<<"owner_id">>, OwnerId}
                               ,{<<"timezone">>, Timezone}
                               ,{<<"mailbox">>, Mailbox}
-                              ,{<<"metadata">>, M}
+                              ,{<<"metadata">>, kz_json:set_value(<<"timestamp">>, Timestamp, M)}
                               ])),
                   [kz_json:from_list(
                      props:filter_empty(
                        [{<<"id">>, BoxId}
-                       ,{<<"key">>, kz_json:get_value(<<"timestamp">>, M)}
+                       ,{<<"key">>, kz_json:get_integer_value(<<"timestamp">>, M)}
                        ,{<<"value">>, Value}
                        ,{<<"_id">>, BoxId}
                        ]))
@@ -411,7 +412,7 @@ create_message(AccountId, FakeBoxJObj, DefaultExt) ->
     TimeZone = kzd_voicemail_box:timezone(BoxJObj),
 
     Metadata = kzd_box_message:metadata(BoxJObj),
-    Timestamp = kz_json:get_value(<<"timestamp">>, Metadata),
+    Timestamp = kz_json:get_integer_value(<<"timestamp">>, Metadata),
 
     %% setting a db_link as attachment
     AttName = <<(kz_binary:rand_hex(16))/binary, ".", DefaultExt/binary>>,

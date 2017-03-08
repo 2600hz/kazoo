@@ -98,8 +98,8 @@
 %%--------------------------------------------------------------------
 -spec new(ne_binary(), kz_proplist()) -> doc().
 new(AccountId, Props) ->
-    UtcSeconds = props:get_value(<<"Message-Timestamp">>, Props, kz_time:current_tstamp()),
-    Timestamp  = props:get_value(<<"Document-Timestamp">>, Props, UtcSeconds),
+    UtcSeconds = props:get_integer_value(<<"Message-Timestamp">>, Props, kz_time:current_tstamp()),
+    Timestamp  = props:get_integer_value(<<"Document-Timestamp">>, Props, UtcSeconds),
     {{Year, Month, _}, _} = calendar:gregorian_seconds_to_datetime(Timestamp),
 
     MediaId = props:get_value(<<"Media-ID">>, Props, kz_binary:rand_hex(16)),
@@ -138,7 +138,7 @@ new(AccountId, Props) ->
 create_message_name(BoxNum, 'undefined', UtcSeconds) ->
     create_message_name(BoxNum, ?DEFAULT_TIMEZONE, UtcSeconds);
 create_message_name(BoxNum, Timezone, UtcSeconds) ->
-    UtcDateTime = calendar:gregorian_seconds_to_datetime(UtcSeconds),
+    UtcDateTime = calendar:gregorian_seconds_to_datetime(kz_term:to_integer(UtcSeconds)),
     case localtime:utc_to_local(UtcDateTime, Timezone) of
         {'error', 'unknown_tz'} ->
             lager:info("unknown timezone: ~s", [Timezone]),
