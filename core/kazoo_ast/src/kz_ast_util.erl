@@ -2,7 +2,9 @@
 
 -export([module_ast/1
         ,add_module_ast/3
+
         ,binary_match_to_binary/1
+        ,smash_snake/1
 
         ,schema_path/1
         ,api_path/1
@@ -61,6 +63,24 @@ binary_match_to_binary(Match) when is_list(Match) ->
 binary_part_to_binary(?BINARY_STRING(V)) -> V;
 binary_part_to_binary(?SUB_BINARY(V)) -> V;
 binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
+
+%% user_auth -> User Auth
+-spec smash_snake(ne_binary()) -> iolist().
+smash_snake(BaseName) ->
+    case binary:split(BaseName, <<"_">>, ['global']) of
+        [Part] -> format_name_part(Part);
+        [H|Parts] ->
+            [format_name_part(H)
+             | [[<<" ">>, format_name_part(Part)] || Part <- Parts]
+            ]
+    end.
+
+-spec format_name_part(ne_binary()) -> ne_binary().
+format_name_part(<<"api">>) -> <<"API">>;
+format_name_part(<<"ip">>) -> <<"IP">>;
+format_name_part(<<"auth">>) -> <<"Authentication">>;
+format_name_part(Part) ->
+    kz_binary:ucfirst(Part).
 
 -spec schema_path(binary()) -> file:filename_all().
 schema_path(Base) ->

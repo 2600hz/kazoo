@@ -1,6 +1,6 @@
-## Group Pickup_feature
+## Group Pickup Feature
 
-### About Group Pickup_feature
+### About Group Pickup Feature
 
 ### Schema
 
