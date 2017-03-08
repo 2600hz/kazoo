@@ -36,7 +36,7 @@ unavailable_tests(ErrorJObj) ->
 
 available_tests(N) ->
     PN = knm_number:phone_number(N),
-    [?_assert(knm_phone_number:is_dirty(PN))
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
     ,{"Verify available phone number"
      ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PN))
      }
@@ -150,7 +150,7 @@ attempt_setting_e911_on_disallowed_number_test_() ->
      ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
      }
     ,{"Verify feature cannot be set"
-     ,?_assertEqual(<<"unauthorized">>, knm_errors:message(ErrorJObj))
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
      }
     ].
 
