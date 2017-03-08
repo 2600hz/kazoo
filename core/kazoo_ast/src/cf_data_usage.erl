@@ -52,15 +52,12 @@ update_doc(Base, Schema) ->
     'ok' = file:write_file(RefPath, Contents).
 
 build_ref_doc(Base, Schema) ->
-    DocName = format_name(Base),
+    DocName = kz_ast_util:smash_snake(Base),
     ["## ", DocName, "\n\n"
     ,"### About ", DocName, "\n\n"
     ,"### Schema\n\n"
     ,kz_ast_util:schema_to_table(Schema)
     ].
-
-format_name(Base) ->
-    kz_binary:join([kz_binary:ucfirst(Piece) || Piece <- binary:split(Base, <<"_">>)], <<" ">>).
 
 update_schema(Base, Path, Usage) ->
     {'ok', Bin} = file:read_file(Path),

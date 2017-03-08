@@ -1,6 +1,6 @@
-## Ring Group_toggle
+## Ring Group Toggle
 
-### About Ring Group_toggle
+### About Ring Group Toggle
 
 ### Schema
 

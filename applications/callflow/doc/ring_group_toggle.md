@@ -1,6 +1,6 @@
-## Ring Group_toggle
+## Ring Group Toggle
 
-### About Ring Group_toggle
+### About Ring Group Toggle
 
 Ring Group Toggle allows a user to log in and out of a ring group dynamically.
 

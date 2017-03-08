@@ -1,6 +1,6 @@
-## Do Not_disturb
+## Do Not Disturb
 
-### About Do Not_disturb
+### About Do Not Disturb
 
 ### Schema
 
