@@ -132,6 +132,7 @@
             "type": "string"
         },
         "released_state": {
+            "default": "available",
             "description": "number_manager released state",
             "type": "string"
         },

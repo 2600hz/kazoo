@@ -11007,6 +11007,7 @@
                     "type": "string"
                 },
                 "released_state": {
+                    "default": "available",
                     "description": "number_manager released state",
                     "type": "string"
                 },
@@ -11167,7 +11168,8 @@
             "description": "Schema for number_manager.locality system_config",
             "properties": {
                 "url": {
-                    "description": "number_manager.locality url"
+                    "description": "number_manager.locality url",
+                    "type": "string"
                 }
             },
             "type": "object"
