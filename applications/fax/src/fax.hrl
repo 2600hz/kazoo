@@ -21,11 +21,10 @@
                                                                 ]}
                                    ]).
 
--record(fax_storage, {
-          id :: api_binary()
+-record(fax_storage, {id :: api_binary()
                      ,attachment_id :: api_binary()
                      ,db :: api_binary()
-         }).
+                     }).
 -type fax_storage() :: #fax_storage{}.
 
 -type fax_job() :: kz_json:object().
@@ -78,6 +77,41 @@
 -define(FAX_OUTBOUND_SERVER(AccountId), <<"fax_outbound_", AccountId/binary>>).
 
 -define(PORT, kapps_config:get_integer(?CONFIG_CAT, <<"port">>, 30950)).
+
+-define(DEFAULT_CONVERT_PDF_CMD
+       ,<<"/usr/bin/gs -q "
+          "-r204x98 "
+          "-g1728x1078 "
+          "-dNOPAUSE "
+          "-dBATCH "
+          "-dSAFER "
+          "-sDEVICE=tiffg3 "
+          "-sOutputFile=~s -- ~s > /dev/null "
+          "&& echo -n success"
+        >>).
+-define(CONVERT_IMAGE_CMD, <<"convert -density 204x98 "
+                             "-units PixelsPerInch "
+                             "-size 1728x1078 ~s ~s > /dev/null "
+                             "&& echo -n success"
+                           >>).
+-define(CONVERT_OO_DOC_CMD, <<"unoconv -c ~s -f pdf --stdout ~s "
+                              "| /usr/bin/gs -q "
+                              "-r204x98 "
+                              "-g1728x1078 "
+                              "-dNOPAUSE "
+                              "-dBATCH "
+                              "-dSAFER "
+                              "-sDEVICE=tiffg3 "
+                              "-sOutputFile=~s - > /dev/null"
+                              "&& echo -n success"
+                            >>).
+
+-define(CONVERT_IMAGE_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_image_command">>, ?CONVERT_IMAGE_CMD)).
+-define(CONVERT_OO_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_openoffice_document_command">>, ?CONVERT_OO_DOC_CMD)).
+-define(CONVERT_PDF_COMMAND
+       ,kapps_config:get_binary(?CONFIG_CAT, <<"conversion_pdf_command">>, ?DEFAULT_CONVERT_PDF_CMD)).
 
 -define(FAX_HRL, 'true').
 -endif.
