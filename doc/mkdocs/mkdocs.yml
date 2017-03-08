@@ -15,6 +15,8 @@ pages:
     - 'applications/crossbar/doc/ip_auth.md'
     - 'applications/crossbar/doc/basic_auth.md'
     - 'applications/crossbar/doc/token_auth.md'
+    - 'Adding Multi-factor': 'applications/crossbar/doc/multi_factor.md'
+    - 'applications/crossbar/doc/authentication_configuration.md'
     - 'applications/crossbar/doc/google_auth.md'
     - 'applications/crossbar/doc/shared_auth.md'
     - 'applications/crossbar/doc/ubiquiti_auth.md'
@@ -175,6 +177,7 @@ pages:
       - 'Privacy': 'applications/callflow/doc/cf_privacy.md'
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Ring Group': 'applications/callflow/doc/ring_group.md'
+    - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
     - 'Webhooks': 'applications/callflow/doc/webhooks.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
@@ -295,6 +298,8 @@ pages:
     - 'core/amqp_cron/README.md'
   - 'Kazoo OAuth':
     - 'core/kazoo_oauth/doc/README.md'
+  - 'Kazoo Multi-factor Authentication':
+    - 'core/kazoo_auth/doc/multi_factor.md'
   - 'Kazoo Voicemail':
     - 'core/kazoo_voicemail/doc/README.md'
   - 'Kazoo Bindings':

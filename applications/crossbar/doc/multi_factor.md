@@ -2,11 +2,11 @@
 
 #### About Multi Factor
 
-After enabling multi factor for your desire authentication method (see [Crossbar Auth Configs](./authentication_configuration.md)), you have to configure your MFA provider using this API endpoint.
+After enabling multi-factor for your desired authentication method (see [Crossbar Auth Configs](./authentication_configuration.md)), you have to configure your MFA provider using this API endpoint.
 
 See [Kazoo Auth multi factor documentation](../../../core/kazoo_auth/doc/multi_factor.md) to learn more about available providers and how to setting them up.
 
-> **Note:** This is only provide an API to create/change/get MFA settings. For more information about how MFA works and what settings are required please see Kazoo Auth MFA documentation and Crossbar Auth Configuration.
+> **Note:** This only provides an API to create/change/get MFA settings. For more information about how MFA works and what settings are required please see Kazoo Auth MFA documentation and Crossbar Auth Configuration.
 
 #### Schema
 
@@ -21,7 +21,7 @@ Key | Description | Type | Default | Required
 
 #### Get a summary of configured providers
 
-Lists configured authentication providers for `{ACOUNT_ID}`. Also provides all of the available providers which you can configure.
+Lists configured authentication providers for `{ACCOUNT_ID}`. Also provides all of the available providers which you can configure.
 
 > GET /v2/accounts/{ACCOUNT_ID}/multi_factor
 
