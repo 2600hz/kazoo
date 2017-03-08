@@ -96,9 +96,9 @@ e911_test_() ->
               ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
-    {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
+    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     PN1 = knm_number:phone_number(N1),
+    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN2 = knm_number:phone_number(N2),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify feature is properly set"
@@ -109,7 +109,7 @@ e911_test_() ->
                    ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN1))
                    )
      }
-    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN2))
     ,{"Verify feature is still properly set"
      ,?_assertEqual(E911, knm_phone_number:feature(PN2, ?FEATURE_E911))
      }
@@ -148,7 +148,7 @@ cnam_test_() ->
     ,{"Verify outbound CNAM is properly set"
      ,?_assertEqual(<<"my CNAM">>, cnam_name(PN1))
      }
-    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN2))
     ,{"Verify inbound CNAM is still properly activated"
      ,?_assertEqual(true, is_cnam_activated(PN2))
      }
@@ -203,11 +203,14 @@ rename_carrier_test_() ->
     ,{"Verify carrier name is changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
      }
+    ,{"Verify local feature is now set"
+     ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
+     }
     ,{"Verify feature is now removed"
      ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
      }
-    ,?_assert(knm_phone_number:is_dirty(PN4))
-    ,{"Verify local feature is now set"
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN4))
+    ,{"Verify local feature is still set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN4)))
      }
     ,{"Verify setting wrong carrier is forbidden"
