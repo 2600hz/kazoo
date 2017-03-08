@@ -364,23 +364,27 @@ import(ExtraArgs, init, Args) ->
     kz_datamgr:suppress_change_notice(),
     IterValue = sets:new(),
     import(ExtraArgs, IterValue, Args);
-import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
-                                              ,<<"account_id">> := AccountId0
-                                              ,<<"carrier_module">> := Carrier
-                                               %%TODO: use all the optional fields
-                                              ,<<"port_in">> := _PortIn
-                                              ,<<"previously_assigned_to">> := _PrevAssignedTo
-                                              ,<<"created">> := _Created
-                                              ,<<"modified">> := _Modified
-                                              ,<<"used_by">> := _UsedBy
-                                              ,<<"cnam.inbound">> := CNAMInbound0
-                                              ,<<"cnam.outbound">> := CNAMOutbound
-                                              ,<<"e911.postal_code">> := E911PostalCode
-                                              ,<<"e911.street_address">> := E911StreetAddress
-                                              ,<<"e911.extended_address">> := E911ExtendedAddress
-                                              ,<<"e911.locality">> := E911Locality
-                                              ,<<"e911.region">> := E911Region
-                                              }=Args
+import(#{account_id := Account
+        ,auth_account_id := AuthAccountId
+        }
+      ,AccountIds
+      ,#{<<"e164">> := E164
+        ,<<"account_id">> := AccountId0
+        ,<<"carrier_module">> := Carrier
+         %%TODO: use all the optional fields
+        ,<<"port_in">> := _PortIn
+        ,<<"previously_assigned_to">> := _PrevAssignedTo
+        ,<<"created">> := _Created
+        ,<<"modified">> := _Modified
+        ,<<"used_by">> := _UsedBy
+        ,<<"cnam.inbound">> := CNAMInbound0
+        ,<<"cnam.outbound">> := CNAMOutbound
+        ,<<"e911.postal_code">> := E911PostalCode
+        ,<<"e911.street_address">> := E911StreetAddress
+        ,<<"e911.extended_address">> := E911ExtendedAddress
+        ,<<"e911.locality">> := E911Locality
+        ,<<"e911.region">> := E911Region
+        }=Args
       ) ->
     AccountId = case undefined =:= AccountId0 of
                     true -> Account;
@@ -403,7 +407,7 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
                   ])),
     PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911
         ++ additional_fields_to_json(Args),
-    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+    Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, ModuleName}

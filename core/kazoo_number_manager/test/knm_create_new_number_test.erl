@@ -104,8 +104,8 @@ create_new_available_number_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to master account"
-     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
+    [{"Verify available number is unassigned"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number auth_by field was stored"
      ,?_assertEqual(?KNM_DEFAULT_AUTH_BY, knm_phone_number:auth_by(PN))
