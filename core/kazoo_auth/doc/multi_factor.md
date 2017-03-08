@@ -65,10 +65,10 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 1. Use Crossbar multi factor API endpoint to configure Duo by you IKey, SKey, AKey, API hostname.
 2. Enable multi factor (See [Crossbar Auth Config](../../../applications/crossbar/doc/multi_factor.md)) for a Crossbar auth module.
 3. Users can now use a usual Crossbar authentication procedure (for example with `cb_user_auth`).
-4. Kazoo auth MFA and Crossbar will return `siq_request` and `api_hostname` to client.
+4. Kazoo auth MFA and Crossbar will return `sig_request` and `api_hostname` to client.
 5. Use `Duo-Web-v2.js` to implement Duo client side for performing 2FA authentication. See [Duo Web](https://duo.com/docs/duoweb) (steps 3 and beyond in **Instructions** section).
 6. Send back the Duo response to kazoo by repeating the auth request in step 3 by adding `multi_factor_response` as payload.
-7. If `siq_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
+7. If `sig_response` is valid, user's will be authenticated and a token will be generated, otherwise a HTTP `401 unauthorized` will be returned.
 
 ####### Sample Duo configuration (see step 1 above)
 
@@ -90,7 +90,7 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
-####### Crossbar return `siq_request` (see step 4 above)
+####### Crossbar return `sig_request` (see step 4 above)
 
 ```json
 {
@@ -99,7 +99,7 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
     "multi_factor_request": {
       "provider_name": "duo",
       "settings": {
-        "duo_sig_request": "{SIQ_REQUEST}",
+        "duo_sig_request": "{SIG_REQUEST}",
         "duo_api_hostname": "{YOUR_DUO_API}"
       }
     }
@@ -107,7 +107,7 @@ print hashlib.sha1(os.urandom(32)).hexdigest()
 }
 ```
 
-Which `siq_request` is a string similar to `TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
+Which `sig_request` is a string similar to `TX|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|28af5ae63742cfc52f36002a146ee181326cd40d:APP|dGVzdHVzZXJ8RElYWFhYWFhYWFhYWFhYWFhYWFh8MTQ4Njc2OTgwOQ==|1f02e643de667f188f409a13b7770dce0a1be777`.
 
 Notice the `TX` and `APP` parts which separated by `:`. You need the `APP` part later to merge it with response from Duo when you're sending it to Kazoo.
 
