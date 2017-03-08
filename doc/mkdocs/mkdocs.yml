@@ -296,6 +296,8 @@ pages:
     - 'core/amqp_cron/README.md'
   - 'Kazoo OAuth':
     - 'core/kazoo_oauth/doc/README.md'
+  - 'Kazoo Multi-factor Authentication':
+    - 'core/kazoo_auth/doc/multi_factor.md'
   - 'Kazoo Voicemail':
     - 'core/kazoo_voicemail/doc/README.md'
   - 'Kazoo Bindings':
