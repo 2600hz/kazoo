@@ -46,7 +46,6 @@
 -define(NUMBER_STATE_AGING, <<"aging">>).
 -define(NUMBER_STATE_AVAILABLE, <<"available">>).
 -define(NUMBER_STATE_DELETED, <<"deleted">>).
--define(NUMBER_STATE_DISCONNECTED, <<"disconnected">>).
 -define(NUMBER_STATE_DISCOVERY, <<"discovery">>).
 -define(NUMBER_STATE_IN_SERVICE, <<"in_service">>).
 -define(NUMBER_STATE_PORT_IN, <<"port_in">>).

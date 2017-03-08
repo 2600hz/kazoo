@@ -1,9 +1,8 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle tower-of-power MDN phone numbers.
-%%% Note: disconnected numbers are marked as deleted.
 %%%
 %%% @end
 %%% @contributors
