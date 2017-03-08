@@ -305,6 +305,7 @@ all_modules() ->
     ,<<"knm_bandwidth">>
     ,<<"knm_inum">>
     ,<<"knm_local">>
+    ,<<"knm_inventory">>
     ,<<"knm_managed">>
     ,<<"knm_mdn">>
     ,<<"knm_other">>

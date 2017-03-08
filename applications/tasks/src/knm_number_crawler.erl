@@ -161,16 +161,16 @@ crawl_number_db(Db) ->
 crawl_number_docs(_Db, {'error', _E}) ->
     lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
 crawl_number_docs(_Db, {'ok', Docs}) ->
-    lager:debug(" starting to crawl '~s'", [_Db]),
+    lager:debug(" starting to crawl '~s' (~p docs)", [_Db, length(Docs)]),
     lists:foreach(fun crawl_number_doc/1, Docs),
     lager:debug(" finished crawling '~s'", [_Db]).
 
 -spec crawl_number_doc(kz_json:object()) -> any().
 crawl_number_doc(Doc) ->
-    case kz_doc:type(Doc) =:= <<"number">> of
+    JObj = kz_json:get_value(<<"doc">>, Doc),
+    case kz_doc:type(JObj) =:= <<"number">> of
         false -> ok;
         true ->
-            JObj = kz_json:get_value(<<"doc">>, Doc),
             PN = knm_phone_number:from_json_with_options(JObj, []),
             try_crawl_number_doc(PN)
     end.
@@ -216,8 +216,8 @@ maybe_transition_aging(PhoneNumber) ->
 
 -spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
 is_old_enough(PhoneNumber, Expiry) ->
-    knm_phone_number:created(PhoneNumber)
-        > (kz_time:current_tstamp() - Expiry * ?SECONDS_IN_DAY).
+    knm_phone_number:modified(PhoneNumber)
+        < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).
 
 -spec maybe_remove(knm_phone_number:knm_phone_number(), pos_integer()) ->
                           knm_phone_number:knm_phone_number().

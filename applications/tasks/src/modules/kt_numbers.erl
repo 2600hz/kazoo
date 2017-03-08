@@ -403,7 +403,7 @@ import(#{account_id := Account}, AccountIds, #{<<"e164">> := E164
                   ])),
     PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911
         ++ additional_fields_to_json(Args),
-    Options = [{auth_by, ?KNM_DEFAULT_AUTH_BY}
+    Options = [{auth_by, AccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, ModuleName}
