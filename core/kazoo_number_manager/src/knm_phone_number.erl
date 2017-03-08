@@ -334,10 +334,22 @@ release(PN, FromState) ->
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
 authorize_release(PN) ->
-    case is_authorized(PN) of
+    authorize_release(PN, auth_by(PN)).
+
+-ifdef(TEST).
+authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) -> authorized_release(PN);
+authorize_release(PN, ?MASTER_ACCOUNT_ID) -> authorized_release(PN);
+authorize_release(_, _) -> knm_errors:unauthorized().
+-else.
+authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
+    lager:info("bypassing auth"),
+    authorized_release(PN);
+authorize_release(PN, AuthBy) ->
+    case kz_util:is_in_account_hierarchy(AuthBy, assigned_to(PN), true) of
         false -> knm_errors:unauthorized();
         true -> authorized_release(PN)
     end.
+-endif.
 
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PN) ->
