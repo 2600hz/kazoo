@@ -22,6 +22,7 @@
 -export([faxbox_jobs/1, faxbox_jobs/2]).
 -export([pending_jobs/0, active_jobs/0]).
 -export([load_smtp_attachment/2]).
+-export([versions_in_use/0]).
 
 -define(DEFAULT_MIGRATE_OPTIONS, []).
 -define(OVERRIDE_DOCS, ['override_existing_document']).
@@ -59,10 +60,6 @@ migrate([Account|Accounts], Options) when is_list(Options) ->
     migrate(Accounts, Options);
 migrate(Account, Options) when is_list(Options) ->
     migrate_faxes(Account, Options).
-
-%% ====================================================================
-%% Internal functions
-%% ====================================================================
 
 migrate_faxes_fold(AccountDb, Current, Total, Options) ->
     io:format("migrating faxes in database (~p/~p) '~s'~n", [Current, Total, AccountDb]),
@@ -444,4 +441,60 @@ load_smtp_attachment(DocId, Filename, FileContents) ->
                 {'error', E} -> io:format("error attaching ~s to docid ~s : ~p~n", [Filename, DocId, E])
             end;
         {'error', E} -> io:format("error opening docid ~s for attaching ~s : ~p~n", [DocId, Filename, E])
+    end.
+
+-spec versions_in_use() -> no_return.
+versions_in_use() ->
+    AllCmds =
+        [?CONVERT_IMAGE_COMMAND
+        ,?CONVERT_OO_COMMAND
+        ,?CONVERT_PDF_COMMAND
+        ],
+    Executables = find_commands(AllCmds),
+    lists:foreach(fun print_cmd_version/1, Executables),
+    no_return.
+
+print_cmd_version(Exe) ->
+    Options = [exit_status
+              ,use_stdio
+              ,stderr_to_stdout
+              ,{args, ["--version"]}
+              ],
+    Port = open_port({spawn_executable, Exe}, Options),
+    listen_to_port(Port, Exe).
+
+listen_to_port(Port, Exe) ->
+    receive
+        {Port, {data, Str0}} ->
+            [Str|_] = string:tokens(Str0, "\n"),
+            io:format("* ~s:\n\t~s\n", [Exe, Str]),
+            lager:debug("version for ~s: ~s", [Exe, Str]);
+        {Port, {exit_status, 0}} -> ok;
+        {Port, {exit_status, _}} -> no_executable(Exe)
+    end.
+
+find_commands(Cmds) ->
+    Commands =
+        lists:usort(
+          [binary_to_list(hd(binary:split(Cmd, <<$\s>>)))
+           || Cmd <- Cmds
+          ]),
+    lists:usort(
+      [Exe
+       || Cmd <- Commands,
+          Exe <- [cmd_to_executable(Cmd)],
+          Exe =/= false
+      ]).
+
+no_executable(Exe) ->
+    io:format("* ~s:\n\tERROR! missing executable\n", [Exe]),
+    lager:error("missing executable: ~s", [Exe]).
+
+cmd_to_executable("/"++_=Exe) -> Exe;
+cmd_to_executable(Cmd) ->
+    case os:find_executable(Cmd) of
+        false ->
+            no_executable(Cmd),
+            false;
+        Exe -> Exe
     end.
