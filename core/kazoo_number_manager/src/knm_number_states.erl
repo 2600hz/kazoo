@@ -340,9 +340,16 @@ move_number_to_state(T=#{todo := Ns}, ToState) ->
     knm_numbers:ok(NewNs, T);
 move_number_to_state(Number, ToState) ->
     PhoneNumber = knm_number:phone_number(Number),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    {'ok', PN} = move_phone_number_to_state(PhoneNumber, ToState, AssignedTo),
+    {'ok', PN} = move_phone_number_to_state(PhoneNumber, ToState),
     knm_number:set_phone_number(Number, PN).
+
+-spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary()) ->
+                                        knm_phone_number_return().
+move_phone_number_to_state(PN, ToState=?NUMBER_STATE_AVAILABLE) ->
+    knm_phone_number:setters(PN, [{fun knm_phone_number:set_state/2, ToState}]);
+move_phone_number_to_state(PN, ToState) ->
+    AssignedTo = knm_phone_number:assigned_to(PN),
+    move_phone_number_to_state(PN, ToState, AssignedTo).
 
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary(), api_binary()) ->
                                         knm_phone_number_return().
