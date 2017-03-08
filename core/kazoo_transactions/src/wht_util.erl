@@ -133,7 +133,8 @@ current_balance(Account) -> get_balance(Account, []).
 
 -spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
-    get_balance(Account, [{'year', Year}, {'month', Month}]).
+    Options = [{'year', kz_util:to_binary(Year)}, {'month', kz_util:pad_month(Month)}],
+    get_balance(Account, Options).
 
 -spec get_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_balance(Account, Options) ->
