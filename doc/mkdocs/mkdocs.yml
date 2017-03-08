@@ -175,6 +175,7 @@ pages:
       - 'Privacy': 'applications/callflow/doc/cf_privacy.md'
     - 'Conference': 'applications/callflow/doc/conference.md'
     - 'Ring Group': 'applications/callflow/doc/ring_group.md'
+    - 'Ring Group Toggle': 'applications/callflow/doc/ring_group_toggle.md'
     - 'Temporal Routes (Time of Day)': 'applications/callflow/doc/temporal_route.md'
     - 'Webhooks': 'applications/callflow/doc/webhooks.md'
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
