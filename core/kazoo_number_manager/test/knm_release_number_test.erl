@@ -21,8 +21,7 @@ release_available_number_test_() ->
     {ok, N} = knm_number:release(?TEST_AVAILABLE_NUM),
     PN = knm_number:phone_number(N),
     {error, Error} = knm_number:release(?TEST_TELNYX_NUM),
-    [?_assert(knm_phone_number:is_dirty(PN))
-    ,{"Verify releasing available local number results in deletion"
+    [{"Verify releasing available local number results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
     ,{"Verify error code for releasing available number"
