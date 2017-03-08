@@ -32,7 +32,8 @@ transition_port_from_port_in_test_() ->
               ],
     #{ok := [N]} = knm_numbers:create([?TEST_PORT_IN_NUM], Options),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -62,7 +63,8 @@ transition_port_from_available_test_() ->
               ],
     #{ok := [N]} = knm_numbers:create([?TEST_AVAILABLE_NUM], Options),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -111,18 +113,22 @@ transition_port_in_not_specifying2_test_() ->
     Num = ?TEST_AVAILABLE_NUM,
     Ret1 = knm_numbers:create([Num], Options1),
     Ret2 = knm_numbers:create([Num], Options2),
-    [{"Verify number create has nothing to do with ports"
-     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret1)))
-     }
-    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(pn_x(1, Ret1)))
-    ,{"Verify number create has nothing to do with ports and is not ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(pn_x(1, Ret1)))
-     }
+    PN1 = pn_x(1, Ret1),
+    PN2 = pn_x(1, Ret2),
+    [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify number create has nothing to do with ports"
-     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
+     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
      }
-    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(pn_x(1, Ret2)))
+    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(PN1))
     ,{"Verify number create has nothing to do with ports and is not ported_in"
-     ,?_assertEqual(false, knm_phone_number:ported_in(pn_x(1, Ret2)))
+     ,?_assertEqual(false, knm_phone_number:ported_in(PN1))
+     }
+    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,{"Verify number create has nothing to do with ports"
+     ,?_assertNotEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
+     }
+    ,?_assertNotEqual(?NUMBER_STATE_PORT_IN, knm_phone_number:state(PN2))
+    ,{"Verify number create has nothing to do with ports and is not ported_in"
+     ,?_assertEqual(false, knm_phone_number:ported_in(PN2))
      }
     ].
