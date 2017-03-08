@@ -15,14 +15,19 @@
             "description": "cdr ignore loopback bowout",
             "type": "boolean"
         },
-        "refresh_timeout": {
-            "default": 900,
-            "description": "time in seconds to to trigger cdrs view refresh",
-            "type": "integer"
+        "refresh_view_enabled": {
+            "default": false,
+            "description": "enable or disable the view refresh feature",
+            "type": "boolean"
         },
         "refresh_view_threshold": {
-            "default": 0,
+            "default": 10,
             "description": "number of cdrs to trigger view refresh",
+            "type": "integer"
+        },
+        "refresh_view_timeout": {
+            "default": 900,
+            "description": "time in seconds to to trigger cdrs view refresh",
             "type": "integer"
         },
         "store_anonymous": {
