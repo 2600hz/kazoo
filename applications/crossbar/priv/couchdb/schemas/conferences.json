@@ -3,6 +3,18 @@
     "_id": "conferences",
     "description": "Schema for conferences",
     "properties": {
+        "bridge_password": {
+            "description": "the password used for a conference bridge",
+            "type": "string"
+        },
+        "bridge_username": {
+            "description": "the username used for a conference bridge",
+            "type": "string"
+        },
+        "caller_controls": {
+            "description": "caller controls (config settings)",
+            "type": "string"
+        },
         "conference_numbers": {
             "default": [],
             "description": "Defines conference numbers that can be used by members or moderators",
@@ -20,8 +32,15 @@
             "required": false,
             "type": "string"
         },
+        "max_members_media": {
+            "description": "Media to play when the conference is full",
+            "type": "string"
+        },
+        "max_participants": {
+            "description": "The maximum number of participants that can join",
+            "type": "integer"
+        },
         "member": {
-            "default": {},
             "description": "Defines the discovery (call in) properties for a member",
             "properties": {
                 "join_deaf": {
@@ -65,7 +84,6 @@
             "type": "object"
         },
         "moderator": {
-            "default": {},
             "description": "Defines the discovery (call in) properties for a moderator",
             "properties": {
                 "join_deaf": {
@@ -107,6 +125,10 @@
             "required": false,
             "type": "object"
         },
+        "moderator_controls": {
+            "description": "profile on the switch for controlling the conference as a moderator",
+            "type": "string"
+        },
         "name": {
             "description": "A friendly name for the conference",
             "maxLength": 128,
@@ -121,16 +143,42 @@
             "required": false,
             "type": "string"
         },
+        "play_entry_tone": {
+            "description": "Whether to play an entry tone, or the entry tone to play",
+            "type": [
+                "boolean",
+                "string"
+            ]
+        },
+        "play_exit_tone": {
+            "description": "Whether to play an exit tone, or the exit tone to play",
+            "type": [
+                "boolean",
+                "string"
+            ]
+        },
         "play_name": {
             "default": false,
             "description": "Do we need to announce new conference members?",
             "required": false,
             "type": "boolean"
         },
+        "play_welcome": {
+            "description": "Whether to play the welcome prompt",
+            "type": "boolean"
+        },
         "profile": {
             "description": "The XML profile name used to configure the conference",
             "required": false,
             "type": "string"
+        },
+        "require_moderator": {
+            "description": "does the conference require a moderator",
+            "type": "boolean"
+        },
+        "wait_for_moderator": {
+            "description": "should members wait for a moderator before joining the conference",
+            "type": "boolean"
         }
     },
     "required": false,
