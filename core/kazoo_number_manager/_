@@ -1,0 +1,1490 @@
+rm src/knm_iso3166a2_itu.erl
+ERL_LIBS=/home/pete/.bin/builds/erl_libs:../../deps:../../core erlc -v +nowarn_missing_spec +debug_info -Iinclude -Isrc -I../ +'{parse_transform, lager_transform}' -Werror +warn_export_all +warn_unused_import +warn_unused_vars +warn_missing_spec -DTEST -pa ebin/ -pa ../../core/kazoo/ebin -pa ../../deps/lager/ebin -pa ../../deps/proper/ebin -o ebin/ src/*.erl src/*/*.erl src/knm_iso3166a2_itu.erl  test/*.erl
+ERL_LIBS=/home/pete/.bin/builds/erl_libs:../../deps:../../core erl -noshell -pa ebin/ -pa ../../core/kazoo/ebin -pa ../../deps/lager/ebin -pa ../../deps/proper/ebin -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+======================== EUnit ========================
+module 'kapi_discovery'
+module 'kazoo_number_manager_app'
+module 'kazoo_number_manager_maintenance'
+module 'kazoo_number_manager_sup'
+module 'knm_bandwidth2'
+module 'knm_bandwidth2_test'
+Response:
+Code : 200
+Body : <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SearchResult>
+	<ResultCount>2</ResultCount>
+	<TelephoneNumberList>
+		<TelephoneNumber>9733705112</TelephoneNumber>
+		<TelephoneNumber>9733705183</TelephoneNumber>
+	</TelephoneNumberList>
+</SearchResult>
+
+Headers : []
+Response:
+Code : 200
+Body : <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<SearchResult>
+	<ResultCount>15</ResultCount>
+	<TelephoneNumberList>
+		<TelephoneNumber>8552522133</TelephoneNumber>
+		<TelephoneNumber>8552522137</TelephoneNumber>
+		<TelephoneNumber>8552522143</TelephoneNumber>
+		<TelephoneNumber>8552522151</TelephoneNumber>
+		<TelephoneNumber>8552522158</TelephoneNumber>
+		<TelephoneNumber>8552522166</TelephoneNumber>
+		<TelephoneNumber>8552522174</TelephoneNumber>
+		<TelephoneNumber>8552522195</TelephoneNumber>
+		<TelephoneNumber>8552522236</TelephoneNumber>
+		<TelephoneNumber>8552523156</TelephoneNumber>
+		<TelephoneNumber>8552523192</TelephoneNumber>
+		<TelephoneNumber>8552523459</TelephoneNumber>
+		<TelephoneNumber>8552523701</TelephoneNumber>
+		<TelephoneNumber>8552523751</TelephoneNumber>
+		<TelephoneNumber>8552523752</TelephoneNumber>
+	</TelephoneNumberList>
+</SearchResult>
+
+Headers : []
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +19734096113 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +19734096113 set_created/2
+
+Response:
+Code : 200
+Body : <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OrderResponse>
+	<Order>
+		<CustomerOrderId>deadbeef1234567901234567890dead</CustomerOrderId>
+		<Name>Kazoo-63628571101</Name>
+		<OrderCreateDate>2016-04-22T19:04:58.001Z</OrderCreateDate>
+		<PeerId>13337</PeerId>
+		<BackOrderRequested>false</BackOrderRequested>
+		<id>dc0008ec-07fc-41bf-a3bd-6c6ebf913f1c</id>
+		<ExistingTelephoneNumberOrderType>
+			<TelephoneNumberList>
+				<TelephoneNumber>9734096113</TelephoneNumber>
+			</TelephoneNumberList>
+		</ExistingTelephoneNumberOrderType>
+		<PartialAllowed>true</PartialAllowed>
+		<SiteId>1337</SiteId>
+	</Order>
+	<OrderStatus>RECEIVED</OrderStatus>
+</OrderResponse>
+
+Headers : []
+Response:
+Code : 200
+Body : <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<OrderResponse>
+	<Order>
+		<CustomerOrderId>deadbeef1234567901234567890dead</CustomerOrderId>
+		<Name>Kazoo-63628571101</Name>
+		<OrderCreateDate>2016-04-22T19:04:58.001Z</OrderCreateDate>
+		<PeerId>13337</PeerId>
+		<BackOrderRequested>false</BackOrderRequested>
+		<id>dc0008ec-07fc-41bf-a3bd-6c6ebf913f1c</id>
+		<ExistingTelephoneNumberOrderType>
+			<TelephoneNumberList>
+				<TelephoneNumber>9734096113</TelephoneNumber>
+			</TelephoneNumberList>
+		</ExistingTelephoneNumberOrderType>
+		<PartialAllowed>true</PartialAllowed>
+		<SiteId>1337</SiteId>
+	</Order>
+	<OrderStatus>COMPLETE</OrderStatus>
+</OrderResponse>
+
+Headers : []
+src/knm_phone_number.erl:1054:<0.58.0>: dirty +19734096113 update_carrier_data/2
+
+  knm_bandwidth2_test:46: find_numbers (Verify found numbers)...ok
+  knm_bandwidth2_test:49: find_numbers (Verify results match queried prefix)...ok
+  knm_bandwidth2_test:70: find_tollfree_numbers (Verify found numbers)...ok
+  knm_bandwidth2_test:73: find_tollfree_numbers (Verify results match queried prefix)...ok
+  knm_bandwidth2_test:82: acquire_number...ok
+  knm_bandwidth2_test:84: acquire_number (Verify number is still one inputed)...ok
+  [done in 0.020 s]
+module 'knm_bandwidth'
+module 'knm_bandwidth_find_test'
+  knm_bandwidth_find_test:36: npan_tests (Verify area code result size)...ok
+  knm_bandwidth_find_test:48: area_code_tests (Verify area code result size)...ok
+  [done in 0.006 s]
+module 'knm_carriers'
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15045551226 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15045551226 set_created/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+src/knm_phone_number.erl:975:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+module 'knm_carriers_find_test'
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15045551226 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15045551226 set_created/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+src/knm_phone_number.erl:975:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15045551226 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15045551226 set_features/2
+
+  knm_carriers_find_test:18: is_number_billable_test_...[0.001 s] ok
+  knm_carriers_find_test:19: is_number_billable_test_...ok
+  knm_carriers_find_test:20: is_number_billable_test_...ok
+  knm_carriers_find_test:25: find_local_test_ (Finding local numbers not supported)...ok
+  knm_carriers_find_test:30: find_local_test_ (Finding local numbers returns empty list)...ok
+  knm_carriers_find_test:56: find_no_phonebook (Verify no phonebook url yields no results)...ok
+  knm_carriers_find_test:43: find_other_test_...ok
+  knm_carriers_find_test:94: find_numbers (Verify results returned is the expected amount)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:105: verify_number_result (Verify result DID)...ok
+  knm_carriers_find_test:74: find_blocks...ok
+  knm_carriers_find_test:75: find_blocks...ok
+  knm_carriers_find_test:76: find_blocks...ok
+  knm_carriers_find_test:77: find_blocks...ok
+  knm_carriers_find_test:78: find_blocks...ok
+  knm_carriers_find_test:79: find_blocks...ok
+  knm_carriers_find_test:80: find_blocks...ok
+  [done in 0.080 s]
+module 'knm_cnam_notifier'
+module 'knm_config'
+module 'knm_converter_regex'
+module 'knm_converters'
+module 'knm_converters_test'
+  knm_converters_test:81: normalize_test_...ok
+  knm_converters_test:81: normalize_test_...ok
+  knm_converters_test:81: normalize_test_...ok
+  knm_converters_test:86: to_npan_test_...ok
+  knm_converters_test:86: to_npan_test_...ok
+  knm_converters_test:86: to_npan_test_...ok
+  knm_converters_test:91: to_1npan_test_...ok
+  knm_converters_test:91: to_1npan_test_...ok
+  knm_converters_test:91: to_1npan_test_...ok
+  [done in 0.027 s]
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15559871234 add_reserve_history/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+module 'knm_create_new_number_test'
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15559871234 add_reserve_history/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_create_new_number_test:24: create_new_number_test_...ok
+  knm_create_new_number_test:26: create_new_number_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_create_new_number_test:29: create_new_number_test_ (Verify new phone number was authorized by master account)...ok
+  knm_create_new_number_test:32: create_new_number_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:35: create_new_number_test_ (Verify new phone number is in RESERVED state)...ok
+  knm_create_new_number_test:38: create_new_number_test_ (Verify the reseller account is listed in reserve history)...ok
+  knm_create_new_number_test:41: create_new_number_test_ (Verify the local carrier module is being used)...ok
+  knm_create_new_number_test:44: create_new_number_test_ (Verify getting created field returns a number)...ok
+  knm_create_new_number_test:47: create_new_number_test_ (Verify the created field is stored as a number)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15559871234 add_reserve_history/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_create_new_number_test:61: reseller_new_number_test_...ok
+  knm_create_new_number_test:63: reseller_new_number_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_create_new_number_test:66: reseller_new_number_test_ (Verify new phone number was authorized by master account)...ok
+  knm_create_new_number_test:69: reseller_new_number_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:72: reseller_new_number_test_ (Verify new phone number is in RESERVED state)...ok
+  knm_create_new_number_test:75: reseller_new_number_test_ (Verify the reseller account is listed in reserve history)...ok
+  knm_create_new_number_test:78: reseller_new_number_test_ (Verify the local carrier module is being used)...ok
+  knm_create_new_number_test:92: fail_new_number_test_ (Verify that without the allow number additions the proper error is thrown)...ok
+  knm_create_new_number_test:95: fail_new_number_test_ (Verify that without the allow number additions the proper message is thrown)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+ok
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_create_new_number_test:109: create_new_available_number_test_...ok
+  knm_create_new_number_test:111: create_new_available_number_test_ (Verify phone number is assigned to master account)...ok
+  knm_create_new_number_test:114: create_new_available_number_test_ (Verify new phone number auth_by field was stored)...ok
+  knm_create_new_number_test:117: create_new_available_number_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:120: create_new_available_number_test_ (Verify new phone number is in AVAILABLE state)...ok
+  knm_create_new_number_test:123: create_new_available_number_test_ (Verify reserve history is still empty)...ok
+  knm_create_new_number_test:126: create_new_available_number_test_ (Verify the local carrier module is being used)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+  knm_create_new_number_test:138: create_existing_number_test_...ok
+  knm_create_new_number_test:140: create_existing_number_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_create_new_number_test:143: create_existing_number_test_ (Verify new phone number was authorized by master account)...ok
+  knm_create_new_number_test:146: create_existing_number_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:149: create_existing_number_test_ (Verify new phone number is in RESERVED state)...ok
+  knm_create_new_number_test:152: create_existing_number_test_ (Verify the reseller account is listed in reserve history)...ok
+  knm_create_new_number_test:155: create_existing_number_test_ (Verify the local carrier module is being used)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+ok
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_create_new_number_test:171: create_new_port_in_test_...ok
+  knm_create_new_number_test:173: create_new_port_in_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_create_new_number_test:176: create_new_port_in_test_ (Verify new phone number was authorized by master account)...ok
+  knm_create_new_number_test:179: create_new_port_in_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:182: create_new_port_in_test_ (Verify new phone number is in PORT_IN state)...ok
+  knm_create_new_number_test:185: create_new_port_in_test_ (Verify reserve history is empty)...ok
+  knm_create_new_number_test:188: create_new_port_in_test_ (Verify the local carrier module is being used)...ok
+  knm_create_new_number_test:191: create_new_port_in_test_ (Verify number is not marked as ported_in)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+  knm_create_new_number_test:214: create_existing_in_service_test_ (Verifying that IN SERVICE numbers can't be created)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15559871234 add_reserve_history/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+  knm_create_new_number_test:230: create_dry_run_test_ (Verify charges for dry_run)...ok
+  knm_create_new_number_test:233: create_dry_run_test_ (Verify services for dry_run)...ok
+  knm_create_new_number_test:254: move_non_existing_mobile_number_test_ (Verify a non existing mdn cannot be moved to in_service)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+ok
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +15559871234 reset_doc/2
+
+src/knm_phone_number.erl:1017:<0.58.0>: dirty +15559871234 set_module_name_local/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_create_new_number_test:277: create_non_existing_mobile_number_test_...ok
+  knm_create_new_number_test:279: create_non_existing_mobile_number_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_create_new_number_test:282: create_non_existing_mobile_number_test_ (Verify new phone number was authorized by master account)...ok
+  knm_create_new_number_test:285: create_non_existing_mobile_number_test_ (Verify new phone number database is properly set)...ok
+  knm_create_new_number_test:288: create_non_existing_mobile_number_test_ (Verify new phone number is in service state)...ok
+  knm_create_new_number_test:291: create_non_existing_mobile_number_test_ (Verify reserve history is empty)...ok
+  knm_create_new_number_test:294: create_non_existing_mobile_number_test_ (Verify the mdn carrier module is being used)...ok
+  knm_create_new_number_test:297: create_non_existing_mobile_number_test_ (Verify the mobile public fields is exists)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+  knm_create_new_number_test:353: create_with_no_auth_by (Ensure unauthorized error thrown when no auth_by supplied)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:369: create_with_disallowed_account (Ensure unauthorized error when auth_by account isn't allowed to create numbers)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:384: create_with_number_porting (Ensure number_is_porting error when auth_by account isn't allowed to create numbers)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:416: create_new_number (Ensure success when auth_by account is allowed to create numbers)...ok
+  knm_create_new_number_test:338: existing_in_state (Ensure number in available can be 'created')...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in deleted cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in disconnected cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in discovery cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in in_service cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:338: existing_in_state (Ensure number in port_in can be 'created')...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in port_out cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in released cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  knm_create_new_number_test:330: existing_in_state (Ensure number in reserved cannot be 'created')...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'cause' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'error' is set properly)...ok
+  knm_create_new_number_test:411: validate_errors (Verify 'code' is set properly)...ok
+  [done in 0.301 s]
+module 'knm_dash_e911'
+module 'knm_errors'
+module 'knm_failover'
+module 'knm_gen_carrier'
+module 'knm_gen_provider'
+module 'knm_inum'
+module 'knm_iso3166a2_itu'
+module 'knm_iso3166a2_itu_test'
+  knm_iso3166a2_itu_test:15: to_itu_test_...ok
+  knm_iso3166a2_itu_test:16: to_itu_test_...ok
+  [done in 0.006 s]
+module 'knm_local'
+module 'knm_locality'
+module 'knm_managed'
+module 'knm_mdn'
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15551239876 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+module 'knm_move_number_test'
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15551239876 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+  knm_move_number_test:17: move_to_child_test_...ok
+  knm_move_number_test:19: move_to_child_test_ (verify assigned_to is child account)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +15551239876 reset_doc/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+  knm_move_number_test:33: move_changing_public_fields_test_...ok
+  knm_move_number_test:35: move_changing_public_fields_test_ (verify a public key is set)...ok
+  knm_move_number_test:40: move_changing_public_fields_test_ (verify that key got updated)...ok
+  knm_move_number_test:45: move_changing_public_fields_test_ (verify another key was added)...ok
+  knm_move_number_test:50: move_changing_public_fields_test_ (verify that that other key is really new)...ok
+  [done in 0.022 s]
+module 'knm_number'
+module 'knm_number_options'
+  knm_number_options:227: to_phone_number_setters_test_...ok
+  knm_number_options:230: to_phone_number_setters_test_...ok
+  knm_number_options:240: to_phone_number_setters_test_...ok
+  [done in 0.009 s]
+module 'knm_numbers'
+module 'knm_number_states'
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+src/knm_phone_number.erl:1336:<0.58.0>: is authz reseller_account_b113394f16cb76d reseller_account_b113394f16cb76d
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+module 'knm_number_test'
+src/knm_phone_number.erl:1336:<0.58.0>: is authz reseller_account_b113394f16cb76d reseller_account_b113394f16cb76d
+
+  knm_number_test:40: available_tests (Verify available phone number)...ok
+  knm_number_test:43: available_tests (Verify available number module)...ok
+  knm_number_test:46: available_tests (Verify available number state)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+  knm_number_test:40: available_tests (Verify available phone number)...ok
+  knm_number_test:43: available_tests (Verify available number module)...ok
+  knm_number_test:46: available_tests (Verify available number state)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz 29ce6dcbd9ce7b84f264654663e0af78 reseller_account_b113394f16cb76d
+
+  knm_number_test:30: unavailable_tests (verify unavailable number error code)...ok
+  knm_number_test:33: unavailable_tests (verify unavailable number error)...ok
+  knm_number_test:52: get_unreconcilable_number_test_ (Verify non-reconcilable numbers result in errors)...ok
+  knm_number_test:57: get_not_found_test_...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15551233324 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233324
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551233324 set_features/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551233324 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233324 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233324 set_state/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15551233324 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233324
+
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15559871234 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15559871234 set_created/2
+
+src/knm_phone_number.erl:1017:<0.58.0>: dirty +15559871234 set_module_name_local/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15559871234 set_assigned_to/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15559871234
+
+  knm_number_test:68: mdn_transitions_test_ (Verify MDN can move from in_service to in_service)...ok
+  knm_number_test:70: mdn_transitions_test_...ok
+  knm_number_test:72: mdn_transitions_test_ (Verify releasing MDN results in deletion)...ok
+  knm_number_test:74: mdn_transitions_test_...ok
+  knm_number_test:76: mdn_transitions_test_ (Verify MDN can reconcile from in_service to in_service)...ok
+  knm_number_test:78: mdn_transitions_test_...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+  knm_number_test:80: mdn_transitions_test_ (Verify MDN cannot be reserved)...ok
+  knm_number_test:83: mdn_transitions_test_ (Verify MDN creation forces state to in_service)...ok
+  knm_number_test:85: mdn_transitions_test_...ok
+  knm_number_test:87: mdn_transitions_test_ (Verify MDN creation creates local feature)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+  src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233324 update_doc/2
+
+knm_number_test:97: is_mdn_for_mdn_run_test_ (Verify an mdn_run && knm_mdn number can be updated)...src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233324
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+[0.001 s] ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+  knm_number_test:100: is_mdn_for_mdn_run_test_ (Verify an mdn_run && !knm_mdn number cannot be updated)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+  knm_number_test:103: is_mdn_for_mdn_run_test_ (Verify a !mdn_run && knm_mdn number cannot be updated)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+  src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233322 update_doc/2
+
+knm_number_test:106: is_mdn_for_mdn_run_test_ (Verify a !mdn_run && !knm_mdn number can be updated)...src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233322
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233324 update_doc/2
+
+  src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233324
+
+knm_number_test:109: is_mdn_for_mdn_run_test_ (Verify sudo can update mdn_run && knm_mdn number)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233322 update_doc/2
+
+  src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233322
+
+knm_number_test:112: is_mdn_for_mdn_run_test_ (Verify sudo can update mdn_run && !knm_mdn number)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233324 update_doc/2
+
+  src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233324
+
+knm_number_test:115: is_mdn_for_mdn_run_test_ (Verify sudo can update !mdn_run && knm_mdn number)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:1207:<0.58.0>: dirty +15551233322 update_doc/2
+
+  src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233322
+
+knm_number_test:118: is_mdn_for_mdn_run_test_ (Verify sudo can update !mdn_run && !knm_mdn number)...ok
+  knm_number_test:143: attempt_setting_e911_on_disallowed_number_test_ (Verify feature is not set)...src/knm_phone_number.erl:1217:<0.58.0>: dirty +14122065197 reset_doc/2
+
+ok
+  knm_number_test:146: attempt_setting_e911_on_disallowed_number_test_ (Verify feature cannot be set)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+src/knm_phone_number.erl:768:<0.58.0>: dirty +15551233322 set_used_by/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233322
+
+  knm_number_test:158: assign_to_app_test_ (Verify number is not already assigned to MyApp)...ok
+  knm_number_test:160: assign_to_app_test_...ok
+  knm_number_test:162: assign_to_app_test_ (Verify number is now used by MyApp)...ok
+  knm_number_test:165: assign_to_app_test_ (Verify updated number will get saved)...ok
+  [done in 0.104 s]
+module 'knm_other'
+module 'knm_phone_number'
+module 'knm_phone_number_test'
+  knm_phone_number_test:17: is_dirty1_1_test_...ok
+  knm_phone_number_test:19: is_dirty1_1_test_...ok
+  knm_phone_number_test:20: is_dirty1_1_test_...ok
+  knm_phone_number_test:22: is_dirty1_1_test_...ok
+  knm_phone_number_test:25: is_dirty1_1_test_...ok
+  knm_phone_number_test:26: is_dirty1_1_test_...ok
+  knm_phone_number_test:28: is_dirty1_1_test_...ok
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +15045551226 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +15045551226 set_created/2
+
+  knm_phone_number_test:37: is_dirty1_test_...ok
+  knm_phone_number_test:40: is_dirty1_test_...ok
+  knm_phone_number_test:43: is_dirty1_test_...ok
+  knm_phone_number_test:47: is_dirty1_test_...ok
+  knm_phone_number_test:50: is_dirty1_test_...ok
+  knm_phone_number_test:53: is_dirty1_test_...ok
+  knm_phone_number_test:57: is_dirty1_test_...ok
+  knm_phone_number_test:60: is_dirty1_test_...ok
+  knm_phone_number_test:63: is_dirty1_test_...ok
+  knm_phone_number_test:67: is_dirty1_test_...ok
+  knm_phone_number_test:70: is_dirty1_test_...ok
+  knm_phone_number_test:73: is_dirty1_test_...ok
+  knm_phone_number_test:77: is_dirty1_test_...ok
+  knm_phone_number_test:80: is_dirty1_test_...ok
+  knm_phone_number_test:83: is_dirty1_test_...ok
+  knm_phone_number_test:87: is_dirty1_test_...ok
+  knm_phone_number_test:90: is_dirty1_test_...ok
+  knm_phone_number_test:93: is_dirty1_test_...ok
+  knm_phone_number_test:95: is_dirty1_test_...ok
+  knm_phone_number_test:98: is_dirty1_test_...ok
+  knm_phone_number_test:101: is_dirty1_test_...ok
+  knm_phone_number_test:105: is_dirty1_test_...ok
+  knm_phone_number_test:108: is_dirty1_test_...ok
+  knm_phone_number_test:112: is_dirty1_test_...ok
+  knm_phone_number_test:113: is_dirty1_test_...ok
+  knm_phone_number_test:114: is_dirty1_test_...ok
+  knm_phone_number_test:115: is_dirty1_test_...ok
+  knm_phone_number_test:117: is_dirty1_test_...ok
+  knm_phone_number_test:119: is_dirty1_test_...ok
+  knm_phone_number_test:120: is_dirty1_test_...ok
+  knm_phone_number_test:121: is_dirty1_test_...ok
+  knm_phone_number_test:122: is_dirty1_test_...ok
+  knm_phone_number_test:124: is_dirty1_test_...ok
+  knm_phone_number_test:125: is_dirty1_test_...ok
+  knm_phone_number_test:128: is_dirty1_test_...ok
+  knm_phone_number_test:131: is_dirty1_test_...ok
+  knm_phone_number_test:137: is_dirty1_test_...ok
+  knm_phone_number_test:138: is_dirty1_test_...ok
+  knm_phone_number_test:139: is_dirty1_test_...ok
+  knm_phone_number_test:140: is_dirty1_test_...ok
+  knm_phone_number_test:144: is_dirty1_test_...ok
+  knm_phone_number_test:145: is_dirty1_test_...ok
+  knm_phone_number_test:146: is_dirty1_test_...ok
+  knm_phone_number_test:147: is_dirty1_test_...ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +12014370856 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +12014370856
+
+  knm_phone_number_test:157: is_dirty2_1_test_...ok
+  knm_phone_number_test:159: is_dirty2_1_test_...ok
+  knm_phone_number_test:160: is_dirty2_1_test_...ok
+  knm_phone_number_test:162: is_dirty2_1_test_...ok
+  knm_phone_number_test:165: is_dirty2_1_test_...ok
+  knm_phone_number_test:166: is_dirty2_1_test_...ok
+  knm_phone_number_test:167: is_dirty2_1_test_...ok
+  knm_phone_number_test:170: is_dirty2_1_test_...ok
+  knm_phone_number_test:171: is_dirty2_1_test_...ok
+  knm_phone_number_test:173: is_dirty2_1_test_...ok
+  knm_phone_number_test:174: is_dirty2_1_test_...ok
+  knm_phone_number_test:175: is_dirty2_1_test_...ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +12014370857 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +12014370857
+
+src/knm_phone_number.erl:975:<0.58.0>: dirty +12014370857 set_module_name/2
+
+  knm_phone_number_test:183: is_dirty2_2_test_...ok
+  knm_phone_number_test:185: is_dirty2_2_test_...ok
+  knm_phone_number_test:186: is_dirty2_2_test_...ok
+  knm_phone_number_test:187: is_dirty2_2_test_...ok
+  knm_phone_number_test:188: is_dirty2_2_test_...ok
+  knm_phone_number_test:190: is_dirty2_2_test_...ok
+  knm_phone_number_test:191: is_dirty2_2_test_...ok
+  knm_phone_number_test:192: is_dirty2_2_test_...ok
+  knm_phone_number_test:193: is_dirty2_2_test_...ok
+  knm_phone_number_test:196: is_dirty2_2_test_...ok
+  knm_phone_number_test:197: is_dirty2_2_test_...ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +12014370855 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +12014370855
+
+src/knm_phone_number.erl:491:<0.58.0>: pvt_number_state was set to <<"in_service">>, moving to pvt_state
+
+src/knm_phone_number.erl:492:<0.58.0>: dirty +12014370855 ensure_pvt_state_legacy_undefined/2
+
+  knm_phone_number_test:205: is_dirty2_test_...ok
+  knm_phone_number_test:208: is_dirty2_test_...ok
+  knm_phone_number_test:211: is_dirty2_test_...ok
+  knm_phone_number_test:215: is_dirty2_test_...ok
+  knm_phone_number_test:218: is_dirty2_test_...ok
+  knm_phone_number_test:221: is_dirty2_test_...ok
+  knm_phone_number_test:225: is_dirty2_test_...ok
+  knm_phone_number_test:228: is_dirty2_test_...ok
+  knm_phone_number_test:231: is_dirty2_test_...ok
+  knm_phone_number_test:235: is_dirty2_test_...ok
+  knm_phone_number_test:238: is_dirty2_test_...ok
+  knm_phone_number_test:241: is_dirty2_test_...ok
+  knm_phone_number_test:245: is_dirty2_test_...ok
+  knm_phone_number_test:248: is_dirty2_test_...ok
+  knm_phone_number_test:252: is_dirty2_test_...ok
+  knm_phone_number_test:253: is_dirty2_test_...ok
+  knm_phone_number_test:254: is_dirty2_test_...ok
+  knm_phone_number_test:255: is_dirty2_test_...ok
+  knm_phone_number_test:257: is_dirty2_test_...ok
+  knm_phone_number_test:258: is_dirty2_test_...ok
+  knm_phone_number_test:259: is_dirty2_test_...ok
+  knm_phone_number_test:260: is_dirty2_test_...ok
+  knm_phone_number_test:264: is_dirty2_test_...ok
+  knm_phone_number_test:265: is_dirty2_test_...ok
+  knm_phone_number_test:266: is_dirty2_test_...ok
+  knm_phone_number_test:267: is_dirty2_test_...ok
+  knm_phone_number_test:270: is_dirty2_test_...ok
+  knm_phone_number_test:271: is_dirty2_test_...ok
+  knm_phone_number_test:274: is_dirty2_test_...ok
+  knm_phone_number_test:276: is_dirty2_test_...ok
+  knm_phone_number_test:277: is_dirty2_test_...ok
+  knm_phone_number_test:278: is_dirty2_test_...ok
+  knm_phone_number_test:279: is_dirty2_test_...ok
+  knm_phone_number_test:283: is_dirty2_test_...ok
+  knm_phone_number_test:284: is_dirty2_test_...ok
+  knm_phone_number_test:285: is_dirty2_test_...ok
+  knm_phone_number_test:286: is_dirty2_test_...ok
+  knm_phone_number_test:290: is_dirty2_test_...ok
+  knm_phone_number_test:291: is_dirty2_test_...ok
+  knm_phone_number_test:292: is_dirty2_test_...ok
+  knm_phone_number_test:293: is_dirty2_test_...ok
+  knm_phone_number_test:299: is_dirty2_test_...ok
+  knm_phone_number_test:300: is_dirty2_test_...ok
+  knm_phone_number_test:301: is_dirty2_test_...ok
+  knm_phone_number_test:302: is_dirty2_test_...ok
+  knm_phone_number_test:306: is_dirty2_test_...ok
+  knm_phone_number_test:307: is_dirty2_test_...ok
+  knm_phone_number_test:308: is_dirty2_test_...ok
+  knm_phone_number_test:309: is_dirty2_test_...ok
+  knm_phone_number_test:319: is_dirty3_1_test_...ok
+  knm_phone_number_test:321: is_dirty3_1_test_...ok
+  knm_phone_number_test:322: is_dirty3_1_test_...ok
+  knm_phone_number_test:323: is_dirty3_1_test_...ok
+  knm_phone_number_test:326: is_dirty3_1_test_...ok
+  knm_phone_number_test:327: is_dirty3_1_test_...ok
+  knm_phone_number_test:329: is_dirty3_1_test_...ok
+  knm_phone_number_test:330: is_dirty3_1_test_...ok
+  knm_phone_number_test:331: is_dirty3_1_test_...ok
+src/knm_phone_number.erl:977:<0.58.0>: dirty +14082141750 set_module_name/2
+
+src/knm_phone_number.erl:975:<0.58.0>: dirty +14082141750 set_module_name/2
+
+src/knm_phone_number.erl:977:<0.58.0>: dirty +14082141750 set_module_name/2
+
+  knm_phone_number_test:339: is_dirty3_test_...ok
+  knm_phone_number_test:342: is_dirty3_test_...ok
+  knm_phone_number_test:345: is_dirty3_test_...ok
+  knm_phone_number_test:349: is_dirty3_test_...ok
+  knm_phone_number_test:352: is_dirty3_test_...ok
+  knm_phone_number_test:355: is_dirty3_test_...ok
+  knm_phone_number_test:359: is_dirty3_test_...ok
+  knm_phone_number_test:362: is_dirty3_test_...ok
+  knm_phone_number_test:365: is_dirty3_test_...ok
+  knm_phone_number_test:369: is_dirty3_test_...ok
+  knm_phone_number_test:372: is_dirty3_test_...ok
+  knm_phone_number_test:375: is_dirty3_test_...ok
+  knm_phone_number_test:377: is_dirty3_test_...ok
+  knm_phone_number_test:380: is_dirty3_test_...ok
+  knm_phone_number_test:384: is_dirty3_test_...ok
+  knm_phone_number_test:385: is_dirty3_test_...ok
+  knm_phone_number_test:386: is_dirty3_test_...ok
+  knm_phone_number_test:387: is_dirty3_test_...ok
+  knm_phone_number_test:392: is_dirty3_test_...ok
+  knm_phone_number_test:394: is_dirty3_test_...ok
+  knm_phone_number_test:395: is_dirty3_test_...ok
+  knm_phone_number_test:396: is_dirty3_test_...ok
+  knm_phone_number_test:397: is_dirty3_test_...ok
+  knm_phone_number_test:401: is_dirty3_test_...ok
+  knm_phone_number_test:402: is_dirty3_test_...ok
+  knm_phone_number_test:403: is_dirty3_test_...ok
+  knm_phone_number_test:404: is_dirty3_test_...ok
+  knm_phone_number_test:408: is_dirty3_test_...ok
+  knm_phone_number_test:409: is_dirty3_test_...ok
+  knm_phone_number_test:410: is_dirty3_test_...ok
+  knm_phone_number_test:411: is_dirty3_test_...ok
+  knm_phone_number_test:415: is_dirty3_test_...ok
+  knm_phone_number_test:416: is_dirty3_test_...ok
+  knm_phone_number_test:417: is_dirty3_test_...ok
+  knm_phone_number_test:418: is_dirty3_test_...ok
+  knm_phone_number_test:422: is_dirty3_test_...ok
+  knm_phone_number_test:424: is_dirty3_test_...ok
+  knm_phone_number_test:426: is_dirty3_test_...ok
+  knm_phone_number_test:431: is_dirty3_test_...ok
+  knm_phone_number_test:432: is_dirty3_test_...ok
+  knm_phone_number_test:433: is_dirty3_test_...ok
+  knm_phone_number_test:434: is_dirty3_test_...ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14242424248 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14242424248
+
+  knm_phone_number_test:444: is_dirty4_1_test_...ok
+  knm_phone_number_test:446: is_dirty4_1_test_...ok
+  knm_phone_number_test:448: is_dirty4_1_test_...ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14242424247 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14242424247
+
+src/knm_phone_number.erl:1190:<0.58.0>: dirty +14242424247 set_doc/2
+
+src/knm_phone_number.erl:975:<0.58.0>: dirty +14242424247 set_module_name/2
+
+  knm_phone_number_test:459: is_dirty4_test_...ok
+  knm_phone_number_test:462: is_dirty4_test_...ok
+  knm_phone_number_test:465: is_dirty4_test_...ok
+  knm_phone_number_test:469: is_dirty4_test_...ok
+  knm_phone_number_test:472: is_dirty4_test_...ok
+  knm_phone_number_test:475: is_dirty4_test_...ok
+  knm_phone_number_test:479: is_dirty4_test_...ok
+  knm_phone_number_test:482: is_dirty4_test_...ok
+  knm_phone_number_test:485: is_dirty4_test_...ok
+  knm_phone_number_test:489: is_dirty4_test_...ok
+  knm_phone_number_test:492: is_dirty4_test_...ok
+  knm_phone_number_test:495: is_dirty4_test_...ok
+  knm_phone_number_test:499: is_dirty4_test_...ok
+  knm_phone_number_test:502: is_dirty4_test_...ok
+  knm_phone_number_test:506: is_dirty4_test_...ok
+  knm_phone_number_test:507: is_dirty4_test_...ok
+  knm_phone_number_test:508: is_dirty4_test_...ok
+  knm_phone_number_test:509: is_dirty4_test_...ok
+  knm_phone_number_test:511: is_dirty4_test_...ok
+  knm_phone_number_test:512: is_dirty4_test_...ok
+  knm_phone_number_test:513: is_dirty4_test_...ok
+  knm_phone_number_test:514: is_dirty4_test_...ok
+  knm_phone_number_test:516: is_dirty4_test_...ok
+  knm_phone_number_test:517: is_dirty4_test_...ok
+  knm_phone_number_test:518: is_dirty4_test_...ok
+  knm_phone_number_test:519: is_dirty4_test_...ok
+  knm_phone_number_test:523: is_dirty4_test_...ok
+  knm_phone_number_test:524: is_dirty4_test_...ok
+  knm_phone_number_test:525: is_dirty4_test_...ok
+  knm_phone_number_test:526: is_dirty4_test_...ok
+  knm_phone_number_test:529: is_dirty4_test_...ok
+  knm_phone_number_test:531: is_dirty4_test_...ok
+  knm_phone_number_test:532: is_dirty4_test_...ok
+  knm_phone_number_test:533: is_dirty4_test_...ok
+  knm_phone_number_test:534: is_dirty4_test_...ok
+  knm_phone_number_test:538: is_dirty4_test_...ok
+  knm_phone_number_test:539: is_dirty4_test_...ok
+  knm_phone_number_test:541: is_dirty4_test_...ok
+  knm_phone_number_test:543: is_dirty4_test_...ok
+  knm_phone_number_test:549: is_dirty4_test_...ok
+  knm_phone_number_test:550: is_dirty4_test_...ok
+  knm_phone_number_test:551: is_dirty4_test_...ok
+  knm_phone_number_test:552: is_dirty4_test_...ok
+  knm_phone_number_test:556: is_dirty4_test_...ok
+  knm_phone_number_test:558: is_dirty4_test_...ok
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +19377038880 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +19377038880 set_created/2
+
+src/knm_phone_number.erl:1190:<0.58.0>: dirty +19377038880 set_doc/2
+
+src/knm_phone_number.erl:480:<0.58.0>: dirty +19377038880 maybe_migrate_features/2
+
+  knm_phone_number_test:582: is_dirty5_test_...ok
+  knm_phone_number_test:585: is_dirty5_test_...ok
+  knm_phone_number_test:588: is_dirty5_test_...ok
+  knm_phone_number_test:592: is_dirty5_test_...ok
+  knm_phone_number_test:595: is_dirty5_test_...ok
+  knm_phone_number_test:598: is_dirty5_test_...ok
+  knm_phone_number_test:602: is_dirty5_test_...ok
+  knm_phone_number_test:605: is_dirty5_test_...ok
+  knm_phone_number_test:608: is_dirty5_test_...ok
+  knm_phone_number_test:612: is_dirty5_test_...ok
+  knm_phone_number_test:615: is_dirty5_test_...ok
+  knm_phone_number_test:618: is_dirty5_test_...ok
+  knm_phone_number_test:620: is_dirty5_test_...ok
+  knm_phone_number_test:623: is_dirty5_test_...ok
+  knm_phone_number_test:627: is_dirty5_test_...ok
+  knm_phone_number_test:628: is_dirty5_test_...ok
+  knm_phone_number_test:629: is_dirty5_test_...ok
+  knm_phone_number_test:630: is_dirty5_test_...ok
+  knm_phone_number_test:634: is_dirty5_test_...ok
+  knm_phone_number_test:635: is_dirty5_test_...ok
+  knm_phone_number_test:636: is_dirty5_test_...ok
+  knm_phone_number_test:637: is_dirty5_test_...ok
+  knm_phone_number_test:641: is_dirty5_test_...ok
+  knm_phone_number_test:642: is_dirty5_test_...ok
+  knm_phone_number_test:643: is_dirty5_test_...ok
+  knm_phone_number_test:644: is_dirty5_test_...ok
+  knm_phone_number_test:648: is_dirty5_test_...ok
+  knm_phone_number_test:649: is_dirty5_test_...ok
+  knm_phone_number_test:650: is_dirty5_test_...ok
+  knm_phone_number_test:651: is_dirty5_test_...ok
+  knm_phone_number_test:656: is_dirty5_test_...ok
+  knm_phone_number_test:658: is_dirty5_test_...ok
+  knm_phone_number_test:659: is_dirty5_test_...ok
+  knm_phone_number_test:660: is_dirty5_test_...ok
+  knm_phone_number_test:661: is_dirty5_test_...ok
+  knm_phone_number_test:665: is_dirty5_test_...ok
+  knm_phone_number_test:667: is_dirty5_test_...ok
+  knm_phone_number_test:669: is_dirty5_test_...ok
+  knm_phone_number_test:671: is_dirty5_test_...ok
+  knm_phone_number_test:672: is_dirty5_test_...ok
+  knm_phone_number_test:673: is_dirty5_test_...ok
+  knm_phone_number_test:674: is_dirty5_test_...ok
+  knm_phone_number_test:675: is_dirty5_test_...ok
+  knm_phone_number_test:676: is_dirty5_test_...ok
+  knm_phone_number_test:680: is_dirty5_test_...ok
+  knm_phone_number_test:681: is_dirty5_test_...ok
+  knm_phone_number_test:690: is_dirty6_test_...ok
+  knm_phone_number_test:693: is_dirty6_test_...ok
+  knm_phone_number_test:696: is_dirty6_test_...ok
+  knm_phone_number_test:700: is_dirty6_test_...ok
+  knm_phone_number_test:703: is_dirty6_test_...ok
+  knm_phone_number_test:706: is_dirty6_test_...ok
+  knm_phone_number_test:710: is_dirty6_test_...ok
+  knm_phone_number_test:713: is_dirty6_test_...ok
+  knm_phone_number_test:716: is_dirty6_test_...ok
+  knm_phone_number_test:720: is_dirty6_test_...ok
+  knm_phone_number_test:723: is_dirty6_test_...ok
+  knm_phone_number_test:726: is_dirty6_test_...ok
+  knm_phone_number_test:728: is_dirty6_test_...ok
+  knm_phone_number_test:731: is_dirty6_test_...ok
+  knm_phone_number_test:735: is_dirty6_test_...ok
+  knm_phone_number_test:736: is_dirty6_test_...ok
+  knm_phone_number_test:737: is_dirty6_test_...ok
+  knm_phone_number_test:738: is_dirty6_test_...ok
+  knm_phone_number_test:742: is_dirty6_test_...ok
+  knm_phone_number_test:743: is_dirty6_test_...ok
+  knm_phone_number_test:744: is_dirty6_test_...ok
+  knm_phone_number_test:745: is_dirty6_test_...ok
+  knm_phone_number_test:749: is_dirty6_test_...ok
+  knm_phone_number_test:750: is_dirty6_test_...ok
+  knm_phone_number_test:751: is_dirty6_test_...ok
+  knm_phone_number_test:752: is_dirty6_test_...ok
+  knm_phone_number_test:756: is_dirty6_test_...ok
+  knm_phone_number_test:757: is_dirty6_test_...ok
+  knm_phone_number_test:759: is_dirty6_test_...ok
+  knm_phone_number_test:761: is_dirty6_test_...ok
+  knm_phone_number_test:764: is_dirty6_test_...ok
+  knm_phone_number_test:766: is_dirty6_test_...ok
+  knm_phone_number_test:767: is_dirty6_test_...ok
+  knm_phone_number_test:769: is_dirty6_test_...ok
+  knm_phone_number_test:771: is_dirty6_test_...ok
+  knm_phone_number_test:774: is_dirty6_test_...ok
+  knm_phone_number_test:776: is_dirty6_test_...ok
+  knm_phone_number_test:778: is_dirty6_test_...ok
+  knm_phone_number_test:783: is_dirty6_test_...ok
+  knm_phone_number_test:784: is_dirty6_test_...ok
+  knm_phone_number_test:785: is_dirty6_test_...ok
+  knm_phone_number_test:787: is_dirty6_test_...ok
+  knm_phone_number_test:789: is_dirty6_test_...ok
+  knm_phone_number_test:792: is_dirty6_test_...ok
+  knm_phone_number_test:794: is_dirty6_test_...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233337 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233337
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551255693 add_reserve_history/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551255693 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551255693
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +18005551212 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +18005551212
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +12014370856 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +12014370856
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14242424248 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14242424248
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14252151007 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14252151007
+
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15551239876 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15551233322 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15551233324 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15551233337 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15551255693 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +18005551212 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +15045551227 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +12014370856 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +14082141751 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +14242424248 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +19377038881 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +12156774700 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +14352154006 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +14252151007 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  knm_phone_number_test:801: all_gets_should_not_be_dirty_test_ (Verify reading test num +14122065197 is not dirty)...ok
+  knm_phone_number_test:803: all_gets_should_not_be_dirty_test_...ok
+  [done in 1.044 s]
+module 'knm_port_notifier'
+module 'knm_port_request'
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14252151007 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14252151007
+
+src/knm_phone_number.erl:962:<0.58.0>: dirty +14252151007 set_ported_in/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14252151007 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14252151007
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14252151007 add_reserve_history/2
+
+module 'knm_port_request_test'
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14252151007
+
+src/knm_phone_number.erl:962:<0.58.0>: dirty +14252151007 set_ported_in/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14252151007 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14252151007
+
+  knm_port_request_test:29: transition_port_from_port_in_test_...ok
+  knm_port_request_test:31: transition_port_from_port_in_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_port_request_test:34: transition_port_from_port_in_test_ (Verify new phone number was authorized by master account)...ok
+  knm_port_request_test:37: transition_port_from_port_in_test_ (Verify number is in service)...ok
+  knm_port_request_test:40: transition_port_from_port_in_test_ (Verify reserve history is empty)...ok
+  knm_port_request_test:43: transition_port_from_port_in_test_ (Verify the local carrier module is being used)...ok
+  knm_port_request_test:46: transition_port_from_port_in_test_ (Verify local number is not billable)...ok
+  knm_port_request_test:49: transition_port_from_port_in_test_ (Verify number is not marked as ported_in)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:962:<0.58.0>: dirty +15551239876 set_ported_in/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+  knm_port_request_test:60: transition_port_from_available_test_...ok
+  knm_port_request_test:62: transition_port_from_available_test_ (Verify phone number is assigned to reseller account)...ok
+  knm_port_request_test:65: transition_port_from_available_test_ (Verify new phone number was authorized by master account)...ok
+  knm_port_request_test:68: transition_port_from_available_test_ (Verify number is in service)...ok
+  knm_port_request_test:71: transition_port_from_available_test_ (Verify reserve history is empty)...ok
+  knm_port_request_test:74: transition_port_from_available_test_ (Verify the local carrier module is being used)...ok
+  knm_port_request_test:77: transition_port_from_available_test_ (Verify local number is not billable)...ok
+  knm_port_request_test:80: transition_port_from_available_test_ (Verify number is not marked as ported_in)...src/knm_phone_number.erl:937:<0.58.0>: dirty +14252151007 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14252151007
+
+ok
+  knm_port_request_test:97: transition_port_in_not_specifying1_test_ (Verify cannot create in_service number if not specified as ported_in)...src/knm_phone_number.erl:937:<0.58.0>: dirty +14252151007 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14252151007
+
+ok
+  knm_port_request_test:100: transition_port_in_not_specifying1_test_ (Verify cannot create in_service number if not specified as ported_in even as sudo)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551239876
+
+  knm_port_request_test:112: transition_port_in_not_specifying2_test_...ok
+  knm_port_request_test:114: transition_port_in_not_specifying2_test_ (Verify number create has nothing to do with ports)...ok
+  knm_port_request_test:116: transition_port_in_not_specifying2_test_...ok
+  knm_port_request_test:118: transition_port_in_not_specifying2_test_ (Verify number create has nothing to do with ports and is not ported_in)...ok
+  knm_port_request_test:120: transition_port_in_not_specifying2_test_...ok
+  knm_port_request_test:122: transition_port_in_not_specifying2_test_ (Verify number create has nothing to do with ports)...ok
+  knm_port_request_test:124: transition_port_in_not_specifying2_test_...ok
+  knm_port_request_test:126: transition_port_in_not_specifying2_test_ (Verify number create has nothing to do with ports and is not ported_in)...ok
+  [done in 0.079 s]
+module 'knm_prepend'
+module 'knm_providers'
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14122065197 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14122065197
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14122065197 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14122065197
+
+module 'knm_reconcile_test'
+  knm_reconcile_test:20: keeps_carrier_test_...ok
+  knm_reconcile_test:21: keeps_carrier_test_...ok
+  knm_reconcile_test:23: keeps_carrier_test_ (Verify number carrier stayed the same)...src/knm_phone_number.erl:793:<0.58.0>: dirty +14122065197 set_features/2
+
+src/knm_phone_number.erl:1017:<0.58.0>: dirty +14122065197 set_module_name_local/2
+
+ok
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14122065197 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14122065197
+
+  knm_reconcile_test:37: sets_carrier_for_mobile_test_...ok
+  knm_reconcile_test:38: sets_carrier_for_mobile_test_...ok
+  knm_reconcile_test:39: sets_carrier_for_mobile_test_...ok
+  knm_reconcile_test:41: sets_carrier_for_mobile_test_ (Verify number carrier was indeed updated for mobile)...ok
+  [done in 0.022 s]
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551239876 set_features/2
+
+src/knm_phone_number.erl:1197:<0.58.0>: dirty +15551239876 set_doc/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551239876 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+module 'knm_release_number_test'
+  knm_release_number_test:16: release_unknown_number_test_ (verfiy missing numbers return errors)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551239876 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551239876
+
+ok
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551239876 set_features/2
+
+src/knm_phone_number.erl:1197:<0.58.0>: dirty +15551239876 set_doc/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551239876 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551239876 set_state/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+  knm_release_number_test:24: release_available_number_test_...ok
+  knm_release_number_test:26: release_available_number_test_ (Verify releasing available local number results in deletion)...ok
+  knm_release_number_test:29: release_available_number_test_ (Verify error code for releasing available number)...ok
+  knm_release_number_test:32: release_available_number_test_ (Verify error for releasing available number)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233337 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233337
+
+ok
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551233337 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233337 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233337
+
+  knm_release_number_test:39: release_in_service_bad_carrier_number_test_...ok
+  knm_release_number_test:41: release_in_service_bad_carrier_number_test_ (verify number state is changed)...ok
+  knm_release_number_test:44: release_in_service_bad_carrier_number_test_ (verify reserve history is empty now)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233324 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233324
+
+ok
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551233324 set_features/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551233324 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233324 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233324 set_state/2
+
+  knm_release_number_test:51: release_in_service_mdn_number_test_...ok
+  knm_release_number_test:53: release_in_service_mdn_number_test_ (verify number state is changed)...ok
+  knm_release_number_test:56: release_in_service_mdn_number_test_ (verify reserve history is empty now)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551233322 set_features/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551233322 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233322 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233322 set_state/2
+
+  knm_release_number_test:63: release_in_service_number_test_...ok
+  knm_release_number_test:65: release_in_service_number_test_ (verify number state is changed)...ok
+  knm_release_number_test:68: release_in_service_number_test_ (verify reserve history is empty now)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551255693 add_reserve_history/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551255693 add_reserve_history/2
+
+ok
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551255693
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551255693 set_features/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551255693 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551255693 set_state/2
+
+src/knm_phone_number.erl:937:<0.58.0>: dirty +15551255693 add_reserve_history/2
+
+src/knm_phone_number.erl:710:<0.58.0>: dirty +15551255693 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551255693 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551255693
+
+  knm_release_number_test:75: release_with_history_test_...ok
+  knm_release_number_test:77: release_with_history_test_ (verify number state is moved to RESERVED)...ok
+  knm_release_number_test:80: release_with_history_test_ (verify reserve history is unwound)...ok
+  knm_release_number_test:83: release_with_history_test_ (verify number is assigned to prev account)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551233322 set_features/2
+
+src/knm_phone_number.erl:706:<0.58.0>: dirty +15551233322 set_assigned_to/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233322 set_state/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +15551233322 set_state/2
+
+  knm_release_number_test:90: release_for_hard_delete_test_...ok
+  knm_release_number_test:92: release_for_hard_delete_test_ (verify number state is moved to DELETED)...ok
+  [done in 0.062 s]
+module 'knm_rename_carrier'
+module 'knm_reserved'
+module 'knm_reserved_reseller'
+module 'knm_search'
+module 'knm_services'
+module 'knm_simwood'
+module 'knm_telnyx'
+module 'knm_telnyx_cnam'
+module 'knm_telnyx_e911'
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +14352154006 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +14352154006 set_created/2
+
+src/knm_phone_number.erl:1054:<0.58.0>: dirty +14352154006 update_carrier_data/2
+
+module 'knm_telnyx_test'
+  knm_telnyx_test:30: find_numbers (Verify found numbers)...ok
+  knm_telnyx_test:33: find_numbers (Verify results match queried prefix)...ok
+  knm_telnyx_test:30: find_numbers (Verify found numbers)...ok
+  knm_telnyx_test:33: find_numbers (Verify results match queried prefix)...ok
+  knm_telnyx_test:49: find_international_numbers (Verify found numbers)...ok
+  knm_telnyx_test:52: find_international_numbers (Verify results match queried prefix)...ok
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +14352154006 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +14352154006 set_created/2
+
+src/knm_phone_number.erl:1054:<0.58.0>: dirty +14352154006 update_carrier_data/2
+
+  knm_telnyx_test:80: acquire_number_test_...ok
+  knm_telnyx_test:82: acquire_number_test_ (Verify number is still one inputed)...src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+ok
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14352154006 set_state/2
+
+src/knm_phone_number.erl:1054:<0.58.0>: dirty +14352154006 update_carrier_data/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+  knm_telnyx_test:103: e911_test_...ok
+  knm_telnyx_test:105: e911_test_ (Verify feature is properly set)...ok
+  knm_telnyx_test:108: e911_test_ (Verify we are keeping track of intermediary address_id)...ok
+  knm_telnyx_test:112: e911_test_...ok
+  knm_telnyx_test:114: e911_test_ (Verify feature is still properly set)...ok
+  knm_telnyx_test:117: e911_test_ (Verify we are keeping track of same intermediary address_id)...src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+ok
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14352154006 set_state/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+  knm_telnyx_test:144: cnam_test_...ok
+  knm_telnyx_test:146: cnam_test_ (Verify inbound CNAM is properly activated)...ok
+  knm_telnyx_test:149: cnam_test_ (Verify outbound CNAM is properly set)...ok
+  knm_telnyx_test:151: cnam_test_...ok
+  knm_telnyx_test:153: cnam_test_ (Verify inbound CNAM is still properly activated)...ok
+  knm_telnyx_test:156: cnam_test_ (Verify outbound CNAM is still properly set)...ok
+  knm_telnyx_test:158: cnam_test_...ok
+  knm_telnyx_test:160: cnam_test_ (Verify inbound CNAM is indeed deactivated)...ok
+  knm_telnyx_test:163: cnam_test_ (Verify outbound CNAM is indeed reset)...src/knm_phone_number.erl:937:<0.58.0>: dirty +14352154006 add_reserve_history/2
+
+ok
+src/knm_phone_number.erl:919:<0.58.0>: undirty +14352154006
+
+src/knm_phone_number.erl:881:<0.58.0>: dirty +14352154006 set_state/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +14352154006 set_features/2
+
+src/knm_phone_number.erl:1017:<0.58.0>: dirty +14352154006 set_module_name_local/2
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +14352154006
+
+  knm_telnyx_test:189: rename_carrier_test_...ok
+  knm_telnyx_test:191: rename_carrier_test_ (Verify carrier name is right)...ok
+  knm_telnyx_test:193: rename_carrier_test_...ok
+  knm_telnyx_test:194: rename_carrier_test_...ok
+  knm_telnyx_test:196: rename_carrier_test_ (Verify carrier name is changed)...ok
+  knm_telnyx_test:199: rename_carrier_test_ (Verify feature is now removed)...ok
+  knm_telnyx_test:201: rename_carrier_test_...ok
+  knm_telnyx_test:203: rename_carrier_test_ (Verify local feature is now set)...src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+ok
+  knm_telnyx_test:206: rename_carrier_test_ (Verify setting wrong carrier is forbidden)...[0.008 s] ok
+  knm_telnyx_test:211: rename_carrier_test_ (Verify carrier name is still changed)...ok
+  knm_telnyx_test:213: rename_carrier_test_...src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+ok
+  knm_telnyx_test:215: rename_carrier_test_ (Verify setting carrier as non-admin is forbidden)...src/knm_phone_number.erl:1217:<0.58.0>: dirty +14352154006 reset_doc/2
+
+ok
+  knm_telnyx_test:223: rename_carrier_test_ (Verify setting not a carrier is invalid)...src/knm_phone_number.erl:937:<0.58.0>: dirty +15551233322 add_reserve_history/2
+
+src/knm_phone_number.erl:919:<0.58.0>: undirty +15551233322
+
+ok
+src/knm_phone_number.erl:1336:<0.58.0>: is authz master_account_6992af0e9504d0b27 reseller_account_b113394f16cb76d
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +15551233322 reset_doc/2
+
+src/knm_phone_number.erl:1006:<0.58.0>: dirty +15551233322 set_module_name/2
+
+src/knm_phone_number.erl:793:<0.58.0>: dirty +15551233322 set_features/2
+
+src/knm_phone_number.erl:1217:<0.58.0>: dirty +15551233322 reset_doc/2
+
+src/knm_phone_number.erl:1384:<0.58.0>: handling assignment for +15551233322
+
+  knm_telnyx_test:241: rename_from_local_test_ (Verify carrier name is right)...ok
+  knm_telnyx_test:243: rename_from_local_test_...ok
+  knm_telnyx_test:244: rename_from_local_test_...ok
+  knm_telnyx_test:246: rename_from_local_test_ (Verify carrier name is changed)...ok
+  knm_telnyx_test:249: rename_from_local_test_ (Verify feature is now removed)...ok
+  knm_telnyx_test:252: rename_from_local_test_ (Verify local feature is now set)...ok
+  [done in 0.148 s]
+module 'knm_telnyx_util'
+module 'knm_util'
+module 'knm_util_test'
+  knm_util_test:15: pretty_print_test_...ok
+  knm_util_test:15: pretty_print_test_...ok
+  knm_util_test:15: pretty_print_test_...ok
+  [done in 0.009 s]
+module 'knm_vitelity'
+module 'knm_vitelity_cnam'
+module 'knm_vitelity_e911'
+module 'knm_vitelity_find_test'
+  knm_vitelity_find_test:37: tollfree_tests (Verify found number)...ok
+  knm_vitelity_find_test:39: tollfree_tests...[0.001 s] ok
+  knm_vitelity_find_test:51: local_number_tests (Verify local number search result size)...ok
+  knm_vitelity_find_test:64: local_prefix_tests (Verify local prefix search result size)...ok
+  [done in 0.013 s]
+module 'knm_vitelity_util'
+module 'knm_voip_innovations'
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +14352154006 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +14352154006 set_created/2
+
+module 'knm_voip_innovations_test'
+  knm_voip_innovations_test:29: find_numbers (Verify found numbers)...ok
+  knm_voip_innovations_test:32: find_numbers (Verify results match queried prefix)...ok
+  knm_voip_innovations_test:29: find_numbers (Verify found numbers)...ok
+  knm_voip_innovations_test:32: find_numbers (Verify results match queried prefix)...ok
+src/knm_phone_number.erl:1235:<0.58.0>: dirty +14352154006 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +14352154006 set_created/2
+
+  knm_voip_innovations_test:59: acquire_number_test_...ok
+  knm_voip_innovations_test:61: acquire_number_test_ (Verify number is still one inputed)...src/knm_phone_number.erl:1235:<0.58.0>: dirty +14352154974 set_modified/2
+
+src/knm_phone_number.erl:1255:<0.58.0>: dirty +14352154974 set_created/2
+
+ok
+  knm_voip_innovations_test:71: disconnect_number_test_ (Verify cannot release number not detained)...[0.002 s] ok
+  [done in 0.028 s]
+=======================================================
+  All 636 tests passed.
