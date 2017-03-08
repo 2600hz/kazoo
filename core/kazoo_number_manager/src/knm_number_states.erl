@@ -305,7 +305,7 @@ move_to_in_service_state(Number) ->
 move_number_to_state(Number, ToState) ->
     PhoneNumber = knm_number:phone_number(Number),
     {'ok', PN} = move_phone_number_to_state(PhoneNumber, ToState),
-      knm_number:set_phone_number(Number, PN).
+    knm_number:set_phone_number(Number, PN).
 
 -spec move_phone_number_to_state(knm_phone_number:knm_phone_number(), ne_binary()) ->
                                         knm_phone_number_return().
