@@ -19,6 +19,7 @@
 -export([disconnect_number/1]).
 -export([is_number_billable/1]).
 -export([should_lookup_cnam/0]).
+-export([check_numbers/1]).
 
 -include("knm.hrl").
 
@@ -31,6 +32,16 @@
 %%--------------------------------------------------------------------
 -spec is_local() -> boolean().
 is_local() -> 'false'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Check with carrier if these numbers are registered with it.
+%% @end
+%%--------------------------------------------------------------------
+-spec check_numbers(ne_binaries()) -> {ok, kz_json:object()} |
+                                      {error, any()}.
+check_numbers(_Numbers) -> {error, not_implemented}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -93,9 +104,10 @@ find_more(_, _, _, _, _Enough, _, Numbers) ->
     {'ok', Numbers}.
 
 format_numbers(QID, JObjs) ->
+    Nums = [kz_doc:id(JObj) || JObj <- JObjs],
+    #{ok := Ns} = knm_numbers:get(Nums),
     [{QID, {knm_phone_number:number(PN), knm_phone_number:module_name(PN), knm_phone_number:state(PN), knm_phone_number:carrier_data(PN)}}
-     || JObj <- JObjs,
-        {ok, N} <- [knm_number:get(kz_doc:id(JObj))],
+     || N <- Ns,
         PN <- [knm_number:phone_number(N)]
     ].
 
