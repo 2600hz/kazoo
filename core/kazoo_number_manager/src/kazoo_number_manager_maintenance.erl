@@ -116,15 +116,19 @@ convert_carrier_module_database(Source, Target, [Database|Databases]) ->
 
 -spec convert_carrier_module_numbers(ne_binaries(), ne_binary()) -> ok.
 convert_carrier_module_numbers(Nums, Target) ->
-    Routines = [{fun knm_phone_number:set_module_name/2, Target}],
-    #{ok := Ns, ko := KOs} = knm_numbers:update(Nums, Routines),
-    io:format("updated carrier module to ~s for ~p:\n", [Target, length(Ns)]),
-    F = fun (N) -> io:format("\t~s\n", [knm_phone_number:number(knm_number:phone_number(N))]) end,
-    lists:foreach(F, Ns),
-    io:format("updating carrier module failed for ~p:\n", [maps:size(KOs)]),
-    G = fun (Num, R) -> io:format("\t~s: ~p\n", [Num, R]) end,
-    _ = maps:map(G, KOs),
-    ok.
+    case lists:member(Target, knm_carriers:all_modules()) of
+        false -> io:format("Bad carrier module: ~s\n", [Target]);
+        true ->
+            Routines = [{fun knm_phone_number:set_module_name/2, Target}],
+            #{ok := Ns, ko := KOs} = knm_numbers:update(Nums, Routines),
+            io:format("updated carrier module to ~s for ~p:\n", [Target, length(Ns)]),
+            F = fun (N) -> io:format("\t~s\n", [knm_phone_number:number(knm_number:phone_number(N))]) end,
+            lists:foreach(F, Ns),
+            io:format("updating carrier module failed for ~p:\n", [maps:size(KOs)]),
+            G = fun (Num, R) -> io:format("\t~s: ~p\n", [Num, R]) end,
+            _ = maps:map(G, KOs),
+            ok
+    end.
 
 -spec convert_carrier_module_number(ne_binary(), ne_binary()) -> ok.
 convert_carrier_module_number(Num, Target) ->
