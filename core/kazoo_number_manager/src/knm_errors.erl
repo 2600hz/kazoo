@@ -157,6 +157,9 @@ to_json('invalid_state_transition', _, Cause) ->
 to_json('assign_failure', _, Cause) ->
     Message = <<"invalid account to assign to">>,
     build_error(400, 'assign_failure', Message, Cause);
+to_json(Reason='invalid', _, Cause) ->
+    Message = <<"invalid">>,
+    build_error(400, Reason, Message, Cause);
 to_json('by_carrier', Num, {_Carrier,_Cause}) ->
     lager:error("carrier ~s fault: ~p", [_Carrier, _Cause]),
     build_error(500, 'unspecified_fault', <<"fault by carrier">>, Num);

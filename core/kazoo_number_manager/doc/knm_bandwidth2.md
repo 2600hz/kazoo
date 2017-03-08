@@ -4,9 +4,9 @@ The kazoo number manager Bandwidth2 module can be used to integrate Kazoo with h
 
 #### Configuring number manager
 
-To enable kazoo number manager to use the Bandwidth module you will need to first update the number_manager document in the system_config database.
+To enable kazoo number manager to use the Bandwidth module you will need to first update the `number_manager` document in the `system_config` database.
 
-In the configuration section that applies to your crossbar servers (or the default) add "knm_bandwidth" to the carrier_modules parameter.
+In the configuration section that applies to your crossbar servers (or the default) add `"knm_bandwidth2"` to the `carrier_modules` parameter.
 
 For example:
 
@@ -26,7 +26,7 @@ This will cause numbers in completed port in requests to be associated with the 
 
 #### Configuring the Bandwidth module
 
-Once the module is enabled in number manager the first requests to it will generate a new configuration document called "number_manager.bandwidth2" in the system_config database.
+Once the module is enabled in number manager the first requests to it will generate a new configuration document called `"number_manager.bandwidth2"` in the `system_config` database.
 
 This document has the following parameters.
 
@@ -35,16 +35,16 @@ This document has the following parameters.
 * `api_password`: password to log into the api with
 * `site_id`: the site-id to use when purchasing numbers
 * `sip_peer`: the sip peer to use when purchasing numbers
-* `debug`: If this parameter is set to 'true' then each request and reply from Bandwidth will be written as a text file to /tmp/bandwidth.log for developers.
-* `enable_provisioning`: If this parameter is set to 'true' then the ability to active numbers will be enabled.  If set to 'false' then the module will only perform number searches.
-* `sandbox_provisioning`: This parameter is intended to be used with 'enable_provisioning'.  If set to 'true' then all number provisioning will pretend to be successful without actually activating.
-* `order_name_prefix`: This is an arbitrary string that is added to the "order-id" of a number provisioning request to bandwidth to identify which numbers where purchased by the Kazoo system.
+* `debug`: If this parameter is set to `true` then each request and reply from Bandwidth will be written as a text file to /tmp/bandwidth.log for developers.
+* `enable_provisioning`: If this parameter is set to `true` then the ability to active numbers will be enabled.  If set to `false` then the module will only perform number searches.
+* `sandbox_provisioning`: intended to be used with `enable_provisioning`.  If set to `true` then all number provisioning will pretend to be successful without actually activating.
+* `order_name_prefix`: an arbitrary string that is added to the `"order-id"` field of a number provisioning request to bandwidth to identify which numbers where purchased by the Kazoo system.
 
 Example:
 
 ```json
 {
-   "_id": "number_manager.bandwidth",
+   "_id": "number_manager.bandwidth2",
    "default": {
        "account_id": "20902288",
        "api_username": "XXXXXX",
@@ -61,7 +61,9 @@ Example:
 
 #### Obtaining Site-ID and Sip-Peer
 
-There are sup commands that will list the Site-ID's and Sip-Peers that are associated with your account to enable you to more easily find these values.  Once you have correctly configured the `api_username`, `api_password`, and `account_id` you may use the following sup commands:
+There are sup commands that will list the Site-ID's and Sip-Peers that are associated with your account to enable you to more easily find these values.
+
+Once you have correctly configured the `api_username`, `api_password`, and `account_id` you may use the following sup commands:
 
 ```shell
 sup knm_bandwidth2 sites

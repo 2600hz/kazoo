@@ -27,7 +27,7 @@ Key | Description | Type | Default | Required
 `e911.longitude` | The e911 provisioning system calculated service address longitude | `string` |   | `false`
 `e911.plus_four` | The extended zip/postal code where the number is in service | `string` |   | `false`
 `e911.postal_code` | The zip/postal code where the number is in service | `string` |   | `true`
-`e911.region` | The region (state) where the number is in service | `string` |   | `true`
+`e911.region` | The region (state) where the number is in service | `string(2)` |   | `true`
 `e911.status` | The e911 provisioning system status for this service address | `string('INVALID', 'GEOCODED', 'PROVISIONED', 'REMOVED', 'ERROR')` |   | `false`
 `e911.street_address` | The street address where the number is in service | `string` |   | `true`
 `porting` | Porting (in) information for the phone number | `object` |   | `false`

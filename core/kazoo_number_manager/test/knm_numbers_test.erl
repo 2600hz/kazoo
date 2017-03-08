@@ -119,6 +119,39 @@ update_test_() ->
     ].
 
 
+attempt_setting_e911_on_disallowed_number_test_() ->
+    JObj = kz_json:from_list(
+             [{?FEATURE_E911
+              ,kz_json:from_list(
+                 [{?E911_STREET1, <<"140 Geary St.">>}
+                 ,{?E911_STREET2, <<"3rd floor">>}
+                 ,{?E911_CITY, <<"San Francisco">>}
+                 ,{?E911_STATE, <<"CA">>}
+                 ,{?E911_ZIP, <<"94108">>}
+                 ])
+              }
+             ]),
+    Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
+              ,{public_fields, JObj}
+              ],
+    Updates = [{fun knm_phone_number:reset_doc/2, JObj}],
+    Num = ?BW_EXISTING_DID,
+    {ok, N} = knm_number:get(Num),
+    PN = knm_number:phone_number(N),
+    Msg = kz_json:from_list(
+            [{<<"code">>, 403}
+            ,{<<"error">>, <<"forbidden">>}
+            ,{<<"message">>, <<"requestor is unauthorized to perform operation">>}
+            ]),
+    [{"Verify feature is not set"
+     ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
+     }
+    ,{"Verify feature is still not set"
+     ,?_assertMatch(#{ko := #{Num := Msg}}, knm_numbers:update([N], Updates, Options))
+     }
+    ].
+
+
 delete_test_() ->
     Ret = knm_numbers:delete([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
