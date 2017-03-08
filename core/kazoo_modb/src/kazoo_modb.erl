@@ -229,25 +229,23 @@ get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb) ->
 get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountMODb) ->
     kz_util:format_account_modb(AccountMODb, 'raw');
 get_modb(Account) ->
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     {Year, Month, _} = erlang:date(),
-    get_modb(Account, Year, Month).
+    get_modb(AccountDb, Year, Month).
 
-get_modb(?MATCH_MODB_SUFFIX_RAW(_,_,_) = AccountMODb, _) ->
-    AccountMODb;
-get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb, _) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
-get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountMODb, _) ->
-    kz_util:format_account_modb(AccountMODb, 'raw');
 get_modb(Account, ViewOptions) when is_list(ViewOptions) ->
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
     case {props:get_value('month', ViewOptions)
          ,props:get_value('year', ViewOptions)
          }
     of
+        {'undefined', 'undefined'} -> get_modb(Account);
         {'undefined', _Year} -> get_modb(Account);
         {Month, 'undefined'} ->
             {Year, _, _} = erlang:date(),
-            get_modb(Account, Year, Month);
-        {Month, Year} -> get_modb(Account, Year, Month)
+            get_modb(AccountDb, Year, Month);
+        {Month, Year} ->
+            get_modb(AccountDb, Year, Month)
     end;
 get_modb(Account, Timestamp) ->
     kz_util:format_account_mod_id(Account, Timestamp).
@@ -259,7 +257,8 @@ get_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountMODb, _Year, _Month) ->
 get_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountMODb, _Year, _Month) ->
     kz_util:format_account_modb(AccountMODb, 'raw');
 get_modb(Account, Year, Month) ->
-    kz_util:format_account_mod_id(Account, Year, Month).
+    AccountDb = kz_util:format_account_id(Account, 'encoded'),
+    kz_util:format_account_mod_id(AccountDb, Year, Month).
 
 %%--------------------------------------------------------------------
 %% @private

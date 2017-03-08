@@ -31,6 +31,7 @@
 -export([modb/1]).
 -export([rollup/1
         ,rollup/2
+        ,update_rollup/2
         ]).
 
 -include("include/kazoo_transactions.hrl").
@@ -132,7 +133,8 @@ current_balance(Account) -> get_balance(Account, []).
 
 -spec previous_balance(ne_binary(), ne_binary(), ne_binary()) -> balance_ret().
 previous_balance(Account, Year, Month) ->
-    get_balance(Account, [{'year', Year}, {'month', Month}]).
+    Options = [{'year', kz_term:to_binary(Year)}, {'month', kz_time:pad_month(Month)}],
+    get_balance(Account, Options).
 
 -spec get_balance(ne_binary(), kazoo_modb:view_options()) -> balance_ret().
 get_balance(Account, Options) ->
@@ -486,10 +488,39 @@ rollup(Transaction) ->
 
 rollup(?NE_BINARY = AccountMODb, Balance) when Balance >= 0 ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    lager:debug("creating monthly rollup for ~s as a credit for ~p", [AccountMODb, Balance]),
     rollup(kz_transaction:credit(AccountId, Balance));
 rollup(?NE_BINARY = AccountMODb, Balance) ->
     AccountId = kz_util:format_account_id(AccountMODb, 'raw'),
+    lager:debug("creating monthly rollup for ~s as a debit for ~p", [AccountMODb, Balance]),
     rollup(kz_transaction:debit(AccountId, -1*Balance)).
+
+-spec update_rollup(ne_binary(), integer()) -> 'ok'.
+update_rollup(Account, Balance) ->
+    case kazoo_modb:open_doc(Account, <<"monthly_rollup">>) of
+        {'ok', JObj} -> update_rollup(Account, Balance, JObj);
+        {'error', _R} -> rollup(Account, Balance)
+    end.
+
+-spec update_rollup(ne_binary(), integer(), kz_json:object()) -> 'ok'.
+update_rollup(Account, Balance, JObj) ->
+    Transaction = kz_transaction:from_json(JObj),
+    case kz_transaction:type(Transaction) of
+        <<"credit">> when Balance >= 0 ->
+            update_existing_rollup(Account, Balance, Transaction);
+        <<"debit">> when Balance < 0 ->
+            update_existing_rollup(Account, Balance, Transaction);
+        _Else ->
+            AccountMODb = kazoo_modb:get_modb(Account),
+            EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+            {'ok', _} = kz_datamgr:del_doc(EncodedMODb, JObj),
+            rollup(Account, abs(Balance))
+    end.
+
+-spec update_existing_rollup(ne_binary(), integer(), kz_transaction:transaction()) -> 'ok'.
+update_existing_rollup(_Account, Balance, Transaction) ->
+    {'ok', _} = kz_transaction:save(kz_transaction:set_amount(abs(Balance), Transaction)),
+    lager:debug("updated rollup in ~s with new balance ~p", [_Account, Balance]).
 
 %%--------------------------------------------------------------------
 %% @private
