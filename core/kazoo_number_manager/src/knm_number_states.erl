@@ -325,8 +325,7 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignTo, AssignTo) ->
                ],
     knm_phone_number:setters(PhoneNumber, Routines);
 move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
-    Setters = [{fun knm_phone_number:set_prev_assigned_to/2, AssignedTo}
-              ,{fun knm_phone_number:set_assigned_to/2, AssignTo}
+    Setters = [{fun knm_phone_number:set_assigned_to/2, AssignTo}
               ,{fun knm_phone_number:set_state/2, ToState}
               ],
     knm_phone_number:setters(PhoneNumber, Setters).

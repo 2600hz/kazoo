@@ -26,7 +26,7 @@
         ,number_db/1
         ,assign_to/1, set_assign_to/2
         ,assigned_to/1, set_assigned_to/2
-        ,prev_assigned_to/1, set_prev_assigned_to/2
+        ,prev_assigned_to/1
         ,used_by/1, set_used_by/2
         ,features/1, features_list/1, set_features/2
         ,feature/2, set_feature/3
@@ -273,10 +273,11 @@ save(PN=#knm_phone_number{dry_run='true'}) ->
 save(PN=#knm_phone_number{is_dirty = false}) ->
     lager:debug("not dirty, skip saving ~s", [number(PN)]),
     PN;
-save(PN=#knm_phone_number{state=?NUMBER_STATE_AVAILABLE
-                         ,assigned_to=AssignedTo
-                         }) when AssignedTo =/= 'undefined' ->
-    save(PN#knm_phone_number{assigned_to='undefined'});
+%% save(PN=#knm_phone_number{state=?NUMBER_STATE_AVAILABLE
+%%                          ,assigned_to=AssignedTo
+%%                          })
+%%   when AssignedTo =/= 'undefined' ->
+%%     save(PN#knm_phone_number{assigned_to='undefined'});
 save(PN) ->
     Routines = [fun save_to_number_db/1
                ,fun handle_assignment/1
@@ -362,7 +363,6 @@ authorized_release(PN) ->
     ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines = [{fun set_features/2, ?DEFAULT_FEATURES}
                ,{fun set_doc/2, kz_json:private_fields(doc(PN))}
-               ,{fun set_prev_assigned_to/2, assigned_to(PN)}
                ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, ReleasedState}
                ],
@@ -709,11 +709,13 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(PN=#knm_phone_number{assigned_to = V}, V) -> PN;
-set_assigned_to(PN, AssignedTo='undefined') ->
+set_assigned_to(PN0, AssignedTo='undefined') ->
+    PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
                               ,used_by = 'undefined'
                               });
-set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
+set_assigned_to(PN0, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
+    PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
                               ,used_by = 'undefined'
                               }).
@@ -746,13 +748,15 @@ set_assigned_to(PN, AssignedTo=?MATCH_ACCOUNT_RAW(_), UsedBy=?NE_BINARY) ->
 prev_assigned_to(#knm_phone_number{prev_assigned_to=PrevAssignedTo}) ->
     PrevAssignedTo.
 
+%% Called from set_assigned_to/2 & from_json/1.
 -spec set_prev_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
-set_prev_assigned_to(PN=#knm_phone_number{prev_assigned_to = V}, V) -> PN;
 set_prev_assigned_to(PN=#knm_phone_number{prev_assigned_to = undefined}
                     ,PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     PN#knm_phone_number{prev_assigned_to = PrevAssignedTo};
-set_prev_assigned_to(PN, PrevAssignedTo='undefined') ->
-    ?DIRTY(PN#knm_phone_number{prev_assigned_to = PrevAssignedTo});
+
+set_prev_assigned_to(PN, undefined) -> PN;
+
+set_prev_assigned_to(PN=#knm_phone_number{prev_assigned_to = V}, V) -> PN;
 set_prev_assigned_to(PN, PrevAssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     ?DIRTY(PN#knm_phone_number{prev_assigned_to = PrevAssignedTo}).
 
