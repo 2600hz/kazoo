@@ -273,11 +273,6 @@ save(PN=#knm_phone_number{dry_run='true'}) ->
 save(PN=#knm_phone_number{is_dirty = false}) ->
     lager:debug("not dirty, skip saving ~s", [number(PN)]),
     PN;
-%% save(PN=#knm_phone_number{state=?NUMBER_STATE_AVAILABLE
-%%                          ,assigned_to=AssignedTo
-%%                          })
-%%   when AssignedTo =/= 'undefined' ->
-%%     save(PN#knm_phone_number{assigned_to='undefined'});
 save(PN) ->
     Routines = [fun save_to_number_db/1
                ,fun handle_assignment/1
@@ -886,6 +881,10 @@ set_state(PN=#knm_phone_number{state = V}, V) -> PN;
 set_state(PN=#knm_phone_number{state = undefined}, State) ->
     true = is_state(State),
     PN#knm_phone_number{state = State};
+set_state(PN0, State=?NUMBER_STATE_AVAILABLE) ->
+    PN = set_assigned_to(PN0, undefined),
+    lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
+    ?DIRTY(PN#knm_phone_number{state = State});
 set_state(PN, State) ->
     true = is_state(State),
     lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
