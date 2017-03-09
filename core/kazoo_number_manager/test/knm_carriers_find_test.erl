@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -11,7 +11,7 @@
 -include("knm.hrl").
 
 is_number_billable_test_() ->
-    {ok, N} = knm_number:get(?TEST_OLD_NUM),
+    {ok, N} = knm_number:get(?TEST_OLD1_NUM),
     PN1 = knm_number:phone_number(N),
     PN2 = knm_phone_number:set_module_name(PN1, <<"knm_bandwidth2">>),
     PN3 = knm_phone_number:set_module_name(PN1, <<"wnm_pacwest">>),

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2015-2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -12,13 +12,11 @@
 -include("knm.hrl").
 
 move_to_child_test_() ->
-    {'ok', Number} = knm_number:move(?TEST_AVAILABLE_NUM, ?CHILD_ACCOUNT_ID),
-    PhoneNumber = knm_number:phone_number(Number),
-    [{"verify assigned_to is child account"
-     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PhoneNumber))
-     }
-    ,{"verify number is in service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PhoneNumber))
+    {'ok', N} = knm_number:move(?TEST_AVAILABLE_NUM, ?CHILD_ACCOUNT_ID),
+    PN = knm_number:phone_number(N),
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"verify assigned_to is child account"
+     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ].
 
@@ -32,7 +30,8 @@ move_changing_public_fields_test_() ->
               ],
     {ok, N0} = knm_number:get(?TEST_AVAILABLE_NUM),
     {ok, N} = knm_number:move(?TEST_AVAILABLE_NUM, ?RESELLER_ACCOUNT_ID, Options),
-    [{"verify a public key is set"
+    [?_assert(knm_phone_number:is_dirty(knm_number:phone_number(N)))
+    ,{"verify a public key is set"
      ,?_assertEqual(<<"my string">>
                    ,kz_json:get_value(Key, knm_number:to_public_json(N0))
                    )

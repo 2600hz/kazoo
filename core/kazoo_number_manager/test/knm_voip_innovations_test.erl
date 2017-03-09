@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -52,12 +52,13 @@ matcher(Prefix) ->
     end.
 
 acquire_number_test_() ->
-    N = <<"+14352154006">>,
-    PhoneNumber = knm_phone_number:from_number(N),
-    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
-    Result = knm_voip_innovations:acquire_number(Number),
-    [{"Verify number is still one inputed"
-     ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
+    Num = <<"+14352154006">>,
+    PN = knm_phone_number:from_number(Num),
+    N = knm_number:set_phone_number(knm_number:new(), PN),
+    Result = knm_voip_innovations:acquire_number(N),
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify number is still one inputed"
+     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
 

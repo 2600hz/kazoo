@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -21,7 +21,8 @@ create_new_number_test_() ->
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     JObj = knm_number:to_public_json(N),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -57,7 +58,8 @@ reseller_new_number_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -104,7 +106,8 @@ create_new_available_number_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify available number is unassigned"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify available number is unassigned"
      ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number auth_by field was stored"
@@ -132,7 +135,8 @@ create_existing_number_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_AVAILABLE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -164,7 +168,8 @@ create_new_port_in_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"
@@ -257,7 +262,8 @@ create_non_existing_mobile_number_test_() ->
             ],
     {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
     PN = knm_number:phone_number(N),
-    [{"Verify phone number is assigned to reseller account"
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify phone number is assigned to reseller account"
      ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number was authorized by master account"

@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -73,12 +73,13 @@ matcher(Dialcode, Prefix) ->
     end.
 
 acquire_number_test_() ->
-    N = ?TEST_TELNYX_NUM,
-    PhoneNumber = knm_phone_number:from_number(N),
-    Number = knm_number:set_phone_number(knm_number:new(), PhoneNumber),
-    Result = knm_telnyx:acquire_number(Number),
-    [{"Verify number is still one inputed"
-     ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
+    Num = ?TEST_TELNYX_NUM,
+    PN = knm_phone_number:from_number(Num),
+    N = knm_number:set_phone_number(knm_number:new(), PN),
+    Result = knm_telnyx:acquire_number(N),
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify number is still one inputed"
+     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
 
@@ -95,11 +96,12 @@ e911_test_() ->
               ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
-    {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
-    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
+    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     PN1 = knm_number:phone_number(N1),
+    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN2 = knm_number:phone_number(N2),
-    [{"Verify feature is properly set"
+    [?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"Verify feature is properly set"
      ,?_assertEqual(E911, knm_phone_number:feature(PN1, ?FEATURE_E911))
      }
     ,{"Verify we are keeping track of intermediary address_id"
@@ -107,6 +109,7 @@ e911_test_() ->
                    ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(PN1))
                    )
      }
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN2))
     ,{"Verify feature is still properly set"
      ,?_assertEqual(E911, knm_phone_number:feature(PN2, ?FEATURE_E911))
      }
@@ -128,28 +131,31 @@ cnam_test_() ->
               ,{<<"auth_by_account">>, kz_json:new()}
               ,{'public_fields', JObj}
               ],
-    {'ok', N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
+    {ok, N1} = knm_number:create(?TEST_TELNYX_NUM, Options),
     PN1 = knm_number:phone_number(N1),
-    #{'ok' := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
+    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj}]),
     PN2 = knm_number:phone_number(N2),
     Deactivate = kz_json:from_list(
                    [{?CNAM_INBOUND_LOOKUP, false}
                    ,{?CNAM_DISPLAY_NAME, undefined}
                    ]),
-    #{'ok' := [N3]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
+    #{ok := [N3]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, Deactivate}]),
     PN3 = knm_number:phone_number(N3),
-    [{"Verify inbound CNAM is properly activated"
+    [?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"Verify inbound CNAM is properly activated"
      ,?_assertEqual(true, is_cnam_activated(PN1))
      }
     ,{"Verify outbound CNAM is properly set"
      ,?_assertEqual(<<"my CNAM">>, cnam_name(PN1))
      }
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN2))
     ,{"Verify inbound CNAM is still properly activated"
      ,?_assertEqual(true, is_cnam_activated(PN2))
      }
     ,{"Verify outbound CNAM is still properly set"
      ,?_assertEqual(<<"my CNAM">>, cnam_name(PN2))
      }
+    ,?_assert(knm_phone_number:is_dirty(PN3))
     ,{"Verify inbound CNAM is indeed deactivated"
      ,?_assertEqual(false, is_cnam_activated(PN3))
      }
@@ -188,17 +194,23 @@ rename_carrier_test_() ->
     JObj4 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"gen_carrier">>}]),
     #{ko := #{?TEST_TELNYX_NUM := Error6}} =
         knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, JObj4}]),
-    [{"Verify carrier name is right"
+    [?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"Verify carrier name is right"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
      }
     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN1)))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
     ,{"Verify carrier name is changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
+     }
+    ,{"Verify local feature is now set"
+     ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
      }
     ,{"Verify feature is now removed"
      ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
      }
-    ,{"Verify local feature is now set"
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN4))
+    ,{"Verify local feature is still set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN4)))
      }
     ,{"Verify setting wrong carrier is forbidden"
@@ -224,10 +236,12 @@ rename_from_local_test_() ->
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
     #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj1}], Options),
     PN2 = knm_number:phone_number(N2),
-    [{"Verify carrier name is right"
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN1))
+    ,{"Verify carrier name is right"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN1))
      }
     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN1)))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
     ,{"Verify carrier name is changed"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN2))
      }

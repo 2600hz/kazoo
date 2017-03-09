@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -75,18 +75,12 @@ find_tollfree_numbers(Options) ->
     ].
 
 acquire_number() ->
-    N = <<"+19734096113">>,
-    Number = knm_number(N),
-    Result = knm_bandwidth2:acquire_number(Number),
-    [{"Verify number is still one inputed"
-     ,?_assertEqual(N, knm_phone_number:number(knm_number:phone_number(Result)))
+    Num = <<"+19734096113">>,
+    PN = knm_phone_number:from_number(Num),
+    N = knm_number:set_phone_number(knm_number:new(), PN),
+    Result = knm_bandwidth2:acquire_number(N),
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify number is still one inputed"
+     ,?_assertEqual(Num, knm_phone_number:number(knm_number:phone_number(Result)))
      }
     ].
-
-%%% Internals
-
-knm_number(N=?NE_BINARY) ->
-    PhoneNumber = knm_phone_number:from_number(N),
-    knm_number:set_phone_number(knm_number:new(), PhoneNumber).
-
-%%% End of Module

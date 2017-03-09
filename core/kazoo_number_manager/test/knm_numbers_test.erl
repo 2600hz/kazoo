@@ -75,6 +75,7 @@ create_test_() ->
     ,?_assertMatch([_], maps:get(ok, Ret))
     ,?_assertEqual(true, knm_number:is_number(n_x(1, Ret)))
     ,?_assertEqual(true, knm_phone_number:is_phone_number(pn_x(1, Ret)))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,{"Verify feature is properly set"
      ,?_assertEqual(E911, knm_phone_number:feature(pn_x(1, Ret), ?FEATURE_E911))
      }
@@ -97,6 +98,7 @@ move_test_() ->
     Ret = knm_numbers:move([?NOT_NUM, ?TEST_AVAILABLE_NUM], ?CHILD_ACCOUNT_ID),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(pn_x(1, Ret)))
     ,{"verify assigned_to is child account"
      ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
@@ -110,9 +112,15 @@ move_test_() ->
 update_test_() ->
     NotDefault = true,
     Setters = [{fun knm_phone_number:set_ported_in/2, NotDefault}],
+    Ret0 = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], []),
     Ret = knm_numbers:update([?NOT_NUM, ?TEST_AVAILABLE_NUM], Setters),
-    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
+    [?_assertEqual(false, knm_phone_number:is_dirty(pn_x(1, Ret0)))
+    ,{"verify ported_in is set to default"
+     ,?_assertNotEqual(NotDefault, knm_phone_number:ported_in(pn_x(1, Ret0)))
+     }
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,{"verify number was indeed updated"
      ,?_assertEqual(NotDefault, knm_phone_number:ported_in(pn_x(1, Ret)))
      }
@@ -159,6 +167,7 @@ delete_test_() ->
     ,{"verify number was indeed deleted"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret)))
      }
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ].
 
 
@@ -171,6 +180,7 @@ reconcile_test_() ->
                   )
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,{"verify number is now in service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret)))
      }
@@ -190,6 +200,8 @@ reserve_test_() ->
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
      }
+    ,?_assertEqual(true,  knm_phone_number:is_dirty(pn_x(1, Ret1)))
+    ,?_assertEqual(false, knm_phone_number:is_dirty(pn_x(1, Ret2)))
     ,{"verify number is still in service"
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
      }
@@ -205,6 +217,8 @@ assign_to_app_test_() ->
     ,{"Verify number is not already assigned to MyApp"
      ,?_assertNotEqual(MyApp, knm_phone_number:used_by(pn_x(1, Ret1)))
      }
+    ,?_assertEqual(false, knm_phone_number:is_dirty(pn_x(1, Ret1)))
+    ,?_assertEqual(true,  knm_phone_number:is_dirty(pn_x(1, Ret2)))
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
     ,{"Verify number is now used by MyApp"
@@ -219,16 +233,19 @@ release_test_() ->
     Ret2 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_BAD_CARRIER_NUM]),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
     ,?_assertMatch([_], maps:get(ok, Ret))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,{"Verify number went from in_service to reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret)))
      }
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
     ,?_assertMatch([_], maps:get(ok, Ret1))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret1)))
     ,{"Verify number went from in_service to deleted"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret1)))
      }
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret2)))
     ,{"Verify number went from in_service to available"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret2)))
      }

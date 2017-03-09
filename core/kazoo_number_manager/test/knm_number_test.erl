@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -34,16 +34,17 @@ unavailable_tests(ErrorJObj) ->
      }
     ].
 
-available_tests(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    [{"Verify available phone number"
-     ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PhoneNumber))
+available_tests(N) ->
+    PN = knm_number:phone_number(N),
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
+    ,{"Verify available phone number"
+     ,?_assertEqual(?TEST_AVAILABLE_NUM, knm_phone_number:number(PN))
      }
     ,{"Verify available number module"
-     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PhoneNumber))
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
      }
     ,{"Verify available number state"
-     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PhoneNumber))
+     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN))
      }
     ].
 
@@ -59,30 +60,36 @@ get_not_found_test_() ->
 
 mdn_transitions_test_() ->
     Num = ?TEST_IN_SERVICE_MDN,
-    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID}
-                      |knm_number_options:mdn_options()
-                     ],
+    DefaultOptions = [{assign_to, ?MASTER_ACCOUNT_ID} | knm_number_options:mdn_options()],
     {ok, N1} = knm_number:move(Num, ?MASTER_ACCOUNT_ID, DefaultOptions),
     {ok, N2} = knm_number:release(Num, DefaultOptions),
     {ok, N3} = knm_number:reconcile(Num, DefaultOptions),
     {ok, N4} = knm_number:create(?TEST_CREATE_NUM, [{module_name,?CARRIER_MDN}|DefaultOptions]),
-    [{"Verify MDN can move from in_service to in_service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N1)))
+    PN1 = knm_number:phone_number(N1),
+    PN2 = knm_number:phone_number(N2),
+    PN3 = knm_number:phone_number(N3),
+    PN4 = knm_number:phone_number(N4),
+    [?_assert(knm_phone_number:is_dirty(PN1))
+    ,{"Verify MDN can move from in_service to in_service"
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
      }
+    ,?_assert(knm_phone_number:is_dirty(PN2))
     ,{"Verify releasing MDN results in deletion"
-     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(knm_number:phone_number(N2)))
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN2))
      }
+    ,?_assert(knm_phone_number:is_dirty(PN3))
     ,{"Verify MDN can reconcile from in_service to in_service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N3)))
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN3))
      }
     ,{"Verify MDN cannot be reserved"
      ,?_assertMatch({error,_}, knm_number:reserve(Num, knm_number_options:default()))
      }
+    ,?_assert(knm_phone_number:is_dirty(PN4))
     ,{"Verify MDN creation forces state to in_service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(knm_number:phone_number(N4)))
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN4))
      }
     ,{"Verify MDN creation creates local feature"
-     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(knm_number:phone_number(N4)))
+     ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN4))
      }
     ].
 
@@ -114,5 +121,54 @@ is_mdn_for_mdn_run_test_() ->
      }
     ,{"Verify sudo can update !mdn_run && !knm_mdn number"
      ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Sudo))
+     }
+    ].
+
+
+attempt_setting_e911_on_disallowed_number_test_() ->
+    JObj = kz_json:from_list(
+             [{?FEATURE_E911
+              ,kz_json:from_list(
+                 [{?E911_STREET1, <<"140 Geary St.">>}
+                 ,{?E911_STREET2, <<"3rd floor">>}
+                 ,{?E911_CITY, <<"San Francisco">>}
+                 ,{?E911_STATE, <<"CA">>}
+                 ,{?E911_ZIP, <<"94108">>}
+                 ])
+              }
+             ]),
+    Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
+              ,{public_fields, JObj}
+              ],
+    Updates = [{fun knm_phone_number:reset_doc/2, JObj}],
+    Num = ?BW_EXISTING_DID,
+    {ok, N} = knm_number:get(Num),
+    PN = knm_number:phone_number(N),
+    #{ko := #{Num := ErrorJObj}} = knm_numbers:update([N], Updates, Options),
+    [?_assertEqual(false, knm_phone_number:is_dirty(PN))
+    ,{"Verify feature is not set"
+     ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
+     }
+    ,{"Verify feature cannot be set"
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(ErrorJObj))
+     }
+    ].
+
+
+assign_to_app_test_() ->
+    MyApp = <<"my_app">>,
+    {ok, N0} = knm_number:get(?TEST_IN_SERVICE_NUM),
+    PN0 = knm_number:phone_number(N0),
+    {ok, N1} = knm_number:assign_to_app(?TEST_IN_SERVICE_NUM, MyApp),
+    PN1 = knm_number:phone_number(N1),
+    [{"Verify number is not already assigned to MyApp"
+     ,?_assertNotEqual(MyApp, knm_phone_number:used_by(PN0))
+     }
+    ,?_assertEqual(false, knm_phone_number:is_dirty(PN0))
+    ,{"Verify number is now used by MyApp"
+     ,?_assertEqual(MyApp, knm_phone_number:used_by(PN1))
+     }
+    ,{"Verify updated number will get saved"
+     ,?_assertEqual(true, knm_phone_number:is_dirty(PN1))
      }
     ].
