@@ -159,8 +159,8 @@ parallel_migrate(Workers, Pause) ->
     _ = kapps_config:migrate(),
     {Accounts, Others} = lists:partition(fun kapps_util:is_account_db/1, get_databases()),
     AccountDbs = [kz_util:format_account_db(Db) || Db <- Accounts],
-    OtherSplit = kz_util:to_integer(length(Others) / kz_util:to_integer(Workers)),
-    AccountSplit = kz_util:to_integer(length(AccountDbs) / kz_util:to_integer(Workers)),
+    OtherSplit = kz_term:to_integer(length(Others) / kz_term:to_integer(Workers)),
+    AccountSplit = kz_term:to_integer(length(AccountDbs) / kz_term:to_integer(Workers)),
     SplitDbs = split(AccountSplit, AccountDbs, OtherSplit, Others, []),
     parallel_migrate(Pause, SplitDbs, []).
 
