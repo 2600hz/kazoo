@@ -876,8 +876,6 @@ used_by(#knm_phone_number{used_by=UsedBy}) -> UsedBy.
 %% This is never called from from_json/1. See set_assigned_to/3
 -spec set_used_by(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_used_by(PN=#knm_phone_number{used_by = V}, V) -> PN;
-set_used_by(PN=#knm_phone_number{used_by = undefined}, UsedBy=?NE_BINARY) ->
-    PN#knm_phone_number{used_by = UsedBy};
 set_used_by(PN, UsedBy='undefined') ->
     lager:debug("unassigning ~s from ~s", [number(PN), PN#knm_phone_number.used_by]),
     ?DIRTY(PN#knm_phone_number{used_by = UsedBy});
