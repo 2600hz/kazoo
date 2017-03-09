@@ -172,11 +172,11 @@ update_used_by_from_defined_test_() ->
     MyApp = <<"my_app">>,
     {ok, N0} = knm_number:get(Num),
     PN0 = knm_number:phone_number(N0),
-    #{ok := [N1a]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    {ok, N1a} = knm_number:update_phone_number(N0, [{fun knm_phone_number:set_used_by/2, undefined}]),
     PN1a = knm_number:phone_number(N1a),
-    #{ok := [N1b]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, MyApp}]),
+    {ok, N1b} = knm_number:update_phone_number(N0, [{fun knm_phone_number:set_used_by/2, MyApp}]),
     PN1b = knm_number:phone_number(N1b),
-    #{ok := [N2]} = knm_numbers:update([N1b], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    {ok, N2} = knm_number:update_phone_number(N1b, [{fun knm_phone_number:set_used_by/2, undefined}]),
     PN2 = knm_number:phone_number(N2),
     [?_assertEqual(<<"callflow">>, knm_phone_number:used_by(PN0))
     ,?_assert(not knm_phone_number:is_dirty(PN0))
@@ -193,11 +193,11 @@ update_used_by_from_undefined_test_() ->
     MyApp = <<"my_app">>,
     {ok, N0} = knm_number:get(Num),
     PN0 = knm_number:phone_number(N0),
-    #{ok := [N1a]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    {ok, N1a} = knm_number:update_phone_number(N0, [{fun knm_phone_number:set_used_by/2, undefined}]),
     PN1a = knm_number:phone_number(N1a),
-    #{ok := [N1b]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, MyApp}]),
+    {ok, N1b} = knm_number:update_phone_number(N0, [{fun knm_phone_number:set_used_by/2, MyApp}]),
     PN1b = knm_number:phone_number(N1b),
-    #{ok := [N2]} = knm_numbers:update([N1b], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    {ok, N2} = knm_number:update_phone_number(N1b, [{fun knm_phone_number:set_used_by/2, undefined}]),
     PN2 = knm_number:phone_number(N2),
     [?_assertEqual(undefined, knm_phone_number:used_by(PN0))
     ,?_assert(not knm_phone_number:is_dirty(PN0))
