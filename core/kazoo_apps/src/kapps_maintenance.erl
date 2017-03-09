@@ -129,7 +129,7 @@ migrate(Pause) ->
     io:format("running media migrations...~n"),
     _ = kazoo_media_maintenance:migrate(),
 
-   'no_return'.
+    'no_return'.
 
 -spec migrate(text() | integer(), ne_binaries()) -> 'no_return'.
 migrate(Pause, Databases) ->
@@ -184,8 +184,8 @@ split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
             'false' -> {Accounts, []};
             'true' -> lists:split(AccountSplit, Accounts)
         end,
-     NewResults = [{AccountDbs, OtherDbs}|Results],
-     split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
+    NewResults = [{AccountDbs, OtherDbs}|Results],
+    split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
 
 -spec parallel_migrate(integer(), split_results(), pids()) -> 'no_return'.
 parallel_migrate(_, [], Pids) -> wait_for_parallel_migrate(Pids);
@@ -197,8 +197,8 @@ parallel_migrate(Pause, [{Accounts, Others}|Remaining], Pids) ->
 
 -spec parallel_migrate_worker(integer(), ne_binaries(), pid()) -> {'compliete', pid()}.
 parallel_migrate_worker(Pause, Databases, Parent) ->
-   catch migrate(Pause, Databases),
-   Parent ! {'complete', self()}.
+    catch migrate(Pause, Databases),
+    Parent ! {'complete', self()}.
 
 -spec wait_for_parallel_migrate(pids()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
@@ -207,10 +207,10 @@ wait_for_parallel_migrate([]) ->
     _ = kazoo_media_maintenance:migrate(),
    'no_return';
 wait_for_parallel_migrate([Pid|Pids]) ->
-   receive
-       {'complete', Pid} ->
-           wait_for_parallel_migrate(Pids)
-   end.
+    receive
+        {'complete', Pid} ->
+            wait_for_parallel_migrate(Pids)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
