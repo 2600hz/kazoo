@@ -10431,6 +10431,7 @@
                     "type": "string"
                 },
                 "released_state": {
+                    "default": "available",
                     "description": "number_manager released state",
                     "type": "string"
                 },
@@ -10463,7 +10464,6 @@
                 "e164_converters",
                 "features",
                 "providers",
-                "released_state",
                 "should_permanently_delete"
             ],
             "type": "object"
@@ -10596,12 +10596,10 @@
             "description": "Schema for number_manager.locality system_config",
             "properties": {
                 "url": {
-                    "description": "number_manager.locality url"
+                    "description": "number_manager.locality url",
+                    "type": "string"
                 }
             },
-            "required": [
-                "url"
-            ],
             "type": "object"
         },
         "system_config.number_manager.other": {

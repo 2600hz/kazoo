@@ -122,6 +122,7 @@
             "type": "string"
         },
         "released_state": {
+            "default": "available",
             "description": "number_manager released state",
             "type": "string"
         },
@@ -154,7 +155,6 @@
         "e164_converters",
         "features",
         "providers",
-        "released_state",
         "should_permanently_delete"
     ],
     "type": "object"

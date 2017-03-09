@@ -328,38 +328,35 @@ release(PN, FromState) ->
     case module_name(PN) of
         ?CARRIER_LOCAL -> authorize_release(PN);
         _ ->
-            To = ?NUMBER_STATE_RELEASED,
+            To = knm_config:released_state(),
             knm_errors:invalid_state_transition(PN, FromState, To)
     end.
 
 -spec authorize_release(knm_phone_number()) -> knm_phone_number().
--spec authorize_release(knm_phone_number(), ne_binary()) -> knm_phone_number().
 authorize_release(PN) ->
     authorize_release(PN, auth_by(PN)).
 
 -ifdef(TEST).
 authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) -> authorized_release(PN);
 authorize_release(PN, ?MASTER_ACCOUNT_ID) -> authorized_release(PN);
-authorize_release(_PN, _AuthBy) -> knm_errors:unauthorized().
+authorize_release(_, _) -> knm_errors:unauthorized().
 -else.
 authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     authorized_release(PN);
 authorize_release(PN, AuthBy) ->
-    AssignedTo = assigned_to(PN),
-    case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-        'false' -> knm_errors:unauthorized();
-        'true' -> authorized_release(PN)
+    case kz_util:is_in_account_hierarchy(AuthBy, assigned_to(PN), true) of
+        false -> knm_errors:unauthorized();
+        true -> authorized_release(PN)
     end.
 -endif.
 
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PN) ->
-    ReleasedState = knm_config:released_state(?NUMBER_STATE_AVAILABLE),
     Routines = [{fun set_features/2, ?DEFAULT_FEATURES}
                ,{fun set_doc/2, kz_json:private_fields(doc(PN))}
                ,{fun set_assigned_to/2, undefined}
-               ,{fun set_state/2, ReleasedState}
+               ,{fun set_state/2, knm_config:released_state()}
                ],
     {'ok', NewPN} = setters(PN, Routines),
     NewPN.
