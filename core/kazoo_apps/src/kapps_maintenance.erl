@@ -172,7 +172,7 @@ split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
     NewResults = [{AccountDbs, OtherDbs}|Results],
     split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
 
--spec split(integer(), ne_binaries()) -> split_results().
+-spec split(integer(), [any()]) -> {[any()],[any()]}.
 split(Count, List) ->
     case length(List) >= Count of
         'false' -> {List, []};
