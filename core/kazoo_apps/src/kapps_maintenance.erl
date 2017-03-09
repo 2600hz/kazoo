@@ -197,7 +197,7 @@ wait_for_parallel_migrate([]) ->
     %% Migrate settings for kazoo_media
     io:format("running media migrations...~n"),
     _ = kazoo_media_maintenance:migrate(),
-   'no_return';
+    'no_return';
 wait_for_parallel_migrate([Ref|Refs]) ->
     receive
         Ref -> wait_for_parallel_migrate(Refs)
