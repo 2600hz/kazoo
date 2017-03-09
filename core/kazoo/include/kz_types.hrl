@@ -31,6 +31,7 @@
 
 -type atoms() :: [atom()].
 -type pids() :: [pid()].
+-type references() :: [reference()].
 
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].

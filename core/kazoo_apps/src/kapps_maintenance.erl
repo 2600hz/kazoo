@@ -19,6 +19,9 @@
         ,migrate/1
         ,migrate_to_4_0/0
         ]).
+-export([parallel_migrate/1
+        ,parallel_migrate/2
+        ]).
 -export([find_invalid_acccount_dbs/0]).
 -export([refresh/0, refresh/1
         ,refresh_account_db/1
@@ -121,6 +124,16 @@ migrate(Pause) ->
     _ = kapps_config:migrate(),
 
     Databases = get_databases(),
+    _ = migrate(Pause, Databases),
+
+    %% Migrate settings for kazoo_media
+    io:format("running media migrations...~n"),
+    _ = kazoo_media_maintenance:migrate(),
+
+    'no_return'.
+
+-spec migrate(text() | integer(), ne_binaries()) -> 'no_return'.
+migrate(Pause, Databases) ->
     Accounts = [kz_util:format_account_id(Db, 'encoded')
                 || Db <- Databases,
                    kapps_util:is_account_db(Db)
@@ -134,11 +147,63 @@ migrate(Pause) ->
 
     kazoo_bindings:map(binding('migrate'), Accounts),
 
+    'no_return'.
+
+-spec parallel_migrate(text() | integer()) -> 'no_return'.
+parallel_migrate(Workers) ->
+    parallel_migrate(Workers, 2 * ?MILLISECONDS_IN_SECOND).
+
+-spec parallel_migrate(text() | integer(), text() | integer()) -> 'no_return'.
+parallel_migrate(Workers, Pause) ->
+    _ = migrate_system(),
+    _ = kapps_config:migrate(),
+    {Accounts, Others} = lists:partition(fun kapps_util:is_account_db/1, get_databases()),
+    AccountDbs = [kz_util:format_account_db(Db) || Db <- Accounts],
+    OtherSplit = kz_term:to_integer(length(Others) / kz_term:to_integer(Workers)),
+    AccountSplit = kz_term:to_integer(length(AccountDbs) / kz_term:to_integer(Workers)),
+    SplitDbs = split(AccountSplit, AccountDbs, OtherSplit, Others, []),
+    parallel_migrate(Pause, SplitDbs, []).
+
+-type split_results() :: [{ne_binaries(), ne_binaries()}].
+-spec split(integer(), ne_binaries(), integer(), ne_binaries(), split_results()) -> split_results().
+split(_, [], _, [], Results) -> Results;
+split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
+    {OtherDbs, RemainingOthers} = split(OtherSplit, Others),
+    {AccountDbs, RemainingAccounts} = split(AccountSplit, Accounts),
+    NewResults = [{AccountDbs, OtherDbs}|Results],
+    split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
+
+-spec split(integer(), [any()]) -> {[any()],[any()]}.
+split(Count, List) ->
+    case length(List) >= Count of
+        'false' -> {List, []};
+        'true' -> lists:split(Count, List)
+    end.
+
+-spec parallel_migrate(integer(), split_results(), references()) -> 'no_return'.
+parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
+parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
+    Self = self(),
+    Dbs = lists:sort(fun get_database_sort/2, lists:usort(Accounts ++ Others)),
+    Ref = make_ref(),
+    _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Dbs, Self]),
+    parallel_migrate(Pause, Remaining, [Ref|Refs]).
+
+-spec parallel_migrate_worker(reference(), integer(), ne_binaries(), pid()) -> reference().
+parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
+    _ = (catch migrate(Pause, Databases)),
+    Parent ! Ref.
+
+-spec wait_for_parallel_migrate(references()) -> 'no_return'.
+wait_for_parallel_migrate([]) ->
     %% Migrate settings for kazoo_media
     io:format("running media migrations...~n"),
     _ = kazoo_media_maintenance:migrate(),
-
-    'no_return'.
+    'no_return';
+wait_for_parallel_migrate([Ref|Refs]) ->
+    receive
+        Ref -> wait_for_parallel_migrate(Refs)
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -175,8 +240,8 @@ refresh(Databases, Pause) ->
 
 refresh([], _, _) -> 'no_return';
 refresh([Database|Databases], Pause, Total) ->
-    io:format("(~p/~p) refreshing database '~s'~n"
-             ,[length(Databases) + 1, Total, Database]),
+    io:format("~p (~p/~p) refreshing database '~s'~n"
+             ,[self(), length(Databases) + 1, Total, Database]),
     _ = refresh(Database),
     _ = case Pause < 1 of
             'false' -> timer:sleep(Pause);

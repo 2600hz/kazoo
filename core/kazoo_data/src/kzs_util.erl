@@ -127,6 +127,8 @@ db_priority(?MATCH_RESOURCE_SELECTORS_UNENCODED(_AccountId)) -> 23;
 db_priority(?MATCH_RESOURCE_SELECTORS_encoded(_AccountId)) -> 23;
 db_priority(?MATCH_RESOURCE_SELECTORS_ENCODED(_AccountId)) -> 23;
 db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 23;
+db_priority(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 24;
+db_priority(?MATCH_PROVISIONER_encoded(_AccountId)) -> 24;
 db_priority(_Database) -> 24.
 
 %%------------------------------------------------------------------------------
