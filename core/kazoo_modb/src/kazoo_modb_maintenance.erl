@@ -22,8 +22,23 @@
         ,rollup_account/1
         ,rollup_account/2
         ]).
+-export([dump_transactions/3]).
 
 -include("kazoo_modb.hrl").
+
+-define(HEADER_MAP, [{<<"_id">>, <<"ID">>}
+                    ,{<<"_rev">>, <<"Revision">>}
+                    ,{<<"description">>, <<"Description">>}
+                    ,{<<"pvt_account_db">>, <<"Account DB">>}
+                    ,{<<"pvt_account_id">>, <<"Amount">>}
+                    ,{<<"pvt_amount">>, <<"Amount">>}
+                    ,{<<"pvt_code">>, <<"Transaction Code">>}
+                    ,{<<"pvt_created">>, <<"Created">>}
+                    ,{<<"pvt_modified">>, <<"Modified">>}
+                    ,{<<"pvt_reason">>, <<"Reason">>}
+                    ,{<<"pvt_type">>, <<"Type">>}
+                    ,{<<"pvt_vsn">>, <<"Version">>}
+                    ]).
 
 -spec delete_modbs(ne_binary()) -> 'ok' | 'no_return'.
 -spec delete_modbs(ne_binary() | kz_year(), ne_binary() | kz_month()) -> 'ok' | 'no_return'.
@@ -243,3 +258,29 @@ rollup_balance(JObj) ->
         <<"credit">> -> Balance;
         <<"debit">> -> Balance * -1
     end.
+
+-spec dump_transactions(ne_binary(), ne_binary(), ne_binary()) -> 'no_return' | 'ok'.
+dump_transactions(Account, Year, Month) ->
+    AccountId = kz_util:format_account_id(Account, 'raw'),
+    View = <<"transactions/by_timestamp">>,
+    ViewOptions = ['include_docs'
+                  ,{'year', kz_term:to_binary(Year)}
+                  ,{'month', kz_time:pad_month(Month)}
+                  ],
+    case kazoo_modb:get_results(AccountId, View, ViewOptions) of
+        {'ok', JObjs} ->
+            CsvOptions = [{'transform_fun', fun fix_value_map/2}
+                         ,{'header_map', ?HEADER_MAP}
+                         ],
+            Docs = [kz_json:get_value(<<"doc">>, JObj) || JObj <- JObjs],
+            io:format("~s~n", [kz_csv:from_jobjs(Docs, CsvOptions)]),
+            'no_return';
+        {'error', _R} ->
+            io:format("unable to get transactions for ~s (~p-~p): ~p", [AccountId, Month, Year, _R])
+    end.
+
+-spec fix_value_map(ne_binary(), kz_json:term()) -> kz_json:term().
+fix_value_map(<<"pvt_amount">> = Key, Value) -> {Key, wht_util:units_to_dollars(Value)};
+fix_value_map(<<"pvt_modified">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
+fix_value_map(<<"pvt_created">> = Key, Value) -> {Key, kz_time:rfc1036(Value)};
+fix_value_map(Key, Value) -> {Key, Value}.

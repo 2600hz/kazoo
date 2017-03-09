@@ -18,6 +18,9 @@
         ,row_to_iolist/1
         ,json_to_iolist/1
         ]).
+-export([from_jobjs/1
+        ,from_jobjs/2
+        ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
@@ -277,6 +280,24 @@ json_to_iolist(Records)
     kz_util:delete_file(Tmp),
     IOData.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec from_jobjs(kz_json:objects()) -> iolist().
+from_jobjs(JObjs) ->
+    from_jobjs(JObjs, []).
+
+-spec from_jobjs(kz_json:objects(), kz_proplist()) -> iolist().
+from_jobjs(JObjs, Options) ->
+    Routines = [fun maybe_transform/2
+               ,fun check_integrity/2
+               ,fun json_objs_to_csv/2
+               ],
+    lists:foldl(fun(F, J) -> F(J, Options) end, JObjs, Routines).
+
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
@@ -310,4 +331,88 @@ cell_to_binary(Cell=?NE_BINARY) ->
     binary:replace(Cell, <<$,>>, <<$;>>, ['global']).
 
 
-%%% End of Module.
+-spec maybe_transform(kz_json:objects(), kz_proplist()) -> kz_json:objects().
+maybe_transform(JObjs, Options) ->
+    case props:get_value('transform_fun', Options) of
+        'undefined' -> JObjs;
+        Fun -> [kz_json:map(Fun, JObj) || JObj <- JObjs]
+    end.
+
+-spec check_integrity(list(), kz_proplist()) -> kz_json:objects().
+check_integrity(JObjs, _Options) ->
+    Headers = get_headers(JObjs),
+    check_integrity(JObjs, Headers, []).
+
+-spec check_integrity(kz_json:objects(), ne_binaries(), kz_json:objects()) ->
+                             kz_json:objects().
+check_integrity([], _, Acc) ->
+    lists:reverse(Acc);
+check_integrity([JObj|JObjs], Headers, Acc) ->
+    NJObj = lists:foldl(fun check_integrity_fold/2, JObj, Headers),
+    NJObj1 = kz_json:from_list(lists:keysort(1, kz_json:to_proplist(NJObj))),
+    check_integrity(JObjs, Headers, [NJObj1|Acc]).
+
+-spec check_integrity_fold(kz_json:path(), kz_json:object()) ->
+                                  kz_json:json_term().
+check_integrity_fold(Header, JObj) ->
+    case kz_json:get_value(Header, JObj) of
+        'undefined' ->
+            kz_json:set_value(Header, <<>>, JObj);
+        _ -> JObj
+    end.
+
+-spec get_headers(kz_json:objects()) -> ne_binaries().
+get_headers(JObjs) ->
+    lists:foldl(fun fold_over_objects/2, [], JObjs).
+
+-spec fold_over_objects(kz_json:object(), ne_binaries()) -> ne_binaries().
+fold_over_objects(JObj, Headers) ->
+    lists:foldl(fun fold_over_keys/2, Headers, kz_json:get_keys(JObj)).
+
+-spec fold_over_keys(ne_binary(), ne_binaries()) -> ne_binaries().
+fold_over_keys(Key, Hs) ->
+    case lists:member(Key, Hs) of
+        'false' -> [Key|Hs];
+        'true' -> Hs
+    end.
+
+-spec create_csv_header(kz_json:objects(), kz_proplist()) -> iolist().
+create_csv_header(JObjs, Options) ->
+    Headers = case props:get_value('header_map', Options) of
+                  'undefined' -> get_headers(JObjs);
+                  HeaderMap ->
+                      lists:map(fun(Header) -> header_map(Header, HeaderMap) end
+                               ,get_headers(JObjs)
+                               )
+              end,
+    csv_ize(lists:reverse(Headers)).
+
+-spec header_map(ne_binary(), kz_proplist()) -> ne_binary().
+header_map(Header, HeaderMap) ->
+    case props:get_value(Header, HeaderMap) of
+        'undefined' -> Header;
+        FriendlyHeader -> FriendlyHeader
+    end.
+
+-spec json_objs_to_csv(kz_json:objects(), kz_proplist()) -> iolist().
+json_objs_to_csv([], _) -> [];
+json_objs_to_csv(JObjs, Options) ->
+    [create_csv_header(JObjs, Options), [json_to_csv(JObj) || JObj <- JObjs]].
+
+-spec csv_ize(kz_json:path()) -> iolist().
+csv_ize([F|Rest]) ->
+    [<<"\"">>, kz_term:to_binary(F), <<"\"">>
+    ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
+    ,<<"\n">>
+    ].
+
+-spec try_to_binary(any()) -> binary().
+try_to_binary(Value) ->
+    try kz_term:to_binary(Value)
+    catch
+        _E:_R -> <<"">>
+    end.
+
+-spec json_to_csv(kz_json:object()) -> iolist().
+json_to_csv(JObj) ->
+    csv_ize(kz_json:values(JObj)).
