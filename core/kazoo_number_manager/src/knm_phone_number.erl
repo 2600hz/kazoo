@@ -962,6 +962,9 @@ features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
 features_allowed(#knm_phone_number{number = ?TEST_IN_SERVICE_NUM}) ->
     [?FEATURE_RENAME_CARRIER
     ];
+features_allowed(#knm_phone_number{number = ?TEST_CREATE_NUM}) ->
+    [?FEATURE_RENAME_CARRIER
+    ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
