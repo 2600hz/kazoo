@@ -55,7 +55,7 @@ clean-deps:
 	$(if $(wildcard deps/), rm -r deps/)
 
 .erlang.mk:
-	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/a7a059504dd229958d8cd059b2a6ab93b4a6805a/erlang.mk' -O $(ROOT)/erlang.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/2016.01.12/erlang.mk' -O $(ROOT)/erlang.mk
 
 deps: deps/Makefile
 	$(MAKE) -C deps/ all
