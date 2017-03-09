@@ -9,7 +9,7 @@
 -module(teletype_fax_inbound_error_to_email).
 
 -export([init/0
-        ,handle_fax_inbound_error/2
+        ,handle_fax_inbound_error/1
         ]).
 
 -include("teletype.hrl").
@@ -64,10 +64,11 @@ init() ->
                         | Fields
                        ],
     teletype_templates:init(?TEMPLATE_ID_FILTERED, FilteredParams),
-    teletype_templates:init(?TEMPLATE_ID, UnfilteredParams).
+    teletype_templates:init(?TEMPLATE_ID, UnfilteredParams),
+    teletype_bindings:bind(<<"inbound_fax_error">>, ?MODULE, 'handle_fax_inbound_error').
 
--spec handle_fax_inbound_error(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_fax_inbound_error(JObj, _Props) ->
+-spec handle_fax_inbound_error(kz_json:object()) -> 'ok'.
+handle_fax_inbound_error(JObj) ->
     'true' = kapi_notifications:fax_inbound_error_v(JObj),
     kz_util:put_callid(JObj),
 

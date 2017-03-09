@@ -9,7 +9,7 @@
 -module(teletype_transaction).
 
 -export([init/0
-        ,handle_transaction/2
+        ,handle_transaction/1
         ]).
 
 -include("teletype.hrl").
@@ -86,10 +86,11 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"transaction">>, ?MODULE, 'handle_transaction').
 
--spec handle_transaction(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_transaction(JObj, _Props) ->
+-spec handle_transaction(kz_json:object()) -> 'ok'.
+handle_transaction(JObj) ->
     'true' = kapi_notifications:transaction_v(JObj),
     kz_util:put_callid(JObj),
 

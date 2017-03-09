@@ -13,6 +13,9 @@
         ,restore_system_template/1
         ]).
 -export([renderer_status/0]).
+-export([start_module/1
+        ,stop_module/1
+        ]).
 
 -include("teletype.hrl").
 
@@ -122,3 +125,69 @@ renderer_status() ->
          || {Pid, {_, QueueLength}} <- Workers
         ],
     'no_return'.
+
+-spec start_module(module() | ne_binary()) -> 'ok' | {'error', any()}.
+start_module(Module) when is_atom(Module) ->
+    lager:info("starting teletype module ~s", [Module]),
+    try erlang:apply(Module, 'init', []) of
+        _ -> maybe_add_module_to_autoload(Module)
+    catch
+        _:Reason ->
+            lager:error("failed to start teletype module ~s with reason:~p", [Module, Reason]),
+            kz_util:log_stacktrace(),
+            {'error', Reason}
+    end;
+start_module(Module) ->
+    case module_from_binary(Module) of
+        {'ok', Atom} -> start_module(Atom);
+        Err -> Err
+    end.
+
+-spec stop_module(module() | ne_binary()) -> 'ok' | {'error', any()}.
+stop_module(Module) when is_atom(Module) ->
+    teletype_bindings:flush_mod(Module),
+    maybe_remove_module_from_autoload(Module);
+stop_module(Module) ->
+    case module_from_binary(Module) of
+        {'ok', Atom} -> stop_module(Atom);
+        Err -> Err
+    end.
+
+-spec module_from_binary(ne_binary()) -> module() | {'error', 'invalid_mod'}.
+module_from_binary(<<"teletype_", _/binary>> =Module) ->
+    try kz_term:to_atom(Module) of
+        Atom -> {'ok', Atom}
+    catch
+        'error':_ -> invalid_module(Module)
+    end;
+module_from_binary(Module) ->
+    invalid_module(Module).
+
+-spec invalid_module(ne_binary()) -> {'error', 'invalid_mod'}.
+invalid_module(Module) ->
+    lager:error("~s is not a valid teletype module", [Module]),
+    {'error', 'invalid_mod'}.
+
+-spec maybe_add_module_to_autoload(module()) -> 'ok'.
+maybe_add_module_to_autoload(Module) when is_binary(Module) ->
+    Autoload = ?AUTOLOAD_MODULES,
+    case lists:member(Module, Autoload) of
+        'true' -> 'ok';
+        'false' ->
+            kapps_config:set(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, [Module | Autoload]),
+            io:format("added module ~s to autoloaded teletype modules~n", [Module])
+    end;
+maybe_add_module_to_autoload(Module) ->
+    maybe_add_module_to_autoload(kz_term:to_binary(Module)).
+
+-spec maybe_remove_module_from_autoload(module()) -> 'ok'.
+maybe_remove_module_from_autoload(Module) when is_binary(Module) ->
+    Autoload = ?AUTOLOAD_MODULES,
+    case lists:member(Module, Autoload) of
+        'false' -> 'ok';
+        'true' ->
+            kapps_config:set(?NOTIFY_CONFIG_CAT, ?AUTOLOAD_MODULES_KEY, lists:delete(Module, Autoload)),
+            io:format("removed module ~s to autoloaded teletype modules~n", [Module])
+    end;
+maybe_remove_module_from_autoload(Module) ->
+    maybe_remove_module_from_autoload(kz_term:to_binary(Module)).
