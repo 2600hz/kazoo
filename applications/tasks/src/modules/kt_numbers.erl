@@ -126,7 +126,7 @@ list_doc() ->
       "* `e164`: phone number represented as E164 (with a leading `+` sign).\n"
       "* `account_id`: account it is assigned to (32 alphanumeric characters).\n"
       "* `previously_assigned_to`: account it was assigned to before being assigned to `account_id`.\n"
-      "* `state`: either discovery, available, reserved, in_service, released, disconnected, deleted, port_in or port_out.\n"
+      "* `state`: either discovery, available, reserved, in_service, released, deleted, port_in or port_out.\n"
       "* `created`: timestamp number document was created.\n"
       "* `modified`: timestamp number document was last updated.\n"
       "* `used_by`: Kazoo application handling this number.\n"
