@@ -239,3 +239,13 @@ curl -v -X PUT \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/collection/activate
 ```
 
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}
+```
+

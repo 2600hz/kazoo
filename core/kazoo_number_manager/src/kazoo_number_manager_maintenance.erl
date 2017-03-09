@@ -21,7 +21,8 @@
 -export([refresh_numbers_dbs/0
         ,refresh_numbers_db/1
         ]).
--export([fix_account_numbers/1
+-export([fix_number/3
+        ,fix_account_numbers/1
         ,fix_accounts_numbers/1
         ]).
 -export([migrate/0, migrate/1
@@ -213,10 +214,8 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?LOG("########## fixing [~s] ##########", [AccountDb]),
     ?LOG("[~s] getting numbers from account db", [AccountDb]),
     DisplayPNs = get_DIDs(AccountDb, <<"phone_numbers/crossbar_listing">>),
-    ?LOG("[~s] getting numbers from callflow", [AccountDb]),
-    put(callflow_DIDs, get_DIDs(AccountDb, <<"callflows/listing_by_number">>)),
-    ?LOG("[~s] getting numbers from trunkstore", [AccountDb]),
-    put(trunkstore_DIDs, get_DIDs(AccountDb, <<"trunkstore/lookup_did">>)),
+    put(callflow_DIDs, get_DIDs_callflow(AccountDb)),
+    put(trunkstore_DIDs, get_DIDs_trunkstore(AccountDb)),
     AccountId = ?MATCH_ACCOUNT_RAW(A, B, Rest),
     Leftovers =
         lists:foldl(fun (NumberDb, Leftovers) ->
@@ -253,6 +252,21 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
+
+-spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
+fix_number(Num, AuthBy, AccountDb) ->
+    NormalizedNum = knm_converters:normalize(Num),
+    ViewOptions = [{key, NormalizedNum}],
+    UsedBy = app_using(NormalizedNum
+                      ,get_DIDs_callflow(AccountDb, ViewOptions)
+                      ,get_DIDs_trunkstore(AccountDb, ViewOptions)
+                      ),
+    Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}],
+    Options = [{auth_by, AuthBy}
+              ,{dry_run, false}
+              ,{batch_run, false}
+              ],
+    knm_number:update(Num, Routines, Options).
 
 -spec migrate() -> 'ok'.
 migrate() ->
@@ -449,12 +463,25 @@ fix_unassign_doc(DID) ->
 -type dids() :: gb_sets:set(ne_binary()).
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
-    case kz_datamgr:get_result_keys(AccountDb, View) of
+    get_DIDs(AccountDb, View, []).
+-spec get_DIDs(ne_binary(), ne_binary(), kz_proplist()) -> dids().
+get_DIDs(AccountDb, View, ViewOptions) ->
+    ?LOG("[~s] getting numbers from ~s", [AccountDb, View]),
+    case kz_datamgr:get_result_keys(AccountDb, View, ViewOptions) of
         {'ok', DIDs} -> gb_sets:from_list(DIDs);
         {'error', _R} ->
             ?LOG("failed to get ~s DIDs from ~s: ~p", [View, AccountDb, _R]),
             gb_sets:new()
     end.
+
+get_DIDs_callflow(AccountDb) ->
+    get_DIDs_callflow(AccountDb, []).
+get_DIDs_trunkstore(AccountDb) ->
+    get_DIDs_trunkstore(AccountDb, []).
+get_DIDs_callflow(AccountDb, ViewOptions) ->
+    get_DIDs(AccountDb, <<"callflows/listing_by_number">>, ViewOptions).
+get_DIDs_trunkstore(AccountDb, ViewOptions) ->
+    get_DIDs(AccountDb, <<"trunkstore/lookup_did">>, ViewOptions).
 
 -spec get_DIDs_assigned_to(ne_binary(), ne_binary()) -> dids().
 get_DIDs_assigned_to(NumberDb, AssignedTo) ->
@@ -486,16 +513,20 @@ cleanse(JObj) ->
                        ,JObj
                        ).
 
--spec app_using(ne_binary()) -> api_ne_binary().
-app_using(DID) ->
-    case gb_sets:is_element(DID, get(callflow_DIDs)) of
+-spec app_using(ne_binary(), dids(), dids()) -> api_ne_binary().
+app_using(Num, CallflowNums, TrunkstoreNums) ->
+    case gb_sets:is_element(Num, CallflowNums) of
         true -> <<"callflow">>;
         false ->
-            case gb_sets:is_element(DID, get(trunkstore_DIDs)) of
+            case gb_sets:is_element(Num, TrunkstoreNums) of
                 true -> <<"trunkstore">>;
                 false -> undefined
             end
     end.
+
+-spec app_using(ne_binary()) -> api_ne_binary().
+app_using(Num) ->
+    app_using(Num, get(callflow_DIDs), get(trunkstore_DIDs)).
 
 -spec is_assigned_to(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_assigned_to(AccountDb, DID, AccountId) ->
