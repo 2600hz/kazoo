@@ -18,8 +18,13 @@ release_unknown_number_test_() ->
     ].
 
 release_available_number_test_() ->
-    {'error', Error} = knm_number:release(?TEST_AVAILABLE_NUM),
-    [{"Verify error code for releasing available number"
+    {ok, N} = knm_number:release(?TEST_AVAILABLE_NUM),
+    PN = knm_number:phone_number(N),
+    {error, Error} = knm_number:release(?TEST_TELNYX_NUM),
+    [{"Verify releasing available local number results in deletion"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
+     }
+    ,{"Verify error code for releasing available number"
      ,?_assertEqual(400, knm_errors:code(Error))
      }
     ,{"Verify error for releasing available number"
