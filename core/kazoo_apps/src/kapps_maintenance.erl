@@ -172,10 +172,11 @@ split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
     NewResults = [{AccountDbs, OtherDbs}|Results],
     split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
 
+-spec split(integer(), ne_binary()) -> split_results().
 split(Count, List) ->
     case length(List) >= Count of
-        false -> {List, []};
-        true -> lists:split(Count, List)
+        'false' -> {List, []};
+        'true' -> lists:split(Count, List)
     end.
 
 -spec parallel_migrate(integer(), split_results(), references()) -> 'no_return'.
