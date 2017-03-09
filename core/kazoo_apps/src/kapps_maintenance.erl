@@ -178,29 +178,29 @@ split(Count, List) ->
         true -> lists:split(Count, List)
     end.
 
--spec parallel_migrate(integer(), split_results(), pids()) -> 'no_return'.
-parallel_migrate(_, [], Pids) -> wait_for_parallel_migrate(Pids);
-parallel_migrate(Pause, [{Accounts, Others}|Remaining], Pids) ->
+-spec parallel_migrate(integer(), split_results(), references()) -> 'no_return'.
+parallel_migrate(_, [], Refs) -> wait_for_parallel_migrate(Refs);
+parallel_migrate(Pause, [{Accounts, Others}|Remaining], Refs) ->
     Self = self(),
     Dbs = lists:sort(fun get_database_sort/2, lists:usort(Accounts ++ Others)),
-    Pid = kz_util:spawn_link(fun parallel_migrate_worker/3, [Pause, Dbs, Self]),
-    parallel_migrate(Pause, Remaining, [Pid|Pids]).
+    Ref = make_ref(),
+    _Pid = kz_util:spawn_link(fun parallel_migrate_worker/4, [Ref, Pause, Dbs, Self]),
+    parallel_migrate(Pause, Remaining, [Ref|Refs]).
 
--spec parallel_migrate_worker(integer(), ne_binaries(), pid()) -> {'complete', pid()}.
-parallel_migrate_worker(Pause, Databases, Parent) ->
-    catch migrate(Pause, Databases),
-    Parent ! {'complete', self()}.
+-spec parallel_migrate_worker(reference(), integer(), ne_binaries(), pid()) -> reference().
+parallel_migrate_worker(Ref, Pause, Databases, Parent) ->
+    _ = (catch migrate(Pause, Databases)),
+    Parent ! Ref.
 
--spec wait_for_parallel_migrate(pids()) -> 'no_return'.
+-spec wait_for_parallel_migrate(references()) -> 'no_return'.
 wait_for_parallel_migrate([]) ->
     %% Migrate settings for kazoo_media
     io:format("running media migrations...~n"),
     _ = kazoo_media_maintenance:migrate(),
    'no_return';
-wait_for_parallel_migrate([Pid|Pids]) ->
+wait_for_parallel_migrate([Ref|Refs]) ->
     receive
-        {'complete', Pid} ->
-            wait_for_parallel_migrate(Pids)
+        Ref -> wait_for_parallel_migrate(Refs)
     end.
 
 %%--------------------------------------------------------------------
