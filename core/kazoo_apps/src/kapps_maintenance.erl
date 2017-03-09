@@ -156,46 +156,37 @@ parallel_migrate(Workers) ->
 parallel_migrate(Workers, Pause) ->
     _ = migrate_system(),
     _ = kapps_config:migrate(),
-    Databases = get_databases(),
-    Accounts = [kz_util:format_account_id(Db, 'encoded')
-                || Db <- Databases,
-                   kapps_util:is_account_db(Db)
-               ],
-    Others = [Db
-              || Db <- Databases,
-                 not kapps_util:is_account_db(Db)
-             ],
+    {Accounts, Others} = lists:partition(fun kapps_util:is_account_db/1, get_databases()),
+    AccountDbs = [kz_util:format_account_db(Db) || Db <- Accounts],
     OtherSplit = kz_util:to_integer(length(Others) / kz_util:to_integer(Workers)),
-    AccountSplit = kz_util:to_integer(length(Accounts) / kz_util:to_integer(Workers)),
-    SplitDbs = split(AccountSplit, Accounts, OtherSplit, Others, []),
+    AccountSplit = kz_util:to_integer(length(AccountDbs) / kz_util:to_integer(Workers)),
+    SplitDbs = split(AccountSplit, AccountDbs, OtherSplit, Others, []),
     parallel_migrate(Pause, SplitDbs, []).
 
 -type split_results() :: [{ne_binaries(), ne_binaries()}].
 -spec split(integer(), ne_binaries(), integer(), ne_binaries(), split_results()) -> split_results().
 split(_, [], _, [], Results) -> Results;
 split(AccountSplit, Accounts, OtherSplit, Others, Results) ->
-    {OtherDbs, RemainingOthers} =
-        case length(Others) >= OtherSplit of
-            'false' -> {Others, []};
-            'true' -> lists:split(OtherSplit, Others)
-        end,
-    {AccountDbs, RemainingAccounts} =
-        case length(Accounts) >= AccountSplit of
-            'false' -> {Accounts, []};
-            'true' -> lists:split(AccountSplit, Accounts)
-        end,
+    {OtherDbs, RemainingOthers} = split(OtherSplit, Others),
+    {AccountDbs, RemainingAccounts} = split(AccountSplit, Accounts),
     NewResults = [{AccountDbs, OtherDbs}|Results],
     split(AccountSplit, RemainingAccounts, OtherSplit, RemainingOthers, NewResults).
+
+split(Count, List) ->
+    case length(List) >= Count of
+        false -> {List, []};
+        true -> lists:split(Count, List)
+    end.
 
 -spec parallel_migrate(integer(), split_results(), pids()) -> 'no_return'.
 parallel_migrate(_, [], Pids) -> wait_for_parallel_migrate(Pids);
 parallel_migrate(Pause, [{Accounts, Others}|Remaining], Pids) ->
     Self = self(),
     Dbs = lists:sort(fun get_database_sort/2, lists:usort(Accounts ++ Others)),
-    Pid = kz_util:spawn_link(fun() -> parallel_migrate_worker(Pause, Dbs, Self) end),
+    Pid = kz_util:spawn_link(fun parallel_migrate_worker/3, [Pause, Dbs, Self]),
     parallel_migrate(Pause, Remaining, [Pid|Pids]).
 
--spec parallel_migrate_worker(integer(), ne_binaries(), pid()) -> {'compliete', pid()}.
+-spec parallel_migrate_worker(integer(), ne_binaries(), pid()) -> {'complete', pid()}.
 parallel_migrate_worker(Pause, Databases, Parent) ->
     catch migrate(Pause, Databases),
     Parent ! {'complete', self()}.
