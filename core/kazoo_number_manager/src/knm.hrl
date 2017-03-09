@@ -141,7 +141,6 @@
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
           ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
-          ,{?PVT_USED_BY, <<"callflow">>}
           ]
          )
        ).

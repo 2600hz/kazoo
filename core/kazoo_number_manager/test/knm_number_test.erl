@@ -156,10 +156,11 @@ attempt_setting_e911_on_disallowed_number_test_() ->
 
 
 assign_to_app_test_() ->
+    Num = ?TEST_IN_SERVICE_NUM,
     MyApp = <<"my_app">>,
-    {ok, N0} = knm_number:get(?TEST_IN_SERVICE_NUM),
+    {ok, N0} = knm_number:get(Num),
     PN0 = knm_number:phone_number(N0),
-    {ok, N1} = knm_number:assign_to_app(?TEST_IN_SERVICE_NUM, MyApp),
+    {ok, N1} = knm_number:assign_to_app(Num, MyApp),
     PN1 = knm_number:phone_number(N1),
     [{"Verify number is not already assigned to MyApp"
      ,?_assertNotEqual(MyApp, knm_phone_number:used_by(PN0))
@@ -171,4 +172,46 @@ assign_to_app_test_() ->
     ,{"Verify updated number will get saved"
      ,?_assertEqual(true, knm_phone_number:is_dirty(PN1))
      }
+    ].
+
+update_used_by_from_defined_test_() ->
+    Num = ?TEST_IN_SERVICE_NUM,
+    MyApp = <<"my_app">>,
+    {ok, N0} = knm_number:get(Num),
+    PN0 = knm_number:phone_number(N0),
+    #{ok := [N1a]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    PN1a = knm_number:phone_number(N1a),
+    #{ok := [N1b]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, MyApp}]),
+    PN1b = knm_number:phone_number(N1b),
+    #{ok := [N2]} = knm_numbers:update([N1b], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    PN2 = knm_number:phone_number(N2),
+    [?_assertEqual(<<"callflow">>, knm_phone_number:used_by(PN0))
+    ,?_assert(not knm_phone_number:is_dirty(PN0))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN1a))
+    ,?_assert(knm_phone_number:is_dirty(PN1a))
+    ,?_assertEqual(MyApp, knm_phone_number:used_by(PN1b))
+    ,?_assert(knm_phone_number:is_dirty(PN1b))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN2))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ].
+
+update_used_by_from_undefined_test_() ->
+    Num = ?TEST_IN_SERVICE_MDN,
+    MyApp = <<"my_app">>,
+    {ok, N0} = knm_number:get(Num),
+    PN0 = knm_number:phone_number(N0),
+    #{ok := [N1a]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    PN1a = knm_number:phone_number(N1a),
+    #{ok := [N1b]} = knm_numbers:update([N0], [{fun knm_phone_number:set_used_by/2, MyApp}]),
+    PN1b = knm_number:phone_number(N1b),
+    #{ok := [N2]} = knm_numbers:update([N1b], [{fun knm_phone_number:set_used_by/2, undefined}]),
+    PN2 = knm_number:phone_number(N2),
+    [?_assertEqual(undefined, knm_phone_number:used_by(PN0))
+    ,?_assert(not knm_phone_number:is_dirty(PN0))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN1a))
+    ,?_assert(not knm_phone_number:is_dirty(PN1a))
+    ,?_assertEqual(MyApp, knm_phone_number:used_by(PN1b))
+    ,?_assert(knm_phone_number:is_dirty(PN1b))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN2))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
     ].
