@@ -831,7 +831,8 @@ to_csv(Req, Context) ->
     case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
-            RespBody = flatten_jobj(Context1),
+            JObjs = kz_json:flatten(cb_context:resp_data(Context)),
+            RespBody = kz_csv:from_jobjs(JObjs, [{'header_map', ?CSV_HEADER_MAP}]),
             RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
                            ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
                             | cb_context:resp_headers(Context1)
@@ -873,92 +874,6 @@ to_pdf(Req, Context, RespData) ->
 -spec accept_override(cb_context:context()) -> api_binary().
 accept_override(Context) ->
     cb_context:req_value(Context, <<"accept">>).
-
--spec flatten_jobj(cb_context:context()) -> iolist().
-flatten_jobj(Context) ->
-    JObj = kz_json:flatten(cb_context:resp_data(Context)),
-    Routines = [fun check_integrity/1
-               ,fun json_objs_to_csv/1
-               ],
-    lists:foldl(fun fold_over_funs/2, JObj, Routines).
-
--spec fold_over_funs(fun((kz_json:object() | kz_json:objects()) -> kz_json:object() | kz_json:objects()), kz_json:object() | kz_json:objects()) ->
-                            kz_json:object() | kz_json:objects().
-fold_over_funs(F, J) -> F(J).
-
--spec check_integrity(list()) -> kz_json:objects().
-check_integrity(JObjs) ->
-    Headers = get_headers(JObjs),
-    check_integrity(JObjs, Headers, []).
-
--spec check_integrity(kz_json:objects(), ne_binaries(), kz_json:objects()) ->
-                             kz_json:objects().
-check_integrity([], _, Acc) ->
-    lists:reverse(Acc);
-check_integrity([JObj|JObjs], Headers, Acc) ->
-    NJObj = lists:foldl(fun check_integrity_fold/2, JObj, Headers),
-    NJObj1 = kz_json:from_list(lists:keysort(1, kz_json:to_proplist(NJObj))),
-    check_integrity(JObjs, Headers, [NJObj1|Acc]).
-
--spec check_integrity_fold(kz_json:path(), kz_json:object()) ->
-                                  kz_json:json_term().
-check_integrity_fold(Header, JObj) ->
-    case kz_json:get_value(Header, JObj) of
-        'undefined' ->
-            kz_json:set_value(Header, <<>>, JObj);
-        _ -> JObj
-    end.
-
--spec get_headers(kz_json:objects()) -> ne_binaries().
-get_headers(JObjs) ->
-    lists:foldl(fun fold_over_objects/2, [], JObjs).
-
--spec header_map(ne_binary()) -> ne_binary().
-header_map(Header) ->
-    case props:get_value(Header, ?CSV_HEADER_MAP) of
-        'undefined' -> Header;
-        FriendlyHeader -> FriendlyHeader
-    end.
-
--spec fold_over_objects(kz_json:object(), ne_binaries()) -> ne_binaries().
-fold_over_objects(JObj, Headers) ->
-    lists:foldl(fun fold_over_keys/2, Headers, kz_json:get_keys(JObj)).
-
--spec fold_over_keys(ne_binary(), ne_binaries()) -> ne_binaries().
-fold_over_keys(Key, Hs) ->
-    case lists:member(Key, Hs) of
-        'false' -> [Key|Hs];
-        'true' -> Hs
-    end.
-
--spec create_csv_header(kz_json:objects()) -> iolist().
-create_csv_header(JObjs) ->
-    Headers = lists:map(fun header_map/1, get_headers(JObjs)),
-    csv_ize(lists:reverse(Headers)).
-
--spec json_objs_to_csv(kz_json:objects()) -> iolist().
-json_objs_to_csv([]) -> [];
-json_objs_to_csv(JObjs) ->
-    [create_csv_header(JObjs), [json_to_csv(JObj) || JObj <- JObjs]].
-
-
--spec csv_ize(kz_json:path()) -> iolist().
-csv_ize([F|Rest]) ->
-    [<<"\"">>, kz_util:to_binary(F), <<"\"">>
-    ,[[<<",\"">>, try_to_binary(V), <<"\"">>] || V <- Rest]
-    ,<<"\n">>
-    ].
-
--spec try_to_binary(any()) -> binary().
-try_to_binary(Value) ->
-    try kz_util:to_binary(Value)
-    catch
-        _E:_R -> <<"">>
-    end.
-
--spec json_to_csv(kz_json:object()) -> iolist().
-json_to_csv(JObj) ->
-    csv_ize(kz_json:values(JObj)).
 
 -spec multiple_choices(cowboy_req:req(), cb_context:context()) ->
                               {'false', cowboy_req:req(), cb_context:context()}.
