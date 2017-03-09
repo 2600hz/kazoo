@@ -421,12 +421,10 @@ track_assignment('post', Context) ->
     Unassigned = [{Num, 'undefined'}
                   || Num <- OldNums,
                      not lists:member(Num, NewNums),
-                     Num =/= <<"undefined">>,
                      knm_converters:is_reconcilable(Num, AccountId)
                  ],
     Assigned =  [{Num, kzd_callflow:type()}
                  || Num <- NewNums,
-                    Num =/= <<"undefined">>,
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
@@ -437,7 +435,6 @@ track_assignment('put', Context) ->
     AccountId = cb_context:account_id(Context),
     Assigned =  [{Num, kzd_callflow:type()}
                  || Num <- NewNums,
-                    Num =/= <<"undefined">>,
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
@@ -448,7 +445,6 @@ track_assignment('delete', Context) ->
     AccountId = cb_context:account_id(Context),
     Unassigned =  [{Num, 'undefined'}
                    || Num <- Nums,
-                      Num =/= <<"undefined">>,
                       knm_converters:is_reconcilable(Num, AccountId)
                   ],
     Updates = cb_modules_util:apply_assignment_updates(Unassigned),
