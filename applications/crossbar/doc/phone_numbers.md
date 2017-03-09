@@ -1023,6 +1023,60 @@ curl -v -X POST \
 ```
 
 
+#### Fix `used_by` field (and others) of a specific number
+
+> POST /v2/accounts/{ACCOUNT_ID}/phone_numbers/fix/{PHONE_NUMBER}
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/fix/%2B15554445563
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "_read_only": {
+            "created": 63635220353,
+            "features": [
+                "inbound_cnam",
+                "outbound_cnam"
+            ],
+            "features_available": [
+                "cnam",
+                "e911",
+                "port",
+                "prepend"
+            ],
+            "modified": 63635220353,
+            "state": "in_service",
+            "used_by": "callflow"
+        },
+        "cnam": {
+            "display_name": "My Main Num2",
+            "inbound_lookup": true
+        },
+        "features": [
+            "inbound_cnam",
+            "outbound_cnam"
+        ],
+        "id": "+15554445563",
+        "state": "in_service",
+        "ui_metadata": {
+            "origin": "common",
+            "ui": "monster-ui",
+            "version": "3.23"
+        },
+        "used_by": "callflow"
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
 #### Return which account a number belongs to
 
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
