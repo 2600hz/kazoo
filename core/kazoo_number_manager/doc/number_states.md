@@ -73,17 +73,14 @@ A temporary state between `reserved` and `in_service` before placing the number 
 
 * `released` does not participate in number hunts
 * When a `reserved` or `in_service` number is released:
-    * If the reserve history is empty, the number will either be disconnected, or disconnected and marked for deletion (controllable with the `should_permanently_delete` flag in `system_config/number_manager`).
+    * If the reserve history is empty, the number will be disconnected then either returned or marked for deletion (controllable with the `should_permanently_delete` flag in `system_config/number_manager`).
+        * Note: `knm_local` and `knm_mdn` numbers always go to deletion
     * If the reserve history is not empty, the number is re-assigned to the previously assigned account
 * E911 and other features are turned off
 
 ### Port Out
 
 An internal state for releasing numbers. Works similarly to `port_in` except that inbound requests do not move to `in_service`.
-
-### Disconnected
-
-An internal state marking the number as archivable.
 
 ### Deleted
 

@@ -311,7 +311,6 @@ load_existing_checks() ->
                       )
      || {State, IsAllowed} <- [{?NUMBER_STATE_AVAILABLE, 'true'}
                               ,{?NUMBER_STATE_DELETED, 'false'}
-                              ,{?NUMBER_STATE_DISCONNECTED, 'false'}
                               ,{?NUMBER_STATE_DISCOVERY, 'false'}
                               ,{?NUMBER_STATE_IN_SERVICE, 'false'}
                               ,{?NUMBER_STATE_PORT_IN, true}
