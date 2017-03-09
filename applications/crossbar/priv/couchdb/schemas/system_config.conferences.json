@@ -42,6 +42,7 @@
             "type": "integer"
         },
         "profiles": {
+            "default" : {"default" : {}, "page" : {} },
             "properties": {
                 "default": {
                     "properties": {
