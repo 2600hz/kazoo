@@ -56,7 +56,7 @@ smtpd_recipient_restrictions =
 
 ## edit /etc/postfix/master.cf and add the following line at the end
 ```
-policyd-spf  unix  -       n       n       -       0       spawn
+policy-spf  unix  -       n       n       -       0       spawn
    user=nobody argv=/usr/libexec/postfix/policyd-spf
 ```
 
