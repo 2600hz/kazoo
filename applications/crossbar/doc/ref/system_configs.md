@@ -46,6 +46,16 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}
 ```
 
+#### Patch
+
+> PATCH /v2/system_configs/{SYSTEM_CONFIG_ID}
+
+```shell
+curl -v -X PATCH \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}
+```
+
 #### Remove
 
 > DELETE /v2/system_configs/{SYSTEM_CONFIG_ID}
@@ -72,6 +82,16 @@ curl -v -X GET \
 
 ```shell
 curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}/{NODE}
+```
+
+#### Patch
+
+> PATCH /v2/system_configs/{SYSTEM_CONFIG_ID}/{NODE}
+
+```shell
+curl -v -X PATCH \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/system_configs/{SYSTEM_CONFIG_ID}/{NODE}
 ```
