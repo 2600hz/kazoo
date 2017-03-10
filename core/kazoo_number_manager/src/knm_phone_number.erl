@@ -255,6 +255,7 @@ handle_bulk_change(Db, JObjs, PNs, T) ->
 retry_conflicts(T0, Db, PNsMap, ErrorF) ->
     {Conflicts, BaseT} = take_conflits(T0),
     F = fun (Num, T) ->
+                lager:error("~s conflicted, retrying", [Num]),
                 PN = maps:get(Num, PNsMap),
                 case kz_datamgr:ensure_saved(Db, to_json(PN)) of
                     {ok,_} -> knm_numbers:ok(PN, T);
@@ -475,8 +476,8 @@ delete(T=#{todo := PNs, options := Options}) ->
             knm_numbers:ok(PNs, T);
         false ->
             knm_numbers:pipe(T, [fun log_permanent_deletion/1
+                                ,fun try_delete_account_doc/1
                                 ,fun try_delete_number_doc/1
-                                ,fun try_remove_account_doc/1
                                 ,fun set_state_deleted/1
                                 ])
     end.
@@ -897,15 +898,15 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(PN=#knm_phone_number{assigned_to = V}, V) -> PN;
-set_assigned_to(PN0, AssignedTo='undefined') ->
+set_assigned_to(PN0, AssignedTo=undefined) ->
     PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
-                              ,used_by = 'undefined'
+                              ,used_by = undefined
                               });
 set_assigned_to(PN0, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
-                              ,used_by = 'undefined'
+                              ,used_by = undefined
                               }).
 
 %% This is used only by from_json/1
@@ -1571,6 +1572,7 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
 -spec save_to_number_db(knm_numbers:collection()) -> knm_numbers:collection().
 save_to_number_db(T0) ->
     F = fun (NumberDb, PNs, T) ->
+                ?LOG_DEBUG("saving to ~s", [NumberDb]),
                 Docs = [to_json(PN) || PN <- PNs],
                 case save_docs(NumberDb, Docs) of
                     {ok, JObjs} -> handle_bulk_change(NumberDb, JObjs, PNs, T);
@@ -1617,7 +1619,7 @@ assign(T0) ->
 unassign_from_prev(T0) ->
     F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
             (PrevDb, PNs, T) ->
-                ?LOG_DEBUG("handling assignments from prev ~s", [PrevDb]),
+                ?LOG_DEBUG("unassigning from prev ~s", [PrevDb]),
                 Docs = [to_json(PN) || PN <- PNs],
                 case delete_docs(PrevDb, Docs) of
                     {ok, JObjs} -> handle_bulk_change(PrevDb, JObjs, PNs, T);
@@ -1645,8 +1647,8 @@ try_delete_number_doc(T0) ->
     maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
 
 %% @private
-try_remove_account_doc(T0) ->
-    F = fun (undefined, PNs, T) -> knm_numbers:ok(PNs, T);
+try_delete_account_doc(T0) ->
+    F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
             (AccountDb, PNs, T) ->
                 ?LOG_DEBUG("deleting from ~s", [AccountDb]),
                 Docs = [to_json(PN) || PN <- PNs],
@@ -1670,31 +1672,27 @@ database_error(NumOrNums, E, T) ->
     Reason = knm_errors:to_json(A, B, C),
     knm_numbers:ko(NumOrNums, Reason, T).
 
-%% @private
 -spec save_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
                                                    {error, kz_data:data_errors()}.
--ifdef(TEST).
-save_docs(?NE_BINARY, Docs) ->
-    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
-
-mock_docs_return(Doc) ->
-    kz_json:from_list(
-      [{<<"id">>, kz_doc:id(Doc)}
-      ,{<<"ok">>, true}
-      ]).
--else.
-save_docs(Db, Docs) ->
-    %% Note: deleting unexisting docs returns ok.
-    kz_datamgr:save_docs(Db, Docs).
--endif.
-
-%% @private
 -spec delete_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
                                                      {error, kz_data:data_errors()}.
 -ifdef(TEST).
+mock_docs_return(Doc) ->
+    kz_json:from_list(
+      [{<<"id">>, ?NE_BINARY = kz_doc:id(Doc)}
+      ,{<<"ok">>, true}
+      ]).
+
+save_docs(?NE_BINARY, Docs) ->
+    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
+
 delete_docs(?NE_BINARY, Docs) ->
     {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
 -else.
 delete_docs(Db, Docs) ->
+    %% Note: deleting unexisting docs returns ok.
     kz_datamgr:del_docs(Db, Docs).
+
+save_docs(Db, Docs) ->
+    kz_datamgr:save_docs(Db, Docs).
 -endif.
