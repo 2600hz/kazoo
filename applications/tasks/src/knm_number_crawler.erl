@@ -179,32 +179,31 @@ maybe_edit_fold(PN, T) ->
         _ -> T
     end.
 
-remove(PhoneNumber, T) ->
-    lager:debug("purging '~s'", [knm_phone_number:number(PhoneNumber)]),
-    _ = knm_phone_number:delete(PhoneNumber),
-    T.
+remove(PN, T) ->
+    lager:debug("purging '~s'", [knm_phone_number:number(PN)]),
+    NewPN = knm_phone_number:delete(PN),
+    knm_numbers:ok(NewPN, T).
 
-maybe_remove(PhoneNumber, T, Expiry) ->
-    case is_old_enough(PhoneNumber, Expiry) of
+maybe_remove(PN, T, Expiry) ->
+    case is_old_enough(PN, Expiry) of
         false -> T;
-        true -> remove(PhoneNumber, T)
+        true -> remove(PN, T)
     end.
 
-maybe_transition_aging(PhoneNumber, T, Expiry) ->
-    case is_old_enough(PhoneNumber, Expiry) of
+maybe_transition_aging(PN, T, Expiry) ->
+    case is_old_enough(PN, Expiry) of
         false -> T;
         true ->
             lager:debug("transitioning number '~s' from ~s to ~s"
-                       ,[knm_phone_number:number(PhoneNumber)
+                       ,[knm_phone_number:number(PN)
                         ,?NUMBER_STATE_AGING
                         ,?NUMBER_STATE_AVAILABLE
                         ]),
-            PN = knm_phone_number:set_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE),
-            %% Queue PN for bulk save
-            knm_numbers:ok(PN, T)
+            NewPN = knm_phone_number:set_state(PN, ?NUMBER_STATE_AVAILABLE),
+            knm_numbers:ok(NewPN, T)
     end.
 
 -spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
-is_old_enough(PhoneNumber, Expiry) ->
-    knm_phone_number:modified(PhoneNumber)
+is_old_enough(PN, Expiry) ->
+    knm_phone_number:modified(PN)
         < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).
