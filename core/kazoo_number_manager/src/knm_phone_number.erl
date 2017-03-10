@@ -1571,18 +1571,7 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
 %%--------------------------------------------------------------------
 -spec save_to_number_db(knm_numbers:collection()) -> knm_numbers:collection().
 save_to_number_db(T0) ->
-    F = fun (NumberDb, PNs, T) ->
-                ?LOG_DEBUG("saving to ~s", [NumberDb]),
-                Docs = [to_json(PN) || PN <- PNs],
-                case save_docs(NumberDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(NumberDb, JObjs, PNs, T);
-                    {error, E} ->
-                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to save to ~s (~p): ~p", [NumberDb, E, Nums]),
-                        database_error(Nums, E, T)
-                end
-        end,
-    maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
+    save_to(fun split_by_numberdb/1, fun database_error/3, T0).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1592,21 +1581,7 @@ save_to_number_db(T0) ->
 %% @end
 %%--------------------------------------------------------------------
 assign(T0) ->
-    F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
-            (AccountDb, PNs, T) ->
-                ?LOG_DEBUG("handling assignments to ~s", [AccountDb]),
-                Docs = [to_json(PN) || PN <- PNs],
-                case save_docs(AccountDb, Docs) of
-                    {ok, JObjs} ->
-                        ErrorF = fun assign_failure/3,
-                        handle_bulk_change(AccountDb, JObjs, PNs, T, ErrorF);
-                    {error, E} ->
-                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to assign numbers to ~s (~p): ~p", [AccountDb, E, Nums]),
-                        database_error(Nums, E, T)
-                end
-        end,
-    maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
+    save_to(fun split_by_assignedto/1, fun assign_failure/3, T0).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1638,6 +1613,25 @@ try_delete_from(SplitBy, T0) ->
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
+                        database_error(Nums, E, T)
+                end
+        end,
+    maps:fold(F, T0, SplitBy(knm_numbers:todo(T0))).
+
+save_to(SplitBy, ErrorF, T0) ->
+    F = fun (undefined, PNs, T) ->
+                %% NumberDb can never be undefined
+                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                knm_numbers:add_oks(PNs, T);
+            (Db, PNs, T) ->
+                ?LOG_DEBUG("saving to ~s", [Db]),
+                Docs = [to_json(PN) || PN <- PNs],
+                case save_docs(Db, Docs) of
+                    {ok, JObjs} ->
+                        handle_bulk_change(Db, JObjs, PNs, T, ErrorF);
+                    {error, E} ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to assign numbers to ~s (~p): ~p", [Db, E, Nums]),
                         database_error(Nums, E, T)
                 end
         end,
