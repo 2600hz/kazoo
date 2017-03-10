@@ -34,8 +34,9 @@ handle(Data, Call) ->
 -spec attempt_page(kz_json:objects(), kz_json:object(), kapps_call:call()) -> 'ok'.
 attempt_page(Endpoints, Data, Call) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>, Data, 5),
-    BargeOption = barge_option(Data),
-    case send_page(Endpoints, Timeout, BargeOption, Call) of
+    CCVs = barge_option(Data),
+    Options = audio_option(Data),
+    case send_page(Endpoints, Timeout, CCVs, Options, Call) of
         {'ok', _} ->
             lager:info("completed successful bridge to the page group - call finished normally"),
             cf_exe:stop(Call);
@@ -44,16 +45,24 @@ attempt_page(Endpoints, Data, Call) ->
             cf_exe:continue(Call)
     end.
 
--spec barge_option(kz_json:object()) -> kz_json:object().
+-spec barge_option(kz_json:object()) -> tuple().
 barge_option(Data) ->
     case kz_json:is_true(<<"barge_calls">>, Data) of
         'false' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'true'}]);
         'true' -> kz_json:from_list([{<<"Auto-Answer-Suppress-Notify">>, 'false'}])
     end.
 
--spec send_page(kz_json:objects(), integer(), kz_json:object(), kapps_call:call()) ->
+-spec audio_option(kz_json:object()) -> tuple().
+audio_option(Data) ->
+    case kz_json:get_ne_binary_value(<<"audio">>, Data, <<"one-way">>) of
+        <<"two-way">> -> kz_json:from_list([{<<"Two-Way-Audio">>, 'true'}]);
+        <<"one-way">> -> kz_json:from_list([{<<"Two-Way-Audio">>, 'false'}]);
+        _ -> kz_json:from_list([{<<"Two-Way-Audio">>, 'false'}])
+    end.
+
+-spec send_page(kz_json:objects(), integer(), kz_json:object(), kz_json:object(), kapps_call:call()) ->
                        {'error', 'timeout' | kz_json:object()} | {'ok', kz_json:object()}.
-send_page(Endpoints, Timeout, CCVs, Call) ->
+send_page(Endpoints, Timeout, CCVs, Options, Call) ->
     {CIDNumber, CIDName} = kz_attributes:caller_id(Call),
     lager:info("attempting page group of ~b members with caller-id (~s/~s)", [length(Endpoints), CIDNumber, CIDName]),
     kapps_call_command:b_page(Endpoints
@@ -62,6 +71,7 @@ send_page(Endpoints, Timeout, CCVs, Call) ->
                              ,CIDNumber
                              ,'undefined'
                              ,CCVs
+                             ,Options
                              ,Call
                              ).
 
