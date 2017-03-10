@@ -274,7 +274,7 @@ validate_with_parent(Context, ConfigId, Node, Parent) ->
     Schema = kapps_config_util:system_schema_name(ConfigId),
     cb_context:validate_request_data(Schema, cb_context:set_req_data(Context, FullConfig),
                                      fun(Ctx) ->
-                                             Doc = kz_json:set_value(Node, kz_json:diff(RequestData, Parent), 
+                                             Doc = kz_json:set_value(Node, kz_json:diff(RequestData, Parent),
                                                                      kz_doc:set_id(maybe_new(kapps_config:get_category(ConfigId)), ConfigId)),
                                              cb_context:set_doc(Ctx, Doc)
                                      end
