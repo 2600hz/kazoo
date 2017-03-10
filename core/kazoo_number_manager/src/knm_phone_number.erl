@@ -1617,50 +1617,31 @@ assign(T0) ->
 %%--------------------------------------------------------------------
 -spec unassign_from_prev(knm_numbers:collection()) -> knm_numbers:collection().
 unassign_from_prev(T0) ->
-    F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
-            (PrevDb, PNs, T) ->
-                ?LOG_DEBUG("unassigning from prev ~s", [PrevDb]),
-                Docs = [to_json(PN) || PN <- PNs],
-                case delete_docs(PrevDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(PrevDb, JObjs, PNs, T);
-                    {error, E} ->
-                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to unassign from prev ~s (~p): ~p", [PrevDb, E, Nums]),
-                        database_error(Nums, E, T)
-                end
-        end,
-    maps:fold(F, T0, split_by_prevassignedto(knm_numbers:todo(T0))).
+    try_delete_from(fun split_by_prevassignedto/1, T0).
 
-%% @private
 try_delete_number_doc(T0) ->
-    F = fun (NumberDb, PNs, T) ->
-                ?LOG_DEBUG("deleting from ~s", [NumberDb]),
-                Docs = [to_json(PN) || PN <- PNs],
-                case delete_docs(NumberDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(NumberDb, JObjs, PNs, T);
-                    {error, E} ->
-                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to delete from ~s (~p): ~p", [NumberDb, E, Nums]),
-                        database_error(Nums, E, T)
-                end
-        end,
-    maps:fold(F, T0, split_by_numberdb(knm_numbers:todo(T0))).
+    try_delete_from(fun split_by_numberdb/1, T0).
 
-%% @private
 try_delete_account_doc(T0) ->
-    F = fun (undefined, PNs, T) -> knm_numbers:add_oks(PNs, T);
-            (AccountDb, PNs, T) ->
-                ?LOG_DEBUG("deleting from ~s", [AccountDb]),
+    try_delete_from(fun split_by_assignedto/1, T0).
+
+try_delete_from(SplitBy, T0) ->
+    F = fun (undefined, PNs, T) ->
+                %% This cannot happen only for try_delete_number_doc/1.
+                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                knm_numbers:add_oks(PNs, T);
+            (Db, PNs, T) ->
+                ?LOG_DEBUG("deleting from ~s", [Db]),
                 Docs = [to_json(PN) || PN <- PNs],
-                case delete_docs(AccountDb, Docs) of
-                    {ok, JObjs} -> handle_bulk_change(AccountDb, JObjs, PNs, T);
+                case delete_docs(Db, Docs) of
+                    {ok, JObjs} -> handle_bulk_change(Db, JObjs, PNs, T);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
-                        lager:error("failed to delete from ~s (~p): ~p", [AccountDb, E, Nums]),
+                        lager:error("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
                         database_error(Nums, E, T)
                 end
         end,
-    maps:fold(F, T0, split_by_assignedto(knm_numbers:todo(T0))).
+    maps:fold(F, T0, SplitBy(knm_numbers:todo(T0))).
 
 assign_failure(NumOrNums, E, T) ->
     {error,A,B,C} = (catch knm_errors:assign_failure(undefined, E)),
