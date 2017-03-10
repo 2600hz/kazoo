@@ -347,12 +347,19 @@ get_fs_app(Node, UUID, JObj, <<"page">>) ->
                                         ]),
             Routines = [fun(DP) ->
                                 [{"application", <<"set api_hangup_hook=conference ", PageId/binary, " kick all">>}
-                                ,{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
                                 ,{"application", <<"set conference_auto_outcall_profile=page">>}
                                 ,{"application", <<"set conference_auto_outcall_skip_member_beep=true">>}
                                 ,{"application", <<"set conference_auto_outcall_delimiter=|">>}
                                  |DP
                                 ]
+                        end
+                       ,fun(DP) ->
+                                case kz_json:is_true([<<"Page-Options">>, <<"Two-Way-Audio">>], JObj, false) of
+                                    true -> DP;
+                                    false -> [{"application", <<"set conference_utils_auto_outcall_flags=mute">>}
+                                              | DP
+                                             ]
+                                end
                         end
                        ,fun(DP) ->
                                 CIDName = kz_json:get_ne_value(<<"Caller-ID-Name">>, JObj, <<"${caller_id_name}">>),

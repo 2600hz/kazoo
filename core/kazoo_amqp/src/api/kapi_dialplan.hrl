@@ -159,6 +159,7 @@
 -define(OPTIONAL_PAGE_REQ_HEADERS, [<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
                                    ,<<"Callee-ID-Name">>, <<"Callee-ID-Number">>
                                    ,<<"Timeout">>, <<"Insert-At">>
+                                   ,<<"Page-Options">>
                                    ,<<"Custom-Channel-Vars">>, <<"Custom-SIP-Headers">>
                                    ]).
 -define(PAGE_REQ_VALUES, [{<<"Event-Category">>, <<"call">>}
