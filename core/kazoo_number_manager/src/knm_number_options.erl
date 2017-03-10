@@ -47,7 +47,7 @@
                   {'auth_by', ne_binary()} |
                   {'dry_run', boolean()} |
                   {'batch_run', boolean()} |
-                  {mdn_run, boolean()} |
+                  {'mdn_run', boolean()} |
                   {'module_name', ne_binary()} |
                   {'ported_in', boolean()} |
                   {'public_fields', kz_json:object()} |
@@ -141,7 +141,7 @@ auth_by(Options) ->
 auth_by(Options, Default) ->
     props:get_binary_value('auth_by', Options, Default).
 
--spec public_fields(options()) -> api_object().
+-spec public_fields(options()) -> kz_json:object().
 public_fields(Options) ->
     props:get_value('public_fields', Options, kz_json:new()).
 

@@ -262,21 +262,27 @@ do_get_pn(Nums, Options, Error) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
-    ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
+    create(Nums, Options, knm_number_options:assign_to(Options)).
+
+-spec create(ne_binaries(), knm_number_options:options(), api_ne_binary()) -> ret().
+create(Nums, Options, AccountId=?MATCH_ACCOUNT_RAW(_)) ->
     T0 = do_get_pn(Nums, Options, knm_errors:to_json(not_reconcilable)),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
             ToState = knm_number:state_for_create(AccountId, Options),
             lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
-            NewOptions = [{'state', ToState} | Options],
+            NewOptions = [{'state', ToState} | pick_module(Options)],
             ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
                     ,[fun maybe_set_ported_in/1
                      ,fun knm_number:new/1
                      ,fun knm_number_states:to_options_state/1
                      ,fun save_numbers/1
                      ]))
-    end.
+    end;
+create(Nums, Options, _) ->
+    Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
+    ret(new(Options, [], Nums, Error)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -631,6 +637,36 @@ maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
             Routines = [{fun knm_phone_number:set_ported_in/2, true}],
             knm_phone_number:setters(T, Routines)
     end.
+
+%% @private
+-spec pick_module(knm_number_options:options()) -> knm_number_options:options().
+-ifdef(TEST).
+pick_module(Options) ->
+    AuthBy = knm_number_options:auth_by(Options),
+    case kz_term:is_not_empty(AuthBy)
+        andalso {knm_number_options:module_name(Options), {'ok', ?MASTER_ACCOUNT_ID}}
+    of
+        'false' -> Options;
+        {?CARRIER_LOCAL, _} -> Options;
+        {?CARRIER_MDN, _} -> Options;
+        {?CARRIER_OTHER, _} -> Options; %% cb_jobs_listener
+        {_, {'ok', AuthBy}} -> Options;
+        {_, _} -> props:delete('module_name', Options)
+    end.
+-else.
+pick_module(Options) ->
+    AuthBy = knm_number_options:auth_by(Options),
+    case kz_term:is_not_empty(AuthBy)
+        andalso {knm_number_options:module_name(Options), kapps_util:get_master_account_id()}
+    of
+        'false' -> Options;
+        {?CARRIER_LOCAL, _} -> Options;
+        {?CARRIER_MDN, _} -> Options;
+        {?CARRIER_OTHER, _} -> Options; %% cb_jobs_listener
+        {_, {'ok', AuthBy}} -> Options;
+        {_, _} -> props:delete('module_name', Options)
+    end.
+-endif.
 
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->

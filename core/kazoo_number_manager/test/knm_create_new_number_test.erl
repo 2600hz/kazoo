@@ -288,6 +288,27 @@ create_non_existing_mobile_number_test_() ->
      }
     ].
 
+create_number_with_module_name_test_() ->
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
+            ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+            ,{'dry_run', 'false'}
+            ,{'module_name', <<"knm_bandwidth2">>}
+            ,{<<"auth_by_account">>
+             ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+             }
+            ],
+    {'ok', N} = knm_number:create(?TEST_CREATE_NUM, Props),
+    {'ok', N2} = knm_number:create(?TEST_CREATE_NUM, props:set_value('auth_by', ?RESELLER_ACCOUNT_ID, Props)),
+    PN = knm_number:phone_number(N),
+    PN2 = knm_number:phone_number(N2),
+    [{"Verify that only master account can set module module"
+     ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
+     }
+    ,{"Verify the local module is being used if any other account than the master tries to set module name"
+     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
+     }
+    ].
+
 create_checks_test_() ->
     create_available_checks()
         ++ load_existing_checks().
