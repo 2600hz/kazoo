@@ -18,13 +18,13 @@
         ,validate/1, validate/2, validate/3
         ,put/2
         ,post/2, post/3
+        ,patch/2, patch/3
         ,delete/2, delete/3
         ]).
 
 -include("crossbar.hrl").
 
 -define(DEFAULT, <<"default">>).
-
 
 %%%===================================================================
 %%% API
@@ -41,12 +41,13 @@ init() ->
     _ = kz_datamgr:db_create(?KZ_CONFIG_DB),
     _ = kz_datamgr:revise_doc_from_file(?KZ_CONFIG_DB, 'crossbar', <<"views/system_configs.json">>),
 
-    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
+    _ = crossbar_bindings:bind(<<"*.authorize.system_configs">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.system_configs">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.system_configs">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.system_configs">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.system_configs">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.system_configs">>, ?MODULE, 'post'),
+    _ = crossbar_bindings:bind(<<"*.execute.patch.system_configs">>, ?MODULE, 'patch'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.system_configs">>, ?MODULE, 'delete').
 
 %%--------------------------------------------------------------------
@@ -56,12 +57,20 @@ init() ->
 %% allowed to access the resource, or false if not.
 %% @end
 %%--------------------------------------------------------------------
--spec authorize(cb_context:context()) -> boolean().
--spec authorize(cb_context:context(), path_token()) -> boolean().
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
-authorize(Context) -> cb_context:is_superduper_admin(Context).
-authorize(Context, _Id) -> cb_context:is_superduper_admin(Context).
-authorize(Context, _Id, _Node) -> cb_context:is_superduper_admin(Context).
+-type authorize_return() :: boolean() | {'halt', cb_context:context()}.
+
+-spec authorize(cb_context:context()) -> authorize_return().
+-spec authorize(cb_context:context(), path_token()) -> authorize_return().
+-spec authorize(cb_context:context(), path_token(), path_token()) -> authorize_return().
+authorize(Context) ->
+    case cb_context:is_superduper_admin(Context)
+        andalso cb_context:req_nouns(Context) of
+        'false' -> {'halt', cb_context:add_system_error('forbidden', Context)};
+        [{<<"system_configs">>, _}] -> 'true';
+        _ -> {'halt', cb_context:add_system_error('bad_identifier', Context)}
+    end.
+authorize(Context, _Id) -> authorize(Context).
+authorize(Context, _Id, _Node) -> authorize(Context).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -76,9 +85,9 @@ authorize(Context, _Id, _Node) -> cb_context:is_superduper_admin(Context).
 allowed_methods() ->
     [?HTTP_GET].
 allowed_methods(_SystemConfigId) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PUT, ?HTTP_PATCH].
 allowed_methods(_SystemConfigId, _Node) ->
-    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE].
+    [?HTTP_GET, ?HTTP_POST, ?HTTP_DELETE, ?HTTP_PATCH].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -106,40 +115,104 @@ resource_exists(_Id, _Node) -> 'true'.
 %% Generally, use crossbar_doc to manipulate the cb_context{} record
 %% @end
 %%--------------------------------------------------------------------
--spec validate(cb_context:context()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token()) ->
-                      cb_context:context().
--spec validate(cb_context:context(), path_token(), path_token()) ->
-                      cb_context:context().
+-spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    validate_system_configs(update_db(Context), cb_context:req_verb(Context)).
+    summary(set_db_to_system(Context)).
 
+-spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    Node = cb_context:req_value(Context, <<"node">>),
-    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
+    validate_document(set_db_to_system(Context), Id, cb_context:req_verb(Context)).
 
+-spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, Node) ->
-    validate_system_config(update_db(Context), Id, cb_context:req_verb(Context), Node).
+    validate_document_node(set_db_to_system(Context), Id, cb_context:req_verb(Context), Node).
 
--spec validate_system_configs(cb_context:context(), http_method()) -> cb_context:context().
--spec validate_system_config(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
-validate_system_configs(Context, ?HTTP_GET) ->
-    summary(Context).
+%%--------------------------------------------------------------------
+%% Document API
+%%--------------------------------------------------------------------
 
-validate_system_config(Context, Id, ?HTTP_GET, Node) ->
-    read(Id, Context, Node);
-validate_system_config(Context, Id, ?HTTP_PUT, _Node) ->
-    create(Id, Context);
-validate_system_config(Context, Id, ?HTTP_POST, Node) ->
-    update(Id, Context, Node);
-validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
+-spec validate_document(cb_context:context(), path_token(), http_method()) -> cb_context:context().
+validate_document(Context, Id, ?HTTP_GET) ->
+    Config =
+        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
+            true -> kapps_config_doc:config_with_defaults(Id);
+            false -> kapps_config_doc:config_with_default_node(Id)
+        end,
+    crossbar_doc:handle_datamgr_success(set_id(Id, Config), Context);
+
+validate_document(Context, Id, ?HTTP_PUT) ->
+    validate_document(Context, Id, ?HTTP_POST);
+
+validate_document(Context, Id, ?HTTP_POST) ->
+    RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
+    DefaultConfig = kapps_config_doc:default_config(Id, kapps_config_doc:get_keys(RequestData)),
+    FullConfig = kz_json:merge_recursive(DefaultConfig, RequestData),
+    validate_document_request(Context, Id, FullConfig);
+
+validate_document(Context, Id, ?HTTP_PATCH) ->
+    RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
+    StoredConfig = kapps_config_doc:stored_config(Id, kapps_config_doc:get_keys(RequestData)),
+    FullConfig = kz_json:merge_recursive(StoredConfig, RequestData),
+    validate_document_request(Context, Id, FullConfig);
+
+validate_document(Context, Id, ?HTTP_DELETE) ->
     read_for_delete(Id, Context).
+
+validate_document_request(Context, Id, FullConfig) ->
+    cb_context:validate_request_data(kapps_config_util:system_config_document_schema(Id), cb_context:set_req_data(Context, FullConfig),
+                                     fun(Ctx) ->
+                                             Diff = kapps_config_doc:diff_from_default(Id, FullConfig),
+                                             Doc = maybe_set_private_fields(Id, Diff),
+                                             cb_context:set_doc(Ctx, Doc)
+                                     end
+                                    ).
+
+
+%%--------------------------------------------------------------------
+%% Node API
+%%--------------------------------------------------------------------
+
+-spec validate_document_node(cb_context:context(), path_token(), http_method(), api_ne_binary()) -> cb_context:context().
+validate_document_node(Context, Id, ?HTTP_GET, Node) ->
+    Config =
+        case kz_term:is_true(cb_context:req_value(Context, <<"with_defaults">>, false)) of
+            true -> set_id(Id, Node, kapps_config_doc:stored_node(Id, Node));
+            false -> set_id(Id, Node, kz_json:get_value(Node, kapps_config_doc:get_config(Id), kz_json:new()))
+        end,
+    crossbar_doc:handle_datamgr_success(Config, Context);
+
+validate_document_node(Context, Id, ?HTTP_PUT, Node) -> validate_document_node(Context, Id, ?HTTP_POST, Node);
+
+validate_document_node(Context, Id, ?HTTP_POST, Node) ->
+    RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
+    DefaultConfig = kapps_config_doc:default_node(Id, Node),
+    FullConfig = kz_json:merge_recursive(DefaultConfig, RequestData),
+    validate_node_request(Context, Id, Node, FullConfig);
+
+validate_document_node(Context, Id, ?HTTP_PATCH, Node) ->
+    RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
+    StoredConfig = kapps_config_doc:stored_node(Id, Node),
+    FullConfig = kz_json:merge_recursive(StoredConfig, RequestData),
+    validate_node_request(Context, Id, Node, FullConfig);
+
+validate_document_node(Context, Id, ?HTTP_DELETE, _Node) ->
+    read_for_delete(Id, Context).
+
+validate_node_request(Context, Id, Node, FullConfig) ->
+    cb_context:validate_request_data(kapps_config_util:system_schema(Id), cb_context:set_req_data(Context, FullConfig),
+                                     fun(Ctx) ->
+                                             NodeValue = kapps_config_doc:diff_node_from_default(Id, Node, FullConfig),
+                                             Doc = kz_json:set_value(Node, NodeValue, kapps_config_doc:get_config(Id)),
+                                             cb_context:set_doc(Ctx, maybe_set_private_fields(Id, Doc))
+                                     end
+                                    ).
+
+
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is PUT, execute the actual action, usually a db save.
+%% If the HTTP verb is PUT, execute the actual action, usually a db save.
 %% @end
 %%--------------------------------------------------------------------
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
@@ -149,7 +222,7 @@ put(Context, _Id) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is POST, execute the actual action, usually a db save
+%% If the HTTP verb is POST, execute the actual action, usually a db save
 %% (after a merge perhaps).
 %% @end
 %%--------------------------------------------------------------------
@@ -157,13 +230,25 @@ put(Context, _Id) ->
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, _Id) ->
     crossbar_doc:save(Context).
-post(Context, _Id, Node) ->
-    save(Context, Node).
+post(Context, Id, Node) ->
+    Ctx = crossbar_doc:save(Context),
+    case cb_context:resp_status(Ctx) of
+        success ->
+            cb_context:set_resp_data(Ctx, set_id(Id, Node, kz_json:get_value(Node, cb_context:doc(Ctx))));
+        _ -> Ctx
+    end.
+
+-spec patch(cb_context:context(), path_token()) -> cb_context:context().
+-spec patch(cb_context:context(), path_token(), path_token()) -> cb_context:context().
+patch(Context, Id) ->
+    post(Context, Id).
+patch(Context, Id, Node) ->
+    post(Context, Id, Node).
 
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% If the HTTP verib is DELETE, execute the actual action, usually a db delete
+%% If the HTTP verb is DELETE, execute the actual action, usually a db delete
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(cb_context:context(), path_token()) ->
@@ -173,57 +258,19 @@ post(Context, _Id, Node) ->
 -spec delete(cb_context:context(), path_token(), path_token(), api_object() | kz_json:objects()) ->
                     cb_context:context().
 delete(Context, _Id) ->
-    Context1 =
-        case kz_term:is_true(cb_context:req_param(Context, <<"hard">>, 'false')) of
-            'false' -> crossbar_doc:delete(Context);
-            'true' -> crossbar_doc:delete(Context, 'permanent')
-        end,
-    case cb_context:resp_status(Context1) of
-        'success' -> cb_context:set_resp_data(Context1, 'undefined');
-        _Status -> Context1
-    end.
+    crossbar_doc:delete(Context, 'permanent').
 
 delete(Context, Id, Node) ->
     delete(Context, Id, Node, cb_context:doc(Context)).
 
 delete(Context, Id, _Node, 'undefined') ->
     crossbar_util:response_bad_identifier(Id, Context);
-delete(Context, _Id, Node, Doc) ->
+delete(Context, Id, Node, Doc) ->
     case kz_json:get_ne_value(Node, Doc) of
         'undefined' -> crossbar_util:response_bad_identifier(Node, Context);
         _NodeValue ->
             Context1 = cb_context:set_doc(Context, kz_json:delete_key(Node, Doc)),
-            save(Context1, Node)
-    end.
-
--spec save(cb_context:context(), ne_binary()) -> cb_context:context().
-save(Context, Node) ->
-    Context1 = crossbar_doc:save(Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            cb_context:set_resp_data(Context1, node_value(Node, Context1));
-        _Status -> Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Create a new instance with the data provided, if it is valid
-%% @end
-%%--------------------------------------------------------------------
--spec create(ne_binary(), cb_context:context()) -> cb_context:context().
-create(Id, Context) ->
-    case binary:split(Id, <<$@>>) of
-        [Id] ->
-            %% Then Id is not mistaken for a Node
-            SysDoc = kz_json:from_list([{<<"_id">>, Id}
-                                        | nodes_values(cb_context:req_data(Context))
-                                       ]),
-            lager:debug("trying to create ~s/~s: ~p", [?KZ_CONFIG_DB, Id, SysDoc]),
-            Context1 = cb_context:set_doc(Context, SysDoc),
-            cb_context:set_resp_status(Context1, 'success');
-        _ ->
-            crossbar_util:response_bad_identifier(Id, Context)
+            cb_context:set_resp_data(crossbar_doc:save(Context1), set_id(Id, Node, kz_json:new()))
     end.
 
 %%--------------------------------------------------------------------
@@ -232,66 +279,13 @@ create(Id, Context) ->
 %% Load an instance from the database
 %% @end
 %%--------------------------------------------------------------------
--spec filter_read(cb_context:context(), api_ne_binary()) -> kz_json:object().
-filter_read(Context, 'undefined') ->
-    kz_doc:public_fields(cb_context:doc(Context));
-filter_read(Context, Node) ->
-    node_value(Node, Context).
-
--spec read(ne_binary(), cb_context:context()) -> cb_context:context().
--spec read(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
-read(Id, Context) ->
-    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)).
-
-read(Id, Context, Node) ->
-    Context1 = read(Id, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            Data = filter_read(Context1, Node),
-            cb_context:set_resp_data(Context1, Data);
-        _Status -> Context1
-    end.
-
 -spec read_for_delete(ne_binary(), cb_context:context()) -> cb_context:context().
 read_for_delete(Id, Context) ->
-    Context1 = read(Id, Context),
+    Context1 = crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"config">>)),
     case cb_context:resp_status(Context) of
         'success' -> Context1;
         _Status ->
             lager:debug("failed to find ~s(~s) for delete", [Id, _Status]),
-            Context1
-    end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% Update an existing system_config document with the data provided
-%% @end
-%%--------------------------------------------------------------------
--spec update(ne_binary(), cb_context:context(), api_ne_binary()) -> cb_context:context().
-update(Id, Context, 'undefined') ->
-    Context1 = read(Id, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            NodesDoc = kz_json:from_list(nodes_values(cb_context:doc(Context1))),
-            ReqData = kz_json:from_list(nodes_values(cb_context:req_data(Context1))),
-            NewNodesDoc = kz_json:merge_recursive(NodesDoc, ReqData),
-            NewDoc = kz_json:set_values(kz_json:to_proplist(NewNodesDoc), cb_context:doc(Context1)),
-            cb_context:set_doc(Context1, NewDoc);
-        _Status ->
-            Context1
-    end;
-
-update(Id, Context, Node) ->
-    Context1 = read(Id, Context),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            NodeDoc = node_value(Node, Context1),
-            ReqData = cb_context:req_data(Context1),
-            NewNodeDoc = kz_json:merge_recursive(NodeDoc, ReqData),
-            NewDoc = kz_json:set_value(Node, NewNodeDoc, cb_context:doc(Context1)),
-            cb_context:set_doc(Context1, NewDoc);
-        _Status ->
             Context1
     end.
 
@@ -317,21 +311,27 @@ summary(Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:get_value(<<"key">>, JObj) | Acc].
 
--spec update_db(cb_context:context()) -> cb_context:context().
-update_db(Context) ->
+-spec set_db_to_system(cb_context:context()) -> cb_context:context().
+set_db_to_system(Context) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_account_db/2, ?KZ_CONFIG_DB}
                        ,{fun cb_context:set_account_id/2, cb_context:auth_account_id(Context)}
                        ]).
 
--spec node_value(ne_binary(), cb_context:context()) -> kz_json:object().
-node_value(Node, Context) ->
-    kz_json:get_ne_value(Node, cb_context:doc(Context), kz_json:new()).
+-spec maybe_set_private_fields(ne_binary(), kz_json:object()) -> kz_json:object().
+maybe_set_private_fields(ConfigId, JObj) ->
+    case kapps_config:get_category(ConfigId) of
+        {ok, Doc} -> kz_json:merge_recursive(JObj, kz_doc:private_fields(Doc));
+        _ -> kz_doc:set_id(JObj, ConfigId)
+    end.
 
--spec nodes_values(kz_json:object()) -> kz_proplist().
-nodes_values(JObj) ->
-    [{Key, kz_json:get_value(Key, JObj)}
-     || Key <- kz_json:get_keys(JObj),
-        Key =:= ?DEFAULT
-            orelse 2 =:= length(binary:split(Key, <<$@>>))
-    ].
+-spec set_id(ne_binary(), kz_json:object()) -> kz_json:object().
+set_id(Id, JObj) ->
+    kz_json:set_value(<<"id">>, Id, JObj).
+
+-spec set_id(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
+set_id(Id, Node, JObj) ->
+    kz_json:set_value(<<"id">>, <<Id/binary, "/", Node/binary>>, JObj).
+
+-spec strip_id(kz_json:object()) -> kz_json:object().
+strip_id(JObj) -> kz_json:delete_key(<<"id">>, JObj).
