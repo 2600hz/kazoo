@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% @end
 %%% @contributors
@@ -39,13 +39,13 @@ transition_port_from_port_in_test_() ->
     ,{"Verify reserve history is empty"
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
-    ,{"Verify the local carrier module is being used"
+    ,{"Verify the configured port in carrier module is being used"
      ,?_assertEqual(?PORT_IN_MODULE_NAME, knm_phone_number:module_name(PN))
      }
     ,{"Verify local number is not billable"
      ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
      }
-    ,{"Verify number is not marked as ported_in"
+    ,{"Verify number is marked as ported_in"
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
@@ -70,13 +70,13 @@ transition_port_from_available_test_() ->
     ,{"Verify reserve history is empty"
      ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
      }
-    ,{"Verify the local carrier module is being used"
-     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN))
+    ,{"Verify the configured port in module name is being used"
+     ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))
      }
-    ,{"Verify local number is not billable"
-     ,?_assertEqual(false, knm_carriers:is_number_billable(PN))
+    ,{"Verify number is billable"
+     ,?_assertEqual(true, knm_carriers:is_number_billable(PN))
      }
-    ,{"Verify number is not marked as ported_in"
+    ,{"Verify number is marked as ported_in"
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
