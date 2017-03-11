@@ -104,11 +104,8 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
-          ]
-         )
-       ).
+          ])).
 
 -define(IN_SERVICE_NUMBER
        ,kz_json:from_list(
@@ -122,11 +119,8 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
-          ]
-         )
-       ).
+          ])).
 
 -define(IN_SERVICE_MDN
        ,kz_json:from_list(
@@ -140,10 +134,7 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
-          ]
-         )
-       ).
+          ])).
 
 -define(IN_SERVICE_BAD_CARRIER_NUMBER
        ,kz_json:from_list(
@@ -157,11 +148,8 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
-          ]
-         )
-       ).
+          ])).
 
 -define(IN_SERVICE_WITH_HISTORY_NUMBER
        ,kz_json:from_list(
@@ -175,12 +163,8 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
-          ]
-         )
-       ).
-
+          ])).
 
 -define(EXISTING_TOLL
        ,kz_json:from_list(
@@ -194,11 +178,8 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1800">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
-          ]
-         )
-       ).
+          ])).
 
 -define(TELNYX_NUMBER
        ,kz_json:from_list(
@@ -211,10 +192,7 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1435">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
-          ]
-         )
-       ).
+          ])).
 
 -define(PORT_IN_NUMBER
        ,kz_json:from_list(
@@ -228,10 +206,7 @@
           ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
           ,{?PVT_CREATED, 63565934000}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
-          ]
-         )
-       ).
+          ])).
 
 -define(BLOCK_PHONEBOOK_URL, <<"http://blocks.tld">>).
 
