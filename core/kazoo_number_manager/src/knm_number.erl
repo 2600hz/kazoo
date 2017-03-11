@@ -178,13 +178,34 @@ state_for_create(AccountId, Options) ->
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             dry_run_or_number_return().
-create_or_load(_Num, Options, {'ok', PhoneNumber}) ->
-    ensure_can_load_to_create(PhoneNumber),
+-ifdef(TEST).
+-define(OPTIONS_FOR_LOAD(Num, Options),
+        case knm_number_options:ported_in(Options) of
+            false -> [];
+            true ->
+                case ?TEST_AVAILABLE_NUM =:= Num of
+                    true -> [{module_name, <<"knm_bandwidth2">>}];
+                    false -> [{module_name, ?PORT_IN_MODULE_NAME}]
+                end
+        end
+        ++ props:delete('state', Options)
+       ).
+-else.
+-define(OPTIONS_FOR_LOAD(_Num, Options),
+        case knm_number_options:ported_in(Options) of
+            false -> [];
+            true -> [{module_name, ?PORT_IN_MODULE_NAME}]
+        end
+        ++ props:delete('state', Options)
+       ).
+-endif.
+
+create_or_load(_Num, Options, {'ok', PN}) ->
+    ensure_can_load_to_create(PN),
     Updates = knm_number_options:to_phone_number_setters(
-                props:delete('state', Options)
-               ),
-    {'ok', NewPhoneNumber} = knm_phone_number:setters(PhoneNumber, Updates),
-    create_phone_number(Options, set_phone_number(new(), NewPhoneNumber));
+                ?OPTIONS_FOR_LOAD(_Num, Options)),
+    {'ok', NewPN} = knm_phone_number:setters(PN, Updates),
+    create_phone_number(Options, set_phone_number(new(), NewPN));
 create_or_load(Num, Options, {'error', 'not_found'}) ->
     ensure_can_create(Num, Options),
     PhoneNumber = knm_phone_number:from_number_with_options(Num, Options),
