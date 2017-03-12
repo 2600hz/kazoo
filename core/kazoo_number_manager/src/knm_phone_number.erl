@@ -973,6 +973,9 @@ features_denied(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
     [?FEATURE_PORT
     ,?FEATURE_FAILOVER
     ];
+features_denied(#knm_phone_number{number = ?BW_EXISTING_DID}) ->
+    [?FEATURE_E911
+    ];
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
 -else.
 features_denied(#knm_phone_number{features_denied = Features}) -> Features.
