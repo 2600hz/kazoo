@@ -50,7 +50,9 @@
 
 -export([list_attachments/2]).
 
--ifndef(TEST).
+-ifdef(TEST).
+-export([set_is_dirty/2]).
+-else.
 -export([push_stored/0]).
 -endif.
 
@@ -1126,6 +1128,11 @@ is_admin(AuthBy) ->
 %%--------------------------------------------------------------------
 -spec is_dirty(knm_phone_number()) -> boolean().
 is_dirty(#knm_phone_number{is_dirty = IsDirty}) -> IsDirty.
+
+-ifdef(TEST).
+-spec set_is_dirty(knm_phone_number(), boolean()) -> knm_phone_number().
+set_is_dirty(PN, IsDirty=false) -> PN#knm_phone_number{is_dirty = IsDirty}.
+-endif.
 
 %%--------------------------------------------------------------------
 %% @public

@@ -377,16 +377,22 @@ update(Num, Routines, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            attempt(fun update_phone_number/2, [Number, Routines])
+            attempt(fun update_phone_number0/3, [Number, Routines, []])
     end.
 
+-ifdef(TEST).
 -spec update_phone_number(knm_number(), knm_phone_number:set_functions()) ->
                                  knm_number_return().
 -spec update_phone_number(knm_number(), knm_phone_number:set_functions(), knm_number_options:options()) ->
                                  knm_number_return().
 update_phone_number(Number, Routines) ->
     update_phone_number(Number, Routines, []).
-update_phone_number(Number, Routines, Options) ->
+update_phone_number(N, Routines, Options) ->
+    Updates = [{fun knm_phone_number:set_is_dirty/2, false}] ++ Routines,
+    update_phone_number0(N, Updates, Options).
+-endif.
+
+update_phone_number0(Number, Routines, Options) ->
     Fix = knm_number_options:to_phone_number_setters(Options),
     PhoneNumber = phone_number(Number),
     case knm_phone_number:setters(PhoneNumber, Fix++Routines) of
