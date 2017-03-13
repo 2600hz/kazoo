@@ -144,11 +144,12 @@ attempt_setting_e911_on_disallowed_local_number_test_() ->
     Num = ?TEST_IN_SERVICE_NUM,
     {ok, N} = knm_number:get(Num),
     PN = knm_number:phone_number(N),
+    #{ko := #{Num := Error}} = knm_numbers:update([N], Updates, Options),
     [{"Verify feature is not set"
      ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
      }
     ,{"Verify feature cannot be set"
-     ,?_assertThrow({error, unauthorized}, knm_number:update_phone_number(N, Updates, Options))
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error))
      }
     ].
 
