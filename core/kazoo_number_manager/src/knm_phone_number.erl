@@ -137,19 +137,23 @@ from_number_with_options(DID, Options) ->
 
 -ifdef(TEST).
 -define(OPTIONS_FOR_NEW_SETTERS(Options),
-        case knm_number_options:ported_in(Options)
-            orelse ?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
         of
-            false -> Options;
-            true -> [{module_name, <<"knm_vitelity">>} | Options]
+            {true,false} -> [{module_name, <<"knm_vitelity">>} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
         end).
 -else.
 -define(OPTIONS_FOR_NEW_SETTERS(Options),
-        case knm_number_options:ported_in(Options)
-            orelse ?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
         of
-            false -> Options;
-            true -> [{module_name, ?PORT_IN_MODULE_NAME} | Options]
+            {true,false} -> [{module_name, ?PORT_IN_MODULE_NAME} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
         end).
 -endif.
 
