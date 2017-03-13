@@ -15,7 +15,7 @@
         ,batch_run/1, batch_run/2
         ,mdn_run/1
         ,module_name/1
-        ,ported_in/1, ported_in/2
+        ,ported_in/1
         ,public_fields/1
         ,state/1, state/2
         ,should_delete/1, should_delete/2
@@ -153,11 +153,8 @@ state(Options, Default) ->
     props:get_binary_value('state', Options, Default).
 
 -spec ported_in(options()) -> boolean().
--spec ported_in(options(), Default) -> boolean() | Default.
 ported_in(Options) ->
-    ported_in(Options, 'false').
-ported_in(Options, Default) ->
-    props:get_is_true('ported_in', Options, Default).
+    props:get_is_true('ported_in', Options, false).
 
 -spec module_name(options()) -> ne_binary().
 module_name(Options) ->
