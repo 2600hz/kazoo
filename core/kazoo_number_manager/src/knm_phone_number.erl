@@ -217,6 +217,8 @@ fetch(?TEST_OLD6_NUM, Options) ->
     handle_fetch(JObj, Options);
 fetch(?TEST_PORT_IN_NUM, Options) ->
     handle_fetch(?PORT_IN_NUMBER, Options);
+fetch(?TEST_PORT_IN2_NUM, Options) ->
+    handle_fetch(?PORT_IN2_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
