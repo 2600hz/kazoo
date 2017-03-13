@@ -45,7 +45,7 @@
         kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
 -define(FEATURES_ALLOWED_SYSTEM,
-        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES)).
+        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES)).
 
 
 -record(feature_parameters, {is_local = false :: boolean()
