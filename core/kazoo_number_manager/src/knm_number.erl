@@ -181,26 +181,26 @@ state_for_create(AccountId, Options) ->
 -ifdef(TEST).
 -define(OPTIONS_FOR_LOAD(Num, Options),
         case knm_number_options:ported_in(Options) of
-            false -> [];
+            false -> Options;
             true ->
                 case Num of
-                    ?TEST_PORT_IN2_NUM -> [{module_name, <<"knm_telnyx">>}];
-                    ?TEST_AVAILABLE_NUM -> [{module_name, <<"knm_bandwidth2">>}];
-                    _ -> [{module_name, ?PORT_IN_MODULE_NAME}]
+                    ?TEST_PORT_IN2_NUM -> [{module_name, <<"knm_telnyx">>}|Options];
+                    ?TEST_AVAILABLE_NUM -> [{module_name, <<"knm_bandwidth2">>}|Options];
+                    _ -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
                 end
         end).
 -else.
 -define(OPTIONS_FOR_LOAD(_Num, Options),
         case knm_number_options:ported_in(Options) of
-            false -> [];
-            true -> [{module_name, ?PORT_IN_MODULE_NAME}]
+            false -> Options;
+            true -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
         end).
 -endif.
 
 create_or_load(_Num, Options, {'ok', PN}) ->
     ensure_can_load_to_create(PN),
     Updates = knm_number_options:to_phone_number_setters(
-                ?OPTIONS_FOR_LOAD(_Num, Options) ++ props:delete(state, Options)
+                ?OPTIONS_FOR_LOAD(_Num, props:delete(state, Options))
                ),
     {'ok', NewPN} = knm_phone_number:setters(PN, Updates),
     create_phone_number(Options, set_phone_number(new(), NewPN));
