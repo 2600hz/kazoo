@@ -212,12 +212,7 @@ fix_account_numbers(Account = ?NE_BINARY) ->
 
 -spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    ViewOptions = [{key, NormalizedNum}],
-    UsedBy = app_using(NormalizedNum
-                      ,get_DIDs_callflow(AccountDb, ViewOptions)
-                      ,get_DIDs_trunkstore(AccountDb, ViewOptions)
-                      ),
+    UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}],
     Options = [{auth_by, AuthBy}
               ,{dry_run, false}
@@ -306,10 +301,11 @@ fix_docs(AccountDb, NumberDb, DID) ->
 
 fix_docs({error, timeout}, _AccountDb, _, _DID) ->
     ?LOG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
-fix_docs({error, _R}, _AccountDb, _, DID) ->
-    ?LOG("failed to get ~s from ~s (~p), creating it", [DID, _AccountDb, _R]),
+fix_docs({error, _R}, AccountDb, _, DID) ->
+    ?LOG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
+    UsedBy = app_using(DID, AccountDb),
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]) of
+    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, UsedBy}]) of
         {ok, _} -> ok;
         {error, _E} -> ?LOG("creating ~s failed: ~p", [DID, _E])
     end;
@@ -322,7 +318,8 @@ fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
 fix_docs({error, _R}, _, _, _NumberDb, _DID) ->
     ?LOG("~s disappeared from ~s (~p), skipping", [_DID, _NumberDb]);
 fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
-    case app_using(DID) =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
+    UsedBy = app_using(DID, AccountDb),
+    case UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
     of
         true -> ?LOG("~s already synced", [DID]);
@@ -331,7 +328,7 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                                       ,kz_json:public_fields(Doc)
                                       ),
             ?LOG("syncing ~s", [DID]),
-            Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
+            Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
                        ,{fun knm_phone_number:update_doc/2, JObj}
                        ],
             try knm_number:update(DID, Routines, options()) of
@@ -358,6 +355,7 @@ fix_unassign_doc(DID) ->
     end.
 
 -type dids() :: gb_sets:set(ne_binary()).
+-type api_dids() :: undefined | dids().
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
     get_DIDs(AccountDb, View, []).
@@ -410,8 +408,19 @@ cleanse(JObj) ->
                        ,JObj
                        ).
 
--spec app_using(ne_binary(), dids(), dids()) -> api_ne_binary().
-app_using(Num, CallflowNums, TrunkstoreNums) ->
+
+-spec app_using(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec app_using(ne_binary(), ne_binary(), api_dids(), api_dids()) -> api_ne_binary().
+app_using(Num, AccountDb) ->
+    app_using(Num, AccountDb, get(callflow_DIDs), get(trunkstore_DIDs)).
+
+app_using(Num, AccountDb, undefined, TrunkstoreNums) ->
+    CallflowNums = get_DIDs_callflow(AccountDb, [{key, Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, AccountDb, CallflowNums, undefined) ->
+    TrunkstoreNums = get_DIDs_trunkstore(AccountDb, [{key, Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     case gb_sets:is_element(Num, CallflowNums) of
         true -> <<"callflow">>;
         false ->
@@ -420,10 +429,6 @@ app_using(Num, CallflowNums, TrunkstoreNums) ->
                 false -> undefined
             end
     end.
-
--spec app_using(ne_binary()) -> api_ne_binary().
-app_using(Num) ->
-    app_using(Num, get(callflow_DIDs), get(trunkstore_DIDs)).
 
 -spec is_assigned_to(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_assigned_to(AccountDb, DID, AccountId) ->
