@@ -386,7 +386,7 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
                   ,{endkey, [AssignedTo, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {ok, JObjs} -> gb_sets:from_list(lists:map(fun kz_doc:id/1, JObjs));
+        {ok, JObjs} -> gb_sets:from_list([kz_doc:id(JObj) || JObj <- JObjs]);
         {error, _R} ->
             lager:debug("failed to get ~s DIDs from ~s: ~p", [AssignedTo, NumberDb, _R]),
             gb_sets:new()
@@ -396,7 +396,7 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
 have_same_pvt_values(NumDoc0, Doc0) ->
     NumDoc = cleanse(kz_json:private_fields(NumDoc0)),
     Doc = cleanse(kz_json:private_fields(Doc0)),
-    NumDoc == Doc.
+    kz_json:are_equal(NumDoc, Doc).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().
 cleanse(JObj) ->
