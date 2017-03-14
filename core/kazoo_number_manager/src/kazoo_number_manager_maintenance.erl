@@ -39,6 +39,9 @@
 -define(TIME_BETWEEN_NUMBERS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
+-define(PARALLEL_JOBS_COUNT,
+        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
+
 -define(LOG(Format, Args)
        ,begin
             lager:debug(Format, Args),
@@ -54,8 +57,7 @@
 %%--------------------------------------------------------------------
 -spec carrier_module_usage() -> 'ok'.
 carrier_module_usage() ->
-    Databases = knm_util:get_all_number_dbs(),
-    carrier_module_usage(Databases, dict:new()).
+    carrier_module_usage(knm_util:get_all_number_dbs(), dict:new()).
 
 -spec carrier_module_usage(text()) -> 'ok'.
 carrier_module_usage(Prefix) ->
@@ -96,8 +98,7 @@ log_carrier_module_usage([JObj|JObjs], Database, Totals0) ->
 %%--------------------------------------------------------------------
 -spec convert_carrier_module(ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target) ->
-    Databases = knm_util:get_all_number_dbs(),
-    convert_carrier_module_database(Source, Target, Databases).
+    convert_carrier_module_database(Source, Target, knm_util:get_all_number_dbs()).
 
 -spec convert_carrier_module(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target, Prefix) ->
@@ -166,7 +167,8 @@ refresh_numbers_db(Suffix) ->
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
 -spec fix_account_numbers(ne_binary()) -> 'ok'.
 fix_accounts_numbers(Accounts) ->
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, Accounts).
+    AccountDBs = lists:usort([kz_util:format_account_db(Account) || Account <- Accounts]),
+    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun fix_account_numbers/1, AccountDBs).
 
 fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     kz_util:put_callid(?MODULE),
@@ -206,6 +208,8 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                ok =:= ?LOG("########## will remove [~s] doc: ~s ##########", [AccountDb, DID])
            ],
     _ = kz_datamgr:del_docs(AccountDb, ToRm),
+    erase(callflow_DIDs),
+    erase(trunkstore_DIDs),
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
@@ -223,10 +227,7 @@ fix_number(Num, AuthBy, AccountDb) ->
 -spec migrate() -> 'ok'.
 migrate() ->
     _ = refresh_numbers_dbs(),
-    AccountDbs = kapps_util:get_all_accounts(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs),
-    erase(callflow_DIDs),
-    erase(trunkstore_DIDs),
+    pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     migrate_unassigned_numbers().
 
 -spec migrate(ne_binary()) -> 'ok'.
@@ -240,11 +241,7 @@ migrate(Account) ->
 -spec migrate_unassigned_numbers(ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers() ->
     ?LOG("********** fixing unassigned numbers **********", []),
-    NumberDbs = knm_util:get_all_number_dbs(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS
-                            ,fun migrate_unassigned_numbers/1
-                            ,NumberDbs
-                            ),
+    pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
     ?LOG("********** finished fixing unassigned numbers **********", []).
 
 -spec migrate_unassigned_numbers(ne_binary()) -> ok.
@@ -293,6 +290,18 @@ foreach_pause_in_between(Time, Fun, [Element|Elements]) ->
     _ = Fun(Element),
     timer:sleep(Time),
     foreach_pause_in_between(Time, Fun, Elements).
+
+-spec pforeach(fun((A) -> any()), [A]) -> ok.
+pforeach(Fun, Arg1s)
+  when is_function(Fun, 1),
+       is_list(Arg1s) ->
+    Malt = [%% Each worker process gets to do only 1 item before dying
+            1
+            %% A processes count of 1 is equivalent to lists:foreach-ordering
+            %% with each Fun being applied on its own (different) process
+           ,{processes, ?PARALLEL_JOBS_COUNT}
+           ],
+    plists:foreach(Fun, Arg1s, Malt).
 
 -spec fix_docs(ne_binary(), ne_binary(), ne_binary()) -> ok.
 fix_docs(AccountDb, NumberDb, DID) ->
@@ -470,7 +479,7 @@ delete(Num) ->
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
-    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
 -spec purge_discovery(ne_binary()) -> 'no_return'.
@@ -481,7 +490,7 @@ purge_discovery(Prefix) ->
 -spec purge_deleted() -> 'no_return'.
 purge_deleted() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
-    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
 -spec purge_deleted(ne_binary()) -> 'no_return'.

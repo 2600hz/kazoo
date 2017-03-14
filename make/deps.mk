@@ -1,7 +1,8 @@
 DEPS = lager eiconv gen_smtp amqp_client cowboy jesse jiffy certifi couchbeam wsock zucchini \
        erlsom erlydtl exml escalus folsom detergent erlang_localtime \
        nklib gproc poolboy reloader syslog lager_syslog eflame hep ecsv \
-       proper recon getopt fs_event fs_sync eunit inet_cidr trie
+       proper recon getopt fs_event fs_sync eunit inet_cidr trie \
+       plists
 
 BUILD_DEPS = parse_trans
 IGNORE_DEPS = hamcrest
@@ -20,6 +21,7 @@ dep_eflame = git https://github.com/slfritchie/eflame 7b0bb1a7e8c8482a59421a3a50
 dep_detergent = git https://github.com/pap/detergent e86dfeded3e4f9f3f9278c6a1aea802079d38b54
 dep_jiffy = hex 0.14.7
 dep_nklib = git https://github.com/NetComposer/nklib
+dep_plists = git https://github.com/essen/plists
 
 dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ###dep_couchbeam = git https://github.com/benoitc/couchbeam 1.4.1
