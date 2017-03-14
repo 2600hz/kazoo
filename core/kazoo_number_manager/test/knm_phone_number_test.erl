@@ -825,5 +825,6 @@ nums() ->
     ,?TEST_OLD6_NUM
     ,?TEST_TELNYX_NUM
     ,?TEST_PORT_IN_NUM
+    ,?TEST_PORT_IN2_NUM
     ,?BW_EXISTING_DID
     ].

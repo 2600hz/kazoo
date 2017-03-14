@@ -137,14 +137,30 @@ from_number(DID) ->
 from_number_with_options(DID, Options) ->
     do_new(DID, new_setters(Options)).
 
--spec new_setters(knm_number_options:options()) -> set_functions().
+-ifdef(TEST).
+-define(OPTIONS_FOR_NEW_SETTERS(Options),
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
+        of
+            {true,false} -> [{module_name, <<"knm_vitelity">>} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
+        end).
+-else.
+-define(OPTIONS_FOR_NEW_SETTERS(Options),
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
+        of
+            {true,false} -> [{module_name, ?PORT_IN_MODULE_NAME} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
+        end).
+-endif.
+
 new_setters(Options) ->
-    knm_number_options:to_phone_number_setters(
-      case knm_number_options:state(Options) of
-          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
-          _ -> Options
-      end
-     ).
+    knm_number_options:to_phone_number_setters(?OPTIONS_FOR_NEW_SETTERS(Options)).
 
 -spec do_new(ne_binary(), set_functions()) -> knm_phone_number().
 do_new(DID, Setters) ->
@@ -219,6 +235,8 @@ fetch(?TEST_OLD6_NUM, Options) ->
     handle_fetch(JObj, Options);
 fetch(?TEST_PORT_IN_NUM, Options) ->
     handle_fetch(?PORT_IN_NUMBER, Options);
+fetch(?TEST_PORT_IN2_NUM, Options) ->
+    handle_fetch(?PORT_IN2_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.
