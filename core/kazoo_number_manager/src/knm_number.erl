@@ -232,36 +232,30 @@ ensure_can_create(T0=#{todo := Nums, options := Options}) ->
 
 -spec ensure_can_create(ne_binary(), knm_number_options:options()) -> 'true'.
 ensure_can_create(Num, Options) ->
-    ensure_account_can_create(Options)
+    ensure_account_can_create(Options, knm_number_options:auth_by(Options))
         andalso ensure_number_is_not_porting(Num, Options).
 
--spec ensure_account_can_create(knm_number_options:options()) -> 'true'.
-ensure_account_can_create(Options) ->
-    case knm_number_options:auth_by(Options) of
-        'undefined' -> knm_errors:unauthorized();
-        AccountId ->
-            ensure_account_is_allowed_to_create(Options, AccountId)
-    end.
-
 -ifdef(TEST).
--define(LOAD_ACCOUNT(Props, _AccountId),
-        {'ok', props:get_value(<<"auth_by_account">>, Props)}).
+-define(LOAD_ACCOUNT(Options, _AccountId),
+        {'ok', props:get_value(<<"auth_by_account">>, Options)}).
 -else.
 -define(LOAD_ACCOUNT(_Options, AccountId),
         kz_account:fetch(AccountId)).
 -endif.
 
-ensure_account_is_allowed_to_create(_, ?KNM_DEFAULT_AUTH_BY) ->
+ensure_account_can_create(_, undefined) ->
+    knm_errors:unauthorized();
+ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     'true';
-ensure_account_is_allowed_to_create(_Options, _AccountId) ->
-    case knm_number_options:state(_Options) of
-        ?NUMBER_STATE_PORT_IN -> 'true';
-        _Else ->
-            {'ok', JObj} = ?LOAD_ACCOUNT(_Options, _AccountId),
-            kz_account:allow_number_additions(JObj)
-                orelse knm_errors:unauthorized()
-    end.
+ensure_account_can_create(Options, _AccountId) ->
+    knm_number_options:ported_in(Options)
+        orelse knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN
+        orelse begin
+                   {'ok', JObj} = ?LOAD_ACCOUNT(Options, _AccountId),
+                   kz_account:allow_number_additions(JObj)
+               end
+        orelse knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).

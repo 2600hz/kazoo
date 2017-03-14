@@ -263,6 +263,25 @@ from_jobjs(JObjs) ->
           ],
     new(Options, PNs, []).
 
+-ifdef(TEST).
+-define(OPTIONS_FOR_LOAD(Nums, Options),
+        case knm_number_options:ported_in(Options) of
+            false -> Options;
+            true ->
+                case Nums of
+                    [?TEST_PORT_IN2_NUM] -> [{module_name, <<"knm_telnyx">>}|Options];
+                    [?TEST_AVAILABLE_NUM] -> [{module_name, <<"knm_bandwidth2">>}|Options];
+                    _ -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
+                end
+        end).
+-else.
+-define(OPTIONS_FOR_LOAD(_Nums, Options),
+        case knm_number_options:ported_in(Options) of
+            false -> Options;
+            true -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
+        end).
+-endif.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -275,7 +294,9 @@ from_jobjs(JObjs) ->
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
     ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
-    T0 = do_get_pn(Nums, Options, knm_errors:to_json(not_reconcilable)),
+    Options0 = ?OPTIONS_FOR_LOAD(Nums,props:delete(state,Options)),
+    io:format(user, "\n>>>> ~p ~p <<<\n",[Nums, Options0]),
+    T0 = do_get_pn(Nums, Options0, knm_errors:to_json(not_reconcilable)),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
@@ -283,8 +304,8 @@ create(Nums, Options) ->
             lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
             NewOptions = [{'state', ToState} | Options],
             ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
-                    ,[fun maybe_set_ported_in/1
-                     ,fun knm_number:new/1
+                     %% ,[fun maybe_set_ported_in/1
+                    ,[fun knm_number:new/1
                      ,fun knm_number_states:to_options_state/1
                      ,fun save_numbers/1
                      ]))
@@ -635,14 +656,14 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
--spec maybe_set_ported_in(t_pn()) -> t_pn().
-maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
-    case knm_number_options:ported_in(Options) of
-        false -> ok(PNs, T);
-        true ->
-            Routines = [{fun knm_phone_number:set_ported_in/2, true}],
-            knm_phone_number:setters(T, Routines)
-    end.
+%% -spec maybe_set_ported_in(t_pn()) -> t_pn().
+%% maybe_set_ported_in(T=#{todo := PNs, options := Options}) ->
+%%     case knm_number_options:ported_in(Options) of
+%%         false -> ok(PNs, T);
+%%         true ->
+%%             Routines = [{fun knm_phone_number:set_ported_in/2, true}],
+%%             knm_phone_number:setters(T, Routines)
+%%     end.
 
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
