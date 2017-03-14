@@ -10429,7 +10429,7 @@
                 },
                 "parallel_jobs_count": {
                     "default": 1,
-                    "description": "number of concurrent workers that can process a migration at the same time (1=non parallel behavior)",
+                    "description": "number of concurrent workers that can process a migration at the same time (1=non parallel behavior, MUST be >0)",
                     "type": "integer"
                 },
                 "port_in_module_name": {
