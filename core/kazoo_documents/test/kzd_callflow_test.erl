@@ -174,10 +174,10 @@ child_action_failure_data_test_() ->
 
     [?_assertEqual(5, length(Errors))
     ,?_assertMatch([_, _, {'data_invalid', _SchemaJObj
-                    ,'missing_required_property'
-                    ,<<"data">>
-                    ,[<<"children">>, <<"ca2">>]
-                    }
+                          ,'missing_required_property'
+                          ,<<"data">>
+                          ,[<<"children">>, <<"ca2">>]
+                          }
                    , _, _]
                   ,Errors
                   )
