@@ -125,7 +125,35 @@ is_mdn_for_mdn_run_test_() ->
     ].
 
 
-attempt_setting_e911_on_disallowed_number_test_() ->
+attempt_setting_e911_on_disallowed_local_number_test_() ->
+    JObj = kz_json:from_list(
+             [{?FEATURE_E911
+              ,kz_json:from_list(
+                 [{?E911_STREET1, <<"140 Geary St.">>}
+                 ,{?E911_STREET2, <<"3rd floor">>}
+                 ,{?E911_CITY, <<"San Francisco">>}
+                 ,{?E911_STATE, <<"CA">>}
+                 ,{?E911_ZIP, <<"94108">>}
+                 ])
+              }
+             ]),
+    Options = [{auth_by, ?RESELLER_ACCOUNT_ID}
+              ,{public_fields, JObj}
+              ],
+    Updates = [{fun knm_phone_number:reset_doc/2, JObj}],
+    Num = ?TEST_IN_SERVICE_NUM,
+    {ok, N} = knm_number:get(Num),
+    PN = knm_number:phone_number(N),
+    #{ko := #{Num := Error}} = knm_numbers:update([N], Updates, Options),
+    [{"Verify feature is not set"
+     ,?_assertEqual(undefined, knm_phone_number:feature(PN, ?FEATURE_E911))
+     }
+    ,{"Verify feature cannot be set"
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error))
+     }
+    ].
+
+attempt_setting_e911_on_explicitly_disallowed_number_test_() ->
     JObj = kz_json:from_list(
              [{?FEATURE_E911
               ,kz_json:from_list(
