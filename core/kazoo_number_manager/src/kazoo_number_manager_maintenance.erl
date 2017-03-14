@@ -317,9 +317,14 @@ fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
     ?LOG("getting ~s from ~s timed out, skipping", [_DID, _NumberDb]);
 fix_docs({error, _R}, _, _, _NumberDb, _DID) ->
     ?LOG("~s disappeared from ~s (~p), skipping", [_DID, _NumberDb]);
-fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
+fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
+    AccountDb = account_db_from_number_doc(NumDoc),
+    ShouldEnsureDocIsInRightAccountDb = _AccountDb =/= AccountDb,
+    ShouldEnsureDocIsInRightAccountDb
+        andalso ?LOG("[~s] ~s should be in ~s instead", [_AccountDb, DID, AccountDb]),
     UsedBy = app_using(DID, AccountDb),
-    case UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
+    case not ShouldEnsureDocIsInRightAccountDb
+        andalso UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
     of
         true -> ?LOG("~s already synced", [DID]);
@@ -345,6 +350,12 @@ options() ->
      %% No caching + bulk doc writes
     ,{batch_run, true}
     ].
+
+account_db_from_number_doc(NumDoc) ->
+    case kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, NumDoc) of
+        undefined -> undefined;
+        AccountId -> kz_util:format_account_db(AccountId)
+    end.
 
 -spec fix_unassign_doc(ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
