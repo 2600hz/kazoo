@@ -288,6 +288,33 @@ create_non_existing_mobile_number_test_() ->
      }
     ].
 
+create_new_number_rename_carrier_test_() ->
+    Options = [{auth_by, ?MASTER_ACCOUNT_ID}
+              ,{assign_to, ?RESELLER_ACCOUNT_ID}
+              ,{public_fields, kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}])}
+              ,{'dry_run', 'false'}
+              ,{<<"auth_by_account">>
+               ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
+               }
+              ],
+    WrongCarrier = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"wrong_carrier">>}]),
+
+    {ok, N1} = knm_number:create(?TEST_CREATE_NUM, Options),
+    PN1 = knm_number:phone_number(N1),
+    {error, Error2} = knm_number:create(?TEST_CREATE_NUM, props:set_value(public_fields, WrongCarrier, Options)),
+    {error, Error3} = knm_number:create(?TEST_CREATE_NUM, props:set_value(auth_by, ?RESELLER_ACCOUNT_ID, Options)),
+
+    [{"Verify only admin can create and set carrier"
+     ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
+     }
+    ,{"Verify creating number with wrong carrier is invalid"
+     ,?_assertEqual(<<"invalid">>, knm_errors:message(Error2))
+     }
+    ,{"Verify creating number and setting carrier as non-admin is forbidden"
+     ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error3))
+     }
+    ].
+
 create_checks_test_() ->
     create_available_checks()
         ++ load_existing_checks().
