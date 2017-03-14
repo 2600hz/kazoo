@@ -376,6 +376,8 @@ test_fetch(?TEST_OLD6_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json")))};
 test_fetch(?TEST_PORT_IN_NUM) ->
     {ok, ?PORT_IN_NUMBER};
+test_fetch(?TEST_PORT_IN2_NUM) ->
+    {ok, ?PORT_IN2_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
     {error, not_found}.
 -else.
