@@ -31,7 +31,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
 ## https://github.com/for-GET/jesse/pull/42
-dep_jesse = git https://github.com/2600hz/jesse 1.5-rc2
+dep_jesse = git https://github.com/2600hz/jesse 1.5-rc3
 
 dep_lager = git https://github.com/erlang-lager/lager 3.2.1
 dep_trie = git https://github.com/okeuday/trie v1.5.4

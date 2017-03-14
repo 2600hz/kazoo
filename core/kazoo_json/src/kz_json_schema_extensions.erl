@@ -50,9 +50,10 @@ extra_validation(<<"metaflow.module">>, Value, State) ->
 extra_validation(<<"callflows.action.data">>, Value, State) ->
     JObj = jesse_state:get_current_value(State),
     [_Data | Path] = jesse_state:get_current_path(State),
-    Module = jesse_json_path:path(lists:reverse([<<"module">> | Path]), JObj, undefined),
-    lager:debug("validating callflow action '~s' with data ~p", [Module, Value]),
-    validate_module_data(<<"callflows.", Module/binary>>, Value, State);
+    case jesse_json_path:path(lists:reverse([<<"module">> | Path]), JObj, undefined) of
+        undefined -> State;
+        Module -> validate_module_data(<<"callflows.", Module/binary>>, Value, State)
+    end;
 extra_validation(<<"callflows.action.module">>, Value, State) ->
     lager:debug("validating callflow action '~s'", [Value]),
     Schema = <<"callflows.", Value/binary>>,
@@ -72,6 +73,6 @@ validate_module_data(Schema, Value, State) ->
                  Schema ->
                      SchemaObj = jesse_state:get_current_schema(State1),
                      jesse_schema_validator:validate_with_state(SchemaObj, Value, State1);
-                 _OtherSchema -> State
+                 _OtherSchema -> State1
              end,
     jesse_state:undo_resolve_ref(State2, State).

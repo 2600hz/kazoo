@@ -151,6 +151,12 @@ fail_cname(#state{domains=DomainsSchema
                       ,_
                       ,_
                       }
+                     ,{'data_invalid'
+                      ,_
+                      ,'no_extra_properties_allowed'
+                      ,_
+                      ,_
+                      }
                      ]
                     }
                    ,kz_json_schema:validate(DomainsSchema
