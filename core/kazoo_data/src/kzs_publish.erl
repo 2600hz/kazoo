@@ -1,12 +1,11 @@
 %%%-----------------------------------------------------------------------------
-%%% @copyright (C) 2011-2017, 2600Hz
+%%% @copyright (C) 2016-2017, 2600Hz
 %%% @doc
 %%% data adapter behaviour
 %%% @end
 %%% @contributors
 %%%-----------------------------------------------------------------------------
 -module(kzs_publish).
-
 
 -export([maybe_publish_doc/3
         ,maybe_publish_docs/3

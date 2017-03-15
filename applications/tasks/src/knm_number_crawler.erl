@@ -153,99 +153,57 @@ code_change(_OldVsn, State, _Extra) ->
 cleanup_timer() ->
     erlang:start_timer(?TIME_BETWEEN_CRAWLS, self(), 'ok').
 
--spec crawl_number_db(ne_binary()) -> 'ok'.
+-spec crawl_number_db(ne_binary()) -> ok.
 crawl_number_db(Db) ->
-    crawl_number_docs(Db, kz_datamgr:all_docs(Db, ['include_docs'])).
+    case kz_datamgr:all_docs(Db, [include_docs]) of
+        {error, _E} ->
+            lager:debug("failed to crawl number db ~s: ~p", [Db, _E]);
+        {ok, JObjs} ->
+            lager:debug("starting to crawl '~s'", [Db]),
+            _ = knm_numbers:pipe(knm_numbers:from_jobjs(JObjs)
+                                ,[fun maybe_edit/1
+                                 ,fun knm_phone_number:save/1
+                                 ]),
+            lager:debug("finished crawling '~s'", [Db]),
+            timer:sleep(10 * ?MILLISECONDS_IN_SECOND)
+    end.
 
--spec crawl_number_docs(ne_binary(), kz_data:get_results_return()) -> 'ok'.
-crawl_number_docs(_Db, {'error', _E}) ->
-    lager:debug(" failed to crawl number db ~s: ~p", [_Db, _E]);
-crawl_number_docs(_Db, {'ok', Docs}) ->
-    lager:debug(" starting to crawl '~s' (~p docs)", [_Db, length(Docs)]),
-    lists:foreach(fun crawl_number_doc/1, Docs),
-    lager:debug(" finished crawling '~s'", [_Db]).
+maybe_edit(T0=#{todo := PNs}) ->
+    lists:foldl(fun maybe_edit_fold/2, T0, PNs).
 
--spec crawl_number_doc(kz_json:object()) -> any().
-crawl_number_doc(Doc) ->
-    JObj = kz_json:get_value(<<"doc">>, Doc),
-    case kz_doc:type(JObj) =:= <<"number">> of
-        false -> ok;
+maybe_edit_fold(PN, T) ->
+    case knm_phone_number:state(PN) of
+        ?NUMBER_STATE_DELETED -> remove(PN, T);
+        ?NUMBER_STATE_DISCOVERY -> maybe_remove(PN, T, ?DISCOVERY_EXPIRY);
+        ?NUMBER_STATE_AGING -> maybe_transition_aging(PN, T, ?AGING_EXPIRY);
+        _ -> T
+    end.
+
+remove(PN, T) ->
+    lager:debug("purging '~s'", [knm_phone_number:number(PN)]),
+    NewPN = knm_phone_number:delete(PN),
+    knm_numbers:ok(NewPN, T).
+
+maybe_remove(PN, T, Expiry) ->
+    case is_old_enough(PN, Expiry) of
+        false -> T;
+        true -> remove(PN, T)
+    end.
+
+maybe_transition_aging(PN, T, Expiry) ->
+    case is_old_enough(PN, Expiry) of
+        false -> T;
         true ->
-            PN = knm_phone_number:from_json_with_options(JObj, []),
-            try_crawl_number_doc(PN)
-    end.
-
--spec try_crawl_number_doc(knm_phone_number:knm_phone_number()) -> any().
-try_crawl_number_doc(PhoneNumber) ->
-    Fs = [fun maybe_remove_deleted/1
-         ,fun maybe_remove_discovery/1
-         ,fun maybe_transition_aging/1
-         ],
-    try lists:foldl(fun(F, PN) -> F(PN) end, PhoneNumber, Fs)
-    catch
-        _E:_R ->
-            ST = erlang:get_stacktrace(),
-            lager:debug(" '~s' encountered with ~s: ~p"
-                       ,[_E, knm_phone_number:number(PhoneNumber), _R]),
-            kz_util:log_stacktrace(ST)
-    end.
-
--spec maybe_remove_deleted(knm_phone_number:knm_phone_number()) ->
-                                  knm_phone_number:knm_phone_number().
-maybe_remove_deleted(PhoneNumber) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DELETED -> remove(PhoneNumber);
-        _State -> PhoneNumber
-    end.
-
--spec maybe_remove_discovery(knm_phone_number:knm_phone_number()) ->
-                                    knm_phone_number:knm_phone_number().
-maybe_remove_discovery(PhoneNumber) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_DISCOVERY -> maybe_remove(PhoneNumber, ?DISCOVERY_EXPIRY);
-        _State -> PhoneNumber
-    end.
-
--spec maybe_transition_aging(knm_phone_number:knm_phone_number()) ->
-                                    knm_phone_number:knm_phone_number().
-maybe_transition_aging(PhoneNumber) ->
-    case knm_phone_number:state(PhoneNumber) of
-        ?NUMBER_STATE_AGING -> maybe_update(PhoneNumber, ?AGING_EXPIRY);
-        _State -> PhoneNumber
-    end.
-
--spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
-is_old_enough(PhoneNumber, Expiry) ->
-    knm_phone_number:modified(PhoneNumber)
-        < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).
-
--spec maybe_remove(knm_phone_number:knm_phone_number(), pos_integer()) ->
-                          knm_phone_number:knm_phone_number().
-maybe_remove(PhoneNumber, Expiry) ->
-    case is_old_enough(PhoneNumber, Expiry) of
-        'false' -> PhoneNumber;
-        'true' -> remove(PhoneNumber)
-    end.
-
--spec remove(knm_phone_number:knm_phone_number()) ->
-                    knm_phone_number:knm_phone_number().
-remove(PhoneNumber) ->
-    lager:debug(" purging number '~s' from the sytem"
-               ,[knm_phone_number:number(PhoneNumber)]),
-    knm_phone_number:delete(PhoneNumber).
-
--spec maybe_update(knm_phone_number:knm_phone_number(), pos_integer()) ->
-                          knm_phone_number:knm_phone_number().
-maybe_update(PhoneNumber, Expiry) ->
-    case is_old_enough(PhoneNumber, Expiry) of
-        'false' -> PhoneNumber;
-        'true' ->
-            lager:debug(" transitioning number '~s' from ~s to ~s"
-                       ,[knm_phone_number:number(PhoneNumber)
+            lager:debug("transitioning number '~s' from ~s to ~s"
+                       ,[knm_phone_number:number(PN)
                         ,?NUMBER_STATE_AGING
                         ,?NUMBER_STATE_AVAILABLE
                         ]),
-            knm_phone_number:save(
-              knm_phone_number:set_state(PhoneNumber, ?NUMBER_STATE_AVAILABLE)
-             )
+            NewPN = knm_phone_number:set_state(PN, ?NUMBER_STATE_AVAILABLE),
+            knm_numbers:ok(NewPN, T)
     end.
+
+-spec is_old_enough(knm_phone_number:knm_phone_number(), pos_integer()) -> boolean().
+is_old_enough(PN, Expiry) ->
+    knm_phone_number:modified(PN)
+        < (kz_time:current_tstamp() + Expiry * ?SECONDS_IN_DAY).

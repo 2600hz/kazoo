@@ -18,7 +18,7 @@
 
 -export([to_json/1
         ,to_public_json/1
-        ,from_json/1, from_json_with_options/2
+        ,from_json_with_options/2
         ,from_number/1, from_number_with_options/2
         ,is_phone_number/1
         ]).
@@ -54,8 +54,6 @@
 
 -ifdef(TEST).
 -export([set_is_dirty/2]).
--else.
--export([push_stored/0]).
 -endif.
 
 -include("knm.hrl").
@@ -77,6 +75,7 @@
 %% And all this is because we need to set is_dirty reliably.
 -record(knm_phone_number, {number :: api_ne_binary()             %%%
                           ,number_db :: api_ne_binary()          %%%
+                          ,rev :: api_ne_binary()
                           ,assign_to :: api_ne_binary()
                           ,assigned_to :: api_ne_binary()
                           ,prev_assigned_to :: api_ne_binary()
@@ -110,8 +109,6 @@
              ,set_functions/0
              ]).
 
--define(BULK_BATCH_WRITES,
-        kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_bulk_batch_writes">>, false)).
 
 -ifdef(FUNCTION_NAME).
 -define(DIRTY(PN),
@@ -181,16 +178,16 @@ fetch(?NE_BINARY=Num) ->
     fetch(Num, knm_number_options:default());
 fetch(T0=#{todo := Nums, options := Options}) ->
     Pairs = group_by_db(lists:usort([knm_converters:normalize(Num) || Num <- Nums])),
-    F = fun ({NumberDb, NormalizedNums}, T) ->
+    F = fun (NumberDb, NormalizedNums, T) ->
                 case fetch_in(NumberDb, NormalizedNums, Options) of
                     {error, R} ->
-                        lager:warning("bulk read failed (~p): ~p", [R, NormalizedNums]),
+                        lager:error("bulk read failed (~p): ~p", [R, NormalizedNums]),
                         knm_numbers:ko(NormalizedNums, R, T);
                     {ok, JObjs} when is_list(JObjs) -> bulk_fetch(T, JObjs);
                     {ok, JObj} -> do_handle_fetch(T, JObj)
                 end
         end,
-    lists:foldl(F, T0, Pairs).
+    maps:fold(F, T0, Pairs).
 
 -ifdef(TEST).
 fetch_in(NumberDb, Nums, _Options) ->
@@ -219,12 +216,59 @@ bulk_fetch(T0, JObjs) ->
                 case kz_json:get_ne_value(<<"doc">>, JObj) of
                     undefined ->
                         R = kz_json:get_ne_value(<<"error">>, JObj),
+                        lager:warning("failed reading ~s: ~p", [Num, R]),
                         knm_numbers:ko(Num, kz_term:to_atom(R, true), T);
                     Doc ->
                         do_handle_fetch(T, Doc)
                 end
         end,
     lists:foldl(F, T0, JObjs).
+
+%% @doc
+%% Works the same with the output of save_docs and del_docs
+%% @end
+handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
+  when is_map(PNsMap) ->
+    F = fun (JObj, T) ->
+                Num = kz_json:get_ne_value(<<"id">>, JObj),
+                case kz_json:get_ne_value(<<"ok">>, JObj) of
+                    true ->
+                        lager:debug("successfully changed ~s in ~s", [Num, Db]),
+                        knm_numbers:ok(maps:get(Num, PNsMap), T);
+                    undefined ->
+                        %% Weirdest thing here is on conflict doc was actually properly saved!
+                        R = kz_json:get_ne_value(<<"error">>, JObj),
+                        lager:warning("error changing ~s in ~s: ~p", [Num, Db, R]),
+                        ErrorF(Num, kz_term:to_atom(R, true), T)
+                end
+        end,
+    retry_conflicts(lists:foldl(F, T0, JObjs), Db, PNsMap, ErrorF);
+handle_bulk_change(Db, JObjs, PNs, T, ErrorF) ->
+    PNsMap = group_by_num(PNs),
+    handle_bulk_change(Db, JObjs, PNsMap, T, ErrorF).
+
+handle_bulk_change(Db, JObjs, PNs, T) ->
+    ErrorF = fun database_error/3,
+    handle_bulk_change(Db, JObjs, PNs, T, ErrorF).
+
+%% On delete there won't be conflicts.
+retry_conflicts(T0, Db, PNsMap, ErrorF) ->
+    {Conflicts, BaseT} = take_conflits(T0),
+    F = fun (Num, T) ->
+                lager:error("~s conflicted, retrying", [Num]),
+                PN = maps:get(Num, PNsMap),
+                case kz_datamgr:ensure_saved(Db, to_json(PN)) of
+                    {ok,_} -> knm_numbers:ok(PN, T);
+                    {error,R} -> ErrorF(Num, R, T)
+                end
+        end,
+    lists:foldl(F, BaseT, Conflicts).
+
+take_conflits(T=#{ko := KOs}) ->
+    F = fun ({_Num, R}) -> knm_errors:cause(R) =:= <<"conflict">> end,
+    {Conflicts, NewKOs} = lists:partition(F, maps:to_list(KOs)),
+    {Nums, _} = lists:unzip(Conflicts),
+    {Nums, T#{ko => maps:from_list(NewKOs)}}.
 
 do_handle_fetch(T=#{options := Options}, Doc) ->
     case knm_number:attempt(fun handle_fetch/2, [Doc, Options]) of
@@ -237,7 +281,49 @@ group_by_db(Nums) ->
                 Key = knm_converters:to_db(Num),
                 M#{Key => [Num | maps:get(Key, M, [])]}
         end,
-    maps:to_list(lists:foldl(F, #{}, Nums)).
+    lists:foldl(F, #{}, Nums).
+
+group_by_num(PNs) ->
+    F = fun (PN, M) -> M#{number(PN) => PN} end,
+    lists:foldl(F, #{}, PNs).
+
+split_by_numberdb(PNs) ->
+    F = fun (PN, M) ->
+                Key = number_db(PN),
+                M#{Key => [PN | maps:get(Key, M, [])]}
+        end,
+    lists:foldl(F, #{}, PNs).
+
+split_by_assignedto(PNs) ->
+    F = fun (PN, M) ->
+                AssignedTo = assigned_to(PN),
+                Key = case kz_term:is_empty(AssignedTo) of
+                          true -> undefined;
+                          false -> kz_util:format_account_db(AssignedTo)
+                      end,
+                M#{Key => [PN | maps:get(Key, M, [])]}
+        end,
+    lists:foldl(F, #{}, PNs).
+
+split_by_prevassignedto(PNs) ->
+    F = fun (PN, M) ->
+                PrevAssignedTo = prev_assigned_to(PN),
+                PrevIsCurrent = assigned_to(PN) =:= PrevAssignedTo,
+                Key = case PrevIsCurrent
+                          orelse kz_term:is_empty(PrevAssignedTo)
+                      of
+                          true when PrevIsCurrent ->
+                              lager:debug("~s prev_assigned_to is same as assigned_to,"
+                                          " not unassign-ing from prev", [number(PN)]),
+                              undefined;
+                          true ->
+                              lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
+                              undefined;
+                          false -> kz_util:format_account_db(PrevAssignedTo)
+                      end,
+                M#{Key => [PN | maps:get(Key, M, [])]}
+        end,
+    lists:foldl(F, #{}, PNs).
 
 -ifdef(TEST).
 fetch(Num, Options) ->
@@ -339,34 +425,42 @@ is_mdn_for_mdn_run(PN, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save(knm_phone_number()) -> knm_phone_number();
-          (knm_numbers:collection()) -> knm_numbers:collection().
-save(T0=#{todo := PNs, options := Options}) ->
+-spec save(knm_numbers:collection()) -> knm_numbers:collection().
+save(T0) ->
+    {T, NotToSave} = take_not_to_save(T0),
+    Ta = knm_numbers:ok(NotToSave, T),
+    Tb = knm_numbers:pipe(T, [fun save_to_number_db/1
+                             ,fun assign/1
+                             ,fun unassign_from_prev/1
+                             ]),
+    knm_numbers:merge_okkos(Ta, Tb).
+
+take_not_to_save(T0=#{todo := PNs, options := Options}) ->
     case knm_number_options:dry_run(Options) of
         true ->
             lager:debug("dry_run-ing btw"),
-            knm_numbers:ok(PNs, T0);
+            T = T0#{todo => [], ok => []},
+            {T, PNs};
         false ->
-            F = fun (PN, T) ->
-                        case knm_number:attempt(fun save/1, [PN]) of
-                            {error, R} -> knm_numbers:ko(number(PN), R, T);
-                            NewPN -> knm_numbers:ok(NewPN, T)
-                        end
-                end,
-            lists:foldl(F, T0, PNs)
-    end;
-save(PN=#knm_phone_number{is_dirty = false}) ->
-    lager:debug("not dirty, skip saving ~s", [number(PN)]),
-    PN;
-save(PN=#knm_phone_number{state = ?NUMBER_STATE_DELETED}) ->
-    lager:debug("deleted, skip saving ~s", [number(PN)]),
-    PN;
-save(PN) ->
-    Routines = [fun save_to_number_db/1
-               ,fun handle_assignment/1
-               ],
-    {'ok', NewPN} = setters(PN, Routines),
-    NewPN.
+            T = T0#{todo => []},
+            lists:foldl(fun take_not_to_save_fold/2, {T, []}, PNs)
+    end.
+
+take_not_to_save_fold(PN, {T, NotToSave}) ->
+    NotDirty = not PN#knm_phone_number.is_dirty,
+    case NotDirty
+        orelse ?NUMBER_STATE_DELETED =:= state(PN)
+    of
+        false -> {knm_numbers:ok(PN, T), NotToSave};
+        true ->
+            log_why_not_to_save(NotDirty, number(PN)),
+            {T, [PN|NotToSave]}
+    end.
+
+log_why_not_to_save(true, _Num) ->
+    lager:debug("not dirty, skip saving ~s", [_Num]);
+log_why_not_to_save(false, _Num) ->
+    lager:debug("deleted, skip saving ~s", [_Num]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -374,46 +468,27 @@ save(PN) ->
 %% To call only from knm_numbers:delete/2 (only for sysadmins).
 %% @end
 %%--------------------------------------------------------------------
--spec delete(knm_phone_number()) -> knm_phone_number();
-            (knm_numbers:collection()) -> knm_numbers:collection().
-delete(T0=#{todo := PNs, options := Options}) ->
+-spec delete(knm_numbers:collection()) -> knm_numbers:collection().
+delete(T=#{todo := PNs, options := Options}) ->
     case knm_number_options:dry_run(Options) of
         true ->
-            lager:debug("dry_run-ing btw"),
-            knm_numbers:ok(PNs, T0);
+            lager:debug("dry_run-ing btw, not deleting anything"),
+            knm_numbers:ok(PNs, T);
         false ->
-            F = fun (PN, T) ->
-                        case knm_number:attempt(fun delete/1, [PN]) of
-                            {error, R} -> knm_numbers:ko(number(PN), R, T);
-                            NewPN -> knm_numbers:ok(NewPN, T)
-                        end
-                end,
-            lists:foldl(F, T0, PNs)
-    end;
-delete(PN) ->
-    lager:debug("deleting permanently ~s", [number(PN)]),
-    Routines = [fun try_delete_number_doc/1
-               ,fun try_maybe_remove_number_from_account/1
-               ,{fun set_state/2, ?NUMBER_STATE_DELETED}
-               ],
-    {'ok', NewPN} = setters(PN, Routines),
-    NewPN.
-
-try_delete_number_doc(PN) ->
-    case delete_number_doc(PN) of
-        {'ok', _}=Ok -> Ok;
-        {'error', _R} ->
-            lager:debug("number doc for ~s not removed: ~p", [number(PN), _R]),
-            {'ok', PN}
+            knm_numbers:pipe(T, [fun log_permanent_deletion/1
+                                ,fun try_delete_account_doc/1
+                                ,fun try_delete_number_doc/1
+                                ,fun set_state_deleted/1
+                                ])
     end.
 
-try_maybe_remove_number_from_account(PN) ->
-    case maybe_remove_number_from_account(PN) of
-        {'ok', _}=Ok -> Ok;
-        {'error', _R} ->
-            lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
-            {'ok', PN}
-    end.
+log_permanent_deletion(T=#{todo := PNs}) ->
+    F = fun (_PN) -> lager:debug("deleting permanently ~s", [number(_PN)]) end,
+    lists:foreach(F, PNs),
+    knm_numbers:ok(PNs, T).
+
+set_state_deleted(T) ->
+    setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
 -spec release(knm_phone_number()) -> knm_phone_number();
              (knm_numbers:collection()) -> knm_numbers:collection().
@@ -511,7 +586,8 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
       ]
       ++
           props:filter_empty(
-            [{?PVT_ASSIGNED_TO, assigned_to(PN)}
+            [{<<"_rev">>, rev(PN)}
+            ,{?PVT_ASSIGNED_TO, assigned_to(PN)}
             ,{?PVT_AUTH_BY, auth_by(PN)}
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
             ,{?PVT_USED_BY, used_by(PN)}
@@ -559,6 +635,8 @@ from_json(JObj) ->
 
                 ,fun ensure_features_defined/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
+
+                 |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
                 ]),
     PN.
 
@@ -783,8 +861,14 @@ set_number(PN, <<"+",_:8,_/binary>>=NormalizedNum) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec number_db(knm_phone_number()) -> ne_binary().
-number_db(#knm_phone_number{number_db=NumberDb}) ->
-    NumberDb.
+number_db(#knm_phone_number{number_db=NumberDb}) -> NumberDb.
+
+%% @private
+-spec rev(knm_phone_number()) -> api_ne_binary().
+rev(#knm_phone_number{rev=Rev}) -> Rev.
+
+-spec set_rev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+set_rev(N, ?NE_BINARY=Rev) -> N#knm_phone_number{rev=Rev}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -814,15 +898,15 @@ assigned_to(#knm_phone_number{assigned_to=AssignedTo}) ->
 
 -spec set_assigned_to(knm_phone_number(), api_ne_binary()) -> knm_phone_number().
 set_assigned_to(PN=#knm_phone_number{assigned_to = V}, V) -> PN;
-set_assigned_to(PN0, AssignedTo='undefined') ->
+set_assigned_to(PN0, AssignedTo=undefined) ->
     PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
-                              ,used_by = 'undefined'
+                              ,used_by = undefined
                               });
 set_assigned_to(PN0, AssignedTo=?MATCH_ACCOUNT_RAW(_)) ->
     PN = set_prev_assigned_to(PN0, assigned_to(PN0)),
     ?DIRTY(PN#knm_phone_number{assigned_to = AssignedTo
-                              ,used_by = 'undefined'
+                              ,used_by = undefined
                               }).
 
 %% This is used only by from_json/1
@@ -1485,38 +1569,9 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec save_to_number_db(knm_phone_number()) -> knm_phone_number().
--ifdef(TEST).
-save_to_number_db(PN) -> PN.
--else.
-save_to_number_db(PN=#knm_phone_number{state = ?NUMBER_STATE_DELETED}) ->
-    lager:debug("deleted, skip saving ~s", [number(PN)]),
-    PN;
-save_to_number_db(PN) ->
-    NumberDb = number_db(PN),
-    JObj = to_json(PN),
-    case datamgr_save(PN, NumberDb, JObj) of
-        {'ok', Doc} -> from_json_with_options(Doc, PN);
-        {'error', 'not_found'} ->
-            lager:debug("creating new db '~s' for number '~s'", [NumberDb, number(PN)]),
-            'true' = kz_datamgr:db_create(NumberDb),
-            {'ok',_} = kz_datamgr:revise_doc_from_file(NumberDb, ?APP, <<"views/numbers.json">>),
-            save_to_number_db(PN);
-        {'error', E} ->
-            lager:error("failed to save ~s in ~s: ~p", [number(PN), NumberDb, E]),
-            knm_errors:database_error(E, PN)
-    end.
--endif.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec handle_assignment(knm_phone_number()) -> knm_phone_number().
-handle_assignment(PN) ->
-    ?LOG_DEBUG("handling assignment for ~s", [number(PN)]),
-    unassign_from_prev(assign(PN)).
+-spec save_to_number_db(knm_numbers:collection()) -> knm_numbers:collection().
+save_to_number_db(T0) ->
+    save_to(fun split_by_numberdb/1, fun database_error/3, T0).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1525,29 +1580,8 @@ handle_assignment(PN) ->
 %% that may not yet exist in AssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
--spec assign(knm_phone_number()) -> knm_phone_number().
-assign(PN) ->
-    AssignedTo = assigned_to(PN),
-    case kz_term:is_empty(AssignedTo) of
-        'true' -> PN;
-        'false' -> assign(PN, AssignedTo)
-    end.
-
--spec assign(knm_phone_number(), ne_binary()) -> knm_phone_number().
--ifdef(TEST).
-assign(PN, _AssignedTo) -> PN.
--else.
-assign(PN, AssignedTo) ->
-    AccountDb = kz_util:format_account_db(AssignedTo),
-    case datamgr_save(PN, AccountDb, to_json(PN)) of
-        {'error', E} ->
-            lager:error("failed to assign number ~s to ~s", [number(PN), AccountDb]),
-            knm_errors:assign_failure(PN, E);
-        {'ok', JObj} ->
-            lager:debug("assigned number ~s to ~s", [number(PN), AccountDb]),
-            from_json_with_options(JObj, PN)
-    end.
--endif.
+assign(T0) ->
+    save_to(fun split_by_assignedto/1, fun assign_failure/3, T0).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1556,164 +1590,91 @@ assign(PN, AssignedTo) ->
 %% number doc that may still exist in PrevAssignedTo DB.
 %% @end
 %%--------------------------------------------------------------------
--spec unassign_from_prev(knm_phone_number()) -> knm_phone_number().
-unassign_from_prev(PN) ->
-    PrevAssignedTo = prev_assigned_to(PN),
-    case kz_term:is_empty(PrevAssignedTo) of
-        'false' -> unassign_from_prev(PN, PrevAssignedTo);
-        'true' ->
-            lager:debug("prev_assigned_to is empty for ~s, ignoring", [number(PN)]),
-            PN
-    end.
+-spec unassign_from_prev(knm_numbers:collection()) -> knm_numbers:collection().
+unassign_from_prev(T0) ->
+    try_delete_from(fun split_by_prevassignedto/1, T0).
 
--spec unassign_from_prev(knm_phone_number(), ne_binary()) -> knm_phone_number().
+try_delete_number_doc(T0) ->
+    try_delete_from(fun split_by_numberdb/1, T0).
+
+try_delete_account_doc(T0) ->
+    try_delete_from(fun split_by_assignedto/1, T0).
+
+try_delete_from(SplitBy, T0) ->
+    F = fun (undefined, PNs, T) ->
+                %% This cannot happen only for try_delete_number_doc/1.
+                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                knm_numbers:add_oks(PNs, T);
+            (Db, PNs, T) ->
+                ?LOG_DEBUG("deleting from ~s", [Db]),
+                Docs = [to_json(PN) || PN <- PNs],
+                case delete_docs(Db, Docs) of
+                    {ok, JObjs} -> handle_bulk_change(Db, JObjs, PNs, T);
+                    {error, E} ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
+                        database_error(Nums, E, T)
+                end
+        end,
+    maps:fold(F, T0, SplitBy(knm_numbers:todo(T0))).
+
+save_to(SplitBy, ErrorF, T0) ->
+    F = fun FF (undefined, PNs, T) ->
+                %% NumberDb can never be undefined, AccountDb can.
+                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                knm_numbers:add_oks(PNs, T);
+            FF (Db, PNs, T) ->
+                ?LOG_DEBUG("saving to ~s", [Db]),
+                Docs = [to_json(PN) || PN <- PNs],
+                IsNumberDb = numbers =:= kz_datamgr:db_classification(Db),
+                case save_docs(Db, Docs) of
+                    {ok, JObjs} ->
+                        handle_bulk_change(Db, JObjs, PNs, T, ErrorF);
+                    {error, not_found} when IsNumberDb ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:debug("creating new numberdb '~s' for numbers ~p", [Db, Nums]),
+                        true = kz_datamgr:db_create(Db),
+                        {ok,_} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
+                        FF(Db, PNs, T);
+                    {error, E} ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:error("failed to assign numbers to ~s (~p): ~p", [Db, E, Nums]),
+                        database_error(Nums, E, T)
+                end
+        end,
+    maps:fold(F, T0, SplitBy(knm_numbers:todo(T0))).
+
+assign_failure(NumOrNums, E, T) ->
+    {error,A,B,C} = (catch knm_errors:assign_failure(undefined, E)),
+    Reason = knm_errors:to_json(A, B, C),
+    knm_numbers:ko(NumOrNums, Reason, T).
+
+database_error(NumOrNums, E, T) ->
+    {error,A,B,C} = (catch knm_errors:database_error(E, undefined)),
+    Reason = knm_errors:to_json(A, B, C),
+    knm_numbers:ko(NumOrNums, Reason, T).
+
+-spec save_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
+                                                   {error, kz_data:data_errors()}.
+-spec delete_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
+                                                     {error, kz_data:data_errors()}.
 -ifdef(TEST).
-unassign_from_prev(PN, _PrevAssignedTo) -> PN.
+mock_docs_return(Doc) ->
+    kz_json:from_list(
+      [{<<"id">>, ?NE_BINARY = kz_doc:id(Doc)}
+      ,{<<"ok">>, true}
+      ]).
+
+save_docs(?NE_BINARY, Docs) ->
+    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
+
+delete_docs(?NE_BINARY, Docs) ->
+    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
 -else.
-unassign_from_prev(PN=#knm_phone_number{assigned_to = PrevAssignedTo}, PrevAssignedTo) ->
-    lager:debug("prev_assigned_to is same as assigned_to, not unassign-ing from prev"),
-    PN;
-unassign_from_prev(PN, PrevAssignedTo) ->
-    Num = number(PN),
-    case get_number_in_account(PrevAssignedTo, Num) of
-        {'error', 'not_found'} ->
-            lager:debug("number ~s was not found in ~s, no need to unassign from prev"
-                       ,[Num, PrevAssignedTo]),
-            PN;
-        {'ok', _} -> do_unassign_from_prev(PN, PrevAssignedTo);
-        {'error', _R} -> do_unassign_from_prev(PN, PrevAssignedTo)
-    end.
+delete_docs(Db, Docs) ->
+    %% Note: deleting unexisting docs returns ok.
+    kz_datamgr:del_docs(Db, Docs).
 
--spec do_unassign_from_prev(knm_phone_number(), ne_binary()) -> knm_phone_number().
-do_unassign_from_prev(PN, PrevAssignedTo) ->
-    PrevAccountDb = kz_util:format_account_db(PrevAssignedTo),
-    case kz_datamgr:del_doc(PrevAccountDb, to_json(PN)) of
-        {'ok', _} ->
-            lager:debug("successfully unassign_from_prev number ~s from ~s"
-                       ,[number(PN), PrevAssignedTo]),
-            PN;
-        {'error', E} ->
-            lager:error("failed to unassign from prev number ~s from ~s"
-                       ,[number(PN), PrevAssignedTo]),
-            knm_errors:assign_failure(PN, E)
-    end.
-
--spec get_number_in_account(ne_binary(), ne_binary()) ->
-                                   {'ok', kz_json:object()} |
-                                   {'error', any()}.
-get_number_in_account(AccountId, Num) ->
-    AccountDb = kz_util:format_account_db(AccountId),
-    kz_datamgr:open_cache_doc(AccountDb, Num).
--endif.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec delete_number_doc(knm_phone_number()) -> knm_phone_number_return().
--ifdef(TEST).
-delete_number_doc(PN) -> {ok, PN}.
--else.
-delete_number_doc(PN) ->
-    case kz_datamgr:del_doc(number_db(PN), number(PN)) of
-        {'error', _R}=E -> E;
-        {'ok', _} -> {'ok', PN}
-    end.
--endif.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_remove_number_from_account(knm_phone_number()) -> knm_phone_number_return().
--ifdef(TEST).
-maybe_remove_number_from_account(PN) -> {ok, PN}.
--else.
-maybe_remove_number_from_account(PN) ->
-    AssignedTo = assigned_to(PN),
-    Num = number(PN),
-    case kz_term:is_empty(AssignedTo) of
-        'true' ->
-            lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
-            {'ok', PN};
-        'false' ->
-            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), Num) of
-                {'error', _R}=E -> E;
-                {'ok', _} -> {'ok', PN}
-            end
-    end.
--endif.
-
--ifndef(TEST).
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec datamgr_save(knm_phone_number(), ne_binary(), kz_json:object()) ->
-                          {'ok', kz_json:object()} |
-                          kz_data:data_error().
-datamgr_save(PN, Db, JObj) ->
-    case batch_run(PN)
-        andalso ?BULK_BATCH_WRITES
-    of
-        'false' -> kz_datamgr:ensure_saved(Db, JObj);
-        'true' -> store_maybe_push(Db, JObj)
-    end.
-
-store_maybe_push(Db, Doc) ->
-    BelowMax = kz_datamgr:max_bulk_insert() - 1,
-    case get(Db) of
-        'undefined' ->
-            put(Db, 1),
-            put({Db,1}, [Doc]),
-            {'ok', Doc};
-        BelowMax ->
-            store_doc(Db, Doc, BelowMax),
-            push_stored(Db, {Db, BelowMax + 1});
-        Count ->
-            store_doc(Db, Doc, Count),
-            {'ok', Doc}
-    end.
-
-store_doc(Db, Doc, Count) ->
-    NewCount = Count + 1,
-    put(Db, NewCount),
-    put({Db,NewCount}, [Doc | get({Db,Count})]),
-    'ok'.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec push_stored() -> 'ok'.
-push_stored() ->
-    case ?BULK_BATCH_WRITES of
-        true ->
-            lager:debug("pushing stored writes"),
-            DBs = [Db || {Db=?NE_BINARY, I} <- get(),
-                         is_integer(I)
-                  ],
-            lists:foreach(fun push_stored/1, DBs);
-        false ->
-            ok
-    end.
-
-push_stored(Db) ->
-    push_stored(Db, {Db, get(Db)}).
-
-push_stored(Db, Key) ->
-    Docs = get(Key),
-    erase(Key),
-    erase(Db),
-    R = kz_datamgr:save_docs(Db, Docs),
-    element(1, R) =:= 'error'
-        andalso lager:debug("save_docs ~p failed: ~p"
-                           ,[[kz_doc:id(Doc) || Doc <- Docs]
-                            ,element(2,R)
-                            ]),
-    R.
+save_docs(Db, Docs) ->
+    kz_datamgr:save_docs(Db, Docs).
 -endif.

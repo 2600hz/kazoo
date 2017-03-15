@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%%
 %%%
@@ -234,13 +234,8 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
                    ,DisplayPNs
                    ,knm_util:get_all_number_dbs()
                    ),
-    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ToRm0 = gb_sets:to_list(Leftovers),
-    lists:foreach(fun (DID) ->
-                          ?LOG("########## found alien [~s] doc: ~s ##########", [AccountDb, DID])
-                  end
-                 ,ToRm0
-                 ),
+    lists:foreach(fun (_DID) -> log_alien(AccountDb, _DID) end, ToRm0),
     ToRm = [DID
             || DID <- ToRm0,
                false =:= is_assigned_to(AccountDb, DID, AccountId),
@@ -252,6 +247,9 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
+
+log_alien(_AccountDb, _DID) ->
+    ?LOG("########## found alien [~s] doc: ~s ##########", [_AccountDb, _DID]).
 
 -spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
@@ -299,7 +297,6 @@ migrate_unassigned_numbers() ->
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, _/binary>> = NumberDb) ->
     ?LOG("########## start fixing ~s ##########", [NumberDb]),
     migrate_unassigned_numbers(NumberDb, 0),
-    _ = knm_phone_number:push_stored(), %% Bulk doc writes
     ?LOG("########## done fixing ~s ##########", [NumberDb]);
 migrate_unassigned_numbers(<<?KNM_DB_PREFIX_encoded, Suffix/binary>>) ->
     migrate_unassigned_numbers(<<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>);
@@ -412,7 +409,7 @@ fix_docs({error, timeout}, _AccountDb, _, _DID) ->
 fix_docs({error, _R}, _AccountDb, _, DID) ->
     ?LOG("failed to get ~s from ~s (~p), creating it", [DID, _AccountDb, _R]),
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}]) of
+    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}], options()) of
         {ok, _} -> ok;
         {error, _E} -> ?LOG("creating ~s failed: ~p", [DID, _E])
     end;
@@ -435,7 +432,7 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                                       ),
             ?LOG("syncing ~s", [DID]),
             Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
-                       ,{fun knm_phone_number:update_doc/2, JObj}
+                       ,{fun knm_phone_number:reset_doc/2, JObj}
                        ],
             try knm_number:update(DID, Routines, options()) of
                 {ok, _} -> ok;

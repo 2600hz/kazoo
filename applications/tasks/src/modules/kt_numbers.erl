@@ -74,12 +74,9 @@ output_header(<<"dump">>) ->
     list_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
-cleanup(<<"list">>, _) ->
-    knm_phone_number:push_stored();
-cleanup(<<"list_all">>, _) ->
-    knm_phone_number:push_stored();
-cleanup(<<"dump">>, _) ->
-    knm_phone_number:push_stored();
+cleanup(<<"list">>, _) -> ok;
+cleanup(<<"list_all">>, _) -> ok;
+cleanup(<<"dump">>, _) -> ok;
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -89,16 +86,11 @@ cleanup(<<"import">>, AccountIds) ->
                 kz_services:reconcile(AccountId, <<"phone_numbers">>)
         end,
     lists:foreach(F, sets:to_list(AccountIds)),
-    knm_phone_number:push_stored(),
     kz_datamgr:enable_change_notice();
-cleanup(<<"assign_to">>, _) ->
-    knm_phone_number:push_stored();
-cleanup(<<"release">>, _) ->
-    knm_phone_number:push_stored();
-cleanup(<<"reserve">>, _) ->
-    knm_phone_number:push_stored();
-cleanup(<<"delete">>, _) ->
-    knm_phone_number:push_stored().
+cleanup(<<"assign_to">>, _) -> ok;
+cleanup(<<"release">>, _) -> ok;
+cleanup(<<"reserve">>, _) -> ok;
+cleanup(<<"delete">>, _) -> ok.
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -281,46 +273,54 @@ list(#{auth_account_id := AuthBy}, [{AccountId, NumberDb} | Rest]) ->
     case number_db_listing(NumberDb, AccountId) of
         [] -> {ok, Rest};
         E164s ->
-            Rows = [list_number_row(AuthBy, E164) || E164 <- E164s],
+            Rows = list_numbers(AuthBy, E164s),
             {Rows, Rest}
     end.
 
--spec list_number_row(ne_binary()) -> kz_csv:row().
--spec list_number_row(ne_binary(), ne_binary()) -> kz_csv:row().
-list_number_row(E164) ->
-    list_number_row(?KNM_DEFAULT_AUTH_BY, E164).
-list_number_row(AuthBy, E164) ->
-    Options = [{'auth_by', AuthBy}
-              ,{'batch_run', 'true'}
+-spec list_numbers(ne_binaries()) -> [kz_csv:row()].
+-spec list_numbers(ne_binary(), ne_binaries()) -> [kz_csv:row()].
+list_numbers(E164s) ->
+    list_numbers(?KNM_DEFAULT_AUTH_BY, E164s).
+list_numbers(AuthBy, E164s) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
               ],
-    case knm_number:get(E164, Options) of
-        {'ok', KNMNumber} ->
-            PhoneNumber = knm_number:phone_number(KNMNumber),
-            InboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
-            OutboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
-            E911 = knm_phone_number:feature(PhoneNumber, ?FEATURE_E911),
-            [E164
-            ,knm_phone_number:assigned_to(PhoneNumber)
-            ,knm_phone_number:prev_assigned_to(PhoneNumber)
-            ,knm_phone_number:state(PhoneNumber)
-            ,integer_to_binary(knm_phone_number:created(PhoneNumber))
-            ,integer_to_binary(knm_phone_number:modified(PhoneNumber))
-            ,knm_phone_number:used_by(PhoneNumber)
-            ,kz_term:to_binary(knm_phone_number:ported_in(PhoneNumber))
-            ,knm_phone_number:module_name(PhoneNumber)
-            ,kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
-            ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
-            ,kz_json:get_ne_binary_value(?E911_ZIP, E911)
-            ,kz_json:get_ne_binary_value(?E911_STREET1, E911)
-            ,kz_json:get_ne_binary_value(?E911_STREET2, E911)
-            ,kz_json:get_ne_binary_value(?E911_CITY, E911)
-            ,kz_json:get_ne_binary_value(?E911_STATE, E911)
-            ];
-        {'error', 'not_reconcilable'} ->
-            %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
-            %% Their fields are not queriable but we return the id to show it exists.
-            [E164 | lists:duplicate(length(list_output_header()) - 1, 'undefined')]
-    end.
+    #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
+    RowsBad = maps:fold(fun list_bad_rows/3, [], KOs),
+    Rows = lists:map(fun list_number_rows/1, Ns),
+    RowsBad ++ Rows.
+
+list_bad_rows(E164, not_reconcilable, Rows) ->
+    %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
+    %% Their fields are not queriable but we return the id to show it exists.
+    Row = [E164 | lists:duplicate(length(list_output_header()) - 1, undefined)],
+    [Row|Rows];
+list_bad_rows(_E164, _R, Rows) ->
+    lager:error("wild number ~s appeared: ~p", [_E164, _R]),
+    Rows.
+
+list_number_rows(KNMNumber) ->
+    PhoneNumber = knm_number:phone_number(KNMNumber),
+    InboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
+    OutboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
+    E911 = knm_phone_number:feature(PhoneNumber, ?FEATURE_E911),
+    [knm_phone_number:number(PhoneNumber)
+    ,knm_phone_number:assigned_to(PhoneNumber)
+    ,knm_phone_number:prev_assigned_to(PhoneNumber)
+    ,knm_phone_number:state(PhoneNumber)
+    ,integer_to_binary(knm_phone_number:created(PhoneNumber))
+    ,integer_to_binary(knm_phone_number:modified(PhoneNumber))
+    ,knm_phone_number:used_by(PhoneNumber)
+    ,kz_term:to_binary(knm_phone_number:ported_in(PhoneNumber))
+    ,knm_phone_number:module_name(PhoneNumber)
+    ,kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
+    ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
+    ,kz_json:get_ne_binary_value(?E911_ZIP, E911)
+    ,kz_json:get_ne_binary_value(?E911_STREET1, E911)
+    ,kz_json:get_ne_binary_value(?E911_STREET2, E911)
+    ,kz_json:get_ne_binary_value(?E911_CITY, E911)
+    ,kz_json:get_ne_binary_value(?E911_STATE, E911)
+    ].
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list_all(#{account_id := Account}, init) ->
@@ -335,7 +335,7 @@ list_all(_, [{AccountId, NumberDb} | Rest]) ->
     case number_db_listing(NumberDb, AccountId) of
         [] -> {'ok', Rest};
         E164s ->
-            Rows = [list_number_row(E164) || E164 <- E164s],
+            Rows = list_numbers(E164s),
             {Rows, Rest}
     end.
 
@@ -351,10 +351,10 @@ dump(_, [NumberDb|NumberDbs]) ->
     case kz_datamgr:get_results(NumberDb, <<"numbers/status">>) of
         {'ok', []} -> {'ok', NumberDbs};
         {'error', _R} ->
-            lager:debug("could not get numbers from ~s: ~p", [NumberDb, _R]),
+            lager:error("could not get numbers from ~s: ~p", [NumberDb, _R]),
             {'ok', NumberDbs};
         {'ok', JObjs} ->
-            Rows = [list_number_row(kz_doc:id(JObj)) || JObj <- JObjs],
+            Rows = list_numbers([kz_doc:id(JObj) || JObj <- JObjs]),
             {Rows, NumberDbs}
     end.
 

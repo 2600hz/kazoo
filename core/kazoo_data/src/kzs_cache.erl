@@ -79,7 +79,7 @@ open_cache_doc(Server, DbName, DocId, Options) ->
                              data_error().
 open_cache_docs(DbName, DocIds, Options) ->
     {Cached, MissedDocIds} = fetch_locals(DbName, DocIds),
-    lager:debug("misses ~p", [MissedDocIds]),
+    lager:debug("misses: ~p", [MissedDocIds]),
     case kz_datamgr:open_docs(DbName, MissedDocIds, remove_cache_options(Options)) of
         {error, _}=E -> E;
         {ok, Opened} ->
@@ -106,7 +106,8 @@ fetch_locals(DbName, DocIds) ->
 disassemble_jobjs(DbName, Options, JObjs) ->
     [case kz_json:get_ne_value(<<"doc">>, JObj) of
          undefined ->
-             Reason = kz_json:get_ne_value(<<"error">>, JObj),
+             %% Reason is not_found for when documents were deleted.
+             Reason = kz_json:get_ne_value(<<"error">>, JObj, <<"not_found">>),
              _ = maybe_cache_failure(DbName, DocId, Options, {error, Reason}),
              {DocId, error, Reason};
          Doc ->
