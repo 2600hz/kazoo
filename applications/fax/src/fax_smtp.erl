@@ -427,8 +427,8 @@ check_number(#state{number= <<>>
     {'error', "554 Not Found", State#state{errors=[Error | Errors]}};
 check_number(#state{faxbox='undefined'}=State) ->
     {'error', "554 Not Found", State};
-check_number(#state{faxbox=FaxBoxDoc, number=Number}=State) ->
-    kz_doc:account_id(FaxBoxDoc),
+check_number(#state{faxbox=FaxBoxDoc, number=Number, errors=Errors}=State) ->
+    AccountId = kz_doc:account_id(FaxBoxDoc),
     case knm_converters:is_reconcilable(Number, AccountId) of
         'true' ->
             NormalizedNumber = knm_converters:normalize(Number, AccountId),
