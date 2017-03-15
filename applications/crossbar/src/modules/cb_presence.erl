@@ -168,7 +168,7 @@ search_detail(Context, Extension) ->
 
 -spec search_result(cb_context:context(), search_result()) -> cb_context:context().
 search_result(Context, {'ok', JObj}) ->
-    Routines = [{fun cb_context:set_resp_data/2, kz_json:normalize(JObj)}
+    Routines = [{fun cb_context:set_resp_data/2, JObj}
                ,{fun cb_context:set_resp_status/2, 'success'}
                ],
     cb_context:setters(Context, Routines);
