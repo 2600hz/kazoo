@@ -288,6 +288,15 @@ merge_attribute(<<"caller_id">> = Key, Account, Endpoint, Owner) ->
             CallerId = kz_json:set_value(L, Number, Merged),
             kz_json:set_value(Key, CallerId, Endpoint)
     end;
+merge_attribute(<<"dial_plan">> = Key, Account, Endpoint, Owner) ->
+    %% Prioritize device over user over account for the dial_plan attribute
+    EndpointAttr = kz_json:get_ne_value(Key, Endpoint, kz_json:new()),
+    OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
+    AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
+    Merged = kz_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]
+                                     ,fun(_, V) -> kz_term:is_not_empty(V) end
+                                    ),
+    kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"do_not_disturb">> = Key, Account, Endpoint, Owner) ->
     L = [Key, <<"enabled">>],
     AccountAttr = kz_json:is_true(L, Account, 'false'),
