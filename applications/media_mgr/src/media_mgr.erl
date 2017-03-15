@@ -62,6 +62,7 @@ start_deps() ->
                                                 ,'whistle_amqp'
                                                 ,'whistle_couch'
                                                 ,'whistle_media'
+                                                ,'ranch'
                                                 ,'cowlib'
                                                 ,'cowboy'
                                                ]],
