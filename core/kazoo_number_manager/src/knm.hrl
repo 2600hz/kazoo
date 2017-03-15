@@ -264,7 +264,6 @@
 -define(BANDWIDTH_AREACODE_RESPONSE
        ,knm_util:fixture("bandwidth_areacode_response.xml")
        ).
->>>>>>> HELP-28545: import tests
 
 -define(BW_EXISTING_JSON
        ,kz_json:from_list(
