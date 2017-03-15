@@ -489,7 +489,23 @@ on_successful_validation('undefined', Context) ->
             Code = <<"required">>,
             Message = <<"add document url or upload a document">>,
             cb_context:add_validation_error(Property, Code, Message, Context);
-        'false' -> on_success('undefined', Context)
+        'false' -> verify_number(Context)
+    end.
+
+-spec verify_number(cb_context:context()) -> cb_context:context().
+verify_number(Context) ->
+    AccountId = cb_context:account_id(Context),
+    Number = kzd_fax:to_number(cb_context:doc(Context)),
+    case knm_converters:is_reconcilable(Number, AccountId) of
+        'true' ->
+            NormalizedNumber = knm_converters:normalize(Number, AccountId),
+            Doc = kz_json:set_value(<<"to_number">>, NormalizedNumber, cb_context:doc(Context)),
+            on_success(cb_context:set_doc(Context, Doc));
+        'false' ->
+            Property = [<<"document">>,<<"to_number">>],
+            Code = <<"required">>,
+            Message = <<"add a valid number to snd the fax to">>,
+            cb_context:add_validation_error(Property, Code, Message, Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -498,8 +514,8 @@ on_successful_validation('undefined', Context) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec on_success(api_binary(), cb_context:context()) -> cb_context:context().
-on_success('undefined', Context) ->
+-spec on_success(cb_context:context()) -> cb_context:context().
+on_success(Context) ->
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_db(Context),
     ResellerId = cb_context:reseller_id(Context),
