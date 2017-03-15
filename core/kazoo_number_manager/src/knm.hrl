@@ -222,49 +222,6 @@
           ,{?PVT_CREATED, 63565935000}
           ])).
 
--define(BLOCK_PHONEBOOK_URL, <<"http://blocks.tld">>).
-
--define(START_BLOCK, <<"+14158867900">>).
--define(END_BLOCK, <<"+14158897909">>).
--define(BLOCK_RESP
-       ,kz_json:from_list([{<<"start_number">>, ?START_BLOCK}
-                          ,{<<"end_number">>, ?END_BLOCK}
-                          ])
-       ).
-
--define(BLOCKS_RESP
-       ,kz_json:from_list([{<<"status">>, <<"success">>}
-                          ,{<<"data">>, [?BLOCK_RESP]}
-                          ])
-       ).
-
--define(NUMBER_PHONEBOOK_URL_L, "http://numbers.tld").
--define(NUMBER_PHONEBOOK_URL, <<?NUMBER_PHONEBOOK_URL_L>>).
-
--define(NUMBERS_DATA
-       ,kz_json:from_list(
-          [{<<"+1415886790", (D + $0)>>
-           ,kz_json:from_list([{<<"extension">>, D}])
-           }
-           || D <- lists:seq(0,9)
-          ]
-         )
-       ).
-
--define(NUMBERS_RESPONSE
-       ,kz_json:from_list([{<<"status">>, <<"success">>}
-                          ,{<<"data">>, ?NUMBERS_DATA}
-                          ])
-       ).
-
--define(BANDWIDTH_NPAN_RESPONSE
-       ,knm_util:fixture("bandwidth_numbersearch_response.xml")
-       ).
-
--define(BANDWIDTH_AREACODE_RESPONSE
-       ,knm_util:fixture("bandwidth_areacode_response.xml")
-       ).
-
 -define(BW_EXISTING_JSON
        ,kz_json:from_list(
           [{<<"_id">>, <<"+14122065197">>}
