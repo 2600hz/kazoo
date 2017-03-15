@@ -1619,16 +1619,23 @@ try_delete_from(SplitBy, T0) ->
     maps:fold(F, T0, SplitBy(knm_numbers:todo(T0))).
 
 save_to(SplitBy, ErrorF, T0) ->
-    F = fun (undefined, PNs, T) ->
-                %% NumberDb can never be undefined
+    F = fun FF (undefined, PNs, T) ->
+                %% NumberDb can never be undefined, AccountDb can.
                 ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
                 knm_numbers:add_oks(PNs, T);
-            (Db, PNs, T) ->
+            FF (Db, PNs, T) ->
                 ?LOG_DEBUG("saving to ~s", [Db]),
                 Docs = [to_json(PN) || PN <- PNs],
+                IsNumberDb = numbers =:= kz_datamgr:db_classification(Db),
                 case save_docs(Db, Docs) of
                     {ok, JObjs} ->
                         handle_bulk_change(Db, JObjs, PNs, T, ErrorF);
+                    {error, not_found} when IsNumberDb ->
+                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
+                        lager:debug("creating new numberdb '~s' for numbers ~p", [Db, Nums]),
+                        true = kz_datamgr:db_create(Db),
+                        {ok,_} = kz_datamgr:revise_doc_from_file(Db, ?APP, <<"views/numbers.json">>),
+                        FF(Db, PNs, T);
                     {error, E} ->
                         Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to assign numbers to ~s (~p): ~p", [Db, E, Nums]),
