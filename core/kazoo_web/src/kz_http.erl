@@ -261,14 +261,15 @@ maybe_basic_auth(Headers, Options) ->
 %% @doc Build httpc request argument based on method
 %%--------------------------------------------------------------------
 -spec build_request(method(), text(), kz_proplist(), http_body()) -> httpc_request().
-build_request(Method, Url, Headers, _Body) when (Method == 'options');
-                                                (Method == 'get');
-                                                (Method == 'head');
-                                                (Method == 'trace') ->
+build_request(Method, Url, Headers, _Body) when Method =:= 'options';
+                                                Method =:= 'get';
+                                                Method =:= 'head';
+                                                Method =:= 'trace' ->
     {kz_term:to_list(Url), ensure_string_headers(Headers)};
-build_request(Method, Url, Headers, Body) when (Method == 'post');
-                                               (Method == 'put');
-                                               (Method == 'delete') ->
+build_request(Method, Url, Headers, Body) when Method =:= 'post';
+                                               Method =:= 'put';
+                                               Method =:= 'patch';
+                                               Method =:= 'delete' ->
     ContentType = props:get_first_defined(["Content-Type"
                                           ,"content-type"
                                           ,'content_type'
