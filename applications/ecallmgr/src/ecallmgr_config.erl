@@ -245,6 +245,9 @@ set(Key, Value, Node, Opt) ->
     Req = [{<<"Node">>, Node}
            | lists:keydelete(<<"Node">>, 1, Props)
           ],
+
+    lager:info("setting ecallmgr_config value: ~p", [Props]),
+
     ReqResp = kz_amqp_worker:call(props:filter_undefined(Req)
                                  ,fun kapi_sysconf:publish_set_req/1
                                  ,fun kz_term:always_true/1
