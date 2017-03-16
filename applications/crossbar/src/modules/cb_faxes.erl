@@ -504,7 +504,7 @@ verify_number(Context) ->
         'false' ->
             Property = [<<"document">>,<<"to_number">>],
             Code = <<"required">>,
-            Message = <<"add a valid number to snd the fax to">>,
+            Message = <<"add a valid number to send the fax to">>,
             cb_context:add_validation_error(Property, Code, Message, Context)
     end.
 
