@@ -39,7 +39,7 @@
                ,from :: api_ne_binary()
                ,to :: api_ne_binary()
                ,doc :: kz_json:object()
-               ,filename :: file:filename_all()
+               ,filename :: api_ne_binary()
                ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
@@ -427,8 +427,17 @@ check_number(#state{number= <<>>
     {'error', "554 Not Found", State#state{errors=[Error | Errors]}};
 check_number(#state{faxbox='undefined'}=State) ->
     {'error', "554 Not Found", State};
-check_number(#state{}=State) ->
-    check_permissions(State).
+check_number(#state{faxbox=FaxBoxDoc, number=Number, errors=Errors}=State) ->
+    AccountId = kz_doc:account_id(FaxBoxDoc),
+    case knm_converters:is_reconcilable(Number, AccountId) of
+        'true' ->
+            NormalizedNumber = knm_converters:normalize(Number, AccountId),
+            check_permissions(State#state{number=NormalizedNumber});
+        'false' ->
+            Error = kz_term:to_binary(io_lib:format("fax number ~s is invalid", [Number])),
+            lager:debug(Error),
+            {'error', "554 Not Found", State#state{errors=[Error | Errors]}}
+    end.
 
 -spec check_permissions(state()) ->
                                {'ok', state()} |
