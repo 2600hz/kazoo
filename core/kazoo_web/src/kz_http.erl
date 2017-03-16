@@ -268,6 +268,7 @@ build_request(Method, Url, Headers, _Body) when (Method == 'options');
     {kz_term:to_list(Url), ensure_string_headers(Headers)};
 build_request(Method, Url, Headers, Body) when (Method == 'post');
                                                (Method == 'put');
+                                               (Method == 'patch');
                                                (Method == 'delete') ->
     ContentType = props:get_first_defined(["Content-Type"
                                           ,"content-type"
