@@ -55,6 +55,7 @@ start_deps() ->
                                                ,'whistle_couch'
                                                ,'kazoo_bindings'
                                                ,'ranch'
+                                               ,'cowlib'
                                                ,'cowboy'
                                                ,'public_key'
                                                ,'ssl'
