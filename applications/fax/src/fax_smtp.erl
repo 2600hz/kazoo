@@ -434,7 +434,7 @@ check_number(#state{faxbox=FaxBoxDoc, number=Number, errors=Errors}=State) ->
             NormalizedNumber = knm_converters:normalize(Number, AccountId),
             check_permissions(State#state{number=NormalizedNumber});
         'false' ->
-            Error = kz_term:to_binary(io_lib:format("fax number ~s is invalid", [Number])),
+            Error = kz_util:to_binary(io_lib:format("fax number ~s is invalid", [Number])),
             lager:debug(Error),
             {'error', "554 Not Found", State#state{errors=[Error | Errors]}}
     end.
