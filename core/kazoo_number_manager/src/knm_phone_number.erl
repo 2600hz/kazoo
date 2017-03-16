@@ -141,14 +141,31 @@ new(T=#{todo := Nums, options := Options}) ->
     PNs = [do_new(DID, Setters) || DID <- Nums],
     knm_numbers:ok(PNs, T).
 
+-ifdef(TEST).
+-define(OPTIONS_FOR_NEW_SETTERS(Options),
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
+        of
+            {true,false} -> [{module_name, <<"knm_vitelity">>} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
+        end).
+-else.
+-define(OPTIONS_FOR_NEW_SETTERS(Options),
+        case {knm_number_options:ported_in(Options)
+             ,?NUMBER_STATE_PORT_IN =:= knm_number_options:state(Options)
+             }
+        of
+            {true,false} -> [{module_name, ?PORT_IN_MODULE_NAME} | Options];
+            {_,true} -> [{module_name, ?CARRIER_LOCAL} | Options];
+            _ -> Options
+        end).
+-endif.
+
 -spec new_setters(knm_number_options:options()) -> set_functions().
 new_setters(Options) ->
-    knm_number_options:to_phone_number_setters(
-      case knm_number_options:state(Options) of
-          ?NUMBER_STATE_PORT_IN -> [{'module_name', ?PORT_IN_MODULE_NAME} | Options];
-          _ -> Options
-      end
-     ).
+    knm_number_options:to_phone_number_setters(?OPTIONS_FOR_NEW_SETTERS(Options)).
 
 -spec do_new(ne_binary(), set_functions()) -> knm_phone_number().
 do_new(DID, Setters) ->
@@ -376,6 +393,8 @@ test_fetch(?TEST_OLD6_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json")))};
 test_fetch(?TEST_PORT_IN_NUM) ->
     {ok, ?PORT_IN_NUMBER};
+test_fetch(?TEST_PORT_IN2_NUM) ->
+    {ok, ?PORT_IN2_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
     {error, not_found}.
 -else.
@@ -749,6 +768,10 @@ from_json_with_options(JObj, Options)
               ,{fun set_batch_run/2, knm_number_options:batch_run(Options, 'false')}
               ,{fun set_mdn_run/2, knm_number_options:mdn_run(Options)}
               ,{fun set_auth_by/2, knm_number_options:auth_by(Options, ?KNM_DEFAULT_AUTH_BY)}
+               |case props:is_defined(module_name, Options) of
+                    true -> [{fun set_module_name/2, knm_number_options:module_name(Options)}];
+                    false -> []
+                end
               ],
     {'ok', PN} = setters(from_json(JObj), Updates),
     PN;

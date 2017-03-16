@@ -74,6 +74,7 @@
 -define(TEST_OLD6_NUM, <<"+12156774700">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
+-define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
@@ -103,7 +104,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
           ])).
 
@@ -119,7 +119,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
           ])).
 
@@ -135,7 +134,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ])).
 
 -define(IN_SERVICE_BAD_CARRIER_NUMBER
@@ -150,7 +148,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
           ])).
 
@@ -166,7 +163,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
           ])).
 
@@ -182,7 +178,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1800">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ,{?PVT_USED_BY, <<"callflow">>}
           ])).
 
@@ -197,7 +192,6 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1435">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
           ])).
 
 -define(PORT_IN_NUMBER
@@ -212,7 +206,20 @@
           ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
           ,{?PVT_CREATED, 63565934000}
-          ,{?PVT_AUTH_BY, ?MASTER_ACCOUNT_ID}
+          ])).
+
+-define(PORT_IN2_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_PORT_IN2_NUM}
+          ,{<<"_rev">>, <<"2-7dddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+          ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
           ])).
 
 -define(BW_EXISTING_JSON
