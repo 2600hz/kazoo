@@ -29,6 +29,7 @@
         ,srvtuple_to_binary/1
         ,naptrtuple_to_binary/1
         ,mxtuple_to_binary/1
+        ,maybe_mapped_ipv4/1
         ]).
 -export([pretty_print_bytes/1]).
 
@@ -151,7 +152,8 @@ verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
     Block = inet_cidr:parse(CIDR),
-    inet_cidr:contains(Block, inet:parse_address(IP)).
+    {'ok', IPTuple} = inet:parse_address(IP),
+    inet_cidr:contains(Block, IPTuple).
 
 %%     %% As per the docs... "This operation should only be used for test purposes"
 %%     %% so, ummm ya, but probably cheaper then my expand bellow followed by a list
@@ -336,6 +338,13 @@ mxtuple_to_binary({Priority, Domain}) ->
     <<(kz_term:to_binary(Priority))/binary, " "
       ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
+
+-spec maybe_mapped_ipv4(inet:ip_address()) -> inet:ip4_address() | 'undefined'.
+maybe_mapped_ipv4({0, 0, 0, 0, 0, 16#FFFF, AB, CD}) ->
+    <<A:8, B:8>> = <<AB:16>>,
+    <<C:8, D:8>> = <<CD:16>>,
+    {A, B, C, D};
+maybe_mapped_ipv4(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public
