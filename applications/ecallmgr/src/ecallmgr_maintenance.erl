@@ -584,6 +584,12 @@ modify_acls(Name, IP, ACLS, ACLFun, ConfigFun) ->
               ,kz_json:get_value(<<"cidr">>, ACL)
               ,kz_json:get_value(<<"type">>, ACL)
               ]),
+    lager:info("updating ~s ACLs ~s(~s) to ~s traffic~n"
+              ,[kz_json:get_value(<<"network-list-name">>, ACL)
+               ,Name
+               ,kz_json:get_value(<<"cidr">>, ACL)
+               ,kz_json:get_value(<<"type">>, ACL)
+               ]),
     ConfigFun(<<"acls">>, kz_json:set_value(Name, ACL, filter_acls(ACLS))),
     maybe_reload_acls(Name, 'modify', 4).
 
