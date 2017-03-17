@@ -29,7 +29,6 @@
         ,srvtuple_to_binary/1
         ,naptrtuple_to_binary/1
         ,mxtuple_to_binary/1
-        ,maybe_mapped_ipv4/1
         ]).
 -export([pretty_print_bytes/1]).
 
@@ -310,6 +309,13 @@ iptuple_to_binary({A,B,C,D}) ->
       ,(kz_term:to_binary(C))/binary, "."
       ,(kz_term:to_binary(D))/binary
     >>;
+
+%% IPv4 mapped to IPv6
+%% https://tools.ietf.org/html/rfc4038#section-4.2
+iptuple_to_binary({0, 0, 0, 0, 0, 16#FFFF, AB, CD}) ->
+    <<A:8, B:8>> = <<AB:16>>,
+    <<C:8, D:8>> = <<CD:16>>,
+    iptuple_to_binary({A,B,C,D});
 iptuple_to_binary({_I1, _I2, _I3, _I4, _I5, _I6, _I7, _I8}=T) ->
     kz_binary:join([to_hex(I) || I <- tuple_to_list(T)], <<":">>).
 
@@ -340,13 +346,6 @@ mxtuple_to_binary({Priority, Domain}) ->
     <<(kz_term:to_binary(Priority))/binary, " "
       ,(kz_binary:strip_right(kz_term:to_binary(Domain), $.))/binary
     >>.
-
--spec maybe_mapped_ipv4(inet:ip_address()) -> inet:ip4_address() | 'undefined'.
-maybe_mapped_ipv4({0, 0, 0, 0, 0, 16#FFFF, AB, CD}) ->
-    <<A:8, B:8>> = <<AB:16>>,
-    <<C:8, D:8>> = <<CD:16>>,
-    {A, B, C, D};
-maybe_mapped_ipv4(_) -> 'undefined'.
 
 %%--------------------------------------------------------------------
 %% @public

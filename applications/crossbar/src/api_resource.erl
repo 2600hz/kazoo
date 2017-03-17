@@ -69,11 +69,11 @@ get_profile_id(Req) ->
     end.
 
 -spec get_client_ip(inet:ip_address(), cowboy_req:req()) ->
-                           inet:ip_address().
+                           ne_binary().
 get_client_ip(Peer, Req) ->
     case cowboy_req:header(<<"x-forwarded-for">>, Req) of
-        {'undefined', _} -> Peer;
-        {ForwardIP, _} -> maybe_allow_proxy_req(Peer, ForwardIP)
+        {'undefined', _} -> kz_network_utils:iptuple_to_binary(Peer);
+        {ForwardIP, _} -> maybe_allow_proxy_req(kz_network_utils:iptuple_to_binary(Peer), ForwardIP)
     end.
 
 -spec maybe_trace(cowboy_req:req()) -> 'ok'.
@@ -115,7 +115,6 @@ rest_init(Req0, Opts) ->
     {Version, Req7} = find_version(Path, Req6),
 
     ClientIP = get_client_ip(Peer, Req7),
-    MappedClientIP = kz_network_utils:maybe_mapped_ipv4(ClientIP),
 
     {Headers, _} = cowboy_req:headers(Req7),
 
@@ -130,7 +129,7 @@ rest_init(Req0, Opts) ->
               ,{fun cb_context:set_resp_status/2, 'fatal'}
               ,{fun cb_context:set_resp_error_msg/2, <<"init failed">>}
               ,{fun cb_context:set_resp_error_code/2, 500}
-              ,{fun cb_context:set_client_ip/2, kz_network_utils:iptuple_to_binary(ClientIP)}
+              ,{fun cb_context:set_client_ip/2, ClientIP}
               ,{fun cb_context:set_profile_id/2, ProfileId}
               ,{fun cb_context:set_api_version/2, Version}
               ,{fun cb_context:set_magic_pathed/2, props:is_defined('magic_path', Opts)}
@@ -149,17 +148,7 @@ rest_init(Req0, Opts) ->
             {Req10, Context3} = api_util:get_pretty_print(Req9, Context2),
             Event = api_util:create_event_name(Context3, <<"init">>),
             {Context4, _} = crossbar_bindings:fold(Event, {Context3, Opts}),
-            case MappedClientIP of
-                'undefined' ->
-                    lager:info("~s: ~s?~s from ~s", [Method ,Path, QS
-                                                    ,kz_network_utils:iptuple_to_binary(ClientIP)
-                                                    ]);
-                _ ->
-                    lager:info("~s: ~s?~s from ~s (~s)", [Method ,Path, QS
-                                                         ,kz_network_utils:iptuple_to_binary(MappedClientIP)
-                                                         ,kz_network_utils:iptuple_to_binary(ClientIP)
-                                                         ])
-            end,
+            lager:info("~s: ~s?~s from ~s", [Method, Path, QS, ClientIP]),
             {'ok', cowboy_req:set_resp_header(<<"x-request-id">>, ReqId, Req10), Context4}
     end.
 
@@ -184,17 +173,15 @@ find_version(Path) ->
         [Ver | _] -> to_version(Ver)
     end.
 
--spec maybe_allow_proxy_req(inet:ip_address(), ne_binary()) -> inet:ip_address().
+-spec maybe_allow_proxy_req(ne_binary(), ne_binary()) -> ne_binary().
 maybe_allow_proxy_req(Peer, ForwardIP) ->
-    BinaryPeer = kz_network_utils:iptuple_to_binary(Peer),
-    case is_proxied(BinaryPeer) of
+    case is_proxied(Peer) of
         'true' ->
-            lager:info("request is from reverse proxy: ~s, client address: ~s", [BinaryPeer, ForwardIP]),
-            {'ok', ForwardPeer} = inet:parse_address(kz_term:to_list(ForwardIP)),
-            ForwardPeer;
+            lager:info("request is from expected reverse proxy: ~s", [ForwardIP]),
+            kz_term:to_binary(ForwardIP);
         'false' ->
             lager:warning("request with \"X-Forwarded-For: ~s\" header, but peer (~s) is not allowed as proxy"
-                         ,[ForwardIP, BinaryPeer]
+                         ,[ForwardIP, Peer]
                          ),
             Peer
     end.
