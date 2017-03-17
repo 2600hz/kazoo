@@ -63,8 +63,8 @@ init() ->
 -spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
 authorize(Context) ->
     cb_context:is_superduper_admin(Context)
-    andalso
-    is_system_request(Context).
+        andalso
+        is_system_request(Context).
 authorize(Context, _Id) -> authorize(Context).
 authorize(Context, _Id, _Node) -> authorize(Context).
 
