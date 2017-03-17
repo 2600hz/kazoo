@@ -297,6 +297,7 @@ post(Context, _) ->
     Context2 = crossbar_doc:save(cb_modules_util:remove_plaintext_password(Context1)),
     case cb_context:resp_status(Context2) of
         'success' ->
+            _ = maybe_set_user_presence(Context2),
             _ = maybe_update_devices_presence(Context2),
             Context2;
         _ -> Context2
@@ -363,6 +364,64 @@ load_attachment(UserId, AttachmentId, Context) ->
     case cb_context:resp_status(Context1) of
         'success' -> load_attachment(AttachmentId, Context1);
         _ -> Context1
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the user's presence if they have update_presence_on_call_forward
+%% enabled and they have toggled call_forward
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_set_user_presence(cb_context:context()) -> 'ok'.
+maybe_set_user_presence(Context) ->
+    DbDoc = cb_context:fetch(Context, 'db_doc'),
+    Doc = cb_context:doc(Context),
+    AccountDoc = cb_context:account_doc(Context),
+    case kzd_user:call_forward_enabled(DbDoc) =/= kzd_user:call_forward_enabled(Doc)
+        andalso kz_account:update_presence_on_call_forward(AccountDoc) of
+        'true' ->
+            State = presence_state_for_call_forward_enabled(kzd_user:call_forward_enabled(Doc)),
+            set_user_presence(Context, State);
+        'false' ->
+            lager:debug("call forwarding either wasn't toggled or update_presence_on_call_forward is disabled")
+    end.
+
+-spec presence_state_for_call_forward_enabled(boolean()) -> ne_binary().
+presence_state_for_call_forward_enabled('true') -> <<"confirmed">>;
+presence_state_for_call_forward_enabled(_) -> <<"terminated">>.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Update the user's presence
+%% @end
+%%--------------------------------------------------------------------
+-spec set_user_presence(cb_context:context(), ne_binary()) -> any().
+set_user_presence(Context, State) ->
+    Doc = cb_context:doc(Context),
+    case get_presence_string(Context, Doc) of
+        'undefined' ->
+            'ok';
+        PresenceString ->
+            lager:debug("updating presence for ~s (~s) to ~s", [PresenceString, kz_doc:id(Doc), State]),
+            _ = kz_datamgr:update_doc(cb_context:account_db(Context), <<"manual_presence">>, [{PresenceString, State}]),
+            kapps_call_command:presence(State, PresenceString, kz_term:to_hex_binary(crypto:hash(md5, PresenceString)))
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Get the presence string used to update a user's presence
+%% @end
+%%--------------------------------------------------------------------
+-spec get_presence_string(cb_context:context(), kz_json:object()) -> ne_binary() | 'undefined'.
+get_presence_string(Context, UserDoc) ->
+    case kzd_user:presence_id(UserDoc) of
+        'undefined'=A -> A;
+        PresenceId ->
+            Realm = cb_context:account_realm(Context),
+            <<PresenceId/binary, "@", Realm/binary>>
     end.
 
 %%--------------------------------------------------------------------

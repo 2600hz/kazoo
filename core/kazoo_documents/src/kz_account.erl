@@ -45,6 +45,7 @@
         ,sent_initial_registration/1, set_initial_registration_sent/2
         ,sent_initial_call/1, set_initial_call_sent/2
         ,home_zone/1, home_zone/2, set_home_zone/2
+        ,update_presence_on_call_forward/1, update_presence_on_call_forward/2, set_update_presence_on_call_forward/2
         ]).
 
 -include("kz_documents.hrl").
@@ -77,6 +78,7 @@
 -define(TOPUP_THRESHOLD, [<<"topup">>, <<"threshold">>]).
 -define(SENT_INITIAL_REGISTRATION, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_registration">>]).
 -define(SENT_INITIAL_CALL, [<<"notifications">>, <<"first_occurrence">>, <<"sent_initial_call">>]).
+-define(UPDATE_PRESENCE_ON_CALL_FORWARD, <<"update_presence_on_call_forward">>).
 
 -define(PVT_TYPE, <<"account">>).
 
@@ -711,3 +713,28 @@ fax_settings(JObj) ->
         'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
         _ -> FaxSettings
     end.
+
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Should the presence state for users under this account change when
+%% callforwarding is toggled?
+%% @end
+%%--------------------------------------------------------------------
+-spec update_presence_on_call_forward(doc()) -> api_object().
+-spec update_presence_on_call_forward(doc(), Default) -> kz_json:object() | Default.
+update_presence_on_call_forward(JObj) ->
+    update_presence_on_call_forward(JObj, 'false').
+update_presence_on_call_forward(JObj, Default) ->
+    kz_json:is_true(?UPDATE_PRESENCE_ON_CALL_FORWARD, JObj, Default).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @see update_presence_on_call_forward/1
+%% @end
+%%--------------------------------------------------------------------
+-spec set_update_presence_on_call_forward(doc(), boolean()) -> doc().
+set_update_presence_on_call_forward(JObj, Should) ->
+    kz_json:set_value(?UPDATE_PRESENCE_ON_CALL_FORWARD, Should, JObj).

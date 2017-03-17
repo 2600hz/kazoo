@@ -21,6 +21,7 @@
         ,fax_settings/1
         ,name/1, first_name/1, last_name/1
         ,priv_level/1, priv_level/2
+        ,call_forward_enabled/1, call_forward_enabled/2
         ]).
 
 -include("kz_documents.hrl").
@@ -36,6 +37,7 @@
 -define(KEY_FIRST_NAME, <<"first_name">>).
 -define(KEY_LAST_NAME, <<"last_name">>).
 -define(KEY_PRIV_LEVEL, <<"priv_level">>).
+-define(KEY_CALL_FORWARD_ENABLED, [<<"call_forward">>, <<"enabled">>]).
 
 -define(PVT_TYPE, <<"user">>).
 
@@ -311,3 +313,10 @@ priv_level(Doc) ->
     priv_level(Doc, <<"user">>).
 priv_level(Doc, Default) ->
     kz_json:get_binary_value(?KEY_PRIV_LEVEL, Doc, Default).
+
+-spec call_forward_enabled(doc()) -> api_binary().
+-spec call_forward_enabled(doc(), Default) -> ne_binary() | Default.
+call_forward_enabled(Doc) ->
+    call_forward_enabled(Doc, 'false').
+call_forward_enabled(Doc, Default) ->
+    kz_json:is_true(?KEY_CALL_FORWARD_ENABLED, Doc, Default).
