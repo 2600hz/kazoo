@@ -189,7 +189,7 @@ post(Context, Id) ->
     Ctx = crossbar_doc:save(Context),
     case cb_context:resp_status(Ctx) of
         success ->
-            cb_context:set_resp_data(Ctx, set_id(Id, get_system_config(Id)));
+            cb_context:set_resp_data(Ctx, set_id(Id, kz_json:public_fields(get_system_config(Id))));
         _ -> Ctx
     end.
 post(Context, Id, Node) ->
