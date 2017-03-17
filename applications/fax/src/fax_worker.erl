@@ -791,7 +791,7 @@ maybe_notify(JObj, Resp, <<"completed">>) ->
     Message = notify_fields(JObj, Resp),
     kapi_notifications:publish_fax_outbound(Message);
 maybe_notify(JObj, Resp, <<"failed">>) ->
-    Message = [{<<"Fax-Error">>, fax_error(Resp)}
+    Message = [{<<"Fax-Error">>, fax_error(kz_json:merge_jobjs(JObj, Resp))}
                | notify_fields(JObj, Resp)
               ],
     kapi_notifications:publish_fax_outbound_error(props:filter_undefined(Message));
@@ -828,9 +828,9 @@ move_doc(JObj) ->
 
 -spec fax_error(kz_json:object()) -> api_binary().
 fax_error(JObj) ->
-    kz_json:get_value([<<"Application-Data">>, <<"Fax-Result-Text">>]
-                     ,JObj
-                     ).
+    kz_json:get_first_defined([ [<<"Application-Data">>, <<"Fax-Result-Text">>]
+                              , [<<"tx_result">>, <<"result_text">>]
+                              ], JObj).
 
 -spec notify_fields(kz_json:object(), kz_json:object()) -> kz_proplist().
 notify_fields(JObj, Resp) ->
