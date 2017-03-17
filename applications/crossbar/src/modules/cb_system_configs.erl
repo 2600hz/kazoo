@@ -333,9 +333,11 @@ validate_request(Context, Id, Schema, Parent) ->
 maybe_new({ok, JObj}) -> JObj;
 maybe_new(_) -> kz_json:new().
 
+-spec default_with_id(cb_context:context()) -> kz_json:object().
 default_with_id(Config) ->
     kz_doc:set_id(default(Config), Config).
 
+-spec default(cb_context:context()) -> kz_json:object().
 default(Config) ->
     kz_json_schema:default_object(kapps_config_util:system_schema(Config)).
 
@@ -367,6 +369,7 @@ make_schema(Id) ->
 make_default(Id, Keys) ->
     lists:foldl(fun(K, Json) -> kz_json:set_value(K, default(Id), Json) end, kz_json:new(), Keys).
 
+-spec maybe_add_default([ne_binary()]) -> [ne_binary()].
 maybe_add_default(Keys) ->
     case lists:member(?DEFAULT, Keys) of
         false -> [?DEFAULT | Keys ];
