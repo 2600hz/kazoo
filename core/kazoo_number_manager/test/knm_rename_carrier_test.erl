@@ -117,3 +117,19 @@ rename_from_local_test_() ->
      ,?_assertEqual(false, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
      }
     ].
+
+available_features_test_() ->
+    [?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, []))
+    ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
+    ,?_assert(is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?MASTER_ACCOUNT_ID}]))
+    ,?_assert(not is_feature_available(?TEST_IN_SERVICE_NUM, [{auth_by, ?RESELLER_ACCOUNT_ID}]))
+    ,?_assert(not is_feature_available(?BW_EXISTING_DID, []))
+    ,?_assert(not is_feature_available(?BW_EXISTING_DID, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
+    ,?_assert(not is_feature_available(?BW_EXISTING_DID, [{auth_by, ?MASTER_ACCOUNT_ID}]))
+    ,?_assert(not is_feature_available(?BW_EXISTING_DID, [{auth_by, ?RESELLER_ACCOUNT_ID}]))
+    ].
+
+is_feature_available(Num, Options) ->
+    {ok, N} = knm_number:get(Num, Options),
+    PN = knm_number:phone_number(N),
+    lists:member(?FEATURE_RENAME_CARRIER, knm_providers:available_features(PN)).
