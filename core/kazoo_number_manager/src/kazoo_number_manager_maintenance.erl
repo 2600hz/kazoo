@@ -159,9 +159,8 @@ refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
     refresh_numbers_db(NumberDb);
 refresh_numbers_db(<<"+", Suffix/binary>>) ->
     refresh_numbers_db(Suffix);
-refresh_numbers_db(Suffix) ->
-    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
-    refresh_numbers_db(NumberDb).
+refresh_numbers_db(_Thing) ->
+    ?LOG("skipping badly formed ~s", [_Thing]).
 
 %% @public
 -spec fix_accounts_numbers([ne_binary()]) -> 'ok'.
