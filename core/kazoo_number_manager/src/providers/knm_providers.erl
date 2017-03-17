@@ -13,7 +13,7 @@
 
 -export([save/1]).
 -export([delete/1]).
--export([available_features/1, available_features/5
+-export([available_features/1, available_features/6
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
@@ -49,6 +49,7 @@
 
 
 -record(feature_parameters, {is_local = false :: boolean()
+                            ,is_admin = false :: boolean()
                             ,assigned_to :: api_ne_binary()
                             ,used_by :: api_ne_binary()
                             ,allowed_features = [] :: ne_binaries()
@@ -84,9 +85,9 @@ delete(Number) ->
 available_features(PhoneNumber) ->
     list_available_features(feature_parameters(PhoneNumber)).
 
--spec available_features(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
-available_features(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
-    list_available_features(feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied)).
+-spec available_features(boolean(), boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> ne_binaries().
+available_features(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
+    list_available_features(feature_parameters(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,15 +158,17 @@ is_local(PN) ->
 -spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
 feature_parameters(PhoneNumber) ->
     feature_parameters(is_local(PhoneNumber)
+                      ,knm_phone_number:is_admin(PhoneNumber)
                       ,knm_phone_number:assigned_to(PhoneNumber)
                       ,knm_phone_number:used_by(PhoneNumber)
                       ,knm_phone_number:features_allowed(PhoneNumber)
                       ,knm_phone_number:features_denied(PhoneNumber)
                       ).
 
--spec feature_parameters(boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> feature_parameters().
-feature_parameters(IsLocal, AssignedTo, UsedBy, Allowed, Denied) ->
+-spec feature_parameters(boolean(), boolean(), api_ne_binary(), api_ne_binary(), ne_binaries(), ne_binaries()) -> feature_parameters().
+feature_parameters(IsLocal, IsAdmin, AssignedTo, UsedBy, Allowed, Denied) ->
     #feature_parameters{is_local = IsLocal
+                       ,is_admin = IsAdmin
                        ,assigned_to = AssignedTo
                        ,used_by = UsedBy
                        ,allowed_features = Allowed
@@ -210,7 +213,8 @@ list_denied_features(Parameters) ->
             reseller_denied_features(Parameters)
                 ++ used_by_denied_features(Parameters);
         NumberDenied -> NumberDenied
-    end.
+    end
+        ++ maybe_deny_admin_only_features(Parameters).
 
 -spec reseller_denied_features(feature_parameters()) -> ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
@@ -247,6 +251,12 @@ used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
     lager:debug("denied number features set on number document: ~p", [DeniedFeatures]),
     DeniedFeatures.
+
+maybe_deny_admin_only_features(#feature_parameters{is_admin = true}) -> [];
+maybe_deny_admin_only_features(#feature_parameters{is_admin = false}) ->
+    %% Features that only an admin can use
+    [?FEATURE_RENAME_CARRIER
+    ].
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
 legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
