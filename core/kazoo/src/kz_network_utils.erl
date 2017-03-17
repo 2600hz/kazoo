@@ -151,7 +151,10 @@ verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_term:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
     Block = inet_cidr:parse(CIDR),
-    inet_cidr:contains(Block, inet:parse_address(IP)).
+    case inet:parse_address(IP) of
+        {'ok', IPTuple} -> inet_cidr:contains(Block, IPTuple);
+        {'error', _} -> 'false'
+    end.
 
 %%     %% As per the docs... "This operation should only be used for test purposes"
 %%     %% so, ummm ya, but probably cheaper then my expand bellow followed by a list
@@ -306,6 +309,13 @@ iptuple_to_binary({A,B,C,D}) ->
       ,(kz_term:to_binary(C))/binary, "."
       ,(kz_term:to_binary(D))/binary
     >>;
+
+%% IPv4 mapped to IPv6
+%% https://tools.ietf.org/html/rfc4038#section-4.2
+iptuple_to_binary({0, 0, 0, 0, 0, 16#FFFF, AB, CD}) ->
+    <<A:8, B:8>> = <<AB:16>>,
+    <<C:8, D:8>> = <<CD:16>>,
+    iptuple_to_binary({A,B,C,D});
 iptuple_to_binary({_I1, _I2, _I3, _I4, _I5, _I6, _I7, _I8}=T) ->
     kz_binary:join([to_hex(I) || I <- tuple_to_list(T)], <<":">>).
 
