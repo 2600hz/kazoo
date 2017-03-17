@@ -68,6 +68,7 @@ authorize(Context) ->
 authorize(Context, _Id) -> authorize(Context).
 authorize(Context, _Id, _Node) -> authorize(Context).
 
+-spec is_system_request(cb_context:context()) -> boolean().
 is_system_request(Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Mod =:= <<"system_configs">>.
