@@ -154,10 +154,10 @@ validate_system_config(Context, Id, ?HTTP_GET, Node) ->
     crossbar_doc:handle_datamgr_success(set_id(Id, Node, JObj), Context);
 
 validate_system_config(Context, Id, ?HTTP_PUT, Node) ->
-    validate_with_parent(Context, Id, Node, default(Id));
+    validate_with_parent(Context, Id, Node, default_with_id(Id));
 
 validate_system_config(Context, Id, ?HTTP_POST, Node) ->
-    validate_with_parent(Context, Id, Node, default(Id));
+    validate_with_parent(Context, Id, Node, default_with_id(Id));
 
 validate_system_config(Context, Id, ?HTTP_PATCH, Node) ->
     validate_with_parent(Context, Id, Node, get_system_config(Id, Node));
@@ -326,12 +326,15 @@ validate_request(Context, Id, Schema, Parent) ->
 maybe_new({ok, JObj}) -> JObj;
 maybe_new(_) -> kz_json:new().
 
+default_with_id(Config) ->
+    kz_doc:set_id(default(Config), Config).
+
 default(Config) ->
-    kz_doc:set_id(kz_json_schema:default_object(kapps_config_util:system_schema(Config)), Config).
+    kz_json_schema:default_object(kapps_config_util:system_schema(Config)).
 
 -spec get_system_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_system_config(Config, Node) ->
-    Default = default(Config),
+    Default = default_with_id(Config),
     System = maybe_new(kapps_config:get_category(Config)),
     SystemNode = kz_json:get_value(Node, System, kz_json:new()),
     kz_json:merge_recursive(Default, SystemNode).
