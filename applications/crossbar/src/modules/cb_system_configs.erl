@@ -121,7 +121,10 @@ validate(Context) ->
 
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Id) ->
-    validate_verb(update_db(Context), Id, cb_context:req_verb(Context)).
+    case is_document_requested(Context) of
+        true -> validate_verb(update_db(Context), Id, cb_context:req_verb(Context));
+        false -> validate(Context, Id, ?DEFAULT)
+    end.
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Id, Node) ->
@@ -164,6 +167,10 @@ validate_system_config(Context, Id, ?HTTP_PATCH, Node) ->
 
 validate_system_config(Context, Id, ?HTTP_DELETE, _Node) ->
     read_for_delete(Id, Context).
+
+-spec is_document_requested(cb_context:context()) -> boolean().
+is_document_requested(Context) ->
+    kz_term:is_true(cb_context:req_value(Context, <<"full">>)).
 
 %%--------------------------------------------------------------------
 %% @public
