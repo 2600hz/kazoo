@@ -31,8 +31,7 @@
                ,logport :: pos_integer()
                ,timer :: api_reference()
                ,counter :: pos_integer()
-               }
-       ).
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
