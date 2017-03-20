@@ -1,6 +1,81 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "system_config.conferences",
+    "definitions": {
+        "conference-profile-settings": {
+            "properties": {
+                "alone-sound": {
+                    "default": "prompt://system_media/conf-alone/en-us",
+                    "type": "string"
+                },
+                "caller-controls": {
+                    "default": "default",
+                    "type": "string"
+                },
+                "comfort-noise": {
+                    "default": 1000,
+                    "type": "integer"
+                },
+                "deaf-sound": {
+                    "default": "prompt://system_media/conf-deaf/en-us",
+                    "type": "string"
+                },
+                "energy-level": {
+                    "default": 20,
+                    "type": "integer"
+                },
+                "enter-sound": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
+                    "type": "string"
+                },
+                "exit-sound": {
+                    "default": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,440);v=-7;>=3;+=.1;%(800,0,349,440)",
+                    "type": "string"
+                },
+                "interval": {
+                    "default": 20,
+                    "type": "integer"
+                },
+                "locked-sound": {
+                    "default": "prompt://system_media/conf-max_participants/en-us",
+                    "type": "string"
+                },
+                "max-member": {
+                    "default": 200,
+                    "type": "integer"
+                },
+                "max-members-sound": {
+                    "default": "prompt://system_media/conf-max_participants/en-us",
+                    "type": "string"
+                },
+                "member-enter-sound": {
+                    "default": "prompt://system_media/conf-joining_conference/en-us",
+                    "type": "string"
+                },
+                "moh-sound": {
+                    "default": "$${hold_music}",
+                    "type": "string"
+                },
+                "muted-sound": {
+                    "default": "prompt://system_media/conf-muted/en-us",
+                    "type": "string"
+                },
+                "rate": {
+                    "default": 8000,
+                    "type": "integer"
+                },
+                "undeaf-sound": {
+                    "default": "prompt://system_media/conf-undeaf/en-us",
+                    "type": "string"
+                },
+                "unmuted-sound": {
+                    "default": "prompt://system_media/conf-unmuted/en-us",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
     "description": "Schema for conferences system_config",
     "properties": {
         "bridge_password": {
@@ -42,38 +117,30 @@
             "type": "integer"
         },
         "profiles": {
+            "default": {},
+            "description": "conference profiles",
             "properties": {
                 "default": {
-                    "properties": {
-                        "default": {
-                            "caller-controls": "default",
-                            "comfort-noise": 1000,
-                            "energy-level": 20,
-                            "enter-sound": "tone_stream://v=-7;>=2;+=.1;%(300,0,523,659);v=-7;>=3;+=.1;%(800,0,659,783)",
-                            "interval": 20,
-                            "moh-sound": "$${hold_music}",
-                            "rate": 8000
-                        },
-                        "description": "conferences default",
-                        "type": "object"
-                    }
+                    "$ref": "#/definitions/conference-profile-settings",
+                    "default": {},
+                    "description": "conferences default profile",
+                    "type": "object"
                 },
                 "page": {
-                    "properties": {
-                        "default": {
-                            "caller-controls": "default",
-                            "comfort-noise": 1000,
-                            "energy-level": 20,
-                            "enter-sound": "",
-                            "interval": 20,
-                            "moh-sound": "",
-                            "rate": 8000
-                        },
-                        "description": "conferences page",
-                        "type": "object"
-                    }
+                    "default": {
+                        "caller-controls": "default",
+                        "comfort-noise": 1000,
+                        "energy-level": 20,
+                        "enter-sound": "",
+                        "interval": 20,
+                        "moh-sound": "",
+                        "rate": 8000
+                    },
+                    "description": "conferences page profile",
+                    "type": "object"
                 }
-            }
+            },
+            "type": "object"
         },
         "review_name": {
             "default": false,
