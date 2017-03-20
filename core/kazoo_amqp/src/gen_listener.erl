@@ -487,9 +487,12 @@ handle_cast({'kz_amqp_assignment', {'new_channel', 'true'}}, State) ->
     {'noreply', State};
 handle_cast({'kz_amqp_assignment', {'new_channel', 'false'}}, State) ->
     {'noreply', handle_amqp_channel_available(State)};
-handle_cast({'federated_event', JObj, BasicDeliver}, State) ->
-    _ = kz_util:spawn(fun distribute_event/3, [JObj, BasicDeliver, State]),
-    {'noreply', State};
+handle_cast({'federated_event', JObj, BasicDeliver}, #state{params=Params}=State) ->
+    case props:is_true('spawn_handle_event', Params, 'false') of
+        'true'  -> kz_util:spawn(fun distribute_event/3, [JObj, BasicDeliver, State]),
+                   {'noreply', State};
+        'false' -> {'noreply', distribute_event(JObj, BasicDeliver, State)}
+    end;
 handle_cast({'$execute', Module, Function, Args}
            ,#state{federators=[]}=State) ->
     erlang:apply(Module, Function, Args),
