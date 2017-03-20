@@ -40,6 +40,9 @@
 -define(TIME_BETWEEN_NUMBERS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
+-define(PARALLEL_JOBS_COUNT,
+        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
+
 -define(LOG(Format, Args)
        ,begin
             lager:debug(Format, Args),
@@ -55,8 +58,7 @@
 %%--------------------------------------------------------------------
 -spec carrier_module_usage() -> 'ok'.
 carrier_module_usage() ->
-    Databases = knm_util:get_all_number_dbs(),
-    carrier_module_usage(Databases, dict:new()).
+    carrier_module_usage(knm_util:get_all_number_dbs(), dict:new()).
 
 -spec carrier_module_usage(text()) -> 'ok'.
 carrier_module_usage(Prefix) ->
@@ -97,8 +99,7 @@ log_carrier_module_usage([JObj|JObjs], Database, Totals0) ->
 %%--------------------------------------------------------------------
 -spec convert_carrier_module(ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target) ->
-    Databases = knm_util:get_all_number_dbs(),
-    convert_carrier_module_database(Source, Target, Databases).
+    convert_carrier_module_database(Source, Target, knm_util:get_all_number_dbs()).
 
 -spec convert_carrier_module(ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 convert_carrier_module(Source, Target, Prefix) ->
@@ -170,9 +171,8 @@ refresh_numbers_db(<<?KNM_DB_PREFIX, Suffix/binary>>) ->
     refresh_numbers_db(NumberDb);
 refresh_numbers_db(<<"+", _/binary>> = Num) ->
     refresh_numbers_db(knm_converters:to_db(Num));
-refresh_numbers_db(Suffix) ->
-    NumberDb = <<?KNM_DB_PREFIX_ENCODED, Suffix/binary>>,
-    refresh_numbers_db(NumberDb).
+refresh_numbers_db(_Thing) ->
+    ?LOG("skipping badly formed ~s", [_Thing]).
 
 %% @public
 -spec update_number_services_view(ne_binary()) -> ok.
@@ -244,6 +244,8 @@ fix_account_numbers(AccountDb = ?MATCH_ACCOUNT_ENCODED(A,B,Rest)) ->
     _ = kz_datamgr:del_docs(AccountDb, ToRm),
     ?LOG("########## updating view [~s] ##########", [AccountDb]),
     update_number_services_view(AccountDb),
+    erase(callflow_DIDs),
+    erase(trunkstore_DIDs),
     ?LOG("########## done fixing [~s] ##########", [AccountDb]);
 fix_account_numbers(Account = ?NE_BINARY) ->
     fix_account_numbers(kz_util:format_account_db(Account)).
@@ -253,12 +255,7 @@ log_alien(_AccountDb, _DID) ->
 
 -spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
-    NormalizedNum = knm_converters:normalize(Num),
-    ViewOptions = [{key, NormalizedNum}],
-    UsedBy = app_using(NormalizedNum
-                      ,get_DIDs_callflow(AccountDb, ViewOptions)
-                      ,get_DIDs_trunkstore(AccountDb, ViewOptions)
-                      ),
+    UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}],
     Options = [{auth_by, AuthBy}
               ,{dry_run, false}
@@ -269,10 +266,7 @@ fix_number(Num, AuthBy, AccountDb) ->
 -spec migrate() -> 'ok'.
 migrate() ->
     _ = refresh_numbers_dbs(),
-    AccountDbs = kapps_util:get_all_accounts(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS, fun migrate/1, AccountDbs),
-    erase(callflow_DIDs),
-    erase(trunkstore_DIDs),
+    pforeach(fun migrate/1, kapps_util:get_all_accounts()),
     migrate_unassigned_numbers().
 
 -spec migrate(ne_binary()) -> 'ok'.
@@ -286,11 +280,7 @@ migrate(Account) ->
 -spec migrate_unassigned_numbers(ne_binary(), integer()) -> 'ok'.
 migrate_unassigned_numbers() ->
     ?LOG("********** fixing unassigned numbers **********", []),
-    NumberDbs = knm_util:get_all_number_dbs(),
-    foreach_pause_in_between(?TIME_BETWEEN_ACCOUNTS_MS
-                            ,fun migrate_unassigned_numbers/1
-                            ,NumberDbs
-                            ),
+    pforeach(fun migrate_unassigned_numbers/1, knm_util:get_all_number_dbs()),
     ?LOG("********** finished fixing unassigned numbers **********", []).
 
 -spec migrate_unassigned_numbers(ne_binary()) -> ok.
@@ -399,6 +389,18 @@ foreach_pause_in_between(Time, Fun, [Element|Elements]) ->
     timer:sleep(Time),
     foreach_pause_in_between(Time, Fun, Elements).
 
+-spec pforeach(fun((A) -> any()), [A]) -> ok.
+pforeach(Fun, Arg1s)
+  when is_function(Fun, 1),
+       is_list(Arg1s) ->
+    Malt = [%% Each worker process gets to do only 1 item before dying
+            1
+            %% A processes count of 1 is equivalent to lists:foreach-ordering
+            %% with each Fun being applied on its own (different) process
+           ,{processes, ?PARALLEL_JOBS_COUNT}
+           ],
+    plists:foreach(Fun, Arg1s, Malt).
+
 -spec fix_docs(ne_binary(), ne_binary(), ne_binary()) -> ok.
 fix_docs(AccountDb, NumberDb, DID) ->
     Res = kz_datamgr:open_doc(AccountDb, DID),
@@ -406,10 +408,11 @@ fix_docs(AccountDb, NumberDb, DID) ->
 
 fix_docs({error, timeout}, _AccountDb, _, _DID) ->
     ?LOG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
-fix_docs({error, _R}, _AccountDb, _, DID) ->
-    ?LOG("failed to get ~s from ~s (~p), creating it", [DID, _AccountDb, _R]),
+fix_docs({error, _R}, AccountDb, _, DID) ->
+    ?LOG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
+    UsedBy = app_using(DID, AccountDb),
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, app_using(DID)}], options()) of
+    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, UsedBy}], options()) of
         {ok, _} -> ok;
         {error, _E} -> ?LOG("creating ~s failed: ~p", [DID, _E])
     end;
@@ -421,8 +424,14 @@ fix_docs({error, timeout}, _, _, _NumberDb, _DID) ->
     ?LOG("getting ~s from ~s timed out, skipping", [_DID, _NumberDb]);
 fix_docs({error, _R}, _, _, _NumberDb, _DID) ->
     ?LOG("~s disappeared from ~s (~p), skipping", [_DID, _NumberDb]);
-fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
-    case app_using(DID) =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
+fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
+    AccountDb = account_db_from_number_doc(NumDoc),
+    ShouldEnsureDocIsInRightAccountDb = _AccountDb =/= AccountDb,
+    ShouldEnsureDocIsInRightAccountDb
+        andalso ?LOG("[~s] ~s should be in ~s instead", [_AccountDb, DID, AccountDb]),
+    UsedBy = app_using(DID, AccountDb),
+    case not ShouldEnsureDocIsInRightAccountDb
+        andalso UsedBy =:= kz_json:get_ne_binary_value(?PVT_USED_BY, NumDoc)
         andalso have_same_pvt_values(NumDoc, Doc)
     of
         true -> ?LOG("~s already synced", [DID]);
@@ -431,7 +440,7 @@ fix_docs({ok, NumDoc}, Doc, AccountDb, NumberDb, DID) ->
                                       ,kz_json:public_fields(Doc)
                                       ),
             ?LOG("syncing ~s", [DID]),
-            Routines = [{fun knm_phone_number:set_used_by/2, app_using(DID)}
+            Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
                        ,{fun knm_phone_number:reset_doc/2, JObj}
                        ],
             try knm_number:update(DID, Routines, options()) of
@@ -449,6 +458,12 @@ options() ->
     ,{batch_run, true}
     ].
 
+account_db_from_number_doc(NumDoc) ->
+    case kz_json:get_ne_binary_value(?PVT_ASSIGNED_TO, NumDoc) of
+        undefined -> undefined;
+        AccountId -> kz_util:format_account_db(AccountId)
+    end.
+
 -spec fix_unassign_doc(ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
     Setters = [{fun knm_phone_number:set_used_by/2, undefined}],
@@ -458,6 +473,7 @@ fix_unassign_doc(DID) ->
     end.
 
 -type dids() :: gb_sets:set(ne_binary()).
+-type api_dids() :: undefined | dids().
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
     get_DIDs(AccountDb, View, []).
@@ -486,7 +502,7 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
                   ,{endkey, [AssignedTo, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {ok, JObjs} -> gb_sets:from_list(lists:map(fun kz_doc:id/1, JObjs));
+        {ok, JObjs} -> gb_sets:from_list([kz_doc:id(JObj) || JObj <- JObjs]);
         {error, _R} ->
             lager:debug("failed to get ~s DIDs from ~s: ~p", [AssignedTo, NumberDb, _R]),
             gb_sets:new()
@@ -496,7 +512,7 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
 have_same_pvt_values(NumDoc0, Doc0) ->
     NumDoc = cleanse(kz_json:private_fields(NumDoc0)),
     Doc = cleanse(kz_json:private_fields(Doc0)),
-    NumDoc == Doc.
+    kz_json:are_equal(NumDoc, Doc).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().
 cleanse(JObj) ->
@@ -510,8 +526,19 @@ cleanse(JObj) ->
                        ,JObj
                        ).
 
--spec app_using(ne_binary(), dids(), dids()) -> api_ne_binary().
-app_using(Num, CallflowNums, TrunkstoreNums) ->
+
+-spec app_using(ne_binary(), ne_binary()) -> api_ne_binary().
+-spec app_using(ne_binary(), ne_binary(), api_dids(), api_dids()) -> api_ne_binary().
+app_using(Num, AccountDb) ->
+    app_using(Num, AccountDb, get(callflow_DIDs), get(trunkstore_DIDs)).
+
+app_using(Num, AccountDb, undefined, TrunkstoreNums) ->
+    CallflowNums = get_DIDs_callflow(AccountDb, [{key, Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, AccountDb, CallflowNums, undefined) ->
+    TrunkstoreNums = get_DIDs_trunkstore(AccountDb, [{key, Num}]),
+    app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
+app_using(Num, _, CallflowNums, TrunkstoreNums) ->
     case gb_sets:is_element(Num, CallflowNums) of
         true -> <<"callflow">>;
         false ->
@@ -520,10 +547,6 @@ app_using(Num, CallflowNums, TrunkstoreNums) ->
                 false -> undefined
             end
     end.
-
--spec app_using(ne_binary()) -> api_ne_binary().
-app_using(Num) ->
-    app_using(Num, get(callflow_DIDs), get(trunkstore_DIDs)).
 
 -spec is_assigned_to(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_assigned_to(AccountDb, DID, AccountId) ->
@@ -556,7 +579,7 @@ delete(Num) ->
 -spec purge_discovery() -> 'no_return'.
 purge_discovery() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DISCOVERY) end,
-    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
 %% @public
@@ -569,7 +592,7 @@ purge_deleted(Prefix) ->
 -spec purge_deleted() -> 'no_return'.
 purge_deleted() ->
     Purge = fun (NumberDb) -> purge_number_db(NumberDb, ?NUMBER_STATE_DELETED) end,
-    lists:foreach(Purge, knm_util:get_all_number_dbs()),
+    pforeach(Purge, knm_util:get_all_number_dbs()),
     'no_return'.
 
 %% @public
