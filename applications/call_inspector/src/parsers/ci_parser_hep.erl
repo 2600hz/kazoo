@@ -28,8 +28,7 @@
                ,socket :: gen_udp:socket()
                ,listen_ip :: ne_binary()
                ,listen_port :: pos_integer()
-               }
-       ).
+               }).
 -type state() :: #state{}.
 
 %%%===================================================================
@@ -40,8 +39,8 @@
 %% @doc Starts the server
 %%--------------------------------------------------------------------
 -spec start_link([ci_parsers_util:parser_args()]) -> startlink_ret().
-start_link([Parser]=Args) ->
-    ServerName = ci_parsers_util:make_name(Parser),
+start_link(Args) ->
+    ServerName = ci_parsers_util:make_name(Args),
     gen_server:start_link({'local', ServerName}, ?MODULE, Args, []).
 
 %%%===================================================================

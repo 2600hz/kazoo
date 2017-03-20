@@ -115,6 +115,25 @@ Example:
     $ sup call_inspector_maintenance list_active_parsers
     '10.26.0.182:9060'
 
+##### Setup HEP packets capturing for FreeSWITCH
+
+In your fs_cli: `sofia profile internal siptrace on`
+
+##### Setup HEP packets capturing for Kamailio
+
+Add this to your default.cfg
+
+```
+loadmodule "siptrace.so"
+modparam("siptrace", "duplicate_uri", "sip:192.168.56.42:9061")
+modparam("siptrace", "hep_mode_on", 1)
+modparam("siptrace", "hep_version", 2)
+modparam("siptrace", "hep_capture_id", 1337)
+modparam("siptrace", "trace_to_database", 0)
+modparam("siptrace", "trace_flag", 22)
+modparam("siptrace", "trace_on", 1)
+```
+
 #### Start a Kamailio or FreeSwitch logs parser
 
     sup call_inspector_maintenance start_kamailio_parser {LOGFILE} {IP} {PORT}
