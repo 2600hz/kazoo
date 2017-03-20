@@ -79,13 +79,26 @@ prepend_preflow(AccountId, PreflowId, Flow) ->
             lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
             Flow;
         {'ok', Doc} ->
-            Children = kz_json:from_list([{<<"_">>, kz_json:get_value(<<"flow">>, Flow)}]),
-            Preflow = kz_json:set_value(<<"children">>
-                                       ,Children
-                                       ,kz_json:get_value(<<"flow">>, Doc)
-                                       ),
-            kz_json:set_value(<<"flow">>, Preflow, Flow)
+            NormalizedPreflow = kz_json:set_value([<<"children">>, <<"_">>]
+                                                 ,kz_json:get_value(<<"flow">>, Doc)
+                                                 ,kz_json:new()
+                                                 ),
+            DecomposedPreflow = decompose_preflow(NormalizedPreflow, []),
+            Merged = lists:foldl(fun prepend_flow_acc/2, kz_json:get_value(<<"flow">>, Flow), DecomposedPreflow),
+            kz_json:set_value(<<"flow">>, Merged, Flow)
     end.
+
+-spec decompose_preflow(kz_json:object(), kz_json:objects()) -> kz_json:objects().
+decompose_preflow(JObj, Acc) ->
+    case kz_json:get_value([<<"children">>, <<"_">>], JObj) of
+        'undefined' -> Acc;
+        Val ->
+            decompose_preflow(Val, [Val | Acc])
+    end.
+
+-spec prepend_flow_acc(kz_json:object(), kz_json:object()) -> kz_json:object().
+prepend_flow_acc(Element, Tail) ->
+    kz_json:set_value([<<"children">>, <<"_">>], Tail, Element).
 
 -spec maybe_reply_to_req(kz_json:object(), kz_proplist()
                         ,kapps_call:call(), kz_json:object(), boolean()) -> 'ok'.
