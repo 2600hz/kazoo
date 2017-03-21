@@ -132,7 +132,7 @@ handle_info('timeout', #state{counter = Counter} = State) ->
         'false' -> {'noreply', State};
         'true' ->
             {'noreply', State#state{counter = refresh_views(Counter)}}
-     end;
+    end;
 handle_info(_Info, State) ->
     lager:debug("unhandled message: ~p", [_Info]),
     {'noreply', State}.
@@ -141,9 +141,9 @@ handle_info(_Info, State) ->
 handle_event(JObj, #state{counter = Counter} = State) ->
     case ?REFRESH_ENABLED of
         'false' -> {'reply', []};
-         'true' ->
-             AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
-             {'reply', State#state{counter = handle_account(Counter, AccountId)}}
+        'true' ->
+            AccountId = kz_json:get_value([<<"Custom-Channel-Vars">>, <<"Account-ID">>], JObj),
+            {'reply', State#state{counter = handle_account(Counter, AccountId)}}
     end.
 
 %%--------------------------------------------------------------------
@@ -200,7 +200,7 @@ handle_account(Counter, AccountId) ->
     Count = case value(maps:find(AccountId, Counter)) of
                 {From, Value} when Value >= RefreshThreshold ->
                     _ = kz_util:spawn(fun update_account_view/3, [AccountId, From, kz_time:current_tstamp()]),
-                    {kz_util:current_tstamp(), 0};
+                    {kz_time:current_tstamp(), 0};
                 {From, Value} -> {From, Value + 1}
             end,
     Counter#{ AccountId => Count }.
