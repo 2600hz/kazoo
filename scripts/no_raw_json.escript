@@ -92,8 +92,13 @@ find_source(Module) ->
 find_source(Module, BeamFile) when is_list(BeamFile) ->
     AppDir = filename:dirname(filename:dirname(BeamFile)),
     SrcFile = find_source_file(Module, AppDir),
-    {'ok', IODevice} = file:open(SrcFile, ['read', 'binary', 'raw', 'read_ahead']),
-    IODevice.
+
+    case file:open(SrcFile, ['read', 'binary', 'raw', 'read_ahead']) of
+        {'ok', IODevice} -> IODevice;
+        {'error', 'enoent'} ->
+            io:format("failed to find source ~s for beam ~s~n", [SrcFile, BeamFile]),
+            throw({'error', 'enoent'})
+    end.
 
 find_source_file(Module, AppDir) ->
     SrcSearch = filename:join([AppDir, "*", [kz_term:to_list(Module), ".erl"]]),
