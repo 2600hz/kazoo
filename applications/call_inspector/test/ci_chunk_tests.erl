@@ -5,10 +5,11 @@
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([ chunks_1/1
-        , chunks_2/1
-        , chunks_3/1
-        , chunks_4/1
+-export([chunks_1/1
+        ,chunks_2/1
+        ,chunks_3/1
+        ,chunks_4/1
+        ,chunks_5/1
         ]).
 
 %% API tests.
@@ -16,14 +17,15 @@
 json_test_() ->
     lists:flatmap(
       fun (Data1) ->
-              [ ?_assertEqual(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
-                || I <- lists:seq(1, Data1('count'))
+              [?_assertEqual(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
+               || I <- lists:seq(1, Data1('count'))
               ]
       end,
       [fun chunks_1/1
       ,fun chunks_2/1
       ,fun chunks_3/1
       ,fun chunks_4/1
+      ,fun chunks_5/1
       ]).
 
 reorder_dialog_1_test_() ->
@@ -46,6 +48,11 @@ reorder_dialog_3_test_() ->
 reorder_dialog_4_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),
     reorder_dialog(<<"192.168.56.42:9061">>, fun chunks_4/1, Chunks).
+
+reorder_dialog_5_test_() ->
+    [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_5()),
+    reorder_dialog(<<"104.237.144.93:9061">>, fun chunks_5/1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, fun chunks_5/1, [C2, C1]).
 
 %% Internals
 
@@ -1896,5 +1903,56 @@ chunks_4() ->
      chunks_4(17),
      chunks_4(18),
      chunks_4(19)].
+
+
+chunks_5() -> [chunks_5(1), chunks_5(2)].
+chunks_5(count) -> length(chunks_5());
+chunks_5(entities) -> [];
+chunks_5(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"10 OPTIONS">>
+       ,<<"call-id">> => <<"2296e6ac231dc1f0-17861@104.237.144.93">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"OPTIONS sip:104.237.144.93:11000 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"OPTIONS sip:104.237.144.93:11000 SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bKb03a.a7adf2a6000000000000000000000000.0">>
+                     ,<<"To: <sip:104.237.144.93:11000>">>
+                     ,<<"From: <sip:sipcheck@apps001.ewr.sb.2600hz.com>;tag=58381c399f3f4cfffb20e60f3e6f0265-1edf">>
+                     ,<<"CSeq: 10 OPTIONS">>
+                     ,<<"Call-ID: 2296e6ac231dc1f0-17861@104.237.144.93">>
+                     ,<<"Max-Forwards: 70">>
+                     ,<<"Content-Length: 0">>
+                     ],
+       ,<<"ref_timestamp">> => <<"63657429461">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657429461
+       });
+
+chunks_5(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"10 OPTIONS">>
+       ,<<"call-id">> => <<"2296e6ac231dc1f0-17861@104.237.144.93">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 200 OK">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 200 OK">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bKb03a.a7adf2a6000000000000000000000000.0">>
+                     ,<<"From: <sip:sipcheck@apps001.ewr.sb.2600hz.com>;tag=58381c399f3f4cfffb20e60f3e6f0265-1edf">>
+                     ,<<"To: <sip:104.237.144.93:11000>;tag=Dv4gyUcma547B">>
+                     ,<<"Call-ID: 2296e6ac231dc1f0-17861@104.237.144.93">>
+                     ,<<"CSeq: 10 OPTIONS">>
+                     ,<<"Contact: <sip:104.237.144.93:11000>">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Accept: application/sdp">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
+                     ,<<"Content-Length: 0">>
+                     ],
+       ,<<"ref_timestamp">> => <<"63657429461">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657429461
+       }).
 
 %% End of Module.
