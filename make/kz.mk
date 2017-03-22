@@ -89,6 +89,8 @@ clean-test: $(CLEAN_MOAR)
 ## Use this one when debugging
 test: compile-test
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
+test.%: compile-test
+	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "case eunit:test([`echo $@ | sed 's/test.//;s/_test//;'`_test], [verbose]) of ok -> init:stop(); _ -> init:stop(1) end."
 
 ## Use this one when CI
 eunit:

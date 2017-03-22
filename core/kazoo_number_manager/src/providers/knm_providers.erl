@@ -1,11 +1,12 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz INC
+%%% @copyright (C) 2016-2017, 2600Hz INC
 %%% @doc
 %%% Handle prepend feature
 %%% @end
 %%% @contributors
 %%%   Peter Defebvre
 %%%   Pierre Fenoll
+%%%   Karl Anderson
 %%%-------------------------------------------------------------------
 -module(knm_providers).
 
@@ -47,6 +48,7 @@
 -define(FEATURES_ALLOWED_SYSTEM,
         ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES)).
 
+-define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
 -record(feature_parameters, {is_local = false :: boolean()
                             ,is_admin = false :: boolean()
@@ -142,10 +144,12 @@ service_name(Feature) -> Feature.
 list_available_features(Parameters) ->
     Allowed = lists:usort([legacy_provider_to_feature(F) || F <- list_allowed_features(Parameters)]),
     Denied = lists:usort([legacy_provider_to_feature(F) || F <- list_denied_features(Parameters)]),
-    [Feature
-     || Feature <- Allowed,
-        not lists:member(Feature, Denied)
-    ].
+    Available = [Feature
+                 || Feature <- Allowed,
+                    not lists:member(Feature, Denied)
+                ],
+    ?LOG_DEBUG("available features: ~s", [?PP(Available)]),
+    Available.
 
 %% @private
 -spec is_local(knm_phone_number:knm_phone_number()) -> boolean().
@@ -185,25 +189,26 @@ list_allowed_features(Parameters) ->
 -spec reseller_allowed_features(feature_parameters()) -> ne_binaries().
 reseller_allowed_features(#feature_parameters{assigned_to = 'undefined'}) ->
     system_allowed_features();
-reseller_allowed_features(#feature_parameters{assigned_to = AccountId}) ->
+reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) ->
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->
-            lager:debug("allowed number features set on reseller for ~s: ~p", [AccountId, Providers]),
+            ?LOG_DEBUG("allowed number features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
 -spec system_allowed_features() -> ne_binaries().
 system_allowed_features() ->
-    lager:debug("allowed number features fetched from system config"),
-    case ?SYSTEM_PROVIDERS of
-        'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
-        Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
-    end.
+    Features = case ?SYSTEM_PROVIDERS of
+                   'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
+                   Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
+               end,
+    ?LOG_DEBUG("allowed number features fetched from system config ~s", [?PP(Features)]),
+    Features.
 
 -spec number_allowed_features(feature_parameters()) -> ne_binaries().
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    lager:debug("allowed number features set on number document: ~p", [AllowedFeatures]),
+    ?LOG_DEBUG("allowed number features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures.
 
 -spec list_denied_features(feature_parameters()) -> ne_binaries().
@@ -218,13 +223,13 @@ list_denied_features(Parameters) ->
 
 -spec reseller_denied_features(feature_parameters()) -> ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
-    lager:debug("denying external number features for unassigned number"),
+    ?LOG_DEBUG("denying external number features for unassigned number"),
     ?EXTERNAL_NUMBER_FEATURES;
 reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
         Providers ->
-            lager:debug("denied number features set on reseller for ~s: ~p", [AccountId, Providers]),
+            ?LOG_DEBUG("denied number features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
@@ -233,30 +238,34 @@ local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
     case kapps_config:get_is_true(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE, 'false') of
         'true' ->
-            lager:debug("not denying external features on local number due to override"),
+            ?LOG_DEBUG("not denying external features on local number due to override"),
             [];
-
         'false' ->
-            lager:debug("denying external number features for local number"),
-            ?EXTERNAL_NUMBER_FEATURES
+            Features = ?EXTERNAL_NUMBER_FEATURES,
+            ?LOG_DEBUG("denying external number features for local number: ~s", [?PP(Features)]),
+            Features
     end.
 
 -spec used_by_denied_features(feature_parameters()) -> ne_binaries().
 used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
 used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
-    lager:debug("denying external number features for number used by ~s", [UsedBy]),
-    [?FEATURE_FAILOVER].
+    Features = [?FEATURE_FAILOVER
+               ],
+    ?LOG_DEBUG("denying external number features for number used by ~s: ~s", [UsedBy, ?PP(Features)]),
+    Features.
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    lager:debug("denied number features set on number document: ~p", [DeniedFeatures]),
+    ?LOG_DEBUG("denied number features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures.
 
 maybe_deny_admin_only_features(#feature_parameters{is_admin = true}) -> [];
 maybe_deny_admin_only_features(#feature_parameters{is_admin = false}) ->
     %% Features that only an admin can use
-    [?FEATURE_RENAME_CARRIER
-    ].
+    Features = [?FEATURE_RENAME_CARRIER
+               ],
+    ?LOG_DEBUG("denied number features cause non-admin: ~s", [?PP(Features)]),
+    Features.
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
 legacy_provider_to_feature(<<"wnm_", Rest/binary>>) -> legacy_provider_to_feature(Rest);
@@ -283,7 +292,9 @@ requested_modules(Number) ->
     RequestedFeatures = [Key || Key <- ?FEATURES_ROOT_KEYS,
                                 undefined =/= kz_json:get_value(Key, Doc)
                         ],
+    ?LOG_DEBUG("asked on public fields: ~s", [?PP(RequestedFeatures)]),
     ExistingFeatures = knm_phone_number:features_list(PhoneNumber),
+    ?LOG_DEBUG("already allowed: ~s", [?PP(ExistingFeatures)]),
     %% ?FEATURE_LOCAL is never user-writable thus must not be included.
     Features = (RequestedFeatures ++ ExistingFeatures) -- [?FEATURE_LOCAL],
     provider_modules(Features, AccountId).
@@ -319,7 +330,7 @@ provider_module(?FEATURE_FAILOVER, _) ->
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
     <<"knm_rename_carrier">>;
 provider_module(Other, _) ->
-    lager:debug("unmatched feature provider ~p, allowing", [Other]),
+    ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.
 
 -ifdef(TEST).
@@ -359,22 +370,23 @@ do_exec(T0=#{todo := Ns}, Action) ->
 
 exec(Number, Action=delete) ->
     RequestedModules = requested_modules(Number),
-    lager:debug("requested number features: ~p", [RequestedModules]),
+    ?LOG_DEBUG("requested number features: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
 exec(Number, Action) ->
     {AllowedRequests, DeniedRequests} = split_requests(Number),
-    lager:debug("allowing number features ~p", [AllowedRequests]),
+    ?LOG_DEBUG("allowing number features ~s", [?PP(AllowedRequests)]),
     case DeniedRequests =:= [] of
         true -> exec(Number, Action, AllowedRequests);
         false ->
-            lager:debug("denied number features ~p", [DeniedRequests]),
+            ?LOG_DEBUG("denied number features ~s", [?PP(DeniedRequests)]),
             knm_errors:unauthorized()
     end.
 
 split_requests(Number) ->
     RequestedModules = requested_modules(Number),
-    lager:debug("requested number features: ~p", [RequestedModules]),
+    ?LOG_DEBUG("requested number features: ~s", [?PP(RequestedModules)]),
     AllowedModules = allowed_modules(Number),
+    ?LOG_DEBUG("allowed modules: ~s", [?PP(AllowedModules)]),
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
 
@@ -391,10 +403,10 @@ exec(Number, Action, [Provider|Providers]) ->
 apply_action(Number, Action, Provider) ->
     case kz_util:try_load_module(Provider) of
         'false' ->
-            lager:debug("provider ~s is unknown, skipping", [Provider]),
+            ?LOG_DEBUG("provider ~s is unknown, skipping", [Provider]),
             'false';
         Module ->
-            lager:debug("attempting ~s:~s/1", [Module, Action]),
+            ?LOG_DEBUG("attempting ~s:~s/1", [Module, Action]),
             Ret = erlang:apply(Module, Action, [Number]),
             {'true', Ret}
     end.

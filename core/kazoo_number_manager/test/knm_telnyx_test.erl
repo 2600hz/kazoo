@@ -162,6 +162,12 @@ cnam_test_() ->
     ,{"Verify outbound CNAM is indeed reset"
      ,?_assertEqual(undefined, cnam_name(PN3))
      }
+    ,{"Verify pvt features are no longer present"
+     ,?_assertEqual([], knm_phone_number:features_list(PN3))
+     }
+    ,{"Verify pub features were cleansed"
+     ,?_assertEqual(undefined, kz_json:get_ne_value(?FEATURE_CNAM, knm_phone_number:doc(PN3)))
+     }
     ].
 
 is_cnam_activated(PN) ->
