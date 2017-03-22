@@ -1923,7 +1923,7 @@ chunks_5(1) ->
                      ,<<"Call-ID: 2296e6ac231dc1f0-17861@104.237.144.93">>
                      ,<<"Max-Forwards: 70">>
                      ,<<"Content-Length: 0">>
-                     ],
+                     ]
        ,<<"ref_timestamp">> => <<"63657429461">>
        ,<<"src">> => <<"104.237.144.93:5060">>
        ,<<"timestamp">> => 63657429461
@@ -1949,7 +1949,7 @@ chunks_5(2) ->
                      ,<<"Supported: path, replaces">>
                      ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
                      ,<<"Content-Length: 0">>
-                     ],
+                     ]
        ,<<"ref_timestamp">> => <<"63657429461">>
        ,<<"src">> => <<"104.237.144.93:11000">>
        ,<<"timestamp">> => 63657429461
