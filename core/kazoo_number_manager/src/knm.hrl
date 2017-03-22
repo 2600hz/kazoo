@@ -72,6 +72,8 @@
 -define(TEST_OLD5_NUM, <<"+19377038880">>).
 -define(TEST_OLD5_1_NUM, <<"+19377038881">>).
 -define(TEST_OLD6_NUM, <<"+12156774700">>).
+-define(TEST_OLD7_NUM, <<"+13977031887">>).
+-define(TEST_OLD7_1_NUM, <<"+13977031888">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).

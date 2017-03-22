@@ -391,6 +391,10 @@ test_fetch(?TEST_OLD5_1_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_5.1.json")))};
 test_fetch(?TEST_OLD6_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_6_in.json")))};
+test_fetch(?TEST_OLD7_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7_in.json")))};
+test_fetch(?TEST_OLD7_1_NUM) ->
+    {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_7.1.json")))};
 test_fetch(?TEST_PORT_IN_NUM) ->
     {ok, ?PORT_IN_NUMBER};
 test_fetch(?TEST_PORT_IN2_NUM) ->
@@ -607,7 +611,6 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
           props:filter_empty(
             [{<<"_rev">>, rev(PN)}
             ,{?PVT_ASSIGNED_TO, assigned_to(PN)}
-            ,{?PVT_AUTH_BY, auth_by(PN)}
             ,{?PVT_PREVIOUSLY_ASSIGNED_TO, prev_assigned_to(PN)}
             ,{?PVT_USED_BY, used_by(PN)}
             ,{?PVT_FEATURES, features(PN)}
@@ -653,6 +656,7 @@ from_json(JObj) ->
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
 
                 ,fun ensure_features_defined/1
+                ,fun ensure_pvt_features_reflects_public_fields/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
                  |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
@@ -678,6 +682,23 @@ maybe_migrate_features(PN, FeaturesJObj) ->
 ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
     PN#knm_phone_number{features = ?DEFAULT_FEATURES};
 ensure_features_defined(PN) -> PN.
+
+ensure_pvt_features_reflects_public_fields(PN) ->
+    PubToPvt = [{[?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], ?FEATURE_CNAM_INBOUND}
+               ,{[?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], ?FEATURE_CNAM_OUTBOUND}
+               ],
+    case [PvtFeature
+          || {PubPath, PvtFeature} <- PubToPvt,
+             lists:member(PvtFeature, features_list(PN)),
+             undefined =:= kz_json:get_ne_value(PubPath, doc(PN))
+         ]
+    of
+        [] -> PN;
+        OutOfSync ->
+            ?LOG_WARN("removing out of sync features: ~p", [OutOfSync]),
+            NewFeatures = kz_json:delete_keys(OutOfSync, features(PN)),
+            set_features(PN, NewFeatures)
+    end.
 
 ensure_pvt_state_legacy_undefined(PN, undefined) -> PN;
 ensure_pvt_state_legacy_undefined(PN, _State) ->
