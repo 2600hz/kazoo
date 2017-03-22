@@ -31,7 +31,8 @@
         ]).
 -export([is_true/1, is_false/1
         ,is_boolean/1
-        ,is_ne_binary/1
+        ,is_ne_binary/1, is_api_ne_binary/1
+        ,is_ne_binaries/1
         ,is_empty/1, is_not_empty/1
         ,is_proplist/1
         ,identity/1
@@ -197,10 +198,21 @@ is_false(_) -> 'false'.
 -spec always_false(any()) -> 'false'.
 always_false(_) -> 'false'.
 
--spec is_ne_binary(binary()) -> boolean().
+-spec is_ne_binary(any()) -> boolean().
 is_ne_binary(V) ->
     is_binary(V)
         andalso is_not_empty(V).
+
+-spec is_api_ne_binary(any()) -> boolean().
+is_api_ne_binary(undefined) -> true;
+is_api_ne_binary(V) -> is_ne_binary(V).
+
+-spec is_ne_binaries(any()) -> boolean().
+is_ne_binaries([]) -> true;
+is_ne_binaries(V)
+  when is_list(V) ->
+    lists:all(fun is_ne_binary/1, V);
+is_ne_binaries(_) -> false.
 
 -spec is_boolean(binary() | string() | atom()) -> boolean().
 is_boolean(<<"true">>) -> 'true';
