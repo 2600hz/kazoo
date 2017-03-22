@@ -86,7 +86,7 @@ resource_exists(_RecordingId) -> 'true'.
 %% @end
 %%--------------------------------------------------------------------
 -spec content_types_provided(cb_context:context(), path_token()) -> cb_context:context().
-content_types_provided(Context, _) ->
+content_types_provided(Context, _RecordingId) ->
     content_types_provided_for_download(Context, cb_context:req_verb(Context)).
 
 -spec content_types_provided_for_download(cb_context:context(), http_method()) -> cb_context:context().
@@ -131,18 +131,81 @@ recording_summary(Context) ->
     {View, PreFilter, PostFilter} = get_view_and_filter(Context),
     case cb_modules_util:range_modb_view_options(Context, PreFilter, PostFilter) of
         {'ok', ViewOptions} ->
-            crossbar_doc:load_view(View
-                                  ,['include_docs' | ViewOptions]
-                                  ,Context
-                                  ,fun normalize_view_results/2
-                                  );
+            recording_summary(Context, View, ViewOptions);
         Ctx -> Ctx
+    end.
+
+-spec recording_summary(cb_context:context(), ne_binary(), crossbar_doc:view_options()) ->
+                               cb_context:context().
+recording_summary(Context, View, ViewOptions) ->
+    LoadedContext = crossbar_doc:load_view(View
+                                          ,['include_docs'
+                                           ,{'startkey_fun', fun start_key_builder/2}
+                                            | props:delete('endkey', ViewOptions)
+                                           ]
+                                          ,Context
+                                          ,fun normalize_view_results/2
+                                          ),
+    case cb_context:resp_status(LoadedContext) of
+        'success' -> update_summary_pagination(LoadedContext);
+        _Status -> LoadedContext
+    end.
+
+-spec start_key_builder(kz_proplist(), cb_context:context()) -> kz_json:api_json_term().
+start_key_builder(Options, Context) ->
+    case crossbar_doc:start_key(Context) of
+        'undefined' ->
+            lager:debug("using default start key"),
+            props:get_value('startkey', Options);
+        CreatedBin ->
+            override_start_key(Options, kz_term:to_integer(CreatedBin))
+    end.
+
+override_start_key(Options, Created) ->
+    case props:get_value('startkey', Options) of
+        'undefined' ->
+            lager:debug("using supplied start key ~p", [Created]),
+            [Created];
+        CreatedFrom when is_integer(CreatedFrom) ->
+            lager:debug("overriding ~p with supplied ~p", [CreatedFrom, Created]),
+            [Created];
+        [_CreatedFrom, Id] ->
+            lager:debug("overriding ~p with supplied ~p", [_CreatedFrom, Created]),
+            [Created, Id];
+        [OwnerId, _CreatedFrom, Id] ->
+            lager:debug("overriding ~p with supplied ~p", [_CreatedFrom, Created]),
+            [OwnerId, Created, Id]
+    end.
+
+-spec update_summary_pagination(cb_context:context()) -> cb_context:context().
+update_summary_pagination(Context) ->
+    cb_context:set_resp_envelope(Context
+                                ,lists:foldl(fun fix_resp_start_keys_fold/2
+                                            ,cb_context:resp_envelope(Context)
+                                            ,[<<"start_key">>, <<"next_start_key">>]
+                                            )
+                                ).
+
+-spec fix_resp_start_keys_fold(kz_json:key(), kz_json:object()) -> kz_json:object().
+fix_resp_start_keys_fold(Key, ResponseEnvelope) ->
+    case kz_json:get_value(Key, ResponseEnvelope) of
+        'undefined' -> ResponseEnvelope;
+        <<_/binary>> -> ResponseEnvelope;
+        Created when is_integer(Created) -> ResponseEnvelope;
+        [Created, _Id] ->
+            lager:debug("setting ~s to ~p", [Key, Created]),
+            kz_json:set_value(Key, Created, ResponseEnvelope);
+        [_OwnerId, Created, _Id] ->
+            lager:debug("setting ~s to ~p", [Key, Created]),
+            kz_json:set_value(Key, Created, ResponseEnvelope)
     end.
 
 -spec load_recording_doc(cb_context:context(), ne_binary()) -> cb_context:context().
 load_recording_doc(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = RecordingId) ->
     Ctx = cb_context:set_account_modb(Context, kz_term:to_integer(Year), kz_term:to_integer(Month)),
-    crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>)).
+    crossbar_doc:load({<<"call_recording">>, RecordingId}, Ctx, ?TYPE_CHECK_OPTION(<<"call_recording">>));
+load_recording_doc(Context, Id) ->
+    crossbar_util:response_bad_identifier(Id, Context).
 
 -spec load_recording_binary(cb_context:context(), ne_binary()) -> cb_context:context().
 load_recording_binary(Context, <<Year:4/binary, Month:2/binary, "-", _/binary>> = DocId) ->
@@ -153,17 +216,25 @@ do_load_recording_binary(Context, DocId) ->
     Context1 = crossbar_doc:load({<<"call_recording">>, DocId}, Context, ?TYPE_CHECK_OPTION(<<"call_recording">>)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            case kz_doc:attachment_names(cb_context:doc(Context1)) of
-                [] ->
-                    cb_context:add_system_error('bad_identifier'
-                                               ,kz_json:from_list([{<<"details">>, DocId}])
-                                               ,Context1
-                                               );
-                [AName | _] ->
-                    Ctx = crossbar_doc:load_attachment({<<"call_recording">>, DocId}, AName, ?TYPE_CHECK_OPTION(<<"call_recording">>), Context),
-                    set_resp_headers(Ctx, AName)
-            end;
+            do_load_recording_binary_attachment(Context1, DocId);
         _Status -> Context1
+    end.
+
+do_load_recording_binary_attachment(Context, DocId) ->
+    case kz_doc:attachment_names(cb_context:doc(Context)) of
+        [] ->
+            cb_context:add_system_error('bad_identifier'
+                                       ,kz_json:from_list([{<<"details">>, DocId}])
+                                       ,Context
+                                       );
+        [AName | _] ->
+            LoadedContext = crossbar_doc:load_attachment({<<"call_recording">>, DocId}
+                                                        ,AName
+                                                        ,?TYPE_CHECK_OPTION(<<"call_recording">>)
+                                                        ,Context
+                                                        ),
+
+            set_resp_headers(LoadedContext, AName)
     end.
 
 %%--------------------------------------------------------------------
@@ -189,11 +260,11 @@ get_disposition(MediaName, Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
--spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_binaries()}.
+-spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_objects()}.
 get_view_and_filter(Context) ->
     case cb_context:user_id(Context) of
-        'undefined' -> {?CB_LIST, [], [kz_json:new()]};
-        UserId -> {?CB_LIST_BY_OWNERID, [UserId], 'undefined'}
+        'undefined' -> {?CB_LIST, [], [<<>>]};
+        UserId -> {?CB_LIST_BY_OWNERID, [UserId], [<<>>]}
     end.
 
 -spec action_lookup(cb_context:context()) -> atom().

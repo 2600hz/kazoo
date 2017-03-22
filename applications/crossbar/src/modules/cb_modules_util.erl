@@ -124,20 +124,26 @@ range_modb_view_options(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo)
 -spec range_modb_view_options1(cb_context:context(), api_binaries(), api_binaries(), gregorian_seconds(), gregorian_seconds()) ->
                                       {'ok', crossbar_doc:view_options()} |
                                       cb_context:context().
+range_modb_view_options1(Context, [], [], CreatedFrom, CreatedTo) ->
+    lager:debug("from ~p to ~p (range: ~p)"
+               ,[CreatedFrom, CreatedTo, (CreatedTo - CreatedFrom)]
+               ),
+    {'ok'
+    ,[{'startkey', CreatedFrom}
+     ,{'endkey', CreatedTo}
+     ,{'databases', kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo)}
+     ]
+    };
 range_modb_view_options1(Context, PrefixKeys, SuffixKeys, CreatedFrom, CreatedTo) ->
-    AccountId = cb_context:account_id(Context),
-    case PrefixKeys =:= []
-        andalso SuffixKeys =:= []
-    of
-        'true' -> {'ok', [{'startkey', CreatedFrom}
-                         ,{'endkey', CreatedTo}
-                         ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
-                         ]};
-        'false' -> {'ok', [{'startkey', [Key || Key <- PrefixKeys ++ [CreatedFrom] ++ SuffixKeys] }
-                          ,{'endkey', [Key || Key <- PrefixKeys  ++ [CreatedTo]   ++ SuffixKeys] }
-                          ,{'databases', kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo)}
-                          ]}
-    end.
+    lager:debug("prefix/suffix'd from ~p to ~p (range: ~p)"
+               ,[CreatedFrom, CreatedTo, (CreatedTo - CreatedFrom)]
+               ),
+    {'ok'
+    ,[{'startkey', PrefixKeys ++ [CreatedFrom] ++ SuffixKeys}
+     ,{'endkey',   PrefixKeys ++ [CreatedTo]   ++ SuffixKeys}
+     ,{'databases', kazoo_modb:get_range(cb_context:account_id(Context), CreatedFrom, CreatedTo)}
+     ]
+    }.
 
 -spec range_to(cb_context:context(), pos_integer(), ne_binary()) -> pos_integer().
 range_to(Context, TStamp, Key) ->
@@ -152,8 +158,9 @@ range_to(Context, TStamp, Key) ->
 
 -spec range_from(cb_context:context(), pos_integer(), pos_integer(), ne_binary()) -> pos_integer().
 range_from(Context, CreatedTo, MaxRange, Key) ->
-    lager:debug("building ~s_from from req value", [Key]),
-    kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, CreatedTo - MaxRange)).
+    MaxFrom = CreatedTo - MaxRange,
+    lager:debug("building from req value '~s_from' or default ~p", [Key, MaxFrom]),
+    kz_term:to_integer(cb_context:req_value(Context, <<Key/binary, "_from">>, MaxFrom)).
 
 -type binding() :: {ne_binary(), atom()}.
 -type bindings() :: [binding(),...].
