@@ -928,17 +928,13 @@ all_gets_should_not_be_dirty_test_() ->
 verify_to_json(Num, PN) ->
     JObj = knm_phone_number:to_json(PN),
     [?_assertEqual(Num, kz_doc:id(JObj))
-    ,?_assert(kz_term:is_ne_binary(kz_json:get_value(?PVT_DB_NAME, JObj)))
+    ,?_assert(kz_util:is_ne_binary(kz_json:get_value(?PVT_DB_NAME, JObj)))
     ,?_assert(knm_phone_number:is_state(kz_json:get_value(?PVT_STATE, JObj)))
     ,?_assert(is_boolean(kz_json:get_value(?PVT_PORTED_IN, JObj)))
-    ,?_assert(lists:member(kz_json:get_value(?PVT_MODULE_NAME, JObj)
-                           %% For ?IN_SERVICE_BAD_CARRIER_NUMBER
-                          ,[<<"knm_pacwest">> | knm_carriers:all_modules()]
-                          ))
     ,?_assert(is_integer(kz_json:get_value(?PVT_MODIFIED, JObj)))
     ,?_assert(is_integer(kz_json:get_value(?PVT_CREATED, JObj)))
     ,?_assertEqual(<<"number">>, kz_json:get_value(?PVT_TYPE, JObj))
-    ,?_assert(kz_term:is_ne_binary(kz_doc:revision(JObj)))
+    ,?_assert(kz_util:is_ne_binary(kz_doc:revision(JObj)))
     ,?_assert(is_api_account_id(kz_json:get_value(?PVT_ASSIGNED_TO, JObj)))
     ,?_assert(is_api_account_id(kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)))
     ,?_assert(lists:member(kz_json:get_value(?PVT_USED_BY, JObj)
@@ -949,14 +945,14 @@ verify_to_json(Num, PN) ->
     ,?_assert(is_undefined_or_ne_binaries(kz_json:get_value(?PVT_FEATURES_DENIED, JObj)))
     ,?_assert(is_undefined_or_account_ids(kz_json:get_value(?PVT_RESERVE_HISTORY, JObj)))
     ,?_assert(is_valid_json(kz_json:get_value(?PVT_CARRIER_DATA, JObj)))
-    ,?_assert(kz_term:is_api_ne_binary(kz_json:get_value(?PVT_REGION, JObj)))
+    ,?_assert(kz_util:is_api_ne_binary(kz_json:get_value(?PVT_REGION, JObj)))
     ].
 
 is_valid_json(undefined) -> true;
 is_valid_json(V) -> kz_json:is_valid_json_object(V).
 
 is_undefined_or_ne_binaries(undefined) -> true;
-is_undefined_or_ne_binaries(V) -> kz_term:is_ne_binaries(V).
+is_undefined_or_ne_binaries(V) -> kz_util:is_ne_binaries(V).
 
 is_undefined_or_account_ids(undefined) -> true;
 is_undefined_or_account_ids(V)
