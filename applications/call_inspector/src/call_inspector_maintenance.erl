@@ -63,12 +63,10 @@ start_hep_parser(IP, Port) ->
     'no_return'.
 
 -spec flush() -> 'ok'.
-flush() ->
-    ci_datastore:flush().
+flush() -> ci_datastore:flush().
 
 -spec flush(text()) -> 'ok'.
-flush(CallId) ->
-    ci_datastore:flush(CallId).
+flush(CallId) -> ci_datastore:flush(CallId).
 
 -spec callid_details(text()) -> 'no_return'.
 callid_details(CallId) ->
@@ -80,17 +78,22 @@ callid_details(CallId) ->
                                     ,{'call_inspector', 'true'}
                                     )
     of
-        {'ok', JObjs} ->
-            GetChunks = fun (JObj) -> kz_json:get_value(<<"Chunks">>, JObj, kz_json:new()) end,
-            JSONArray = lists:flatmap(GetChunks, JObjs),
-            'ok' = io:fwrite(io_lib:format("~ts\n", [kz_json:encode(JSONArray)]));
+        {'ok', JObjs} -> print_jobjs(JObjs);
         {'timeout', []} ->
             io:format("Not found: \"~s\"\n", [CallId]);
+        {timeout, JObjs} ->
+            io:format("Partial results for \"~s\"\n", [CallId]),
+            print_jobjs(JObjs);
         {'error', _Reason}=Error ->
             io:format("Error: ~p\n", [Error])
     end,
     'no_return'.
 
 %% Internals
+
+print_jobjs(JObjs) ->
+    GetChunks = fun (JObj) -> kz_json:get_value(<<"Chunks">>, JObj, kz_json:new()) end,
+    JSONArray = lists:flatmap(GetChunks, JObjs),
+    ok = io:fwrite(io_lib:format("~ts\n", [kz_json:encode(JSONArray)])).
 
 %% End of Module.

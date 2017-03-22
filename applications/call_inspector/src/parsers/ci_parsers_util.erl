@@ -16,6 +16,8 @@
 -export([make_name/1]).
 -export([call_id/1
         ,c_seq/1
+        ,from/1
+        ,to/1
         ]).
 
 -export_type([parser_args/0]).
@@ -86,6 +88,14 @@ call_id(Data) ->
 -spec c_seq(ne_binaries()) -> ne_binary().
 c_seq(Data) ->
     sip_field([<<"CSeq">>], Data).
+
+-spec to(ne_binaries()) -> ne_binary().
+to(Data) ->
+    sip_field([<<"To">>], Data).
+
+-spec from(ne_binaries()) -> ne_binary().
+from(Data) ->
+    sip_field([<<"From">>], Data).
 
 %% Internals
 

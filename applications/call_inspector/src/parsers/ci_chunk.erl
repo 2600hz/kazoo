@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2015-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -27,9 +27,7 @@
         ,from_json/1
         ]).
 -export([is_chunk/1]).
--export([sort_by_timestamp/1
-        ,reorder_dialog/1
-        ]).
+-export([reorder_dialog/1]).
 -export([get_dialog_entities/1]).
 
 -ifdef(TEST).
@@ -211,9 +209,17 @@ get_dialog_entities([Chunk|Chunks], Acc) ->
            end,
     get_dialog_entities(Chunks, Acc2).
 
--spec sort_by_timestamp([chunk()]) -> [chunk()].
-sort_by_timestamp(Chunks) ->
-    lists:keysort(#ci_chunk.ref_timestamp, Chunks).
+-spec '=<'(chunk(), chunk()) -> boolean().
+'=<'(A=#ci_chunk{data = DataA}
+    ,B=#ci_chunk{data = DataB}
+    ) ->
+    true
+        andalso ref_timestamp(A) =< ref_timestamp(B)
+        andalso steps(ci_parsers_util:from(DataA)) =< steps(ci_parsers_util:from(DataB))
+        andalso steps(ci_parsers_util:to(DataA)) =< steps(ci_parsers_util:to(DataB)).
+
+steps(ToOrFrom=?NE_BINARY) ->
+    length(binary:split(ToOrFrom, <<$;>>, [global])).
 
 -spec reorder_dialog([chunk()]) -> [chunk()].
 reorder_dialog([]) -> [];
@@ -244,7 +250,7 @@ do_reorder_dialog(RefParser, Chunks) ->
 -spec sort_split_uniq(ne_binary(), [chunk()]) -> {[chunk()], [chunk()]}.
 sort_split_uniq(RefParser, Chunks) ->
     Grouper = fun (Chunk) -> RefParser =:= parser(Chunk) end,
-    {InOrder, Others} = lists:partition(Grouper, sort_by_timestamp(Chunks)),
+    {InOrder, Others} = lists:partition(Grouper, lists:sort(fun '=<'/2, Chunks)),
     Uniq = [Chunk || Chunk <- Others, not is_duplicate(InOrder, Chunk)],
     {InOrder, Uniq}.
 

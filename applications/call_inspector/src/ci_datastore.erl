@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2015-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -7,7 +7,6 @@
 %%%
 %%%-------------------------------------------------------------------
 -module(ci_datastore).
-
 -behaviour(gen_server).
 
 -include("call_inspector.hrl").
@@ -18,7 +17,9 @@
 -export([start_link/0]).
 -export([store_chunk/1]).
 -export([store_analysis/1]).
--export([lookup_callid/1]).
+-export([lookup_callid/1
+        ,lookup_objects/1
+        ]).
 -export([callid_exists/1]).
 -export([flush/0
         ,flush/1
