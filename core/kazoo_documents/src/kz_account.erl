@@ -45,6 +45,8 @@
         ,sent_initial_registration/1, set_initial_registration_sent/2
         ,sent_initial_call/1, set_initial_call_sent/2
         ,home_zone/1, home_zone/2, set_home_zone/2
+
+        ,preflow_id/1
         ]).
 
 -include("kz_documents.hrl").
@@ -711,3 +713,11 @@ fax_settings(JObj) ->
         'undefined' -> kz_json:set_value(?FAX_TIMEZONE_KEY, timezone(JObj), FaxSettings);
         _ -> FaxSettings
     end.
+
+-spec preflow_id(doc()) -> api_ne_binary().
+-spec preflow_id(doc(), Default) -> ne_binary() | Default.
+preflow_id(Doc) ->
+    preflow_id(Doc, 'undefined').
+
+preflow_id(Doc, Default) ->
+    kz_json:get_ne_binary_value([<<"preflow">>, <<"always">>], Doc, Default).

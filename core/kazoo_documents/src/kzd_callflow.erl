@@ -14,6 +14,7 @@
         ,patterns/1, set_patterns/2
         ,is_feature_code/1
         ,flow/1, flow/2
+        ,prepend_preflow/2
         ,set_flow/2
         ,validate/1
         ,validate_flow/1
@@ -141,3 +142,12 @@ validate_flow(Doc) ->
         {'error', Errors} -> {'error', kz_json_schema:errors_to_jobj(Errors)}
     end.
 -endif.
+
+-spec prepend_preflow(doc(), ne_binary()) -> doc().
+prepend_preflow(Callflow, PreflowId) ->
+    AmendedFlow =
+        kz_json:from_list([{<<"module">>, <<"callflow">>}
+                          ,{<<"data">>, kz_json:from_list([{<<"id">>, PreflowId}])}
+                          ,{<<"children">>, kz_json:from_list([{<<"_">>, flow(Callflow)}])}
+                          ]),
+    set_flow(Callflow, AmendedFlow).

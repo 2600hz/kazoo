@@ -48,22 +48,10 @@ maybe_prepend_preflow(Call, CallFlow) ->
             lager:warning("could not open account doc ~s : ~p", [AccountDb, _E]),
             CallFlow;
         {'ok', Doc} ->
-            case kz_json:get_ne_value([<<"preflow">>, <<"always">>], Doc) of
+            case kz_account:preflow_id(Doc) of
                 'undefined' -> CallFlow;
-                PreflowId   -> prepend_preflow(AccountDb, PreflowId, CallFlow)
+                PreflowId   -> kzd_callflow:prepend_preflow(CallFlow, PreflowId)
             end
-    end.
-
--spec prepend_preflow(ne_binary(), ne_binary(), kz_json:object()) -> kz_json:object().
-prepend_preflow(AccountDb, PreflowId, CallFlow) ->
-    case kz_datamgr:open_cache_doc(AccountDb, PreflowId) of
-        {'error', _E} ->
-            lager:warning("could not open ~s in ~s : ~p", [PreflowId, AccountDb, _E]),
-            CallFlow;
-        {'ok', Doc} ->
-            Children = kz_json:from_list([{<<"_">>, kz_json:get_value(<<"flow">>, CallFlow)}]),
-            Preflow = kz_json:set_value(<<"children">>, Children, kz_json:get_value(<<"flow">>, Doc)),
-            kz_json:set_value(<<"flow">>, Preflow, CallFlow)
     end.
 
 -spec allow_no_match(kapps_call:call()) -> boolean().
