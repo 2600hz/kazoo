@@ -157,7 +157,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
     set_req_json(Context, NewReqJObj).
 
 %% Accessors
--spec account_id(context()) -> api_binary().
+-spec account_id(context()) -> api_ne_binary().
 -spec account_name(context()) -> api_binary().
 -spec account_db(context()) -> api_binary().
 -spec user_id(context()) -> api_binary().
@@ -184,7 +184,7 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 -spec query_string(context()) -> kz_json:object().
 -spec req_param(context(), ne_binary()) -> kz_json:api_json_term().
 -spec req_param(context(), ne_binary(), Default) -> kz_json:json_term() | Default.
--spec client_ip(context()) -> ne_binary().
+-spec client_ip(context()) -> api_ne_binary().
 -spec req_id(context()) -> ne_binary().
 -spec auth_account_doc(context()) -> api_object().
 -spec doc(context()) -> api_object() | kz_json:objects().

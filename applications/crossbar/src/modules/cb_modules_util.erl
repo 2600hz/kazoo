@@ -473,7 +473,7 @@ parse_media_type(MediaType) ->
     cowboy_http:nonempty_list(MediaType, fun cowboy_http:media_range/2).
 
 -spec bucket_name(cb_context:context()) -> ne_binary().
--spec bucket_name(api_binary(), api_binary()) -> ne_binary().
+-spec bucket_name(api_ne_binary(), api_ne_binary()) -> ne_binary().
 bucket_name(Context) ->
     bucket_name(cb_context:client_ip(Context), cb_context:account_id(Context)).
 

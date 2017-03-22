@@ -169,7 +169,7 @@
                     ,raw_qs = <<>> :: binary()
                     ,method = ?HTTP_GET :: http_method()
                     ,validation_errors = kz_json:new() :: kz_json:object()
-                    ,client_ip = <<"127.0.0.1">> :: ne_binary()
+                    ,client_ip = <<"127.0.0.1">> :: api_ne_binary()
                     ,load_merge_bypass :: api_object()
                     ,profile_id :: api_ne_binary()
                     ,api_version = ?VERSION_1 :: ne_binary()

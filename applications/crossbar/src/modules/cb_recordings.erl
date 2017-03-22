@@ -161,6 +161,8 @@ start_key_builder(Options, Context) ->
             override_start_key(Options, kz_term:to_integer(CreatedBin))
     end.
 
+-spec override_start_key(kz_proplist(), gregorian_seconds()) ->
+                                [ne_binary() | gregorian_seconds()].
 override_start_key(Options, Created) ->
     case props:get_value('startkey', Options) of
         'undefined' ->
@@ -220,6 +222,8 @@ do_load_recording_binary(Context, DocId) ->
         _Status -> Context1
     end.
 
+-spec do_load_recording_binary_attachment(cb_context:context(), ne_binary()) ->
+                                                 cb_context:context().
 do_load_recording_binary_attachment(Context, DocId) ->
     case kz_doc:attachment_names(cb_context:doc(Context)) of
         [] ->
@@ -260,7 +264,7 @@ get_disposition(MediaName, Context) ->
 normalize_view_results(JObj, Acc) ->
     [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
--spec get_view_and_filter(cb_context:context()) -> {ne_binary(), api_binaries(), api_objects()}.
+-spec get_view_and_filter(cb_context:context()) -> {ne_binary(), ne_binaries(), [<<>>]}.
 get_view_and_filter(Context) ->
     case cb_context:user_id(Context) of
         'undefined' -> {?CB_LIST, [], [<<>>]};
