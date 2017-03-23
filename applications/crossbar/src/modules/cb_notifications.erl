@@ -475,6 +475,8 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
 maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
+publish_fun(<<"account_zone_change">>) ->
+    fun kapi_notifications:publish_account_zone_change/1;
 publish_fun(<<"cnam_request">>) ->
     fun kapi_notifications:publish_cnam_request/1;
 publish_fun(<<"customer_update">>) ->

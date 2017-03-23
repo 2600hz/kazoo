@@ -129,9 +129,9 @@
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
--define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.denied_emergency_bridge">>).
--define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.customer_update">>).
--define(NOTIFY_SKEL, <<"notifications.skel">>).
+-define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.account.denied_emergency_bridge">>).
+-define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.account.customer_update">>).
+-define(NOTIFY_SKEL, <<"notifications.account.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
@@ -303,7 +303,7 @@
 -define(ACCOUNT_ZONE_CHANGE_HEADERS, [<<"Account-ID">>
                                      ,<<"Zones">>
                                      ]).
--define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, [?DEFAULT_OPTIONAL_HEADERS]).
+-define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(ACCOUNT_ZONE_CHANGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                     ,{<<"Event-Name">>, <<"account_zone_change">>}
                                     ]).
