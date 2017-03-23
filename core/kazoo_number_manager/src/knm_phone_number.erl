@@ -249,14 +249,16 @@ handle_bulk_change(Db, JObjs, PNsMap, T0, ErrorF)
   when is_map(PNsMap) ->
     F = fun (JObj, T) ->
                 Num = kz_json:get_ne_value(<<"id">>, JObj),
-                case kz_json:get_ne_value(<<"ok">>, JObj) of
+                case kz_json:get_ne_value(<<"ok">>, JObj) =:= true
+                    orelse kz_doc:revision(JObj) =/= undefined
+                of
                     true ->
                         lager:debug("successfully changed ~s in ~s", [Num, Db]),
                         knm_numbers:ok(maps:get(Num, PNsMap), T);
-                    undefined ->
+                    false ->
                         %% Weirdest thing here is on conflict doc was actually properly saved!
                         R = kz_json:get_ne_value(<<"error">>, JObj),
-                        lager:warning("error changing ~s in ~s: ~p", [Num, Db, R]),
+                        lager:warning("error changing ~s in ~s: ~s", [Num, Db, kz_json:encode(JObj)]),
                         ErrorF(Num, kz_term:to_atom(R, true), T)
                 end
         end,
