@@ -1907,7 +1907,7 @@ chunks_4() ->
 
 chunks_5() -> [chunks_5(1), chunks_5(2)].
 chunks_5(count) -> length(chunks_5());
-chunks_5(entities) -> [];
+chunks_5(entities) -> [<<"104.237.144.93:5060">>, <<"104.237.144.93:11000">>];
 chunks_5(1) ->
     kz_json:from_map(
       #{<<"c_seq">> => <<"10 OPTIONS">>
