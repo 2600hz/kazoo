@@ -75,6 +75,7 @@
 -define(TEST_OLD7_NUM, <<"+13977031887">>).
 -define(TEST_OLD7_1_NUM, <<"+13977031888">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
+-define(TEST_VITELITY_NUM, <<"+18122154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
@@ -194,6 +195,27 @@
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1435">>}
           ,{?PVT_CREATED, 63565934344}
+          ])).
+
+-define(VITELITY_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_VITELITY_NUM}
+          ,{<<"_rev">>, <<"1-deada1523e81a4e3c2689140ed3a8e69">>}
+          ,{?FEATURE_CNAM, kz_json:from_list(
+                            [{?CNAM_INBOUND_LOOKUP, true}
+                            ,{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}
+                            ])}
+          ,{?PVT_MODIFIED, 63565911000}
+          ,{?PVT_FEATURES, kz_json:from_list_recursive(
+                             [{?FEATURE_CNAM_INBOUND,  [{?CNAM_INBOUND_LOOKUP, true}]}
+                             ,{?FEATURE_CNAM_OUTBOUND, [{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}]}
+                             ])}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, <<"knm_vitelity">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1812">>}
+          ,{?PVT_CREATED, 63565911001}
           ])).
 
 -define(PORT_IN_NUMBER

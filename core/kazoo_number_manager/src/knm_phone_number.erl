@@ -370,6 +370,8 @@ test_fetch(?TEST_EXISTING_TOLL) ->
     {ok, ?EXISTING_TOLL};
 test_fetch(?TEST_TELNYX_NUM) ->
     {ok, ?TELNYX_NUMBER};
+test_fetch(?TEST_VITELITY_NUM) ->
+    {ok, ?VITELITY_NUMBER};
 test_fetch(?TEST_OLD1_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json")))};
 test_fetch(?TEST_OLD1_1_NUM) ->
