@@ -934,7 +934,6 @@ verify_to_json(Num, PN) ->
     ,?_assert(is_integer(kz_json:get_value(?PVT_MODIFIED, JObj)))
     ,?_assert(is_integer(kz_json:get_value(?PVT_CREATED, JObj)))
     ,?_assertEqual(<<"number">>, kz_json:get_value(?PVT_TYPE, JObj))
-    ,?_assert(kz_util:is_ne_binary(kz_doc:revision(JObj)))
     ,?_assert(is_api_account_id(kz_json:get_value(?PVT_ASSIGNED_TO, JObj)))
     ,?_assert(is_api_account_id(kz_json:get_value(?PVT_PREVIOUSLY_ASSIGNED_TO, JObj)))
     ,?_assert(lists:member(kz_json:get_value(?PVT_USED_BY, JObj)
