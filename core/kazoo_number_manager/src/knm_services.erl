@@ -131,8 +131,13 @@ update_services(T=#{todo := Ns, options := Options}) ->
             lager:debug("somewhat dry_run-ing btw"),
             PNs = [knm_number:phone_number(N) || N <- Ns],
             AssignedTo = knm_numbers:assigned_to(T),
-            S = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
-            Services = kz_service_phone_numbers:reconcile(S, PNs),
+            Services = case AssignedTo =/= undefined of
+                           true ->
+                               S = kz_services:reconcile(AssignedTo, <<"phone_numbers">>),
+                               kz_service_phone_numbers:reconcile(S, PNs);
+                           false ->
+                               do_fetch_services(undefined)
+                       end,
             knm_numbers:ok(Ns, T#{services => Services});
         {_, false} ->
             AssignedTo = knm_numbers:assigned_to(T),
@@ -142,7 +147,7 @@ update_services(T=#{todo := Ns, options := Options}) ->
                 andalso PrevAssignedTo =/= AssignedTo
                 andalso kz_services:reconcile(PrevAssignedTo, <<"phone_numbers">>),
             Services = do_fetch_services(AssignedTo),
-            _ = 'undefined' =/= AssignedTo
+            _ = AssignedTo =/= undefined
                 andalso kz_services:commit_transactions(Services, knm_numbers:transactions(T)),
             knm_numbers:ok(Ns, T#{services => Services})
     end.
