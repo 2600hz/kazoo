@@ -256,7 +256,9 @@ log_alien(_AccountDb, _DID) ->
 -spec fix_number(ne_binary(), ne_binary(), ne_binary()) -> knm_number_return().
 fix_number(Num, AuthBy, AccountDb) ->
     UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
-    Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}],
+    Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
+                |
+               ],
     Options = [{auth_by, AuthBy}
               ,{dry_run, false}
               ,{batch_run, false}
