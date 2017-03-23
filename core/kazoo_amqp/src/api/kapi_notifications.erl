@@ -129,8 +129,8 @@
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
--define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.account.denied_emergency_bridge">>).
--define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.account.customer_update">>).
+-define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.registration.denied_emergency_bridge">>).
+-define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.user.customer_update">>).
 -define(NOTIFY_SKEL, <<"notifications.account.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
