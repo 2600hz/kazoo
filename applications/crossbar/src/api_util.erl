@@ -15,6 +15,7 @@
         ,is_cors_request/1
         ,add_cors_headers/2
         ,allow_methods/3
+        ,path_tokens/1
         ,parse_path_tokens/2
         ,get_req_data/2
         ,get_http_verb/2
@@ -570,6 +571,14 @@ get_http_verb(Method, Context) ->
 %% is returned.
 %% @end
 %%--------------------------------------------------------------------
+
+-spec path_tokens(cb_context:context()) -> ne_binaries().
+path_tokens(Context) ->
+    Api = cb_context:api_version(Context),
+    case cb_context:path_tokens(Context) of
+        [<<>>, Api | Tokens] -> Tokens;
+        [Api | Tokens] -> Tokens
+    end.
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
 -type cb_mods_with_tokens() :: [cb_mod_with_tokens()].

@@ -265,19 +265,10 @@ known_methods(Req, Context) ->
             lager:debug("run: known_methods"),
             {?ALLOWED_METHODS
             ,Req
-            ,cb_context:set_allowed_methods(
-               cb_context:set_allow_methods(Context, ?ALLOWED_METHODS)
+            ,cb_context:set_allowed_methods(cb_context:set_allow_methods(Context, ?ALLOWED_METHODS)
                                            ,?ALLOWED_METHODS
-              )
+                                           )
             }
-    end.
-
--spec path_tokens(cb_context:context()) -> ne_binaries().
-path_tokens(Context) ->
-    Api = cb_context:api_version(Context),
-    case cb_context:path_tokens(Context) of
-        [<<>>, Api | Tokens] -> Tokens;
-        [Api | Tokens] -> Tokens
     end.
 
 -spec allowed_methods(cowboy_req:req(), cb_context:context()) ->
@@ -285,7 +276,7 @@ path_tokens(Context) ->
 allowed_methods(Req, Context) ->
     lager:debug("run: allowed_methods"),
     Methods = cb_context:allowed_methods(Context),
-    Tokens = path_tokens(Context),
+    Tokens = api_util:path_tokens(Context),
 
     case api_util:parse_path_tokens(Context, Tokens) of
         [_|_] = Nouns ->

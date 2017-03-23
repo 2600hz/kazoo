@@ -375,7 +375,8 @@ load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
                                ,page_size=PageSize
                                ,filter_fun=FilterFun
                                ,dbs=[Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
-                                           kz_datamgr:db_exists(Db, View)]
+                                           kz_datamgr:db_exists(Db, View)
+                                    ]
                                ,direction=view_sort_direction(Options)
                                }).
 
@@ -916,14 +917,15 @@ handle_datamgr_pagination_success([_|_]=JObjs
                                  ) ->
     Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
     FilteredCount = length(Filtered),
-
+    ContextWithDocs = cb_context:set_doc(Context
+                                        ,Filtered ++ cb_context:doc(Context)
+                                        ),
     load_view(LVPs#load_view_params{context=
-                                        update_pagination_envelope_params(
-                                          cb_context:set_doc(Context, Filtered ++ cb_context:doc(Context))
+                                        update_pagination_envelope_params(ContextWithDocs
                                                                          ,StartKey
                                                                          ,FilteredCount
-                                         )
-                                   ,page_size=PageSize-FilteredCount
+                                                                         )
+                                   ,page_size=PageSize - FilteredCount
                                    });
 
 handle_datamgr_pagination_success([_|_]=JObjs
@@ -939,27 +941,26 @@ handle_datamgr_pagination_success([_|_]=JObjs
         {Results, []} ->
             Filtered = apply_filter(FilterFun, Results, Context, Direction),
 
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, PageSize)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize),
+            load_view(LVPs#load_view_params{context=
+                                                cb_context:set_doc(UpdatedContext
+                                                                  ,Filtered ++ cb_context:doc(Context)
+                                                                  )
                                            ,page_size=0
-                       });
+                                           });
         {Results, [NextJObj]} ->
             NextStartKey = kz_json:get_value(<<"key">>, NextJObj),
             Filtered = apply_filter(FilterFun, Results, Context, Direction),
             lager:debug("next start key: ~p", [NextStartKey]),
 
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, PageSize, NextStartKey),
+            load_view(LVPs#load_view_params{context=
+                                                cb_context:set_doc(UpdatedContext
+
+                                                                  ,Filtered ++ cb_context:doc(Context)
+                                                                  )
                                            ,page_size=0
-                       })
+                                           })
     catch
         'error':'badarg' ->
             Filtered = apply_filter(FilterFun, JObjs, Context, Direction),
@@ -967,14 +968,13 @@ handle_datamgr_pagination_success([_|_]=JObjs
 
             lager:debug("recv less than ~p results: ~p", [PageSize, FilteredCount]),
 
-            load_view(LVPs#load_view_params{
-                        context=
-                            cb_context:set_doc(
-                              update_pagination_envelope_params(Context, StartKey, FilteredCount)
-                                              ,Filtered ++ cb_context:doc(Context)
-                             )
+            UpdatedContext = update_pagination_envelope_params(Context, StartKey, FilteredCount),
+            load_view(LVPs#load_view_params{context=
+                                                cb_context:set_doc(UpdatedContext
+                                                                  ,Filtered ++ cb_context:doc(Context)
+                                                                  )
                                            ,page_size=PageSize - FilteredCount
-                       })
+                                           })
     end.
 
 -type filter_fun() :: fun((kz_json:object(), kz_json:objects()) -> kz_json:objects()) |
@@ -999,7 +999,8 @@ apply_filter(FilterFun, JObjs, Context, Direction, HasQSFilter) ->
                                       filtered_doc_by_qs(JObj, HasQSFilter, Context)
                                   ]),
     lager:debug("filter resulted in ~p out of ~p objects"
-               ,[length(Filtered), length(JObjs)]),
+               ,[length(Filtered), length(JObjs)]
+               ),
     case Direction of
         'ascending' -> Filtered;
         'descending' -> lists:reverse(Filtered)
