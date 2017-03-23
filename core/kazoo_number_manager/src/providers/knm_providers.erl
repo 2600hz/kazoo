@@ -373,7 +373,8 @@ exec(Number, Action=delete) ->
     ?LOG_DEBUG("requested number features: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
 exec(Number, Action) ->
-    {AllowedRequests, DeniedRequests} = split_requests(Number),
+    {AllowedRequests0, DeniedRequests} = split_requests(Number),
+    AllowedRequests = rename_carrier_first(AllowedRequests0),
     ?LOG_DEBUG("allowing number features ~s", [?PP(AllowedRequests)]),
     case DeniedRequests =:= [] of
         true -> exec(Number, Action, AllowedRequests);
@@ -389,6 +390,14 @@ split_requests(Number) ->
     ?LOG_DEBUG("allowed modules: ~s", [?PP(AllowedModules)]),
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
+
+rename_carrier_first(Modules) ->
+    RenameCarrierModule = <<"knm_rename_carrier">>,
+    case lists:member(RenameCarrierModule, Modules) of
+        false -> Modules;
+        true ->
+            [RenameCarrierModule] ++ (Modules -- [RenameCarrierModule])
+    end.
 
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->
