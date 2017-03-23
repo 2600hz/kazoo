@@ -27,9 +27,11 @@
 
 %% API
 
--spec timestamp() -> api_number().
+-spec timestamp() -> float().
 timestamp() ->
-    timestamp(os:timestamp()).
+    {_, _, Micro} = os:timestamp(),
+    1.0e-6 * kz_term:to_integer(Micro) +
+        kz_time:current_tstamp().
 
 -spec timestamp(ne_binary() | kz_now()) -> api_number().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
