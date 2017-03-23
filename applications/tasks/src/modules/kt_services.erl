@@ -155,10 +155,7 @@ get_descendants(AccountId) ->
                   ,{'endkey', [AccountId, kz_json:new()]}
                   ],
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
-        {'ok', JObjs} ->
-            [Id || JObj <- JObjs,
-                   (Id = kz_doc:id(JObj)) =/= AccountId
-            ];
+        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
         {'error', _R} ->
             lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
             []
