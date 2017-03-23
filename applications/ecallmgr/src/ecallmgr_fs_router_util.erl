@@ -154,7 +154,9 @@ route_req_ccvs(FetchId, Props) ->
       ,{<<"Fetch-ID">>, FetchId}
       ,{<<"Redirected-By">>, RedirectedBy}
       ,{<<"Redirected-Reason">>, RedirectedReason}
-       | props:delete(<<?CALL_INTERACTION_ID>>, CCVs) ++ kz_privacy:flags(Props)
+       | props:delete_keys([<<?CALL_INTERACTION_ID>>
+                           ,<<"Fetch-ID">>
+                           ], CCVs) ++ kz_privacy:flags(Props)
       ]
      ).
 
