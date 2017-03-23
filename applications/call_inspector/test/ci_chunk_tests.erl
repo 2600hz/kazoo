@@ -17,7 +17,7 @@
 json_test_() ->
     lists:flatmap(
       fun (Data1) ->
-              [?_assertEqual(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
+              [?_assert(kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I)))))
                || I <- lists:seq(1, Data1('count'))
               ]
       end,
