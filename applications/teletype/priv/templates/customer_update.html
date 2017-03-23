@@ -30,11 +30,11 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;">
-                        <h2 style="text-align:center;color:#555555;font-weight:100">Dear {{user.first_name}} {{user.last_name}}</h2>
+                        <h2 style="text-align:center;color:#555555;font-family:'Open Sans', sans-serif;font-weight:100">Dear {{user.first_name}} {{user.last_name}}</h2>
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:0 20px;line-height:20px;color:#555555;text-align:center;">
+                    <td bgcolor="#ffffff" style="padding:0 20px;font-family:'Open Sans', sans-serif;line-height:20px;color:#555555;text-align:center;">
                         <p>Here are some news that we have selected for you.</p>
                         <p>Best regards,</p>
                     </td>
@@ -45,12 +45,12 @@
                 <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
                 <!-- Clear Spacer : END -->
                 <tr><!-- #6a59f7 -->
-                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;">
-                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;color:#555555;">Account Information</h4>
-                        <ul style="font-size:11px;line-height:18px;color:#555555;margin:0 0 13px 25px;padding:0">
-                            <li><b>Account ID: </b><span style="font-family:monospace;">{{account.id}}</span></li>
-                            <li><b>Account Name: </b><span style="font-family:monospace;">{{account.name}}</span></li>
-                            <li><b>Account Realm: </b><span style="font-family:monospace;">{{account.realm}}</span></li>
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans', sans-serif;color:#555555;">Account Information</h4>
+                        <ul style="margin:0 0 13px 30px;padding:0">
+                            <li style="font-size:11px;line-height:18px;font-family:'Open Sans', sans-serif;color:#555555;"><b>Account ID:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.id}}</span></li>
+                            <li style="font-size:11px;line-height:18px;font-family:'Open Sans', sans-serif;color:#555555;"><b>Account Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.name}}</span></li>
+                            <li style="font-size:11px;line-height:18px;font-family:'Open Sans', sans-serif;color:#555555;"><b>Account Realm:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{account.realm}}</span></li>
                         </ul>
                     </td>
                 </tr>
@@ -59,7 +59,7 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>
             </table>
-            <p style="font-size:10px;color:#a9a9a9;margin:0;padding:5px 0">Sent from {{system.hostname}}</p>
+            <p style="font-size:10px;font-family:'Open Sans', sans-serif;color:#a9a9a9;margin:0;padding:5px 0">Sent from {{system.hostname}}</p>
             <!-- Email Footer :END -->
 
             <!--[if mso]>

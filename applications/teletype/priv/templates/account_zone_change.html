@@ -30,11 +30,11 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;">
-                        <h2 style="text-align:center;color:#555555;font-weight:100">Account Zones Change</h2>
+                        <h2 style="text-align:center;color:#555555;font-family:'Open Sans', sans-serif;font-weight:100;">Account Zones Change</h2>
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:0 20px;line-height:20px;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:0 20px;line-height:20px;font-family:'Open Sans', sans-serif;color:#555555;">
                         <p style="text-align:center;">Your <span style="font-family:monospace;"><b>{{accout.name}}</b></span> account's zones has been changed.</p>
                     </td>
                 </tr>
@@ -42,10 +42,10 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;">
-                        <h3 style="color:#555555;font-weight:100">Zones Change Details</h3>
-                        <ul style="color:#555555;">
-                        	{% for key, value in zones %}
-                            <li><b>{{key}}: </b><span style="font-family:monospace;">{{value}}</span></li>
+                        <h3 style="font-family:'Open Sans', sans-serif;color:#555555;font-weight:100">Zones Change Details</h3>
+                        <ul>
+                            {% for key, value in zones %}
+                            <li style="font-family:'Open Sans', sans-serif;color:#555555;"><b>{{key}}: </b><span style="font-family:monospace;">{{value}}</span></li>
                             {% endfor %}
                         </ul>
                     </td>
@@ -59,9 +59,9 @@
                     <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;">
                         <h4 style="font-weight:100;line-height:20px;margin:13px 0;color:#555555;">Account Information</h4>
                         <ul style="font-size:11px;line-height:18px;color:#555555;margin:0 0 13px 25px;padding:0">
-                            <li><b>Account ID: </b><span style="font-family:monospace;">{{account.id}}</span></li>
-                            <li><b>Account Name: </b><span style="font-family:monospace;">{{account.name}}</span></li>
-                            <li><b>Account Realm: </b><span style="font-family:monospace;">{{account.realm}}</span></li>
+                            <li style="font-family:'Open Sans', sans-serif;color:#555555;"><b>Account ID: </b><span style="font-family:monospace;">{{account.id}}</span></li>
+                            <li style="font-family:'Open Sans', sans-serif;color:#555555;"><b>Account Name: </b><span style="font-family:monospace;">{{account.name}}</span></li>
+                            <li style="font-family:'Open Sans', sans-serif;color:#555555;"><b>Account Realm: </b><span style="font-family:monospace;">{{account.realm}}</span></li>
                         </ul>
                     </td>
                 </tr>
@@ -70,7 +70,7 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#202029" align="center" width="100%" style="background-color:#202029;border-color:#202029;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><td style="font-size:50px;line-height:50px;" height="50">&nbsp;</td></tr>
             </table>
-            <p style="font-size:10px;color:#a9a9a9;margin:0;padding:5px 0">Sent from {{system.hostname}}</p>
+            <p style="font-family:'Open Sans', sans-serif;font-size:10px;color:#a9a9a9;margin:0;padding:5px 0">Sent from {{system.hostname}}</p>
             <!-- Email Footer :END -->
 
             <!--[if mso]>

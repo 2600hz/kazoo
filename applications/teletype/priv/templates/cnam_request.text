@@ -1,8 +1,8 @@
                 Caller Name Change Request for {{request.number}}
 
 
-A request to change the Caller name to {{cnam.display_name}} for number {{request.number}} has been submitted.
-Following are the information about this request.
+A request to change the Caller name to {{cnam.display_name}} for number {{request.number}} has
+been submitted. Following are the information about this request.
 
     Note: Change to Caller name can take up to 48 hours to take effect based on your carrier.
 
