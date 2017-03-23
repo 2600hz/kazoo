@@ -52,6 +52,7 @@
 
 -ifdef(TEST).
 -export([set_is_dirty/2]).
+-export([is_state/1]).
 -else.
 -export([push_stored/0]).
 -endif.
@@ -453,7 +454,7 @@ to_json(PN=#knm_phone_number{doc=JObj}) ->
      ).
 
 %%--------------------------------------------------------------------
-%% @public
+%% @private
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
