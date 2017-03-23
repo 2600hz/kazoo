@@ -21,8 +21,9 @@
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"request.number">>, <<"request_number">>, <<"Number">>, <<"Number to add CNAM">>)
           ,?MACRO_VALUE(<<"cnam.display_name">>, <<"cnam_display_name">>, <<"Display Name">>, <<"What to display">>)
-          ,?MACRO_VALUE(<<"request.number_state">>, <<"request_number_state">>, <<"Number State">>, <<"Number State">>)
-          ,?MACRO_VALUE(<<"request.local_number">>, <<"request_local_number">>, <<"Local Number">>, <<"Local Number">>)
+          ,?MACRO_VALUE(<<"request.number_state">>, <<"request_number_state">>, <<"Number State">>, <<"Number state">>)
+          ,?MACRO_VALUE(<<"request.local_number">>, <<"request_local_number">>, <<"Local Number">>, <<"Is a local number">>)
+          ,?MACRO_VALUE(<<"request.acquired_for">>, <<"request_acquired_for">>, <<"Acquired For">>, <<"Who authorized the request">>)
            | ?ACCOUNT_MACROS ++ ?USER_MACROS
           ]
          )).
