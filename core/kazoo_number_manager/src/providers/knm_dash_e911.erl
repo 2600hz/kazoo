@@ -106,9 +106,9 @@ maybe_update_e911(Number) ->
             Number;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            _NewFeature = maybe_update_e911(Number, E911),
-            lager:debug("using address ~p", [_NewFeature]),
-            knm_services:activate_feature(Number, {?FEATURE_E911, E911})
+            NewFeature = maybe_update_e911(Number, E911),
+            lager:debug("using address ~p", [NewFeature]),
+            knm_services:activate_feature(Number, {?FEATURE_E911, NewFeature})
     end.
 
 -spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
