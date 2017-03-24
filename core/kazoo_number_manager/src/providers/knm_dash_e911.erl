@@ -93,22 +93,26 @@ feature(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_update_e911(knm_number:knm_number()) -> knm_number:knm_number().
-maybe_update_e911(Number) ->
-    CurrentE911 = feature(Number),
-    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(knm_number:phone_number(Number))),
+maybe_update_e911(N) ->
+    PN = knm_number:phone_number(N),
+    CurrentE911 = feature(N),
+    E911 = kz_json:get_ne_value(?FEATURE_E911, knm_phone_number:doc(PN)),
     NotChanged = kz_json:are_equal(CurrentE911, E911),
     case kz_term:is_empty(E911) of
         'true' ->
             lager:debug("information has been removed, updating upstream"),
-            _ = remove_number(Number),
-            knm_services:deactivate_feature(Number, ?FEATURE_E911);
+            _ = remove_number(N),
+            knm_services:deactivate_feature(N, ?FEATURE_E911);
         'false' when NotChanged  ->
-            Number;
+            N;
         'false' ->
             lager:debug("information has been changed: ~s", [kz_json:encode(E911)]),
-            _NewFeature = maybe_update_e911(Number, E911),
-            lager:debug("using address ~p", [_NewFeature]),
-            knm_services:activate_feature(Number, {?FEATURE_E911, E911})
+            NewE911 = maybe_update_e911(N, E911),
+            lager:debug("using address ~p", [NewE911]),
+            NewDoc = kz_json:set_value(?FEATURE_E911, NewE911, knm_phone_number:doc(PN)),
+            NewPN = knm_phone_number:reset_doc(PN, NewDoc),
+            NewN = knm_number:set_phone_number(N, NewPN),
+            knm_services:activate_feature(NewN, {?FEATURE_E911, NewE911})
     end.
 
 -spec maybe_update_e911(knm_number:knm_number(), kz_json:object()) -> kz_json:object().
