@@ -20,6 +20,13 @@ json_test_() ->
               Txt = lists:flatten(io_lib:format("For ~p", [Data1])),
               [{Txt ++ " chunk " ++ integer_to_list(I)
                ,?_assert(kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I)))))
+                %% ,?_assert(
+                %%     begin
+                %%         io:format(user, "\n>L> ~s\n\n", [kz_json:encode(Data1(I))]),
+                %%         io:format(user, "\n>R> ~s\n\n", [kz_json:encode(ci_chunk:to_json(ci_chunk:from_json(Data1(I))))]),
+                %%         kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
+                %%     end
+                %%    )
                }
                || I <- lists:seq(1, Data1('count'))
               ]
@@ -1928,7 +1935,7 @@ chunks_5(1) ->
                      ,<<"Max-Forwards: 70">>
                      ,<<"Content-Length: 0">>
                      ]
-       ,<<"ref_timestamp">> => <<"63657429461">>
+       ,<<"ref_timestamp">> => <<"63657429461.0">>
        ,<<"src">> => <<"104.237.144.93:5060">>
        ,<<"timestamp">> => 63657429461
        });
@@ -1954,7 +1961,7 @@ chunks_5(2) ->
                      ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
                      ,<<"Content-Length: 0">>
                      ]
-       ,<<"ref_timestamp">> => <<"63657429461">>
+       ,<<"ref_timestamp">> => <<"63657429461.1">>
        ,<<"src">> => <<"104.237.144.93:11000">>
        ,<<"timestamp">> => 63657429461
        }).
