@@ -66,32 +66,31 @@ reorder_dialog(RefParser, Data1, Chunks) ->
 
     Labels = [kz_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
-    [ ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
-    , ?_assertEqual(Data1('count'), length(Reordered))
-    , ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
-    , ?_assertEqual(Labels, LabelsReordered)
+    [?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
+    ,?_assertEqual(Data1('count'), length(Reordered))
+    ,?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
+    ,?_assertEqual(Labels, LabelsReordered)
     ] ++
         lists:append(
-          [ [ ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
-            , ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
-            , ?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))
-            , ?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))
-            , ?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))
-            , ?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))
-            , ?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))
-            , ?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))
-            , ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
-            , ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
-            , ?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))
-            ]
-            || I <- lists:seq(1, Data1('count'))
-                   , begin
-                         C = ci_chunk:from_json(Data1(I)),
-                         R = lists:nth(I, Reordered),
-                         'true'
-                     end
-          ]
-         ).
+          [[?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
+           ,?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
+           ,?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))
+           ,?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))
+           ,?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))
+           ,?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))
+           ,?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))
+           ,?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))
+           ,?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
+           ,?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
+           ,?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))
+           ]
+           || I <- lists:seq(1, Data1('count')),
+              begin
+                  C = ci_chunk:from_json(Data1(I)),
+                  R = lists:nth(I, Reordered),
+                  true
+              end
+          ]).
 
 
 chunks_3('count') -> 8;
