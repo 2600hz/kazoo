@@ -27,7 +27,9 @@
         ,from_json/1
         ]).
 -export([is_chunk/1]).
--export([reorder_dialog/1]).
+-export([sort_by_timestamp/1
+        ,reorder_dialog/1
+        ]).
 -export([get_dialog_entities/1]).
 
 -ifdef(TEST).
@@ -35,17 +37,17 @@
 - export([pick_ref_parser/1]).
 -endif.
 
--record(ci_chunk, {call_id :: api_ne_binary()
+-record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
-                  ,timestamp :: api_number()
-                  ,ref_timestamp :: api_number()
-                  ,src_ip :: api_ne_binary()
-                  ,src_port :: api_pos_integer()
-                  ,dst_ip :: api_ne_binary()
-                  ,dst_port :: api_pos_integer()
-                  ,parser :: api_ne_binary()
-                  ,label :: api_ne_binary()
-                  ,c_seq :: api_ne_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
+                  ,timestamp :: number()
+                  ,ref_timestamp :: number()
+                  ,src_ip :: ne_binary()
+                  ,src_port :: pos_integer()
+                  ,dst_ip :: ne_binary()
+                  ,dst_port :: pos_integer()
+                  ,parser :: ne_binary()
+                  ,label :: ne_binary()
+                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                   }).
 -type chunk() :: #ci_chunk{}.
 
