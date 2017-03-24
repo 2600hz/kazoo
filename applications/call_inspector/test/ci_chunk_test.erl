@@ -1,5 +1,5 @@
 %% -*- coding: utf-8 -*-
--module(ci_chunk_tests).
+-module(ci_chunk_test).
 
 %% ci_chunk_tests: tests for module ci_chunk.
 
