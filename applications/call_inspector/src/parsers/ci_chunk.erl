@@ -37,8 +37,8 @@
 
 -record(ci_chunk, {call_id :: ne_binary()
                   ,data = [] :: ne_binaries()
-                  ,timestamp :: number()
-                  ,ref_timestamp :: number()
+                  ,timestamp :: api_float()
+                  ,ref_timestamp :: float()
                   ,src_ip :: ne_binary()
                   ,src_port :: pos_integer()
                   ,dst_ip :: ne_binary()

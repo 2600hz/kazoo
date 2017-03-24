@@ -33,7 +33,7 @@ timestamp() ->
     1.0e-6 * kz_term:to_integer(Micro) +
         kz_time:current_tstamp().
 
--spec timestamp(ne_binary() | kz_now()) -> api_number().
+-spec timestamp(ne_binary() | kz_now()) -> api_float().
 timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
@@ -50,7 +50,7 @@ timestamp(_) -> 'undefined'.
 
 -spec open_file(iodata()) -> file:io_device().
 open_file(Filename) ->
-    Options = ['read','append'      %% Read whole file then from its end
+    Options = ['read','append'     %% Read whole file then from its end
               ,'binary'            %% Return binaries instead of lists
               ,'raw','read_ahead'  %% Faster access to file
               ],
