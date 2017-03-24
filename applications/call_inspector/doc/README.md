@@ -117,7 +117,20 @@ Example:
 
 ##### Setup HEP packets capturing for FreeSWITCH
 
-In your fs_cli: `sofia profile internal siptrace on`
+sofia.conf.xml
+
+```xml
+<param name="capture-server" value="udp:192.81.135.31:9060"/>
+```
+
+sipinterface_1.xml
+
+```xml
+<param name="capture-server" value="udp:192.81.135.31:9060"/>
+<param name="sip-capture" value="yes"/>
+```
+
+In your fs_cli: `sofia global siptrace on`
 
 ##### Setup HEP packets capturing for Kamailio
 
