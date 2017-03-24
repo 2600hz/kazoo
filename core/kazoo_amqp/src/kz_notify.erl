@@ -8,6 +8,7 @@
 -module(kz_notify).
 
 -export([low_balance/2]).
+-export([generic_alert/2]).
 -export([first_call/1]).
 -export([first_registration/1]).
 -export([transaction/2, transaction/3]).

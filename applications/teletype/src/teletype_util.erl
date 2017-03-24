@@ -420,7 +420,6 @@ render(TemplateId, Template, Macros) ->
     case teletype_renderer:render(TemplateId, Template, Macros) of
         {'ok', IOData} -> iolist_to_binary(IOData);
         {'error', _E} ->
-            lager:debug("failed to render '~s': ~p '~s'", [TemplateId, _E, Template]),
             throw({'error', 'template_error'})
     end.
 
