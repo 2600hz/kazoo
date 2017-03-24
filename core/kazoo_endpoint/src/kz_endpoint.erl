@@ -160,7 +160,7 @@ cache_origin(JObj, EndpointId, AccountDb) ->
 
 -spec maybe_cached_owner_id(kz_proplist(), kz_json:object(), ne_binary()) -> kz_proplist().
 maybe_cached_owner_id(Props, JObj, AccountDb) ->
-    case kz_json:get_value(<<"owner_id">>, JObj) of
+    case kz_json:get_ne_binary_value(<<"owner_id">>, JObj) of
         'undefined' -> Props;
         OwnerId -> [{'db', AccountDb, OwnerId}|Props]
     end.
@@ -180,7 +180,7 @@ maybe_format_endpoint(Endpoint, 'true') ->
     lager:debug("no formatters defined"),
     Endpoint;
 maybe_format_endpoint(Endpoint, 'false') ->
-    Formatters = kz_json:get_value(<<"formatters">>, Endpoint),
+    Formatters = kz_json:get_json_value(<<"formatters">>, Endpoint),
     Formatted = kz_formatters:apply(Endpoint, Formatters, 'outbound'),
     lager:debug("with ~p formatted ~p", [Formatters, Endpoint]),
     lager:debug("formatted as ~p", [Formatted]),
@@ -352,14 +352,15 @@ merge_value(Key, Account, Endpoint, Owner) ->
 
 -spec caller_id_owner_attr(kz_json:object()) -> kz_json:object().
 caller_id_owner_attr(Owner) ->
-    OwnerAttr = kz_json:get_ne_value(<<"caller_id">>, Owner, kz_json:new()),
+    OwnerAttr = kz_json:get_json_value(<<"caller_id">>, Owner, kz_json:new()),
     L = [<<"internal">>, <<"name">>],
-    case kz_json:get_value(L, OwnerAttr) of
+    case kz_json:get_ne_binary_value(L, OwnerAttr) of
         'undefined' ->
-            Name = create_endpoint_name(kz_json:get_ne_value(<<"first_name">>, Owner)
-                                       ,kz_json:get_ne_value(<<"last_name">>, Owner)
+            Name = create_endpoint_name(kz_json:get_ne_binary_value(<<"first_name">>, Owner)
+                                       ,kz_json:get_ne_binary_value(<<"last_name">>, Owner)
                                        ,'undefined'
-                                       ,'undefined'),
+                                       ,'undefined'
+                                       ),
             kz_json:set_value(L, Name, OwnerAttr);
         _Else -> OwnerAttr
     end.
@@ -367,26 +368,26 @@ caller_id_owner_attr(Owner) ->
 -spec merge_call_restrictions(ne_binaries(), kz_json:object(), kz_json:object(), kz_json:object()) ->
                                      kz_json:object().
 merge_call_restrictions([], _, Endpoint, _) -> Endpoint;
-merge_call_restrictions([Key|Keys], Account, Endpoint, Owner) ->
-    L = [<<"call_restriction">>, Key, <<"action">>],
-    case kz_json:get_value(L, Account) =:= <<"deny">>
+merge_call_restrictions([Classifier|Classifiers], Account, Endpoint, Owner) ->
+    L = [<<"call_restriction">>, Classifier, <<"action">>],
+    case <<"deny">> =:= kz_json:get_ne_binary_value(L, Account)
         orelse kz_json:get_value(L, Owner)
     of
         'true' ->
             %% denied at the account level
             Update = kz_json:set_value(L, <<"deny">>, Endpoint),
-            merge_call_restrictions(Keys, Account, Update, Owner);
+            merge_call_restrictions(Classifiers, Account, Update, Owner);
         <<"deny">> ->
             %% denied at the user level
             Update = kz_json:set_value(L, <<"deny">>, Endpoint),
-            merge_call_restrictions(Keys, Account, Update, Owner);
+            merge_call_restrictions(Classifiers, Account, Update, Owner);
         <<"allow">> ->
             %% allowed at the user level
             Update = kz_json:set_value(L, <<"allow">>, Endpoint),
-            merge_call_restrictions(Keys, Account, Update, Owner);
+            merge_call_restrictions(Classifiers, Account, Update, Owner);
         _Else ->
             %% user inherit or no user, either way use the device restrictions
-            merge_call_restrictions(Keys, Account, Endpoint, Owner)
+            merge_call_restrictions(Classifiers, Account, Endpoint, Owner)
     end.
 
 -spec get_user(ne_binary(), api_binary() | kz_json:object()) -> kz_json:object().
@@ -401,19 +402,19 @@ get_user(AccountDb, OwnerId) when is_binary(OwnerId) ->
 get_user(AccountDb, Endpoint) ->
     case kz_json:get_keys([<<"hotdesk">>, <<"users">>], Endpoint) of
         [] ->
-            get_user(AccountDb, kz_json:get_value(<<"owner_id">>, Endpoint));
+            get_user(AccountDb, kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint));
         [OwnerId] ->
             fix_user_restrictions(get_user(AccountDb, OwnerId));
         [_|_]=OwnerIds->
-            J = convert_to_single_user(get_users(AccountDb, OwnerIds)),
-            fix_user_restrictions(J)
+            UserJObj = convert_to_single_user(get_users(AccountDb, OwnerIds)),
+            fix_user_restrictions(UserJObj)
     end.
 
--spec get_users(ne_binary(), ne_binaries()) -> kz_json:objects().
+-spec get_users(ne_binary(), ne_binaries()) -> kzd_user:docs().
 get_users(AccountDb, OwnerIds) ->
     get_users(AccountDb, OwnerIds, []).
 
--spec get_users(ne_binary(), ne_binaries(), kz_json:objects()) -> kz_json:objects().
+-spec get_users(ne_binary(), ne_binaries(), kzd_user:docs()) -> kzd_user:docs().
 get_users(_, [], Users) ->
     Users;
 get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
@@ -425,65 +426,59 @@ get_users(AccountDb, [OwnerId|OwnerIds], Users) ->
             get_users(AccountDb, OwnerIds, Users)
     end.
 
--spec fix_user_restrictions(kz_json:object()) -> kz_json:object().
-fix_user_restrictions(JObj) ->
-    lists:foldl(fun(Key, J) ->
-                        case kz_json:get_value([<<"call_restriction">>
-                                               ,Key
-                                               ,<<"action">>
-                                               ], J)
-                        of
-                            <<"deny">> -> J;
+-spec fix_user_restrictions(kzd_user:doc()) -> kzd_user:doc().
+fix_user_restrictions(UserJObj) ->
+    lists:foldl(fun(Classifier, User) ->
+                        case kzd_user:classifier_restriction(User, Classifier) of
+                            <<"deny">> -> User;
                             _Else ->
                                 %% this ensures we override the device
                                 %% but only when there is a user associated
-                                kz_json:set_value([<<"call_restriction">>
-                                                  ,Key
-                                                  ,<<"action">>
-                                                  ], <<"allow">>, J)
+                                kzd_user:set_classifier_restriction(User, Classifier, <<"allow">>)
                         end
-                end, JObj, kz_json:get_keys(knm_converters:available_classifiers())).
+                end
+               ,UserJObj
+               ,kz_json:get_keys(knm_converters:available_classifiers())
+               ).
 
--spec convert_to_single_user(kz_json:objects()) -> kz_json:object().
-convert_to_single_user(JObjs) ->
+-spec convert_to_single_user(kzd_user:docs()) -> kzd_user:doc().
+convert_to_single_user(UserJObjs) ->
     Routines = [fun singlfy_user_attr_keys/2
                ,fun singlfy_user_restrictions/2
                ],
-    lists:foldl(fun(F, J) -> F(JObjs, J) end, kz_json:new(), Routines).
+    lists:foldl(fun(F, AccJObj) -> F(UserJObjs, AccJObj) end, kz_json:new(), Routines).
 
--spec singlfy_user_attr_keys(kz_json:objects(), kz_json:object()) -> kz_json:object().
-singlfy_user_attr_keys(JObjs, JObj) ->
-    Value = lists:foldl(fun(J, V1) ->
-                                case kz_json:get_integer_value([?ATTR_LOWER_KEY
-                                                               ,?ATTR_UPPER_KEY
-                                                               ], J, 5)
-                                of
+-spec singlfy_user_attr_keys(kzd_user:docs(), kzd_user:doc()) -> kzd_user:doc().
+singlfy_user_attr_keys(UserJObjs, AccJObj) ->
+    PrecedenceKey = [?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY],
+    Value = lists:foldl(fun(UserJObj, V1) ->
+                                case kz_json:get_integer_value(PrecedenceKey, UserJObj, 5) of
                                     V2 when V2 < V1 -> V2;
                                     _ -> V1
                                 end
-                        end, 5, JObjs),
-    kz_json:set_value([?ATTR_LOWER_KEY, ?ATTR_UPPER_KEY], Value, JObj).
-
--spec singlfy_user_restrictions(kz_json:objects(), kz_json:object()) -> kz_json:object().
-singlfy_user_restrictions(JObjs, JObj) ->
-    lists:foldl(fun(Key, J) ->
-                        Fun = fun(Elem) -> do_all_restrict(Key, Elem) end,
-                        case lists:all(Fun, JObjs) of
-                            'false' -> J;
-                            'true' ->
-                                kz_json:set_value([<<"call_restriction">>
-                                                  ,Key
-                                                  ,<<"action">>
-                                                  ], <<"deny">>, J)
                         end
-                end, JObj, kz_json:get_keys(knm_converters:available_classifiers())).
+                       ,5
+                       ,UserJObjs
+                       ),
+    kz_json:set_value(PrecedenceKey, Value, AccJObj).
 
--spec do_all_restrict(ne_binary(), kz_json:object()) -> boolean().
-do_all_restrict(Key, JObj) ->
-    kz_json:get_value([<<"call_restriction">>
-                      ,Key
-                      ,<<"action">>
-                      ], JObj) =:= <<"deny">>.
+-spec singlfy_user_restrictions(kzd_user:docs(), kzd_user:doc()) -> kzd_user:doc().
+singlfy_user_restrictions(UserJObjs, AccJObj) ->
+    lists:foldl(fun(Classifier, Acc) ->
+                        Fun = fun(Elem) -> do_all_restrict(Classifier, Elem) end,
+                        case lists:all(Fun, UserJObjs) of
+                            'false' -> Acc;
+                            'true' ->
+                                kzd_user:set_classifier_restriction(Acc, Classifier, <<"deny">>)
+                        end
+                end
+               ,AccJObj
+               ,kz_json:get_keys(knm_converters:available_classifiers())
+               ).
+
+-spec do_all_restrict(ne_binary(), kzd_user:doc()) -> boolean().
+do_all_restrict(Classifier, UserJObj) ->
+    <<"deny">> =:= kzd_user:classifier_restriction(UserJObj, Classifier).
 
 -spec create_endpoint_name(api_binary(), api_binary(), api_binary(), api_binary()) -> api_binary().
 create_endpoint_name('undefined', 'undefined', 'undefined', Account) -> Account;
@@ -637,7 +632,7 @@ maybe_owner_called_self(Endpoint, Properties, Call) ->
                                      {'error', 'owner_called_self'}.
 maybe_owner_called_self(Endpoint, Properties, <<"audio">>, Call) ->
     CanCallSelf = kz_json:is_true(<<"can_call_self">>, Properties),
-    EndpointOwnerId = kz_json:get_value(<<"owner_id">>, Endpoint),
+    EndpointOwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint),
     OwnerId = kapps_call:kvs_fetch('owner_id', Call),
     case CanCallSelf
         orelse (not is_binary(OwnerId))
@@ -653,7 +648,7 @@ maybe_owner_called_self(Endpoint, Properties, <<"sms">>, Call) ->
     AccountId = kapps_call:account_id(Call),
     DefTextSelf = kapps_account_config:get_global(AccountId, ?CONFIG_CAT, <<"default_can_text_self">>, 'true'),
     CanTextSelf = kz_json:is_true(<<"can_text_self">>, Properties, DefTextSelf),
-    EndpointOwnerId = kz_json:get_value(<<"owner_id">>, Endpoint),
+    EndpointOwnerId = kz_json:get_ne_binary_value(<<"owner_id">>, Endpoint),
     OwnerId = kapps_call:owner_id(Call),
     case CanTextSelf
         orelse (not is_binary(OwnerId))
@@ -721,7 +716,7 @@ maybe_endpoint_disabled(Endpoint, _Properties, _Call) ->
                                   'ok' |
                                   {'error', 'do_not_disturb'}.
 maybe_do_not_disturb(Endpoint, _Properties, _Call) ->
-    DND = kz_json:get_ne_value(<<"do_not_disturb">>, Endpoint, kz_json:new()),
+    DND = kz_json:get_json_value(<<"do_not_disturb">>, Endpoint, kz_json:new()),
     case kz_json:is_true(<<"enabled">>, DND) of
         'false' -> 'ok';
         'true' ->
@@ -795,16 +790,16 @@ maybe_start_metaflow(Call, Endpoint) ->
                     [{<<"Endpoint-ID">>, Id}
                     ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                     ,{<<"Call">>, kapps_call:to_json(Call)}
-                    ,{<<"Numbers">>, kz_json:get_value(<<"numbers">>, JObj)}
-                    ,{<<"Patterns">>, kz_json:get_value(<<"patterns">>, JObj)}
-                    ,{<<"Binding-Digit">>, kz_json:get_value(<<"binding_digit">>, JObj)}
-                    ,{<<"Digit-Timeout">>, kz_json:get_value(<<"digit_timeout">>, JObj)}
-                    ,{<<"Listen-On">>, kz_json:get_value(<<"listen_on">>, JObj, <<"self">>)}
+                    ,{<<"Numbers">>, kz_json:get_list_value(<<"numbers">>, JObj)}
+                    ,{<<"Patterns">>, kz_json:get_list_value(<<"patterns">>, JObj)}
+                    ,{<<"Binding-Digit">>, kz_json:get_ne_binary_value(<<"binding_digit">>, JObj)}
+                    ,{<<"Digit-Timeout">>, kz_json:get_integer_value(<<"digit_timeout">>, JObj)}
+                    ,{<<"Listen-On">>, kz_json:get_ne_binary_value(<<"listen_on">>, JObj, <<"self">>)}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ]),
             lager:debug("sending metaflow for endpoint: ~s: ~s"
                        ,[Id
-                        ,kz_json:get_value(<<"listen_on">>, JObj)
+                        ,kz_json:get_ne_binary_value(<<"listen_on">>, JObj)
                         ]
                        ),
             kapps_util:amqp_pool_send(API, fun kapi_metaflow:publish_binding/1)
@@ -997,7 +992,7 @@ maybe_record_call(Endpoint, Call) ->
     of
         'true' -> 'ok';
         'false' ->
-            Data = kz_json:get_value(<<"record_call">>, Endpoint, kz_json:new()),
+            Data = kz_json:get_json_value(<<"record_call">>, Endpoint, kz_json:new()),
             _ = maybe_start_call_recording(Data, Call),
             'ok'
     end.
@@ -1018,7 +1013,7 @@ create_sip_endpoint(Endpoint, Properties, Call) ->
 -spec create_sip_endpoint(kz_json:object(), kz_json:object(), clid(), kapps_call:call()) ->
                                  kz_json:object().
 create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
-    SIPJObj = kz_json:get_value(<<"sip">>, Endpoint),
+    SIPJObj = kz_json:get_json_value(<<"sip">>, Endpoint),
     _ = maybe_record_call(Endpoint, Call),
     SIPEndpoint = kz_json:from_list(
                     props:filter_empty(
@@ -1027,12 +1022,12 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"To-Username">>, get_to_username(SIPJObj)}
                       ,{<<"To-Realm">>, get_sip_realm(Endpoint, kapps_call:account_id(Call))}
                       ,{<<"To-DID">>, get_to_did(Endpoint, Call)}
-                      ,{<<"To-IP">>, kz_json:get_value(<<"ip">>, SIPJObj)}
+                      ,{<<"To-IP">>, kz_json:get_ne_binary_value(<<"ip">>, SIPJObj)}
                       ,{<<"SIP-Transport">>, get_sip_transport(SIPJObj)}
                       ,{<<"SIP-Interface">>, get_custom_sip_interface(SIPJObj)}
-                      ,{<<"Route">>, kz_json:get_value(<<"route">>, SIPJObj)}
-                      ,{<<"Proxy-IP">>, kz_json:get_value(<<"proxy">>, SIPJObj)}
-                      ,{<<"Forward-IP">>, kz_json:get_value(<<"forward">>, SIPJObj)}
+                      ,{<<"Route">>, kz_json:get_ne_binary_value(<<"route">>, SIPJObj)}
+                      ,{<<"Proxy-IP">>, kz_json:get_ne_binary_value(<<"proxy">>, SIPJObj)}
+                      ,{<<"Forward-IP">>, kz_json:get_ne_binary_value(<<"forward">>, SIPJObj)}
                       ,{<<"Caller-ID-Name">>, Clid#clid.caller_name}
                       ,{<<"Caller-ID-Number">>, Clid#clid.caller_number}
                       ,{<<"Outbound-Caller-ID-Number">>, Clid#clid.caller_number}
@@ -1057,10 +1052,10 @@ create_sip_endpoint(Endpoint, Properties, #clid{}=Clid, Call) ->
                       ,{<<"Flags">>, get_outbound_flags(Endpoint)}
                       ,{<<"Ignore-Completed-Elsewhere">>, get_ignore_completed_elsewhere(Endpoint)}
                       ,{<<"Failover">>, maybe_build_failover(Endpoint, Clid, Call)}
-                      ,{<<"Metaflows">>, kz_json:get_value(<<"metaflows">>, Endpoint)}
+                      ,{<<"Metaflows">>, kz_json:get_json_value(<<"metaflows">>, Endpoint)}
                        | maybe_get_t38(Endpoint, Call)
                       ])),
-    maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_value(<<"formatters">>, Endpoint))).
+    maybe_format_endpoint(SIPEndpoint, kz_term:is_empty(kz_json:get_json_value(<<"formatters">>, Endpoint))).
 
 -spec maybe_get_t38(kz_json:object(), kapps_call:call()) -> kz_proplist().
 maybe_get_t38(Endpoint, Call) ->
@@ -1073,10 +1068,9 @@ maybe_get_t38(Endpoint, Call) ->
     case DeviceType =:= <<"fax">> of
         'false' -> [];
         'true' ->
-            kapps_call_command:get_inbound_t38_settings(
-              Opt
+            kapps_call_command:get_inbound_t38_settings(Opt
                                                        ,kz_json:get_value(<<"Fax-T38-Enabled">>, Endpoint)
-             )
+                                                       )
     end.
 
 -spec maybe_build_failover(kz_json:object(), clid(), kapps_call:call()) -> api_object().
@@ -1359,15 +1353,12 @@ maybe_add_diversion(JObj, Endpoint, _Inception, Call) ->
 -spec maybe_add_sip_headers(kz_json:object(), kz_json:object(), kapps_call:call()) -> kz_json:object().
 maybe_add_sip_headers(JObj, Endpoint, Call) ->
     case ?MODULE:get(Call) of
+        {'error', _} -> JObj;
         {'ok', AuthorizingEndpoint} ->
-            MergeFuns = [fun() -> kz_device:custom_sip_headers_inbound(Endpoint) end
-                        ,fun() -> kz_device:custom_sip_headers_outbound(AuthorizingEndpoint) end
-                        ],
-            Fun = fun(Routine, Acc) ->
-                          merge_custom_sip_headers(Routine(), Acc)
-                  end,
-            lists:foldl(Fun, JObj, MergeFuns);
-        {'error', _} -> JObj
+            MergeHeaders = [kz_device:custom_sip_headers_inbound(Endpoint)
+                           ,kz_device:custom_sip_headers_outbound(AuthorizingEndpoint)
+                           ],
+            lists:foldl(fun merge_custom_sip_headers/2, JObj, MergeHeaders)
     end.
 
 -spec merge_custom_sip_headers(kz_json:object(), kz_json:object()) -> kz_json:object().
@@ -1428,60 +1419,65 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ,fun maybe_auto_answer/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
-    {_Endpoint, _Call, _CallFwd, JObj} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
-    JObj.
+    {_Endpoint, _Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
+    CCVs.
 
 -type ccv_acc() :: {kz_json:object(), kapps_call:call(), api_object(), kz_json:object()}.
 
 -spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
 maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
     Acc;
-maybe_retain_caller_id({Endpoint, Call, CallFwd, JObj}) ->
+maybe_retain_caller_id({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
     ,case kz_json:is_true(<<"keep_caller_id">>, CallFwd) of
          'true' ->
              lager:info("call forwarding will retain caller id"),
-             kz_json:set_value(<<"Retain-CID">>, <<"true">>, JObj);
-         'false' -> JObj
+             kz_json:set_value(<<"Retain-CID">>, <<"true">>, CCVs);
+         'false' -> CCVs
      end
     }.
 
 -spec maybe_set_endpoint_id(ccv_acc()) -> ccv_acc().
-maybe_set_endpoint_id({Endpoint, Call, CallFwd, JObj}) ->
-    JObj1 = case kz_doc:id(Endpoint) of
-                'undefined' -> JObj;
-                EndpointId ->
-                    kz_json:set_values([{<<"Authorizing-ID">>, EndpointId}
-                                       ,{<<"Authorizing-Type">>, kz_json:get_value(<<"pvt_type">>, Endpoint)}
-                                       ], JObj)
-            end,
-    {Endpoint, Call, CallFwd, JObj1}.
+maybe_set_endpoint_id({Endpoint, Call, CallFwd, CCVs}) ->
+    {Endpoint, Call, CallFwd
+    ,case kz_doc:id(Endpoint) of
+         'undefined' -> CCVs;
+         EndpointId ->
+             kz_json:set_values([{<<"Authorizing-ID">>, EndpointId}
+                                ,{<<"Authorizing-Type">>, kz_doc:type(Endpoint)}
+                                ]
+                               ,CCVs
+                               )
+     end
+    }.
 
 -spec maybe_set_owner_id(ccv_acc()) -> ccv_acc().
-maybe_set_owner_id({Endpoint, Call, CallFwd, JObj}) ->
+maybe_set_owner_id({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
     ,case kz_json:get_value(<<"owner_id">>, Endpoint) of
-         'undefined' -> JObj;
-         OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, JObj)
+         'undefined' -> CCVs;
+         OwnerId -> kz_json:set_value(<<"Owner-ID">>, OwnerId, CCVs)
      end
     }.
 
 -spec maybe_set_account_id(ccv_acc()) -> ccv_acc().
-maybe_set_account_id({Endpoint, Call, CallFwd, JObj}) ->
+maybe_set_account_id({Endpoint, Call, CallFwd, CCVs}) ->
     AccountId = kz_doc:account_id(Endpoint, kapps_call:account_id(Call)),
     {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"Account-ID">>, AccountId, JObj)
+    ,kz_json:set_value(<<"Account-ID">>, AccountId, CCVs)
     }.
 
 -spec maybe_set_call_forward(ccv_acc()) -> ccv_acc().
-maybe_set_call_forward({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
+maybe_set_call_forward({_Endpoint, _Call, 'undefined', _CCVs}=Acc) ->
     Acc;
-maybe_set_call_forward({Endpoint, Call, CallFwd, JObj}) ->
+maybe_set_call_forward({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
     ,kz_json:set_values([{<<"Call-Forward">>, <<"true">>}
                         ,{<<"Authorizing-Type">>, <<"device">>}
-                         | bowout_settings(kapps_call:call_id_direct(Call) =:= 'undefined')
-                        ], JObj)
+                         | bowout_settings('undefined' =:= kapps_call:call_id_direct(Call))
+                        ]
+                       ,CCVs
+                       )
     }.
 
 -spec bowout_settings(boolean()) -> kz_proplist().
@@ -1495,15 +1491,15 @@ bowout_settings('false') ->
     ].
 
 -spec maybe_auto_answer(ccv_acc()) -> ccv_acc().
-maybe_auto_answer({Endpoint, Call, CallFwd, JObj}=Acc) ->
+maybe_auto_answer({Endpoint, Call, CallFwd, CCVs}=Acc) ->
     case kapps_call:custom_channel_var(<<"Auto-Answer-Loopback">>, Call) of
         'undefined' -> Acc;
         AutoAnswer ->
-            {Endpoint, Call, CallFwd, kz_json:set_value(<<"Auto-Answer">>, AutoAnswer, JObj)}
+            {Endpoint, Call, CallFwd, kz_json:set_value(<<"Auto-Answer">>, AutoAnswer, CCVs)}
     end.
 
 -spec maybe_set_confirm_properties(ccv_acc()) -> ccv_acc().
-maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->
+maybe_set_confirm_properties({Endpoint, Call, CallFwd, CCVs}=Acc) ->
     case kz_json:is_true(<<"require_keypress">>, CallFwd) of
         'false' -> Acc;
         'true' ->
@@ -1514,43 +1510,43 @@ maybe_set_confirm_properties({Endpoint, Call, CallFwd, JObj}=Acc) ->
                       ,{<<"Require-Ignore-Early-Media">>, <<"true">>}
                       ],
             {Endpoint, Call, CallFwd
-            ,kz_json:merge_jobjs(kz_json:from_list(Confirm), JObj)
+            ,kz_json:merge_jobjs(kz_json:from_list(Confirm), CCVs)
             }
     end.
 
 -spec maybe_enable_fax(ccv_acc()) -> ccv_acc().
-maybe_enable_fax({Endpoint, Call, CallFwd, JObj}=Acc) ->
+maybe_enable_fax({Endpoint, Call, CallFwd, CCVs}=Acc) ->
     case kz_json:get_value([<<"media">>, <<"fax_option">>], Endpoint) of
         <<"auto">> ->
             {Endpoint, Call, CallFwd
-            ,kz_json:set_value(<<"Fax-Enabled">>, <<"true">>, JObj)
+            ,kz_json:set_value(<<"Fax-Enabled">>, <<"true">>, CCVs)
             };
         _Else -> Acc
     end.
 
 -spec maybe_enforce_security(ccv_acc()) -> ccv_acc().
-maybe_enforce_security({Endpoint, Call, CallFwd, JObj}) ->
+maybe_enforce_security({Endpoint, Call, CallFwd, CCVs}) ->
     EnforceSecurity = kz_json:is_true([<<"media">>, <<"encryption">>, <<"enforce_security">>], Endpoint, 'true'),
     {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, JObj)
+    ,kz_json:set_value(<<"Media-Encryption-Enforce-Security">>, EnforceSecurity, CCVs)
     }.
 
 -spec maybe_set_encryption_flags(ccv_acc()) -> ccv_acc().
-maybe_set_encryption_flags({Endpoint, Call, CallFwd, JObj}) ->
+maybe_set_encryption_flags({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
-    ,encryption_method_map(JObj, Endpoint)
+    ,encryption_method_map(CCVs, Endpoint)
     }.
 
 -spec encryption_method_map(api_object(), api_binaries() | kz_json:object()) -> api_object().
-encryption_method_map(JObj, []) -> JObj;
-encryption_method_map(JObj, [Method|Methods]) ->
+encryption_method_map(CCVs, []) -> CCVs;
+encryption_method_map(CCVs, [Method|Methods]) ->
     case props:get_value(Method, ?ENCRYPTION_MAP, []) of
-        [] -> encryption_method_map(JObj, Methods);
+        [] -> encryption_method_map(CCVs, Methods);
         Values ->
-            encryption_method_map(kz_json:set_values(Values, JObj), Method)
+            encryption_method_map(kz_json:set_values(Values, CCVs), Method)
     end;
-encryption_method_map(JObj, Endpoint) ->
-    encryption_method_map(JObj
+encryption_method_map(CCVs, Endpoint) ->
+    encryption_method_map(CCVs
                          ,kz_json:get_value([<<"media">>
                                             ,<<"encryption">>
                                             ,<<"methods">>
@@ -1562,18 +1558,19 @@ encryption_method_map(JObj, Endpoint) ->
 
 
 -spec set_sip_invite_domain(ccv_acc()) -> ccv_acc().
-set_sip_invite_domain({Endpoint, Call, CallFwd, JObj}) ->
+set_sip_invite_domain({Endpoint, Call, CallFwd, CCVs}) ->
     {Endpoint, Call, CallFwd
-    ,kz_json:set_value(<<"SIP-Invite-Domain">>, kapps_call:request_realm(Call), JObj)
+    ,kz_json:set_value(<<"SIP-Invite-Domain">>, kapps_call:request_realm(Call), CCVs)
     }.
 
 -spec maybe_set_call_waiting(ccv_acc()) -> ccv_acc().
-maybe_set_call_waiting({Endpoint, Call, CallFwd, JObj}) ->
-    NewJobj = case kz_json:is_true([<<"call_waiting">>, <<"enabled">>], Endpoint, 'true') of
-                  'true' -> JObj;
-                  'false' -> kz_json:set_value(<<"Call-Waiting-Disabled">>, 'true', JObj)
-              end,
-    {Endpoint, Call, CallFwd, NewJobj}.
+maybe_set_call_waiting({Endpoint, Call, CallFwd, CCVs}) ->
+    {Endpoint, Call, CallFwd
+    ,case kz_json:is_true([<<"call_waiting">>, <<"enabled">>], Endpoint, 'true') of
+         'true' -> CCVs;
+         'false' -> kz_json:set_value(<<"Call-Waiting-Disabled">>, 'true', CCVs)
+     end
+    }.
 
 -spec get_invite_format(kz_json:object()) -> ne_binary().
 get_invite_format(SIPJObj) ->
@@ -1737,10 +1734,10 @@ build_mobile_sms_amqp_route(K, JObj, Acc) ->
 
 -spec build_mobile_sms_amqp_route_options(kz_json:object()) -> kz_proplist().
 build_mobile_sms_amqp_route_options(JObj) ->
-    [{<<"Route-ID">>, kz_json:get_value(<<"route">>, JObj, ?DEFAULT_MOBILE_SMS_ROUTE)}
-    ,{<<"Exchange-ID">>, kz_json:get_value(<<"exchange">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE)}
-    ,{<<"Exchange-Type">>, kz_json:get_value(<<"type">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE)}
-    ,{<<"Exchange-Options">>, kz_json:get_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
+    [{<<"Route-ID">>, kz_json:get_ne_binary_value(<<"route">>, JObj, ?DEFAULT_MOBILE_SMS_ROUTE)}
+    ,{<<"Exchange-ID">>, kz_json:get_ne_binary_value(<<"exchange">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE)}
+    ,{<<"Exchange-Type">>, kz_json:get_ne_binary_value(<<"type">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE)}
+    ,{<<"Exchange-Options">>, kz_json:get_json_value(<<"options">>, JObj, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS)}
     ].
 
 %%--------------------------------------------------------------------

@@ -13,7 +13,6 @@ Key | Description | Type | Default | Required
 `delay` | How long to delay the endpoint(s) before bridging | `integer` | `0` | `false`
 `fail_on_single_reject` | If any leg rejects the call, cancel all other legs | `boolean` |   | `false`
 `id` | User ID | `string` |   | `false`
-`source` | Source of the endpoint(s) | `string` |   | `false`
 `static_invite` | Override the SIP Username | `string` |   | `false`
 `strategy` | Ringing strategy for the endpoint(s) | `string('simultaneous', 'single')` | `simultaneous` | `false`
 `suppress_clid` | Toggle whether to suppress caller ID | `boolean` |   | `false`

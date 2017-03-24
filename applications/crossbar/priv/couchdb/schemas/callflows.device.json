@@ -18,10 +18,6 @@
             "description": "Device ID",
             "type": "string"
         },
-        "source": {
-            "description": "Source of generating the endpoint (read-only)",
-            "type": "string"
-        },
         "static_invite": {
             "description": "Override the SIP Username",
             "type": "string"
