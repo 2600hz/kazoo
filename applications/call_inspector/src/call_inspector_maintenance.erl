@@ -17,7 +17,9 @@
 -export([flush/0
         ,flush/1
         ]).
--export([callid_details/1]).
+-export([callid_details/1
+        ,inspect_call_id/1
+        ]).
 
 -include("call_inspector.hrl").
 
@@ -88,6 +90,39 @@ callid_details(CallId) ->
             io:format("Error: ~p\n", [Error])
     end,
     'no_return'.
+
+-spec inspect_call_id(ne_binary()) -> no_return.
+inspect_call_id(CallId) ->
+    Req = [{<<"Call-ID">>, CallId}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call(Req
+                            ,fun kapi_inspector:publish_lookup_req/1
+                            ,fun kapi_inspector:lookup_resp_v/1
+                            )
+    of
+        {ok, JObj} ->
+            Chunks   = sanitize(kz_json:get_value(<<"Chunks">>, JObj, [])),
+            Analysis = sanitize(kz_json:get_value(<<"Analysis">>, JObj, [])),
+            Response = kz_json:from_list(
+                         [{<<"call-id">>, CallId}
+                         ,{<<"messages">>, Chunks}
+                         ,{<<"dialog_entities">>, kz_json:get_value(<<"Dialog-Entities">>, JObj, [])}
+                         ,{<<"analysis">>, Analysis}
+                         ]
+                        ),
+            io:format("~s\n", [kz_json:encode(Response)]);
+        {timeout, _Resp} ->
+            io:format("timeout: ~s\n~s\n", [CallId, kz_json:encode(_Resp)]);
+        {error, _E} ->
+            io:format("error: ~s\n~p\n", [CallId, _E])
+    end,
+    no_return.
+
+%% @private
+-spec sanitize(kz_json:objects()) -> kz_json:objects().
+sanitize(JObjs) ->
+    [kz_json:delete_key(<<"call-id">>, JObj) || JObj <- JObjs].
 
 %% Internals
 

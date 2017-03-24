@@ -206,6 +206,7 @@ This application does all this for you and uses a clever algorithm to **reorder 
 Dialogues are fetchable by **callid** only:
 
     sup call_inspector_maintenance callid_details {CALLID}
+    sup call_inspector_maintenance inspect_call_id {CALLID}
 
 `{CALLID}` is the string that uniquely identifies the exchange.
 It is the string that one would be using when `grep`ing logs.
