@@ -17,46 +17,50 @@
 json_test_() ->
     lists:flatmap(
       fun (Data1) ->
-              [?_assert(kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I)))))
+              Txt = lists:flatten(io_lib:format("For ~p", [Data1])),
+              [{Txt ++ " chunk " ++ integer_to_list(I)
+               ,?_assert(kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I)))))
+               }
                || I <- lists:seq(1, Data1('count'))
               ]
       end,
-      [fun chunks_1/1
-      ,fun chunks_2/1
-      ,fun chunks_3/1
-      ,fun chunks_4/1
-      ,fun chunks_5/1
+      [fun ?MODULE:chunks_1/1
+      ,fun ?MODULE:chunks_2/1
+      ,fun ?MODULE:chunks_3/1
+      ,fun ?MODULE:chunks_4/1
+      ,fun ?MODULE:chunks_5/1
       ]).
 
 reorder_dialog_1_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_2_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_2()),
-    reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9060">>, fun ?MODULE:chunks_2/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun ?MODULE:chunks_2/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_3_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_3()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_4_test_() ->
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),
-    reorder_dialog(<<"192.168.56.42:9061">>, fun chunks_4/1, Chunks).
+    reorder_dialog(<<"192.168.56.42:9061">>, fun ?MODULE:chunks_4/1, Chunks).
 
 reorder_dialog_5_test_() ->
     [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_5()),
-    reorder_dialog(<<"104.237.144.93:9061">>, fun chunks_5/1, [C1, C2])
-        ++ reorder_dialog(<<"104.237.144.93:9061">>, fun chunks_5/1, [C2, C1]).
+    reorder_dialog(<<"104.237.144.93:9061">>, fun ?MODULE:chunks_5/1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, fun ?MODULE:chunks_5/1, [C2, C1]).
 
 %% Internals
 
 reorder_dialog(RefParser, Data1, Chunks) ->
+    Txt0 = lists:flatten(io_lib:format("For ~p", [Data1])),
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
 
     %% JObjs = kz_json:encode(lists:map(fun ci_chunk:to_json/1,Reordered)),
@@ -66,28 +70,29 @@ reorder_dialog(RefParser, Data1, Chunks) ->
 
     Labels = [kz_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
-    [?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
-    ,?_assertEqual(Data1('count'), length(Reordered))
-    ,?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
-    ,?_assertEqual(Labels, LabelsReordered)
+    [{Txt0, ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))}
+    ,{Txt0, ?_assertEqual(Data1('count'), length(Reordered))}
+    ,{Txt0, ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))}
+    ,{Txt0, ?_assertEqual(Labels, LabelsReordered)}
     ] ++
         lists:append(
-          [[?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
-           ,?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
-           ,?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))
-           ,?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))
-           ,?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))
-           ,?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))
-           ,?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))
-           ,?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))
-           ,?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
-           ,?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
-           ,?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))
+          [[{Txt, ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))}
            ]
            || I <- lists:seq(1, Data1('count')),
               begin
                   C = ci_chunk:from_json(Data1(I)),
                   R = lists:nth(I, Reordered),
+                  Txt = Txt0 ++ " chunk " ++ integer_to_list(I),
                   true
               end
           ]).
