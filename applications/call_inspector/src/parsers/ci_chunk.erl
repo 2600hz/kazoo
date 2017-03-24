@@ -27,9 +27,7 @@
         ,from_json/1
         ]).
 -export([is_chunk/1]).
--export([sort_by_timestamp/1
-        ,reorder_dialog/1
-        ]).
+-export([reorder_dialog/1]).
 -export([get_dialog_entities/1]).
 
 -ifdef(TEST).
