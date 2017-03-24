@@ -35,17 +35,17 @@
 - export([pick_ref_parser/1]).
 -endif.
 
--record(ci_chunk, {call_id :: ne_binary()
+-record(ci_chunk, {call_id :: api_ne_binary()
                   ,data = [] :: ne_binaries()
                   ,timestamp :: api_float()
-                  ,ref_timestamp :: float()
-                  ,src_ip :: ne_binary()
-                  ,src_port :: pos_integer()
-                  ,dst_ip :: ne_binary()
-                  ,dst_port :: pos_integer()
-                  ,parser :: ne_binary()
-                  ,label :: ne_binary()
-                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
+                  ,ref_timestamp :: api_float()
+                  ,src_ip :: api_ne_binary()
+                  ,src_port :: api_pos_integer()
+                  ,dst_ip :: api_ne_binary()
+                  ,dst_port :: api_pos_integer()
+                  ,parser :: api_ne_binary()
+                  ,label :: api_ne_binary()
+                  ,c_seq :: api_ne_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                   }).
 -type chunk() :: #ci_chunk{}.
 
