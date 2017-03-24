@@ -10,6 +10,7 @@
         ,chunks_3/1
         ,chunks_4/1
         ,chunks_5/1
+        ,chunks_6/1
         ]).
 
 %% API tests.
@@ -36,33 +37,45 @@ json_test_() ->
       ,fun ?MODULE:chunks_3/1
       ,fun ?MODULE:chunks_4/1
       ,fun ?MODULE:chunks_5/1
+      ,fun ?MODULE:chunks_6/1
       ]).
 
 reorder_dialog_1_test_() ->
+    Data1 = fun ?MODULE:chunks_1/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_1/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_2_test_() ->
+    Data1 = fun ?MODULE:chunks_2/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_2()),
-    reorder_dialog(<<"10.26.0.182:9060">>, fun ?MODULE:chunks_2/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun ?MODULE:chunks_2/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9060">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9060">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_3_test_() ->
+    Data1 = fun ?MODULE:chunks_3/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_3()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun ?MODULE:chunks_3/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_4_test_() ->
+    Data1 = fun ?MODULE:chunks_4/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),
-    reorder_dialog(<<"192.168.56.42:9061">>, fun ?MODULE:chunks_4/1, Chunks).
+    reorder_dialog(<<"192.168.56.42:9061">>, Data1, Chunks).
 
 reorder_dialog_5_test_() ->
+    Data1 = fun ?MODULE:chunks_5/1,
     [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_5()),
-    reorder_dialog(<<"104.237.144.93:9061">>, fun ?MODULE:chunks_5/1, [C1, C2])
-        ++ reorder_dialog(<<"104.237.144.93:9061">>, fun ?MODULE:chunks_5/1, [C2, C1]).
+    reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C2, C1]).
+
+reorder_dialog_6_test_() ->
+    Data1 = fun ?MODULE:chunks_6/1,
+    [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_6()),
+    reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C2, C1]).
 
 %% Internals
 
@@ -1964,6 +1977,60 @@ chunks_5(2) ->
        ,<<"ref_timestamp">> => <<"63657429461.1">>
        ,<<"src">> => <<"104.237.144.93:11000">>
        ,<<"timestamp">> => 63657429461
+       }).
+
+
+chunks_6() -> [chunks_6(1), chunks_6(2)].
+chunks_6(count) -> length(chunks_6());
+chunks_6(entities) -> [<<"104.237.144.93:7000">>, <<"104.237.144.93:11000">>];
+chunks_6(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"2 BYE">>
+       ,<<"call-id">> => <<"83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"BYE sip:7948@104.237.144.93:11000;transport=udp SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"BYE sip:7948@104.237.144.93:11000;transport=udp SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93:7000;branch=z9hG4bK6283.c52d1b9022e00c81053288ca5b92f09d.0">>
+                     ,<<"Via: SIP/2.0/UDP 192.168.1.2:54690;received=67.180.78.125;branch=z9hG4bK-524287-1---cada5e002096c973;rport=54690">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"Contact: <sip:darren_soft@67.180.78.125:54690;rinstance=fb81a6d2b51c24ba>">>
+                     ,<<"To: <sip:7948@4a6863.sip.sandbox.2600hz.com>;tag=QQpga8pgH7gyF">>
+                     ,<<"From: <sip:darren_soft@4a6863.sip.sandbox.2600hz.com>;tag=8f71823a">>
+                     ,<<"Call-ID: 83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+                     ,<<"CSeq: 2 BYE">>
+                     ,<<"User-Agent: Bria 4 release 4.7.0 stamp 83078">>
+                     ,<<"Content-Length: 0">>
+                     ,<<"X-AUTH-IP: 67.180.78.125">>
+                     ,<<"X-AUTH-PORT: 54690">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657597518.515564">>
+       ,<<"src">> => <<"104.237.144.93:7000">>
+       ,<<"timestamp">> => 63657597518
+       });
+
+chunks_6(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"2 BYE">>
+       ,<<"call-id">> => <<"83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+       ,<<"dst">> => <<"104.237.144.93:7000">>
+       ,<<"label">> => <<"SIP/2.0 200 OK">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 200 OK">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93:7000;branch=z9hG4bK6283.c52d1b9022e00c81053288ca5b92f09d.0">>
+                     ,<<"Via: SIP/2.0/UDP 192.168.1.2:54690;received=67.180.78.125;branch=z9hG4bK-524287-1---cada5e002096c973;rport=54690">>
+                     ,<<"From: <sip:darren_soft@4a6863.sip.sandbox.2600hz.com>;tag=8f71823a">>
+                     ,<<"To: <sip:7948@4a6863.sip.sandbox.2600hz.com>;tag=QQpga8pgH7gyF">>
+                     ,<<"Call-ID: 83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+                     ,<<"CSeq: 2 BYE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657597518.531">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657597518
        }).
 
 %% End of Module.
