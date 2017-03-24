@@ -11,6 +11,7 @@
         ,chunks_4/1
         ,chunks_5/1
         ,chunks_6/1
+        ,chunks_7/1
         ]).
 
 %% API tests.
@@ -38,6 +39,7 @@ json_test_() ->
       ,fun ?MODULE:chunks_4/1
       ,fun ?MODULE:chunks_5/1
       ,fun ?MODULE:chunks_6/1
+      ,fun ?MODULE:chunks_7/1
       ]).
 
 reorder_dialog_1_test_() ->
@@ -76,6 +78,14 @@ reorder_dialog_6_test_() ->
     [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_6()),
     reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C1, C2])
         ++ reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C2, C1]).
+
+reorder_dialog_7_test_() ->
+    Data1 = fun ?MODULE:chunks_7/1,
+    Chunks = lists:map(fun ci_chunk:from_json/1, chunks_7()),
+    [RefParser] = parsers(Chunks),
+    reorder_dialog(RefParser, Data1, Chunks)
+        ++ reorder_dialog(RefParser, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(RefParser, Data1, kz_term:shuffle_list(Chunks)).
 
 %% Internals
 
@@ -116,6 +126,12 @@ reorder_dialog(RefParser, Data1, Chunks) ->
                   true
               end
           ]).
+
+parsers(Chunks) ->
+    sets:to_list(
+      sets:from_list(
+        [ci_chunk:parser(Chunk) || Chunk <- Chunks]
+       )).
 
 
 chunks_3('count') -> 8;
@@ -2031,6 +2047,112 @@ chunks_6(2) ->
        ,<<"ref_timestamp">> => <<"63657597518.531">>
        ,<<"src">> => <<"104.237.144.93:11000">>
        ,<<"timestamp">> => 63657597518
+       }).
+
+
+chunks_7() -> [chunks_7(1), chunks_7(2), chunks_7(3), chunks_7(4)].
+chunks_7(count) -> length(chunks_7());
+chunks_7(entities) -> [<<"104.237.144.93:5060">>, <<"104.237.144.93:11000">>];
+chunks_7(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"INVITE sip:9990048188880071@104.237.144.93 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"INVITE sip:9990048188880071@104.237.144.93 SIP/2.0">>
+                     ,<<"Record-Route: <sip:104.237.144.93;lr=on;ftag=DVEFCVLI>">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"Contact: <sip:trunk@80.82.77.180:40482>;+sip.instance=\"<urn:uuid:4473a234-5a1c-4708-9729-8952445196c0>\"">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, REGISTER, SUBSCRIBE, INFO">>
+                     ,<<"Content-Type: application/sdp">>
+                     ,<<"Supported: replaces">>
+                     ,<<"User-Agent: Cisco-SIPGateway/IOS-12.x">>
+                     ,<<"Allow-Events: hold, talk, conference">>
+                     ,<<"Content-Length: 0">>
+                     ,<<"X-AUTH-IP: 80.82.77.180">>
+                     ,<<"X-AUTH-PORT: 40482">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540282.88624">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657540282
+       });
+
+chunks_7(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 100 Trying">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 100 Trying">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"Record-Route: <sip:104.237.144.93;lr=on;ftag=DVEFCVLI>">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540282.88642">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657540282
+       });
+
+chunks_7(3) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 407 Proxy Authentication Required">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 407 Proxy Authentication Required">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>;tag=KU273F3tNU1rp">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Accept: application/sdp">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
+                     ,<<"Proxy-Authenticate: Digest realm=\"104.237.144.93\">> nonce=\"3f0c7d4e-1036-11e7-8998-8543a0a6a878\">> algorithm=MD5, qop=\"auth\"">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540283.01826">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657540283
+       });
+
+chunks_7(4) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 ACK">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"ACK sip:9990048188880071@104.237.144.93 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"ACK sip:9990048188880071@104.237.144.93 SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>;tag=KU273F3tNU1rp">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 ACK">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540283.018394">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657540283
        }).
 
 %% End of Module.
