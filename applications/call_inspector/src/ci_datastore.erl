@@ -50,7 +50,7 @@
 
 -export_type([data/0]).
 
--define(CI_DIR, "/tmp/2600hz-call_inspector").
+-define(CI_DIR, "/var/log/kazoo/call_inspector").
 
 %%%===================================================================
 %%% API

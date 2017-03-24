@@ -28,7 +28,7 @@ The call_inspector application retrieves SIP packets in two ways:
 1. by listening for [HEP packets](https://2600hz.atlassian.net/wiki/display/docs/Homer+and+Kazoo#HomerandKazoo-C.haveKamailioandorFreeswitchcapture.) sent directly by FreeSwitch and/or Kamailio
 
 The packets are then stored by **callid** in plain text files that can be log-rotated.
-These files are stored in `/tmp/2600hz-call_inspector/{ID}` where `{ID}` is
+These files are stored in `/var/log/kazoo/call_inspector/{ID}` where `{ID}` is
 an md5 hash of the **callid**.
 
 At this point the packets inside these files are either **chunks** or **analysis**.
@@ -274,3 +274,17 @@ Flush everything:
 
     sup call_inspector_maintenance flush
 
+
+## logrotate configuration
+
+The app will keep filling up its storage directory unless some script removes the oldest ones regularly.
+
+```
+/var/log/kazoo/call_inspector/*/*/* {
+    weekly
+    missingok
+    rotate 0
+}
+```
+
+You can test this command with `logrotate -d`.
