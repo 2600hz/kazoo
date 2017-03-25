@@ -162,9 +162,12 @@ encode(Alg, InClaimsSet, {KeyId, Key}) ->
            ,{<<"kid">>, KeyId}
            ],
     Header = kz_base64url:encode(kz_json:encode(kz_json:from_list(Head))),
-    ClaimsSet = [{<<"iss">>, <<"kazoo">>}
-                 | InClaimsSet
-                ],
+    ClaimsSet = case props:get_value(<<"iss">>, InClaimsSet) of
+                    'undefined' -> [{<<"iss">>, <<"kazoo">>}
+                                    | InClaimsSet
+                                   ];
+                    <<_:8, _/binary>> -> InClaimsSet
+                end,
     Claims = kz_base64url:encode(kz_json:encode(kz_json:from_list(ClaimsSet))),
     Payload = <<Header/binary, ".", Claims/binary>>,
     case sign(Alg, Payload, Key) of
