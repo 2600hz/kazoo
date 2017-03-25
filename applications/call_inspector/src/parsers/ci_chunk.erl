@@ -87,12 +87,12 @@ setters(#ci_chunk{}=Chunk, Setters) ->
 append_data(#ci_chunk{data=D}=Chunk, Data) ->
     Chunk#ci_chunk{data=[Data|D]}.
 
--spec timestamp(chunk(), integer()) -> chunk().
+-spec timestamp(chunk(), api_float()) -> chunk().
 ?SETTER(timestamp).
--spec timestamp(chunk()) -> api_integer().
+-spec timestamp(chunk()) -> api_float().
 ?GETTER(timestamp).
 
--spec ref_timestamp(chunk()) -> api_number().
+-spec ref_timestamp(chunk()) -> float().
 ?GETTER(ref_timestamp).
 
 -spec src_ip(chunk(), ne_binary()) -> chunk().
