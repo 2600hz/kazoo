@@ -1104,6 +1104,22 @@ curl -v -X GET \
 }
 ```
 
+###### Number not in service or account disabled
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "account_id": "009deaaadc97b2ae693c6cc4920988e8",
+        "cause": "not_in_service"
+    },
+    "error": "400",
+    "message": "client error",
+    "request_id": "{REQUEST_ID}",
+    "status": "error"
+}
+```
+
 ###### Number not found or not enough privileges
 
 ```json
