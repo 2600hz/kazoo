@@ -851,12 +851,6 @@ identify(Context, Number) ->
                      ,{<<"number">>, knm_number_options:number(NumberOptions)}
                      ]),
             crossbar_util:response(JObj, Context);
-        {error, {R=not_in_service, _AccountId}} ->
-            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
-            set_response({error, R}, Context);
-        {error, {R=account_disabled, _AccountId}} ->
-            lager:debug("~s's account ~p ~s", [Number, _AccountId, R]),
-            set_response({error, R}, Context);
         {'error', _R}=Error ->
             set_response(Error, Context)
     end.
@@ -931,6 +925,15 @@ set_response({'dry_run', Services, _ActivationCharges}, Context, CB) ->
 
 set_response({'error', 'not_found'}, Context, _) ->
     reply_number_not_found(Context);
+
+set_response({error, {Cause, AccountId}}, Context, _)
+  when Cause =:= not_in_service;
+       Cause =:= account_disabled ->
+    Data = kz_json:from_list(
+             [{<<"cause">>, kz_term:to_binary(Cause)}
+             ,{<<"account_id">>, AccountId}
+             ]),
+    crossbar_util:response_400(<<"client error">>, Data, Context);
 
 set_response({'error', Data}, Context, _)
   when is_atom(Data) ->
