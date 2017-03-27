@@ -11,7 +11,7 @@
 
 -export([verify/1
         ,decode/1, decode/2
-        ,encode/1, encode/2, encode/3
+        ,encode/1
         ,token/1, token/2
         ,parse/1
         ]).
@@ -140,31 +140,38 @@ epoch() -> erlang:system_time('seconds').
 
 -spec encode(kz_proplist()) ->
                     {'ok', ne_binary()} |
-                    {'error', 'algorithm_not_supported'}.
+                    {'error', any()}.
 encode(Claims) ->
-    encode(Claims, ?SYSTEM_KEY_ID).
+    case props:get_value(<<"iss">>, Claims) of
+        undefined -> {'error', 'no_issuer'};
+        Issuer -> encode(Claims, Issuer)
+    end.
 
 -spec encode(kz_proplist(), ne_binary()) ->
                     {'ok', ne_binary()} |
-                    {'error', 'algorithm_not_supported'}.
-encode(Claims, Key) ->
-    encode(?DEFAULT_ALGORITHM, Claims, Key).
+                    {'error', any()}.
+encode(Claims, Issuer) ->
+    case kz_auth_apps:get_auth_app(Issuer) of
+        {'error', _} = Error -> Error;
+        #{pvt_server_key := Key
+         ,jwt_algorithm := Alg
+         } -> encode(Alg, Claims, Key);
+        #{pvt_server_key := Key} -> encode(?DEFAULT_ALGORITHM, Claims, Key);
+        _ -> {'error', 'no_key'}
+    end.
 
 -spec encode(ne_binary(), kz_proplist(), ne_binary() | {ne_binary(), public_key:rsa_private_key()}) ->
                     {'ok', ne_binary()} |
-                    {'error', 'algorithm_not_supported'}.
-encode(Alg, InClaimsSet, KeyId = ?NE_BINARY) ->
-    {'ok', Key} = kz_auth_keys:kazoo_private_key(KeyId),
-    encode(Alg, InClaimsSet, {KeyId, Key});
-encode(Alg, InClaimsSet, {KeyId, Key}) ->
+                    {'error', any()}.
+encode(Alg, ClaimsSet, KeyId = ?NE_BINARY) ->
+    {'ok', Key} = kz_auth_keys:private_key(KeyId),
+    encode(Alg, ClaimsSet, {KeyId, Key});
+encode(Alg, ClaimsSet, {KeyId, Key}) ->
     Head = [{<<"alg">>, Alg}
            ,{<<"typ">>, <<"JWT">>}
            ,{<<"kid">>, KeyId}
            ],
     Header = kz_base64url:encode(kz_json:encode(kz_json:from_list(Head))),
-    ClaimsSet = [{<<"iss">>, <<"kazoo">>}
-                 | InClaimsSet
-                ],
     Claims = kz_base64url:encode(kz_json:encode(kz_json:from_list(ClaimsSet))),
     Payload = <<Header/binary, ".", Claims/binary>>,
     case sign(Alg, Payload, Key) of

@@ -160,12 +160,24 @@ ensure_claims(#{payload := Payload}) ->
 
 -spec include_claims(kz_proplist()) -> kz_proplist().
 include_claims(Claims) ->
+    Routines = [fun include_identity_sign/1
+               ,fun ensure_issuer/1
+               ],
+    lists:foldl(fun(Fun, Acc) -> Fun(Acc) end, Claims, Routines).
+
+-spec include_identity_sign(kz_proplist()) -> kz_proplist().
+include_identity_sign(Claims) ->
     case kz_auth_identity:sign(Claims) of
         {'ok', Signature} -> [{<<"identity_sig">>, kz_base64url:encode(Signature)} | Claims];
         _Else ->
             lager:debug("identity signing json token failed : ~p", [_Else]),
             Claims
     end.
+
+-spec ensure_issuer(kz_proplist()) -> kz_proplist().
+ensure_issuer(Claims) ->
+    Issuer = props:get_value(<<"iss">>, Claims, <<"kazoo">>),
+    props:set_value(<<"iss">>, Issuer, Claims).
 
 -spec authenticate_fold(map(), list()) -> map().
 authenticate_fold(Token, []) -> Token;

@@ -5,6 +5,7 @@
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("public_key/include/public_key.hrl").
+-include_lib("kazoo_json/include/kazoo_json.hrl").
 
 -define(CONFIG_CAT, <<"auth">>).
 

@@ -91,7 +91,9 @@ id_token(#{claims := _Claims}=Token) -> Token;
 id_token(#{id_token := IdToken}=Token) ->
     case kz_auth_jwt:decode(IdToken) of
         {'ok', _Header, Claims} ->
-            Token#{claims => Claims};
+            Token#{claims => Claims
+                  ,verified_token => Claims
+                  };
         _ -> Token
     end;
 id_token(#{}=Token) -> Token#{claims => kz_json:new()}.

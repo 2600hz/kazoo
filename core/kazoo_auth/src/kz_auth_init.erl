@@ -30,7 +30,7 @@ init() ->
         'false' -> init(kz_datamgr:db_create(?KZ_AUTH_DB));
         'true' -> 'ok'
     end,
-    kz_auth_keys:kazoo_public_key(?SYSTEM_KEY_ID).
+    kz_auth_keys:public_key(?SYSTEM_KEY_ID).
 
 -spec init(boolean()) -> any().
 init('false') ->

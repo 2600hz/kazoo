@@ -16,7 +16,9 @@
 -export([lookup/1, store/2]).
 -export([from_token/1]).
 
--export([kazoo_private_key/1, kazoo_public_key/1]).
+-export([private_key/1, public_key/1]).
+
+-export([new_private_key/1, new_private_key/2]).
 
 -include("kazoo_auth.hrl").
 
@@ -149,7 +151,7 @@ maybe_discovery(#{key_id := _KeyId
 maybe_discovery(#{key_id := KeyId
                  ,auth_provider := #{name := <<"kazoo">>}
                  }=Token) ->
-    Token#{key => kazoo_public_key(KeyId)};
+    Token#{key => public_key(KeyId)};
 maybe_discovery(#{}=Token) -> Token.
 
 -spec maybe_discovery_url(map()) -> map().
@@ -220,53 +222,59 @@ extract_key(#{}=Token) ->
     lager:debug("public key not obtained : ~p", [Token]),
     Token.
 
--spec kazoo_public_key(ne_binary()) -> public_key:rsa_public_key().
-kazoo_public_key(KeyId) ->
-    {'ok', Key} = kazoo_private_key(KeyId),
+-spec public_key(ne_binary()) -> public_key:rsa_public_key().
+public_key(KeyId) ->
+    {'ok', Key} = private_key(KeyId),
     get_public_key_from_private_key(Key).
 
--spec kazoo_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
-kazoo_private_key(KeyId) ->
+-spec private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
+private_key(KeyId) ->
     case lookup({'private', KeyId}) of
-        {'error', 'not_found'} -> kazoo_load_private_key(KeyId);
+        {'error', 'not_found'} -> load_private_key(KeyId);
         Found -> Found
     end.
 
--spec kazoo_load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
-kazoo_load_private_key(KeyId) ->
+-spec load_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()}.
+load_private_key(KeyId) ->
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, KeyId) of
-        {'ok', JObj} -> kazoo_load_private_key_attachment(JObj);
-        {'error', 'not_found'} -> kazoo_new_private_key(KeyId)
+        {'ok', JObj} -> load_private_key_attachment(JObj);
+        {'error', 'not_found'} -> new_private_key(KeyId)
     end.
 
--spec kazoo_load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
-kazoo_load_private_key_attachment(JObj) ->
+-spec load_private_key_attachment(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
+load_private_key_attachment(JObj) ->
     KeyId = kz_doc:id(JObj),
     case kz_datamgr:fetch_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME) of
         {'ok', PemContents} ->
             Key = from_pem(PemContents),
             store({'private', KeyId}, Key),
             {'ok', Key};
-        {'error', 'not_found'} -> kazoo_gen_private_key(JObj)
+        {'error', 'not_found'} ->
+            {'ok', Key} = gen_private_key(),
+            save_private_key(JObj, Key)
     end.
 
--spec kazoo_new_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
-kazoo_new_private_key(KeyId) ->
+-spec new_private_key(ne_binary()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+new_private_key(KeyId) ->
+    {'ok', Key} = gen_private_key(),
+    new_private_key(KeyId, Key).
+
+-spec new_private_key(ne_binary(), public_key:rsa_private_key()) -> {'ok', public_key:rsa_private_key()} | {'error', any()}.
+new_private_key(KeyId, Key) ->
     Doc = [{<<"pvt_type">>, <<"system_key">>}
           ,{<<"_id">>, KeyId}
           ],
     JObj = kz_doc:update_pvt_parameters(kz_json:from_list(Doc), ?KZ_AUTH_DB),
     case kz_datamgr:save_doc(?KZ_AUTH_DB, JObj) of
-        {'ok', Saved} -> kazoo_gen_private_key(Saved);
-        {'error', 'conflict'} -> kazoo_private_key(KeyId);
+        {'ok', Saved} -> save_private_key(Saved, Key);
+        {'error', 'conflict'} -> private_key(KeyId);
         {'error', _Err}=Err ->
             lager:debug("error ~p saving new system key ~s", [_Err, KeyId]),
             Err
     end.
 
--spec kazoo_gen_private_key(kz_json:object()) -> {'ok', public_key:rsa_private_key()}.
-kazoo_gen_private_key(JObj) ->
-    {'ok', Key} = gen_private_key(),
+-spec save_private_key(kz_json:object(), public_key:rsa_private_key()) -> {'ok', public_key:rsa_private_key()}.
+save_private_key(JObj, Key) ->
     KeyId = kz_doc:id(JObj),
     Options = [{'doc_type', <<"system_key">>}
               ,{'rev', kz_doc:revision(JObj)}
@@ -275,7 +283,7 @@ kazoo_gen_private_key(JObj) ->
     case kz_datamgr:put_attachment(?KZ_AUTH_DB, KeyId, ?SYSTEM_KEY_ATTACHMENT_NAME, to_pem(Key), Options) of
         {'ok', _} -> store({'private', KeyId}, Key),
                      {'ok', Key};
-        {'error', 'conflict'} -> kazoo_private_key(KeyId);
+        {'error', 'conflict'} -> private_key(KeyId);
         {'error', _Err}=Err ->
             lager:debug("error ~p saving generated system key ~s", [_Err, KeyId]),
             Err

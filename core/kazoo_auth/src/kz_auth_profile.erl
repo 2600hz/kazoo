@@ -27,6 +27,10 @@
                               ,<<"email_address">>
                               ]).
 
+-define(TOKEN_VERIFIED_EMAIL_FIELDS, [<<"email_verified">>
+                                     ,<<"verified_email">>
+                                     ]).
+
 -define(SCOPE_SEPARATORS, [<<" ">>
                           ,<<",">>
                           ,<<";">>
@@ -136,6 +140,24 @@ maybe_add_user_identity(#{auth_provider := #{profile_identity_field := Field}
             lager:debug("found user identity ~p", [Identity]),
             Token#{user_identity => Identity}
     end;
+maybe_add_user_identity(#{auth_provider := #{profile_identity_fields := Fields}
+                         ,profile := Profile
+                         } = Token) ->
+    Keys = lists:filter(fun(Field) -> kz_json:get_value(Field, Profile) =/= 'undefined' end, Fields),
+    case length(Keys) =:= length(Fields) of
+        'false' ->
+            lager:debug("user identity from fields '~p' not found into ~p", [Fields, Profile]),
+            Token;
+        'true' ->
+            [First | Others] = Fields,
+            V1 = kz_term:to_binary(kz_json:get_value(First, Profile)),
+            Identity = lists:foldl(fun(K, Acc) ->
+                                           V = kz_term:to_binary(kz_json:get_value(K, Profile)),
+                                           <<Acc/binary, "-", V/binary>>
+                                   end, V1, Others),
+            lager:debug("found user identity ~p", [Identity]),
+            Token#{user_identity => Identity}
+    end;
 maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
     lager:debug("provider '~s' doesn't support identity profile info", [Prov]),
     Token.
@@ -143,7 +165,8 @@ maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
 
 -spec maybe_add_user_email(map()) -> map().
 maybe_add_user_email(#{user_email := _UserEmail} = Token) -> Token;
-maybe_add_user_email(#{verified_token := VerifiedToken} = Token) ->
+maybe_add_user_email(#{verified_token := VerifiedToken} = Token)
+  when VerifiedToken =/= ?EMPTY_JSON_OBJECT ->
     Token#{user_email => kz_json:get_first_defined(?PROFILE_EMAIL_FIELDS, VerifiedToken)};
 maybe_add_user_email(#{profile_error_code := _Error} = Token) -> Token;
 maybe_add_user_email(#{auth_provider := #{profile_email_field := Field}
@@ -309,7 +332,7 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
                           end, [], Mapping),
 
     Props = [{<<"email">>, EMail}
-            ,{<<"verified_email">>, kz_json:get_value(<<"verified_email">>, Verified)}
+            ,{<<"verified_email">>, kz_json:get_first_defined(?TOKEN_VERIFIED_EMAIL_FIELDS, Verified)}
             ,{<<"access_type">>, maps:get(access_type, Token, 'undefined')}
             ,{<<"scope">>, Scope}
             ,{<<"scopes">>, binary:split(Scope, ?SCOPE_SEPARATORS, ['global'])}
