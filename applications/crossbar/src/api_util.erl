@@ -904,7 +904,7 @@ is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
 -spec is_known_content_type(cowboy_req:req(), cb_context:context()) ->
                                    {boolean(), cowboy_req:req(), cb_context:context()}.
 is_known_content_type(Req, Context) ->
-    is_known_content_type(Req, Context, cb_context:req_verb(Context)).
+    is_known_content_type(Req, Context, cb_context:method(Context)).
 
 is_known_content_type(Req, Context, ?HTTP_OPTIONS) ->
     lager:debug("ignore content type for options"),
