@@ -64,6 +64,8 @@
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 
+-define(PROVIDER_RENAME_CARRIER, <<"knm_rename_carrier">>).
+
 -define(FEATURE_CNAM, <<"cnam">>).
 -define(FEATURE_CNAM_INBOUND, <<"inbound_cnam">>).
 -define(FEATURE_CNAM_OUTBOUND, <<"outbound_cnam">>).

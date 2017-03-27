@@ -696,6 +696,10 @@ ensure_features_defined(PN) -> PN.
 ensure_pvt_features_reflects_public_fields(PN) ->
     PubToPvt = [{[?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], ?FEATURE_CNAM_INBOUND}
                ,{[?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], ?FEATURE_CNAM_OUTBOUND}
+               ,{?LEGACY_VITELITY_E911, ?FEATURE_E911}
+               ,{?LEGACY_DASH_E911, ?FEATURE_E911}
+               ,{?LEGACY_TELNYX_E911, ?FEATURE_E911}
+               ,{?FEATURE_E911, ?FEATURE_E911}
                ],
     case [PvtFeature
           || {PubPath, PvtFeature} <- PubToPvt,

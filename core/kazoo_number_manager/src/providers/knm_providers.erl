@@ -156,8 +156,8 @@ list_available_features(Parameters) ->
 is_local(PN) ->
     ModuleName = knm_phone_number:module_name(PN),
     ?CARRIER_LOCAL =:= ModuleName
-        orelse ?CARRIER_MDN =:= ModuleName
-        orelse lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN)).
+        orelse ?CARRIER_MDN =:= ModuleName.
+%% orelse lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN)).
 
 -spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
 feature_parameters(PhoneNumber) ->
@@ -370,17 +370,28 @@ do_exec(T0=#{todo := Ns}, Action) ->
 
 exec(Number, Action=delete) ->
     RequestedModules = requested_modules(Number),
-    ?LOG_DEBUG("requested number features: ~s", [?PP(RequestedModules)]),
+    ?LOG_DEBUG("deleting number features: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
-exec(Number, Action) ->
-    {AllowedRequests0, DeniedRequests} = split_requests(Number),
-    AllowedRequests = rename_carrier_first(AllowedRequests0),
-    ?LOG_DEBUG("allowing number features ~s", [?PP(AllowedRequests)]),
-    case DeniedRequests =:= [] of
-        true -> exec(Number, Action, AllowedRequests);
+exec(N, Action) ->
+    {NewN, AllowedModules, DeniedModules} = maybe_rename_carrier_and_strip_denied(N),
+    case DeniedModules =:= [] of
+        true -> exec(NewN, Action, AllowedModules);
         false ->
-            ?LOG_DEBUG("denied number features ~s", [?PP(DeniedRequests)]),
+            ?LOG_DEBUG("denied number features ~s", [?PP(DeniedModules)]),
             knm_errors:unauthorized()
+    end.
+
+maybe_rename_carrier_and_strip_denied(N) ->
+    {AllowedRequests, DeniedRequests} = split_requests(N),
+    ?LOG_DEBUG("allowing number features ~s", [?PP(AllowedRequests)]),
+    case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
+        false -> {N, AllowedRequests, DeniedRequests};
+        true ->
+            N1 = exec(N, Action, [?PROVIDER_RENAME_CARRIER]),
+            N2 = remove_denied(features_denied(N1), N1),
+            {NewAllowed, NewDenied} = split_requests(N2),
+            ?LOG_DEBUG("allowing number features ~s", [?PP(NewAllowed)]),
+            {N2, NewAllowed, NewDenied}
     end.
 
 split_requests(Number) ->
@@ -390,14 +401,6 @@ split_requests(Number) ->
     ?LOG_DEBUG("allowed modules: ~s", [?PP(AllowedModules)]),
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
-
-rename_carrier_first(Modules) ->
-    RenameCarrierModule = <<"knm_rename_carrier">>,
-    case lists:member(RenameCarrierModule, Modules) of
-        false -> Modules;
-        true ->
-            [RenameCarrierModule] ++ (Modules -- [RenameCarrierModule])
-    end.
 
 exec(Number, _, []) -> Number;
 exec(Number, Action, [Provider|Providers]) ->
