@@ -251,7 +251,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ,{<<"Account-DB">>, kapps_call:account_db(Call)}
                  ,{<<"Account-ID">>, kapps_call:account_id(Call)}
                  ,{<<"Voicemail-Box">>, BoxId}
-                 ,{<<"Voicemail-Name">>, MediaId}
+                 ,{<<"Voicemail-ID">>, MediaId}
                  ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
                  ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
                  ,{<<"Voicemail-Timestamp">>, kz_time:current_tstamp()}
@@ -282,7 +282,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Account-DB">>, kapps_call:account_db(Call)}
            ,{<<"Account-ID">>, kapps_call:account_id(Call)}
            ,{<<"Voicemail-Box">>, BoxId}
-           ,{<<"Voicemail-Name">>, MediaId}
+           ,{<<"Voicemail-ID">>, MediaId}
            ,{<<"Caller-ID-Number">>, get_caller_id_number(Call)}
            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
            ,{<<"Voicemail-Timestamp">>, Timestamp}

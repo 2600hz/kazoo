@@ -1,4 +1,20 @@
-Hi {{user.first_name}} {{user.last_name}}.
+                Skeleton Template
+
+
+Hi {{user.first_name}} {{user.last_name}}
 
 This is the skeleton template
+
 Brought to you by VoIP Services
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

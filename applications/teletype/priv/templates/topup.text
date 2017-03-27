@@ -1,1 +1,17 @@
-Attempted to top-up account "{{account.name}}" for {{amount}}.  The transaction processor response was {{response}} resulting in a new balance of {{balance}}.
+                Account Topped-Up
+
+
+Top-up attempted to {{account.name}} for amount of {{amount}}.
+The transaction processor response was {{response}} resulting in a new balance of {{balance}}.
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

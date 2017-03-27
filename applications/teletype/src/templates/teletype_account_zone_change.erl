@@ -93,7 +93,7 @@ process_req(DataJObj) ->
 zones_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            kz_json:get_json_value(<<"zones">>, DataJObj);
+            kz_json:recursive_to_proplist(kz_json:get_json_value(<<"zones">>, DataJObj));
         'true' ->
-            kz_json:from_list([{<<"zones">>, kz_json:from_list([{<<"home">>, <<"Zone">>}])}])
+            [{<<"home">>, <<"Zone">>}]
     end.

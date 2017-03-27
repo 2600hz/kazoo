@@ -138,7 +138,7 @@ create_template_props(Event, Timezone, Account) ->
                          ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
                          ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
                          ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, Event)}
-                         ,{<<"media">>, kz_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"media">>, kz_json:get_value(<<"Voicemail-ID">>, Event)}
                          ,{<<"length">>, preaty_print_length(Event)}
                          ,{<<"transcription">>, kz_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
                          ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
@@ -151,7 +151,7 @@ create_template_props(Event, Timezone, Account) ->
 magic_hash(Event) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, Event),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
-    MessageId = kz_json:get_value(<<"Voicemail-Name">>, Event),
+    MessageId = kz_json:get_value(<<"Voicemail-ID">>, Event),
 
     try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
                        ,<<"/messages/">>, MessageId, <<"/raw">>

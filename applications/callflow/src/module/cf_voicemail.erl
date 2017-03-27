@@ -414,10 +414,8 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
                           }=Box, _, Call) when Count >= MaxCount
                                                andalso MaxCount > 0 ->
     lager:debug("voicemail box is full, cannot hold more messages, sending notification"),
-    Props = [{<<"Account-DB">>, kapps_call:account_db(Call)}
-            ,{<<"Account-ID">>, kapps_call:account_id(Call)}
+    Props = [{<<"Account-ID">>, kapps_call:account_id(Call)}
             ,{<<"Voicemail-Box">>, VMBId}
-            ,{<<"Voicemail-Number">>, VMBN}
             ,{<<"Max-Message-Count">>, MaxCount}
             ,{<<"Message-Count">>, Count}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)

@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Unfinished port request for {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Unfinished port request {{port_request.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Unconfirmed">>).
 

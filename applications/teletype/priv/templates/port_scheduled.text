@@ -1,3 +1,22 @@
-Port request scheduled for {{port_request.scheduled_date |date:"D d M Y"}}.
+                Port Request Schecduled
 
- Request to port numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.
+Port request {{port_request.name}} of account {{account.name}} has been scheduled for {{port_request.scheduled_date}}.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

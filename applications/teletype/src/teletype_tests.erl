@@ -71,7 +71,7 @@ voicemail_to_email(AccountId, VMBox,  [Message|_]) ->
            ,{<<"Account-DB">>, kz_util:format_account_db(AccountId)}
            ,{<<"Account-ID">>, AccountId}
            ,{<<"Voicemail-Box">>, kz_doc:id(VMBox)}
-           ,{<<"Voicemail-Name">>, MediaId}
+           ,{<<"Voicemail-ID">>, MediaId}
            ,{<<"Caller-ID-Number">>, <<"CallerIdNumber">>}
            ,{<<"Caller-ID-Name">>, <<"CallerIdName">>}
            ,{<<"Voicemail-Timestamp">>, kz_time:current_tstamp()}
@@ -135,7 +135,6 @@ voicemail_full(AccountId, Box) ->
     Props = [{<<"Account-DB">>, AccountDb}
             ,{<<"Account-ID">>, AccountId}
             ,{<<"Voicemail-Box">>, kz_doc:id(Box)}
-            ,{<<"Voicemail-Number">>, kz_json:get_value(<<"mailbox">>, Box)}
             ,{<<"Max-Message-Count">>, 1}
             ,{<<"Message-Count">>, 2}
             ,{<<"Preview">>, 'true'}

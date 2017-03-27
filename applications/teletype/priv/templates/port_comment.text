@@ -1,1 +1,17 @@
-{{ port_request.comment.content }} 
+                Comment on Port Request
+
+{{user.first_name}} {{user.last_name}} made a comment on your port request {{port_request.name}}
+at {{port_request.comment.timestamp}}:
+
+{{port_request.comment.content}}
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

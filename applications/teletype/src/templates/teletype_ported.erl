@@ -21,7 +21,7 @@
        ,kz_json:from_list(?PORT_REQUEST_MACROS ++ ?ACCOUNT_MACROS)
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request successful for {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Port request successful for {{port_request.name}}">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Successful">>).
 

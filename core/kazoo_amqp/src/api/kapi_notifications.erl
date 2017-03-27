@@ -136,8 +136,8 @@
 %% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
                            ,<<"To-User">>, <<"To-Realm">>
-                           ,<<"Account-DB">>
-                           ,<<"Voicemail-Box">>, <<"Voicemail-Name">>
+                           ,<<"Account-ID">>
+                           ,<<"Voicemail-Box">>, <<"Voicemail-ID">>
                            ,<<"Voicemail-Timestamp">>
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
@@ -155,8 +155,7 @@
                                 ]).
 
 %% Notify Voicemail full
--define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
-                                ,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
+-define(VOICEMAIL_FULL_HEADERS, [<<"Account-ID">>, <<"Voicemail-Box">>
                                 ,<<"Max-Message-Count">> ,<<"Message-Count">>
                                 ]).
 -define(OPTIONAL_VOICEMAIL_FULL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).

@@ -671,8 +671,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
 
 find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
-    find_addresses(
-      DataJObj
+    find_addresses(DataJObj
                   ,TemplateMetaJObj
                   ,ConfigCat
                   ,Keys
@@ -684,8 +683,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), api_binary()) ->
                           {kz_json:path(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
-    find_address(
-      DataJObj
+    find_address(DataJObj
                 ,TemplateMetaJObj
                 ,ConfigCat
                 ,Key
@@ -699,7 +697,7 @@ find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     {Key, check_address_value(kz_json:find(Key, [DataJObj, TemplateMetaJObj]))};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
-    Emails = kz_json:find([Key, <<"email_addresses">>], [DataJObj, TemplateMetaJObj]),
+    Emails = kz_json:find_first_defined([[Key, <<"email_addresses">>], Key], [DataJObj, TemplateMetaJObj]),
     {Key, check_address_value(Emails)};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),

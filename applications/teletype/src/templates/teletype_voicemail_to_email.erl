@@ -21,12 +21,10 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
-          ,?MACRO_VALUE(<<"voicemail.name">>, <<"voicemail_name">>, <<"Voicemail Name">>, <<"Name of the voicemail file">>)
+          ,?MACRO_VALUE(<<"voicemail.id">>, <<"voicemail_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
           ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
           ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
-          ,?MACRO_VALUE(<<"owner.first_name">>, <<"first_name">>, <<"First Name">>, <<"First name of the owner of the voicemail box">>)
-          ,?MACRO_VALUE(<<"owner.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last name of the owner of the voicemail box">>)
-           | ?DEFAULT_CALL_MACROS
+           | ?DEFAULT_CALL_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
           ])
        ).
 
@@ -146,7 +144,7 @@ email_attachments(DataJObj, Macros) ->
 
 email_attachments(_DataJObj, _Macros, 'true') -> [];
 email_attachments(DataJObj, Macros, 'false') ->
-    VMId = kz_json:get_value(<<"voicemail_name">>, DataJObj),
+    VMId = kz_json:get_value(<<"voicemail_id">>, DataJObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     DB = kvm_util:get_db(AccountId, VMId),
     {'ok', VMJObj} = kvm_message:fetch(AccountId, VMId),
@@ -251,7 +249,7 @@ date_called(DataJObj) ->
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
-      ,{<<"name">>, kz_json:get_value(<<"voicemail_name">>, DataJObj)}
+      ,{<<"id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
