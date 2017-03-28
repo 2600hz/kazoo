@@ -571,6 +571,10 @@ to_public_json(PN) ->
     State = {<<"state">>, state(PN)},
     UsedBy = {<<"used_by">>, used_by(PN)},
     Features = {<<"features">>, features_list(PN)},
+    ModuleName = case module_name(PN) of
+                     <<"knm_", Carrier/binary>> -> Carrier;
+                     _ -> undefined
+                 end,
     ReadOnly =
         kz_json:from_list(
           props:filter_empty(
@@ -582,6 +586,7 @@ to_public_json(PN) ->
             ,{<<"features_available">>, knm_providers:available_features(PN)}
             ,{<<"features_allowed">>, features_allowed(PN)}
             ,{<<"features_denied">>, features_denied(PN)}
+            ,{<<"carrier_module">>, ModuleName}
             ])
          ),
     Values = props:filter_empty(
