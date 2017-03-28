@@ -79,6 +79,7 @@ process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
     Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"hook">>, hook_data(kz_json:get_value(<<"hook">>, DataJObj))}
+             ,{<<"system">>, teletype_util:system_params()}
              ],
 
     %% Populate templates

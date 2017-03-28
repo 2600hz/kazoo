@@ -44,6 +44,7 @@
 -spec new(kapps_call:call(), kz_proplist()) -> new_msg_ret().
 new(Call, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
+    %% FIXME: dis guy is file size not audio duration
     Length = props:get_value(<<"Length">>, Props),
     AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
 

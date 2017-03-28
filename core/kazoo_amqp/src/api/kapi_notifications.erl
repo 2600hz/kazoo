@@ -442,8 +442,7 @@
 
 %% Notify Transaction
 -define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>
-                                      ,<<"Service-Plan">>
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>, <<"Service-Plan">>
                                            | ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}

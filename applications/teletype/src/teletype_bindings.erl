@@ -38,6 +38,7 @@ flush_mod(Module) ->
 notification(JObj) ->
     {EventCategory, EventName} = kz_util:get_event_type(JObj),
     RoutingKey = ?ROUTING_KEY(EventCategory, EventName),
+    io:format("~n JObj ~p~n RoutingKey ~p ~n", [JObj, RoutingKey]),
     lager:debug("dispatching notification ~s", [RoutingKey]),
     _ = kazoo_bindings:map(RoutingKey, JObj, []),
     'ok'.

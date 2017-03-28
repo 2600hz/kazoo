@@ -20,8 +20,9 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"voicemail.box">>, <<"voicemail_box">>, <<"Voicemail Box">>, <<"Which voicemail box was the message left in">>)
-          ,?MACRO_VALUE(<<"voicemail.id">>, <<"voicemail_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
+          [?MACRO_VALUE(<<"voicemail.vmbox_id">>, <<"voicemail_vmbox_id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
+          ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
+          ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
           ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
           ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
            | ?DEFAULT_CALL_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
@@ -83,7 +84,7 @@ handle_new_voicemail(JObj) ->
 
     ReqData =
         kz_json:set_values([{<<"voicemail">>, VMBox}
-                           ,{<<"owner">>, UserJObj}
+                           ,{<<"user">>, UserJObj}
                            ,{<<"account">>, AccountJObj}
                            ,{<<"to">>, Emails}
                            ]
@@ -193,6 +194,7 @@ build_template_data(DataJObj) ->
     ,{<<"from">>, build_from_data(DataJObj)}
     ,{<<"to">>, build_to_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
+    ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
     ].
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().
@@ -248,17 +250,20 @@ date_called(DataJObj) ->
 -spec build_voicemail_data(kz_json:object()) -> kz_proplist().
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
-      [{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
-      ,{<<"id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
+      [{<<"vmbox_id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
+      ,{<<"vmbox_name">>, kz_json:get_value([<<"voicemail">>, <<"name">>], DataJObj)}
+      ,{<<"vmbox_number">>, kz_json:get_value([<<"voicemail">>, <<"mailbox">>], DataJObj)}
+      ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).
 
 -spec pretty_print_length(api_object() | pos_integer()) -> ne_binary().
-pretty_print_length('undefined') -> <<"00:00">>;
+pretty_print_length('undefined') -> <<"00:00:00">>;
 pretty_print_length(Ms) when is_integer(Ms) ->
-    Seconds = round(Ms / ?MILLISECONDS_IN_SECOND) rem 60,
-    Minutes = trunc(Ms / (?MILLISECONDS_IN_MINUTE)) rem 60,
-    kz_term:to_binary(io_lib:format("~2..0w:~2..0w", [Minutes, Seconds]));
+    MilliSeconds = kz_time:milliseconds_to_seconds(Ms),
+    Us = kz_time:unix_seconds_to_gregorian_seconds(MilliSeconds),
+    {_, {H, M, S}} = calendar:gregorian_seconds_to_datetime(Us),
+    kz_term:to_binary(io_lib:format("~2..0w:~2..0w:~2..0w", [H, M, S]));
 pretty_print_length(JObj) ->
     pretty_print_length(kz_json:get_integer_value(<<"voicemail_length">>, JObj)).
