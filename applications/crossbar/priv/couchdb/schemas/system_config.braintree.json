@@ -14,12 +14,12 @@
             "type": "boolean"
         },
         "default_environment": {
-            "default": [],
+            "default": "",
             "description": "braintree default environment",
             "type": "string"
         },
         "default_merchant_id": {
-            "default": [],
+            "default": "",
             "description": "braintree default merchant id",
             "type": "string"
         },
