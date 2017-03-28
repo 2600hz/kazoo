@@ -12,25 +12,15 @@ Because CouchDb/BigCouch uses an append-only file to write changes to, you must 
 
 Kazoo allows the cluster operator to enable automatic compaction of all databases. A process will walk the list of known databases (updating each time the process starts again) and check each database against a heuristic to decide whether to compact or not.
 
-### Check if auto-compaction is enabled
-
-`sup couch_compactor_fsm compact_automatically`
-
-This will return `true` or `false`, indicating whether the auto-compactor process is running on this node.
-
 ### Enable/Disable auto-compaction
-
-`sup couch_compactor_fsm compact_automatically [boolean]`
-
-`[boolean]` should be either `true` or `false`. This will only configure the compactor. The actual compaction process will not immediately start.
 
 To immediately start auto-compaction (set the config up and start the compaction process):
 
-`sup couch_compactor_fsm start_auto_compaction`
+`sup kazoo_couch_maintenance start_auto_compaction`
 
 To stop auto-compaction:
 
-`sup couch_compactor_fsm stop_auto_compaction`
+`sup kazoo_couch_maintenance stop_auto_compaction`
 
 ## Compacting
 
@@ -38,7 +28,7 @@ To stop auto-compaction:
 
 To compact all databases across all nodes:
 
-`sup couch_compactor_fsm compact`
+`sup kazoo_couch_maintenance compact_all`
 
 This will essentially run one pass of the auto-compactor.
 
@@ -46,31 +36,31 @@ This will essentially run one pass of the auto-compactor.
 
 To compact all databases on a single node:
 
-`sup couch_compactor_fsm compact_node bigcouch@node.host.com`
+`sup kazoo_couch_maintenance compact_node bigcouch@node.host.com`
 
 ### Compact a Database
 
 To compact a database across all nodes:
 
-`sup couch_compactor_fsm compact_db database`
+`sup kazoo_couch_maintenance compact_db database`
 
 `database` would be the un-encoded version of the database name. For insance, if you have an account with ID `bd119d242987c986443f3cf67eae4926`, to compact the db your SUP command would be:
 
-`sup couch_compactor_fsm compact_db account/bd/11/9d242987c986443f3cf67eae4926`
+`sup kazoo_couch_maintenance compact_db account/bd/11/9d242987c986443f3cf67eae4926`
 
 To compact the `accounts` DB:
 
-`sup couch_compactor_fsm compact_db accounts`
+`sup kazoo_couch_maintenance compact_db accounts`
 
 To compact a numbers DB (for prefix `+1415` for instance):
 
-`sup couch_compactor_fsm compact_db numbers/+1415`
+`sup kazoo_couch_maintenance compact_db numbers/+1415`
 
 #### Compact on a specific node
 
 If you only want to compact a specific database on a specifc node:
 
-`sup couch_compactor_fsm compact_db bigcouch@node.host.com database`
+`sup kazoo_couch_maintenance compact_db bigcouch@node.host.com database`
 
 The format of `database` follows the same rules as the all-nodes version.
 
@@ -78,7 +68,7 @@ The format of `database` follows the same rules as the all-nodes version.
 
 You can query the status of the compactor:
 
-    sup couch_compactor_fsm status
+    sup kazoo_couch_maintenance compaction_status
     {ok,[{node,<<"bigcoucn@bc1.2600hz.com">>},
          {db,<<"numbers/+1415">>},
          {wait_left,31644},
@@ -98,32 +88,19 @@ You can query the status of the compactor:
 * `start_time`: Datetime (in UTC) of when the current job started
 * `elapsed_s`: How many seconds have elapsed since the current job started
 
-You can also inspect for these specific values:
-
-    sup couch_compactor_fsm nodes_left
-    [<<"bigcouch@bc2.2600hz.com">>, <<"bigcouch@bc3.2600hz.com">>, <<"bigcouch@bc4.2600hz.com">>]
-
-You can also query for `dbs_left`, `current_node`, `current_db`, and `current` which will return both the node and database.
-
 ## Cancelling Jobs
 
 ### Cancel all jobs (including queued)
 
-`sup couch_compactor_fsm cancel_all_jobs`
+`sup kazoo_couch_maintenance cancel_compaction_jobs`
 
 Do note, this will cancel the currently running auto-compaction job; however, when the auto-compaction check occurs again, a new job will be started.
 
 ### Cancel the current job
 
-`sup couch_compactor_fsm cancel_current_job`
+`sup kazoo_couch_maintenance cancel_current_job`
 
 The next job in the queue will execute.
-
-### Cancel the current shard
-
-You can also cancel a specific shard being compacted:
-
-`sup couch_compactor_fsm cancel_current_shard`
 
 ## Configuration
 
@@ -159,7 +136,7 @@ If it is returning an improper value, set it to the proper cookie:
 
 When you manually compact a db, especially if the Kazoo node has recently started up, you may see warnings like:
 
-    5> couch_compactor_fsm:compact_db(<<"bigcouch@db01.somehost.com">>,<<"some_db">>).
+    5> kazoo_couch_maintenance:compact_db(<<"bigcouch@db01.somehost.com">>,<<"some_db">>).
     =ERROR REPORT==== 16-May-2012::23:39:09 ===
     global: 'kazoo_con_1337211446@kapps.somehost.com' failed to connect to 'bigcouch@db01.somehost.com'
     =ERROR REPORT==== 16-May-2012::23:39:09 ===
