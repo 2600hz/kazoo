@@ -198,9 +198,8 @@ action(<<"assign_to">>) ->
                  >>}
     ,{<<"expected_content">>, <<"text/csv">>}
     ,{<<"mandatory">>, [<<"e164">>
-                       ,<<"account_id">>
                        ]}
-    ,{<<"optional">>, [
+    ,{<<"optional">>, [<<"account_id">>
                       ]}
     ];
 
@@ -227,9 +226,8 @@ action(<<"reserve">>) ->
                  >>}
     ,{<<"expected_content">>, <<"text/csv">>}
     ,{<<"mandatory">>, [<<"e164">>
-                       ,<<"account_id">>
                        ]}
-    ,{<<"optional">>, [
+    ,{<<"optional">>, [<<"account_id">>
                       ]}
     ];
 
@@ -458,13 +456,18 @@ e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
 
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-assign_to(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num
-                                                     ,<<"account_id">> := AccountId
-                                                     }) ->
+assign_to(#{auth_account_id := AuthBy, account_id := Account}
+         ,_IterValue
+         ,#{<<"e164">> := Num, <<"account_id">> := AccountId0}
+         ) ->
+    AccountId = select_account_id(AccountId0, Account),
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
     handle_result(knm_number:move(Num, AccountId, Options)).
+
+select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
+select_account_id(_, AccountId) -> AccountId.
 
 -spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 release(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
@@ -474,12 +477,13 @@ release(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
     handle_result(knm_number:release(Num, Options)).
 
 -spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-reserve(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num
-                                                   ,<<"account_id">> := AccountId
-                                                   }) ->
+reserve(#{auth_account_id := AuthBy, account_id := Account}
+       ,_IterValue
+       ,#{<<"e164">> := Num, <<"account_id">> := AccountId0}
+       ) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
-              ,{assign_to, AccountId}
+              ,{assign_to, select_account_id(AccountId0, Account)}
               ],
     handle_result(knm_number:reserve(Num, Options)).
 
