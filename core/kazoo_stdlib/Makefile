@@ -1,5 +1,5 @@
 ROOT = ../..
-PROJECT = kazoo_json
+PROJECT = kazoo_stdlib
 
 all: compile
 

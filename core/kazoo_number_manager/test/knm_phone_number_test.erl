@@ -549,10 +549,10 @@ is_dirty4_test_() ->
                   ,knm_phone_number:used_by(PN)
                   )
 
-    ,?_assertEqual(kz_json:to_map(kz_json:public_fields(JObj))
-                  ,kz_json:to_map(kz_json:public_fields(NewJObj)))
-    ,?_assertEqual(maps:remove(<<"e911">>, kz_json:to_map(kz_json:public_fields(JObj)))
-                  ,kz_json:to_map(kz_json:public_fields(kz_json:delete_key(<<"used_by">>, OldJObj))))
+    ,?_assertEqual(kz_json:to_map(kz_doc:public_fields(JObj))
+                  ,kz_json:to_map(kz_doc:public_fields(NewJObj)))
+    ,?_assertEqual(maps:remove(<<"e911">>, kz_json:to_map(kz_doc:public_fields(JObj)))
+                  ,kz_json:to_map(kz_doc:public_fields(kz_json:delete_key(<<"used_by">>, OldJObj))))
     ].
 
 
@@ -566,7 +566,7 @@ features_5(OldJObj) ->
 
 public_fields_new_5(OldJObj) ->
     M = kz_json:to_map(
-          kz_json:public_fields(
+          kz_doc:public_fields(
             kz_json:delete_key(<<"used_by">>, OldJObj))),
     M#{<<"e911">> => maps:get(?LEGACY_DASH_E911, M)}.
 
@@ -673,8 +673,8 @@ is_dirty5_test_() ->
                   ,knm_phone_number:used_by(PN)
                   )
 
-    ,?_assertEqual(public_fields_new_5(OldJObj), kz_json:to_map(kz_json:public_fields(JObj)))
-    ,?_assertEqual(public_fields_new_5(OldJObj), kz_json:to_map(kz_json:public_fields(NewJObj)))
+    ,?_assertEqual(public_fields_new_5(OldJObj), kz_json:to_map(kz_doc:public_fields(JObj)))
+    ,?_assertEqual(public_fields_new_5(OldJObj), kz_json:to_map(kz_doc:public_fields(NewJObj)))
     ].
 
 
@@ -785,10 +785,10 @@ is_dirty6_test_() ->
     ,?_assertEqual(kz_json:get_value(<<"pvt_used_by">>, OldJObj)
                   ,knm_phone_number:used_by(PN))
 
-    ,?_assertEqual(kz_json:to_map(kz_json:public_fields(JObj))
-                  ,kz_json:to_map(kz_json:public_fields(NewJObj)))
-    ,?_assertEqual(kz_json:to_map(kz_json:public_fields(JObj))
-                  ,kz_json:to_map(kz_json:public_fields(kz_json:delete_key(<<"used_by">>, OldJObj))))
+    ,?_assertEqual(kz_json:to_map(kz_doc:public_fields(JObj))
+                  ,kz_json:to_map(kz_doc:public_fields(NewJObj)))
+    ,?_assertEqual(kz_json:to_map(kz_doc:public_fields(JObj))
+                  ,kz_json:to_map(kz_doc:public_fields(kz_json:delete_key(<<"used_by">>, OldJObj))))
     ].
 
 

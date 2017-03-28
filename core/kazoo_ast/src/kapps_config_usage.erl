@@ -8,7 +8,7 @@
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).

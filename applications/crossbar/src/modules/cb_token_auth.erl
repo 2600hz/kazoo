@@ -57,7 +57,7 @@ validate(Context) ->
 -spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
 validate(Context, ?HTTP_GET) ->
     JObj = crossbar_util:response_auth(
-             kz_json:public_fields(cb_context:auth_doc(Context))
+             kz_doc:public_fields(cb_context:auth_doc(Context))
             ),
     Setters = [{fun cb_context:set_resp_status/2, 'success'}
               ,{fun cb_context:set_resp_data/2, JObj}

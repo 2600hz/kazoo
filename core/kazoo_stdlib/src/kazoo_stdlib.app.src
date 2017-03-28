@@ -1,11 +1,10 @@
-{application, kazoo_json
+{application, kazoo_stdlib
 ,[
-  {description, "Kazoo JSON processing"}
+  {description, "Erlang Term handlers"}
  ,{vsn, "4.0.0"}
  ,{modules, []}
  ,{registered, [ ]}
  ,{applications, [ kernel
                  , stdlib
-                 , lager
                  ]}
  ]}.

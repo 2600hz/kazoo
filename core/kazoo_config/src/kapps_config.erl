@@ -11,7 +11,7 @@
 -module(kapps_config).
 
 -include("kazoo_config.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([get/2, get/3, get/4
         ,get_all_kvs/1
@@ -540,7 +540,7 @@ update_category(Category, JObj, PvtFields) ->
         {'error', 'conflict'} ->
             lager:debug("conflict saving ~s, merging and saving", [Category]),
             {'ok', Updated} = kz_datamgr:open_doc(?KZ_CONFIG_DB, Category),
-            Merged = kz_json:merge_jobjs(Updated, kz_json:public_fields(JObj)),
+            Merged = kz_json:merge_jobjs(Updated, kz_doc:public_fields(JObj)),
             lager:debug("updating from ~s to ~s", [kz_doc:revision(JObj), kz_doc:revision(Merged)]),
             update_category(Category, Merged, PvtFields)
     end.
@@ -928,7 +928,7 @@ remove_config_setting(Id, Setting) when is_binary(Id) ->
 remove_config_setting(JObj, Setting) ->
     Id = kz_doc:id(JObj),
     Keys = [{Id, Node, Setting}
-            || Node <- kz_json:get_public_keys(JObj)
+            || Node <- kz_doc:get_public_keys(JObj)
            ],
     remove_config_setting(Keys, JObj, []).
 

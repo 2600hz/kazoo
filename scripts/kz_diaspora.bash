@@ -52,6 +52,30 @@ function search_and_replace_prefix {
     done
 }
 
+function replace_call_with_prefix {
+    FROM=$1
+    TO=$2
+    OLD_FUN=$3
+    NEW_FUN="$4$3"
+    FILE=$5
+
+    #echo "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g"
+    $(sed -i "s/$FROM:$OLD_FUN/$TO:$NEW_FUN/g" $FILE)
+}
+
+function search_and_replace_with_prefix {
+    declare -a FUNS=("${!1}")
+    FROM=$2
+    TO=$3
+    PREFIX=$4
+
+    for FUN in "${FUNS[@]}"; do
+        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+            replace_call_with_prefix $FROM $TO "$FUN" "$PREFIX" $FILE
+        done
+    done
+}
+
 # Functions moved from kz_util into more appropriately-named modules
 # Run this to convert references from kz_util:* to the new module names
 
@@ -156,11 +180,31 @@ function kz_util_to_time {
     search_and_replace fs[@] "kz_util" "kz_time" ""
 }
 
+function kz_json_to_kz_doc {
+    local fs=(get_public_keys
+              public_fields
+              private_fields
+              is_private_key
+             )
+    search_and_replace fs[@] "kz_json" "kz_doc" ""
+}
+
+function kz_json_to_kz_http {
+    local fs=(to_querystring
+             )
+    search_and_replace_with_prefix fs[@] "kz_json" "kz_http_util" "json_"
+}
+
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
 kz_util_to_binary
 echo "ensuring kz_time is used"
 kz_util_to_time
+echo "ensuring kz_json:public/private are moved to kz_doc"
+kz_json_to_kz_doc
+echo "ensuring kz_json:to_querystring is moved to kz_http_util"
+kz_json_to_kz_http
 
 popd > /dev/null

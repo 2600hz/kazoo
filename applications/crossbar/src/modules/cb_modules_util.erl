@@ -33,7 +33,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(QCALL_NUMBER_FILTER, [<<" ">>, <<",">>, <<".">>, <<"-">>, <<"(">>, <<")">>]).
 

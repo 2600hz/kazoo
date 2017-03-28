@@ -840,7 +840,7 @@ fix_timestamp(Timestamp, TZ, _Thing) ->
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->
     kz_json:recursive_to_proplist(
-      kz_json:public_fields(
+      kz_doc:public_fields(
         kz_json:get_value(Key, JObj, kz_json:new())
        )
      ).

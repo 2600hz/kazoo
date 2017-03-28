@@ -18,7 +18,7 @@
 -behaviour(gen_cf_action).
 
 -include("callflow.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([handle/2]).
 -export([new_message/4]).
@@ -1397,7 +1397,7 @@ change_pin(#mailbox{mailbox_id=Id
 
         case validate_box_schema(kz_json:set_value(<<"pin">>, Pin, JObj)) of
             {'ok', PublicJObj} ->
-                PrivJObj = kz_json:private_fields(JObj),
+                PrivJObj = kz_doc:private_fields(JObj),
 
                 JObj1 = kz_json:merge_jobjs(PrivJObj, PublicJObj),
 
@@ -1440,7 +1440,7 @@ invalid_pin(Box, Call) ->
                                  {'error', any()}.
 validate_box_schema(JObj) ->
     {'ok', Schema} = kz_json_schema:load(<<"vmboxes">>),
-    case jesse:validate_with_schema(Schema, kz_json:public_fields(JObj)) of
+    case jesse:validate_with_schema(Schema, kz_doc:public_fields(JObj)) of
         {'ok', _}=OK -> OK;
         {'error', _Errors} ->
             lager:debug("failed to validate vmbox schema: ~p", [_Errors]),

@@ -1378,7 +1378,7 @@ create_account_definition(Context) ->
             _ = replicate_account_definition(AccountDef),
             cb_context:setters(Context
                               ,[{fun cb_context:set_doc/2, AccountDef}
-                               ,{fun cb_context:set_resp_data/2, kz_json:public_fields(AccountDef)}
+                               ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(AccountDef)}
                                ,{fun cb_context:set_resp_status/2, 'success'}
                                ]);
         {'error', _R} ->

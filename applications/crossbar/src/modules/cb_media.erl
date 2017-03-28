@@ -536,7 +536,7 @@ maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
                                                               )
                                    ,MediaId
                                    ),
-            crossbar_doc:load_merge(MediaId, kz_json:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
+            crossbar_doc:load_merge(MediaId, kz_doc:public_fields(JObj), Context, ?TYPE_CHECK_OPTION(kzd_media:type()))
     end;
 maybe_merge_tts(Context, _MediaId, _Text, _Voice, _Status) ->
     Context.

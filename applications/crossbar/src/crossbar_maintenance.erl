@@ -947,7 +947,7 @@ read_image(File) ->
 find_metadata(AppPath) ->
     {'ok', JSON} = file:read_file(filename:join([AppPath, <<"metadata">>, <<"app.json">>])),
     {'ok', Schema} = kz_json_schema:load(<<"app">>),
-    case jesse:validate_with_schema(Schema, kz_json:public_fields(kz_json:decode(JSON))) of
+    case jesse:validate_with_schema(Schema, kz_doc:public_fields(kz_json:decode(JSON))) of
         {'ok', _}=OK -> OK;
         {'error', Errors} ->
             {'invalid_data', [Error || {'data_invalid', _, Error, _, _} <- Errors]}

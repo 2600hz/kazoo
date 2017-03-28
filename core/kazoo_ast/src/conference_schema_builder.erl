@@ -7,7 +7,7 @@
         ]).
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(DEBUG(_Fmt, _Args), 'ok').
 %%-define(DEBUG(Fmt, Args), io:format([$~, $p, $  | Fmt] ++ "~n", [?LINE | Args])).
@@ -435,7 +435,7 @@ arg_list_has_data_var(DataName, Aliases, [_H|T]) ->
 
 arg_to_key(?BINARY_MATCH(Arg)) ->
     Val = kz_ast_util:binary_match_to_binary(Arg),
-    case kz_json:is_private_key(Val) of
+    case kz_doc:is_private_key(Val) of
         'true' ->
             ?DEBUG("skipping private key ~s", [Val]),
             'undefined';

@@ -306,7 +306,7 @@ load_merge(_DocId, _DataJObj, Context, _Options, BypassJObj) ->
 -spec merge(kz_json:object(), kz_json:object(), cb_context:context()) ->
                    cb_context:context().
 merge(DataJObj, JObj, Context) ->
-    PrivJObj = kz_json:private_fields(JObj),
+    PrivJObj = kz_doc:private_fields(JObj),
     handle_datamgr_success(kz_json:merge_jobjs(PrivJObj, DataJObj), Context).
 
 -type validate_fun() :: fun((ne_binary(), cb_context:context()) -> cb_context:context()).
@@ -1072,7 +1072,7 @@ handle_json_success(JObj, Context) ->
     handle_json_success(JObj, Context, cb_context:req_verb(Context)).
 
 handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
-    RespData = [kz_json:public_fields(JObj)
+    RespData = [kz_doc:public_fields(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
@@ -1087,7 +1087,7 @@ handle_json_success([_|_]=JObjs, Context, ?HTTP_PUT) ->
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
 handle_json_success([_|_]=JObjs, Context, _Verb) ->
-    RespData = [kz_json:public_fields(JObj)
+    RespData = [kz_doc:public_fields(JObj)
                 || JObj <- JObjs,
                    not kz_doc:is_soft_deleted(JObj)
                ],
@@ -1105,7 +1105,7 @@ handle_json_success(JObj, Context, ?HTTP_PUT) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ,{fun cb_context:set_resp_headers/2, RespHeaders}
                        ]);
@@ -1113,7 +1113,7 @@ handle_json_success(JObj, Context, _Verb) ->
     cb_context:setters(Context
                       ,[{fun cb_context:set_doc/2, JObj}
                        ,{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
                        ,{fun cb_context:set_resp_etag/2, rev_to_etag(JObj)}
                        ]).
 

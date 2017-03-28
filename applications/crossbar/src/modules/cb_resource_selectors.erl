@@ -350,7 +350,7 @@ maybe_handle_load_failure(Context, 404) ->
     JObj = kz_doc:set_type(kz_doc:set_id(cb_context:req_data(Context),?RULES_PVT_TYPE), ?RULES_PVT_TYPE),
     cb_context:setters(Context
                       ,[{fun cb_context:set_resp_status/2, 'success'}
-                       ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+                       ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
                        ,{fun cb_context:set_doc/2, crossbar_doc:update_pvt_parameters(JObj, Context)}
                        ]);
 maybe_handle_load_failure(Context, _RespCode) -> Context.

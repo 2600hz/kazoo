@@ -262,7 +262,7 @@ get_disposition(MediaName, Context) ->
 -spec normalize_view_results(kz_json:object(), kz_json:objects()) ->
                                     kz_json:objects().
 normalize_view_results(JObj, Acc) ->
-    [kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
+    [kz_doc:public_fields(kz_json:get_value(<<"doc">>, JObj))|Acc].
 
 -spec get_view_and_filter(cb_context:context()) -> {ne_binary(), ne_binaries(), [<<>>]}.
 get_view_and_filter(Context) ->

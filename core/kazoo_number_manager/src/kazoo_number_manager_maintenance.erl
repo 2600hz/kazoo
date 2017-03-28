@@ -441,8 +441,8 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
     of
         true -> ?LOG("~s already synced", [DID]);
         false ->
-            JObj = kz_json:merge_jobjs(kz_json:public_fields(NumDoc)
-                                      ,kz_json:public_fields(Doc)
+            JObj = kz_json:merge_jobjs(kz_doc:public_fields(NumDoc)
+                                      ,kz_doc:public_fields(Doc)
                                       ),
             ?LOG("syncing ~s", [DID]),
             Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
@@ -517,8 +517,8 @@ get_DIDs_assigned_to(NumberDb, AssignedTo) ->
 
 -spec have_same_pvt_values(kz_json:object(), kz_json:object()) -> boolean().
 have_same_pvt_values(NumDoc0, Doc0) ->
-    NumDoc = cleanse(kz_json:private_fields(NumDoc0)),
-    Doc = cleanse(kz_json:private_fields(Doc0)),
+    NumDoc = cleanse(kz_doc:private_fields(NumDoc0)),
+    Doc = cleanse(kz_doc:private_fields(Doc0)),
     kz_json:are_equal(NumDoc, Doc).
 
 -spec cleanse(kz_json:object()) -> kz_json:object().

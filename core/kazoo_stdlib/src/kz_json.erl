@@ -14,7 +14,6 @@
 
 -export([to_proplist/1, to_proplist/2]).
 -export([to_map/1, to_map/2, from_map/1]).
--export([to_querystring/1]).
 -export([recursive_to_proplist/1]).
 
 -export([get_first_defined/2, get_first_defined/3]).
@@ -58,9 +57,7 @@
         ,values/1, values/2
         ]).
 -export([get_keys/1, get_keys/2]).
--export([get_public_keys/1
-        ,get_private_keys/1
-        ]).
+
 -export([set_value/3, set_values/2
         ,insert_value/3, insert_values/2
         ,new/0
@@ -85,10 +82,6 @@
         ,normalize_key/1
         ,are_equal/2
         ]).
--export([public_fields/1
-        ,private_fields/1
-        ,is_private_key/1
-        ]).
 
 -export([encode/1, encode/2]).
 -export([decode/1, decode/2]).
@@ -105,7 +98,7 @@
 -export([order_by/3]).
 
 -include_lib("kazoo/include/kz_log.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export_type([json_proplist/0
              ,object/0, objects/0
@@ -492,57 +485,6 @@ recursive_from_map(List) when is_list(List) ->
     [recursive_from_map(Item) || Item <- List];
 recursive_from_map(Else) -> Else.
 
-
-%% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
-%%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
--spec to_querystring(object()) -> iolist().
-to_querystring(JObj) -> to_querystring(JObj, <<>>).
-
-%% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
--spec to_querystring(object(), iolist() | binary()) -> iolist().
-to_querystring(JObj, Prefix) ->
-    {Vs, Ks} = get_values(JObj),
-    fold_kvs(Ks, Vs, Prefix, []).
-
-%% foreach key/value pair, encode the key/value with the prefix and prepend the &
-%% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
-%% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(keys(), json_terms(), binary() | iolist(), iolist()) -> iolist().
-fold_kvs([], [], _, Acc) -> Acc;
-fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
-fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
-    fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
-
--spec encode_kv(iolist() | binary(), key(), json_term() | json_terms()) -> iolist().
-%% If a list of values, use the []= as a separator between the key and each value
-encode_kv(Prefix, K, Vs) when is_list(Vs) ->
-    encode_kv(Prefix, kz_term:to_binary(K), Vs, <<"[]=">>, []);
-%% if the value is a "simple" value, just encode it (url-encoded)
-encode_kv(Prefix, K, V) when is_binary(V);
-                             is_number(V) ->
-    encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
-encode_kv(Prefix, K, 'true') ->
-    encode_kv(Prefix, K, <<"=">>, <<"true">>);
-encode_kv(Prefix, K, 'false') ->
-    encode_kv(Prefix, K, <<"=">>, <<"false">>);
-
-%% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
-%% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [K]);
-%% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
-
--spec encode_kv(iolist() | binary(), key(), ne_binary(), string() | binary()) -> iolist().
-encode_kv(<<>>, K, Sep, V) -> [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];
-encode_kv(Prefix, K, Sep, V) -> [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>, Sep, kz_term:to_binary(V)].
-
--spec encode_kv(iolist() | binary(), key(), [string()], ne_binary(), iolist()) -> iolist().
-encode_kv(Prefix, K, [V], Sep, Acc) ->
-    lists:reverse([ encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
-encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
-    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
-encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
-
 -spec get_json_value(path(), object()) -> api_object().
 -spec get_json_value(path(), object(), Default) -> Default | object().
 get_json_value(Key, JObj) -> get_json_value(Key, JObj, 'undefined').
@@ -756,20 +698,6 @@ get_keys(Keys, JObj) -> get_keys1(get_json_value(Keys, JObj, new())).
 -spec get_keys1(list() | object() | flat_object()) -> keys() | [keys(),...] | [].
 get_keys1(KVs) when is_list(KVs) -> lists:seq(1, length(KVs));
 get_keys1(JObj) -> props:get_keys(to_proplist(JObj)).
-
--spec get_public_keys(object()) -> keys().
-get_public_keys(JObj) ->
-    [Key
-     || Key <- get_keys(JObj),
-        not is_private_key(Key)
-    ].
-
--spec get_private_keys(object()) -> keys().
-get_private_keys(JObj) ->
-    [Key
-     || Key <- get_keys(JObj),
-        is_private_key(Key)
-    ].
 
 -spec get_ne_value(path(), object() | objects()) -> api_json_term().
 -spec get_ne_value(path(), object() | objects(), Default) -> json_term() | Default.
@@ -1199,48 +1127,6 @@ search_replace_format({Old, New}, JObj) ->
 search_replace_format({Old, New, Formatter}, JObj) when is_function(Formatter, 1) ->
     V = get_value(Old, JObj),
     set_value(New, Formatter(V), delete_key(Old, JObj)).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any private fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec public_fields(object() | objects()) -> object() | objects().
-public_fields(JObjs) when is_list(JObjs) ->
-    [public_fields(JObj) || JObj <- JObjs];
-public_fields(JObj) ->
-    PubJObj = filter(fun({K, _}) -> (not is_private_key(K)) end, JObj),
-    case kz_doc:id(JObj) of
-        'undefined' -> PubJObj;
-        Id -> set_value(<<"id">>, Id, PubJObj)
-    end.
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will filter any public fields out of the provided
-%% json proplist
-%% @end
-%%--------------------------------------------------------------------
--spec private_fields(object() | objects()) -> object() | objects().
-private_fields(JObjs) when is_list(JObjs) ->
-    [private_fields(JObj) || JObj <- JObjs];
-private_fields(JObj) ->
-    filter(fun({K, _}) -> is_private_key(K) end, JObj).
-
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% This function will return a boolean, 'true' if the provided key is
-%% considered private; otherwise 'false'
-%% @end
-%%--------------------------------------------------------------------
--spec is_private_key(key()) -> boolean().
-is_private_key(<<"_", _/binary>>) -> 'true';
-is_private_key(<<"pvt_", _/binary>>) -> 'true';
-is_private_key(_) -> 'false'.
 
 -spec flatten(object() | objects()) -> flat_object() | flat_objects().
 flatten(L) when is_list(L) -> [flatten(JObj) || JObj <- L];

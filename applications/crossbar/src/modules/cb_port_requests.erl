@@ -28,7 +28,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
 -include_lib("kazoo_number_manager/include/knm_port_request.hrl").
 
@@ -366,7 +366,7 @@ patch_then_notify(Context, PortId, PortState) ->
 do_patch(Context) ->
     UpdatedDoc =
         kz_json:merge_recursive(cb_context:doc(Context)
-                               ,kz_json:public_fields(cb_context:req_data(Context))
+                               ,kz_doc:public_fields(cb_context:req_data(Context))
                                ),
 
     Context1  = crossbar_doc:save(update_port_request_for_save(Context, UpdatedDoc)),

@@ -29,7 +29,7 @@
                   'put' |
                   'trace'.
 
--type http_body() :: string() | binary().
+-type http_body() :: iodata().
 
 -type httpc_result() :: {any(), kz_proplist(), http_body()} |
                         {string(), string() | binary()} |
