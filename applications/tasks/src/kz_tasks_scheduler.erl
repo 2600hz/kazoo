@@ -173,17 +173,18 @@ attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_output_header(kz_json:object()) -> kz_csv:row().
+-spec get_output_header(kz_json:object()) -> kz_tasks:output_header().
 get_output_header(API) ->
     Action = kz_json:get_value(<<"action">>, API),
     case tasks_bindings:apply(API, <<"output_header">>, [Action]) of
         [[_|_]=Header] -> Header;
+        [{replace, [_|_]}=Header] -> Header;
         [{'EXIT', {_E, _R}}] ->
             lager:debug("output_header not found for ~s (~p), using default", [Action, _E]),
-            ?OUTPUT_CSV_HEADER_ROW;
+            [?OUTPUT_CSV_HEADER_ERROR];
         _NotARow ->
             lager:debug("bad CSV output header ~p, using default", [_NotARow]),
-            ?OUTPUT_CSV_HEADER_ROW
+            [?OUTPUT_CSV_HEADER_ERROR]
     end.
 
 %%--------------------------------------------------------------------
@@ -241,6 +242,7 @@ handle_call({'start_task', TaskId}, _From, State) ->
             end;
         [#{started := Started}]
           when Started /= 'undefined' ->
+            lager:info("task ~s exists already", [TaskId]),
             ?REPLY(State, {'error', 'already_started'})
     end;
 

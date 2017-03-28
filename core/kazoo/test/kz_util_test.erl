@@ -457,3 +457,19 @@ uniq_test_() ->
                                 ])
                   )
     ].
+
+
+pos_test_() ->
+    [?_assertEqual(-1, kz_util:pos($A, <<>>))
+    ,?_assertEqual(0, kz_util:pos($A, <<$A>>))
+    ,?_assertEqual(0, kz_util:pos($,, <<",,,">>))
+    ,?_assertEqual(1, kz_util:pos($,, <<"A,,">>))
+    ,?_assertEqual(2, kz_util:pos($', <<"A,'">>))
+    ,?_assertEqual(-1, kz_util:pos($B, <<"A,'">>))
+    ].
+
+closests_test_() ->
+    [?_assertEqual([], kz_util:closests([$A], <<>>))
+    ,?_assertEqual([{$B,1}], kz_util:closests([$B,$i], <<"ABAAABA">>))
+    ,?_assertEqual([{$B,1}, {$i,6}], kz_util:closests([$B,$i], <<"ABAAABiA">>))
+    ].
