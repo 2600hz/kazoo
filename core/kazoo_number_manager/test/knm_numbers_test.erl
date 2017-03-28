@@ -202,8 +202,8 @@ reserve_test_() ->
      }
     ,?_assertEqual(true,  knm_phone_number:is_dirty(pn_x(1, Ret1)))
     ,?_assertEqual(false, knm_phone_number:is_dirty(pn_x(1, Ret2)))
-    ,{"verify number is still in service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
+    ,{"verify number is now reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret2)))
      }
     ].
 
