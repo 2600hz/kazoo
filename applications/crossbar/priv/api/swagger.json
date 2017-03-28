@@ -7891,12 +7891,12 @@
                     "type": "boolean"
                 },
                 "default_environment": {
-                    "default": [],
+                    "default": "",
                     "description": "braintree default environment",
                     "type": "string"
                 },
                 "default_merchant_id": {
-                    "default": [],
+                    "default": "",
                     "description": "braintree default merchant id",
                     "type": "string"
                 },
@@ -10356,7 +10356,7 @@
                 "proxy_port": {
                     "default": 24517,
                     "description": "media proxy port",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "proxy_store_acls": {
                     "default": [
@@ -14112,6 +14112,9 @@
         }
     },
     "paths": {
+        "/about": {
+            "get": {}
+        },
         "/accounts": {
             "put": {
                 "parameters": [
@@ -22000,6 +22003,20 @@
                 ]
             }
         },
+        "/auth/authorize": {
+            "put": {}
+        },
+        "/auth/callback": {
+            "put": {}
+        },
+        "/auth/links": {
+            "delete": {},
+            "get": {},
+            "post": {}
+        },
+        "/auth/tokeninfo": {
+            "get": {}
+        },
         "/google_auth": {
             "put": {
                 "parameters": {
@@ -22158,6 +22175,7 @@
             }
         },
         "/shared_auth": {
+            "get": {},
             "put": {
                 "parameters": [
                     {
@@ -22206,6 +22224,9 @@
                     }
                 ]
             }
+        },
+        "/system_configs": {
+            "get": {}
         },
         "/system_configs/{SYSTEM_CONFIG_ID}": {
             "delete": {
@@ -22269,6 +22290,9 @@
                 ]
             }
         },
+        "/templates": {
+            "get": {}
+        },
         "/templates/{TEMPLATE_NAME}": {
             "delete": {
                 "parameters": [
@@ -22284,6 +22308,10 @@
                     }
                 ]
             }
+        },
+        "/token_auth": {
+            "delete": {},
+            "get": {}
         },
         "/ubiquiti_auth": {
             "put": {
