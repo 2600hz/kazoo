@@ -25,5 +25,8 @@
 # Increase number of concurrent ports / sockets
 ##-env ERL_MAX_PORTS 4096
 
+# When crashing, write dump with highest priority
+-env ERL_CRASH_DUMP_NICE 1
+
 -s lager
 -s kazoo_apps_app
