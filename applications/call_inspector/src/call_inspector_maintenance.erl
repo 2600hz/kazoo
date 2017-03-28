@@ -77,7 +77,7 @@ callid_details(CallId) ->
             ],
     case kz_amqp_worker:call_collect(Props
                                     ,fun kapi_inspector:publish_lookup_req/1
-                                    ,{'call_inspector', 'true'}
+                                    ,{call_inspector, fun kapi_inspector:lookup_resp_v/1, true}
                                     )
     of
         {'ok', JObjs} -> print_jobjs(JObjs);

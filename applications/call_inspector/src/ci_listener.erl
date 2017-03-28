@@ -27,7 +27,7 @@
 -type state() :: #state{}.
 
 -define(BINDINGS, [{'self', []}
-                  ,{'inspector', []}
+                  ,{'inspector', ['federate']}
                   ]).
 -define(RESPONDERS, [{'ci_lookup_req'
                      ,[{<<"call_inspector">>, <<"lookup_req">>}]
