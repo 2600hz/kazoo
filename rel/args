@@ -13,9 +13,6 @@
 # Start a pool of asynchronous IO threads
 +A 25
 
-# Comment this line out if you want the Erlang shell
-+Bd
-
 # Treat error_logger:warning_msg/2 as warnings instead of errors (default)
 +W w
 
