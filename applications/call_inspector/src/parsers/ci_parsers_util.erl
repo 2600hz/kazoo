@@ -30,7 +30,7 @@
 -spec timestamp() -> float().
 timestamp() ->
     {_, _, Micro} = os:timestamp(),
-    1.0e-6 * kz_util:to_integer(Micro) +
+    kz_util:to_integer(Micro) / ?MICROSECONDS_IN_SECOND +
         kz_util:current_tstamp().
 
 -spec timestamp(ne_binary() | kz_now()) -> api_float().
@@ -38,7 +38,7 @@ timestamp(<<YYYY:4/binary, "-", MM:2/binary, "-", DD:2/binary, "T"
             ,HH:2/binary, ":", MMM:2/binary, ":", SS:2/binary, "."
             ,Micro:6/binary, "+", _H:2/binary, ":", _M:2/binary, " ", _/binary
           >>) ->
-    1.0e-6 * kz_util:to_integer(Micro) +
+    kz_util:to_integer(Micro) / ?MICROSECONDS_IN_SECOND +
         calendar:datetime_to_gregorian_seconds(
           {{kz_util:to_integer(YYYY), kz_util:to_integer(MM), kz_util:to_integer(DD)}
           ,{kz_util:to_integer(HH), kz_util:to_integer(MMM), kz_util:to_integer(SS)}
