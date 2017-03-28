@@ -1,14 +1,17 @@
 %% -*- coding: utf-8 -*-
--module(ci_chunk_tests).
+-module(ci_chunk_test).
 
 %% ci_chunk_tests: tests for module ci_chunk.
 
 -include_lib("eunit/include/eunit.hrl").
 
--export([ chunks_1/1
-        , chunks_2/1
-        , chunks_3/1
-        , chunks_4/1
+-export([chunks_1/1
+        ,chunks_2/1
+        ,chunks_3/1
+        ,chunks_4/1
+        ,chunks_5/1
+        ,chunks_6/1
+        ,chunks_7/1
         ]).
 
 %% API tests.
@@ -16,40 +19,78 @@
 json_test_() ->
     lists:flatmap(
       fun (Data1) ->
-              [ ?_assertEqual(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
-                || I <- lists:seq(1, Data1('count'))
+              Txt = lists:flatten(io_lib:format("For ~p", [Data1])),
+              [{Txt ++ " chunk " ++ integer_to_list(I)
+               ,?_assert(kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I)))))
+                %% ,?_assert(
+                %%     begin
+                %%         io:format(user, "\n>L> ~s\n\n", [kz_json:encode(Data1(I))]),
+                %%         io:format(user, "\n>R> ~s\n\n", [kz_json:encode(ci_chunk:to_json(ci_chunk:from_json(Data1(I))))]),
+                %%         kz_json:are_equal(Data1(I), ci_chunk:to_json(ci_chunk:from_json(Data1(I))))
+                %%     end
+                %%    )
+               }
+               || I <- lists:seq(1, Data1('count'))
               ]
       end,
-      [fun chunks_1/1
-      ,fun chunks_2/1
-      ,fun chunks_3/1
-      ,fun chunks_4/1
+      [fun ?MODULE:chunks_1/1
+      ,fun ?MODULE:chunks_2/1
+      ,fun ?MODULE:chunks_3/1
+      ,fun ?MODULE:chunks_4/1
+      ,fun ?MODULE:chunks_5/1
+      ,fun ?MODULE:chunks_6/1
+      ,fun ?MODULE:chunks_7/1
       ]).
 
 reorder_dialog_1_test_() ->
+    Data1 = fun ?MODULE:chunks_1/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_1()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_1/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_2_test_() ->
+    Data1 = fun ?MODULE:chunks_2/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_2()),
-    reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9060">>, fun chunks_2/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9060">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9060">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_3_test_() ->
+    Data1 = fun ?MODULE:chunks_3/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_3()),
-    reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, Chunks)
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks))
-        ++ reorder_dialog(<<"10.26.0.182:9061">>, fun chunks_3/1, kz_term:shuffle_list(Chunks)).
+    reorder_dialog(<<"10.26.0.182:9061">>, Data1, Chunks)
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(<<"10.26.0.182:9061">>, Data1, kz_term:shuffle_list(Chunks)).
 
 reorder_dialog_4_test_() ->
+    Data1 = fun ?MODULE:chunks_4/1,
     Chunks = lists:map(fun ci_chunk:from_json/1, chunks_4()),
-    reorder_dialog(<<"192.168.56.42:9061">>, fun chunks_4/1, Chunks).
+    reorder_dialog(<<"192.168.56.42:9061">>, Data1, Chunks).
+
+reorder_dialog_5_test_() ->
+    Data1 = fun ?MODULE:chunks_5/1,
+    [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_5()),
+    reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C2, C1]).
+
+reorder_dialog_6_test_() ->
+    Data1 = fun ?MODULE:chunks_6/1,
+    [C1, C2] = lists:map(fun ci_chunk:from_json/1, chunks_6()),
+    reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C1, C2])
+        ++ reorder_dialog(<<"104.237.144.93:9061">>, Data1, [C2, C1]).
+
+reorder_dialog_7_test_() ->
+    Data1 = fun ?MODULE:chunks_7/1,
+    Chunks = lists:map(fun ci_chunk:from_json/1, chunks_7()),
+    [RefParser] = parsers(Chunks),
+    reorder_dialog(RefParser, Data1, Chunks)
+        ++ reorder_dialog(RefParser, Data1, kz_term:shuffle_list(Chunks))
+        ++ reorder_dialog(RefParser, Data1, kz_term:shuffle_list(Chunks)).
 
 %% Internals
 
 reorder_dialog(RefParser, Data1, Chunks) ->
+    Txt0 = lists:flatten(io_lib:format("For ~p", [Data1])),
     Reordered = ci_chunk:do_reorder_dialog(RefParser, Chunks),
 
     %% JObjs = kz_json:encode(lists:map(fun ci_chunk:to_json/1,Reordered)),
@@ -59,32 +100,38 @@ reorder_dialog(RefParser, Data1, Chunks) ->
 
     Labels = [kz_json:get_value(<<"label">>, Data1(I)) || I <- lists:seq(1, Data1('count'))],
     LabelsReordered = [ci_chunk:label(Chunk) || Chunk <- Reordered],
-    [ ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))
-    , ?_assertEqual(Data1('count'), length(Reordered))
-    , ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))
-    , ?_assertEqual(Labels, LabelsReordered)
+    [{Txt0, ?_assertEqual(RefParser, ci_chunk:pick_ref_parser(Chunks))}
+    ,{Txt0, ?_assertEqual(Data1('count'), length(Reordered))}
+    ,{Txt0, ?_assertEqual(Data1('entities'), ci_chunk:get_dialog_entities(Reordered))}
+    ,{Txt0, ?_assertEqual(Labels, LabelsReordered)}
     ] ++
         lists:append(
-          [ [ ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))
-            , ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))
-            , ?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))
-            , ?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))
-            , ?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))
-            , ?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))
-            , ?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))
-            , ?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))
-            , ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))
-            , ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))
-            , ?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))
-            ]
-            || I <- lists:seq(1, Data1('count'))
-                   , begin
-                         C = ci_chunk:from_json(Data1(I)),
-                         R = lists:nth(I, Reordered),
-                         'true'
-                     end
-          ]
-         ).
+          [[{Txt, ?_assertEqual(ci_chunk:src_ip(C), ci_chunk:src_ip(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:dst_ip(C), ci_chunk:dst_ip(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:src_port(C), ci_chunk:src_port(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:dst_port(C), ci_chunk:dst_port(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:call_id(C), ci_chunk:call_id(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:timestamp(C), ci_chunk:timestamp(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:ref_timestamp(C), ci_chunk:ref_timestamp(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:label(C), ci_chunk:label(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:data(C), ci_chunk:data(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:parser(C), ci_chunk:parser(R))}
+           ,{Txt, ?_assertEqual(ci_chunk:c_seq(C), ci_chunk:c_seq(R))}
+           ]
+           || I <- lists:seq(1, Data1('count')),
+              begin
+                  C = ci_chunk:from_json(Data1(I)),
+                  R = lists:nth(I, Reordered),
+                  Txt = Txt0 ++ " chunk " ++ integer_to_list(I),
+                  true
+              end
+          ]).
+
+parsers(Chunks) ->
+    sets:to_list(
+      sets:from_list(
+        [ci_chunk:parser(Chunk) || Chunk <- Chunks]
+       )).
 
 
 chunks_3('count') -> 8;
@@ -1896,5 +1943,216 @@ chunks_4() ->
      chunks_4(17),
      chunks_4(18),
      chunks_4(19)].
+
+
+chunks_5() -> [chunks_5(1), chunks_5(2)].
+chunks_5(count) -> length(chunks_5());
+chunks_5(entities) -> [<<"104.237.144.93:5060">>, <<"104.237.144.93:11000">>];
+chunks_5(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"10 OPTIONS">>
+       ,<<"call-id">> => <<"2296e6ac231dc1f0-17861@104.237.144.93">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"OPTIONS sip:104.237.144.93:11000 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"OPTIONS sip:104.237.144.93:11000 SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bKb03a.a7adf2a6000000000000000000000000.0">>
+                     ,<<"To: <sip:104.237.144.93:11000>">>
+                     ,<<"From: <sip:sipcheck@apps001.ewr.sb.2600hz.com>;tag=58381c399f3f4cfffb20e60f3e6f0265-1edf">>
+                     ,<<"CSeq: 10 OPTIONS">>
+                     ,<<"Call-ID: 2296e6ac231dc1f0-17861@104.237.144.93">>
+                     ,<<"Max-Forwards: 70">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657429461.0">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657429461
+       });
+
+chunks_5(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"10 OPTIONS">>
+       ,<<"call-id">> => <<"2296e6ac231dc1f0-17861@104.237.144.93">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 200 OK">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 200 OK">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bKb03a.a7adf2a6000000000000000000000000.0">>
+                     ,<<"From: <sip:sipcheck@apps001.ewr.sb.2600hz.com>;tag=58381c399f3f4cfffb20e60f3e6f0265-1edf">>
+                     ,<<"To: <sip:104.237.144.93:11000>;tag=Dv4gyUcma547B">>
+                     ,<<"Call-ID: 2296e6ac231dc1f0-17861@104.237.144.93">>
+                     ,<<"CSeq: 10 OPTIONS">>
+                     ,<<"Contact: <sip:104.237.144.93:11000>">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Accept: application/sdp">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657429461.1">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657429461
+       }).
+
+
+chunks_6() -> [chunks_6(1), chunks_6(2)].
+chunks_6(count) -> length(chunks_6());
+chunks_6(entities) -> [<<"104.237.144.93:7000">>, <<"104.237.144.93:11000">>];
+chunks_6(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"2 BYE">>
+       ,<<"call-id">> => <<"83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"BYE sip:7948@104.237.144.93:11000;transport=udp SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"BYE sip:7948@104.237.144.93:11000;transport=udp SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93:7000;branch=z9hG4bK6283.c52d1b9022e00c81053288ca5b92f09d.0">>
+                     ,<<"Via: SIP/2.0/UDP 192.168.1.2:54690;received=67.180.78.125;branch=z9hG4bK-524287-1---cada5e002096c973;rport=54690">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"Contact: <sip:darren_soft@67.180.78.125:54690;rinstance=fb81a6d2b51c24ba>">>
+                     ,<<"To: <sip:7948@4a6863.sip.sandbox.2600hz.com>;tag=QQpga8pgH7gyF">>
+                     ,<<"From: <sip:darren_soft@4a6863.sip.sandbox.2600hz.com>;tag=8f71823a">>
+                     ,<<"Call-ID: 83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+                     ,<<"CSeq: 2 BYE">>
+                     ,<<"User-Agent: Bria 4 release 4.7.0 stamp 83078">>
+                     ,<<"Content-Length: 0">>
+                     ,<<"X-AUTH-IP: 67.180.78.125">>
+                     ,<<"X-AUTH-PORT: 54690">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657597518.515564">>
+       ,<<"src">> => <<"104.237.144.93:7000">>
+       ,<<"timestamp">> => 63657597518
+       });
+
+chunks_6(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"2 BYE">>
+       ,<<"call-id">> => <<"83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+       ,<<"dst">> => <<"104.237.144.93:7000">>
+       ,<<"label">> => <<"SIP/2.0 200 OK">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 200 OK">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93:7000;branch=z9hG4bK6283.c52d1b9022e00c81053288ca5b92f09d.0">>
+                     ,<<"Via: SIP/2.0/UDP 192.168.1.2:54690;received=67.180.78.125;branch=z9hG4bK-524287-1---cada5e002096c973;rport=54690">>
+                     ,<<"From: <sip:darren_soft@4a6863.sip.sandbox.2600hz.com>;tag=8f71823a">>
+                     ,<<"To: <sip:7948@4a6863.sip.sandbox.2600hz.com>;tag=QQpga8pgH7gyF">>
+                     ,<<"Call-ID: 83078MTBlNWM5YWVmZDk0NWRkYWQ5NGQyOTM2YWIzMTQzMmQ">>
+                     ,<<"CSeq: 2 BYE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657597518.531">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657597518
+       }).
+
+
+chunks_7() -> [chunks_7(1), chunks_7(2), chunks_7(3), chunks_7(4)].
+chunks_7(count) -> length(chunks_7());
+chunks_7(entities) -> [<<"104.237.144.93:5060">>, <<"104.237.144.93:11000">>];
+chunks_7(1) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"INVITE sip:9990048188880071@104.237.144.93 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"INVITE sip:9990048188880071@104.237.144.93 SIP/2.0">>
+                     ,<<"Record-Route: <sip:104.237.144.93;lr=on;ftag=DVEFCVLI>">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"Contact: <sip:trunk@80.82.77.180:40482>;+sip.instance=\"<urn:uuid:4473a234-5a1c-4708-9729-8952445196c0>\"">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"Allow: INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, NOTIFY, MESSAGE, REGISTER, SUBSCRIBE, INFO">>
+                     ,<<"Content-Type: application/sdp">>
+                     ,<<"Supported: replaces">>
+                     ,<<"User-Agent: Cisco-SIPGateway/IOS-12.x">>
+                     ,<<"Allow-Events: hold, talk, conference">>
+                     ,<<"Content-Length: 0">>
+                     ,<<"X-AUTH-IP: 80.82.77.180">>
+                     ,<<"X-AUTH-PORT: 40482">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540282.88624">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657540282
+       });
+
+chunks_7(2) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 100 Trying">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 100 Trying">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"Record-Route: <sip:104.237.144.93;lr=on;ftag=DVEFCVLI>">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540282.88642">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657540282
+       });
+
+chunks_7(3) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 INVITE">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:5060">>
+       ,<<"label">> => <<"SIP/2.0 407 Proxy Authentication Required">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"SIP/2.0 407 Proxy Authentication Required">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Via: SIP/2.0/UDP 80.82.77.180:40482;received=80.82.77.180;branch=z9hG4bK-524287-1---321bda12cf15b137;rport=40482">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>;tag=KU273F3tNU1rp">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 INVITE">>
+                     ,<<"User-Agent: 2600hz">>
+                     ,<<"Accept: application/sdp">>
+                     ,<<"Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REGISTER, REFER, NOTIFY, PUBLISH, SUBSCRIBE">>
+                     ,<<"Supported: path, replaces">>
+                     ,<<"Allow-Events: talk, hold, conference, presence, as-feature-event, dialog, line-seize, call-info, sla, include-session-description, presence.winfo, message-summary, refer">>
+                     ,<<"Proxy-Authenticate: Digest realm=\"104.237.144.93\">> nonce=\"3f0c7d4e-1036-11e7-8998-8543a0a6a878\">> algorithm=MD5, qop=\"auth\"">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540283.01826">>
+       ,<<"src">> => <<"104.237.144.93:11000">>
+       ,<<"timestamp">> => 63657540283
+       });
+
+chunks_7(4) ->
+    kz_json:from_map(
+      #{<<"c_seq">> => <<"1 ACK">>
+       ,<<"call-id">> => <<"YVVIXTNGHMHIKYDTLBAHBXCW">>
+       ,<<"dst">> => <<"104.237.144.93:11000">>
+       ,<<"label">> => <<"ACK sip:9990048188880071@104.237.144.93 SIP/2.0">>
+       ,<<"parser">> => <<"104.237.144.93:9061">>
+       ,<<"raw">> => [<<"ACK sip:9990048188880071@104.237.144.93 SIP/2.0">>
+                     ,<<"Via: SIP/2.0/UDP 104.237.144.93;branch=z9hG4bK4f7f.fa988d55e5c136baf2b89b62f1f7a2d0.0">>
+                     ,<<"Max-Forwards: 50">>
+                     ,<<"To: <sip:9990048188880071@104.237.144.93>;tag=KU273F3tNU1rp">>
+                     ,<<"From: <sip:trunk@104.237.144.93>;tag=DVEFCVLI">>
+                     ,<<"Call-ID: YVVIXTNGHMHIKYDTLBAHBXCW">>
+                     ,<<"CSeq: 1 ACK">>
+                     ,<<"Content-Length: 0">>
+                     ]
+       ,<<"ref_timestamp">> => <<"63657540283.018394">>
+       ,<<"src">> => <<"104.237.144.93:5060">>
+       ,<<"timestamp">> => 63657540283
+       }).
 
 %% End of Module.

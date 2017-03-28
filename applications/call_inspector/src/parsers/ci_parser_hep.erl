@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (c) 2010-2017, 2600Hz
+%%% @copyright (c) 2015-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -140,7 +140,7 @@ handle_info(_Info, State) ->
 -spec terminate(any(), state()) -> 'ok'.
 terminate(_Reason, #state{socket = Socket}) ->
     'ok' = gen_udp:close(Socket),
-    lager:debug("call inspector kamailio parser terminated: ~p", [_Reason]).
+    lager:debug("call inspector hep parser terminated: ~p", [_Reason]).
 
 %%--------------------------------------------------------------------
 %% @private

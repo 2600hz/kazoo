@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2012-2017, 2600Hz INC
+%%% @copyright (C) 2015-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% @end
@@ -27,9 +27,7 @@
         ,from_json/1
         ]).
 -export([is_chunk/1]).
--export([sort_by_timestamp/1
-        ,reorder_dialog/1
-        ]).
+-export([reorder_dialog/1]).
 -export([get_dialog_entities/1]).
 
 -ifdef(TEST).
@@ -37,17 +35,17 @@
 - export([pick_ref_parser/1]).
 -endif.
 
--record(ci_chunk, {call_id :: ne_binary()
+-record(ci_chunk, {call_id :: api_ne_binary()
                   ,data = [] :: ne_binaries()
-                  ,timestamp :: number()
-                  ,ref_timestamp :: number()
-                  ,src_ip :: ne_binary()
-                  ,src_port :: pos_integer()
-                  ,dst_ip :: ne_binary()
-                  ,dst_port :: pos_integer()
-                  ,parser :: ne_binary()
-                  ,label :: ne_binary()
-                  ,c_seq :: api_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
+                  ,timestamp :: api_float()
+                  ,ref_timestamp :: api_float()
+                  ,src_ip :: api_ne_binary()
+                  ,src_port :: api_pos_integer()
+                  ,dst_ip :: api_ne_binary()
+                  ,dst_port :: api_pos_integer()
+                  ,parser :: api_ne_binary()
+                  ,label :: api_ne_binary()
+                  ,c_seq :: api_ne_binary()  %% Parsing Kamailio logs: this can be undefined (DON'T parse them)
                   }).
 -type chunk() :: #ci_chunk{}.
 
@@ -89,12 +87,12 @@ setters(#ci_chunk{}=Chunk, Setters) ->
 append_data(#ci_chunk{data=D}=Chunk, Data) ->
     Chunk#ci_chunk{data=[Data|D]}.
 
--spec timestamp(chunk(), integer()) -> chunk().
+-spec timestamp(chunk(), api_float()) -> chunk().
 ?SETTER(timestamp).
--spec timestamp(chunk()) -> api_integer().
+-spec timestamp(chunk()) -> api_float().
 ?GETTER(timestamp).
 
--spec ref_timestamp(chunk()) -> api_number().
+-spec ref_timestamp(chunk()) -> float().
 ?GETTER(ref_timestamp).
 
 -spec src_ip(chunk(), ne_binary()) -> chunk().
@@ -234,8 +232,12 @@ do_reorder_dialog(RefParser, Chunks) ->
     GroupedByCSeq = lists:keysort(1, group_by(fun c_seq_number/1, Chunks)),
     lists:flatmap(fun({_CSeq, ByCSeq}) ->
                           {ByRefParser, Others} = sort_split_uniq(RefParser, ByCSeq),
+                          %% _ = [lager:debug(">>> ByRefParser ~s", [kz_json:encode(to_json(C))]) || C <- ByRefParser],
                           {Done, Rest} = first_pass(ByRefParser, Others),
+                          %% _ = [lager:debug(">>> Done ~s", [kz_json:encode(to_json(C))]) || C <- Done],
                           {ReallyDone, NewRest} = second_pass(Done, Rest),
+                          %% _ = [lager:debug(">>> ReallyDone ~s", [kz_json:encode(to_json(C))]) || C <- ReallyDone],
+                          %% _ = [lager:debug(">>> NewRest ~s", [kz_json:encode(to_json(C))]) || C <- NewRest],
                           ReallyDone ++ NewRest
                   end
                  ,GroupedByCSeq

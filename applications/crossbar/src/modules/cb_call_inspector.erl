@@ -138,7 +138,7 @@ inspect_call_id(CallId, Context) ->
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_inspector:publish_lookup_req/1
-                            ,fun kapi_inspector:lookup_resp_v/1
+                            ,{call_inspector, fun kapi_inspector:lookup_resp_v/1, true}
                             )
     of
         {'ok', JObj} ->
@@ -202,7 +202,7 @@ filter_cdr_ids(Ids) ->
           ],
     case kz_amqp_worker:call(Req
                             ,fun kapi_inspector:publish_filter_req/1
-                            ,fun kapi_inspector:filter_resp_v/1
+                            ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
                             )
     of
         {'ok', JObj} ->

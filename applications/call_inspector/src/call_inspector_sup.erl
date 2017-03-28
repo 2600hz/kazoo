@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2017, 2600Hz
+%%% @copyright (C) 2015-2017, 2600Hz
 %%% @doc
 %%%
 %%% @end
@@ -50,6 +50,7 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init(any()) -> sup_init_ret().
 init([]) ->
+    kz_util:set_startup(),
     RestartStrategy = 'one_for_one',
     MaxRestarts = 5,
     MaxSecondsBetweenRestarts = 10,
