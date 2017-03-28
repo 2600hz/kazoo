@@ -71,7 +71,17 @@ output_header(<<"list">>) ->
 output_header(<<"list_all">>) ->
     list_output_header();
 output_header(<<"dump">>) ->
-    list_output_header().
+    list_output_header();
+output_header(<<"import">>) ->
+    result_output_header();
+output_header(<<"assign_to">>) ->
+    result_output_header();
+output_header(<<"release">>) ->
+    result_output_header();
+output_header(<<"reserve">>) ->
+    result_output_header();
+output_header(<<"delete">>) ->
+    result_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
 cleanup(<<"list">>, _) -> ok;
@@ -91,6 +101,9 @@ cleanup(<<"assign_to">>, _) -> ok;
 cleanup(<<"release">>, _) -> ok;
 cleanup(<<"reserve">>, _) -> ok;
 cleanup(<<"delete">>, _) -> ok.
+
+result_output_header() ->
+    [list_output_header() | <<"error">>].
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -411,10 +424,8 @@ import(#{account_id := Account
               ,{module_name, ModuleName}
               ,{public_fields, kz_json:from_list(PublicFields)}
               ],
-    case handle_result(knm_number:create(E164, Options)) of
-        [] -> {[], sets:add_element(AccountId, AccountIds)};
-        E -> {E, AccountIds}
-    end.
+    Row = handle_result(E164, AuthAccountId, knm_number:create(E164, Options)),
+    {Row, sets:add_element(AccountId, AccountIds)}.
 
 %% @private
 additional_fields_to_json(Args) ->
@@ -464,7 +475,10 @@ assign_to(#{auth_account_id := AuthBy, account_id := Account}
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:move(Num, AccountId, Options)).
+    handle_result(Num, AuthBy, knm_number:move(Num, AccountId, Options)).
+
+select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
+select_account_id(_, AccountId) -> AccountId.
 
 select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
@@ -474,7 +488,7 @@ release(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:release(Num, Options)).
+    handle_result(Num, AuthBy, knm_number:release(Num, Options)).
 
 -spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 reserve(#{auth_account_id := AuthBy, account_id := Account}
@@ -485,30 +499,41 @@ reserve(#{auth_account_id := AuthBy, account_id := Account}
               ,{batch_run, true}
               ,{assign_to, select_account_id(AccountId0, Account)}
               ],
-    handle_result(knm_number:reserve(Num, Options)).
+    handle_result(Num, AuthBy, knm_number:reserve(Num, Options)).
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 delete(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(knm_number:delete(Num, Options)).
+    handle_result(Num, AuthBy, knm_number:delete(Num, Options)).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
--spec handle_result(knm_number_return()) -> kz_tasks:return().
-handle_result({'ok', _KNMNumber}) -> [];
-handle_result({'dry_run', _Services, _Charges}) -> <<"accept_charges">>;
-handle_result({'error', Reason})
+-spec handle_result(ne_binary(), ne_binary(), knm_number_return()) -> kz_tasks:return().
+handle_result(_, _, {ok, N}) ->
+    list_number_or_error(N, undefined);
+handle_result(Num, AuthBy, {dry_run, _Services, _Charges}) ->
+    list_number_or_error(Num, <<"accept_charges">>);
+handle_result(Num, AuthBy, {error, Reason})
   when is_atom(Reason) ->
-    kz_term:to_binary(Reason);
-handle_result({'error', KNMError}) ->
-    case knm_errors:message(KNMError) of
-        'undefined' -> knm_errors:error(KNMError);
-        Reason -> Reason
-    end.
+    list_number_or_error(Num, kz_term:to_binary(Reason));
+handle_result(Num, AuthBy, {error, KNMError}) ->
+    Reason = case knm_errors:message(KNMError) of
+                 undefined -> knm_errors:error(KNMError);
+                 R -> R
+             end,
+    list_number_or_error(Num, Reason).
+
+-spec list_number_or_error(knm_number:knm_number(), any(), undefined) -> kz_csv:row();
+                          (ne_binary(), ne_binary(), ne_binary()) -> kz_csv:row().
+
+list_number_or_error(N, undefined) ->
+    [list_number_rows(N) | undefined];
+list_number_or_error(Num, Error) ->
+    {ok, N} = knm_number:get(Num)
 
 %%--------------------------------------------------------------------
 %% @private
