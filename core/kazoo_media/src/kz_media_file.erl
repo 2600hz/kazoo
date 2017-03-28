@@ -88,7 +88,7 @@ proxy_uri(JObj, #media_store_path{db = Db
                'undefined' -> kz_network_utils:get_hostname();
                ProxyHostname -> ProxyHostname
            end,
-    Port = kapps_config:get_binary(?CONFIG_CAT, <<"proxy_port">>, 24517),
+    Port = kapps_config:get_integer(?CONFIG_CAT, <<"proxy_port">>, 24517),
     Permissions = case StreamType =:= <<"store">> of
                       'true' -> 'proxy_store';
                       'false' -> 'proxy_playback'

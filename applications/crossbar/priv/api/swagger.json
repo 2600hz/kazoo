@@ -7858,12 +7858,12 @@
                     "type": "boolean"
                 },
                 "default_environment": {
-                    "default": [],
+                    "default": "",
                     "description": "braintree default environment",
                     "type": "string"
                 },
                 "default_merchant_id": {
-                    "default": [],
+                    "default": "",
                     "description": "braintree default merchant id",
                     "type": "string"
                 },
@@ -10323,7 +10323,7 @@
                 "proxy_port": {
                     "default": 24517,
                     "description": "media proxy port",
-                    "type": "string"
+                    "type": "integer"
                 },
                 "proxy_store_acls": {
                     "default": [

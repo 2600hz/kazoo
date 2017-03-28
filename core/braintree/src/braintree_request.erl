@@ -17,8 +17,8 @@
 
 -type http_verb() :: 'put' | 'post' | 'get' | 'delete'.
 
--define(BT_DEFAULT_ENVIRONMENT, kapps_config:get_string(?CONFIG_CAT, <<"default_environment">>, [])).
--define(BT_DEFAULT_MERCHANT_ID, kapps_config:get_string(?CONFIG_CAT, <<"default_merchant_id">>, [])).
+-define(BT_DEFAULT_ENVIRONMENT, kapps_config:get_string(?CONFIG_CAT, <<"default_environment">>, "")).
+-define(BT_DEFAULT_MERCHANT_ID, kapps_config:get_string(?CONFIG_CAT, <<"default_merchant_id">>, "")).
 -define(BT_DEFAULT_PUBLIC_KEY, kapps_config:get_binary(?CONFIG_CAT, <<"default_public_key">>, <<>>)).
 -define(BT_DEFAULT_PRIVATE_KEY, kapps_config:get_binary(?CONFIG_CAT, <<"default_private_key">>, <<>>)).
 

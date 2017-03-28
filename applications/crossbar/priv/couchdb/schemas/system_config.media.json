@@ -79,7 +79,7 @@
         "proxy_port": {
             "default": 24517,
             "description": "media proxy port",
-            "type": "string"
+            "type": "integer"
         },
         "proxy_store_acls": {
             "default": [
