@@ -215,7 +215,8 @@ get_ne_binary_value(Key, Props, Default) ->
         V -> kz_term:to_binary(V)
     end.
 
--spec get_keys(kz_proplist()) -> kz_proplist_keys().
+-spec get_keys(kz_proplist()) -> kz_proplist_keys() | [].
+get_keys([]) -> [];
 get_keys(Props) -> [K || {K,_} <- Props].
 
 -spec get_all_values(kz_proplist_key(), kz_proplist()) -> kz_proplist_values().
