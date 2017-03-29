@@ -87,10 +87,10 @@ This regex will match 1 and any four digits (let's say 2001). The _data_ object 
 
     "data":{
         "collected":"12001"
-        ,"captured":["2001"]
+        ,"captures":["2001"]
     }
 
-The callflow metaflow module, in this case, would look at the "captured" list and take the first element. Using that, it would look up a callflow and, if found, ask a callflow app to execute that extension's callflow against the call (why, I'm not sure yet, but it is there).
+The callflow metaflow module, in this case, would look at the "captures" list and take the first element. Using that, it would look up a callflow and, if found, ask a callflow app to execute that extension's callflow against the call (why, I'm not sure yet, but it is there).
 
 ###### Binding Digit
 
