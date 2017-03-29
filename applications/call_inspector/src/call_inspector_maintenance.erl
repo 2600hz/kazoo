@@ -80,16 +80,16 @@ callid_details(CallId) ->
                                     ,{call_inspector, fun kapi_inspector:lookup_resp_v/1, true}
                                     )
     of
-        {'ok', JObjs} -> print_jobjs(JObjs);
-        {'timeout', []} ->
+        {ok, JObjs} -> print_jobjs(JObjs);
+        {timeout, []} ->
             io:format("Not found: \"~s\"\n", [CallId]);
         {timeout, JObjs} ->
             io:format("Partial results for \"~s\"\n", [CallId]),
             print_jobjs(JObjs);
-        {'error', _Reason}=Error ->
+        {error, _Reason}=Error ->
             io:format("Error: ~p\n", [Error])
     end,
-    'no_return'.
+    no_return.
 
 -spec inspect_call_id(ne_binary()) -> no_return.
 inspect_call_id(CallId) ->
