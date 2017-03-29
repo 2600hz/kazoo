@@ -513,6 +513,8 @@ is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
+is_force_outbound(_State, ?CARRIER_MDN, _ForceOutbound) ->
+    force_local_outbound();
 is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
@@ -523,38 +525,18 @@ force_outbound_feature(PhoneNumber) ->
         FO -> kz_term:is_true(FO)
     end.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec force_module_outbound(ne_binary()) -> boolean().
 force_module_outbound(?CARRIER_LOCAL) -> force_local_outbound();
 force_module_outbound(_Mod) -> 'false'.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec force_local_outbound() -> boolean().
 force_local_outbound() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, 'true').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec default_force_outbound() -> boolean().
 default_force_outbound() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, 'false').
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
 -spec maybe_fetch_account_from_ports(ne_binary(), {'error', any()}) ->
                                             lookup_account_return().
 maybe_fetch_account_from_ports(NormalizedNum, Error) ->

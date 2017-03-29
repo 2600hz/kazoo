@@ -48,8 +48,7 @@ handle_audio_req(OffnetReq) ->
 
 handle_audio_req(Number, OffnetReq) ->
     case knm_number:lookup_account(Number) of
-        {'ok', _AccountId, Props} ->
-            maybe_force_outbound(Props, OffnetReq);
+        {'ok', _AccountId, Props} -> maybe_force_outbound(Props, OffnetReq);
         _ -> maybe_bridge(Number, OffnetReq)
     end.
 

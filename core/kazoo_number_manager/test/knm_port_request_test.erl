@@ -188,3 +188,16 @@ transition_port_from_not_found_test_() ->
      ,?_assertEqual(true, knm_phone_number:ported_in(PN))
      }
     ].
+
+force_outbound_test_() ->
+    {ok, ?RESELLER_ACCOUNT_ID, Props1} = knm_number:lookup_account(?TEST_PORT_IN_NUM),
+    {ok, ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_TELNYX_NUM),
+    {ok, ?RESELLER_ACCOUNT_ID, Props3} = knm_number:lookup_account(?TEST_IN_SERVICE_NUM),
+    {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
+    {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
+    [?_assert(knm_number_options:should_force_outbound(Props1))
+    ,?_assert(not knm_number_options:should_force_outbound(Props2))
+    ,?_assert(knm_number_options:should_force_outbound(Props3))
+    ,?_assert(knm_number_options:should_force_outbound(Props4))
+    ,?_assert(not knm_number_options:should_force_outbound(Props5))
+    ].
