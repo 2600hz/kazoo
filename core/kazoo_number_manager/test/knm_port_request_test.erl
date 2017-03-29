@@ -191,7 +191,8 @@ transition_port_from_not_found_test_() ->
 
 force_outbound_test_() ->
     {ok, ?RESELLER_ACCOUNT_ID, Props1} = knm_number:lookup_account(?TEST_PORT_IN_NUM),
-    {ok, ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_TELNYX_NUM),
+    {error, {not_in_service, ?RESELLER_ACCOUNT_ID}} = knm_number:lookup_account(?TEST_TELNYX_NUM),
+    {ok, ?RESELLER_ACCOUNT_ID, Props2} = knm_number:lookup_account(?TEST_VITELITY_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props3} = knm_number:lookup_account(?TEST_IN_SERVICE_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
     {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
