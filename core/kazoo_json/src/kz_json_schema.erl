@@ -648,6 +648,25 @@ error_to_jobj({'data_invalid'
                     );
 error_to_jobj({'schema_invalid'
               ,Schema
+              ,{schema_not_found, SchemaName}
+              }
+             ,Options
+             ) ->
+    Name = case kz_term:to_binary(SchemaName) of
+               <<"file://", FileName/binary>> -> FileName;
+               FileName -> FileName
+           end,
+    lager:error("schema has errors: ~p: ~p", [Name, Schema]),
+    validation_error([<<"schema">>]
+                    ,<<"schema">>
+                    ,kz_json:from_list(
+                       [{<<"message">>, <<"schema not found">>}
+                       ,{<<"schema">>, Name}
+                       ])
+                    ,Options
+                    );
+error_to_jobj({'schema_invalid'
+              ,Schema
               ,Error
               }
              ,Options
