@@ -379,10 +379,11 @@ release(Nums) ->
 
 release(Nums, Options) ->
     ret(pipe(do_get_pn(Nums, Options)
-            ,[fun knm_phone_number:release/1
+            ,[fun try_release/1
              ,fun knm_number:new/1
              ,fun knm_providers:delete/1
              ,fun unwind_or_disconnect/1
+             ,fun maybe_unassign/1
              ,fun save_phone_numbers/1
              ])).
 
@@ -659,6 +660,12 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
+take_available(T=#{todo := Ns}) ->
+    {NsAvailable, OtherNs} = lists:partition(fun is_state_available/1, Ns),
+    T0 = T#{todo => []},
+    %% kos shall be merge later on anyway
+    {T0#{ok => NsAvailable}, T0#{ok => OtherNs}}.
+
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
     Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
@@ -747,8 +754,55 @@ if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
         end,
     lists:foldl(F, T0, Ns).
 
+try_release(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
+                case knm_number:attempt(fun try_release/2, [PN, knm_phone_number:state(PN)]) of
+                    {error, Reason} -> ko(knm_phone_number:number(PN), Reason, T);
+                    NewPN -> ok(NewPN, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
+
+try_release(PN, ?NUMBER_STATE_RELEASED) -> PN;
+try_release(PN, ?NUMBER_STATE_RESERVED) -> authorize_release(PN);
+try_release(PN, ?NUMBER_STATE_PORT_IN) -> authorize_release(PN);
+try_release(PN, ?NUMBER_STATE_IN_SERVICE) -> authorize_release(PN);
+try_release(PN, FromState) ->
+    case knm_phone_number:module_name(PN) of
+        ?CARRIER_LOCAL -> authorize_release(PN);
+        _ ->
+            To = knm_config:released_state(),
+            knm_errors:invalid_state_transition(PN, FromState, To)
+    end.
+
+authorize_release(PN) ->
+    case knm_phone_number:is_authorized(PN) of
+        false -> knm_errors:unauthorized();
+        true ->
+            Routines = [fun knm_phone_number:reset_features/1
+                       ,fun knm_phone_number:reset_doc/1
+                       ,{fun knm_phone_number:set_state/2, knm_config:released_state()}
+                       ],
+            {ok, NewPN} = knm_phone_number:setters(PN, Routines),
+            NewPN
+    end.
+
+maybe_unassign(T0) ->
+    {ToUnassign, Ta} = take_available(T0),
+    Unassign = [{fun knm_phone_number:set_assigned_to/2, undefined}],
+    Tb = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Unassign) end, ToUnassign),
+    merge_okkos(Ta, Tb).
+
 unwind_or_disconnect(T) ->
+    [lager:debug(">>>> ~s ~s ~s ~s", [knm_phone_number:number(PN), knm_phone_number:state(PN), knm_phone_number:assigned_to(PN), knm_phone_number:prev_assigned_to(PN)])
+     || N <- maps:get(todo, T),
+        PN <- [knm_number:phone_number(N)]
+    ],
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
+    [lager:debug(">>>> ~s ~s ~s ~s", [knm_phone_number:number(PN), knm_phone_number:state(PN), knm_phone_number:assigned_to(PN), knm_phone_number:prev_assigned_to(PN)])
+     || N <- Ns,
+        PN <- [knm_number:phone_number(N)]
+    ],
     {ToDisconnect, ToUnwind} = lists:partition(fun is_history_empty/1, Ns),
     Ta = do_in_wrap(fun unwind/1, ok(ToUnwind, T0)),
     Tb = pipe(ok(ToDisconnect, T0)
@@ -794,6 +848,7 @@ maybe_age(T=#{todo := Ns}) ->
         false -> ok(Ns, T);
         true ->
             lager:debug("aging for some time"),
+            %% {TYes, Ta} = take_available(Ns),
             {Yes, No} = lists:partition(fun is_state_available/1, Ns),
             Ta = do(fun id/1, T#{todo => No}),
             NewOptions = [{state, ?NUMBER_STATE_AGING} | options(T)],
