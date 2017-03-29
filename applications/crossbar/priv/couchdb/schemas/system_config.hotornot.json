@@ -61,6 +61,16 @@
             "description": "build timeout (ms) for trie",
             "type": "integer"
         },
+        "trie_lru_expires_s": {
+            "default": 86400,
+            "description": "How long an entry in the LRU trie can remain",
+            "type": "integer"
+        },
+        "trie_module": {
+            "default": "hon_trie",
+            "description": "Which trie module to use",
+            "type": "string"
+        },
         "use_trie": {
             "default": false,
             "description": "whether to use the trie to store rates in the VM",

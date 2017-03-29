@@ -21,6 +21,7 @@
 -export([start_link/1
         ,match_did/2, match_did/3
         ,rebuild/0
+        ,trie_proc_name/1
         ]).
 
 -export([init/1
@@ -40,53 +41,52 @@
        ,{'trie', Builder, Trie}
        ).
 
--define(STATE_READY(Trie, Db), {'ready', Trie, Db}).
--define(STATE_BUILDING(Trie, Db, PidRef), {'building', Trie, Db, PidRef}).
+-define(STATE_READY(Trie, RatedeckDb), {'ready', Trie, RatedeckDb}).
+-define(STATE_BUILDING(Trie, RatedeckDb, PidRef), {'building', Trie, RatedeckDb, PidRef}).
 
 -type state() :: ?STATE_READY(trie:trie(), ne_binary()) |
                  ?STATE_BUILDING(trie:trie() | 'undefined', ne_binary(), pid_ref()).
 
 -spec start_link(ne_binary()) -> {'ok', pid()}.
 start_link(RatedeckDb) ->
-    ProcName = trie_proc(RatedeckDb),
-    gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb], []).
+    case hotornot_config:trie_module() of
+        ?MODULE ->
+            ProcName = trie_proc_name(RatedeckDb),
+            gen_server:start_link({'local', ProcName}, ?MODULE, [RatedeckDb], []);
+        'hon_trie_lru' ->
+            hon_trie_lru:start_link(RatedeckDb)
+    end.
 
--spec trie_proc(ne_binary()) -> atom().
-trie_proc(Ratedeck) ->
+-spec trie_proc_name(ne_binary()) -> atom().
+trie_proc_name(Ratedeck) ->
     RatedeckDb = kzd_ratedeck:format_ratedeck_db(Ratedeck),
     kz_term:to_atom(<<"hon_trie_", RatedeckDb/binary>>, 'true').
 
--type match_return() :: {'error', any()} |
-                        {'ok', {string(), ne_binaries()}}.
+-ifdef(TEST).
+match_did(ToDID, AccountId) ->
+    match_did(ToDID, AccountId, ?KZ_RATES_DB).
+
+match_did(ToDID, _AccountId, RatedeckId) ->
+    ProcName = trie_proc_name(RatedeckId),
+
+    case gen_server:call(ProcName, {'match_did', kz_term:to_list(ToDID)}) of
+        {'error', _}=Error -> Error;
+        {'ok', {_Prefix, RateIds}} -> {'ok', RateIds}
+    end.
+-else.
+
 -spec match_did(ne_binary(), api_ne_binary()) -> match_return().
 -spec match_did(ne_binary(), api_ne_binary(), api_ne_binary()) -> match_return().
 match_did(ToDID, AccountId) ->
     match_did(ToDID, AccountId, 'undefined').
+
 match_did(ToDID, AccountId, RatedeckId) ->
     Ratedeck = hon_util:account_ratedeck(AccountId, RatedeckId),
-    ProcName = trie_proc(Ratedeck),
+    ProcName = trie_proc_name(Ratedeck),
 
     case gen_server:call(ProcName, {'match_did', kz_term:to_list(ToDID)}) of
-        {'error', 'not_found'} ->
-            lager:debug("failed to find rate for ~s", [ToDID]),
-            {'ok', []};
-        {'error', E} ->
-            lager:warning("failed to find rate for ~s, got error ~p", [ToDID, E]),
-            {'error', E};
-        {'ok', {_Prefix, RateIds}} ->
-            lager:info("candidate rates for ~s: ~s ~p", [ToDID, _Prefix, RateIds]),
-            load_rates(Ratedeck, RateIds)
-    end.
-
--spec rebuild() -> {'ok', pid()}.
-rebuild() ->
-    case gen_server:call(?MODULE, 'rebuild') of
-        {'ok', Pid} ->
-            lager:debug("rebuilding trie in ~p", [Pid]),
-            {'ok', Pid};
-        {'error', E} ->
-            lager:warning("error rebuilding trie ~p", [E]),
-            {'error', E}
+        {'error', _}=Error -> Error;
+        {'ok', {_Prefix, RateIds}} -> load_rates(Ratedeck, RateIds)
     end.
 
 -spec load_rates(ne_binary(), ne_binaries()) -> {'ok', kzd_rate:docs()}.
@@ -102,9 +102,22 @@ load_rate(RateId, Acc, RatedeckDb) ->
             [kzd_rate:set_ratedeck(RateDoc, kzd_ratedeck:format_ratedeck_id(RatedeckDb)) | Acc]
     end.
 
+-endif.
+
+-spec rebuild() -> {'ok', pid()}.
+rebuild() ->
+    case gen_server:call(?MODULE, 'rebuild') of
+        {'ok', Pid} ->
+            lager:debug("rebuilding trie in ~p", [Pid]),
+            {'ok', Pid};
+        {'error', E} ->
+            lager:warning("error rebuilding trie ~p", [E]),
+            {'error', E}
+    end.
+
 -spec init([ne_binary()]) -> {'ok', state()}.
 init([RatedeckDb]) ->
-    kz_util:put_callid(trie_proc(RatedeckDb)),
+    kz_util:put_callid(trie_proc_name(RatedeckDb)),
     PidRef = start_builder(RatedeckDb),
     lager:debug("building trie for ~s in ~p", [RatedeckDb, PidRef]),
     {'ok', ?STATE_BUILDING('undefined', RatedeckDb, PidRef)}.
@@ -118,16 +131,16 @@ start_builder(RatedeckDb) ->
 -spec handle_call(any(), pid_ref(), state()) ->
                          {'noreply', state()} |
                          {'reply', match_return(), state()}.
-handle_call({'match_did', _DID}, _From, ?STATE_BUILDING('undefined', _Db, _PidRef)=State) ->
+handle_call({'match_did', _DID}, _From, ?STATE_BUILDING('undefined', _RatedeckDb, _PidRef)=State) ->
     {'reply', {'error', 'no_trie'}, State};
-handle_call({'match_did', DID}, _From, ?STATE_BUILDING(Trie, _Db, {_Pid, _Ref})=State) ->
+handle_call({'match_did', DID}, _From, ?STATE_BUILDING(Trie, _RatedeckDb, {_Pid, _Ref})=State) ->
     Resp = match_did_in_trie(DID, Trie),
     {'reply', Resp, State};
-handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, _Db)=State) ->
+handle_call({'match_did', DID}, _From, ?STATE_READY(Trie, _RatedeckDb)=State) ->
     Resp = match_did_in_trie(DID, Trie),
     {'reply', Resp, State};
 
-handle_call('rebuild', _From, ?STATE_BUILDING(_Trie, _Db, {Pid, _Ref})=State) ->
+handle_call('rebuild', _From, ?STATE_BUILDING(_Trie, _RatedeckDb, {Pid, _Ref})=State) ->
     {'reply', {'error', {'rebuilding', Pid}}, State};
 handle_call('rebuild', _From, ?STATE_READY(Trie, RatedeckDb)) ->
     {Pid, _} = PidRef = start_builder(RatedeckDb),
@@ -159,13 +172,13 @@ handle_info({'build_timeout', PidRef}, ?STATE_BUILDING(Trie, RatedeckDb, {Pid, R
     erlang:demonitor(Ref, ['flush']),
     erlang:exit(Pid, 'build_timeout'),
     {'noreply', ?STATE_READY(Trie, RatedeckDb)};
-handle_info({'build_timeout', _PidRef}, ?STATE_READY(_Trie, _Db)=State) ->
+handle_info({'build_timeout', _PidRef}, ?STATE_READY(_Trie, _RatedeckDb)=State) ->
     %% It's ok, build completed already
     {'noreply', State};
-handle_info({'DOWN', Ref, 'process', Pid, _Reason}, ?STATE_BUILDING(Trie, Db, {Pid, Ref})) ->
+handle_info({'DOWN', Ref, 'process', Pid, _Reason}, ?STATE_BUILDING(Trie, RatedeckDb, {Pid, Ref})) ->
     lager:debug("rebuild proc ~p:~p down: ~p", [Pid, Ref, _Reason]),
-    {'noreply', ?STATE_READY(Trie, Db)};
-handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}, ?STATE_READY(_Trie, _Db)=State) ->
+    {'noreply', ?STATE_READY(Trie, RatedeckDb)};
+handle_info({'DOWN', _Ref, 'process', _Pid, _Reason}, ?STATE_READY(_Trie, _RatedeckDb)=State) ->
     {'norply', State};
 handle_info(Msg, State) ->
     lager:info("unhandled message ~p",[Msg]),
@@ -199,19 +212,19 @@ process_conf_update(_ConfUpdate, _Type) ->
 
 -spec process_db_update(ne_binary(), ne_binary()) -> 'ok'.
 process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_EDITED) ->
-    {'ok', Pid} = gen_server:call(trie_proc(RatedeckId), 'rebuild'),
+    {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckId), 'rebuild'),
     lager:info("ratedeck ~s changed, rebuilding trie in ~p", [Pid]);
 process_db_update(?KZ_RATES_DB=RatedeckId, ?DB_DELETED) ->
-    Proc = trie_proc(RatedeckId),
+    Proc = trie_proc_name(RatedeckId),
     hon_tries_sup:stop_trie(Proc),
     lager:info("ratedeck ~s deleted, stopping the trie at ~p", [RatedeckId, Proc]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_CREATED) ->
     maybe_start_trie_server(RatedeckDb);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_EDITED) ->
-    {'ok', Pid} = gen_server:call(trie_proc(RatedeckDb), 'rebuild'),
+    {'ok', Pid} = gen_server:call(trie_proc_name(RatedeckDb), 'rebuild'),
     lager:info("ratedeck ~s changed, rebuiding trie in ~p", [RatedeckDb, Pid]);
 process_db_update(?MATCH_RATEDECK_DB_ENCODED(_)=RatedeckDb, ?DB_DELETED) ->
-    Pid = trie_proc(RatedeckDb),
+    Pid = trie_proc_name(RatedeckDb),
     hon_tries_sup:stop_trie(Pid),
     lager:info("ratedeck ~s deleted, stopping the trie at ~p", [RatedeckDb, Pid]);
 process_db_update(_Db, _Action) ->

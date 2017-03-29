@@ -12,6 +12,9 @@
 -define(CACHE_NAME, 'hotornot_cache').
 
 -type trunking_options() :: ne_binaries().
+-type prefix() :: string().
+-type match_return() :: {'error', any()} |
+                        {'ok', {prefix(), ne_binaries()}}.
 
 -define(HOTORNOT_HRL, 'true').
 -endif.

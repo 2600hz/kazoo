@@ -22,15 +22,16 @@
 
 -define(MIN_PREFIX_LEN, 1). % how many chars to strip off the e164 DID
 
+-type candidate_rates_return() :: {'ok', kzd_rate:docs()} |
+                                  {'error', 'did_to_short'} |
+                                  kz_datamgr:data_error().
+
 -spec candidate_rates(ne_binary()) ->
-                             {'ok', kz_json:objects()} |
-                             {'error', atom()}.
+                             candidate_rates_return().
 -spec candidate_rates(ne_binary(), api_ne_binary()) ->
-                             {'ok', kz_json:objects()} |
-                             {'error', atom()}.
+                             candidate_rates_return().
 -spec candidate_rates(ne_binary(), api_ne_binary(), api_ne_binary()) ->
-                             {'ok', kz_json:objects()} |
-                             {'error', atom()}.
+                             candidate_rates_return().
 candidate_rates(ToDID) ->
     candidate_rates(ToDID, 'undefined', 'undefined').
 
@@ -42,8 +43,7 @@ candidate_rates(ToDID, AccountId, RatedeckId) ->
     find_candidate_rates(E164, AccountId, RatedeckId).
 
 -spec find_candidate_rates(ne_binary(), api_ne_binary(), api_ne_binary()) ->
-                                  {'ok', kz_json:objects()} |
-                                  {'error', atom()}.
+                                  candidate_rates_return().
 find_candidate_rates(E164, AccountId, RatedeckId)
   when byte_size(E164) > ?MIN_PREFIX_LEN ->
     case hotornot_config:should_use_trie() of
@@ -55,24 +55,30 @@ find_candidate_rates(DID, _AccountId, _RatedeckId) ->
     {'error', 'did_too_short'}.
 
 -spec find_trie_rates(ne_binary(), api_ne_binary(), api_ne_binary()) ->
-                             {'ok', kz_json:objects()} |
-                             {'error', atom()}.
+                             candidate_rates_return().
 find_trie_rates(E164, AccountId, RatedeckId) ->
     case hon_trie:match_did(only_numeric(E164), AccountId, RatedeckId) of
         {'ok', Result} -> {'ok', Result};
         {'error', _E} ->
             lager:warning("got error while searching did in trie, falling back to DB search"),
-            fetch_candidate_rates(E164, AccountId, RatedeckId)
+            Candidates = fetch_candidate_rates(E164, AccountId, RatedeckId),
+            maybe_update_trie(RatedeckId, Candidates),
+            Candidates
     end.
 
+-spec maybe_update_trie(ne_binary(), candidate_rates_return()) -> 'ok'.
+-spec maybe_update_trie(ne_binary(), candidate_rates_return(), atom()) -> 'ok'.
+maybe_update_trie(RatedeckId, Candidates) ->
+    maybe_update_trie(RatedeckId, Candidates, hotornot_config:trie_module()).
+maybe_update_trie(RatedeckId, {'ok', [_|_]=Rates}, 'hon_trie_lru') ->
+    hon_trie_lru:cache_rates(RatedeckId, Rates);
+maybe_update_trie(_RatedeckId, _Candidates, _Module) ->
+    'ok'.
+
 -spec fetch_candidate_rates(ne_binary(), api_ne_binary(), api_ne_binary()) ->
-                                   {'ok', kzd_rate:docs()} |
-                                   {'error', 'did_too_short'} |
-                                   kz_datamgr:data_error().
+                                   candidate_rates_return().
 -spec fetch_candidate_rates(ne_binary(), api_ne_binary(), api_ne_binary(), ne_binaries()) ->
-                                   {'ok', kzd_rate:docs()} |
-                                   {'error', 'did_too_short'} |
-                                   kz_datamgr:data_error().
+                                   candidate_rates_return().
 fetch_candidate_rates(E164, AccountId, RatedeckId) ->
     fetch_candidate_rates(E164, AccountId, RatedeckId, build_keys(E164)).
 
@@ -81,32 +87,43 @@ fetch_candidate_rates(_E164, _AccountId, _RatedeckId, []) ->
 fetch_candidate_rates(E164, AccountId, RatedeckId, Keys) ->
     lager:debug("searching for prefixes for ~s: ~p", [E164, Keys]),
     RatedeckDb = account_ratedeck(AccountId, RatedeckId),
-    case kz_datamgr:get_results(RatedeckDb
-                               ,<<"rates/lookup">>
-                               ,[{'keys', Keys}
-                                ,'include_docs'
-                                ]
-                               )
-    of
+    case fetch_rates_from_ratedeck(RatedeckDb, Keys) of
         {'ok', []}=OK -> OK;
         {'error', _}=E -> E;
         {'ok', ViewRows} ->
             {'ok'
-            ,[kzd_rate:set_ratedeck(kz_json:get_value(<<"doc">>, ViewRow), kzd_ratedeck:format_ratedeck_id(RatedeckDb))
+            ,[kzd_rate:set_ratedeck(kz_json:get_json_value(<<"doc">>, ViewRow)
+                                   ,kzd_ratedeck:format_ratedeck_id(RatedeckDb)
+                                   )
               || ViewRow <- ViewRows
              ]
             }
     end.
 
+-spec fetch_rates_from_ratedeck(ne_binary(), [integer()]) ->
+                                       kz_datamgr:get_results_return().
+fetch_rates_from_ratedeck(RatedeckDb, Keys) ->
+    kz_datamgr:get_results(RatedeckDb
+                          ,<<"rates/lookup">>
+                          ,[{'keys', Keys}
+                           ,'include_docs'
+                           ]
+                          ).
+
 -spec account_ratedeck(api_ne_binary()) -> ne_binary().
 -spec account_ratedeck(api_ne_binary(), api_ne_binary()) -> ne_binary().
+
+-ifdef(TEST).
+account_ratedeck(_AccountId) -> ?KZ_RATES_DB.
+account_ratedeck(_AccountId, _RatedeckId) -> ?KZ_RATES_DB.
+-else.
 account_ratedeck(AccountId) ->
     account_ratedeck(AccountId, 'undefined').
 
 account_ratedeck('undefined', 'undefined') ->
     lager:info("no account supplied, using default ratedeck"),
     hotornot_config:default_ratedeck();
-account_ratedeck('undefined', RatedeckId) ->
+account_ratedeck('undefined', <<_/binary>> = RatedeckId) ->
     lager:info("using supplied ratedeck ~s", [RatedeckId]),
     kzd_ratedeck:format_ratedeck_db(RatedeckId);
 account_ratedeck(AccountId, _RatedeckId) ->
@@ -137,6 +154,7 @@ reseller_ratedeck(_AccountId, ResellerId) ->
                       ),
             kzd_ratedeck:format_ratedeck_db(RatedeckId)
     end.
+-endif.
 
 -spec build_keys(ne_binary()) -> [integer()].
 build_keys(Number) ->

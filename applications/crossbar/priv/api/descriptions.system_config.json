@@ -344,6 +344,8 @@
     "hotornot.rate_version": "If defined, use rates with this version",
     "hotornot.sort_by_weight": "sort rates by weight (true) or cost (false)",
     "hotornot.trie_build_timeout_ms": "build timeout (ms) for trie",
+    "hotornot.trie_lru_expires_s": "How long an entry in the LRU trie can remain",
+    "hotornot.trie_module": "Which trie module to use",
     "hotornot.use_trie": "whether to use the trie to store rates in the VM",
     "jonny5.default_inbound_trunks": "jonny5 default inbound trunks",
     "jonny5.default_twoway_trunks": "jonny5 default twoway trunks",
