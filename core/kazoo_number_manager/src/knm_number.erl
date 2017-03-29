@@ -513,15 +513,13 @@ is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
-is_force_outbound(_State, ?CARRIER_MDN, _ForceOutbound) ->
-    force_local_outbound();
 is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
 -spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().
 force_outbound_feature(PhoneNumber) ->
     case knm_phone_number:feature(PhoneNumber, ?FEATURE_FORCE_OUTBOUND) of
-        'undefined' -> default_force_outbound();
+        undefined -> kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, false);
         FO -> kz_term:is_true(FO)
     end.
 
@@ -532,10 +530,6 @@ force_module_outbound(_Mod) -> 'false'.
 -spec force_local_outbound() -> boolean().
 force_local_outbound() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, 'true').
-
--spec default_force_outbound() -> boolean().
-default_force_outbound() ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"default_force_outbound">>, 'false').
 
 -spec maybe_fetch_account_from_ports(ne_binary(), {'error', any()}) ->
                                             lookup_account_return().
