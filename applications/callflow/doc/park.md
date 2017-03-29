@@ -1,10 +1,21 @@
-### Call Parking
+## Call Parking
 
-#### About Call Parking
+### About Call Parking
 
 Parking will place a call in a numbered "slot" where it will remain until it is retrieved or the caller hangs up.  It can be configured so that if the device parking the call is known then the parked call will periodically ring the parker back.  Optionally, if the parker does not answer a ringback the callflow can be configured to advance to a child and execute further callflow actions.
 
-#### Configuring Call Parking
+### Schema
+
+Validator for the park callflow's data object
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`action` | Action to take for the caller | `string('park', 'retrieve', 'auto')` | `park` | `false`
+`default_callback_timeout` | How long, in seconds, to wait before calling back the parker | `integer` |   | `false`
+`default_presence_type` | Type of presence to update | `string('early', 'terminated', 'confirmed')` |   | `false`
+`default_ringback_timeout` | How long, in milliseconds, before ringing back | `integer` |   | `false`
+`slot` | Static slot number to use | `string` |   | `false`
+`slots` | Statically define slots and their configuration | `object` | `null` | `false`
 
 Some call parking parameters can be configured in a number of ways:
 
@@ -15,19 +26,9 @@ Some call parking parameters can be configured in a number of ways:
 
 The presence type parameter has some inconsistant naming for backwards compatability but `park_presence_type` and `default_presence_type` are modifying the same behaviour.
 
-##### Callflow data object
+If the action's data object defines the fields, they will override system- or account-specific configs.
 
-You can override the defaults for the entire system or individually configure slot behaviour based on the callflow used to access it.  The data parameters are:
-
-Key | Description | Type | Default | Required
---- | ----------- | ---- | ------- | --------
-`action` | The behaviour of the parking module when invoked in the specific callflow | `string('auto', 'park', 'retrieve')` | `park`  | `true`
-`default_ringback_timeout` | When a call is parked and the device parking the call is known then parked call will ring the parker on this period. | `integer` |   | `false`
-`default_callback_timeout` | When a parked call has remained parked for the `ringback_timeout` duration the parker will be called for this time. | `integer` |   | `false`
-`default_presence_type` | This parameter overrides the dialog state used for occupied slots. | `string('early', 'confirmed')` |   | `false`
-`slots` | This object is used to override the options on a per-slot bases where the object key is the slot number.  See below for details. | {} |   | `false`
-
-##### Callflow data.slots object
+##### `slots` object
 
 You can override the defaults for the entire system or individually configure slot behaviour based on the callflow used to access it.  The data parameters are:
 
@@ -35,7 +36,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `ringback_timeout` | When a call is parked and the device parking the call is known then parked call will ring the parker on this period. | `integer` |   | `false`
 `callback_timeout` | When a parked call has remained parked for the `ringback_timeout` duration the parker will be called for this time. | `integer` |   | `false`
-`presence_type` | This parameter overrides the dialog state used for occupied slots. | `string('early', 'confirmed')` |   | `false`
+`presence_type` | This parameter overrides the dialog state used for occupied slots. | `string('early', 'terminated', 'confirmed')` |   | `false`
 
 ##### Example of `data` object
 
