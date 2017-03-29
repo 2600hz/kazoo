@@ -897,15 +897,12 @@ set_response({'ok', Thing}, Context, _) ->
         'false' -> crossbar_util:response(Thing, Context)
     end;
 
-set_response(Ret=#{ko := KOs, services := Services, options := Options}, Context, CB) ->
-    case {KOs =/= #{}, Services =:= undefined, knm_number_options:dry_run(Options)} of
-        {true, _, _} ->
-            ResultJObj = knm_numbers:to_json(Ret),
-            crossbar_util:response_400(<<"client error">>, ResultJObj, Context);
-        {_, true, _} ->
+set_response(Ret=#{ko := _KOs, services := Services, options := Options}, Context, CB) ->
+    case {Services =:= undefined, knm_number_options:dry_run(Options)} of
+        {true, _} ->
             ResultJObj = knm_numbers:to_json(Ret),
             crossbar_util:response(ResultJObj, Context);
-        {_, _, true} ->
+        {_, true} ->
             RespJObj = kz_services:dry_run(Services),
             case kz_json:is_empty(RespJObj) of
                 true -> CB();
