@@ -5398,9 +5398,6 @@
                     "type": "string"
                 }
             },
-            "required": [
-                "id"
-            ],
             "type": "object"
         },
         "metaflow.hangup": {
