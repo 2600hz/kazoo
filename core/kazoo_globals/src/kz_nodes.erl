@@ -736,7 +736,7 @@ advertise_payload(#kz_node{expires=Expires
                           }) ->
     props:filter_undefined(
       [{<<"md5">>, MD5}
-      ,{<<"Expires">>, kz_term:to_binary(Expires)}
+      ,{<<"Expires">>, Expires}
       ,{<<"WhApps">>, kapps_to_json(Whapps) }
       ,{<<"Media-Servers">>, media_servers_to_json(MediaServers)}
       ,{<<"Used-Memory">>, UsedMemory}
