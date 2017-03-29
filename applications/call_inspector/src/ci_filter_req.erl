@@ -12,18 +12,16 @@
 
 -include("call_inspector.hrl").
 
--spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> ok.
 handle_req(JObj, _Props) ->
-    'true' = kapi_inspector:filter_req_v(JObj),
+    true = kapi_inspector:filter_req_v(JObj),
     CallIds = [CallId
                || CallId <- kz_json:get_value(<<"Call-IDs">>, JObj, []),
                   ci_datastore:callid_exists(CallId)
               ],
-    Q = kz_json:get_value(<<"Server-ID">>, JObj),
-    MessageId = kz_json:get_value(<<"Msg-ID">>, JObj),
-    send_response(CallIds, Q, MessageId).
+    send_response(CallIds, kz_api:server_id(JObj), kz_api:msg_id(JObj)).
 
--spec send_response(ne_binaries(), ne_binary(), ne_binary()) -> 'ok'.
+-spec send_response(ne_binaries(), ne_binary(), ne_binary()) -> ok.
 send_response(CallIds, Q, MessageId) ->
     JObj = kz_json:from_list(
              [{<<"Call-IDs">>, CallIds}
