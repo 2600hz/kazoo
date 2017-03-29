@@ -12,9 +12,9 @@ Get your API key for your account:
 * It can also be accessed by system administrators directly from the database by using `curl` to request the account doc from CouchDB:
 
 ```shell
-curl -v -X PUT \
+curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    http://localhost:15984//accounts/{ACCOUNT_ID}
+    http://localhost:15984/accounts/{ACCOUNT_ID}/api_key
 ```
 
 ```json
