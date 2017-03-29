@@ -62,7 +62,6 @@ Key | Description | Type | Default | Required
 `profile` | User's profile data | `object` | `{}` | `false`
 `pronounced_name` | Name pronounced by user to introduce himself to conference members | `object` |   | `false`
 `pronounced_name.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`
-`qubicle` |   | [#/definitions/qubicle_recipients](#qubicle_recipients) |   | `false`
 `require_password_update` | UI flag that the user should update their password. | `boolean` | `false` | `false`
 `ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
