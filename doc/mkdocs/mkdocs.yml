@@ -183,6 +183,7 @@ pages:
     - 'Branch on object setting': 'applications/callflow/doc/cf_branch_variable.md'
     - 'Preflows': 'applications/callflow/doc/preflow.md'
     - 'Resources': 'applications/callflow/doc/resources.md'
+    - 'Manual Presence': 'applications/callflow/doc/manual_presence.md'
   - 'Call Inspector':
     - 'applications/call_inspector/doc/README.md'
   - 'CCCP':
