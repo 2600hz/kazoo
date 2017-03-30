@@ -796,6 +796,8 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
+%% make timestamp ready to proccess by "date" filter in ErlyDTL
+%% returns a prop list with local, utc time and timezone
 -spec fix_timestamp(integer() | api_ne_binary()) -> kz_proplist().
 fix_timestamp(Timestamp) ->
     fix_timestamp(Timestamp, <<"GMT">>).
@@ -823,16 +825,15 @@ fix_timestamp(Timestamp, DataJObj) ->
     TZ = props:get_value(<<"timezone">>, Params),
     fix_timestamp(Timestamp, TZ).
 
-
 -spec fix_timestamp(integer() | api_ne_binary(), api_binary(), api_binary() | kz_json:object()) -> kz_proplist().
-fix_timestamp(Timestamp, 'undefined', DataJObj) ->
-    fix_timestamp(Timestamp, DataJObj);
-fix_timestamp(Timestamp, TZ, _DataJObj) ->
+fix_timestamp(Timestamp, 'undefined', Thing) ->
+    fix_timestamp(Timestamp, Thing);
+fix_timestamp(Timestamp, TZ, _Thing) ->
     fix_timestamp(Timestamp, TZ).
 
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->
-    kz_json:to_proplist(
+    kz_json:recursive_to_proplist(
       kz_json:public_fields(
         kz_json:get_value(Key, JObj, kz_json:new())
        )

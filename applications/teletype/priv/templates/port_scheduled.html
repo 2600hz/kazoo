@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>Port request scheduled for {{port_request.scheduled_date|date:"l, F j, Y \\a\\t H:i"}}</title>
+    <title>Port request scheduled for {{port_request.scheduled_date.local|date:"l, F j, Y H:i"}}</title>
     <!--[if mso]><style>*{font-family:sans-serif !important;}</style><![endif]-->
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
@@ -40,7 +40,7 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;">
-                        <p style="margin:15px 0;padding:0">Port request <b>{{port_request.name}}</b> of account <b>{{account.name}}</b> has been scheduled for {{port_request.scheduled_date}}.</p>
+                        <p style="margin:15px 0;padding:0">Port request <b>{{port_request.name}}</b> of account <b>{{account.name}}</b> has been scheduled for {{port_request.scheduled_date.local|date:"l, F j, Y H:i"}}.</p>
                     </td>
                 </tr>
                 <tr>

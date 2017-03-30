@@ -112,7 +112,9 @@
 
 -define(PORT_REQUEST_MACROS
        ,[?MACRO_VALUE(<<"port_request.comment.content">>, <<"comment.content">>, <<"Comment Text">>, <<"Comment Text">>)
-        ,?MACRO_VALUE(<<"port_request.comment.timestamp">>, <<"comment.timestamp">>, <<"Comment Timestamp">>, <<"Last Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.timestamp.local">>, <<"comment.timestamp_local">>, <<"Comment UTC Timestamp">>, <<"Comment Local Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.timestamp.utc">>, <<"comment.timestamp_utc">>, <<"Comment UTC Timestamp">>, <<"Comment UTC Timestamp">>)
+        ,?MACRO_VALUE(<<"port_request.comment.timestamp.timezone">>, <<"comment.timestamp_timezone">>, <<"Comment Local Timestamp">>, <<"Comment Timestamp Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.customser_contact">>, <<"customser_contact">>, <<"Customser Email">>, <<"Customser Email">>)
         ,?MACRO_VALUE(<<"port_request.bill_name">>, <<"bill_name">>, <<"Bill Name">>, <<"Name on the bill">>)
         ,?MACRO_VALUE(<<"port_request.bill_address">>, <<"bill_address">>, <<"Bill Address">>, <<"Address on the bill">>)
@@ -124,7 +126,9 @@
         ,?MACRO_VALUE(<<"port_request.numbers">>, <<"numbers">>, <<"Numbers">>, <<"Numbers">>)
         ,?MACRO_VALUE(<<"port_request.port_state">>, <<"port_state">>, <<"State of Port Request">>, <<"State of Port Request">>)
         ,?MACRO_VALUE(<<"port_request.transfer_date">>, <<"transfer_date">>, <<"Transfer Date">>, <<"Transfer Date">>)
-        ,?MACRO_VALUE(<<"port_request.scheduled_date">>, <<"scheduled_date">>, <<"Scheduled Date">>, <<"Scheduled Date">>)
+        ,?MACRO_VALUE(<<"port_request.scheduled_date.local">>, <<"scheduled_date_local">>, <<"Local Scheduled Date">>, <<"Local Scheduled Date">>)
+        ,?MACRO_VALUE(<<"port_request.scheduled_date.utc">>, <<"scheduled_date_utc">>, <<"UTC Scheduled Date">>, <<"UTC Scheduled Date">>)
+        ,?MACRO_VALUE(<<"port_request.scheduled_date.timezone">>, <<"scheduled_date_timezone">>, <<"Scheduled Date Timezone">>, <<"Scheduled Date Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.service_provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
         ,?MACRO_VALUE(<<"port_request.requested_port_date">>, <<"requested_port_date">>, <<"Requested Port Date">>, <<"Requested Port Date">>)
         ]).
@@ -151,6 +155,7 @@
         ,?MACRO_VALUE(<<"transaction.tax_amount">>, <<"tax_amount">>, <<"Tax-Amount">>, <<"Tax Amount">>)
         ,?MACRO_VALUE(<<"transaction.date.local">>, <<"date_local">>, <<"Local Date Time">>, <<"Local Date Time">>)
         ,?MACRO_VALUE(<<"transaction.date.utc">>, <<"date_utc">>, <<"UTC Date Time">>, <<"UTC Date Time">>)
+        ,?MACRO_VALUE(<<"transaction.date.timezone">>, <<"date_timezone">>, <<"Local Timezone">>, <<"Local Timezone">>)
         ,?MACRO_VALUE(<<"transaction.purchase_order">>, <<"purchase_order">>, <<"Purchase-Order">>, <<"Purchase Order Reason">>)
         ,?MACRO_VALUE(<<"transaction.currency_code">>, <<"currency_code">>, <<"Currency-Code">>, <<"Currency Code">>)
         ]).

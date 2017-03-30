@@ -23,7 +23,7 @@ Here are some more details on what went wrong during transmission.
     FaxBox Name: {{fax.box_name}}
     FaxBox ID: {{fax.box_id}}
     Call ID: {{call_id}}
-    Sent Timestamp: {{fax.timestamp|date:"l, F j, Y \\a\\t H:i"}}
+    Sent Timestamp: {{fax.timestamp}}
 
 
 

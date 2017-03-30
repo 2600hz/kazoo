@@ -180,14 +180,8 @@ callee_id_data(DataJObj) ->
 -spec date_called_data(kz_json:object()) -> kz_proplist().
 date_called_data(DataJObj) ->
     DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_time:current_tstamp()),
-    DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
-    ClockTimezone = kapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
-    props:filter_undefined(
-      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-      ]).
+    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj),
+    teletype_util:fix_timestamp(DateCalled, Timezone, DataJObj).
 
 -spec from_data(kz_json:object()) -> kz_proplist().
 from_data(DataJObj) ->

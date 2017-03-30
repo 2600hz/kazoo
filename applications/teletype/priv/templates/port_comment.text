@@ -1,7 +1,7 @@
                 Comment on Port Request
 
 {{user.first_name}} {{user.last_name}} made a comment on your port request {{port_request.name}}
-at {{port_request.comment.timestamp}}:
+at {{port_request.comment.timestamp.local|date:"l, F j, Y \\a\\t H:i"}}:
 
 {{port_request.comment.content}}
 

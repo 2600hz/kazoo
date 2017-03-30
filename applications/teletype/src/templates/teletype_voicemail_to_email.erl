@@ -228,18 +228,8 @@ build_callee_id_data(DataJObj) ->
 -spec build_date_called_data(kz_json:object()) -> kz_proplist().
 build_date_called_data(DataJObj) ->
     DateCalled = date_called(DataJObj),
-    DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-
-    VMBox = kz_json:get_value(<<"voicemail">>, DataJObj),
-    Timezone = kzd_voicemail_box:timezone(VMBox, <<"UTC">>),
-    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
-    lager:debug("using tz ~s (system ~s) for ~p", [Timezone, ClockTimezone, DateTime]),
-
-    props:filter_undefined(
-      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-      ]).
+    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"voicemail">>, DataJObj)),
+    teletype_util:fix_timestamp(DateCalled, Timezone, DataJObj).
 
 -spec date_called(api_object() | gregorian_seconds()) -> gregorian_seconds().
 date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;

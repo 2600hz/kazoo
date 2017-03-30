@@ -146,8 +146,8 @@ fix_comments(JObj) ->
             LastComment = lists:last(Comments),
 
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, LastComment),
-            Date = binary:replace(kz_time:iso8601(Timestamp), <<"T">>, <<" ">>),
-            Comment = kz_json:set_value(<<"timestamp">>, Date, LastComment),
+            Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, JObj)),
+            Comment = kz_json:set_value(<<"date">>, Date, LastComment),
 
             kz_json:set_value(<<"comment">>
                              ,kz_json:to_proplist(Comment)
@@ -167,7 +167,7 @@ fix_date_fold(Key, JObj) ->
     case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> JObj;
         Timestamp ->
-            Date = binary:replace(kz_time:iso8601(Timestamp), <<"T">>, <<" ">>),
+            Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, JObj)),
             kz_json:set_value(Key, Date, JObj)
     end.
 
