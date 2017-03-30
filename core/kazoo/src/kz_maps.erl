@@ -10,33 +10,16 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([merge/2
-        ,merge_r/2
-        ,merge_l/2
-        ]).
+-export([merge/2, merge/3]).
 -export([get/2, get/3]).
 -export([keys_to_atoms/1, keys_to_atoms/2]).
 
+%% if you want specific merge functionality, first arg to merge/3
+-export([merge_left/2, merge_right/2]).
+
 -spec merge(map(), map()) -> map().
-merge(Map1, Map1) -> Map1;
-merge(Map1, Map2) ->
-    M1 = maps:without(maps:keys(Map2), Map1),
-    M2 = maps:without(maps:keys(Map1), Map2),
-    M3 = maps:merge(M1, M2),
-    M4 = maps:filter(fun(_, V) -> not is_map(V) end, maps:with(maps:keys(Map1), Map2)),
-    M51 = maps:filter(fun(_, V) -> is_map(V) end, maps:with(maps:keys(Map2), Map1)),
-    M52 = maps:filter(fun(_, V) -> is_map(V) end, maps:with(maps:keys(Map1), Map2)),
-    M5 = maps:map(fun(K, V) -> merge(V, maps:get(K, M52)) end, M51),
-    maps:merge(maps:merge(M3, M4), M5).
-
-
--spec merge_r(map(), map()) -> map().
-merge_r(MapLeft, MapRight) ->
+merge(MapLeft, MapRight) ->
     merge(fun merge_right/2, MapLeft, MapRight).
-
--spec merge_l(map(), map()) -> map().
-merge_l(MapLeft, MapRight) ->
-    merge(fun merge_left/2, MapLeft, MapRight).
 
 -type merge_arg_2() :: {'left' | 'right', term()} | {'both', term(), term()}.
 -type merge_fun_result() :: 'undefined' | {'ok', term()}.
