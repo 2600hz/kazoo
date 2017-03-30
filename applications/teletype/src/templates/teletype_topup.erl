@@ -21,10 +21,10 @@
        ,kz_json:from_list(
           [?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The Resulting Account Balance">>)
            | ?TRANSACTION_MACROS
-             ++ ?ACCOUNT_MACROS
-             ++ ?USER_MACROS
+           ++ ?ACCOUNT_MACROS
+           ++ ?USER_MACROS
           ]
-        )
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).

@@ -679,7 +679,7 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
                   ,ConfigCat
                   ,Keys
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-     ).
+                  ).
 
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path()) ->
                           {kz_json:path(), api_binaries()}.
@@ -693,7 +693,7 @@ find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
                 ,kz_json:find([Key, <<"type">>]
                              ,[DataJObj, TemplateMetaJObj]
                              )
-     ).
+                ).
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
@@ -777,8 +777,8 @@ maybe_load_preview(Type, _Error, 'true') ->
     read_preview_doc(Type).
 
 -spec read_preview_doc(ne_binary()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', read_file_error()}.
+                              {'ok', kz_json:object()} |
+                              {'error', read_file_error()}.
 read_preview_doc(File) ->
     AppDir = code:lib_dir('teletype'),
     PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),

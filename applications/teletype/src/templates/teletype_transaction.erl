@@ -25,8 +25,8 @@
           ,?MACRO_VALUE(<<"plan.item">>, <<"plan_item">>, <<"Plan Item">>, <<"Plan Item">>)
           ,?MACRO_VALUE(<<"plan.activation_charge">>, <<"plan_activation_charge">>, <<"Activation Charge">>, <<"Activiation Charge">>)
            | ?TRANSACTION_MACROS
-             ++ ?ACCOUNT_MACROS
-             ++ ?USER_MACROS
+           ++ ?ACCOUNT_MACROS
+           ++ ?USER_MACROS
           ])
        ).
 

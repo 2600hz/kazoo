@@ -20,7 +20,7 @@
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
           ?ACCOUNT_MACROS ++ ?USER_MACROS
-          )
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).

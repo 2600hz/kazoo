@@ -547,7 +547,7 @@ charge_billing_id(Amount, Context) ->
 send_transaction_notify(AccountId, Transaction) ->
     Props = [{<<"Account-ID">>, AccountId}
              | braintree_transaction:record_to_notification_props(Transaction)
-                 ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+             ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case kz_amqp_worker:cast(Props, fun kapi_notifications:publish_transaction/1) of
         'ok' -> lager:debug("transaction notification sent for ~s", [AccountId]);

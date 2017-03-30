@@ -35,7 +35,7 @@ get_attachments(DataJObj, 'false') ->
     lists:foldl(fun(Name, Acc) -> get_attachment_fold(Name, Acc, PortReqId, Doc) end
                ,[]
                ,kz_doc:attachment_names(Doc)
-     ).
+               ).
 
 -spec get_attachment_fold(kz_json:path(), attachments(), ne_binary(), kz_json:object()) ->
                                  attachments().
@@ -116,7 +116,7 @@ fix_numbers(JObj) ->
         kz_json:foldl(fun fix_number_fold/3
                      ,[]
                      ,kz_json:get_value(<<"numbers">>, JObj, kz_json:new())
-         ),
+                     ),
     kz_json:set_value(<<"numbers">>, Numbers, JObj).
 
 -spec fix_number_fold(kz_json:object(), any(), kz_json:path()) -> kz_json:path().
@@ -128,7 +128,7 @@ fix_billing(JObj) ->
     kz_json:foldl(fun fix_billing_fold/3
                  ,kz_json:delete_key(<<"bill">>, JObj)
                  ,kz_json:get_value(<<"bill">>, JObj)
-     ).
+                 ).
 
 -spec fix_billing_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
                               kz_json:object().
@@ -152,7 +152,7 @@ fix_comments(JObj) ->
             kz_json:set_value(<<"comment">>
                              ,kz_json:to_proplist(Comment)
                              ,kz_json:delete_key(<<"comments">>, JObj)
-             )
+                             )
     end.
 
 -spec fix_dates(kz_json:object()) -> kz_json:object().
@@ -160,7 +160,7 @@ fix_dates(JObj) ->
     lists:foldl(fun fix_date_fold/2
                ,JObj
                ,[<<"transfer_date">>, <<"scheduled_date">>]
-     ).
+               ).
 
 -spec fix_date_fold(kz_json:path(), kz_json:object()) -> kz_json:object().
 fix_date_fold(Key, JObj) ->
@@ -176,21 +176,21 @@ fix_notifications(JObj) ->
     kz_json:set_value(<<"customer_contact">>
                      ,kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], JObj)
                      ,kz_json:delete_key(<<"notifications">>, JObj)
-     ).
+                     ).
 
 -spec fix_carrier(kz_json:path()) -> kz_json:object().
 fix_carrier(JObj) ->
     kz_json:set_value(<<"service_provider">>
                      ,kz_json:get_value(<<"carrier">>, JObj)
                      ,kz_json:delete_key(<<"carrier">>, JObj)
-     ).
+                     ).
 
 -spec fix_transfer_date(kz_json:path()) -> kz_json:object().
 fix_transfer_date(JObj) ->
     kz_json:set_value(<<"requested_port_date">>
                      ,kz_json:get_value(<<"transfer_date">>, JObj)
                      ,kz_json:delete_key(<<"transfer_date">>, JObj)
-     ).
+                     ).
 
 -spec fix_ui_metadata(kz_json:path()) -> kz_json:object().
 fix_ui_metadata(JObj) ->

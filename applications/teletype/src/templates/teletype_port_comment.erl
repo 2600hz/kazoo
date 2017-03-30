@@ -79,7 +79,7 @@ process_req(DataJObj) ->
             handle_port_request(
               teletype_port_utils:fix_email(ReqData
                                            ,teletype_port_utils:is_comment_private(Comments)
-               )
+                                           )
              );
         'true' -> handle_port_request(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
