@@ -83,14 +83,14 @@ run(Token, [Fun | Routines]) ->
 
 add_app(#{app_id := AppId}=Map) ->
     case kz_auth_apps:get_auth_app(AppId, 'app_and_provider') of
-         {'error', _} = Error -> Map#{error => Error};
-         #{}=App -> kz_maps:merge(Map#{claims => #{iss => AppId}}, App)
-     end;
+        {'error', _} = Error -> Map#{error => Error};
+        #{}=App -> kz_maps:merge(Map#{claims => #{iss => AppId}}, App)
+    end;
 add_app(#{subject := #{pvt_app_id := AppId}}=Map) ->
     case kz_auth_apps:get_auth_app(AppId, 'app_and_provider') of
-         {'error', _} = Error -> Map#{error => Error};
-         #{}=App -> kz_maps:merge(Map#{claims => #{iss => AppId}}, App)
-     end;
+        {'error', _} = Error -> Map#{error => Error};
+        #{}=App -> kz_maps:merge(Map#{claims => #{iss => AppId}}, App)
+    end;
 add_app(Map) ->
     Map#{error => <<"no app_id">>}.
 
