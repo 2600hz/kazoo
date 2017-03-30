@@ -20,13 +20,16 @@ create_new_number_rename_carrier_test_() ->
     {ok, N1} = knm_number:create(?TEST_CREATE_NUM, Options),
     PN1 = knm_number:phone_number(N1),
     WrongCarrier = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"wrong_carrier">>}]),
-    {error, Error2} = knm_number:create(?TEST_CREATE_NUM, props:set_value(public_fields, WrongCarrier, Options)),
+    {ok, N2} = knm_number:create(?TEST_CREATE_NUM, props:set_value(public_fields, WrongCarrier, Options)),
+    PN2 = knm_number:phone_number(N2),
     {error, Error3} = knm_number:create(?TEST_CREATE_NUM, props:set_value(auth_by, ?RESELLER_ACCOUNT_ID, Options)),
-    [{"Verify only admin can create and set carrier"
+    [?_asssert(knm_phone_number:is_dirty(PN1))
+    ,{"Verify only admin can create and set carrier"
      ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN1))
      }
-    ,{"Verify creating number with wrong carrier is invalid"
-     ,?_assertEqual(<<"invalid">>, knm_errors:message(Error2))
+    ,?_asssert(knm_phone_number:is_dirty(PN2))
+    ,{"Verify creating number with wrong carrier is actually ok"
+     ,?_assertEqual(<<"knm_wrong_carrier">>, knm_phone_number:module_name(PN2))
      }
     ,{"Verify creating number and setting carrier as non-admin is forbidden"
      ,?_assertEqual(<<"forbidden">>, knm_errors:error(Error3))
@@ -43,9 +46,8 @@ rename_carrier_test_() ->
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"local">>}]),
     #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj1}]),
     PN2 = knm_number:phone_number(N2),
-    JObj2 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"wrong_carrier">>}]),
-    #{ko := #{?TEST_TELNYX_NUM := Error3}} =
-        knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, JObj2}]),
+    JObj2 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"blabla">>}]),
+    #{ok := [N3]} = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj2}]),
     #{ok := [N4]} = knm_numbers:update([N2], [{fun knm_phone_number:reset_doc/2, kz_json:new()}]),
     PN4 = knm_number:phone_number(N4),
     JObj3 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"telnyx">>}]),
@@ -71,12 +73,19 @@ rename_carrier_test_() ->
     ,{"Verify feature is now removed"
      ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN2)))
      }
+    ,?_assert(knm_phone_number:is_dirty(PN3))
+    ,{"Verify carrier name is changed"
+     ,?_assertEqual(<<"knm_blabla">>, knm_phone_number:module_name(PN3))
+     }
+    ,{"Verify local feature is not set"
+     ,?_assert(not lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN3)))
+     }
+    ,{"Verify feature is now removed"
+     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN3)))
+     }
     ,?_assertEqual(false, knm_phone_number:is_dirty(PN4))
     ,{"Verify local feature is still set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN4)))
-     }
-    ,{"Verify setting wrong carrier is forbidden"
-     ,?_assertEqual(<<"invalid">>, knm_errors:message(Error3))
      }
     ,{"Verify carrier name is still changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN4))
