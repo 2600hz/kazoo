@@ -44,7 +44,7 @@
 -define(PVT_ID, <<"_id">>).
 -define(PVT_REV, <<"_rev">>).
 -ifndef(PVT_TREE).
-- define(PVT_TREE, <<"pvt_tree">>).
+-define(PVT_TREE, <<"pvt_tree">>).
 -endif.
 -define(PVT_VSN, <<"pvt_vsn">>).
 
@@ -96,6 +96,7 @@ public_fields(JObj) ->
 -spec get(ne_binary()) -> {'ok', kz_json:object()} |
                           {'error', 'not_found'}.
 -ifdef(TEST).
+get(?TEST_NEW_PORT_NUM) -> {ok, ?TEST_NEW_PORT_REQ};
 get(?NE_BINARY) -> {error, not_found}.
 -else.
 get(DID=?NE_BINARY) ->

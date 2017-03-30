@@ -355,10 +355,11 @@ assign_to_app(Num, App, Options) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account(api_binary()) -> lookup_account_return().
+-spec lookup_account(api_ne_binary()) -> lookup_account_return().
 -ifdef(TEST).
 lookup_account(undefined) -> {error, not_reconcilable};
 lookup_account(Num) ->
+    %%FIXME: use knm_converters:is_reconcilable/1
     NormalizedNum = knm_converters:normalize(Num),
     fetch_account_from_number(NormalizedNum).
 -else.
@@ -405,8 +406,7 @@ check_number(PN) ->
 -ifdef(TEST).
 is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> true.
 -else.
-is_account_enabled(AccountId) ->
-    kz_util:is_account_enabled(AccountId).
+is_account_enabled(AccountId) -> kz_util:is_account_enabled(AccountId).
 -endif.
 
 check_account(PN) ->

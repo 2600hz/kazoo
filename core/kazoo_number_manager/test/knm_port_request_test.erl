@@ -196,9 +196,11 @@ force_outbound_test_() ->
     {ok, ?RESELLER_ACCOUNT_ID, Props3} = knm_number:lookup_account(?TEST_IN_SERVICE_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
     {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
-    [?_assert(knm_number_options:should_force_outbound(Props1))
+    {ok, ?RESELLER_ACCOUNT_ID, Props6} = knm_number:lookup_account(?TEST_NEW_PORT_NUM),
+    [?_assert(not knm_number_options:should_force_outbound(Props1))
     ,?_assert(not knm_number_options:should_force_outbound(Props2))
-    ,?_assert(knm_number_options:should_force_outbound(Props3))
-    ,?_assert(knm_number_options:should_force_outbound(Props4))
+    ,?_assert(not knm_number_options:should_force_outbound(Props3))
+    ,?_assert(not knm_number_options:should_force_outbound(Props4))
     ,?_assert(not knm_number_options:should_force_outbound(Props5))
+    ,?_assert(knm_number_options:should_force_outbound(Props6))
     ].
