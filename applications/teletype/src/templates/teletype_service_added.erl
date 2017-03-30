@@ -106,7 +106,6 @@ reseller_info_data(DataJObj) ->
         'false' ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             ResellerId = kz_services:find_reseller_id(AccountId),
-            {'ok', AccountJObj} = kz_account:fetch(ResellerId),
             teletype_util:find_account_params(DataJObj, ResellerId)
     end.
 
@@ -117,8 +116,7 @@ sub_account_data(DataJObj) ->
         'true' -> [];
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
-            {'ok', AccountJObj} = kz_account:fetch(AccountId),
-            teletype_util:find_account_params(DataJObj, ResellerId)
+            teletype_util:find_account_params(DataJObj, AccountId)
     end.
 
 -spec service_added_data(kz_json:object()) -> kz_proplist().
