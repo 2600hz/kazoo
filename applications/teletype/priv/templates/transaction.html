@@ -37,7 +37,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px">
-                        <span style="font-size:.9em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:4px 0;padding:25px 0 0;"><b>Date:</b>&nbsp;{{transaction.date}}</span><br>
+                        <span style="font-size:.9em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:4px 0;padding:25px 0 0;"><b>Date:</b>&nbsp;{{transaction.date.local|date:"l, F j, Y H:i"}}</span><br>
                         <span style="font-size:.9em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:4px 0;padding:0;"><b>Invoice ID:</b> {{transaction.id}}</span>
                     </td>
                 </tr>
@@ -49,7 +49,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;">
-                        <p style="margin:0;padding:0">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %}{{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %}to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date}}</b>.</p>
+                        <p style="margin:0;padding:0">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %}{{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %}to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"l, F j, Y H:i"}}</b>.</p>
                     </td>
                 </tr>
             </table>

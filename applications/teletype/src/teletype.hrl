@@ -149,7 +149,8 @@
         ,?MACRO_VALUE(<<"transaction.address.email">>, <<"bill_addr_email">>, <<"Billing Address Email">>, <<"Billing Address Email">>)
         ,?MACRO_VALUE(<<"transaction.card_last_four">>, <<"card_last_four">>, <<"Card-Last-Four">>, <<"The Last Four Digits of Card">>)
         ,?MACRO_VALUE(<<"transaction.tax_amount">>, <<"tax_amount">>, <<"Tax-Amount">>, <<"Tax Amount">>)
-        ,?MACRO_VALUE(<<"transaction.date">>, <<"date">>, <<"Date">>, <<"Date">>)
+        ,?MACRO_VALUE(<<"transaction.date.local">>, <<"date_local">>, <<"Local Date Time">>, <<"Local Date Time">>)
+        ,?MACRO_VALUE(<<"transaction.date.utc">>, <<"date_utc">>, <<"UTC Date Time">>, <<"UTC Date Time">>)
         ,?MACRO_VALUE(<<"transaction.purchase_order">>, <<"purchase_order">>, <<"Purchase-Order">>, <<"Purchase Order Reason">>)
         ,?MACRO_VALUE(<<"transaction.currency_code">>, <<"currency_code">>, <<"Currency-Code">>, <<"Currency Code">>)
         ]).

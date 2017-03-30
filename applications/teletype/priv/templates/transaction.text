@@ -1,15 +1,15 @@
                 Payment Receipt
 
 
-Date: {{transaction.date}}
+Date: {{transaction.date.local|date:"l, F j, Y H:i"}}
 Invoice ID: {{transaction.id}}
 
 
 		Thank you for being a customer!
 			We received your payment
 
-We've successfully charged {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %}{{transaction.currency_code|upper}}{% endif %}{% if transaction.card_last_four %}to your card with four last digits {{transaction.card_last_four}} {% endif %}
-on {{transaction.date}}.
+We've successfully charged {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}{% if transaction.card_last_four %} to your card with four last digits {{transaction.card_last_four}} {% endif %}
+on {{transaction.date.local|date:"n/j/Y"}}.
 
 {% if transaction.address %}
 -------------------------

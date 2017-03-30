@@ -464,8 +464,6 @@ headers(<<"port_request_admin">>) ->
     kapi_notifications:headers(<<"port_request">>);
 headers(<<"fax_inbound_error_to_email_filtered">>) ->
     kapi_notifications:headers(<<"fax_inbound_error_to_email">>);
-headers(<<"transaction_success">>) ->
-    kapi_notifications:headers(<<"transaction">>);
 headers(<<"transaction_failed">>) ->
     kapi_notifications:headers(<<"transaction">>);
 headers(Id) ->
@@ -476,7 +474,7 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
 maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
-maybe_add_extra_data(<<"transaction_success">>, API) ->
+maybe_add_extra_data(<<"transaction">>, API) ->
     props:set_value(<<"Success">>, 'true', API);
 maybe_add_extra_data(<<"transaction_failed">>, API) ->
     props:set_value(<<"Success">>, 'false', API);
@@ -537,7 +535,7 @@ publish_fun(<<"system_alert">>) ->
     fun kapi_notifications:publish_system_alert/1;
 publish_fun(<<"topup">>) ->
     fun kapi_notifications:publish_topup/1;
-publish_fun(<<"transaction_success">>) ->
+publish_fun(<<"transaction">>) ->
     fun kapi_notifications:publish_transaction/1;
 publish_fun(<<"transaction_failed">>) ->
     fun kapi_notifications:publish_transaction/1;

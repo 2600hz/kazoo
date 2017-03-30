@@ -14,7 +14,7 @@
 
 -include("teletype.hrl").
 
--define(SUCCESS_TEMPLATE_ID, <<"transaction_success">>).
+-define(SUCCESS_TEMPLATE_ID, <<"transaction">>).
 -define(FAILED_TEMPLATE_ID, <<"transaction_failed">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?NOTIFY_CONFIG_CAT)/binary>>).
 
@@ -97,7 +97,7 @@ handle_req(DataJObj) ->
              ,{<<"plan">>, service_plan_data(DataJObj)}
              ,{<<"transaction">>, transaction_data(DataJObj)}
              ],
-    io:format("~n Macros ~p~n~n ID ~p~n~n", [Macros, transaction_template_id(DataJObj)]),
+
     %% Load templates
     RenderedTemplates = teletype_templates:render(transaction_template_id(DataJObj), Macros, DataJObj),
 
@@ -120,7 +120,7 @@ handle_req(DataJObj) ->
 service_plan_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
-        'false' -> teletype_util:public_proplist(<<"service_plan">>, DataJObj)
+        'false' ->teletype_util:public_proplist(<<"service_plan">>, DataJObj)
     end.
 
 -spec transaction_data(kz_json:object()) -> kz_proplist().
@@ -128,9 +128,10 @@ transaction_data(DataJObj) ->
     transaction_data(DataJObj, teletype_util:is_preview(DataJObj)).
 
 -spec transaction_data(kz_json:object(), boolean()) -> kz_proplist().
-transaction_data(_DataJObj, 'true') ->
+transaction_data(DataJObj, 'true') ->
     {'ok', JObj} = teletype_util:read_preview_doc(<<"transaction">>),
-    kz_json:recursive_to_proplist(JObj);
+    Props = kz_json:recursive_to_proplist(JObj),
+    props:set_value(<<"date">>, teletype_util:fix_timestamp(props:get_value(<<"date">>, Props), DataJObj), Props);
 transaction_data(DataJObj, 'false') ->
     props:filter_undefined(
       [{<<"amount">>, kz_json:get_value(<<"amount">>, DataJObj)}
@@ -156,7 +157,7 @@ transaction_data(DataJObj, 'false') ->
        }
       ,{<<"card_last_four">>, kz_json:get_value(<<"card_last_four">>, DataJObj)}
       ,{<<"tax_amount">>, kz_json:get_value(<<"tax_amount">>, DataJObj)}
-      ,{<<"date">>, kz_json:get_value(<<"timestamp">>, DataJObj)}
+      ,{<<"date">>, teletype_util:fix_timestamp(kz_json:get_value(<<"timestamp">>, DataJObj), DataJObj)}
       ,{<<"purchase_order">>, purchase_order(DataJObj)}
       ,{<<"currency_code">>, kz_json:get_value(<<"currency_code">>, DataJObj)}
       ]

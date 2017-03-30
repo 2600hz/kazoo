@@ -32,6 +32,7 @@
         ,open_doc/3
         ,is_preview/1
         ,read_preview_doc/1
+        ,fix_timestamp/1, fix_timestamp/2, fix_timestamp/3
 
         ,public_proplist/2
 
@@ -794,6 +795,40 @@ is_preview(DataJObj) ->
     kz_term:is_true(
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
+
+-spec fix_timestamp(integer() | api_ne_binary()) -> kz_proplist().
+fix_timestamp(Timestamp) ->
+    fix_timestamp(Timestamp, <<"GMT">>).
+
+-spec fix_timestamp(integer() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+fix_timestamp('undefined', Thing) ->
+    fix_timestamp(kz_time:current_tstamp(), Thing);
+fix_timestamp(?NE_BINARY=Timestamp, TZ) ->
+    fix_timestamp(kz_term:to_integer(Timestamp), TZ);
+fix_timestamp(Timestamp, ?NE_BINARY=TZ) ->
+    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+
+    lager:debug("using tz ~s (system ~s) for ~p", [TZ, ClockTimezone, DateTime]),
+
+    props:filter_undefined(
+      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, TZ)}
+      ,{<<"timezone">>, TZ}
+      ]);
+fix_timestamp(Timestamp, 'undefined') ->
+    fix_timestamp(Timestamp, <<"GMT">>);
+fix_timestamp(Timestamp, DataJObj) ->
+    Params = account_params(DataJObj),
+    TZ = props:get_value(<<"timezone">>, Params),
+    fix_timestamp(Timestamp, TZ).
+
+
+-spec fix_timestamp(integer() | api_ne_binary(), api_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+fix_timestamp(Timestamp, 'undefined', DataJObj) ->
+    fix_timestamp(Timestamp, DataJObj);
+fix_timestamp(Timestamp, TZ, _DataJObj) ->
+    fix_timestamp(Timestamp, TZ).
 
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->

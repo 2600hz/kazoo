@@ -294,7 +294,7 @@ notification_data(Success, BillingId, Amount, 'undefined') ->
     ,{<<"Amount">>, Amount}
     ,{<<"Success">>, Success}
     ,{<<"Response">>, <<"Unknown Error">>}
-    ,{<<"Date">>, kz_time:current_tstamp()}
+    ,{<<"Timestamp">>, kz_time:current_tstamp()}
      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
     ];
 notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
