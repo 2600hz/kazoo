@@ -164,8 +164,6 @@ attempt_upload(_TaskId, _AName, _, _, 0, _) ->
     lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {error, conflict};
 attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
-    Retries =/= Max
-        andalso pause_between_upload_attempts(TaskId),
     lager:debug("attempt #~p to save ~s/~s", [Max-Retries+1, TaskId, AName]),
     Options = [{content_type, <<"text/csv">>}],
     case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSVOut, Options) of
@@ -174,13 +172,11 @@ attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
             kz_util:delete_file(Output);
         {error, _R} ->
             lager:debug("upload of ~s failed (~s), may retry soon", [TaskId, _R]),
+            Pause = ?MILLISECONDS_IN_SECOND * ?PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
+            lager:debug("waiting ~pms before next upload attempt of ~s", [Pause, TaskId]),
+            timer:sleep(Pause),
             attempt_upload(TaskId, AName, CSVOut, Output, Retries-1, Max)
     end.
-
-pause_between_upload_attempts(_TaskId) ->
-    Pause = ?MILLISECONDS_IN_SECOND * ?PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
-    lager:debug("waiting ~pms before next upload attempt of ~s", [Pause, _TaskId]),
-    timer:sleep(Pause).
 
 %%--------------------------------------------------------------------
 %% @public
