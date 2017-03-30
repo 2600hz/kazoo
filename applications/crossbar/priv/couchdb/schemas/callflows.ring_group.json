@@ -58,7 +58,7 @@
         },
         "ignore_forward": {
             "default": true,
-            "description": "Whether to ring forwarded endpoints",
+            "description": "If true, will ignore SIP redirect requests for call-forwarded devices",
             "required": false,
             "type": "boolean"
         },
