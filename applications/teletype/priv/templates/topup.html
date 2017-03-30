@@ -27,9 +27,15 @@
             <td>
             <![endif]-->
             <!-- 1 Column Text:BEGIN -->
+            {% if not transaction.success %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#5995f7" align="center" width="100%" style="background-color:#5995f7;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><td style="font-size:10px;line-height:10px;" height="5">&nbsp;</td></tr>
             </table>
+            {% else %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#ff4a33" align="center" width="100%" style="background-color:#ff4a33;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><td style="font-size:10px;line-height:10px;" height="5">&nbsp;</td></tr>
+            </table>
+            {% endif %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;">
@@ -40,8 +46,53 @@
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;">
-                        <p style="margin:0;padding:0 0 15px">Top-up attempted to <b>{{account.name}}</b> for amount of <b>{{amount}}</b>.</p>
-                        <p style="margin:0;padding:0">The transaction processor response was <b>{{response}}</b> resulting in a new balance of <b>{{balance}}</b>.</p>
+                        <p style="margin:0;padding:0 0 15px">Automatic top-up attempt to account <b>{{account.name}}</b> for amount of <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b> was {% if transaction.success %} <b>successful</b>{% else %} <b>unsuccessful</b>{% endif %}.</p>
+                        <p style="margin:0;padding:0">Account Balance <b>{{balance}}</b></p>
+                    </td>
+                </tr>
+            </table>
+            {% if not transaction.success %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#f7c659" width="80%" style="background-color:#f7c659;border-radius:5px;">
+                            <tr>
+                                <td style="text-align:center;padding:15px;font-family:'Open Sans', sans-serif;font-size:0.9em;line-height:20px;color:#555555;border-radius:5px;">Please double check your payment information and try again!</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:left;border-top:1px solid #dedede;border-bottom:1px solid #dedede;">
+                            <tr>
+                                <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:20px 10px 10px;">
+                                    <b>Failed Reason:</b> {{transaction.response}}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:10px;">
+                                    <b>Total Amount to Charge:</b> {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:10px 10px 20px;">
+                                    <b>Credit Card Last Digits:</b> {{transaction.card_last_four|default:"No Credit Card info on file"}}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px;">
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans', sans-serif;line-height:20px;color:#555555;">Questions?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;">Please email us and we'll be happy to help.</small></p>
+                        <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans', sans-serif;line-height:20px;color:#555555;">Need to update your billing info?</small></h4>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;">The Credit Card section on Account Settings can be accessed by your Account Owner, <b>{{user.first_name}} {{user.last_name}}</b></small></p><br>
+                        <p style="margin:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;">Thank you for your business!</p>
                     </td>
                 </tr>
             </table>

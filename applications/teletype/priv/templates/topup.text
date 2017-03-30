@@ -1,7 +1,7 @@
                 Account Topped-Up
 
 
-Top-up attempted to {{account.name}} for amount of {{amount}}.
+Top-up attempted to {{account.name}} for amount of {{transaction.amount}}.
 The transaction processor response was {{response}} resulting in a new balance of {{balance}}.
 
 

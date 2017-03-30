@@ -438,7 +438,7 @@
 -define(TOPUP_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Timestamp">>
                        ,<<"Response">>, <<"Success">>
                        ]).
--define(OPTIONAL_TOPUP_HEADERS, [?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS]).
+-define(OPTIONAL_TOPUP_HEADERS, ?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
