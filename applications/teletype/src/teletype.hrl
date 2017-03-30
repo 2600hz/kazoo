@@ -129,6 +129,31 @@
         ,?MACRO_VALUE(<<"port_request.requested_port_date">>, <<"requested_port_date">>, <<"Requested Port Date">>, <<"Requested Port Date">>)
         ]).
 
+-define(TRANSACTION_MACROS
+       ,[?MACRO_VALUE(<<"transaction.amount">>, <<"amount">>, <<"Amount">>, <<"The Transaction amount">>)
+        ,?MACRO_VALUE(<<"transaction.success">>, <<"success">>, <<"Success">>, <<"Whether or not the Transaction was successful">>)
+        ,?MACRO_VALUE(<<"transaction.response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
+        ,?MACRO_VALUE(<<"transaction.id">>, <<"id">>, <<"ID">>, <<"Transaction ID">>)
+        ,?MACRO_VALUE(<<"transaction.add_ons">>, <<"add_ons">>, <<"Add-Ons">>, <<"Total Add-Ons Cost Amount">>)
+        ,?MACRO_VALUE(<<"transaction.discounts">>, <<"discounts">>, <<"Discounts">>, <<"Total Discounts Amount">>)
+        ,?MACRO_VALUE(<<"transaction.address.first_name">>, <<"address_first_name">>, <<"Billing Address First Name">>, <<"Billing Address First Name">>)
+        ,?MACRO_VALUE(<<"transaction.address.last_name">>, <<"address_last_name">>, <<"Billing Address Last Name">>, <<"Billing Address Last_ Nme">>)
+        ,?MACRO_VALUE(<<"transaction.address.company">>, <<"address_company">>, <<"Billing Address Company">>, <<"Billing Address Company">>)
+        ,?MACRO_VALUE(<<"transaction.address.street_address">>, <<"address_street_address">>, <<"Billing Address Street Address">>, <<"Billing Address Street Address">>)
+        ,?MACRO_VALUE(<<"transaction.address.extended_address">>, <<"address_extended_address">>, <<"Billing Address Extended Address">>, <<"Billing Address Extended Address">>)
+        ,?MACRO_VALUE(<<"transaction.address.locality">>, <<"address_locality">>, <<"Billing Address Locality">>, <<"Billing Address Locality">>)
+        ,?MACRO_VALUE(<<"transaction.address.region">>, <<"address_region">>, <<"Billing Address Region">>, <<"Billing Address Region">>)
+        ,?MACRO_VALUE(<<"transaction.address.postal_code">>, <<"address_postal_code">>, <<"Billing Address Postal Code">>, <<"Billing Pd Cess postal_code">>)
+        ,?MACRO_VALUE(<<"transaction.address.country_name">>, <<"address_country_name">>, <<"Billing Address Country Name">>, <<"Billing Cddress Nountry_name">>)
+        ,?MACRO_VALUE(<<"transaction.address.phone">>, <<"address_phone">>, <<"Billing Address Phone">>, <<"Billing Address Phone">>)
+        ,?MACRO_VALUE(<<"transaction.address.email">>, <<"bill_addr_email">>, <<"Billing Address Email">>, <<"Billing Address Email">>)
+        ,?MACRO_VALUE(<<"transaction.card_last_four">>, <<"card_last_four">>, <<"Card-Last-Four">>, <<"The Last Four Digits of Card">>)
+        ,?MACRO_VALUE(<<"transaction.tax_amount">>, <<"tax_amount">>, <<"Tax-Amount">>, <<"Tax Amount">>)
+        ,?MACRO_VALUE(<<"transaction.date">>, <<"date">>, <<"Date">>, <<"Date">>)
+        ,?MACRO_VALUE(<<"transaction.purchase_order">>, <<"purchase_order">>, <<"Purchase-Order">>, <<"Purchase Order Reason">>)
+        ,?MACRO_VALUE(<<"transaction.currency_code">>, <<"currency_code">>, <<"Currency-Code">>, <<"Currency Code">>)
+        ]).
+
 -define(SYSTEM_MACROS
        ,[?MACRO_VALUE(<<"system.hostname">>, <<"system_hostname">>, <<"Hostname">>, <<"Hostname of system generating the email">>)
         ]

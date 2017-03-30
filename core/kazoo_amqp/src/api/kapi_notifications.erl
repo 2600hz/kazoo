@@ -428,22 +428,28 @@
                             ]).
 -define(LOW_BALANCE_TYPES, []).
 
+%%% Transaction Common Optional Headers
+-define(COMMON_TRANSACTION_HEADERS, [<<"ID">>, <<"Add-Ons">>, <<"Discounts">>
+                                    ,<<"Billing-Address">>, <<"Card-Last-Four">>, <<"Tax-Amount">>
+                                    , <<"Purchase-Order">>, <<"Currency-Code">>
+                                    ]).
+
 %% Notify Top Up
--define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>
-                                ,<<"Response">>
-                                ,<<"Success">>
-                                     | ?DEFAULT_OPTIONAL_HEADERS
-                                ]).
+-define(TOPUP_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Date">>
+                       ,<<"Response">>, <<"Success">>
+                       ]).
+-define(OPTIONAL_TOPUP_HEADERS, [?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS]).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
 %% Notify Transaction
--define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>, <<"Service-Plan">>
-                                           | ?DEFAULT_OPTIONAL_HEADERS
+-define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Timestamp">>
+                             ,<<"Response">>, <<"Success">>
+                             ]).
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>
+                                           | ?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"transaction">>}

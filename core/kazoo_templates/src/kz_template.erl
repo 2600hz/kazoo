@@ -168,6 +168,7 @@ log_warnings(Ws, Template) ->
 -spec log_infos(string(), string(), [info()], template()) -> 'ok'.
 log_infos(Type, Module, Errors, Template) ->
     lager:info("~s in module ~s", [Type, Module]),
+    io:format("~n~n Errors ~p~n~n", [Errors]),
     lists:foreach(fun (Error) -> catch log_info(Error, Template) end, Errors).
 
 -spec log_info(info(), template()) -> 'ok'.

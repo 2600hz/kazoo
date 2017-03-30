@@ -494,3 +494,29 @@ json_to_record(JObj) ->
                    ,is_automatic = kz_json:is_true(<<"is_automatic">>, JObj)
                    ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
       }.
+
+-spec record_to_notification_props(bt_transaction()) -> kz_proplist().
+record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
+    Transaction = record_to_json(BraintreeTransaction),
+    RespCode = kz_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
+    props:filter_empty(
+      [{<<"Success">>, kz_term:to_integer(RespCode) < 2000}
+      ,{<<"Amount">>, kz_json:get_value(<<"amount">>, Transaction)}
+      ,{<<"Response">>, kz_json:get_ne_value(<<"processor_response_text">>, Transaction, <<"Missing Response">>)}
+      ,{<<"ID">>, kz_json:get_value(<<"id">>, Transaction)}
+      ,{<<"Add-Ons">>, kz_json:get_value(<<"add_ons">>, Transaction)}
+      ,{<<"Discounts">>, kz_json:get_value(<<"discounts">>, Transaction)}
+      ,{<<"Billing-Address">>, kz_json:get_value(<<"billing_address">>, Transaction)}
+      ,{<<"Card-Last-Four">>, kz_json:get_value([<<"card">>, <<"last_four">>], Transaction)}
+      ,{<<"Tax-Amount">>, kz_json:get_value(<<"tax_amount">>, Transaction)}
+      ,{<<"Timestamp">>, kz_time:current_tstamp()}
+      ,{<<"Purchase-Order">>, purchase_order_reason(Transaction)}
+      ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Transaction)}
+      ].
+
+-spec purchase_order_reason(kz_json:object()) -> api_ne_binary().
+purchase_order_reason(Transaction) ->
+    case kz_json:get_integer_value(Transaction) of
+        'undefined' -> 'undefined';
+        Order -> wht_util:code_reason(Order)
+    end.

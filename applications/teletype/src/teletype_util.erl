@@ -31,6 +31,7 @@
 
         ,open_doc/3
         ,is_preview/1
+        ,read_preview_doc/1
 
         ,public_proplist/2
 
@@ -771,12 +772,12 @@ open_doc(Type, DocId, DataJObj) ->
 maybe_load_preview(_Type, Error, 'false') ->
     Error;
 maybe_load_preview(Type, _Error, 'true') ->
-    read_doc(Type).
+    read_preview_doc(Type).
 
--spec read_doc(ne_binary()) ->
+-spec read_preview_doc(ne_binary()) ->
                       {'ok', kz_json:object()} |
                       {'error', read_file_error()}.
-read_doc(File) ->
+read_preview_doc(File) ->
     AppDir = code:lib_dir('teletype'),
     PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
     case file:read_file(PreviewFile) of

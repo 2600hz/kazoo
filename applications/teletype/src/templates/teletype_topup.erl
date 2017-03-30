@@ -18,18 +18,14 @@
 -define(TEMPLATE_ID, <<"topup">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TOPUP_MACROS
-       ,[?MACRO_VALUE(<<"amount">>, <<"amount">>, <<"Amount">>, <<"The top up amount">>)
-        ,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
-        ,?MACRO_VALUE(<<"response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
-        ,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
-        ]).
-
 -define(TEMPLATE_MACROS
-       ,kz_json:from_list(?USER_MACROS
-                          ++ ?ACCOUNT_MACROS
-                          ++ ?TOPUP_MACROS
-                         )
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The Resulting Account Balance">>)
+           | ?TRANSACTION_MACROS
+             ++ ?ACCOUNT_MACROS
+             ++ ?USER_MACROS
+          ]
+        )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
