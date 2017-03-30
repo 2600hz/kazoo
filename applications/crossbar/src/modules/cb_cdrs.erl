@@ -297,14 +297,8 @@ load_cdr_summary(Context, _Nouns) ->
 -spec load_interaction_cdr_summary(cb_context:context(), req_nouns()) ->
                                           cb_context:context().
 load_interaction_cdr_summary(Context, [_, {?KZ_ACCOUNTS_DB, [_]} | _]) ->
-    lager:debug("loading interaction cdrs for account ~s"
-               ,[cb_context:account_id(Context)]
-               ),
-    case create_view_options('undefined'
-                            ,fun create_interaction_view_options/4
-                            ,Context
-                            )
-    of
+    lager:debug("loading interaction cdrs for account ~s", [cb_context:account_id(Context)]),
+    case create_view_options(undefined, fun create_interaction_view_options/4, Context) of
         {'ok', ViewOptions} ->
             load_view(?CB_INTERACTION_LIST
                      ,props:filter_undefined(ViewOptions)
@@ -330,14 +324,8 @@ load_interaction_cdr_summary(Context, _Nouns) ->
 
 -spec load_cdr_summary(cb_context:context()) -> cb_context:context().
 load_cdr_summary(Context) ->
-    lager:debug("loading cdr summary for account ~s"
-               ,[cb_context:account_id(Context)]
-               ),
-    case create_view_options('undefined'
-                            ,fun create_summary_view_options/4
-                            ,Context
-                            )
-    of
+    lager:debug("loading cdr summary for account ~s", [cb_context:account_id(Context)]),
+    case create_view_options(undefined, fun create_summary_view_options/4, Context) of
         {'ok', ViewOptions} ->
             AccountId = cb_context:account_id(Context),
             DBs = chunked_dbs(AccountId, ViewOptions, fun view_option/2),
@@ -349,21 +337,15 @@ load_cdr_summary(Context) ->
 load_cdr_summary(Context, _, []) ->
     cb_context:set_resp_status(Context, 'success');
 load_cdr_summary(Context, ViewOptions, [Db|Dbs]) ->
-    Context1 = cb_context:set_account_db(Context, Db),
-    Context2 = crossbar_doc:load_view(
-                 ?CB_SUMMARY_VIEW
+    Context1 = crossbar_doc:load_view(?CB_SUMMARY_VIEW
                                      ,ViewOptions
-                                     ,Context1
+                                     ,cb_context:set_account_db(Context, Db)
                                      ,fun normalize_summary_results/2
-                ),
-    case cb_context:resp_status(Context2) of
+                                     ),
+    case cb_context:resp_status(Context1) of
         'success' ->
-            load_cdr_summary(
-              combine_cdr_summary(Context, Context2)
-                            ,ViewOptions
-                            ,Dbs
-             );
-        _Else -> Context2
+            load_cdr_summary(combine_cdr_summary(Context, Context1), ViewOptions, Dbs);
+        _Else -> Context1
     end.
 
 -spec combine_cdr_summary(cb_context:context(), cb_context:context()) -> cb_context:context().
@@ -467,12 +449,7 @@ create_summary_view_options(_, _, CreatedFrom, CreatedTo) ->
            ,'descending'
            ]}.
 
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec pagination_page_size(cb_context:context()) ->pos_integer().
+-spec pagination_page_size(cb_context:context()) -> pos_integer().
 pagination_page_size(Context) ->
     case crossbar_doc:pagination_page_size(Context) of
         'undefined' -> 'undefined';
@@ -494,10 +471,9 @@ load_view(View, ViewOptions, Context) ->
     load_view(View, ViewOptions, fun view_option/2, Context).
 
 load_view(View, ViewOptions, Fun, Context) ->
-    AccountId = cb_context:account_id(Context),
-
+    ChunkedDbs = chunked_dbs(cb_context:account_id(Context), ViewOptions, Fun),
     ContextChanges =
-        [{fun cb_context:store/3, 'chunked_dbs', chunked_dbs(AccountId, ViewOptions, Fun)}
+        [{fun cb_context:store/3, 'chunked_dbs', ChunkedDbs}
         ,{fun cb_context:store/3, 'chunked_view_options', ViewOptions}
         ,{fun cb_context:store/3, 'chunked_view', View}
         ,{fun cb_context:set_resp_status/2, 'success'}
@@ -565,10 +541,8 @@ fetch_view_options(Context) ->
 maybe_paginate_and_clean(Context, []) -> {Context, []};
 maybe_paginate_and_clean(Context, Ids) ->
     case cb_context:fetch(Context, 'is_csv') of
-        'true' ->
-            {Context, [Id || {Id, _} <- Ids]};
-        _ ->
-            paginate_and_clean(Context, Ids)
+        'true' -> {Context, [Id || {Id, _} <- Ids]};
+        _ -> paginate_and_clean(Context, Ids)
     end.
 
 -spec paginate_and_clean(cb_context:context(), ne_binaries()) ->
@@ -599,36 +573,28 @@ get_cdr_ids(Db, View, ViewOptions) ->
     _ = maybe_add_design_doc(Db),
     case kz_datamgr:get_results(Db, View, ViewOptions) of
         {'error', _R} ->
-            lager:debug("unable to fetch ~s from ~s: ~p"
-                       ,[View, Db, _R]
-                       ),
+            lager:debug("unable to fetch ~s from ~s: ~p", [View, Db, _R]),
             {'ok', []};
         {'ok', JObjs} ->
             lager:debug("fetched cdr ids from ~s", [Db]),
-            {'ok', [{kz_doc:id(JObj), kz_json:get_value(<<"key">>, JObj)}
-                    || JObj <- JObjs
-                   ]}
+            CDRs = [{kz_doc:id(JObj), kz_json:get_value(<<"key">>, JObj)} || JObj <- JObjs],
+            {'ok', CDRs}
     end.
 
--spec maybe_add_design_doc(ne_binary()) ->
-                                  'ok' |
-                                  {'error', 'not_found'}.
+-spec maybe_add_design_doc(ne_binary()) -> 'ok' | {'error', 'not_found'}.
 maybe_add_design_doc(Db) ->
     case kz_datamgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
+        {'ok', _} -> 'ok';
         {'error', 'not_found'} ->
             lager:warning("adding cdr views to modb: ~s", [Db]),
-            kz_datamgr:revise_doc_from_file(Db
-                                           ,'kazoo_modb'
-                                           ,<<"cdrs.json">>
-                                           );
-        {'ok', _ } -> 'ok'
+            kz_datamgr:revise_doc_from_file(Db, 'kazoo_modb', <<"cdrs.json">>)
     end.
 
 -spec load_chunked_cdrs(ne_binary(), ne_binaries(), payload()) -> payload().
 load_chunked_cdrs(_, [], Payload) -> Payload;
 load_chunked_cdrs(Db, Ids, {_, Context}=Payload) ->
     {BulkIds, Remaining} =
-        case erlang:length(Ids) < ?MAX_BULK of
+        case length(Ids) < ?MAX_BULK of
             'true' -> {Ids, []};
             'false' -> lists:split(?MAX_BULK, Ids)
         end,
@@ -664,6 +630,7 @@ normalize_and_send('json', [JObj|JObjs], {Req, Context}) ->
             'ok' = cowboy_req:chunk(kz_json:encode(CDR), Req),
             normalize_and_send('json', JObjs, {Req, cb_context:store(Context, 'started_chunk', 'true')})
     end;
+
 normalize_and_send('csv', [], Payload) -> Payload;
 normalize_and_send('csv', [JObj|JObjs], {Req, Context}) ->
     case cb_context:fetch(Context, 'started_chunk') of

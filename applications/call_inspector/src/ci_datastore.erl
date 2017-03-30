@@ -78,7 +78,10 @@ store_analysis(Analysis) ->
 -spec callid_exists(ne_binary()) -> boolean().
 callid_exists(CallId) ->
     File = make_name(CallId),
-    filelib:is_file(File).
+    Exists = filelib:is_file(File),
+    Exists
+        orelse lager:debug("~s not stored here", [CallId]),
+    Exists.
 
 -spec lookup_callid(ne_binary()) -> data().
 lookup_callid(CallId) ->
