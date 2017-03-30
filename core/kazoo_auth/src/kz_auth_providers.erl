@@ -54,7 +54,7 @@ get_auth_provider(ProviderId) ->
 
 -spec provider_from_json(kz_json:object()) -> map().
 provider_from_json(JObj) ->
-    Provider = kz_auth_util:map_keys_to_atoms(kz_json:to_map(JObj)),
+    Provider = kz_maps:keys_to_atoms(kz_json:to_map(JObj)),
     Routines = [fun maybe_set_provider_name/1
                ],
     lists:foldl(fun(F, A) -> F(A) end, Provider, Routines).

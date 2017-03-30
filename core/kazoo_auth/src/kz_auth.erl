@@ -76,7 +76,7 @@ authenticate(Token)
         _ -> {'error', 'authentication_failed'}
     end;
 authenticate(JObj) ->
-    Token = kz_auth_util:map_keys_to_atoms(kz_json:to_map(JObj)),
+    Token = kz_maps:keys_to_atoms(kz_json:to_map(JObj)),
     authenticate(Token#{original => JObj}).
 
 -spec authorize_token(map() | ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.

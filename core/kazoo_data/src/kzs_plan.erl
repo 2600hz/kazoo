@@ -193,7 +193,7 @@ dataplan_match(Classification, Plan, AccountId) ->
              ,others => Others
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(CAtt)
-             ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
+             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
              ,classification => Classification
              ,account_id => AccountId
              }
@@ -239,7 +239,7 @@ dataplan_type_match(Classification, DocType, Plan, AccountId) ->
              ,server => Server
              ,att_proxy => 'true'
              ,att_post_handler => att_post_handler(TypeAttMap)
-             ,att_handler => {AttHandler, kzs_util:map_keys_to_atoms(Params)}
+             ,att_handler => {AttHandler, kz_maps:keys_to_atoms(Params)}
              ,classification => Classification
              ,doc_type => DocType
              ,account_id => AccountId
@@ -331,7 +331,7 @@ maybe_start_connection(Tag, Params) ->
 
 -spec start_connection(atom(), map()) -> {atom(), server()}.
 start_connection(Tag, Params) ->
-    Connection = kz_dataconfig:connection(kzs_util:map_keys_to_atoms(Params#{tag => Tag})),
+    Connection = kz_dataconfig:connection(kz_maps:keys_to_atoms(Params#{tag => Tag})),
     kz_dataconnections:add(Connection),
     case kz_dataconnections:wait_for_connection(Tag, ?NEW_CONNECTION_TIMEOUT) of
         'no_connection' ->

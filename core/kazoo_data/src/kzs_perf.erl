@@ -62,7 +62,7 @@ update_profile_config() ->
 
 -spec update_profile_config(kz_json:object()) -> map().
 update_profile_config(JObj) ->
-    Map = kzs_util:map_keys_to_atoms(kz_json:to_map(JObj)),
+    Map = kz_maps:keys_to_atoms(kz_json:to_map(JObj)),
     kz_cache:store_local(?KAZOO_DATA_PLAN_CACHE, {?MODULE, 'config'}, Map, ?CACHE_PROFILE_OPTS),
     Map.
 
