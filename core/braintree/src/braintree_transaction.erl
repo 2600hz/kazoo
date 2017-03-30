@@ -518,7 +518,7 @@ record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
 
 -spec purchase_order_reason(kz_json:object()) -> api_ne_binary().
 purchase_order_reason(Transaction) ->
-    case kz_json:get_integer_value(Transaction) of
+    case kz_json:get_integer_value(<<"purchase_order">>, Transaction) of
         'undefined' -> 'undefined';
         Order -> wht_util:code_reason(Order)
     end.
