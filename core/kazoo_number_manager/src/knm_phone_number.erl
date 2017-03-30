@@ -734,14 +734,13 @@ features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
 features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
     Data = kz_json:from_list(
              props:filter_undefined(
-               [{<<"early">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
-               ,{<<"transfer">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
+               [{?RINGBACK_EARLY, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_EARLY], JObj)}
+               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_TRANSFER], JObj)}
                ])),
     kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
 features_fold(?FEATURE_PREPEND, Acc, JObj) ->
-    Name = kz_json:get_ne_value([?FEATURE_PREPEND, <<"name">>], JObj),
-    Data = kz_json:from_list([{<<"enabled">>, kz_json:is_true([?FEATURE_PREPEND, <<"enabled">>], JObj)}
-                             ,{<<"name">>, Name}
+    Data = kz_json:from_list([{?PREPEND_ENABLED, kz_json:is_true([?FEATURE_PREPEND, ?PREPEND_ENABLED], JObj)}
+                             ,{?PREPEND_NAME, kz_json:get_ne_value([?FEATURE_PREPEND, ?PREPEND_NAME], JObj)}
                              ]),
     kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
 features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->

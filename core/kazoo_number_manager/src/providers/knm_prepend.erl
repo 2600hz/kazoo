@@ -74,7 +74,7 @@ update_prepend(Number) ->
         'false' when NotChanged  ->
             Number;
         'false' ->
-            case kz_json:is_true(<<"enabled">>, Prepend) of
+            case kz_json:is_true(?PREPEND_ENABLED, Prepend) of
                 'false' -> knm_services:deactivate_feature(Number, ?KEY);
                 'true' -> knm_services:activate_feature(Number, {?KEY, Prepend})
             end
