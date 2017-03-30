@@ -104,13 +104,13 @@ add_app_claims(#{auth_app := #{jwt_flow := #{claims := AppClaims}}
                 ,claims := Claims
                 }=Map) ->
     Map#{claims => maps:merge(Claims, add_claims(AppClaims))};
-add_app_claims(#{}=Map) -> Map.   
+add_app_claims(#{}=Map) -> Map.
 
 add_optional_claims(#{options := #{claims := OptionalClaims}
                      ,claims := Claims
                      }=Map) ->
     Map#{claims => maps:merge(Claims, OptionalClaims)};
-add_optional_claims(#{}=Map) -> Map.   
+add_optional_claims(#{}=Map) -> Map.
 
 add_audience(#{options := #{audience := Aud}
               ,claims := Claims
