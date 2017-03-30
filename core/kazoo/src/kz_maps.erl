@@ -25,7 +25,11 @@ merge(MapLeft, MapRight) ->
 -type merge_fun_result() :: 'undefined' | {'ok', term()}.
 -type merge_fun() :: fun((term(), merge_arg_2()) -> merge_fun_result()).
 -spec merge(merge_fun(), map(), map()) -> map().
-merge(F, MapLeft, MapRight) ->
+merge(F, MapLeft, MapRight)
+  when is_map(MapLeft)
+       andalso is_map(MapRight)
+       andalso is_function(F, 2)
+       ->
     ListLeft = lists:sort(maps:to_list(MapLeft)),
     ListRight = lists:sort(maps:to_list(MapRight)),
     merge(F, ListLeft, ListRight, []).
