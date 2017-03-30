@@ -122,3 +122,8 @@ $(FMT):
 fmt: TO_FMT ?= $(shell find src include -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
+
+perf: ERLC_OPTS += -pa $(ROOT)/deps/horse/ebin -DPERF +'{parse_transform, horse_autoexport}'
+perf: compile-test
+	$(gen_verbose) @ERL_LIBS=$(ELIBS) erl -noshell  -pa $(ROOT)/deps/horse/ebin -pa $(TEST_PA) \
+		-eval 'horse:app_perf($(PROJECT)), init:stop().'

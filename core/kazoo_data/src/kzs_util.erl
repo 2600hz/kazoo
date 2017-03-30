@@ -9,7 +9,6 @@
 
 -export([db_classification/1
         ,db_priority/1
-        ,map_keys_to_atoms/1
         ]).
 
 -include_lib("kazoo_number_manager/include/knm_phone_number.hrl").
@@ -131,17 +130,3 @@ db_priority(?MATCH_RESOURCE_SELECTORS_RAW(_AccountId)) -> 23;
 db_priority(?MATCH_PROVISIONER_ENCODED(_AccountId)) -> 24;
 db_priority(?MATCH_PROVISIONER_encoded(_AccountId)) -> 24;
 db_priority(_Database) -> 24.
-
-%%------------------------------------------------------------------------------
-%% @public
-%% @doc
-%% @end
-%%------------------------------------------------------------------------------
--spec map_keys_to_atoms(map()) -> map().
-map_keys_to_atoms(Map) ->
-    maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
-
-map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
-    Acc#{kz_term:to_atom(K, 'true') => map_keys_to_atoms(V)};
-map_keys_to_atoms_fold(K, V, Acc) ->
-    Acc#{kz_term:to_atom(K, 'true') => V}.
