@@ -21,6 +21,7 @@
         ,find_account_admin/1
         ,find_account_id/1
         ,find_account_db/2
+        ,find_account_params/2
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
 

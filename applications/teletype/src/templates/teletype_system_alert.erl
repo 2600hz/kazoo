@@ -52,7 +52,6 @@ init() ->
 -spec handle_system_alert(kz_json:object()) -> 'ok'.
 handle_system_alert(JObj) ->
     'true' = kapi_notifications:system_alert_v(JObj),
-    io:format("~n JObj ~p~n~n", [JObj]),
     kz_util:put_callid(JObj),
 
     case kz_json:get_value([<<"Details">>, <<"Format">>], JObj) of
