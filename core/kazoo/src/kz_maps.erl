@@ -10,7 +10,10 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([merge/2]).
+-export([merge/2
+        ,merge_r/2
+        ,merge_l/2
+        ]).
 -export([get/2, get/3]).
 -export([keys_to_atoms/1, keys_to_atoms/2]).
 
@@ -26,6 +29,60 @@ merge(Map1, Map2) ->
     M5 = maps:map(fun(K, V) -> merge(V, maps:get(K, M52)) end, M51),
     maps:merge(maps:merge(M3, M4), M5).
 
+
+-spec merge_r(map(), map()) -> map().
+merge_r(MapLeft, MapRight) ->
+    merge(fun merge_right/2, MapLeft, MapRight).
+
+-spec merge_l(map(), map()) -> map().
+merge_l(MapLeft, MapRight) ->
+    merge(fun merge_left/2, MapLeft, MapRight).
+
+-type merge_arg_2() :: {'left' | 'right', term()} | {'both', term(), term()}.
+-type merge_fun_result() :: 'undefined' | {'ok', term()}.
+-type merge_fun() :: fun((term(), merge_arg_2()) -> merge_fun_result()).
+-spec merge(merge_fun(), map(), map()) -> map().
+merge(F, MapLeft, MapRight) ->
+    ListLeft = lists:sort(maps:to_list(MapLeft)),
+    ListRight = lists:sort(maps:to_list(MapRight)),
+    merge(F, ListLeft, ListRight, []).
+
+merge(_F, [], [], Acc) ->
+    maps:from_list(Acc);
+merge(F, [{KX, VX}|Xs], [], Acc) ->
+    merge(F, Xs, [], f(KX, F(KX, {'left', VX}), Acc));
+merge(F, [], [{KY, VY}|Ys], Acc) ->
+    merge(F, Ys, [], f(KY, F(KY, {'right', VY}), Acc));
+merge(F, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc) ->
+    if
+        KX < KY -> merge(F, Xs, Right, f(KX, F(KX, {'left', VX}), Acc));
+        KX > KY -> merge(F, Left, Ys, f(KY, F(KY, {'right', VY}), Acc));
+        KX =:= KY -> merge(F, Xs, Ys, f(KX, F(KX, {'both', VX, VY}), Acc))
+    end.
+
+-spec f(term(), merge_fun_result(), list()) -> list().
+f(_K, 'undefined', Acc) -> Acc;
+f(K, {'ok', R}, Acc) -> [{K, R} | Acc].
+
+-spec merge_left(term(), merge_arg_2()) -> merge_fun_result().
+merge_left(_K, {'left', V}) -> {'ok', V};
+merge_left(_K, {'right', V}) -> {'ok', V};
+merge_left(_K, {'both', MapLeft, MapRight})
+  when is_map(MapLeft)
+       andalso is_map(MapRight)
+       ->
+    {'ok', merge(fun merge_left/2, MapLeft, MapRight)};
+merge_left(_K, {'both', Left, _Right}) -> {'ok', Left}.
+
+-spec merge_right(term(), merge_arg_2()) -> merge_fun_result().
+merge_right(_K, {'left', V}) -> {'ok', V};
+merge_right(_K, {'right', V}) -> {'ok', V};
+merge_right(_K, {'both', MapLeft, MapRight})
+  when is_map(MapLeft)
+       andalso is_map(MapRight)
+       ->
+    {'ok', merge(fun merge_right/2, MapLeft, MapRight)};
+merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
 
 -spec get(term(), map()) -> term().
 get(Keys, Map) ->
@@ -66,5 +123,3 @@ keys_to_atoms_fold(K, V, Acc) ->
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
-
