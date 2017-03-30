@@ -121,15 +121,18 @@ rename_to_local_with_external_features_test_() ->
     {ok, N1} = knm_number:get(?TEST_VITELITY_NUM, Options),
     PN1 = knm_number:phone_number(N1),
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"local">>}]),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:reset_doc/2, JObj1}], Options),
+    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj1}], Options),
     PN2 = knm_number:phone_number(N2),
-    [?_assertEqual(false, knm_phone_number:is_dirty(PN1))
+    [?_assert(not knm_phone_number:is_dirty(PN1))
     ,{"Verify carrier name is right"
      ,?_assertEqual(<<"knm_vitelity">>, knm_phone_number:module_name(PN1))
      }
     ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_RENAME_CARRIER, knm_phone_number:doc(PN1)))
-    ,?_assertEqual(true, lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN2)))
-    ,?_assertEqual(true, lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN2)))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN1)))
+    ,?_assertEqual(true, lists:member(?FEATURE_CNAM, knm_phone_number:features_list(PN1)))
+    ,?_assertEqual(true, lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN1)))
+    ,?_assertEqual(true, lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN1)))
+    ,?_assertEqual(true, lists:member(?FEATURE_PORT, knm_phone_number:features_list(PN1)))
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ,{"Verify carrier name is changed"
      ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
@@ -140,8 +143,11 @@ rename_to_local_with_external_features_test_() ->
     ,{"Verify local feature is now set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
      }
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN1)))
+    ,?_assertEqual(false, lists:member(?FEATURE_CNAM, knm_phone_number:features_list(PN2)))
     ,?_assertEqual(false, lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN2)))
     ,?_assertEqual(false, lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN2)))
+    ,?_assertEqual(true, lists:member(?FEATURE_PORT, knm_phone_number:features_list(PN2)))
     ].
 
 available_features_test_() ->

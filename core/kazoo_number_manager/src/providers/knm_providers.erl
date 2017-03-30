@@ -18,6 +18,7 @@
         ,service_name/2
         ]).
 -export([e911_caller_name/2]).
+-export([features_denied/1]).
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
@@ -142,8 +143,8 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
-    Allowed = lists:usort([legacy_provider_to_feature(F) || F <- list_allowed_features(Parameters)]),
-    Denied = lists:usort([legacy_provider_to_feature(F) || F <- list_denied_features(Parameters)]),
+    Allowed = cleanse_features(list_allowed_features(Parameters)),
+    Denied = cleanse_features(list_denied_features(Parameters)),
     Available = [Feature
                  || Feature <- Allowed,
                     not lists:member(Feature, Denied)
@@ -151,13 +152,16 @@ list_available_features(Parameters) ->
     ?LOG_DEBUG("available features: ~s", [?PP(Available)]),
     Available.
 
+cleanse_features(Features) ->
+    lists:usort([legacy_provider_to_feature(Feature) || Feature <- Features]).
+
 %% @private
 -spec is_local(knm_phone_number:knm_phone_number()) -> boolean().
 is_local(PN) ->
     ModuleName = knm_phone_number:module_name(PN),
     ?CARRIER_LOCAL =:= ModuleName
-        orelse ?CARRIER_MDN =:= ModuleName.
-%% orelse lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN)).
+        orelse ?CARRIER_MDN =:= ModuleName
+        orelse lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN)).
 
 -spec feature_parameters(knm_phone_number:knm_phone_number()) -> feature_parameters().
 feature_parameters(PhoneNumber) ->
@@ -372,7 +376,7 @@ exec(Number, Action=delete) ->
     RequestedModules = requested_modules(Number),
     ?LOG_DEBUG("deleting number features: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
-exec(N, Action) ->
+exec(N, Action=save) ->
     {NewN, AllowedModules, DeniedModules} = maybe_rename_carrier_and_strip_denied(N),
     case DeniedModules =:= [] of
         true -> exec(NewN, Action, AllowedModules);
@@ -387,12 +391,22 @@ maybe_rename_carrier_and_strip_denied(N) ->
     case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
         false -> {N, AllowedRequests, DeniedRequests};
         true ->
-            N1 = exec(N, Action, [?PROVIDER_RENAME_CARRIER]),
-            N2 = remove_denied(features_denied(N1), N1),
+            N1 = exec(N, save, [?PROVIDER_RENAME_CARRIER]),
+            N2 = remove_denied_features(N1),
             {NewAllowed, NewDenied} = split_requests(N2),
             ?LOG_DEBUG("allowing number features ~s", [?PP(NewAllowed)]),
             {N2, NewAllowed, NewDenied}
     end.
+
+remove_denied_features(N) ->
+    PN = knm_number:phone_number(N),
+    NewPN = knm_phone_number:remove_denied_features(PN),
+    knm_number:set_phone_number(N, NewPN).
+
+%% @public
+-spec features_denied(knm_phone_number:knm_phone_number()) -> ne_binaries().
+features_denied(PN) ->
+    cleanse_features(list_denied_features(feature_parameters(PN))).
 
 split_requests(Number) ->
     RequestedModules = requested_modules(Number),

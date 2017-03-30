@@ -84,13 +84,9 @@
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
 
--define(PVT_TREE, [?MASTER_ACCOUNT_ID
-                  ,?RESELLER_ACCOUNT_ID
-                  ]).
+-define(PVT_TREE, [?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID]).
 
--define(RESELLER_ACCOUNT_DOC, kz_json:from_list(
-                                [{<<"_id">>, ?RESELLER_ACCOUNT_ID}]
-                               )).
+-define(RESELLER_ACCOUNT_DOC, kz_json:from_list([{<<"_id">>, ?RESELLER_ACCOUNT_ID}])).
 
 -define(FEATURES_FOR_LOCAL_NUM, kz_json:from_list([{?FEATURE_LOCAL, kz_json:new()}])).
 
@@ -209,7 +205,9 @@
           ,{?PVT_FEATURES, kz_json:from_list_recursive(
                              [{?FEATURE_CNAM_INBOUND,  [{?CNAM_INBOUND_LOOKUP, true}]}
                              ,{?FEATURE_CNAM_OUTBOUND, [{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}]}
+                             ,{?FEATURE_PORT, kz_json:from_list([{<<"port_id">>, <<"37">>}])}
                              ])}
+          ,{?PVT_PORTED_IN, true}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, <<"knm_vitelity">>}

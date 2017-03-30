@@ -118,5 +118,11 @@
 -define(E911_STREET2, <<"extended_address">>).
 -define(E911_ZIP, <<"postal_code">>).
 
+-define(PREPEND_ENABLED, <<"enabled">>).
+-define(PREPEND_NAME, <<"name">>).
+
+-define(RINGBACK_EARLY, <<"early">>).
+-define(RINGBACK_TRANSFER, <<"transfer">>).
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

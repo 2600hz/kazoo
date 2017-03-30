@@ -257,7 +257,7 @@ log_alien(_AccountDb, _DID) ->
 fix_number(Num, AuthBy, AccountDb) ->
     UsedBy = app_using(knm_converters:normalize(Num), AccountDb),
     Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
-                |
+               ,fun knm_phone_number:remove_denied_features/1
                ],
     Options = [{auth_by, AuthBy}
               ,{dry_run, false}
@@ -309,7 +309,7 @@ migrate_unassigned_numbers(NumberDb, Offset) ->
             ?LOG("[~s] fixing ~b docs", [NumberDb, Length]),
             foreach_pause_in_between(?TIME_BETWEEN_NUMBERS_MS
                                     ,fun fix_unassign_doc/1
-                                    ,lists:map(fun kz_doc:id/1, JObjs)
+                                    ,[kz_doc:id(JObj) || JObj <- JObjs]
                                     ),
             timer:sleep(?TIME_BETWEEN_ACCOUNTS_MS),
             migrate_unassigned_numbers(NumberDb, Offset + Length);
@@ -412,9 +412,11 @@ fix_docs({error, timeout}, _AccountDb, _, _DID) ->
     ?LOG("getting ~s from ~s timed out, skipping", [_DID, _AccountDb]);
 fix_docs({error, _R}, AccountDb, _, DID) ->
     ?LOG("failed to get ~s from ~s (~p), creating it", [DID, AccountDb, _R]),
-    UsedBy = app_using(DID, AccountDb),
+    Updates = [{fun knm_phone_number:set_used_by/2, app_using(DID, AccountDb)}
+              ,fun knm_phone_number:remove_denied_features/1
+              ],
     %% knm_number:update/2,3 ensures creation of doc in AccountDb
-    case knm_number:update(DID, [{fun knm_phone_number:set_used_by/2, UsedBy}], options()) of
+    case knm_number:update(DID, Updates, options()) of
         {ok, _} -> ok;
         {error, _E} -> ?LOG("creating ~s failed: ~p", [DID, _E])
     end;
@@ -444,6 +446,7 @@ fix_docs({ok, NumDoc}, Doc, _AccountDb, NumberDb, DID) ->
             ?LOG("syncing ~s", [DID]),
             Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
                        ,{fun knm_phone_number:reset_doc/2, JObj}
+                       ,fun knm_phone_number:remove_denied_features/1
                        ],
             try knm_number:update(DID, Routines, options()) of
                 {ok, _} -> ok;
@@ -468,7 +471,9 @@ account_db_from_number_doc(NumDoc) ->
 
 -spec fix_unassign_doc(ne_binary()) -> 'ok'.
 fix_unassign_doc(DID) ->
-    Setters = [{fun knm_phone_number:set_used_by/2, undefined}],
+    Setters = [{fun knm_phone_number:set_used_by/2, undefined}
+              ,fun knm_phone_number:remove_denied_features/1
+              ],
     case knm_number:update(DID, Setters, options()) of
         {ok, _} -> ok;
         {error, _R} -> ?LOG("failed fixing unassigned ~s: ~p", [DID, _R])
