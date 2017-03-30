@@ -21,11 +21,13 @@
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
 -export([record_to_json/1]).
+-export([record_to_notification_props/1]).
 -export([json_to_record/1]).
 
 -define(MIN_AMOUNT, kapps_config:get_float(?CONFIG_CAT, <<"min_amount">>, 5.00)).
 
 -include("bt.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -512,7 +514,7 @@ record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
       ,{<<"Timestamp">>, kz_time:current_tstamp()}
       ,{<<"Purchase-Order">>, purchase_order_reason(Transaction)}
       ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Transaction)}
-      ].
+      ]).
 
 -spec purchase_order_reason(kz_json:object()) -> api_ne_binary().
 purchase_order_reason(Transaction) ->

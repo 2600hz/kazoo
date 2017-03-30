@@ -14,7 +14,7 @@ on {{transaction.date}}.
 {% if transaction.address %}
 -------------------------
 
-Bill To:
+Billed To:
 {% if transaction.address.first_name %}{{transaction.address.first_name}} {% endif %} {% if transaction.address.last_name %}{{transaction.address.last_name}}
 {% endif %} {% if transaction.address.company %}{{transaction.address.company}}
 {% endif %} {% if transaction.address.locality %}{{transaction.address.locality}}, {% endif %} {% if transaction.address.region %}{{transaction.address.region}} {% endif %} {% if transaction.address.postal_code %}{{transaction.address.postal_code}} {% endif %} {% if transaction.address.country_name %} - {{transaction.address.country_name}}{% endif %}

@@ -162,7 +162,7 @@ transaction_data(DataJObj, 'false') ->
       ]
      ).
 
--sopc purchase_order(kz_json:object()) -> binary().
+-spec purchase_order(kz_json:object()) -> binary().
 purchase_order(DataJObj) ->
     erlydtl_filter:title(
       binary:replace(kz_json:get_ne_binary_value(<<"purchase_order">>, DataJObj, <<>>)
