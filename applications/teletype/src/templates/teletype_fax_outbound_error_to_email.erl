@@ -80,8 +80,8 @@ process_req(DataJObj) ->
                kz_json:set_values([{<<"error">>, error_data(DataJObj)}
                                   ,{<<"owner">>, OwnerJObj}
                                   ]
-                                  ,DataJObj
-                                  )),
+                                 ,DataJObj
+                                 )),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),

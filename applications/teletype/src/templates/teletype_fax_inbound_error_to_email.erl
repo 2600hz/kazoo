@@ -104,8 +104,8 @@ handle_fax_inbound(DataJObj, TemplateId) ->
                kz_json:set_values([{<<"error">>, error_data(DataJObj)}
                                   ,{<<"owner">>, OwnerJObj}
                                   ]
-                                  ,DataJObj
-                                  )),
+                                 ,DataJObj
+                                 )),
 
     %% Populate templates
     RenderedTemplates = teletype_templates:render(TemplateId, Macros, DataJObj),
