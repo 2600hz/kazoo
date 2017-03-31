@@ -864,24 +864,20 @@ is_dirty7_test_() ->
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, OldJObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, JObj))
     ,?_assertEqual(<<"in_service">>, kz_json:get_value(<<"pvt_state">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, OldJObj)
-                  ,knm_phone_number:state(PN)
-                  )
+    ,?_assertEqual(kz_json:get_value(<<"pvt_state">>, OldJObj), knm_phone_number:state(PN))
 
     ,?_assertEqual(63606025000, kz_json:get_value(<<"pvt_created">>, OldJObj))
     ,?_assertEqual(63606025000, kz_json:get_value(<<"pvt_created">>, JObj))
     ,?_assertEqual(63606025000, kz_json:get_value(<<"pvt_created">>, NewJObj))
     ,?_assertEqual(63606025000, knm_phone_number:created(PN))
 
-     %% Removing some pvt_features (as not present in public fields) makes this dirty
-    ,?_assertEqual(true, knm_phone_number:is_dirty(PN))
+     %% Has pvt_features unmatched with public ones but that doesn't make it dirty (or wrong)
+    ,?_assert(not knm_phone_number:is_dirty(PN))
 
     ,?_assertEqual(63606025001, kz_json:get_value(<<"pvt_modified">>, OldJObj))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, JObj)))
     ,?_assertEqual(true, is_integer(kz_json:get_value(<<"pvt_modified">>, NewJObj)))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, JObj)
-                  ,knm_phone_number:modified(PN)
-                  )
+    ,?_assertEqual(kz_json:get_value(<<"pvt_modified">>, JObj), knm_phone_number:modified(PN))
 
     ,?_assertEqual([<<"inbound_cnam">>, <<"local">>, <<"outbound_cnam">>]
                   ,kz_json:get_keys(<<"pvt_features">>, OldJObj)
@@ -890,18 +886,15 @@ is_dirty7_test_() ->
                   ,kz_json:to_map(kz_json:get_value(<<"pvt_features">>, JObj)))
     ,?_assertEqual(#{<<"local">> => #{}}
                   ,kz_json:to_map(kz_json:get_value(<<"pvt_features">>, NewJObj)))
-    ,?_assertEqual(true
-                  ,kz_json:are_equal(kz_json:get_value(<<"pvt_features">>, NewJObj)
-                                    ,knm_phone_number:features(PN)
-                                    )
-                  )
+    ,?_assert(kz_json:are_equal(kz_json:get_value(<<"pvt_features">>, NewJObj)
+                               ,knm_phone_number:features(PN)
+                               )
+             )
 
     ,?_assertEqual(<<"callflow">>, kz_json:get_value(<<"pvt_used_by">>, OldJObj))
     ,?_assertEqual(<<"callflow">>, kz_json:get_value(<<"pvt_used_by">>, JObj))
     ,?_assertEqual(<<"callflow">>, kz_json:get_value(<<"pvt_used_by">>, NewJObj))
-    ,?_assertEqual(kz_json:get_value(<<"pvt_used_by">>, NewJObj)
-                  ,knm_phone_number:used_by(PN)
-                  )
+    ,?_assertEqual(kz_json:get_value(<<"pvt_used_by">>, NewJObj), knm_phone_number:used_by(PN))
 
     ,?_assert(kz_json:is_empty(public_fields(OldJObj)))
     ,?_assert(kz_json:is_empty(public_fields(JObj)))
@@ -987,6 +980,7 @@ nums() ->
     ,?TEST_OLD4_1_NUM
     ,?TEST_OLD5_1_NUM
     ,?TEST_OLD6_NUM
+    ,?TEST_OLD7_NUM
     ,?TEST_OLD7_1_NUM
     ,?TEST_TELNYX_NUM
     ,?TEST_VITELITY_NUM

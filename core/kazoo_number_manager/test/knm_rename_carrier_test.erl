@@ -159,7 +159,7 @@ rename_to_local_with_external_features_test_() ->
     ,{"Verify local feature is now set"
      ,?_assertEqual(true, lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
      }
-    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN1)))
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN2)))
     ,?_assertEqual(false, lists:member(?FEATURE_CNAM, knm_phone_number:features_list(PN2)))
     ,?_assertEqual(false, lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN2)))
     ,?_assertEqual(false, lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN2)))

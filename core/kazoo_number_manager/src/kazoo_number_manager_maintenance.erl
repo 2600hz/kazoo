@@ -11,6 +11,7 @@
 
 -include("knm.hrl").
 
+-export([app_using/2]).
 -export([carrier_module_usage/0
         ,carrier_module_usage/1
         ]).
@@ -480,7 +481,6 @@ fix_unassign_doc(DID) ->
     end.
 
 -type dids() :: gb_sets:set(ne_binary()).
--type api_dids() :: undefined | dids().
 -spec get_DIDs(ne_binary(), ne_binary()) -> dids().
 get_DIDs(AccountDb, View) ->
     get_DIDs(AccountDb, View, []).
@@ -535,10 +535,15 @@ cleanse(JObj) ->
 
 
 -spec app_using(ne_binary(), ne_binary()) -> api_ne_binary().
--spec app_using(ne_binary(), ne_binary(), api_dids(), api_dids()) -> api_ne_binary().
+-ifdef(TEST).
+app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_ID) -> <<"trunkstore">>;
+app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> undefined.
+-else.
 app_using(Num, AccountDb) ->
     app_using(Num, AccountDb, get(callflow_DIDs), get(trunkstore_DIDs)).
 
+-type api_dids() :: undefined | dids().
+-spec app_using(ne_binary(), ne_binary(), api_dids(), api_dids()) -> api_ne_binary().
 app_using(Num, AccountDb, undefined, TrunkstoreNums) ->
     CallflowNums = get_DIDs_callflow(AccountDb, [{key, Num}]),
     app_using(Num, AccountDb, CallflowNums, TrunkstoreNums);
@@ -554,6 +559,7 @@ app_using(Num, _, CallflowNums, TrunkstoreNums) ->
                 false -> undefined
             end
     end.
+-endif.
 
 -spec is_assigned_to(ne_binary(), ne_binary(), ne_binary()) -> boolean().
 is_assigned_to(AccountDb, DID, AccountId) ->
