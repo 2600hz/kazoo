@@ -13,7 +13,7 @@ Please find the message audio file in the attachment.
 {{voicemail.transcription}}
 {% endif %}
 
-=== Profile Information ===
+=== Voicemail Message Details ===
 
     Caller: {{caller_id.name}} ({{caller_id.number}})
     Callee: {{to.user}} (originally dialed number)

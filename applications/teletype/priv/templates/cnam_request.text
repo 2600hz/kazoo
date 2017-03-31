@@ -24,14 +24,6 @@ Account Information
     Account Realm: {{account.realm}}
 
 
-{% if user %}
-Administrator User Information
-
-    Name: {{user.first_name}} {{user.last_name}}
-    Email: {{user.email}}
-    Timezone: {{user.timezone}}
-{% endif %}
-
 
 
 Sent from {{system.hostname}}
