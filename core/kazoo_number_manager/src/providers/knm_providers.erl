@@ -47,7 +47,7 @@
         kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
 -define(FEATURES_ALLOWED_SYSTEM,
-        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES)).
+        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES)).
 
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
@@ -197,7 +197,7 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) 
     case ?FEATURES_ALLOWED_RESELLER(AccountId) of
         'undefined' -> system_allowed_features();
         Providers ->
-            ?LOG_DEBUG("allowed number features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
+            ?LOG_DEBUG("allowed features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
@@ -207,12 +207,12 @@ system_allowed_features() ->
                    'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
                    Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
                end,
-    ?LOG_DEBUG("allowed number features fetched from system config ~s", [?PP(Features)]),
+    ?LOG_DEBUG("allowed features from system config: ~s", [?PP(Features)]),
     Features.
 
 -spec number_allowed_features(feature_parameters()) -> ne_binaries().
 number_allowed_features(#feature_parameters{allowed_features = AllowedFeatures}) ->
-    ?LOG_DEBUG("allowed number features set on number document: ~s", [?PP(AllowedFeatures)]),
+    ?LOG_DEBUG("allowed features set on number document: ~s", [?PP(AllowedFeatures)]),
     AllowedFeatures.
 
 -spec list_denied_features(feature_parameters()) -> ne_binaries().
@@ -227,13 +227,13 @@ list_denied_features(Parameters) ->
 
 -spec reseller_denied_features(feature_parameters()) -> ne_binaries().
 reseller_denied_features(#feature_parameters{assigned_to = 'undefined'}) ->
-    ?LOG_DEBUG("denying external number features for unassigned number"),
+    ?LOG_DEBUG("denying external features for unassigned number"),
     ?EXTERNAL_NUMBER_FEATURES;
 reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters) ->
     case ?FEATURES_DENIED_RESELLER(AccountId) of
         'undefined' -> local_denied_features(Parameters);
         Providers ->
-            ?LOG_DEBUG("denied number features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
+            ?LOG_DEBUG("denied features set on reseller for ~s: ~s", [AccountId, ?PP(Providers)]),
             Providers
     end.
 
@@ -246,7 +246,7 @@ local_denied_features(#feature_parameters{is_local = 'true'}) ->
             [];
         'false' ->
             Features = ?EXTERNAL_NUMBER_FEATURES,
-            ?LOG_DEBUG("denying external number features for local number: ~s", [?PP(Features)]),
+            ?LOG_DEBUG("denying external features for local number: ~s", [?PP(Features)]),
             Features
     end.
 
@@ -255,20 +255,18 @@ used_by_denied_features(#feature_parameters{used_by = <<"trunkstore">>}) -> [];
 used_by_denied_features(#feature_parameters{used_by = UsedBy}) ->
     Features = [?FEATURE_FAILOVER
                ],
-    ?LOG_DEBUG("denying external number features for number used by ~s: ~s", [UsedBy, ?PP(Features)]),
+    ?LOG_DEBUG("denying external features for number used by ~s: ~s", [UsedBy, ?PP(Features)]),
     Features.
 
 -spec number_denied_features(feature_parameters()) -> ne_binaries().
 number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
-    ?LOG_DEBUG("denied number features set on number document: ~s", [?PP(DeniedFeatures)]),
+    ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures.
 
 maybe_deny_admin_only_features(#feature_parameters{is_admin = true}) -> [];
 maybe_deny_admin_only_features(#feature_parameters{is_admin = false}) ->
-    %% Features that only an admin can use
-    Features = [?FEATURE_RENAME_CARRIER
-               ],
-    ?LOG_DEBUG("denied number features cause non-admin: ~s", [?PP(Features)]),
+    Features = ?ADMIN_ONLY_FEATURES,
+    ?LOG_DEBUG("allowing admin-only features: ~s", [?PP(Features)]),
     Features.
 
 -spec legacy_provider_to_feature(ne_binary()) -> ne_binary().
@@ -374,27 +372,27 @@ do_exec(T0=#{todo := Ns}, Action) ->
 
 exec(Number, Action=delete) ->
     RequestedModules = requested_modules(Number),
-    ?LOG_DEBUG("deleting number features: ~s", [?PP(RequestedModules)]),
+    ?LOG_DEBUG("deleting feature providers: ~s", [?PP(RequestedModules)]),
     exec(Number, Action, RequestedModules);
 exec(N, Action=save) ->
     {NewN, AllowedModules, DeniedModules} = maybe_rename_carrier_and_strip_denied(N),
     case DeniedModules =:= [] of
         true -> exec(NewN, Action, AllowedModules);
         false ->
-            ?LOG_DEBUG("denied number features ~s", [?PP(DeniedModules)]),
+            ?LOG_DEBUG("denied feature providers ~s", [?PP(DeniedModules)]),
             knm_errors:unauthorized()
     end.
 
 maybe_rename_carrier_and_strip_denied(N) ->
     {AllowedRequests, DeniedRequests} = split_requests(N),
-    ?LOG_DEBUG("allowing number features ~s", [?PP(AllowedRequests)]),
+    ?LOG_DEBUG("allowing feature providers ~s", [?PP(AllowedRequests)]),
     case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
         false -> {N, AllowedRequests, DeniedRequests};
         true ->
             N1 = exec(N, save, [?PROVIDER_RENAME_CARRIER]),
             N2 = remove_denied_features(N1),
             {NewAllowed, NewDenied} = split_requests(N2),
-            ?LOG_DEBUG("allowing number features ~s", [?PP(NewAllowed)]),
+            ?LOG_DEBUG("allowing feature providers ~s", [?PP(NewAllowed)]),
             {N2, NewAllowed, NewDenied}
     end.
 
@@ -410,9 +408,9 @@ features_denied(PN) ->
 
 split_requests(Number) ->
     RequestedModules = requested_modules(Number),
-    ?LOG_DEBUG("requested number features: ~s", [?PP(RequestedModules)]),
+    ?LOG_DEBUG("requested feature providers: ~s", [?PP(RequestedModules)]),
     AllowedModules = allowed_modules(Number),
-    ?LOG_DEBUG("allowed modules: ~s", [?PP(AllowedModules)]),
+    ?LOG_DEBUG("allowed providers: ~s", [?PP(AllowedModules)]),
     F = fun (Feature) -> lists:member(Feature, AllowedModules) end,
     lists:partition(F, RequestedModules).
 

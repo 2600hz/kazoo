@@ -2,9 +2,9 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
+-define(APP, kazoo_number_manager).
 -define(APP_VERSION, <<"4.0.0">>).
--define(APP_NAME, <<"kazoo_number_manager">>).
--define(APP, 'kazoo_number_manager').
+-define(APP_NAME, atom_to_binary(?APP, utf8)).
 
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
@@ -198,16 +198,23 @@
           [{<<"_id">>, ?TEST_VITELITY_NUM}
           ,{<<"_rev">>, <<"1-deada1523e81a4e3c2689140ed3a8e69">>}
           ,{?FEATURE_CNAM, kz_json:from_list(
-                            [{?CNAM_INBOUND_LOOKUP, true}
-                            ,{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}
-                            ])}
+                             [{?CNAM_INBOUND_LOOKUP, true}
+                             ,{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}
+                             ])}
+          ,{?FEATURE_PREPEND, kz_json:from_list(
+                                [{?PREPEND_ENABLED, true}
+                                ,{?PREPEND_NAME, <<"Citizen">>}
+                                ,{?PREPEND_NUMBER, <<"75657869">>}
+                                ])}
           ,{?PVT_MODIFIED, 63565911000}
           ,{?PVT_FEATURES, kz_json:from_list_recursive(
-                             [{?FEATURE_CNAM_INBOUND,  [{?CNAM_INBOUND_LOOKUP, true}]}
+                             [{?FEATURE_CNAM_INBOUND, [{?CNAM_INBOUND_LOOKUP, true}]}
                              ,{?FEATURE_CNAM_OUTBOUND, [{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}]}
-                             ,{?FEATURE_PORT, kz_json:from_list([{<<"port_id">>, <<"37">>}])}
+                             ,{?FEATURE_PREPEND, [{?PREPEND_ENABLED, true}
+                                                 ,{?PREPEND_NAME, <<"Citizen">>}
+                                                 ,{?PREPEND_NUMBER, <<"75657869">>}
+                                                 ]}
                              ])}
-          ,{?PVT_PORTED_IN, true}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, <<"knm_vitelity">>}
@@ -252,7 +259,7 @@
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_STATE, ?NUMBER_STATE_DISCOVERY}
           ,{?PVT_RESERVE_HISTORY, []}
-          ,{?PVT_PORTED_IN, 'false'}
+          ,{?PVT_PORTED_IN, false}
           ,{?PVT_MODULE_NAME, <<"knm_bandwidth2">>}
           ,{?PVT_CARRIER_DATA
            ,kz_json:from_list(

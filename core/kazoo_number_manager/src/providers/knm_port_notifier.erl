@@ -27,16 +27,14 @@
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 -spec save(knm_number:knm_number(), ne_binary(), ne_binary()) -> knm_number:knm_number().
-save(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    CurrentState = knm_phone_number:state(PhoneNumber),
-    Doc = knm_phone_number:doc(PhoneNumber),
-    State = kz_json:get_first_defined([?PVT_STATE, ?PVT_STATE_LEGACY], Doc),%%%
-    save(Number, CurrentState, State).
+save(N) ->
+    PN = knm_number:phone_number(N),
+    State = kz_json:get_ne_binary_value(?PVT_STATE, knm_phone_number:doc(PN)),
+    save(N, knm_phone_number:state(PN), State).
 
 save(Number, ?NUMBER_STATE_PORT_IN, ?NUMBER_STATE_IN_SERVICE) ->
     Port = case feature(Number) of
-               'undefined' -> kz_json:new();
+               undefined -> kz_json:new();
                Data -> Data
            end,
     _ = publish_ported(Number, Port),

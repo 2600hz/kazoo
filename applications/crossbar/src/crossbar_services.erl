@@ -227,14 +227,11 @@ calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     'undefined'.
 
--spec create_port_number(ne_binary(), list() | kz_json:object()) ->
-                                knm_phone_number:knm_phone_number().
+-spec create_port_number(ne_binary(), ne_binaries()) -> knm_phone_number:knm_phone_number().
 create_port_number(Number, Features) ->
-    JObj = kz_json:from_list(
-             [{<<"_id">>, Number}
-             ,{<<"features">>, Features}
-             ]
-            ),
+    JObj = kz_json:from_list([{<<"_id">>, Number}
+                             ,{<<"features">>, Features}
+                             ]),
     PN = knm_phone_number:from_json_with_options(JObj, []),
     knm_phone_number:set_feature(PN, ?FEATURE_PORT, kz_json:new()).
 

@@ -300,7 +300,7 @@ apply(Module, FName, Args) when is_atom(Module), Module =/= undefined ->
     lager:debug("contacting carrier ~s for ~s", [Module, FName]),
     erlang:apply(Module, FName, Args);
 apply(?NE_BINARY=Carrier, FName, Args) ->
-    Module = erlang:binary_to_existing_atom(Carrier, 'utf8'),
+    Module = erlang:binary_to_atom(Carrier, utf8),
     apply(Module, FName, Args);
 apply(Number, FName, Args) ->
     Carrier = knm_phone_number:module_name(knm_number:phone_number(Number)),

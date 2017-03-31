@@ -95,6 +95,9 @@
                                   ,?FEATURE_PORT
                                   ]).
 
+-define(ADMIN_ONLY_FEATURES, [?FEATURE_RENAME_CARRIER
+                             ]).
+
 %% Keys on number document's root reserved to update features
 -define(FEATURES_ROOT_KEYS, [?FEATURE_CNAM
                             ,?FEATURE_E911
@@ -120,6 +123,7 @@
 
 -define(PREPEND_ENABLED, <<"enabled">>).
 -define(PREPEND_NAME, <<"name">>).
+-define(PREPEND_NUMBER, <<"number">>).
 
 -define(RINGBACK_EARLY, <<"early">>).
 -define(RINGBACK_TRANSFER, <<"transfer">>).

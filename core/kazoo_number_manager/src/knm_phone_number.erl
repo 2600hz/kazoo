@@ -739,9 +739,9 @@ features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
                ])),
     kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
 features_fold(?FEATURE_PREPEND, Acc, JObj) ->
-    Data = kz_json:from_list([{?PREPEND_ENABLED, kz_json:is_true([?FEATURE_PREPEND, ?PREPEND_ENABLED], JObj)}
-                             ,{?PREPEND_NAME, kz_json:get_ne_value([?FEATURE_PREPEND, ?PREPEND_NAME], JObj)}
-                             ]),
+    IsEnabled = kz_json:is_true([?FEATURE_PREPEND, ?PREPEND_ENABLED], JObj),
+    Data0 = kz_json:get_ne_value(?FEATURE_PREPEND, JObj, kz_json:new()),
+    Data = kz_json:set_value(?PREPEND_ENABLED, IsEnabled, Data0),
     kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
 features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
     DisplayName = kz_json:get_ne_binary_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], JObj),
@@ -1079,12 +1079,12 @@ features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
     ,?FEATURE_RINGBACK
     ,?FEATURE_RENAME_CARRIER
     ];
-features_allowed(#knm_phone_number{number = ?TEST_IN_SERVICE_NUM}) ->
-    [?FEATURE_RENAME_CARRIER
-    ];
-features_allowed(#knm_phone_number{number = ?TEST_CREATE_NUM}) ->
-    [?FEATURE_RENAME_CARRIER
-    ];
+%% features_allowed(#knm_phone_number{number = ?TEST_IN_SERVICE_NUM}) ->
+%%     [?FEATURE_RENAME_CARRIER
+%%     ];
+%% features_allowed(#knm_phone_number{number = ?TEST_CREATE_NUM}) ->
+%%     [?FEATURE_RENAME_CARRIER
+%%     ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
@@ -1518,20 +1518,22 @@ remove_denied_features(PN) ->
     DeniedFeatures = knm_providers:features_denied(PN),
     RemoveFromPvt = lists:usort(lists:flatmap(fun rm_in_pvt/1, DeniedFeatures)),
     RemoveFromPub = lists:usort(lists:flatmap(fun rm_in_pub/1, DeniedFeatures)),
-    ?LOG_WARN("removing out of sync pvt features: ~p", [RemoveFromPvt]),
-    ?LOG_WARN("removing out of sync pub features: ~p", [RemoveFromPub]),
-    NewPvt = kz_json:delete_keys(RemoveFromPvt, features(PN)),
-    NewPub = kz_json:delete_keys(RemoveFromPub, doc(PN)),
+    ?LOG_WARN("removing out of sync pvt features: ~s"
+             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+    ?LOG_WARN("removing out of sync pub features: ~s"
+             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+    NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
+    NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
     Updates = [{fun set_features/2, NewPvt}
               ,{fun set_doc/2, NewPub}
               ],
-    {ok, NewPN} = knm_phone_number:setters(PN, Updates),
+    {ok, NewPN} = setters(PN, Updates),
     NewPN.
 
 rm_in_pvt(Feature) ->
     case maps:is_key(Feature, pvt_to_pub()) of
         false -> [];
-        true -> Feature
+        true -> [[Feature]]
     end.
 
 rm_in_pub(Feature) ->
@@ -1548,6 +1550,7 @@ pvt_to_pub() ->
               ],
     PrependPub = [[?FEATURE_PREPEND, ?PREPEND_ENABLED]
                  ,[?FEATURE_PREPEND, ?PREPEND_NAME]
+                 ,[?FEATURE_PREPEND, ?PREPEND_NUMBER]
                  ],
     #{?FEATURE_E911 => E911Pub
      ,?LEGACY_VITELITY_E911 => E911Pub
@@ -1557,7 +1560,7 @@ pvt_to_pub() ->
      ,?FEATURE_CNAM_INBOUND => CNAMPub
      ,?FEATURE_CNAM_OUTBOUND => CNAMPub
      ,?FEATURE_PREPEND => PrependPub
-     ,?FEATURE_FAILOVER => ?FEATURE_FAILOVER
+     ,?FEATURE_FAILOVER => [[?FEATURE_FAILOVER]]
      }.
 
 %%--------------------------------------------------------------------
