@@ -214,6 +214,14 @@ available_features_test_() ->
     ,?_assert(is_feature_available(?BW_EXISTING_DID, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
     ,?_assert(is_feature_available(?BW_EXISTING_DID, [{auth_by, ?MASTER_ACCOUNT_ID}]))
     ,?_assert(not is_feature_available(?BW_EXISTING_DID, [{auth_by, ?RESELLER_ACCOUNT_ID}]))
+    ,?_assert(is_feature_available(?TEST_OLD5_1_NUM, []))
+    ,?_assert(is_feature_available(?TEST_OLD5_1_NUM, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
+    ,?_assert(is_feature_available(?TEST_OLD5_1_NUM, [{auth_by, ?MASTER_ACCOUNT_ID}]))
+    ,?_assert(not is_feature_available(?TEST_OLD5_1_NUM, [{auth_by, ?RESELLER_ACCOUNT_ID}]))
+    ,?_assert(is_feature_available(?TEST_VITELITY_NUM, []))
+    ,?_assert(is_feature_available(?TEST_VITELITY_NUM, [{auth_by, ?KNM_DEFAULT_AUTH_BY}]))
+    ,?_assert(is_feature_available(?TEST_VITELITY_NUM, [{auth_by, ?MASTER_ACCOUNT_ID}]))
+    ,?_assert(not is_feature_available(?TEST_VITELITY_NUM, [{auth_by, ?RESELLER_ACCOUNT_ID}]))
     ].
 
 is_feature_available(Num, Options) ->

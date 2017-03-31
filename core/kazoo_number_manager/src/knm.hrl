@@ -280,7 +280,6 @@
            }
           ,{?PVT_MODIFIED, 63610268576}
           ,{?PVT_CREATED, 63610268576}
-          ,{?PVT_TYPE, <<"number">>}
           ])).
 
 -define(LOG_ERROR(F,A), io:format(user, F++ "\n", A)).
