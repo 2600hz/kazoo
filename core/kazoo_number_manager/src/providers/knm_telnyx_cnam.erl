@@ -147,6 +147,7 @@ set_outbound(Number, NewCNAM) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
+-ifndef(TEST).
 publish_cnam_update(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
     Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
@@ -159,3 +160,6 @@ publish_cnam_update(Number) ->
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kapi_notifications:publish_cnam_request(Notify).
+-else.
+publish_cnam_update(_Number) -> 'ok'.
+-endif.
