@@ -61,7 +61,7 @@ init() ->
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
                                           ]),
-    teletype_bindings:bind(<<"outbound_fax">>, ?MODULE, 'handle_fax_inbound').
+    teletype_bindings:bind(<<"outbound_fax">>, ?MODULE, 'handle_fax_outbound').
 
 -spec handle_fax_outbound(kz_json:object()) -> 'ok'.
 handle_fax_outbound(JObj) ->

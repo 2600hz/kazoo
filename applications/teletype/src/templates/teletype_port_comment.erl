@@ -116,6 +116,13 @@ handle_port_request(DataJObj) ->
 
 -spec user_data(kz_json:object()) -> kz_proplist().
 user_data(DataJObj) ->
+    user_data(DataJObj, teletype_util:is_preview(DataJObj)).
+
+-spec user_data(kz_json:object(), boolean()) -> kz_proplist().
+user_data(DataJObj, 'true') ->
+    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
+    teletype_util:user_params(teletype_util:find_account_admin(AccountId));
+user_data(DataJObj, 'false') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     UserId= props:get_value(<<"user_id">>, kz_json:get_value([<<"port_request">>, <<"comment">>], DataJObj)),
     {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
