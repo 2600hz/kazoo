@@ -536,7 +536,7 @@ cleanse(JObj) ->
 
 -spec app_using(ne_binary(), ne_binary()) -> api_ne_binary().
 -ifdef(TEST).
-app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_ID) -> <<"trunkstore">>;
+app_using(?TEST_OLD7_NUM, ?CHILD_ACCOUNT_DB) -> <<"trunkstore">>;
 app_using(?NE_BINARY, ?MATCH_ACCOUNT_ENCODED(_)) -> undefined.
 -else.
 app_using(Num, AccountDb) ->

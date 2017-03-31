@@ -259,7 +259,7 @@ fix_number_test_() ->
     ,?_assert(lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN1)))
     ,?_assert(lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN1)))
     ,?_assertEqual(<<"callflow">>, knm_phone_number:used_by(PN1))
-    ,?_assert(knm_phone_number:is_dirty(PN1))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
     ,?_assertEqual(?TEST_OLD7_NUM, knm_phone_number:number(PN2))
     ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN2))
     ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))

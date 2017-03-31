@@ -83,6 +83,7 @@
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
+-define(CHILD_ACCOUNT_DB,    <<"account%2Fch%2Fil%2Fd_account_670a04df0014d0b27a">>).
 
 -define(PVT_TREE, [?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID]).
 
