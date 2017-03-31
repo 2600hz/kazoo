@@ -379,20 +379,20 @@ exec(N, Action=save) ->
     case DeniedModules =:= [] of
         true -> exec(NewN, Action, AllowedModules);
         false ->
-            ?LOG_DEBUG("denied feature providers ~s", [?PP(DeniedModules)]),
+            ?LOG_DEBUG("denied feature providers: ~s", [?PP(DeniedModules)]),
             knm_errors:unauthorized()
     end.
 
 maybe_rename_carrier_and_strip_denied(N) ->
     {AllowedRequests, DeniedRequests} = split_requests(N),
-    ?LOG_DEBUG("allowing feature providers ~s", [?PP(AllowedRequests)]),
+    ?LOG_DEBUG("allowing feature providers: ~s", [?PP(AllowedRequests)]),
     case lists:member(?PROVIDER_RENAME_CARRIER, AllowedRequests) of
         false -> {N, AllowedRequests, DeniedRequests};
         true ->
             N1 = exec(N, save, [?PROVIDER_RENAME_CARRIER]),
             N2 = remove_denied_features(N1),
             {NewAllowed, NewDenied} = split_requests(N2),
-            ?LOG_DEBUG("allowing feature providers ~s", [?PP(NewAllowed)]),
+            ?LOG_DEBUG("allowing feature providers: ~s", [?PP(NewAllowed)]),
             {N2, NewAllowed, NewDenied}
     end.
 
