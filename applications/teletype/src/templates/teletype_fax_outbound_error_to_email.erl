@@ -75,9 +75,13 @@ handle_fax_outbound_error(JObj) ->
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
+    OwnerJObj = get_owner_doc(DataJObj),
     Macros = build_template_data(
-               kz_json:set_values([{<<"error">>, error_data(DataJObj)}], DataJObj)
-              ),
+               kz_json:set_values([{<<"error">>, error_data(DataJObj)}
+                                  ,{<<"owner">>, OwnerJObj}
+                                  ]
+                                  ,DataJObj
+                                  )),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -108,6 +112,14 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec get_owner_doc(kz_json:object()) -> kz_json:object().
+get_owner_doc(DataJObj) ->
+    OwnerId = kz_json:get_value(<<"owner_id">>, DataJObj),
+    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
+        {'ok', OwnerJObj} -> OwnerJObj;
+        {'error', _} -> kz_json:new()
+    end.
+
 -spec error_data(kz_json:object()) -> kz_json:object().
 error_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
@@ -136,7 +148,7 @@ build_template_data(DataJObj) ->
       ,{<<"to">>, to_data(DataJObj)}
       ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
       ,{<<"error">>, kz_json:to_proplist(<<"error">>, DataJObj)}
-      ,{<<"user">>, maybe_add_user_data(DataJObj)}
+      ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"owner">>, DataJObj))}
       ]).
 
 -spec caller_id_data(kz_json:object()) -> kz_proplist().
@@ -175,22 +187,6 @@ to_data(DataJObj) ->
       [{<<"user">>, knm_util:pretty_print(ToE164)}
       ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
       ]).
-
--spec maybe_add_user_data(kz_json:object()) -> kz_proplist() | 'undefined'.
-maybe_add_user_data(DataJObj) ->
-    case teletype_util:is_preview(DataJObj) of
-        'true' -> 'undefined';
-        'false' ->
-            maybe_add_user_data(kz_json:get_value(<<"owner_id">>, DataJObj)
-                               ,kz_json:get_value(<<"account_id">>, DataJObj)
-                               )
-    end.
-
--spec maybe_add_user_data(api_binary(), api_binary()) -> kz_proplist() | 'undefined'.
-maybe_add_user_data(?NE_BINARY=OwnerId, ?NE_BINARY=AccountId) ->
-    {'ok', UserJObj} = kzd_user:fetch(AccountId, OwnerId),
-    kz_json:to_proplist(kz_json:public_fields(UserJObj));
-maybe_add_user_data(_OwnerId, _AccountId) -> 'undefined'.
 
 -spec to_email_addresses(kz_json:object()) -> api_binaries().
 to_email_addresses(DataJObj) ->
