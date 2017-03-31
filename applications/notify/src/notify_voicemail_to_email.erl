@@ -42,7 +42,7 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
-    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
@@ -63,7 +63,7 @@ handle_req(JObj, _Props) ->
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
     MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
-    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
 
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
