@@ -176,13 +176,11 @@ get_transaction_amount(DataJObj) ->
 
 -spec purchase_order(kz_json:object()) -> binary().
 purchase_order(DataJObj) ->
-    erlydtl_filter:title(
-      binary:replace(kz_json:get_ne_binary_value(<<"purchase_order">>, DataJObj, <<>>)
-                    ,<<"_">>
-                    ,<<" ">>
-                    ,[global]
-                    )
-     ).
+    binary:replace(kz_json:get_ne_binary_value(<<"purchase_order">>, DataJObj, <<>>)
+                  ,<<"_">>
+                  ,<<" ">>
+                  ,[global]
+                  ).
 
 -spec calculate_total(api_objects() | binary()) -> non_neg_integer().
 calculate_total(JObjs) when is_list(JObjs) ->

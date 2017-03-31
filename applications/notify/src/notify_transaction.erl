@@ -147,16 +147,14 @@ transaction_data(Event) ->
 -spec get_transaction_amount(kz_proplist()) -> api_binary().
 get_transaction_amount(Props) ->
     case props:get_integer_value(<<"amount">>, Props) of
-        'undefined' -> 'undefined'
+        'undefined' -> 'undefined';
         Amount -> wht_util:units_to_dollars(Amount)
     end.
 
 -spec purchase_order(kz_proplist()) -> binary().
 purchase_order(Props) ->
-    erlydtl_filter:title(
-      binary:replace(props:get_ne_binary_value(<<"purchase_order">>, Props, <<>>)
-                    ,<<"_">>
-                    ,<<" ">>
-                    ,[global]
-                    )
-     ).
+    binary:replace(props:get_ne_binary_value(<<"purchase_order">>, Props, <<>>)
+                  ,<<"_">>
+                  ,<<" ">>
+                  ,[global]
+                  ).
