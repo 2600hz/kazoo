@@ -53,9 +53,9 @@ start_link() ->
     kz_util:put_callid(?LOG_SYSTEM_ID),
 
     _ = [
-     lager:error("System config ~s validation error:~p", [Config, Error])
-     || {Config, Error} <- kapps_maintenance:validate_system_configs()
-    ],
+         lager:error("System config ~s validation error:~p", [Config, Error])
+         || {Config, Error} <- kapps_maintenance:validate_system_configs()
+        ],
 
     Dispatch = cowboy_router:compile(crossbar_routes()),
 
