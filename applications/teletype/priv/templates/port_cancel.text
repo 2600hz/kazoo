@@ -1,6 +1,6 @@
                 Port Request Canceled
 
-Port request {{port_request.name}} of account {{account.name}} has been canceled.
+Your port request "{{port_request.name}}" of account '{{account.name}}' has been canceled.
 
 
 === Port Request Numbers ===

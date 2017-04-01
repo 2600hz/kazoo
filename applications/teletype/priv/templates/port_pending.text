@@ -1,6 +1,7 @@
                 Port Request Pending
 
-Your request to port numbers is transitioned into pending state.
+Your request "{{port_request.name}}" to port numbers into
+account '{{account.name}}' is transitioned into pending state.
 
 
 === Port Request Numbers ===

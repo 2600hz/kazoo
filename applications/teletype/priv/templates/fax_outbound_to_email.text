@@ -5,7 +5,7 @@
 Hi {{user.first_name}},
 {% endif %}
 
-You Sent a new fax document to {{callee_id.name}} ({{callee_id.number}}) {% if fax.box_name %}from your faxbox {{fax.faxbox_name}}{% endif %}.
+You sent a new fax document to {{callee_id.name}} ({{callee_id.number}}) {% if fax.box_name %}from your faxbox {{fax.faxbox_name}}{% endif %}.
 
 
 === Fax Details ===

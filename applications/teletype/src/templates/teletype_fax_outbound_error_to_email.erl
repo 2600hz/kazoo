@@ -32,7 +32,7 @@
           ]
          )).
 
--define(TEMPLATE_SUBJECT, <<"Error Sending Fax to {{callee_id.name}} ({% firstof fax.remote_station_id callee_id.number \"Unknown Number\" %})">>).
+-define(TEMPLATE_SUBJECT, <<"Error sending Fax to {{callee_id.name}} ({% firstof fax.remote_station_id callee_id.number \"Unknown Number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax Error to Email">>).
 

@@ -1,6 +1,6 @@
                 Port Request Rejected
 
-Port request {{port_request.name}} of account {{account.name}} has been rejected.
+Port request "{{port_request.name}}" of account '{{account.name}}' has been rejected.
 
 
 === Port Request Numbers ===

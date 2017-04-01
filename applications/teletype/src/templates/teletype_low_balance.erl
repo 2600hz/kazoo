@@ -25,7 +25,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Account {{account.name}} is running out of credit">>).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' is running out of credit">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Low Balance">>).
 

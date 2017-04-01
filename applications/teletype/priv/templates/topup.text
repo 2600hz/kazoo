@@ -1,8 +1,30 @@
                 Account Topped-Up
 
 
-Top-up attempted to {{account.name}} for amount of {{transaction.amount}}.
-The transaction processor response was {{response}} resulting in a new balance of {{balance}}.
+Date: {{transaction.date.local|date:"l, F j, Y H:i"}}
+
+Automatic top-up attempt to account '{{account.name}}' for amount of {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+was {% if transaction.success %} successful{% else %} unsuccessful{% endif %}.
+
+Account Balance is now {{balance}}
+{% if not transaction.success %}
+
+	> Please double check your payment information and try again!
+
+-------------------------
+
+Failed Reason: {{transaction.response}}
+Total Amount to Charge: {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+Credit Card Last Digits: {{transaction.card_last_four|default:"No Credit Card info on file"}}
+
+-------------------------
+{% endif %}
+
+Questions?
+Please email us and we'll be happy to help.
+
+Need to update your billing info?
+The Billing section can be accessed by your Account Owner, {{user.first_name}} {{user.last_name}}
 
 
 

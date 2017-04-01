@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"New comment for {{port_request.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"New comment for port request'{{port_request.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Comment">>).
 
@@ -106,6 +106,7 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
+    io:format("~n port_request ~p~n~n", [teletype_util:public_proplist(<<"port_request">>, DataJObj)]),
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' ->

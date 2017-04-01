@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Reset your VoIP services account password">>).
+-define(TEMPLATE_SUBJECT, <<"Reset your VoIP services user password">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 

@@ -30,8 +30,8 @@
           ])
        ).
 
--define(SUCCESS_TEMPLATE_SUBJECT, <<"Receipt for your payment of account {{account.name}}">>).
--define(FAILED_TEMPLATE_SUBJECT, <<"Payment problem for your account {{account.name}}">>).
+-define(SUCCESS_TEMPLATE_SUBJECT, <<"Receipt for your payment of account '{{account.name}}'">>).
+-define(FAILED_TEMPLATE_SUBJECT, <<"Payment problem for your account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(SUCCESS_TEMPLATE_NAME, <<"Transaction Success">>).
 -define(FAILED_TEMPLATE_NAME, <<"Transaction Problem">>).

@@ -1,7 +1,7 @@
                 Device Expired Registration
 
 
-Device {{last_registration.username}} in account {{account.name}}
+Device "{{last_registration.username}}" in account '{{account.name}}'
 lost its registration.
 
     This may be due to a network connectivity issue,

@@ -24,7 +24,7 @@
            | ?ACCOUNT_MACROS
           ]
          )).
--define(TEMPLATE_SUBJECT, <<"Account zones have changed">>).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' zone have changed">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Account Zone Change">>).
 

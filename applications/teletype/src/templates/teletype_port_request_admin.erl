@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request for {{port_request.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}' (Details)">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
 

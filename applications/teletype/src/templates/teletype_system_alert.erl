@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"VoIP Services: {{request.level}} from {{request.node}}">>).
+-define(TEMPLATE_SUBJECT, <<"VoIP Services: '{{request.level}}' from '{{request.node}}'">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
 

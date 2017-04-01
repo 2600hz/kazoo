@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})</title>
+    <title>Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})</title>
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
         /* CSS Reset */
@@ -18,7 +18,7 @@
 <body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
     <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
         <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
-            Error Receiving Fax  from {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) -
+            Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) -
         </div>
         <div style="max-width:600px; margin:auto;" class="email-container">
             <!--[if mso]>
@@ -57,12 +57,12 @@
                         <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Sender:</b>&nbsp;{% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %})</p>
                         <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Callee:</b>&nbsp;{{to.user}} (originally dialed number)</p>
                         <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Receiving Date:</b>&nbsp;{{date_called.local|date:"l, F j, Y \\a\\t H:i"}}</p>
-                        <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Fax ID:</b>&nbsp;<span style="font-family:monospace;">{{fax.id}}</span></p>
+                        <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Fax ID:</b>&nbsp;{{fax.id}}</p>
                         <p style="margin:0 25px 10px;padding:0;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Error Reason:</b>&nbsp;{% firstof error.fax_info error.call_info "Unknown Error" %}</p>
                         <hr>
                         <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>FaxBox Name:</b>&nbsp;{{fax.box_name}}</p>
-                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>FaxBox ID:</b>&nbsp;<span style="font-family:monospace;">{{fax.box_id}}</span></p>
-                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Call ID:</b>&nbsp;<span style="font-family:monospace;">{{call_id}}</span></p>
+                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>FaxBox ID:</b>&nbsp;{{fax.box_id}}</p>
+                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Call ID:</b>&nbsp;{{call_id}}</p>
                         <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Receiving Timestamp:</b>&nbsp;{{fax.timestamp}}</p>
                     </td>
                 </tr>

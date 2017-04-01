@@ -1,11 +1,11 @@
-                Caller Name Change Request
+                New Account
 
 
 > Thank you for registering!
 
-Welcome
+Welcome {% if admin %}{{admin.first_name}},{% endif %}
 
-    Your account {{account.name}} is ready to use,
+    Your account new '{{account.name}}' is ready to use,
     here are some details to help get you started!
 
 

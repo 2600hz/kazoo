@@ -1,6 +1,7 @@
                 Port Request Schecduled
 
-Port request {{port_request.name}} of account {{account.name}} has been scheduled for {{port_request.scheduled_date.local|date:"l, F j, Y H:i"}}.
+Your number port request "{{port_request.name}}" of account '{{account.name}}' has been scheduled
+to happen on {{port_request.scheduled_date.local|date:"l, F j, Y H:i"}}
 
 
 === Port Request Numbers ===

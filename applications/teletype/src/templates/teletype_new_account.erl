@@ -27,7 +27,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
+-define(TEMPLATE_SUBJECT, <<"Your new VoIP services account '{{account.name}}' has been created">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
 

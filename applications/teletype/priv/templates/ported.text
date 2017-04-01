@@ -1,7 +1,7 @@
                 Port Request Successful
 
 
-Port request {{port_request.name}} of account {{account.name}} has been ported successfully.
+Port request "{{port_request.name}}" of account '{{account.name}}' has been ported successfully.
 
 Please review the Port Request and fully sumbitted or cancel it.
 

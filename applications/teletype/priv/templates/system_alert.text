@@ -6,14 +6,10 @@ There was problem in your VoIP services.
 Here is all related information:
 
 --------------------
-Message
+Message:
 --------------------
-
 {{message}}
-
-
-
-{% if request %}
+--------------------{% if request %}
 
 === Producer Details ===
 
@@ -24,92 +20,71 @@ Message
 
 #####################################
 #####################################
-{% endif %}
-
-{% if details %}
+{% endif %}{% if details %}
 
 === Alert Details ===
 
-{% for key, value in details %}
-{{ key }}: {{ value }}
+{% for key, value in details %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if callflow %}
+{% endif %}{% if callflow %}
 
 === Callflow Details ===
 
-{% for key, value in callflow %}
-{{ key }}: {{ value }}
+{% for key, value in callflow %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if error_details %}
+{% endif %}{% if error_details %}
 
 === Error Details ===
 
-{% for key, value in error_details %}
-{{ key }}: {{ value }}
+{% for key, value in error_details %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if http_headers %}
+{% endif %}{% if http_headers %}
 
 === HTTP Headers ===
 
-{% for header in http_headers %}
-{{ header }}
+{% for header in http_headers %}{{ header }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if key_store %}
+{% endif %}{% if key_store %}
 
 === Key Value Store ===
 
-{% for key, value in key_store %}
-{{ key }}: {{ value }}
+{% for key, value in key_store %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if channel_vars %}
+{% endif %}{% if channel_vars %}
 
 === Channel Variables ===
 
-{% for key, value in channel_vars %}
-{{ key }}: {{ value }}
+{% for key, value in channel_vars %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 
 #####################################
 #####################################
-{% endif %}
-
-{% if sip_headers %}
+{% endif %}{% if sip_headers %}
 
 === SIP Headers ===
 
-{% for key, value in sip_headers %}
-{{ key }}: {{ value }}
+{% for key, value in sip_headers %}{{ key }}: {{ value }}
 -------------
 {% endfor %}
 

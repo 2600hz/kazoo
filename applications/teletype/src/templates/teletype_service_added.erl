@@ -29,7 +29,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"New Service Addition for sub-account {{sub_account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Service Addition">>).
 

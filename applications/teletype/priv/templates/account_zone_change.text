@@ -1,14 +1,14 @@
-                Account Zones Change
+                Account Zone Change
 
 
-Your {{accout.name}} account's zones has been changed.
+Your account '{{accout.name}}' zone has been changed.
 
 
 === Zones Change Details ===
 
-    {% for key, value in zones %}
-    {{key}}: {{value}}
-    {% endfor %}
+{% for key, value in zones %}
+{{key}}: {{value}}
+{% endfor %}
 
 
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>VoIP Services: {{request.level}} from {{request.node}}</title>
+    <title>VoIP Services: '{{request.level}}' from '{{request.node}}'</title>
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
         /* CSS Reset */
@@ -18,7 +18,7 @@
 <body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
     <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
         <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
-            Attention! System Alert {{request.level}} from {{request.node}} -
+            Attention! System Alert, '{{request.level}}' from '{{request.node}}' -
         </div>
         <div style="max-width:600px; margin:auto;" class="email-container">
             <!--[if mso]>
@@ -58,9 +58,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in request %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -74,9 +74,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in details %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -90,9 +90,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in callflow %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -106,9 +106,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in error_details %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -122,9 +122,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for header in http_headers %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;">{{header}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;">{{header}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -138,9 +138,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in key_store %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -154,9 +154,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in channel_vars %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>
@@ -170,9 +170,9 @@
                     </td>
                 </tr>
                 <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
+                    <td bgcolor="#ffffff" style="padding:20px;font-family:monospace;color:#555555;">
                         {% for key, value in sip_headers %}
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
+                        <p style="font-family:monospace;color:#555555;line-height:20px;margin:0;padding:0;"><b>{{key}}:</b>&nbsp;&nbsp;{{value}}</p>
                         {% endfor %}
                     </td>
                 </tr>

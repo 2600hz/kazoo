@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>Receipt for your payment of account {{account.name}}</title>
+    <title>Receipt for your payment of account '{{account.name}}'</title>
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
         /* CSS Reset */
@@ -18,7 +18,7 @@
 <body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
     <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
         <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
-            We received your payment for {{account.name}} -
+            We received your payment for '{{account.name}}' -
         </div>
         <div style="max-width:600px;margin:auto;" class="email-container">
             <!--[if mso]>
@@ -49,7 +49,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">
-                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %}{{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %}to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"l, F j, Y H:i"}}</b>.</p>
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %} to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"n/j/Y"}}</b>.</p>
                     </td>
                 </tr>
             </table>

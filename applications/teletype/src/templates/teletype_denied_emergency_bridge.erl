@@ -28,7 +28,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Blocked emergency call from account {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Blocked emergency call from account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Denied Emergency Bridge">>).
 

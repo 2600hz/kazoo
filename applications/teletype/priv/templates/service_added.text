@@ -3,10 +3,9 @@
 
 Date: {% now "l, F j, Y H:i" %}
 
-Services for your sub-account {{sub_account.name}} ({{sub_account.id}}) has been changed.
-{% if service_changes %} Here is the summary of changes.{% endif %}.
+Services for your sub-account '{{sub_account.name}}' have been changed.
 
-{% if service_changes %}
+{% if service_changes %} Here is the summary of changes.
 === Service Change Summary ===
 
 ============================================
@@ -17,6 +16,7 @@ Service Category: {{srv_cat}}
 {% endfor %}
 --------------------------------------------
 {% endfor %}
+
 {% endif %}
 
 

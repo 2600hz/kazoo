@@ -28,7 +28,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Voicemail box {{vmbox.name}} is full">>).
+-define(TEMPLATE_SUBJECT, <<"Voicemail box '{{vmbox.name}}' is full">>).
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Full Voicemail Box">>).
 

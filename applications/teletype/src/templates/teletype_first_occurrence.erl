@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"First {{event}} on {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"First {{event}} on account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"sip">>).
 -define(TEMPLATE_NAME, <<"First Occurrence">>).
 

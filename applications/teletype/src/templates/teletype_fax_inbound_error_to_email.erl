@@ -34,7 +34,7 @@
           ]
          )).
 
--define(TEMPLATE_SUBJECT, <<"Error Receiving Fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof fax.remote_station_id caller_id.number \"Unknown Number\" %})">>).
+-define(TEMPLATE_SUBJECT, <<"Error receiving fax from {% firstof caller_id.name fax.remote_station_id %} ({% firstof fax.remote_station_id caller_id.number \"Unknown Number\" %})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Inbound Fax Negotiation Error to Email">>).
 -define(FILTERED_TEMPLATE_NAME, <<"Inbound Fax Receive Error to Email">>).

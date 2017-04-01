@@ -27,7 +27,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' has been attempted to top-up">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
 
