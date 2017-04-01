@@ -174,6 +174,28 @@ attempt_setting_e911_on_explicitly_disallowed_number_test_() ->
      }
     ].
 
+reserve_test_() ->
+    AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_number_options:default()],
+    {ok, N1} = knm_number:reserve(?TEST_AVAILABLE_NUM, knm_number_options:default()),
+    {ok, N2} = knm_number:reserve(?TEST_IN_SERVICE_NUM, knm_number_options:default()),
+    {ok, N3} = knm_number:reserve(?TEST_IN_SERVICE_NUM, AssignToChild),
+    ,?_assert(knm_phone_number:is_dirty(N1))
+    ,{"verify number was indeed reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(N1))
+     }
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(N1))
+    ,?_assert(knm_phone_number:is_dirty(N2))
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(N2))
+    ,{"verify number is now reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(N2))
+     }
+    ,?_assert(knm_phone_number:is_dirty(N3))
+    ,{"verify number was indeed reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(N3))
+     }
+    ,?_assertEqual([?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(N3))
+    ].
+
 
 assign_to_app_test_() ->
     Num = ?TEST_IN_SERVICE_NUM,
