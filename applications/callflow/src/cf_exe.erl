@@ -23,6 +23,7 @@
 -export([transfer/1]).
 -export([control_usurped/1]).
 -export([channel_destroyed/1]).
+-export([is_channel_destroyed/1]).
 -export([stop_on_destroy/1
         ,continue_on_destroy/1
         ]).
@@ -210,6 +211,13 @@ callid_update(CallId, Call) ->
     Srv = kapps_call:kvs_fetch('consumer_pid', Call),
     callid_update(CallId, Srv).
 
+-spec is_channel_destroyed(kapps_call:call()) -> boolean().
+is_channel_destroyed(Srv) when is_pid(Srv) ->
+    gen_listener:call(Srv, 'is_channel_destroyed');
+is_channel_destroyed(Call) ->
+    Srv = kapps_call:kvs_fetch('consumer_pid', Call),
+    is_channel_destroyed(Srv).
+
 -spec callid(kapps_call:call() | pid()) -> ne_binary().
 -spec callid(api_binary(), kapps_call:call() | pid()) -> ne_binary().
 
@@ -326,6 +334,8 @@ init([Call]) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call('is_channel_destroyed', _From, State) ->
+    {'reply', State#state.destroyed, State};
 handle_call({'update_call', Routines}, _From, #state{call=Call}=State) ->
     NewCall = kapps_call:exec(Routines, Call),
     {'reply', NewCall, State#state{call=NewCall}};
