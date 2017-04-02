@@ -10,6 +10,7 @@
                  , kazoo_data
                  , kazoo_config
                  , kazoo_modb
+                 ,kazoo_transactions
                  , braintree
 
                  , lager

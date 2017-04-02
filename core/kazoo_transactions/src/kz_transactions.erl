@@ -25,8 +25,10 @@
 -export([to_json/1]).
 -export([to_public_json/1]).
 
--include_lib("kazoo_services/include/kazoo_services.hrl").
 -include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
+
+-define(KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER,
+        kapps_config:get_atom(<<"services">>, <<"master_account_bookkeeper">>, 'kz_bookkeeper_local')).
 
 -type kz_transactions() :: kz_transaction:transactions().
 -export_type([kz_transactions/0]).
