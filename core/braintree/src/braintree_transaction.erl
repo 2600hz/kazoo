@@ -231,6 +231,7 @@ xml_to_record(Xml, Base) ->
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     StatusHistory = get_status_history(Xml, Base),
+    Descriptor = braintree_descriptor:xml_to_record(Xml),
     #bt_transaction{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                    ,status = kz_xml:get_value([Base, "/status/text()"], Xml)
                    ,type = kz_xml:get_value([Base, "/type/text()"], Xml)
@@ -241,7 +242,7 @@ xml_to_record(Xml, Base) ->
                    ,purchase_order = kz_xml:get_value([Base, "/purchase-order-number/text()"], Xml)
                    ,created_at = kz_xml:get_value([Base, "/created-at/text()"], Xml)
                    ,update_at = kz_xml:get_value([Base, "/updated-at/text()"], Xml)
-                   ,refund_id = kz_xml:get_value([Base, "/refund-id/text()"], Xml)
+                   ,refund_ids = kz_xml:get_value([Base, "/refund-ids/text()"], Xml)
                    ,refunded_transaction = kz_xml:get_value([Base, "/refunded-transaction-id /text()"], Xml)
                    ,settlement_batch = kz_xml:get_value([Base, "/settlement-batch-id/text()"], Xml)
                    ,avs_error_code = kz_xml:get_value([Base, "/avs-error-response-code/text()"], Xml)
@@ -265,6 +266,7 @@ xml_to_record(Xml, Base) ->
                    ,discounts = [braintree_discount:xml_to_record(Discounts)
                                  || Discounts <- xmerl_xpath:string(DiscountsPath, Xml)
                                 ]
+                   ,descriptor = Descriptor
                    ,is_api = props:get_value('is_api', StatusHistory)
                    ,is_automatic = props:get_value('is_automatic', StatusHistory)
                    ,is_recurring = props:get_value('is_recurring', StatusHistory)
@@ -412,7 +414,7 @@ record_to_json(#bt_transaction{}=Transaction) ->
             ,{<<"purchase_order">>, Transaction#bt_transaction.purchase_order}
             ,{<<"created_at">>, Transaction#bt_transaction.created_at}
             ,{<<"update_at">>, Transaction#bt_transaction.update_at}
-            ,{<<"refund_id">>, Transaction#bt_transaction.refund_id}
+            ,{<<"refund_ids">>, Transaction#bt_transaction.refund_ids}
             ,{<<"refunded_transaction">>, Transaction#bt_transaction.refunded_transaction}
             ,{<<"settlement_batch">>, Transaction#bt_transaction.settlement_batch}
             ,{<<"avs_error_code">>, Transaction#bt_transaction.avs_error_code}
@@ -459,7 +461,6 @@ json_to_record(JObj) ->
                    ,purchase_order = kz_json:get_binary_value(<<"purchase_order">>, JObj)
                    ,created_at = kz_json:get_binary_value(<<"created_at">>, JObj)
                    ,update_at = kz_json:get_binary_value(<<"update_at">>, JObj)
-                   ,refund_id = kz_json:get_binary_value(<<"refund_id">>, JObj)
                    ,refund_ids = kz_json:get_binary_value(<<"refund_ids">>, JObj)
                    ,refunded_transaction = kz_json:get_binary_value(<<"refunded_transaction">>, JObj)
                    ,settlement_batch = kz_json:get_binary_value(<<"settlement_batch">>, JObj)

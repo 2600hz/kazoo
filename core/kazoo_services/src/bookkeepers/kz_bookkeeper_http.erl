@@ -17,11 +17,11 @@
 
 -define(DEFAULT_SYNC_CONTENT_TYPE, ?DEFAULT_CONTENT_TYPE).
 
--record(sync, {id :: ne_binary() | '_'
-              ,account_id :: ne_binary() | '_'
-              ,items :: ne_binary() | '_'
-              ,url :: binary() | '_'
-              ,method :: ne_binary() | '_'
+-record(sync, {id :: api_ne_binary()
+              ,account_id :: api_ne_binary()
+              ,items :: api_ne_binary()
+              ,url :: api_ne_binary()
+              ,method :: api_ne_binary()
               ,content_type = ?DEFAULT_SYNC_CONTENT_TYPE :: ne_binary() | '_'
               }).
 -type sync() :: #sync{}.

@@ -499,6 +499,7 @@ xml_to_record(Xml, Base) ->
                     ,discounts = [braintree_discount:xml_to_record(Discount)
                                   || Discount <- xmerl_xpath:string(DiscountsPath, Xml)
                                  ]
+                    ,descriptor = braintree_descriptor:xml_to_record(Xml)
                     }.
 
 
@@ -525,6 +526,7 @@ record_to_xml(#bt_subscription{}=Subscription, ToString) ->
             ,{'price', Subscription#bt_subscription.price}
             ,{'add-ons', create_addon_changes(Subscription#bt_subscription.add_ons)}
             ,{'discounts', create_discount_changes(Subscription#bt_subscription.discounts)}
+            ,{'descriptor', braintree_descriptor:record_to_xml(Subscription#bt_subscription.descriptor)}
             ],
     Conditionals = [fun(#bt_subscription{do_not_inherit=Value}, P) ->
                             update_options('do-not-inherit-add-ons-or-discounts', Value, P)
@@ -588,7 +590,7 @@ record_to_json(Subscription) ->
             ,{<<"trial_duration">>, Subscription#bt_subscription.trial_duration}
             ,{<<"trial_duration_unit">>, Subscription#bt_subscription.trial_duration_unit}
             ,{<<"trial_period">>, Subscription#bt_subscription.trial_period}
-            ,{<<"descriptor">>, Subscription#bt_subscription.descriptor}
+            ,{<<"descriptor">>, braintree_descriptor:record_to_json(Subscription#bt_subscription.descriptor)}
             ,{<<"do_not_inherit">>, Subscription#bt_subscription.do_not_inherit}
             ,{<<"start_immediately">>, Subscription#bt_subscription.start_immediately}
             ,{<<"prorate_charges">>, Subscription#bt_subscription.prorate_charges}
