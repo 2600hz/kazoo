@@ -150,20 +150,27 @@ validate_set_metaflows(Context, Metaflows, Doc) ->
 %%--------------------------------------------------------------------
 -spec post(cb_context:context()) -> cb_context:context().
 post(Context) ->
-    lager:debug("saving ~p", [cb_context:doc(Context)]),
-    after_post(crossbar_doc:save(Context)).
+    Doc = cb_context:doc(Context),
+    lager:debug("saving ~p", [Doc]),
+    after_post(crossbar_doc:save(Context), kz_doc:type(Doc)).
 
--spec after_post(cb_context:context()) -> cb_context:context().
--spec after_post(cb_context:context(), crossbar_status()) -> cb_context:context().
-after_post(Context) ->
-    after_post(Context, cb_context:resp_status(Context)).
+-spec after_post(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec after_post(cb_context:context(), ne_binary(), crossbar_status()) -> cb_context:context().
+after_post(Context, DocType) ->
+    after_post(Context, DocType, cb_context:resp_status(Context)).
 
-after_post(Context, 'success') ->
+after_post(Context, <<"account">>, 'success') ->
+    _ = cb_accounts:replicate_account_definition(cb_context:doc(Context)),
     lager:debug("saved, returning the metaflows"),
     crossbar_util:response(kz_json:get_value(<<"metaflows">>, cb_context:doc(Context))
                           ,Context
                           );
-after_post(Context, _RespStatus) ->
+after_post(Context, _, 'success') ->
+    lager:debug("saved, returning the metaflows"),
+    crossbar_util:response(kz_json:get_value(<<"metaflows">>, cb_context:doc(Context))
+                          ,Context
+                          );
+after_post(Context, _DocType, _RespStatus) ->
     Context.
 
 %%--------------------------------------------------------------------
