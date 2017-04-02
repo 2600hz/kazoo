@@ -8,7 +8,6 @@
                  , stdlib
 
                  , kazoo
-                 , kazoo_config
 
                  , amqp_client
                  , lager
