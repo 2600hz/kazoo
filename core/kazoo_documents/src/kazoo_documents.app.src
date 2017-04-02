@@ -13,6 +13,7 @@
                  , kazoo_config
                  , kazoo_services
                  , kazoo_modb
+                 ,kazoo_tasks
 
                  , cowboy
                  , lager
