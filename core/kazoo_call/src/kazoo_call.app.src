@@ -1,11 +1,12 @@
 {application, kazoo_call,
- [
-  {description, "Representing calls in Kazoo since 2011"}
- ,{id, ""}
+ [{description, "Representing calls in Kazoo since 2011"}
  ,{vsn, "4.0.0"}
  ,{modules, []}
  ,{registered, []}
- ,{applications, [stdlib]}
+ ,{applications, [kernel
+                 ,stdlib
+                 ,kazoo_translator
+                 ]}
  ,{env, []}
  ,{mod, {kazoo_call_app, []}}
  ]}.
