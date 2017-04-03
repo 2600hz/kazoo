@@ -689,6 +689,7 @@ maybe_migrate_features(PN, FeaturesJObj) ->
 
 %% Note: the above setters may not have set any features yet,
 %% since more than one of them may set features.
+-spec ensure_features_defined(knm_phone_number()) -> knm_phone_number().
 ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
     PN#knm_phone_number{features = ?DEFAULT_FEATURES};
 ensure_features_defined(PN) -> PN.

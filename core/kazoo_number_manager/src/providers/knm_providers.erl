@@ -152,6 +152,7 @@ list_available_features(Parameters) ->
     ?LOG_DEBUG("available features: ~s", [?PP(Available)]),
     Available.
 
+-spec cleanse_features(ne_binaries()) -> ne_binaries().
 cleanse_features(Features) ->
     lists:usort([legacy_provider_to_feature(Feature) || Feature <- Features]).
 
@@ -263,6 +264,7 @@ number_denied_features(#feature_parameters{denied_features = DeniedFeatures}) ->
     ?LOG_DEBUG("denied features set on number document: ~s", [?PP(DeniedFeatures)]),
     DeniedFeatures.
 
+-spec maybe_deny_admin_only_features(feature_parameters()) -> ne_binaries().
 maybe_deny_admin_only_features(#feature_parameters{is_admin = true}) -> [];
 maybe_deny_admin_only_features(#feature_parameters{is_admin = false}) ->
     Features = ?ADMIN_ONLY_FEATURES,
@@ -383,6 +385,7 @@ exec(N, Action=save) ->
             knm_errors:unauthorized()
     end.
 
+-spec maybe_rename_carrier_and_strip_denied(knm_number:knm_number()) -> {knm_number:knm_number(), ne_binaries(), ne_binaries()}.
 maybe_rename_carrier_and_strip_denied(N) ->
     {AllowedRequests, DeniedRequests} = split_requests(N),
     ?LOG_DEBUG("allowing feature providers: ~s", [?PP(AllowedRequests)]),
@@ -396,6 +399,7 @@ maybe_rename_carrier_and_strip_denied(N) ->
             {N2, NewAllowed, NewDenied}
     end.
 
+-spec remove_denied_features(knm_number:knm_number()) -> knm_number:knm_number().
 remove_denied_features(N) ->
     PN = knm_number:phone_number(N),
     NewPN = knm_phone_number:remove_denied_features(PN),
@@ -406,6 +410,7 @@ remove_denied_features(N) ->
 features_denied(PN) ->
     cleanse_features(list_denied_features(feature_parameters(PN))).
 
+-spec split_requests(knm_number:knm_number()) -> {ne_binaries(), ne_binaries()}.
 split_requests(Number) ->
     RequestedModules = requested_modules(Number),
     ?LOG_DEBUG("requested feature providers: ~s", [?PP(RequestedModules)]),
