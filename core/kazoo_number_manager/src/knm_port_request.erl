@@ -339,11 +339,11 @@ completed_port(PortReq) ->
 transition_numbers(PortReq) ->
     PortReqId = kz_doc:id(PortReq),
     AccountId = kz_json:get_value(?PVT_ACCOUNT_ID, PortReq),
-    Options = [{'assign_to', AccountId}
-              ,{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+    Options = [{assign_to, AccountId}
+              ,{auth_by, ?KNM_DEFAULT_AUTH_BY}
               ,{dry_run, false}
-              ,{'ported_in', 'true'}
-              ,{'public_fields', kz_json:from_list([{<<"port_id">>, PortReqId}])}
+              ,{ported_in, true}
+              ,{public_fields, kz_json:from_list([{<<"port_id">>, PortReqId}])}
               ],
     lager:debug("creating local numbers for port ~s", [PortReqId]),
     Numbers = kz_json:get_keys(?NUMBERS_KEY, PortReq),
@@ -361,7 +361,7 @@ transition_numbers(PortReq) ->
                 _NumsNotTransitioned ->
                     lager:debug("failed to transition ~p/~p numbers"
                                ,[length(_NumsNotTransitioned), length(_OKs)]),
-                    {'error', PortReq}
+                    {error, PortReq}
             end
     end.
 
