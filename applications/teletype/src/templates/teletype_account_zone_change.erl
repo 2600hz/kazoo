@@ -89,11 +89,11 @@ process_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec zones_data(kz_json:object()) -> api_object().
+-spec zones_data(kz_json:object()) -> kz_proplist().
 zones_data(DataJObj) ->
     case teletype_util:is_preview(DataJObj) of
         'false' ->
-            kz_json:recursive_to_proplist(kz_json:get_json_value(<<"zones">>, DataJObj));
+            kz_json:recursive_to_proplist(kz_json:get_json_value(<<"zones">>, DataJObj, []));
         'true' ->
             [{<<"home">>, <<"Zone">>}]
     end.
