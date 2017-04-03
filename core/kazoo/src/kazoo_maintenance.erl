@@ -70,7 +70,7 @@ debug_dump_ets(FolderName) ->
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
     TabInfoLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_info",
-    _ = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
+    'ok' = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
     TabDumpLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_dump",
     catch ets:tab2file(Tab, TabDumpLog),
     debug_dump_ets_details(EtsFolder, Tabs).
@@ -181,7 +181,7 @@ print_table({T, Mem}) ->
 -spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_table({T, Mem}, Filename) ->
     Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
-    file:write_file(Filename, Bytes, ['append']).
+    'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec mem_info() -> 'ok'.
 mem_info() ->
@@ -196,4 +196,4 @@ print_memory_type({Type, Size}) ->
 -spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_memory_type({Type, Size}, Filename) ->
     Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
-    file:write_file(Filename, Bytes, ['append']).
+    'ok' = file:write_file(Filename, Bytes, ['append']).
