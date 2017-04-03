@@ -36,7 +36,7 @@ crash() ->
 
 -spec debug_dump() -> 'ok'.
 debug_dump() ->
-    FolderName = "/tmp/" ++ kz_term:to_list(node()) ++ "_" ++ kz_term:to_list(kz_time:current_tstamp()),
+    FolderName = "/tmp/" ++ kz_util:to_list(node()) ++ "_" ++ kz_util:to_list(kz_util:current_tstamp()),
     'ok' = file:make_dir(FolderName),
     _ = debug_dump_process(FolderName),
     _ = debug_dump_memory(FolderName),
@@ -69,9 +69,9 @@ debug_dump_ets(FolderName) ->
 -spec debug_dump_ets_details(list(), [ets:tab()]) -> 'ok'.
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
-   TabInfoLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_info",
+   TabInfoLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_info",
    _ = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
-   TabDumpLog = EtsFolder ++ "/" ++ kz_term:to_list(ets:info(Tab, 'name')) ++ "_dump",
+   TabDumpLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
    catch ets:tab2file(Tab, TabDumpLog),
    debug_dump_ets_details(EtsFolder, Tabs).
 
@@ -180,7 +180,7 @@ print_table({T, Mem}) ->
 
 -spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_table({T, Mem}, Filename) ->
-    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
+    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
     file:write_file(Filename, Bytes, ['append']).
 
 -spec mem_info() -> 'ok'.
