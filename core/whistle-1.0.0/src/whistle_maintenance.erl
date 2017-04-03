@@ -62,7 +62,7 @@ debug_dump_memory(FolderName) ->
 debug_dump_process(FolderName) ->
     ProcessLog = FolderName ++ "/process_info",
     Bytes = [erlang:process_info(Pid)|| Pid <- erlang:processes()],
-    _ = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])),
+    'ok' = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])),
     'ok'.
 
 -spec debug_dump_ets(list()) -> 'ok'.
@@ -78,7 +78,7 @@ debug_dump_ets(FolderName) ->
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
     TabInfoLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_info",
-    _ = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
+    'ok' = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
     TabDumpLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
     catch ets:tab2file(Tab, TabDumpLog),
     debug_dump_ets_details(EtsFolder, Tabs).
@@ -87,18 +87,18 @@ debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
 debug_dump_ports(FolderName) ->
     PortLog = FolderName ++ "/ports_info",
     Bytes = [erlang:port_info(Port) || Port <- erlang:ports()],
-    _ = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])),
+    'ok' = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])),
     'ok'.
 
 -spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_table({T, Mem}, Filename) ->
     Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
-    file:write_file(Filename, Bytes, ['append']).
+    'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_memory_type({Type, Size}, Filename) ->
     Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
-    file:write_file(Filename, Bytes, ['append']).
+    'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec ets_info() -> 'ok'.
 ets_info() ->
