@@ -688,6 +688,7 @@
     "tasks.unfinished_port_request_lifetime_s": "tasks unfinished port request lifetime in seconds",
     "tasks.wait_after_row_ms": "tasks wait after row in milliseconds",
     "teletype.iterate_over_bcc": "teletype iterate over bcc",
+    "teletype.notice_enabled_by_default": "Specify if template is considered enabled by default when teletype tries to process that notification",
     "teletype.render_farm_workers": "teletype render farm workers",
     "token_buckets.inactivity_timeout_s": "token_buckets inactivity timeout in seconds",
     "token_buckets.max_bucket_tokens": "token_buckets maximum bucket tokens",
