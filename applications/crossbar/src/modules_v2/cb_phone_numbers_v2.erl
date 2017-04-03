@@ -870,16 +870,17 @@ update_phone_numbers_locality_fold(Key, Value, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec identify(cb_context:context(), ne_binary()) -> cb_context:context().
-identify(Context, Number) ->
-    case knm_number:lookup_account(Number) of
-        {'ok', AccountId, NumberOptions} ->
+identify(Context, Num) ->
+    case knm_number:lookup_account(Num) of
+        {'ok', AccountId, ExtraOptions} ->
             JObj = kz_json:from_list(
                      [{<<"account_id">>, AccountId}
-                     ,{<<"number">>, knm_number_options:number(NumberOptions)}
+                     ,{<<"number">>, knm_number_options:number(ExtraOptions)}
                      ]),
             crossbar_util:response(JObj, Context);
         {'error', _R}=Error ->
-            set_response(Error, Context)
+            Context1 = cb_context:store(Context, num, knm_converters:normalize(Num)),
+            set_response(Error, Context1)
     end.
 
 %%--------------------------------------------------------------------
@@ -956,6 +957,7 @@ set_response({error, {Cause, AccountId}}, Context, _)
     Data = kz_json:from_list(
              [{<<"cause">>, kz_util:to_binary(Cause)}
              ,{<<"account_id">>, AccountId}
+             ,{<<"number">>, cb_context:fetch(Context, num)}
              ]),
     crossbar_util:response_400(<<"client error">>, Data, Context);
 
