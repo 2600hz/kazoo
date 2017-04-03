@@ -81,7 +81,7 @@ macros(JObj) ->
 set_macros(JObj, Macros) ->
     kz_json:set_value(?MACROS, Macros, JObj).
 
--spec macro(doc(), kz_json:path()) -> kz_json:json_term().
+-spec macro(doc(), kz_json:path()) -> kz_json:api_json_term().
 macro(JObj, Key) ->
     kz_json:get_value([?MACROS, Key], JObj).
 
