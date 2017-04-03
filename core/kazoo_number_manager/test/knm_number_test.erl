@@ -179,7 +179,7 @@ reserve_test_() ->
     {ok, N1} = knm_number:reserve(?TEST_AVAILABLE_NUM, knm_number_options:default()),
     {ok, N2} = knm_number:reserve(?TEST_IN_SERVICE_NUM, knm_number_options:default()),
     {ok, N3} = knm_number:reserve(?TEST_IN_SERVICE_NUM, AssignToChild),
-    ,?_assert(knm_phone_number:is_dirty(N1))
+    [?_assert(knm_phone_number:is_dirty(N1))
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(N1))
      }
