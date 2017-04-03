@@ -199,7 +199,7 @@ calc_service_updates(Context, <<"limits">>) ->
 calc_service_updates(Context, <<"port_request">>) ->
     PortNumbers = kz_json:get_value(<<"numbers">>, cb_context:doc(Context)),
     PhoneNumbers =
-        [knm_phone_number:set_feature(create_phone_number(Num, kz_json:values(Num, PortNumbers)), ?FEATURE_PORT, kz_json:new())
+        [create_port_number(Num, kz_json:values(Num, PortNumbers))
          || Num <- kz_json:get_keys(PortNumbers)
         ],
     kz_service_phone_numbers:reconcile(fetch_service(Context), PhoneNumbers);
@@ -234,15 +234,13 @@ calc_service_updates(_Context, _Type, _Props) ->
     lager:warning("unknown type ~p, cannot execute dry run", [_Type]),
     'undefined'.
 
--spec create_phone_number(ne_binary(), list() | kz_json:object()) ->
-                                 knm_phone_number:knm_phone_number().
-create_phone_number(Number, Features) ->
-    JObj = kz_json:from_list(
-             [{<<"_id">>, Number}
-             ,{<<"features">>, Features}
-             ]
-            ),
-    knm_phone_number:from_json(JObj).
+-spec create_port_number(ne_binary(), ne_binaries()) -> knm_phone_number:knm_phone_number().
+create_port_number(Num, Features) ->
+    JObj = kz_json:from_list([{<<"_id">>, Num}
+                             ,{<<"features">>, Features}
+                             ]),
+    PN = knm_phone_number:from_json_with_options(JObj, []),
+    knm_phone_number:set_feature(PN, ?FEATURE_PORT, kz_json:new()).
 
 %%--------------------------------------------------------------------
 %% @private
