@@ -2017,6 +2017,11 @@
                 },
                 "default_presence_type": {
                     "description": "Type of presence to update",
+                    "enum": [
+                        "early",
+                        "terminated",
+                        "confirmed"
+                    ],
                     "type": "string"
                 },
                 "default_ringback_timeout": {
@@ -2434,7 +2439,7 @@
                 },
                 "ignore_forward": {
                     "default": true,
-                    "description": "Whether to ring forwarded endpoints",
+                    "description": "If true, will ignore SIP redirect requests for call-forwarded devices",
                     "required": false,
                     "type": "boolean"
                 },
@@ -5398,9 +5403,6 @@
                     "type": "string"
                 }
             },
-            "required": [
-                "id"
-            ],
             "type": "object"
         },
         "metaflow.hangup": {

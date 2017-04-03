@@ -7,8 +7,5 @@
             "type": "string"
         }
     },
-    "required": [
-        "id"
-    ],
     "type": "object"
 }

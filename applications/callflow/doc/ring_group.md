@@ -1,51 +1,44 @@
+## Ring Group
+
+### About Ring Group
 
 Ring group callflow element allows calling multiple endpoints with given strategy and timeout.
 
-## Example of `data` payload
+### Schema
 
-    "data": {
-        "endpoints": [...]
-        ,"strategy": "{STRATEGY}"
-        ,"timeout": {SECONDS}
-        ,"repeats": {REPEAT}
-        ,"ringback": "{RINGBACK}"
-        ,"ignore_forward": boolean()
-    }
+Validator for the Ring Group callflow element
 
-## Mandatory fields
-**endpoints** - array of endpoints (see below)
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`endpoints` | Endpoint IDs (devices, users, etc) included in the ring group | `array(object)` | `[]` | `true`
+`endpoints.[].delay` | How long to delay ringing the endpoint, in seconds | `integer` | `0` | `false`
+`endpoints.[].endpoint_type` | The type (device, user, etc) of endpoint | `string('device', 'user', 'group')` |   | `true`
+`endpoints.[].id` | The ID of the endpoint | `string(1..128)` |   | `true`
+`endpoints.[].timeout` | How long to ring the endpoint, in seconds | `integer` | `20` | `false`
+`endpoints.[].weight` | Weight of endpoint, different usage in various strategies | `integer` |   | `false`
+`fail_on_single_reject` | If any leg rejects the call, cancel all other legs | `boolean` |   | `false`
+`ignore_forward` | If true, will ignore SIP redirect requests for call-forwarded devices | `boolean` | `true` | `false`
+`repeats` | How many times to retry the ring group | `integer` | `1` | `false`
+`ringback` | Ringback to use | `string` |   | `false`
+`ringtones` |   | `object` |   | `false`
+`ringtones.external` | Ring tone for calls from external sources | `string` |   | `false`
+`ringtones.internal` | Ring tone for calls from external sources | `string` |   | `false`
+`strategy` | How to ring the members of the group | `string('simultaneous', 'single', 'weighted_random')` | `simultaneous` | `false`
+`timeout` | How long to ring the ring group before continuing, in seconds | `integer` | `20` | `false`
 
-## Optional fields
+#### Strategy
 
-* **{STRATEGY}**: default is `simultaneous`
-    * `single` - ring one endpoint after another
-    * `simultaneous` - ring all endpoints at the same time
-    * `weighted_random` - randomize the list of endpoints, then use `single` strategy
-* **{TIMEOUT}** - time to call the endpoint before moving further, default is `20`
-* **{REPEAT}** - number of repeats (rounds) this group will be called, default is `1`
-* **{RINGBACK}** - ringback to use, if any
-* **{IGNORE\_FORWARD}** - Whether to ignore forwarded endpoints, defaults to `true`
+There are three strategies that can be chosen:
 
-### Endpoint format
-#### Example
+* `single` - ring one endpoint after another
+* `simultaneous` - ring all endpoints at the same time (default)
+* `weighted_random` - randomize the list of endpoints, then use `single` strategy
 
-    {"id": "{ENDPOINT_ID}"
-     ,"endpoint_type": "{ENDPOINT_TYPE}"
-     ,"weight": {WEIGHT}
-     ,"timeout": {TIMEOUT}
-     ,"delay": {DELAY}
-    }
+#### Endpoints
 
-#### Mandatory fields
+Endpoints can be:
+* `device` - a single device will be added to the `ring group`
+* `user` - all devices of the user will be added to the `ring group`
+* `group` - all devices of a [group](https://docs.2600hz.com/dev/applications/crossbar/doc/groups/) will be added to the `ring group`
 
-**id**: Endpoint ID
-
-#### Optional fields
-
-* **{ENDPOINT\_TYPE}**: default is `device`
-    * `device`
-    * `user`
-    * `group`
-* **{WEIGHT}** - integer from 1 to 100, used by `weighted_random` strategy
-* **{TIMEOUT}** - timeout to call the given endpoint, default is `20`
-* **{DELAY}** - delay before this endpoint is called, default is `0`
+Once all the endpoints have been resolved, the `strategy` will be applied to the resulting list of devices and the ring group will be executed.

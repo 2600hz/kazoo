@@ -203,6 +203,7 @@ maybe_add_user(#{auth_app := #{pvt_user_prefix := Prefix}
                 ,user_identity := Identity
                 } = Token) ->
     DocId = <<Prefix/binary, "-",Identity/binary>>,
+    lager:debug("loading profile data from ~s/~s", [?KZ_AUTH_DB, DocId]),
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DocId) of
         {'ok', OAuthDoc} -> maybe_update_user(DocId, OAuthDoc, Token);
         {'error', 'not_found'} -> update_user(DocId, format_user_doc(Token), Token)
@@ -211,6 +212,7 @@ maybe_add_user(#{auth_provider := #{name := Prefix}
                 ,user_identity := Identity
                 } = Token) ->
     DocId = <<Prefix/binary, "-",Identity/binary>>,
+    lager:debug("loading profile data from ~s/~s", [?KZ_AUTH_DB, DocId]),
     case kz_datamgr:open_cache_doc(?KZ_AUTH_DB, DocId) of
         {'ok', OAuthDoc} -> maybe_update_user(DocId, OAuthDoc, Token);
         {'error', 'not_found'} -> update_user(DocId, format_user_doc(Token), Token)

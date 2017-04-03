@@ -19,6 +19,11 @@
         },
         "default_presence_type": {
             "description": "Type of presence to update",
+            "enum": [
+                "early",
+                "terminated",
+                "confirmed"
+            ],
             "type": "string"
         },
         "default_ringback_timeout": {

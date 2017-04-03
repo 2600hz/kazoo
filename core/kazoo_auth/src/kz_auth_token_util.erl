@@ -45,7 +45,7 @@ access_code(#{code := Code
     RedirectURI = kz_json:get_first_defined(?REDIRECT_URI_KEYS, JObj, <<"postmessage">>),
     case kz_auth_util:fetch_access_code(AppId, Code, RedirectURI) of
         {'ok', CodeJObj} ->
-            Map = kz_auth_util:map_keys_to_atoms(kz_json:to_map(CodeJObj)),
+            Map = kz_maps:keys_to_atoms(kz_json:to_map(CodeJObj)),
             (maps:merge(Token, Map))#{original => kz_json:merge_jobjs(JObj, CodeJObj)};
         _ -> Token
     end;
@@ -58,8 +58,9 @@ verify(#{auth_provider := #{token_info_url := TokenInfoUrl}
         }=Token) ->
     URL = <<TokenInfoUrl/binary, AccessToken/binary>>,
     case kz_http:get(kz_term:to_list(URL)) of
-        {'ok', 200, _RespHeaders, RespJObj} ->
-            Token#{verified_token => kz_json:decode(RespJObj)};
+        {'ok', 200, _RespHeaders, RespBody} ->
+            RespJObj = kz_json:decode(RespBody),
+            Token#{verified_token => RespJObj};
         Else ->
             lager:info("unable to verify oauth token: ~p", [Else]),
             Token#{verified_token => kz_json:new()}
@@ -90,10 +91,7 @@ build_claims([{K1, K2} | KVs], JObjs, Claims) ->
 id_token(#{claims := _Claims}=Token) -> Token;
 id_token(#{id_token := IdToken}=Token) ->
     case kz_auth_jwt:decode(IdToken) of
-        {'ok', _Header, Claims} ->
-            Token#{claims => Claims
-                  ,verified_token => Claims
-                  };
+        {'ok', _Header, Claims} -> Token#{claims => Claims};
         _ -> Token
     end;
 id_token(#{}=Token) -> Token#{claims => kz_json:new()}.

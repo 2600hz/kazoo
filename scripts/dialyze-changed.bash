@@ -4,6 +4,9 @@
 ## include extra beam files, like kz_json or gen_listener, as args to the script
 ## usage: ./dialyze-changed.bash [file.beam]
 
+pushd $(dirname $0) > /dev/null
+cd $(pwd -P)/..
+
 ERL_FILES=$(git --no-pager diff --name-only HEAD origin/master -- applications core | grep erl)
 
 BEAM_FILES=()
@@ -25,5 +28,7 @@ for ERL in $ERL_FILES; do
 done
 
 ARGS=${BEAM_FILES[@]}
-echo "dialyzing changed files:"
+echo "dialyzing changed files(${#BEAM_FILES[@]}):"
 dialyzer --plt .kazoo.plt $MOD_BEAM $ARGS $@
+
+popd > /dev/null

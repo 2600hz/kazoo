@@ -12,22 +12,9 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([map_keys_to_atoms/1]).
-
 -export([get_json_from_url/1, get_json_from_url/2]).
 
 -export([fetch_access_code/2, fetch_access_code/3]).
-
--spec map_keys_to_atoms(map()) -> map().
-map_keys_to_atoms(Map) ->
-    maps:fold(fun map_keys_to_atoms_fold/3, #{}, Map).
-
--spec map_keys_to_atoms_fold(ne_binary(), any(), map()) -> map().
-map_keys_to_atoms_fold(K, V, Acc) when is_map(V) ->
-    Acc#{kz_term:to_atom(K, 'true') => map_keys_to_atoms(V)};
-map_keys_to_atoms_fold(K, V, Acc) ->
-    Acc#{kz_term:to_atom(K, 'true') => V}.
-
 
 
 -spec get_json_from_url(ne_binary()) -> {'ok', kz_json:object()} | {'error', any()}.

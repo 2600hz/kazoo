@@ -138,9 +138,12 @@ alg_2_digest_type(_)           -> 'undefined'.
 -spec epoch() -> integer().
 epoch() -> erlang:system_time('seconds').
 
--spec encode(kz_proplist()) ->
+-spec encode(kz_proplist() | map()) ->
                     {'ok', ne_binary()} |
                     {'error', any()}.
+encode(ClaimsMap)
+  when is_map(ClaimsMap) ->
+    encode(lists:map(fun({K,V}) -> {kz_term:to_binary(K), V} end, maps:to_list(ClaimsMap)));
 encode(Claims) ->
     case props:get_value(<<"iss">>, Claims) of
         undefined -> {'error', 'no_issuer'};
