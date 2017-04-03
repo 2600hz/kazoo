@@ -54,7 +54,7 @@ debug_dump_memory(FolderName) ->
 debug_dump_process(FolderName) ->
     ProcessLog = FolderName ++ "/process_info",
     Bytes = [erlang:process_info(Pid)|| Pid <- erlang:processes()],
-    _ = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])),
+    'ok' = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])),
     'ok'.
 
 -spec debug_dump_ets(list()) -> 'ok'.
@@ -79,7 +79,7 @@ debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
 debug_dump_ports(FolderName) ->
     PortLog = FolderName ++ "/ports_info",
     Bytes = [erlang:port_info(Port) || Port <- erlang:ports()],
-    _ = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])),
+    'ok' = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])),
     'ok'.
 
 -spec syslog_level(text()) -> 'ok'.
