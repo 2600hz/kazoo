@@ -188,30 +188,38 @@ send_chunked_cdrs([Db | Dbs], {Req, Context}) ->
     {Context3, CDRIds} = cb_cdrs:maybe_paginate_and_clean(Context2, Ids),
     send_chunked_cdrs(Dbs, cb_cdrs:load_chunked_cdrs(Db, CDRIds, {Req, Context3})).
 
--spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) ->
-                         kz_proplist().
-get_cdr_ids(Db, View, ViewOptions) ->
-    {'ok', Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
-    filter_cdr_ids(Ids).
+-define(MATCH_CDR_ID(YYYYMM, CallId), <<YYYYMM:6/binary, "-", CallId/binary>>).
 
--spec filter_cdr_ids(kz_proplist()) -> kz_proplist().
-filter_cdr_ids(Ids) ->
+-spec get_cdr_ids(ne_binary(), ne_binary(), crossbar_doc:view_options()) -> kz_proplist().
+get_cdr_ids(Db, View, ViewOptions) ->
+    {ok, Ids} = cb_cdrs:get_cdr_ids(Db, View, ViewOptions),
     %% Remove leading year, month and dash
-    CallIds = [CallId || {<<_:7/binary, CallId/binary>>, _} <- Ids],
+    CallIds = [CallId || {?MATCH_CDR_ID(_,CallId), _CDR} <- Ids],
+    lager:debug("filtering ~p callids", [length(CallIds)]),
+    FilteredCallIds = filter_callids(CallIds),
+    lager:debug("found ~p dialogues", [length(FilteredCallIds)]),
+    [Id || {?MATCH_CDR_ID(_,CallId), _}=Id <- Ids,
+           lists:member(CallId, FilteredCallIds)
+    ].
+
+-spec filter_callids(ne_binaries()) -> ne_binaries().
+filter_callids([]) -> [];
+filter_callids(CallIds) ->
     Req = [{<<"Call-IDs">>, CallIds}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     case kz_amqp_worker:call_collect(Req
                                     ,fun kapi_inspector:publish_filter_req/1
-                                    ,{call_inspector, fun kapi_inspector:filter_resp_v/1, true}
+                                    ,{call_inspector, true}
                                     )
     of
         {ok, JObjs} ->
             FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
             lists:usort(lists:flatmap(FilterIds, JObjs));
-        {timeout, _Resp} ->
-            lager:debug("timeout: ~p", [_Resp]),
-            [];
+        {timeout, JObjs} ->
+            lager:debug("timeout ~s", [kz_json:encode(JObjs)]),
+            FilterIds = fun (JObj) -> kz_json:get_value(<<"Call-IDs">>, JObj, []) end,
+            lists:usort(lists:flatmap(FilterIds, JObjs));
         {error, _E} ->
             lager:debug("error: ~p", [_E]),
             []
