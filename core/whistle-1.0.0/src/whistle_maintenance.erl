@@ -77,11 +77,11 @@ debug_dump_ets(FolderName) ->
 -spec debug_dump_ets_details(list(), [ets:tab()]) -> 'ok'.
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
-   TabInfoLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_info",
-   _ = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
-   TabDumpLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
-   catch ets:tab2file(Tab, TabDumpLog),
-   debug_dump_ets_details(EtsFolder, Tabs).
+    TabInfoLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_info",
+    _ = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
+    TabDumpLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
+    catch ets:tab2file(Tab, TabDumpLog),
+    debug_dump_ets_details(EtsFolder, Tabs).
 
 -spec debug_dump_ports(list()) -> 'ok'.
 debug_dump_ports(FolderName) ->
