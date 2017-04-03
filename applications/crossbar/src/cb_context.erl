@@ -729,9 +729,7 @@ validate_request_data(SchemaJObj, Context) ->
                                )
     of
         {'ok', JObj} ->
-            passed(
-              set_doc(Context, kz_json_schema:add_defaults(JObj, SchemaJObj))
-             );
+            passed(set_doc(Context, JObj));
         {'error', Errors} when Strict ->
             lager:debug("request data did not validate against ~s: ~p", [kz_doc:id(SchemaJObj)
                                                                         ,Errors
