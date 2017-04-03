@@ -54,8 +54,7 @@ debug_dump_memory(FolderName) ->
 debug_dump_process(FolderName) ->
     ProcessLog = FolderName ++ "/process_info",
     Bytes = [erlang:process_info(Pid)|| Pid <- erlang:processes()],
-    'ok' = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])),
-    'ok'.
+    'ok' = file:write_file(ProcessLog, io_lib:format("~p~n", [Bytes])).
 
 -spec debug_dump_ets(list()) -> 'ok'.
 debug_dump_ets(FolderName) ->
@@ -79,8 +78,7 @@ debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
 debug_dump_ports(FolderName) ->
     PortLog = FolderName ++ "/ports_info",
     Bytes = [erlang:port_info(Port) || Port <- erlang:ports()],
-    'ok' = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])),
-    'ok'.
+    'ok' = file:write_file(PortLog, io_lib:format("~p~n", [Bytes])).
 
 -spec syslog_level(text()) -> 'ok'.
 syslog_level(Level) ->
@@ -178,7 +176,7 @@ words_to_bytes(Words) ->
 print_table({T, Mem}) ->
     io:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
 
--spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
+-spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok'.
 log_table({T, Mem}, Filename) ->
     Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_term:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
@@ -193,7 +191,7 @@ mem_info() ->
 print_memory_type({Type, Size}) ->
     io:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]).
 
--spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
+-spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok'.
 log_memory_type({Type, Size}, Filename) ->
     Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
