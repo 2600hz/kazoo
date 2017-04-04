@@ -12,6 +12,11 @@
 -else.
 -endif.
 
+-define(BYTES_K, 1024).
+-define(BYTES_M, 1048576).
+-define(BYTES_G, 1073741824).
+-define(BYTES_T, 1099511627776).
+
 -define(MICROSECONDS_IN_SECOND, 1000000).
 
 -define(MILLISECONDS_IN_SECOND, 1000).
