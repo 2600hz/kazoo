@@ -130,7 +130,10 @@ to_reserved(Number, ?NUMBER_STATE_AVAILABLE) ->
                ],
     apply_transitions(Number, Routines);
 to_reserved(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    Routines = [fun authorize/1],
+    Routines = [fun authorize/1
+               ,fun update_reserve_history/1
+               ,fun move_to_reserved_state/1
+               ],
     apply_transitions(Number, Routines);
 to_reserved(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_RESERVED).
