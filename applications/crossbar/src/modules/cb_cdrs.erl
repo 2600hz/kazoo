@@ -576,7 +576,7 @@ get_cdr_ids(Db, View, ViewOptions) ->
             lager:debug("unable to fetch ~s from ~s: ~p", [View, Db, _R]),
             {'ok', []};
         {'ok', JObjs} ->
-            lager:debug("fetched cdr ids from ~s", [Db]),
+            lager:debug("fetched ~p cdr ids from ~s", [length(JObjs), Db]),
             CDRs = [{kz_doc:id(JObj), kz_json:get_value(<<"key">>, JObj)} || JObj <- JObjs],
             {'ok', CDRs}
     end.

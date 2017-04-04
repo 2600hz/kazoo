@@ -19,14 +19,9 @@ handle_req(JObj, _Props) ->
                || CallId <- kz_json:get_value(<<"Call-IDs">>, JObj, []),
                   ci_datastore:callid_exists(CallId)
               ],
-    send_response(CallIds, kz_api:server_id(JObj), kz_api:msg_id(JObj)).
-
--spec send_response(ne_binaries(), ne_binary(), ne_binary()) -> ok.
-send_response(CallIds, Q, MessageId) ->
-    JObj = kz_json:from_list(
+    Data = kz_json:from_list(
              [{<<"Call-IDs">>, CallIds}
-             ,{<<"Msg-ID">>, MessageId}
+             ,{<<"Msg-ID">>, kz_api:msg_id(JObj)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-             ]
-            ),
-    kapi_inspector:publish_filter_resp(Q, JObj).
+             ]),
+    kapi_inspector:publish_filter_resp(kz_api:server_id(JObj), Data).
