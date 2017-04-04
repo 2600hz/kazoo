@@ -166,31 +166,23 @@ hotload_app(App) when is_atom(App) ->
 hotload_app(App) ->
     hotload_app(wh_util:to_atom(App, 'true')).
 
--spec gc_all() -> 'ok'.
--spec gc_pids([pid(),...]) -> 'ok'.
 gc_all() ->
     gc_pids(processes()).
 gc_pids(Ps) ->
     _ = [begin erlang:garbage_collect(P), timer:sleep(500) end || P <- Ps],
     'ok'.
 
--spec gc_top_mem_consumers() -> 'ok'.
--spec gc_top_mem_consumers(pos_integer()) -> 'ok'.
 gc_top_mem_consumers() ->
     gc_top_mem_consumers(10).
 gc_top_mem_consumers(N) ->
     {Top, _} = top_mem_consumers(N),
     gc_pids([P || {P,_} <- Top]).
 
--type consumers() :: {kz_proplist_kv(pid(), integer()), kz_proplist_kv(pid(), integer())}.
--spec top_mem_consumers() -> consumers().
--spec top_mem_consumers(pos_integer()) -> consumers().
 top_mem_consumers() ->
     top_mem_consumers(10).
 top_mem_consumers(Len) when is_integer(Len), Len > 0 ->
     lists:split(Len, lists:reverse(lists:keysort(2, [{P, erlang:process_info(P, total_heap_size)} || P <- processes()]))).
 
--spec etop() -> 'ok'.
 etop() ->
     etop:start([{output, text}]),
     ok.
