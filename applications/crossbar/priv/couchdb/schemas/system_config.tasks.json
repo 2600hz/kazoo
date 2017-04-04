@@ -11,6 +11,7 @@
         "attempt_upload_output_times": {
             "default": 5,
             "description": "how many times will the upload of the resulting CSV be attempted, cannot be zero",
+            "minimum": 1,
             "type": "integer"
         },
         "browse_dbs_interval_s": {
