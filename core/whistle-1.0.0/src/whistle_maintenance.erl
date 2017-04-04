@@ -44,7 +44,7 @@ crash() ->
 
 -spec debug_dump() -> 'ok'.
 debug_dump() ->
-    FolderName = "/tmp/" ++ kz_util:to_list(node()) ++ "_" ++ kz_util:to_list(kz_util:current_tstamp()),
+    FolderName = "/tmp/" ++ wh_util:to_list(node()) ++ "_" ++ wh_util:to_list(wh_util:current_tstamp()),
     'ok' = file:make_dir(FolderName),
     _ = debug_dump_process(FolderName),
     _ = debug_dump_memory(FolderName),
@@ -77,9 +77,9 @@ debug_dump_ets(FolderName) ->
 -spec debug_dump_ets_details(list(), [ets:tab()]) -> 'ok'.
 debug_dump_ets_details(_, []) -> 'ok';
 debug_dump_ets_details(EtsFolder, [Tab|Tabs]) ->
-    TabInfoLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_info",
+    TabInfoLog = EtsFolder ++ "/" ++ wh_util:to_list(ets:info(Tab, 'name')) ++ "_info",
     'ok' = file:write_file(TabInfoLog, io_lib:format("~p~n", [ets:info(Tab)])),
-    TabDumpLog = EtsFolder ++ "/" ++ kz_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
+    TabDumpLog = EtsFolder ++ "/" ++ wh_util:to_list(ets:info(Tab, 'name')) ++ "_dump",
     catch ets:tab2file(Tab, TabDumpLog),
     debug_dump_ets_details(EtsFolder, Tabs).
 
@@ -92,12 +92,12 @@ debug_dump_ports(FolderName) ->
 
 -spec log_table({ets:tab(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_table({T, Mem}, Filename) ->
-    Bytes = io_lib:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]),
+    Bytes = io_lib:format("  ~-25s: ~6s~n", [wh_util:to_list(T), wh_util:pretty_print_bytes(Mem, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec log_memory_type({erlang:memory_type(), integer()}, file:name_all()) -> 'ok' | {'error', _}.
 log_memory_type({Type, Size}, Filename) ->
-    Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, kz_util:pretty_print_bytes(Size, 'truncated')]),
+    Bytes = io_lib:format("  ~-15s : ~6s~n", [Type, wh_util:pretty_print_bytes(Size, 'truncated')]),
     'ok' = file:write_file(Filename, Bytes, ['append']).
 
 -spec ets_info() -> 'ok'.
@@ -123,7 +123,7 @@ words_to_bytes(Words) ->
 
 -spec print_table({ets:tid(), integer()}) -> 'ok'.
 print_table({T, Mem}) ->
-    io:format("  ~-25s: ~6s~n", [kz_util:to_list(T), kz_util:pretty_print_bytes(Mem, 'truncated')]).
+    io:format("  ~-25s: ~6s~n", [wh_util:to_list(T), wh_util:pretty_print_bytes(Mem, 'truncated')]).
 
 -spec syslog_level(text()) -> 'ok'.
 syslog_level(Level) ->
