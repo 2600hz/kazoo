@@ -26,17 +26,18 @@ to_schema_docs(Schemas) ->
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
     maybe_update_account_schema(Name, AutoGenSchema),
-    Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+    SchemaPath = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+
     GeneratedJObj = filter_system(static_fields(Name, remove_source(AutoGenSchema))),
-    ExistingJObj = existing_schema(Path),
+    ExistingJObj = existing_schema(SchemaPath),
     MergedJObj = kz_json:merge(ExistingJObj, GeneratedJObj),
-    'ok' = file:write_file(Path, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
+    'ok' = file:write_file(SchemaPath, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
-existing_schema(Path) ->
-    case kz_json_schema:fload(Path) of
+existing_schema(Name) ->
+    case kz_json_schema:fload(Name) of
         {'ok', JObj} -> JObj;
-        {'error', _E} -> kz_json:new()
+        {'error', _E} -> io:format("failed to find ~s: ~p~n", [Name, _E]), kz_json:new()
     end.
 
 maybe_update_account_schema(Name, AutoGenSchema) ->
