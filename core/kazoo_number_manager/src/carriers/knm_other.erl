@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -24,19 +24,26 @@
 
 -define(KNM_OTHER_CONFIG_CAT, <<?KNM_CONFIG_CAT/binary, ".other">>).
 
--ifdef(TEST).
--define(COUNTRY, ?KNM_DEFAULT_COUNTRY).
--else.
 -define(COUNTRY
        ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"default_country">>, ?KNM_DEFAULT_COUNTRY)).
--endif.
 
 -ifdef(TEST).
--define(PHONEBOOK_URL(Options)
-       ,props:get_value('phonebook_url', Options)).
+-define(NUMBERS_DATA, kz_json:from_list(
+                        [{<<"+1415886790", (D + $0)>>, kz_json:from_list([{<<"extension">>, D}])}
+                         || D <- lists:seq(0, 9)
+                        ])).
+-define(BLOCK_RESP, kz_json:from_list([{<<"start_number">>, ?START_BLOCK}
+                                      ,{<<"end_number">>, ?END_BLOCK}
+                                      ])).
+-define(BLOCKS_RESP, kz_json:from_list([{<<"status">>, <<"success">>}
+                                       ,{<<"data">>, [?BLOCK_RESP]}
+                                       ])).
+-define(NUMBERS_RESPONSE, kz_json:from_list([{<<"status">>, <<"success">>}
+                                            ,{<<"data">>, ?NUMBERS_DATA}
+                                            ])).
+-define(PHONEBOOK_URL(Options), props:get_value('phonebook_url', Options)).
 -else.
--define(PHONEBOOK_URL(_Options)
-       ,kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
+-define(PHONEBOOK_URL(_Options), kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
 -endif.
 
 

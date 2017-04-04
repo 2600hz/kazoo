@@ -56,15 +56,6 @@ is_valid(Carrier, PN) ->
     case knm_phone_number:is_admin(PN) of
         false -> knm_errors:unauthorized();
         true ->
-            case kz_util:try_load_module(Carrier) of
-                false -> false;
-                Module ->
-                    IsCarrier = is_a_number_carrier(Module),
-                    lager:debug("~s is a number carrier: ~s", [Module, IsCarrier]),
-                    IsCarrier
-            end
+            ?LOG_DEBUG("allowing setting carrier to ~p", [Carrier]),
+            true
     end.
-
-is_a_number_carrier(Module) ->
-    Behaviours = [Behaviour || {behaviour,[Behaviour]} <- Module:module_info(attributes)],
-    lists:member(knm_gen_carrier, Behaviours).

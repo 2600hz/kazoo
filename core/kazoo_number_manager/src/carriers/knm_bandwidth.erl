@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @copyright (C) 2011-2016, 2600Hz INC
+%%% @copyright (C) 2011-2017, 2600Hz INC
 %%% @doc
 %%%
 %%% Handle client requests for phone_number documents
@@ -28,25 +28,20 @@
         ,{'xmlns:xsd', "http://www.w3.org/2001/XMLSchema"}
         ,{'xmlns', "http://www.bandwidth.com/api/"}
         ]).
+-define(DEFAULT_NUMBER_URL, "https://api.bandwidth.com/public/v2/numbers.api").
 -define(BW_NUMBER_URL
-       ,kapps_config:get_string(?KNM_BW_CONFIG_CAT
-                               ,<<"numbers_api_url">>
-                               ,"https://api.bandwidth.com/public/v2/numbers.api"
-                               )
-       ).
-
+       ,kapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"numbers_api_url">>, ?DEFAULT_NUMBER_URL)).
+-define(DEFAULT_CDR_URL, "https://api.bandwidth.com/api/public/v2/cdrs.api").
 -define(BW_CDR_URL
-       ,kapps_config:get_string(?KNM_BW_CONFIG_CAT
-                               ,<<"cdrs_api_url">>
-                               ,"https://api.bandwidth.com/api/public/v2/cdrs.api"
-                               )
-       ).
+       ,kapps_config:get_string(?KNM_BW_CONFIG_CAT, <<"cdrs_api_url">>, ?DEFAULT_CDR_URL)).
+-define(BW_DEBUG, kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, false)).
+-define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
 
 -ifdef(TEST).
+-define(BANDWIDTH_NPAN_RESPONSE, knm_util:fixture("bandwidth_numbersearch_response.xml")).
+-define(BANDWIDTH_AREACODE_RESPONSE, knm_util:fixture("bandwidth_areacode_response.xml")).
 -define(BW_DEBUG(Format, Args), io:format(user, Format, Args)).
 -else.
--define(BW_DEBUG, kapps_config:get_is_true(?KNM_BW_CONFIG_CAT, <<"debug">>, 'false')).
--define(BW_DEBUG_FILE, "/tmp/bandwidth.com.xml").
 -define(BW_DEBUG(Format, Args),
         _ = ?BW_DEBUG
         andalso file:write_file(?BW_DEBUG_FILE, io_lib:format(Format, Args), ['append'])
