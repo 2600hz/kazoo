@@ -240,25 +240,25 @@ assign_to_app_test_() ->
 
 
 release_test_() ->
-    Ret = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_WITH_HISTORY_NUM]),
-    Ret1 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_MDN], knm_number_options:mdn_options()),
-    Ret2 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_BAD_CARRIER_NUM]),
-    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret))
-    ,?_assertMatch([_], maps:get(ok, Ret))
-    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
-    ,{"Verify number went from in_service to reserved"
-     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret)))
-     }
-    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
+    Ret1 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_WITH_HISTORY_NUM]),
+    Ret2 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_MDN], knm_number_options:mdn_options()),
+    Ret3 = knm_numbers:release([?NOT_NUM, ?TEST_IN_SERVICE_BAD_CARRIER_NUM]),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
     ,?_assertMatch([_], maps:get(ok, Ret1))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret1)))
-    ,{"Verify number went from in_service to deleted"
-     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret1)))
+    ,{"Verify number went from in_service to reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
      }
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret2)))
+    ,{"Verify number went from in_service to deleted"
+     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(pn_x(1, Ret2)))
+     }
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret3))
+    ,?_assertMatch([_], maps:get(ok, Ret3))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret3)))
     ,{"Verify number went from in_service to available"
-     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret2)))
+     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(pn_x(1, Ret3)))
      }
     ].
