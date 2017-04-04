@@ -191,20 +191,31 @@ reconcile_test_() ->
 
 
 reserve_test_() ->
+    AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_number_options:default()],
     Ret1 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
     Ret2 = knm_numbers:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], knm_number_options:default()),
+    Ret3 = knm_numbers:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], AssignToChild),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))
     ,?_assertMatch([_], maps:get(ok, Ret1))
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret3))
+    ,?_assertMatch([_], maps:get(ok, Ret3))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret1)))
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
      }
-    ,?_assertEqual(true,  knm_phone_number:is_dirty(pn_x(1, Ret1)))
-    ,?_assertEqual(false, knm_phone_number:is_dirty(pn_x(1, Ret2)))
-    ,{"verify number is still in service"
-     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(pn_x(1, Ret2)))
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret1)))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret2)))
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret2)))
+    ,{"verify number is now reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret2)))
      }
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret3)))
+    ,{"verify number was indeed reserved"
+     ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret3)))
+     }
+    ,?_assertEqual([?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret3)))
     ].
 
 

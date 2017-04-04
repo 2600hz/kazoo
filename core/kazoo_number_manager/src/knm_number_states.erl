@@ -129,6 +129,8 @@ to_reserved(T, ?NUMBER_STATE_AVAILABLE) ->
 to_reserved(T, ?NUMBER_STATE_IN_SERVICE) ->
     knm_numbers:pipe(T
                     ,[fun authorize/1
+                     ,fun update_reserve_history/1
+                     ,fun move_to_reserved_state/1
                      ]);
 to_reserved(T, State) ->
     invalid_state_transition(T, State, ?NUMBER_STATE_RESERVED).
