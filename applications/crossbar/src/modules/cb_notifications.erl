@@ -724,9 +724,9 @@ read_account(Context, Id, LoadFrom) ->
          }
     of
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
-            maybe_read_from_parent(Context, Id, LoadFrom, cb_context:fetch(Context, 'reseller_id'));
+            maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
         {_Code, 'success'} ->
-            lager:debug("loaded ~s from account database", [Id]),
+            lager:debug("loaded ~s from account database ~s", [Id, cb_context:account_db(Context)]),
             NewRespData = note_account_override(cb_context:resp_data(Context1)),
             cb_context:set_resp_data(Context1, NewRespData);
         {_Code, _Status} ->
@@ -744,11 +744,12 @@ maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
         'false' ->
             lager:debug("~s not found in account and reached to reseller, reading from master", [Id]),
             read_system_for_account(Context, Id, LoadFrom);
-        {'error', _} ->
+        'undefined' ->
             lager:debug("~s not found in account and parent is undefined, reading from master", [Id]),
             read_system_for_account(Context, Id, LoadFrom);
         ParentId ->
             ParentDb = kz_util:format_account_db(ParentId),
+            lager:debug("account doesn't have ~s, reading from parent account ~s", [Id, ParentDb]),
             read_account(cb_context:set_account_db(Context, ParentDb), Id, LoadFrom)
     end.
 
@@ -1297,9 +1298,7 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
 maybe_update_db(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
-        AccountId ->
-            ResellerId = kz_services:find_reseller_id(AccountId),
-            cb_context:store(Context, 'reseller_id', ResellerId)
+        _AccountId -> Context
     end.
 
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
