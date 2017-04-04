@@ -52,11 +52,14 @@ binary_part_to_binary(?BINARY_MATCH(Ms)) -> binary_match_to_binary(Ms).
 
 -spec schema_path(binary()) -> binary().
 schema_path(Base) ->
-    filename:join([code:priv_dir('crossbar')
-                  ,<<"couchdb">>
-                  ,<<"schemas">>
-                  ,Base
-                  ]).
+    case filename:join([code:priv_dir('crossbar')
+                       ,<<"couchdb">>
+                       ,<<"schemas">>
+                       ,Base
+                       ]) of
+        <<"/", _/binary>> = Path -> Path;
+        Path -> <<"./", Path/binary>>
+    end.
 
 -spec api_path(binary()) -> binary().
 api_path(Base) ->
