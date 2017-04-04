@@ -8,6 +8,11 @@
             "description": "teletype iterate over bcc",
             "type": "boolean"
         },
+        "notice_enabled_by_default": {
+            "default": true,
+            "description": "Specify if template is considered enabled by default when teletype tries to process that notification",
+            "type": "boolean"
+        },
         "render_farm_workers": {
             "default": 50,
             "description": "teletype render farm workers",
