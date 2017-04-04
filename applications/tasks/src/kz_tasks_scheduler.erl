@@ -44,6 +44,10 @@
         kapps_config:get_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)).
 -define(PROGRESS_AFTER_PROCESSED,
         kapps_config:get_integer(?CONFIG_CAT, <<"send_progress_after_processed">>, 1000)).
+-define(PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
+        kapps_config:get_integer(?CONFIG_CAT, <<"pause_between_upload_output_attempts_s">>, 10)).
+-define(UPLOAD_ATTEMPTS,
+        kapps_config:get_integer(?CONFIG_CAT, <<"attempt_upload_output_times">>, 5)).
 
 -record(state, {tasks = [] :: [kz_tasks:task()]
                }).
@@ -153,23 +157,25 @@ worker_finished(TaskId=?NE_BINARY, TotalSucceeded, TotalFailed, Output=?NE_BINAR
   when is_integer(TotalSucceeded), is_integer(TotalFailed) ->
     _ = gen_server:call(?SERVER, {'worker_finished', TaskId, TotalSucceeded, TotalFailed}),
     {'ok', CSVOut} = file:read_file(Output),
-    AName = ?KZ_TASKS_ANAME_OUT,
-    attempt_upload(TaskId, AName, CSVOut, Output, 3).
+    Max = ?UPLOAD_ATTEMPTS,
+    attempt_upload(TaskId, ?KZ_TASKS_ANAME_OUT, CSVOut, Output, Max, Max).
 
-attempt_upload(_TaskId, _AName, _, _, 0) ->
-    lager:error("failed saving ~s/~s: 3rd conflict", [_TaskId, _AName]),
+attempt_upload(_TaskId, _AName, _, _, 0, _) ->
+    lager:error("failed saving ~s/~s: last failing attempt", [_TaskId, _AName]),
     {error, conflict};
-attempt_upload(TaskId, AName, CSVOut, Output, Retries) ->
-    lager:debug("attempt #~p to save ~s/~s", [3-Retries+1, TaskId, AName]),
+attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
+    lager:debug("attempt #~p to save ~s/~s", [Max-Retries+1, TaskId, AName]),
     Options = [{content_type, <<"text/csv">>}],
     case kz_datamgr:put_attachment(?KZ_TASKS_DB, TaskId, AName, CSVOut, Options) of
         {ok, _TaskJObj} ->
-            lager:debug("saved ~s", [AName]),
+            lager:debug("saved ~s after ~p attempts", [AName, Max-Retries+1]),
             kz_util:delete_file(Output);
-        {error, conflict} -> attempt_upload(TaskId, AName, CSVOut, Output, Retries-1);
-        {error, _R}=Error ->
-            lager:error("failed saving ~s/~s: ~p", [TaskId, AName, _R]),
-            Error
+        {error, _R} ->
+            lager:debug("upload of ~s failed (~s), may retry soon", [TaskId, _R]),
+            Pause = ?MILLISECONDS_IN_SECOND * ?PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
+            lager:debug("waiting ~pms before next upload attempt of ~s", [Pause, TaskId]),
+            timer:sleep(Pause),
+            attempt_upload(TaskId, AName, CSVOut, Output, Retries-1, Max)
     end.
 
 %%--------------------------------------------------------------------
