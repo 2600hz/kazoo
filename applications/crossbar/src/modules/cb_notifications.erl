@@ -724,8 +724,7 @@ read_account(Context, Id, LoadFrom) ->
          }
     of
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
-            lager:debug("~s not found in account, reading from master", [Id]),
-            read_system_for_account(Context, Id, LoadFrom);
+            maybe_read_from_parent(Context, Id, LoadFrom, cb_context:fetch(Context, 'reseller_id'));
         {_Code, 'success'} ->
             lager:debug("loaded ~s from account database", [Id]),
             NewRespData = note_account_override(cb_context:resp_data(Context1)),
@@ -733,6 +732,24 @@ read_account(Context, Id, LoadFrom) ->
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [Id, _Code]),
             Context1
+    end.
+
+maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
+    lager:debug("~s not found in account and reseller is undefined, reading from master", [Id]),
+    read_system_for_account(Context, Id, LoadFrom);
+maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
+    AccountId = cb_context:account_id(Context),
+    case AccountId =/= ResellerId
+        andalso get_parent_account_id(AccountId) of
+        'false' ->
+            lager:debug("~s not found in account and reached to reseller, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
+        {'error', _} ->
+            lager:debug("~s not found in account and parent is undefined, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
+        ParentId ->
+            ParentDb = kz_util:format_account_db(ParentId),
+            read_account(cb_context:set_account_db(Context, ParentDb), Id, LoadFrom)
     end.
 
 -spec read_system_for_account(cb_context:context(), path_token(), load_from()) ->
@@ -749,6 +766,15 @@ read_system_for_account(Context, Id, LoadFrom) ->
         _Status ->
             lager:debug("failed to read master db for ~s", [Id]),
             Context1
+    end.
+
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:parent_account_id(JObj);
+        {'error', _E} ->
+            lager:error("failed to find parent account for ~s", [AccountId]),
+            'undefined'
     end.
 
 -spec revert_context_to_account(cb_context:context(), cb_context:context()) -> cb_context:context().
@@ -1271,7 +1297,9 @@ load_smtp_log_doc(?MATCH_MODB_PREFIX(YYYY,MM,_) = Id, Context) ->
 maybe_update_db(Context) ->
     case cb_context:account_id(Context) of
         'undefined' -> cb_context:set_account_db(Context, ?KZ_CONFIG_DB);
-        _AccountId -> Context
+        AccountId ->
+            ResellerId = kz_services:find_reseller_id(AccountId),
+            cb_context:store(Context, 'reseller_id', ResellerId)
     end.
 
 -spec normalize_view_result(kz_json:object()) -> kz_json:object().
