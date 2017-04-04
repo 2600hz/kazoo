@@ -49,6 +49,10 @@
                                   ,{?TEXT_HTML, 2}
                                   ]).
 
+-define(NOTICE_ENABLED_BY_DEFAULT,
+        kapps_config:get_is_true(?APP_NAME, <<"notice_enabled_by_default">>, 'true')
+       ).
+
 -spec send_email(email_map(), ne_binary(), rendered_templates()) ->
                         'ok' | {'error', any()}.
 -spec send_email(email_map(), ne_binary(), rendered_templates(), attachments()) ->
@@ -632,7 +636,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
     case kz_datamgr:open_cache_doc(AccountDb, TemplateId) of
         {'ok', TemplateJObj} ->
             lager:debug("account ~s has ~s, checking if enabled", [AccountId, TemplateId]),
-            kz_notification:is_enabled(TemplateJObj);
+            kz_notification:is_enabled(TemplateJObj, ?NOTICE_ENABLED_BY_DEFAULT);
         _Otherwise when AccountId =/= ResellerAccountId ->
             lager:debug("account ~s is mute, checking parent", [AccountId]),
             is_account_notice_enabled(
@@ -650,7 +654,7 @@ is_notice_enabled_default(TemplateKey) ->
     case kz_datamgr:open_cache_doc(?KZ_CONFIG_DB, TemplateId) of
         {'ok', TemplateJObj} ->
             lager:debug("system has ~s, checking if enabled", [TemplateId]),
-            kz_notification:is_enabled(TemplateJObj);
+            kz_notification:is_enabled(TemplateJObj, ?NOTICE_ENABLED_BY_DEFAULT);
         _Otherwise ->
             lager:debug("system is mute, ~s not enabled", [TemplateId]),
             'false'
