@@ -64,6 +64,8 @@
 -define(CARRIER_RESERVED, <<"knm_reserved">>).
 -define(CARRIER_RESERVED_RESELLER, <<"knm_reserved_reseller">>).
 
+-define(PROVIDER_RENAME_CARRIER, <<"knm_rename_carrier">>).
+
 -define(FEATURE_CNAM, <<"cnam">>).
 -define(FEATURE_CNAM_INBOUND, <<"inbound_cnam">>).
 -define(FEATURE_CNAM_OUTBOUND, <<"outbound_cnam">>).
@@ -93,6 +95,9 @@
                                   ,?FEATURE_PORT
                                   ]).
 
+-define(ADMIN_ONLY_FEATURES, [?FEATURE_RENAME_CARRIER
+                             ]).
+
 %% Keys on number document's root reserved to update features
 -define(FEATURES_ROOT_KEYS, [?FEATURE_CNAM
                             ,?FEATURE_E911
@@ -115,6 +120,13 @@
 -define(E911_STREET1, <<"street_address">>).
 -define(E911_STREET2, <<"extended_address">>).
 -define(E911_ZIP, <<"postal_code">>).
+
+-define(PREPEND_ENABLED, <<"enabled">>).
+-define(PREPEND_NAME, <<"name">>).
+-define(PREPEND_NUMBER, <<"number">>).
+
+-define(RINGBACK_EARLY, <<"early">>).
+-define(RINGBACK_TRANSFER, <<"transfer">>).
 
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

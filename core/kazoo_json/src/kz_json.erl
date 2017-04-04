@@ -65,7 +65,9 @@
         ,insert_value/3, insert_values/2
         ,new/0
         ]).
--export([delete_key/2, delete_key/3, delete_keys/2]).
+-export([delete_key/2, delete_key/3
+        ,delete_keys/2, prune_keys/2
+        ]).
 -export([merge_recursive/1
         ,merge_recursive/2
         ,merge_recursive/3
@@ -988,9 +990,11 @@ set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
 %% There are no more keys to iterate through! Override the value here...
 set_value1([], Value, _JObj) -> Value.
 
-%% delete_key(foo, {struct, [{foo, bar}, {baz, biz}]}) -> {struct, [{baz, biz}]}
-%% delete_key([foo, far], {struct, [{foo, {struct, [{far, away}]}}, {baz, biz}]}) -> {struct, [{foo, {struct, []}}, {baz, biz}]}
-
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec delete_key(path(), object() | objects()) -> object() | objects().
 -spec delete_key(path(), object() | objects(), 'prune' | 'no_prune') -> object() | objects().
 delete_key(Keys, JObj) when is_list(Keys) ->
@@ -998,11 +1002,16 @@ delete_key(Keys, JObj) when is_list(Keys) ->
 delete_key(Key, JObj) ->
     delete_key([Key], JObj, 'no_prune').
 
-%% 'prune' removes the parent key if the result of the delete is an empty list;
-%%  no 'prune' leaves the parent intact
-%% so, delete_key([<<"k1">>, <<"k1.1">>], {struct, [{<<"k1">>, {struct, [{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
-%%   'no_prune' -> {struct, [{<<"k1">>, []}]}
-%%   'prune' -> {struct, []}
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%  No 'prune' leaves the parent intact (default).
+%%  With 'prune': removes the parent key if the result of the delete is an empty list.
+%%  So, delete_key([<<"k1">>, <<"k1.1">>], {[{<<"k1">>, {[{<<"k1.1">>, <<"v1.1">>}]}}]}) would result in
+%%    'no_prune' -> {[{<<"k1">>, []}]}
+%%    'prune' -> {[]}
+%% @end
+%%--------------------------------------------------------------------
 delete_key(Key, JObj, 'prune') when not is_list(Key) ->
     prune([Key], JObj);
 delete_key(Key, JObj, 'no_prune') when not is_list(Key) ->
@@ -1012,10 +1021,24 @@ delete_key(Keys, JObj, 'prune') ->
 delete_key(Keys, JObj, 'no_prune') ->
     no_prune(Keys, JObj).
 
-%% Figure out how to set the current key among a list of objects
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
 -spec delete_keys(paths(), object()) -> object().
 delete_keys(Keys, JObj) when is_list(Keys) ->
+    %% Figure out how to set the current key among a list of objects
     lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0) end, JObj, Keys).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec prune_keys(paths(), object()) -> object().
+prune_keys(Keys, JObj) when is_list(Keys) ->
+    lists:foldr(fun(K, JObj0) -> delete_key(K, JObj0, prune) end, JObj, Keys).
 
 -spec prune(keys(), object() | objects()) -> object() | objects().
 prune([], JObj) -> JObj;

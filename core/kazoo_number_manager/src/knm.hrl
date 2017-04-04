@@ -2,9 +2,9 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include("knm_phone_number.hrl").
 
+-define(APP, kazoo_number_manager).
 -define(APP_VERSION, <<"4.0.0">>).
--define(APP_NAME, <<"kazoo_number_manager">>).
--define(APP, 'kazoo_number_manager').
+-define(APP_NAME, atom_to_binary(?APP, utf8)).
 
 -define(CACHE_NAME, 'knm_cache').
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
@@ -75,6 +75,7 @@
 -define(TEST_OLD7_NUM, <<"+13977031887">>).
 -define(TEST_OLD7_1_NUM, <<"+13977031888">>).
 -define(TEST_TELNYX_NUM, <<"+14352154006">>).
+-define(TEST_VITELITY_NUM, <<"+18122154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
@@ -82,14 +83,11 @@
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
 -define(CHILD_ACCOUNT_ID,    <<"child_account_670a04df0014d0b27a">>).
+-define(CHILD_ACCOUNT_DB,    <<"account%2Fch%2Fil%2Fd_account_670a04df0014d0b27a">>).
 
--define(PVT_TREE, [?MASTER_ACCOUNT_ID
-                  ,?RESELLER_ACCOUNT_ID
-                  ]).
+-define(PVT_TREE, [?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID]).
 
--define(RESELLER_ACCOUNT_DOC, kz_json:from_list(
-                                [{<<"_id">>, ?RESELLER_ACCOUNT_ID}]
-                               )).
+-define(RESELLER_ACCOUNT_DOC, kz_json:from_list([{<<"_id">>, ?RESELLER_ACCOUNT_ID}])).
 
 -define(FEATURES_FOR_LOCAL_NUM, kz_json:from_list([{?FEATURE_LOCAL, kz_json:new()}])).
 
@@ -196,6 +194,36 @@
           ,{?PVT_CREATED, 63565934344}
           ])).
 
+-define(VITELITY_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_VITELITY_NUM}
+          ,{<<"_rev">>, <<"1-deada1523e81a4e3c2689140ed3a8e69">>}
+          ,{?FEATURE_CNAM, kz_json:from_list(
+                             [{?CNAM_INBOUND_LOOKUP, true}
+                             ,{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}
+                             ])}
+          ,{?FEATURE_PREPEND, kz_json:from_list(
+                                [{?PREPEND_ENABLED, true}
+                                ,{?PREPEND_NAME, <<"Citizen">>}
+                                ,{?PREPEND_NUMBER, <<"75657869">>}
+                                ])}
+          ,{?PVT_MODIFIED, 63565911000}
+          ,{?PVT_FEATURES, kz_json:from_list_recursive(
+                             [{?FEATURE_CNAM_INBOUND, [{?CNAM_INBOUND_LOOKUP, true}]}
+                             ,{?FEATURE_CNAM_OUTBOUND, [{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}]}
+                             ,{?FEATURE_PREPEND, [{?PREPEND_ENABLED, true}
+                                                 ,{?PREPEND_NAME, <<"Citizen">>}
+                                                 ,{?PREPEND_NUMBER, <<"75657869">>}
+                                                 ]}
+                             ])}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, <<"knm_vitelity">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_IN_SERVICE}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1812">>}
+          ,{?PVT_CREATED, 63565911001}
+          ])).
+
 -define(PORT_IN_NUMBER
        ,kz_json:from_list(
           [{<<"_id">>, ?TEST_PORT_IN_NUM}
@@ -232,7 +260,7 @@
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_STATE, ?NUMBER_STATE_DISCOVERY}
           ,{?PVT_RESERVE_HISTORY, []}
-          ,{?PVT_PORTED_IN, 'false'}
+          ,{?PVT_PORTED_IN, false}
           ,{?PVT_MODULE_NAME, <<"knm_bandwidth2">>}
           ,{?PVT_CARRIER_DATA
            ,kz_json:from_list(
@@ -252,7 +280,6 @@
            }
           ,{?PVT_MODIFIED, 63610268576}
           ,{?PVT_CREATED, 63610268576}
-          ,{?PVT_TYPE, <<"number">>}
           ])).
 
 -define(LOG_ERROR(F,A), io:format(user, F++ "\n", A)).

@@ -89,8 +89,7 @@ maybe_create_activation_transaction(Number, Feature, Units, TotalCharges) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec deactivate_feature(knm_number:knm_number(), ne_binary()) ->
-                                knm_number:knm_number().
+-spec deactivate_feature(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
 deactivate_feature(Number, Feature) ->
     PhoneNumber = knm_number:phone_number(Number),
     Features = knm_phone_number:features(PhoneNumber),
@@ -102,8 +101,7 @@ deactivate_feature(Number, Feature) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec deactivate_features(knm_number:knm_number(), ne_binaries()) ->
-                                 knm_number:knm_number().
+-spec deactivate_features(knm_number:knm_number(), ne_binaries()) -> knm_number:knm_number().
 deactivate_features(Number, Features) ->
     PhoneNumber = knm_number:phone_number(Number),
     ExistingFeatures = knm_phone_number:features(PhoneNumber),

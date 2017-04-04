@@ -48,6 +48,7 @@
         ,doc/1, update_doc/2, reset_doc/2
         ,modified/1, set_modified/2
         ,created/1, set_created/2
+        ,remove_denied_features/1
         ]).
 
 -export([list_attachments/2]).
@@ -370,6 +371,8 @@ test_fetch(?TEST_EXISTING_TOLL) ->
     {ok, ?EXISTING_TOLL};
 test_fetch(?TEST_TELNYX_NUM) ->
     {ok, ?TELNYX_NUMBER};
+test_fetch(?TEST_VITELITY_NUM) ->
+    {ok, ?VITELITY_NUMBER};
 test_fetch(?TEST_OLD1_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json")))};
 test_fetch(?TEST_OLD1_1_NUM) ->
@@ -664,7 +667,6 @@ from_json(JObj) ->
                 ,{fun set_features_denied/2, kz_json:get_list_value(?PVT_FEATURES_DENIED, JObj, ?DEFAULT_FEATURES_DENIED)}
 
                 ,fun ensure_features_defined/1
-                ,fun ensure_pvt_features_reflects_public_fields/1
                 ,{fun ensure_pvt_state_legacy_undefined/2, kz_json:get_value(?PVT_STATE_LEGACY, JObj)}
 
                  |props:filter_undefined([{fun set_rev/2, kz_doc:revision(JObj)}])
@@ -687,26 +689,10 @@ maybe_migrate_features(PN, FeaturesJObj) ->
 
 %% Note: the above setters may not have set any features yet,
 %% since more than one of them may set features.
+-spec ensure_features_defined(knm_phone_number()) -> knm_phone_number().
 ensure_features_defined(PN=#knm_phone_number{features = undefined}) ->
     PN#knm_phone_number{features = ?DEFAULT_FEATURES};
 ensure_features_defined(PN) -> PN.
-
-ensure_pvt_features_reflects_public_fields(PN) ->
-    PubToPvt = [{[?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP], ?FEATURE_CNAM_INBOUND}
-               ,{[?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], ?FEATURE_CNAM_OUTBOUND}
-               ],
-    case [PvtFeature
-          || {PubPath, PvtFeature} <- PubToPvt,
-             lists:member(PvtFeature, features_list(PN)),
-             undefined =:= kz_json:get_ne_value(PubPath, doc(PN))
-         ]
-    of
-        [] -> PN;
-        OutOfSync ->
-            ?LOG_WARN("removing out of sync features: ~p", [OutOfSync]),
-            NewFeatures = kz_json:delete_keys(OutOfSync, features(PN)),
-            set_features(PN, NewFeatures)
-    end.
 
 ensure_pvt_state_legacy_undefined(PN, undefined) -> PN;
 ensure_pvt_state_legacy_undefined(PN, _State) ->
@@ -749,15 +735,14 @@ features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
 features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
     Data = kz_json:from_list(
              props:filter_undefined(
-               [{<<"early">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
-               ,{<<"transfer">>, kz_json:get_ne_value([?FEATURE_RINGBACK, <<"early">>], JObj)}
+               [{?RINGBACK_EARLY, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_EARLY], JObj)}
+               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_TRANSFER], JObj)}
                ])),
     kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
 features_fold(?FEATURE_PREPEND, Acc, JObj) ->
-    Name = kz_json:get_ne_value([?FEATURE_PREPEND, <<"name">>], JObj),
-    Data = kz_json:from_list([{<<"enabled">>, kz_json:is_true([?FEATURE_PREPEND, <<"enabled">>], JObj)}
-                             ,{<<"name">>, Name}
-                             ]),
+    IsEnabled = kz_json:is_true([?FEATURE_PREPEND, ?PREPEND_ENABLED], JObj),
+    Data0 = kz_json:get_ne_value(?FEATURE_PREPEND, JObj, kz_json:new()),
+    Data = kz_json:set_value(?PREPEND_ENABLED, IsEnabled, Data0),
     kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
 features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
     DisplayName = kz_json:get_ne_binary_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], JObj),
@@ -1094,12 +1079,6 @@ features_allowed(#knm_phone_number{number = ?TEST_TELNYX_NUM}) ->
     ,?FEATURE_PREPEND
     ,?FEATURE_RINGBACK
     ,?FEATURE_RENAME_CARRIER
-    ];
-features_allowed(#knm_phone_number{number = ?TEST_IN_SERVICE_NUM}) ->
-    [?FEATURE_RENAME_CARRIER
-    ];
-features_allowed(#knm_phone_number{number = ?TEST_CREATE_NUM}) ->
-    [?FEATURE_RENAME_CARRIER
     ];
 features_allowed(#knm_phone_number{features_allowed = Features}) -> Features.
 -else.
@@ -1526,7 +1505,61 @@ set_created(PN=#knm_phone_number{created = undefined}, undefined) ->
 set_created(PN=#knm_phone_number{created = V}, V) -> PN;
 set_created(PN, Created)
   when is_integer(Created), Created > 0 ->
-    ?DIRTY(PN#knm_phone_number{created=Created}).
+    ?DIRTY(PN#knm_phone_number{created = Created}).
+
+%% @public
+-spec remove_denied_features(knm_phone_number()) -> knm_phone_number().
+remove_denied_features(PN) ->
+    DeniedFeatures = knm_providers:features_denied(PN),
+    RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
+    RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
+    ?LOG_WARN("removing out of sync pvt features: ~s"
+             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
+    ?LOG_WARN("removing out of sync pub features: ~s"
+             ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPub]))]),
+    NewPvt = kz_json:prune_keys(RemoveFromPvt, features(PN)),
+    NewPub = kz_json:prune_keys(RemoveFromPub, doc(PN)),
+    Updates = [{fun set_features/2, NewPvt}
+              ,{fun set_doc/2, NewPub}
+              ],
+    {ok, NewPN} = setters(PN, Updates),
+    NewPN.
+
+-spec remove_in_private(ne_binary()) -> [kz_json:path()].
+remove_in_private(Feature) ->
+    case maps:is_key(Feature, private_to_public()) of
+        false -> [];
+        true -> [[Feature]]
+    end.
+
+-spec remove_in_public(ne_binary()) -> [kz_json:path()].
+remove_in_public(Feature) ->
+    maps:get(Feature, private_to_public(), []).
+
+-spec private_to_public() -> map().
+private_to_public() ->
+    E911Pub = [[?FEATURE_E911]
+              ,[?LEGACY_VITELITY_E911]
+              ,[?LEGACY_DASH_E911]
+              ,[?LEGACY_TELNYX_E911]
+              ],
+    CNAMPub = [[?FEATURE_CNAM, ?CNAM_INBOUND_LOOKUP]
+              ,[?FEATURE_CNAM, ?CNAM_DISPLAY_NAME]
+              ],
+    PrependPub = [[?FEATURE_PREPEND, ?PREPEND_ENABLED]
+                 ,[?FEATURE_PREPEND, ?PREPEND_NAME]
+                 ,[?FEATURE_PREPEND, ?PREPEND_NUMBER]
+                 ],
+    #{?FEATURE_E911 => E911Pub
+     ,?LEGACY_VITELITY_E911 => E911Pub
+     ,?LEGACY_DASH_E911 => E911Pub
+     ,?LEGACY_TELNYX_E911 => E911Pub
+     ,?FEATURE_CNAM => CNAMPub
+     ,?FEATURE_CNAM_INBOUND => CNAMPub
+     ,?FEATURE_CNAM_OUTBOUND => CNAMPub
+     ,?FEATURE_PREPEND => PrependPub
+     ,?FEATURE_FAILOVER => [[?FEATURE_FAILOVER]]
+     }.
 
 %%--------------------------------------------------------------------
 %% @public

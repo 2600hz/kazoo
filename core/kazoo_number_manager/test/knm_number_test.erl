@@ -243,3 +243,93 @@ update_used_by_from_undefined_test_() ->
     ,?_assertEqual(undefined, knm_phone_number:used_by(PN2))
     ,?_assert(knm_phone_number:is_dirty(PN2))
     ].
+
+fix_number_test_() ->
+    Num = ?TEST_OLD5_1_NUM,
+    {ok, N1} = knm_number:get(Num),
+    PN1 = knm_number:phone_number(N1),
+    Doc1 = knm_phone_number:doc(PN1),
+    FeaturesList1 = knm_phone_number:features_list(PN1),
+    #{ok := [N2]} = fix_number(N1),
+    PN2 = knm_number:phone_number(N2),
+    Doc2 = knm_phone_number:doc(PN2),
+    FeaturesList2 = knm_phone_number:features_list(PN2),
+    [?_assert(not knm_phone_number:is_dirty(PN1))
+    ,?_assertEqual(Num, knm_phone_number:number(PN1))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
+    ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN1))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?FEATURE_CNAM, Doc1))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?FEATURE_E911, Doc1))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?LEGACY_DASH_E911, Doc1))
+    ,?_assert(not lists:member(?FEATURE_LOCAL, FeaturesList1))
+    ,?_assert(lists:member(?FEATURE_CNAM_INBOUND, FeaturesList1))
+    ,?_assert(lists:member(?FEATURE_CNAM_OUTBOUND, FeaturesList1))
+    ,?_assert(lists:member(?FEATURE_E911, FeaturesList1))
+    ,?_assert(not lists:member(?LEGACY_DASH_E911, FeaturesList1))
+    ,?_assertEqual(undefined, knm_phone_number:feature(PN1, ?LEGACY_DASH_E911))
+    ,?_assert(kz_json:are_equal(knm_phone_number:feature(PN1, ?FEATURE_E911), kz_json:get_value(?FEATURE_E911, Doc1)))
+    ,?_assert(kz_json:are_equal(knm_phone_number:feature(PN1, ?FEATURE_E911), kz_json:get_value(?LEGACY_DASH_E911, Doc1)))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN1))
+    ,?_assert(not knm_phone_number:is_dirty(PN2))
+    ,?_assertEqual(Num, knm_phone_number:number(PN2))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN2))
+    ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN2))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?FEATURE_CNAM, Doc2))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?FEATURE_E911, Doc2))
+    ,?_assertNotEqual(undefined, kz_json:get_value(?LEGACY_DASH_E911, Doc2))
+    ,?_assert(not lists:member(?FEATURE_LOCAL, FeaturesList2))
+    ,?_assert(lists:member(?FEATURE_CNAM_INBOUND, FeaturesList2))
+    ,?_assert(lists:member(?FEATURE_CNAM_OUTBOUND, FeaturesList2))
+    ,?_assert(lists:member(?FEATURE_E911, FeaturesList2))
+    ,?_assert(not lists:member(?LEGACY_DASH_E911, FeaturesList2))
+    ,?_assertEqual(undefined, knm_phone_number:feature(PN2, ?LEGACY_DASH_E911))
+    ,?_assert(kz_json:are_equal(knm_phone_number:feature(PN2, ?FEATURE_E911), kz_json:get_value(?FEATURE_E911, Doc2)))
+    ,?_assert(kz_json:are_equal(knm_phone_number:feature(PN2, ?FEATURE_E911), kz_json:get_value(?LEGACY_DASH_E911, Doc2)))
+    ,?_assertEqual(undefined, knm_phone_number:used_by(PN2))
+    ].
+
+fix_number_wrong_used_by_and_dangling_pvt_features_test_() ->
+    {ok, N1} = knm_number:get(?TEST_OLD7_NUM),
+    PN1 = knm_number:phone_number(N1),
+    #{ok := [N2]} = fix_number(N1),
+    PN2 = knm_number:phone_number(N2),
+    [?_assert(not knm_phone_number:is_dirty(PN1))
+    ,?_assertEqual(?TEST_OLD7_NUM, knm_phone_number:number(PN1))
+    ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
+    ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN1))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN1))
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN1)))
+    ,?_assert(lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN1)))
+    ,?_assert(lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN1)))
+    ,?_assert(lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN1)))
+    ,?_assertEqual(<<"callflow">>, knm_phone_number:used_by(PN1))
+    ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,?_assertEqual(?TEST_OLD7_NUM, knm_phone_number:number(PN2))
+    ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN2))
+    ,?_assertEqual(?CARRIER_LOCAL, knm_phone_number:module_name(PN2))
+    ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN2))
+    ,?_assertEqual(undefined, kz_json:get_value(?FEATURE_CNAM, knm_phone_number:doc(PN2)))
+    ,?_assert(lists:member(?FEATURE_LOCAL, knm_phone_number:features_list(PN2)))
+    ,?_assert(not lists:member(?FEATURE_CNAM_INBOUND, knm_phone_number:features_list(PN2)))
+    ,?_assert(not lists:member(?FEATURE_CNAM_OUTBOUND, knm_phone_number:features_list(PN2)))
+    ,?_assertEqual(<<"trunkstore">>, knm_phone_number:used_by(PN2))
+    ].
+
+fix_number(N) ->
+    PN = knm_number:phone_number(N),
+    Num = knm_phone_number:number(PN),
+    AuthBy = knm_phone_number:assigned_to(PN),
+    AccountDb = kz_util:format_account_db(AuthBy),
+    %% -- below is verbatim from maintenance module --
+    UsedBy = kazoo_number_manager_maintenance:app_using(knm_converters:normalize(Num), AccountDb),
+    Routines = [{fun knm_phone_number:set_used_by/2, UsedBy}
+               ,fun knm_phone_number:remove_denied_features/1
+               ],
+    Options = [{auth_by, AuthBy}
+              ,{dry_run, false}
+              ,{batch_run, false}
+              ],
+    %% -- above is verbatim from maintenance module --
+    knm_numbers:update([N], Routines, Options).

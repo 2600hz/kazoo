@@ -448,9 +448,9 @@ check_account(PhoneNumber) ->
 -spec feature_prepend(knm_phone_number:knm_phone_number()) -> api_binary().
 feature_prepend(PhoneNumber) ->
     Prepend = knm_phone_number:feature(PhoneNumber, ?FEATURE_PREPEND),
-    case kz_json:is_true(<<"enabled">>, Prepend) of
+    case kz_json:is_true(?PREPEND_ENABLED, Prepend) of
         'false' -> 'undefined';
-        'true' -> kz_json:get_ne_value(<<"name">>, Prepend)
+        'true' -> kz_json:get_ne_value(?PREPEND_NAME, Prepend)
     end.
 
 %%--------------------------------------------------------------------
@@ -480,7 +480,7 @@ feature_inbound_cname(PhoneNumber) ->
 -spec find_early_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_early_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, ?FEATURE_RINGBACK),
-    kz_json:get_ne_value(<<"early">>, RingBack).
+    kz_json:get_ne_value(?RINGBACK_EARLY, RingBack).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -490,7 +490,7 @@ find_early_ringback(PhoneNumber) ->
 -spec find_transfer_ringback(knm_phone_number:knm_phone_number()) -> api_binary().
 find_transfer_ringback(PhoneNumber) ->
     RingBack = knm_phone_number:feature(PhoneNumber, ?FEATURE_RINGBACK),
-    kz_json:get_ne_value(<<"transfer">>, RingBack).
+    kz_json:get_ne_value(?RINGBACK_TRANSFER, RingBack).
 
 %%--------------------------------------------------------------------
 %% @private
