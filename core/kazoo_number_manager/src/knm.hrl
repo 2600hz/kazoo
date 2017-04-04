@@ -45,12 +45,6 @@
 
 
 -ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
--define(LOG_ERROR(F,A), ?debugFmt(F ++ "\n",A)).
--define(LOG_WARN(F,A), ?debugFmt(F ++ "\n",A)).
--define(LOG_DEBUG(F,A), ?debugFmt(F ++ "\n",A)).
--define(LOG_DEBUG(F), ?debugFmt(F ++ "\n",[])).
-
 -define(TEST_CREATE_NUM, <<"+15559871234">>).
 -define(TEST_AVAILABLE_NUM, <<"+15551239876">>).
 -define(TEST_IN_SERVICE_NUM, <<"+15551233322">>).
@@ -207,13 +201,14 @@
                                 ,{?PREPEND_NUMBER, <<"75657869">>}
                                 ])}
           ,{?PVT_MODIFIED, 63565911000}
-          ,{?PVT_FEATURES, kz_json:from_list_recursive(
-                             [{?FEATURE_CNAM_INBOUND, [{?CNAM_INBOUND_LOOKUP, true}]}
-                             ,{?FEATURE_CNAM_OUTBOUND, [{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}]}
-                             ,{?FEATURE_PREPEND, [{?PREPEND_ENABLED, true}
-                                                 ,{?PREPEND_NAME, <<"Citizen">>}
-                                                 ,{?PREPEND_NUMBER, <<"75657869">>}
-                                                 ]}
+          ,{?PVT_FEATURES, kz_json:from_list(
+                             [{?FEATURE_CNAM_INBOUND, kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}])}
+                             ,{?FEATURE_CNAM_OUTBOUND, kz_json:from_list([{?CNAM_DISPLAY_NAME, <<"Rose Bud">>}])}
+                             ,{?FEATURE_PREPEND, kz_json:from_list(
+                                                   [{?PREPEND_ENABLED, true}
+                                                   ,{?PREPEND_NAME, <<"Citizen">>}
+                                                   ,{?PREPEND_NUMBER, <<"75657869">>}
+                                                   ])}
                              ])}
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
@@ -288,13 +283,17 @@
 
 -define(NUMBER_PHONEBOOK_URL_L, "http://numbers.tld").
 -define(NUMBER_PHONEBOOK_URL, <<?NUMBER_PHONEBOOK_URL_L>>).
+
+-define(LOG_ERROR(F,A), io:format(user, F ++ "\n", A)).
+-define(LOG_WARN(F,A), io:format(user, F ++ "\n",A)).
+-define(LOG_DEBUG(F,A), io:format(user, F ++ "\n",A)).
+-define(LOG_DEBUG(F), io:format(user, F ++ "\n",[])).
 -else.
 
 -define(LOG_ERROR(F,A), lager:error(F,A)).
 -define(LOG_WARN(F,A), lager:warning(F,A)).
 -define(LOG_DEBUG(F,A), lager:debug(F,A)).
 -define(LOG_DEBUG(F), lager:debug(F)).
-
 -endif.
 
 -define(KNM_HRL, 'true').

@@ -143,8 +143,8 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
-    Allowed = cleanse_features(list_allowed_features(Parameters))),
-    Denied = cleanse_features(list_denied_features(Parameters))),
+    Allowed = cleanse_features(list_allowed_features(Parameters)),
+    Denied = cleanse_features(list_denied_features(Parameters)),
     Available = [Feature
                  || Feature <- Allowed,
                     not lists:member(Feature, Denied)

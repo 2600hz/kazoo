@@ -99,28 +99,28 @@ is_mdn_for_mdn_run_test_() ->
     Sudo = knm_number_options:default(),
     Fs = [{fun knm_phone_number:update_doc/2, kz_json:from_list([{<<"*">>,42}])}],
     [{"Verify an mdn_run && knm_mdn number can be updated"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Base]))
      }
     ,{"Verify an mdn_run && !knm_mdn number cannot be updated"
-     ,?_assertMatch({error,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
+     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Base]))
      }
     ,{"Verify a !mdn_run && knm_mdn number cannot be updated"
-     ,?_assertMatch({error,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_MDN, Fs, Base))
+     ,?_assertMatch({error,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Base))
      }
     ,{"Verify a !mdn_run && !knm_mdn number can be updated"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_NUM, Fs, Base))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Base))
      }
     ,{"Verify sudo can update mdn_run && knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_MDN, Fs, [Run|Sudo]))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, [Run|Sudo]))
      }
     ,{"Verify sudo can update mdn_run && !knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_NUM, Fs, [Run|Sudo]))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, [Run|Sudo]))
      }
     ,{"Verify sudo can update !mdn_run && knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_MDN, Fs, Sudo))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_MDN, Fs, Sudo))
      }
     ,{"Verify sudo can update !mdn_run && !knm_mdn number"
-     ,?_assertMatch({ok,_}, knm_number:update_phone_number(?TEST_IN_SERVICE_NUM, Fs, Sudo))
+     ,?_assertMatch({ok,_}, knm_number:update(?TEST_IN_SERVICE_NUM, Fs, Sudo))
      }
     ].
 
@@ -247,7 +247,7 @@ fix_number_test_() ->
     PN1 = knm_number:phone_number(N1),
     Doc1 = knm_phone_number:doc(PN1),
     FeaturesList1 = knm_phone_number:features_list(PN1),
-    [{ok, {Num, N2}}] = fix_number(N1),
+    {ok, N2} = fix_number(N1),
     PN2 = knm_number:phone_number(N2),
     Doc2 = knm_phone_number:doc(PN2),
     FeaturesList2 = knm_phone_number:features_list(PN2),
@@ -290,7 +290,7 @@ fix_number_test_() ->
 fix_number_wrong_used_by_and_dangling_pvt_features_test_() ->
     {ok, N1} = knm_number:get(?TEST_OLD7_NUM),
     PN1 = knm_number:phone_number(N1),
-    [{ok, {Num, N2}}] = fix_number(N1),
+    {ok, N2} = fix_number(N1),
     PN2 = knm_number:phone_number(N2),
     [?_assert(not knm_phone_number:is_dirty(PN1))
     ,?_assertEqual(?TEST_OLD7_NUM, knm_phone_number:number(PN1))
@@ -329,4 +329,4 @@ fix_number(N) ->
               ,{batch_run, false}
               ],
     %% -- above is verbatim from maintenance module --
-    knm_numbers:update_phone_number(N, Routines, Options).
+    knm_number:update_phone_number(N, Routines, Options).

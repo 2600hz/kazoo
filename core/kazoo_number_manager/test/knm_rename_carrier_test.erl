@@ -138,7 +138,7 @@ rename_to_local_with_external_features_test_() ->
     {ok, N1} = knm_number:get(?TEST_VITELITY_NUM, Options),
     PN1 = knm_number:phone_number(N1),
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"local">>}]),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj1}], Options),
+    {ok, N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:update_doc/2, JObj1}], Options),
     PN2 = knm_number:phone_number(N2),
     [?_assert(not knm_phone_number:is_dirty(PN1))
     ,{"Verify carrier name is right"
@@ -175,7 +175,7 @@ rename_to_nonlocal_with_external_features_test_() ->
     {ok, N1} = knm_number:get(?TEST_VITELITY_NUM, Options),
     PN1 = knm_number:phone_number(N1),
     JObj1 = kz_json:from_list([{?FEATURE_RENAME_CARRIER, <<"bandwidth">>}]),
-    #{ok := [N2]} = knm_numbers:update([N1], [{fun knm_phone_number:update_doc/2, JObj1}], Options),
+    {ok, N2} = knm_number:update_phone_number(N1, [{fun knm_phone_number:update_doc/2, JObj1}], Options),
     PN2 = knm_number:phone_number(N2),
     [?_assert(not knm_phone_number:is_dirty(PN1))
     ,{"Verify carrier name is right"
