@@ -1511,8 +1511,8 @@ set_created(PN, Created)
 -spec remove_denied_features(knm_phone_number()) -> knm_phone_number().
 remove_denied_features(PN) ->
     DeniedFeatures = knm_providers:features_denied(PN),
-    RemoveFromPvt = lists:usort(lists:flatmap(fun rm_in_pvt/1, DeniedFeatures)),
-    RemoveFromPub = lists:usort(lists:flatmap(fun rm_in_pub/1, DeniedFeatures)),
+    RemoveFromPvt = lists:usort(lists:flatmap(fun remove_in_private/1, DeniedFeatures)),
+    RemoveFromPub = lists:usort(lists:flatmap(fun remove_in_public/1, DeniedFeatures)),
     ?LOG_WARN("removing out of sync pvt features: ~s"
              ,[kz_util:iolist_join($,, lists:usort([ToRm || [ToRm|_] <- RemoveFromPvt]))]),
     ?LOG_WARN("removing out of sync pub features: ~s"
@@ -1525,16 +1525,19 @@ remove_denied_features(PN) ->
     {ok, NewPN} = setters(PN, Updates),
     NewPN.
 
-rm_in_pvt(Feature) ->
-    case maps:is_key(Feature, pvt_to_pub()) of
+-spec remove_in_private(ne_binary()) -> [kz_json:path()].
+remove_in_private(Feature) ->
+    case maps:is_key(Feature, private_to_public()) of
         false -> [];
         true -> [[Feature]]
     end.
 
-rm_in_pub(Feature) ->
-    maps:get(Feature, pvt_to_pub(), []).
+-spec remove_in_public(ne_binary()) -> [kz_json:path()].
+remove_in_public(Feature) ->
+    maps:get(Feature, private_to_public(), []).
 
-pvt_to_pub() ->
+-spec private_to_public() -> map().
+private_to_public() ->
     E911Pub = [[?FEATURE_E911]
               ,[?LEGACY_VITELITY_E911]
               ,[?LEGACY_DASH_E911]
