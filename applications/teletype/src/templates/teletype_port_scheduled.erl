@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request scheduled for {{port_request.scheduled_date |date:\"D d M Y\"}}">>).
+-define(TEMPLATE_SUBJECT, <<"Port request '{{port_request.name}}' has been scheduled">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Scheduled">>).
 

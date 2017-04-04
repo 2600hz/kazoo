@@ -18,10 +18,14 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-       ,kz_json:from_list(?ACCOUNT_MACROS)
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"current_balance">>, <<"current_balance">>, <<"Current Balance">>, <<"Account's Current Credit Balance">>)
+          ,?MACRO_VALUE(<<"threshold">>, <<"threshold">>, <<"Threshold">>, <<"Account's Low Credit Balance Threshold">>)
+           | ?ACCOUNT_MACROS
+          ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Account {{account.name}} is running out of credit">>).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' is running out of credit">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Low Balance">>).
 

@@ -19,14 +19,15 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-          ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-          ,?MACRO_VALUE(<<"user.password">>, <<"password">>, <<"Password">>, <<"Password">>)
+          [?MACRO_VALUE(<<"admin.first_name">>, <<"first_name">>, <<"First Name">>, <<"Admin user first name">>)
+          ,?MACRO_VALUE(<<"admin.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Admin user last name">>)
+          ,?MACRO_VALUE(<<"admin.email">>, <<"email">>, <<"email">>, <<"Admin user email">>)
+          ,?MACRO_VALUE(<<"admin.timezone">>, <<"timezone">>, <<"timezone">>, <<"Admin user timezone">>)
            | ?ACCOUNT_MACROS
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Your new VoIP services Account">>).
+-define(TEMPLATE_SUBJECT, <<"Your new VoIP services account '{{account.name}}' has been created">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Account">>).
 
@@ -117,10 +118,6 @@ find_admin([]) ->
 find_admin([User|Users]) ->
     UserDoc = kz_json:get_value(<<"doc">>, User),
     case kzd_user:priv_level(UserDoc) of
-        <<"admin">> -> admin_properties(UserDoc);
+        <<"admin">> -> teletype_util:user_params(UserDoc);
         _ -> find_admin(Users)
     end.
-
--spec admin_properties(kzd_user:doc()) -> kz_proplist().
-admin_properties(User) ->
-    teletype_util:user_params(User).

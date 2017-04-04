@@ -1,3 +1,28 @@
-Webhook '{{hook.name}}' has been auto-disabled in account '{{account.name}}' because {{hook.disable_reason}}.
+                Webhook Auto-Disabled
 
-Check the webhook history API for more information on why the hook was disabled.
+
+Webhook {{hook.name}} of account {{account.name}} has been autmatically
+disabled because of repeated failed attempts!
+
+    > Check the webhook history API for more information on why
+      the webhook has been disabled.
+
+
+=== Webhook Information ===
+
+    Webhook Name: {{hook.name}}
+    URI: {{hook.uri}}
+    Event: {{hook.event}}
+    Reason to Disable: {{hook.disable_reason}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

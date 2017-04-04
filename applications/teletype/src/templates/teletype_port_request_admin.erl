@@ -24,11 +24,11 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request for {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Number port request for account '{{account.name}}' (Details)">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"Admin Port Request">>).
 
--define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ADMINS)).
+-define(TEMPLATE_TO, ?CONFIGURED_EMAILS(?EMAIL_ORIGINAL)).
 -define(TEMPLATE_FROM, teletype_util:default_from_address(?MOD_CONFIG_CAT)).
 -define(TEMPLATE_CC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
 -define(TEMPLATE_BCC, ?CONFIGURED_EMAILS(?EMAIL_SPECIFIED, [])).
@@ -84,7 +84,7 @@ handle_port_request(DataJObj) ->
         props:filter_undefined(
           [{<<"system">>, teletype_util:system_params()}
           ,{<<"account">>, teletype_util:account_params(DataJObj)}
-          ,{<<"port_request">>, port_request_data(kz_json:get_value(<<"port_request">>, DataJObj))}
+          ,{<<"port_request">>, teletype_util:public_proplist(<<"port_request">>, DataJObj)}
           ,{<<"account_tree">>, account_tree(kz_json:get_value(<<"account_id">>, DataJObj))}
           ]),
 
@@ -175,34 +175,3 @@ find_port_authority(MasterAccountId, AccountId) ->
             lager:debug("using account ~s for port authority", [AccountId]),
             kz_whitelabel:port_authority(JObj)
     end.
-
--spec port_request_data(kz_json:object()) -> kz_proplist().
-port_request_data(PortRequestJObj) ->
-    PublicJObj = kz_json:public_fields(PortRequestJObj),
-    kz_json:to_proplist(
-      kz_json:foldl(fun port_request_data_fold/3, kz_json:new(), PublicJObj)
-     ).
-
--spec port_request_data_fold(kz_json:path(), kz_json:json_term(), kz_json:object()) ->
-                                    kz_json:object().
-port_request_data_fold(<<"name">> = K, V, Acc) ->
-    kz_json:set_value(K, V, Acc);
-port_request_data_fold(<<"port_state">> = K, V, Acc) ->
-    kz_json:set_value(K, V, Acc);
-port_request_data_fold(<<"id">> = K, V, Acc) ->
-    kz_json:set_value(K, V, Acc);
-port_request_data_fold(<<"account_id">> = K, V, Acc) ->
-    kz_json:set_value(K, V, Acc);
-port_request_data_fold(<<"transfer_date">>, Date, Acc) ->
-    kz_json:set_value(<<"requested_port_date">>, kz_time:iso8601_date(Date), Acc);
-port_request_data_fold(<<"bill_", _/binary>> = K, V, Acc) ->
-    kz_json:set_value(K, V, Acc);
-port_request_data_fold(<<"numbers">> = K, Numbers, Acc) ->
-    kz_json:set_value(K, kz_binary:join(Numbers, <<", ">>), Acc);
-port_request_data_fold(<<"notifications">>, NJObj, Acc) ->
-    kz_json:set_value(<<"customer_contact">>, kz_json:get_value([<<"email">>, <<"send_to">>], NJObj), Acc);
-port_request_data_fold(<<"carrier">>, V, Acc) ->
-    kz_json:set_value(<<"service_provider">>, V, Acc);
-port_request_data_fold(_K, _V, Acc) ->
-    lager:debug("ignoring ~s", [_K]),
-    Acc.

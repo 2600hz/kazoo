@@ -19,14 +19,17 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"user.id">>, <<"user_id">>, <<"User ID">>, <<"User ID">>)
-          ,?MACRO_VALUE(<<"user.name">>, <<"user_name">>, <<"User Name">>, <<"User Name">>)
-          ,?MACRO_VALUE(<<"user.realm">>, <<"user_realm">>, <<"User Realm">>, <<"User Realm">>)
-           | ?ACCOUNT_MACROS
+          [?MACRO_VALUE(<<"sub_account.id">>, <<"sub_account_id">>, <<"Sub-Account ID">>, <<"Sub-Account ID">>)
+          ,?MACRO_VALUE(<<"sub_account.name">>, <<"sub_account_name">>, <<"Sub-Account Name">>, <<"Sub-Account Name">>)
+          ,?MACRO_VALUE(<<"sub_account.realm">>, <<"sub_account_realm">>, <<"Sub-Account Realm">>, <<"Sub-Account Realm">>)
+          ,?MACRO_VALUE(<<"sub_account.language">>, <<"sub_account_language">>, <<"Sub-Account Language">>, <<"Sub-Account Language">>)
+          ,?MACRO_VALUE(<<"sub_account.timezone">>, <<"sub_account_timezone">>, <<"Sub-Account Timezone">>, <<"Sub-Account Timezone">>)
+          ,?MACRO_VALUE(<<"service_changes">>, <<"service_changes">>, <<"Sub-Account Service Changes object">>, <<"Sub-Account Service Changes object">>)
+           | ?ACCOUNT_MACROS ++ ?USER_MACROS
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"New service addition notice (sub-account ID #{{user.id}})">>).
+-define(TEMPLATE_SUBJECT, <<"New VoIP services were added to sub-account '{{sub_account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"New Service Addition">>).
 
@@ -60,17 +63,23 @@ handle_req(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
+    ReqData =
+        kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
+
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> io:format("notification handling not configured for this account");
-        'true' -> process_req(DataJObj)
+        'false' -> lager:debug("~s notification handling not configured for account ~s"
+                              ,[?TEMPLATE_ID, AccountId]
+                              );
+        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, reseller_info_data(DataJObj)}
-             ,{<<"user">>, user_info_data(DataJObj)}
-             ,{<<"service">>, service_added_data(DataJObj)}
+             ,{<<"sub_account">>, sub_account_data(DataJObj)}
+             ,{<<"service_changes">>, service_added_data(DataJObj)}
+             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
              ],
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -97,33 +106,17 @@ reseller_info_data(DataJObj) ->
         'false' ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             ResellerId = kz_services:find_reseller_id(AccountId),
-            {'ok', AccountJObj} = kz_account:fetch(ResellerId),
-            props:filter_undefined(
-              [{<<"name">>, kz_account:name(AccountJObj)}
-              ,{<<"id">>, ResellerId}
-              ,{<<"realm">>, kz_account:realm(AccountJObj)}
-              ,{<<"language">>, kz_account:language(AccountJObj)}
-              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-              ]
-             )
+            teletype_util:find_account_params(DataJObj, ResellerId)
     end.
 
--spec user_info_data(kz_json:object()) -> kz_proplist().
-user_info_data(DataJObj) ->
+-spec sub_account_data(kz_json:object()) -> kz_proplist().
+sub_account_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
         'true' -> [];
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
-            {'ok', AccountJObj} = kz_account:fetch(AccountId),
-            props:filter_undefined(
-              [{<<"name">>, kz_account:name(AccountJObj)}
-              ,{<<"id">>, AccountId}
-              ,{<<"realm">>, kz_account:realm(AccountJObj)}
-              ,{<<"language">>, kz_account:language(AccountJObj)}
-              ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-              ]
-             )
+            teletype_util:find_account_params(DataJObj, AccountId)
     end.
 
 -spec service_added_data(kz_json:object()) -> kz_proplist().

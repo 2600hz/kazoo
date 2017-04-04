@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"First {{event}} on {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"First {{event}} on account '{{account.name}}'">>).
 -define(TEMPLATE_CATEGORY, <<"sip">>).
 -define(TEMPLATE_NAME, <<"First Occurrence">>).
 
@@ -68,7 +68,7 @@ build_macro_data(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     [{<<"system">>, teletype_util:system_params()}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
-    ,{<<"user">>, teletype_util:find_account_admin(AccountId)}
+    ,{<<"user">>, teletype_util:user_params(teletype_util:find_account_admin(AccountId))}
     ,{<<"event">>, kz_json:get_binary_value(<<"occurrence">>, DataJObj)}
     ].
 

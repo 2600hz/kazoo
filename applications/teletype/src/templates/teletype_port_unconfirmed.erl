@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Unfinished port request for {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Unfinished port request '{{port_request.name}}' reminder">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Unconfirmed">>).
 
@@ -59,7 +59,9 @@ handle_req(JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> lager:debug("~s notification handling not configured for this account ~s"
+                              ,[?TEMPLATE_ID, AccountId]
+                              );
         'true' -> process_req(DataJObj)
     end.
 

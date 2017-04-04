@@ -1,14 +1,37 @@
-Port request submitted for {{account.name}} by {{port_request.customer_contact}}.
+                Port Request Submitted (Admin Report)
 
-The account's tree:
+Request "{{port_request.name}}" to port numbers into account '{{account.name}}' has been submitted.
 
- {{ account.name }} ({{ account.id }})
-{% for id, name in account_tree %} {{ name }} ({{ id }})
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
 {% endfor %}
 
-Request to port numbers: {{ port_request.numbers }}.
 
-Port Details:
+=== Port Request Details ===
 
- {% for k,v in port_request %} {{ k }} : {{ v }}
- {% endfor %}
+    Name: {{port_request.name}}
+    Port ID: {{port_request.id}}
+    State: {{port_request.state}}
+    Requested Port Date: {{port_request.requested_port_date.local|date:"l, F j, Y H:i"}}
+    Service Provider: {{port_request.service_provider}}
+    Customer Contact: {{port_request.customer_contact}}
+    Billing Name: {{port_request.billing_name}}
+    Billing Address: {{port_request.address}}
+    Billing City: {{port_request.billing_locality}}
+    Billing State: {{port_request.region}}
+    Billing Zip Code: {{port_request.postal_code}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

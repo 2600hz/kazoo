@@ -1,3 +1,22 @@
-Port request rejected for {{account.name}}.
+                Port Request Rejected
 
- Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.
+Port request "{{port_request.name}}" of account '{{account.name}}' has been rejected.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

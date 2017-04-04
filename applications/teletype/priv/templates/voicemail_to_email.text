@@ -1,7 +1,33 @@
-New Voicemail Message
+                New Voicemail
 
-Caller ID: {{caller_id.number}}
-Caller Name: {{caller_id.name}}
 
-Called To: {{to.user}}   (Originally dialed number)
-Called On: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
+Hi {{user.first_name}},
+
+You have a new voicemail from {{caller_id.name}} ({{caller_id.number}}) for
+your voicemail box at {{voicemail.vmbox_name}} ({{voicemail.vmbox_number}}).
+Please find the message audio file in the attachment.
+{% if voicemail.transcription %}
+
+=== Transcription ===
+
+{{voicemail.transcription}}
+{% endif %}
+
+=== Voicemail Message Details ===
+
+    Caller: {{caller_id.name}} ({{caller_id.number}})
+    Callee: {{to.user}} (originally dialed number)
+    Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
+    Length: {{voicemail.length}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

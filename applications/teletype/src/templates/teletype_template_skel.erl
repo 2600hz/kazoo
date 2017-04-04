@@ -19,10 +19,8 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"user.first_name">>, <<"first_name">>, <<"First Name">>, <<"First Name">>)
-          ,?MACRO_VALUE(<<"user.last_name">>, <<"last_name">>, <<"Last Name">>, <<"Last Name">>)
-           | ?USER_MACROS
-          ])
+          ?ACCOUNT_MACROS ++ ?USER_MACROS
+         )
        ).
 
 -define(TEMPLATE_SUBJECT, <<"Skeleton Template">>).
@@ -67,7 +65,7 @@ handle_req(JObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
-             ,{<<"system">>, teletype_util:account_params(DataJObj)}
+             ,{<<"account">>, teletype_util:account_params(DataJObj)}
               | build_macro_data(DataJObj)
              ],
 

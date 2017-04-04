@@ -10,7 +10,6 @@
 
 -export([init/0
         ,handle_topup/1
-        ,get_balance/1
         ]).
 
 -include("teletype.hrl").
@@ -18,21 +17,17 @@
 -define(TEMPLATE_ID, <<"topup">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TOPUP_MACROS
-       ,[?MACRO_VALUE(<<"amount">>, <<"amount">>, <<"Amount">>, <<"The top up amount">>)
-        ,?MACRO_VALUE(<<"success">>, <<"success">>, <<"Success">>, <<"Whether or not the top up was successful">>)
-        ,?MACRO_VALUE(<<"response">>, <<"response">>, <<"Response">>, <<"Transaction processor response">>)
-        ,?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The resulting account balance">>)
-        ]).
-
 -define(TEMPLATE_MACROS
-       ,kz_json:from_list(?USER_MACROS
-                          ++ ?ACCOUNT_MACROS
-                          ++ ?TOPUP_MACROS
-                         )
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"balance">>, <<"balance">>, <<"Balance">>, <<"The Resulting Account Balance">>)
+           | ?TRANSACTION_MACROS
+           ++ ?ACCOUNT_MACROS
+           ++ ?USER_MACROS
+          ]
+         )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Account {{account.name}} has been topped up">>).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' has been attempted to top-up">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Top Up">>).
 
@@ -66,19 +61,22 @@ handle_topup(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
+    ReqData =
+        kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
+
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> handle_req(DataJObj)
+        'true' -> handle_req(kz_json:merge_jobjs(DataJObj, ReqData))
     end.
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
-    Macros = build_macro_data(
-               kz_json:set_value(<<"account_params">>
-                                ,kz_json:from_list(teletype_util:account_params(DataJObj))
-                                ,DataJObj
-                                )
-              ),
+    Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
+             ,{<<"system">>, teletype_util:system_params()}
+             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+             ,{<<"transaction">>, transaction_data(DataJObj)}
+             ,{<<"balance">>, get_balance(DataJObj)}
+             ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
@@ -96,97 +94,67 @@ handle_req(DataJObj) ->
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
+-spec transaction_data(kz_json:object()) -> kz_proplist().
+transaction_data(DataJObj) ->
+    transaction_data(DataJObj, teletype_util:is_preview(DataJObj)).
+
+-spec transaction_data(kz_json:object(), boolean()) -> kz_proplist().
+transaction_data(DataJObj, 'true') ->
+    {'ok', JObj} = teletype_util:read_preview_doc(<<"transaction">>),
+    Props = kz_json:recursive_to_proplist(JObj),
+    props:set_value(<<"date">>, teletype_util:fix_timestamp(props:get_value(<<"date">>, Props), DataJObj), Props);
+transaction_data(DataJObj, 'false') ->
+    props:filter_undefined(
+      [{<<"amount">>, get_topup_amount(DataJObj)}
+      ,{<<"success">>, kz_json:is_true(<<"success">>, DataJObj)}
+      ,{<<"response">>, kz_json:get_value(<<"response">>, DataJObj)}
+      ,{<<"id">>, kz_json:get_value(<<"id">>, DataJObj)}
+      ,{<<"address">>
+       ,props:filter_undefined(
+          [{<<"first_name">>, kz_json:get_value([<<"billing_address">>, <<"first_name">>], DataJObj)}
+          ,{<<"last_name">>, kz_json:get_value([<<"billing_address">>, <<"last_name">>], DataJObj)}
+          ,{<<"company">>, kz_json:get_value([<<"billing_address">>, <<"company">>], DataJObj)}
+          ,{<<"street_address">>, kz_json:get_value([<<"billing_address">>, <<"street_address">>], DataJObj)}
+          ,{<<"extended_address">>, kz_json:get_value([<<"billing_address">>, <<"extended_address">>], DataJObj)}
+          ,{<<"locality">>, kz_json:get_value([<<"billing_address">>, <<"locality">>], DataJObj)}
+          ,{<<"region">>, kz_json:get_value([<<"billing_address">>, <<"region">>], DataJObj)}
+          ,{<<"postal_code">>, kz_json:get_value([<<"billing_address">>, <<"postal_code">>], DataJObj)}
+          ,{<<"country_name">>, kz_json:get_value([<<"billing_address">>, <<"country_name">>], DataJObj)}
+          ,{<<"phone">>, kz_json:get_value([<<"billing_address">>, <<"phone">>], DataJObj)}
+          ,{<<"email">>, kz_json:get_value([<<"billing_address">>, <<"email">>], DataJObj)}
+          ])
+       }
+      ,{<<"card_last_four">>, kz_json:get_value(<<"card_last_four">>, DataJObj)}
+      ,{<<"tax_amount">>, kz_json:get_value(<<"tax_amount">>, DataJObj)}
+      ,{<<"date">>, teletype_util:fix_timestamp(kz_json:get_value(<<"timestamp">>, DataJObj), DataJObj)}
+      ,{<<"purchase_order">>, purchase_order(DataJObj)}
+      ,{<<"currency_code">>, kz_json:get_value(<<"currency_code">>, DataJObj)}
+      ]
+     ).
+
 -spec get_balance(kz_json:object()) -> ne_binary().
 get_balance(DataJObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case wht_util:current_account_dollars(AccountId) of
         {'ok', Amount} -> wht_util:pretty_print_dollars(Amount);
-        {'error', _} -> <<"not known at the moment">>
+        {'error', _} -> <<"\"not known at the moment\"">>
     end.
 
 -spec get_topup_amount(kz_json:object()) -> ne_binary().
 get_topup_amount(DataJObj) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     case kz_json:get_integer_value(<<"amount">>, DataJObj) of
-        'undefined' when IsPreview -> 0;
+        'undefined' when IsPreview -> 20.0;
         'undefined' ->
             lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
             throw({'error', 'no_topup_amount'});
-        Amount ->
-            wht_util:pretty_print_dollars(
-              wht_util:units_to_dollars(Amount)
-             )
+        Amount -> wht_util:units_to_dollars(Amount)
     end.
 
--spec build_macro_data(kz_json:object()) -> kz_proplist().
-build_macro_data(DataJObj) ->
-    kz_json:foldl(fun(MacroKey, _V, Acc) ->
-                          maybe_add_macro_key(MacroKey, Acc, DataJObj)
-                  end
-                 ,[]
-                 ,?TEMPLATE_MACROS
-                 ).
-
--spec maybe_add_macro_key(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
-maybe_add_macro_key(<<"user.", UserKey/binary>>, Acc, DataJObj) ->
-    maybe_add_user_data(UserKey, Acc, DataJObj);
-maybe_add_macro_key(<<"account.", AccountKey/binary>>, Acc, DataJObj) ->
-    maybe_add_account_data(AccountKey, Acc, DataJObj);
-maybe_add_macro_key(<<"balance">> = Key, Acc, DataJObj) ->
-    props:set_value(Key, get_balance(DataJObj), Acc);
-maybe_add_macro_key(<<"amount">> = Key, Acc, DataJObj) ->
-    props:set_value(Key, get_topup_amount(DataJObj), Acc);
-maybe_add_macro_key(<<"success">> = Key, Acc, DataJObj) ->
-    props:set_value(Key, kz_json:is_true(<<"success">>, DataJObj), Acc);
-maybe_add_macro_key(<<"response">> = Key, Acc, DataJObj) ->
-    props:set_value(Key
-                   ,kz_json:get_value(<<"response">>, DataJObj, <<>>)
-                   ,Acc
-                   );
-maybe_add_macro_key(_Key, Acc, _DataJObj) ->
-    lager:debug("unprocessed macro key ~s: ~p", [_Key, _DataJObj]),
-    Acc.
-
--spec maybe_add_account_data(ne_binary(), kz_proplist(), kz_json:object()) ->
-                                    kz_proplist().
--spec maybe_add_account_data(ne_binary(), kz_proplist(), kz_json:object(), api_binary()) ->
-                                    kz_proplist().
-maybe_add_account_data(Key, Acc, DataJObj) ->
-    maybe_add_account_data(Key, Acc, DataJObj
-                          ,kz_json:get_value([<<"account_params">>, Key], DataJObj)
-                          ).
-maybe_add_account_data(_Key, Acc, _DataJObj, 'undefined') ->
-    lager:debug("failed to find account param ~s", [_Key]),
-    Acc;
-maybe_add_account_data(Key, Acc, _DataJObj, Value) ->
-    AccountData = props:get_value(<<"account">>, Acc, []),
-
-    props:set_value(<<"account">>
-                   ,props:set_value(Key, Value, AccountData)
-                   ,Acc
-                   ).
-
--spec maybe_add_user_data(kz_json:path(), kz_proplist(), kz_json:object()) -> kz_proplist().
-maybe_add_user_data(Key, Acc, DataJObj) ->
-    User = get_user(DataJObj),
-
-    UserMacros = props:get_value(<<"user">>, Acc, []),
-
-    case kz_json:get_value(Key, User) of
-        'undefined' ->
-            lager:debug("unprocessed user macro key ~s: ~p", [Key, User]),
-            Acc;
-        V -> props:set_value(<<"user">>, [{Key, V} | UserMacros], Acc)
-    end.
-
--spec get_user(kz_json:object()) -> kz_json:object().
-get_user(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    UserId = kz_json:get_value(<<"user_id">>, DataJObj),
-
-    case teletype_util:open_doc(<<"user">>, UserId, DataJObj) of
-        {'ok', UserJObj} -> UserJObj;
-        {'error', _E} ->
-            lager:debug("failed to find user ~s in ~s: ~p", [UserId, AccountId, _E]),
-            kz_json:new()
-    end.
+-spec purchase_order(kz_json:object()) -> binary().
+purchase_order(DataJObj) ->
+    binary:replace(kz_json:get_ne_binary_value(<<"purchase_order">>, DataJObj, <<>>)
+                  ,<<"_">>
+                  ,<<" ">>
+                  ,[global]
+                  ).

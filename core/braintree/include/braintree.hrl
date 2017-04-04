@@ -140,6 +140,13 @@
 -type bt_discount() :: #bt_discount{}.
 -type bt_discounts() :: [bt_discount()].
 
+-record(bt_descriptor, {name :: api_binary()
+                       ,phone :: api_binary()
+                       ,url :: api_binary()
+                       }).
+
+-type bt_descriptor() :: #bt_descriptor{}.
+
 -record(bt_subscription, {id :: api_binary()
                          ,balance :: api_binary()
                          ,billing_dom :: api_binary()
@@ -165,7 +172,7 @@
                          ,trial_period :: api_binary()
                          ,add_ons = [] :: bt_addons()
                          ,discounts = [] :: bt_discounts()
-                         ,descriptor :: api_binary()
+                         ,descriptor :: bt_descriptor() | 'undefined'
                          ,transactions :: api_binary()
                          ,do_not_inherit = 'true' :: api_boolean()
                          ,start_immediately = 'true' :: api_boolean()
@@ -195,41 +202,40 @@
 -type bt_customer() :: #bt_customer{}.
 -type bt_customers() :: [bt_customer()].
 
--record(bt_transaction, {id :: ne_binary()
-                        ,status :: ne_binary()
-                        ,type :: ne_binary()
-                        ,currency_code :: ne_binary()
-                        ,amount :: ne_binary()
-                        ,merchant_account_id :: ne_binary()
-                        ,order_id :: ne_binary()
-                        ,purchase_order :: ne_binary()
-                        ,created_at :: ne_binary()
-                        ,update_at :: ne_binary()
-                        ,refund_id :: ne_binary()
-                        ,refund_ids :: ne_binary()
-                        ,refunded_transaction :: ne_binary()
-                        ,settlement_batch :: ne_binary()
-                        ,avs_error_code :: ne_binary()
-                        ,avs_postal_response :: ne_binary()
-                        ,avs_street_response :: ne_binary()
-                        ,ccv_response_code :: ne_binary()
-                        ,gateway_rejection :: ne_binary()
-                        ,processor_authorization_code :: ne_binary()
-                        ,processor_response_code :: ne_binary()
-                        ,processor_response_text :: ne_binary()
+-record(bt_transaction, {id :: api_ne_binary()
+                        ,status :: api_ne_binary()
+                        ,type :: api_ne_binary()
+                        ,currency_code :: api_ne_binary()
+                        ,amount :: api_ne_binary()
+                        ,merchant_account_id :: api_ne_binary()
+                        ,order_id :: api_ne_binary()
+                        ,purchase_order :: api_ne_binary()
+                        ,created_at :: api_ne_binary()
+                        ,update_at :: api_ne_binary()
+                        ,refund_ids :: api_ne_binary()
+                        ,refunded_transaction :: api_ne_binary()
+                        ,settlement_batch :: api_ne_binary()
+                        ,avs_error_code :: api_ne_binary()
+                        ,avs_postal_response :: api_ne_binary()
+                        ,avs_street_response :: api_ne_binary()
+                        ,ccv_response_code :: api_ne_binary()
+                        ,gateway_rejection :: api_ne_binary()
+                        ,processor_authorization_code :: api_ne_binary()
+                        ,processor_response_code :: api_ne_binary()
+                        ,processor_response_text :: api_ne_binary()
                         ,tax_amount :: api_binary()
                         ,tax_exempt = 'false' :: boolean()
-                        ,billing_address :: bt_address()
+                        ,billing_address :: bt_address() | 'undefined'
                         ,shipping_address_id :: api_binary()
-                        ,shipping_address :: bt_address()
+                        ,shipping_address :: bt_address() | 'undefined'
                         ,customer_id :: api_binary()
-                        ,customer :: bt_customer()
+                        ,customer :: bt_customer() | 'undefined'
                         ,payment_token :: api_binary()
-                        ,card :: bt_card()
+                        ,card :: bt_card() | 'undefined'
                         ,subscription_id :: api_binary()
-                        ,add_ons = [] :: bt_addons()
-                        ,discounts = [] :: bt_discounts()
-                        ,descriptor :: ne_binary()
+                        ,add_ons = [] :: bt_addons() | 'undefined'
+                        ,discounts = [] :: bt_discounts() | 'undefined'
+                        ,descriptor :: bt_descriptor() | 'undefined'
                         ,store_in_vault = 'false' :: boolean()
                         ,store_on_success = 'false' :: boolean()
                         ,settle = 'true' :: boolean()

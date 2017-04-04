@@ -18,8 +18,13 @@
 -define(TEMPLATE_ID, <<"account_zone_change">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
--define(TEMPLATE_MACROS, kz_json:from_list(?ACCOUNT_MACROS)).
--define(TEMPLATE_SUBJECT, <<"Account zones have changed">>).
+-define(TEMPLATE_MACROS
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"zones">>, <<"zones">>, <<"Zones">>, <<"List of account's zones">>)
+           | ?ACCOUNT_MACROS
+          ]
+         )).
+-define(TEMPLATE_SUBJECT, <<"Account '{{account.name}}' zone have changed">>).
 -define(TEMPLATE_CATEGORY, <<"account">>).
 -define(TEMPLATE_NAME, <<"Account Zone Change">>).
 
@@ -61,6 +66,7 @@ handle_account_zone_change(JObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     Macros = [{<<"system">>, teletype_util:system_params()}
+             ,{<<"zones">>, zones_data(DataJObj)}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
              ],
 
@@ -81,4 +87,13 @@ process_req(DataJObj) ->
     case teletype_util:send_email(Emails, Subject, RenderedTemplates) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
+    end.
+
+-spec zones_data(kz_json:object()) -> kz_proplist().
+zones_data(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            kz_json:recursive_to_proplist(kz_json:get_json_value(<<"zones">>, DataJObj, []));
+        'true' ->
+            [{<<"home">>, <<"Zone">>}]
     end.

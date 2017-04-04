@@ -464,6 +464,8 @@ headers(<<"port_request_admin">>) ->
     kapi_notifications:headers(<<"port_request">>);
 headers(<<"fax_inbound_error_to_email_filtered">>) ->
     kapi_notifications:headers(<<"fax_inbound_error_to_email">>);
+headers(<<"transaction_failed">>) ->
+    kapi_notifications:headers(<<"transaction">>);
 headers(Id) ->
     kapi_notifications:headers(Id).
 
@@ -472,9 +474,15 @@ maybe_add_extra_data(<<"fax_inbound_error_to_email">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"500">>, API);
 maybe_add_extra_data(<<"fax_inbound_error_to_email_filtered">>, API) ->
     props:set_value(<<"Fax-Result-Code">>, <<"49">>, API);
+maybe_add_extra_data(<<"transaction">>, API) ->
+    props:set_value(<<"Success">>, 'true', API);
+maybe_add_extra_data(<<"transaction_failed">>, API) ->
+    props:set_value(<<"Success">>, 'false', API);
 maybe_add_extra_data(_Id, API) -> API.
 
 -spec publish_fun(ne_binary()) -> fun((api_terms()) -> 'ok').
+publish_fun(<<"account_zone_change">>) ->
+    fun kapi_notifications:publish_account_zone_change/1;
 publish_fun(<<"cnam_request">>) ->
     fun kapi_notifications:publish_cnam_request/1;
 publish_fun(<<"customer_update">>) ->
@@ -528,6 +536,8 @@ publish_fun(<<"system_alert">>) ->
 publish_fun(<<"topup">>) ->
     fun kapi_notifications:publish_topup/1;
 publish_fun(<<"transaction">>) ->
+    fun kapi_notifications:publish_transaction/1;
+publish_fun(<<"transaction_failed">>) ->
     fun kapi_notifications:publish_transaction/1;
 publish_fun(<<"voicemail_full">>) ->
     fun kapi_notifications:publish_voicemail_full/1;

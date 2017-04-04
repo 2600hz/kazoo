@@ -24,7 +24,7 @@
          )
        ).
 
--define(TEMPLATE_SUBJECT, <<"Port request canceled for {{account.name}}">>).
+-define(TEMPLATE_SUBJECT, <<"Port request '{{port_request.name}}' has been canceled">>).
 -define(TEMPLATE_CATEGORY, <<"port_request">>).
 -define(TEMPLATE_NAME, <<"Port Cancel">>).
 

@@ -1,15 +1,25 @@
-The first {{event}} was detected on an account.
+                First Occurrence
 
-Account
-Account ID: {{account.id}}
-Account Name: {{account.name}}
-Account Realm: {{account.realm}}
+Yay! The very first {{event}} was occurred on your account!
 
-{% if admin %}Admin
-Name: {{admin.first_name}} {{admin.last_name}}
-Email: {{admin.email}}
-Timezone: {{admin.timezone}}
 
+
+=== Account Information ===
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+{% if user %}
+Administrator User Information
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+    Timezone: {{user.timezone}}
 {% endif %}
 
-Sent from {{system.host}}
+
+
+Sent from {{system.hostname}}

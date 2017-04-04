@@ -1,19 +1,48 @@
-Service addition notice for your sub-account {{user.name}} (ID #{{user.id}})
+                Service Change
 
-{% if service %}New Services
-{% for srv_cat, srv_item in service %}{{ srv_cat }}:
-{% for item, quantity in srv_item %}    {{ item }}: {{ quantity }}
-{% endfor %}{% endfor %}
+
+Date: {% now "l, F j, Y H:i" %}
+
+Services for your sub-account '{{sub_account.name}}' have been changed.
+
+{% if service_changes %} Here is the summary of changes.
+=== Service Change Summary ===
+
+============================================
+{% for srv_cat, srv_item in service_changes %}
+Service Category: {{srv_cat}}
+{% for item, quantity in srv_item %}
+*   Item: {{item}}  Quantity: {{quantity}}
+{% endfor %}
+--------------------------------------------
+{% endfor %}
+
 {% endif %}
 
-Affected account
-Account ID: {{user.id}}
-Account Name: {{user.name}}
-Account Realm: {{user.realm}}
 
-Reseller account
-Account ID: {{account.id}}
-Account Name: {{account.name}}
-Account Realm: {{account.realm}}
+Questions?
+Please email us and we'll be happy to help.
+
+Need to update your billing info?
+The Billing section can be accessed by your Account Owner, {{user.first_name}} {{user.last_name}}
+
+
+Thank you for your business!
+
+
+
+Affected Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+Re-seller Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
 
 Sent from {{system.hostname}}

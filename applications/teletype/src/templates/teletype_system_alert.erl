@@ -9,7 +9,7 @@
 -module(teletype_system_alert).
 
 -export([init/0
-        ,handle_system_alert/2
+        ,handle_system_alert/1
         ]).
 
 -include("teletype.hrl").
@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"VoIP Services: {{request.level}} from {{request.node}}">>).
+-define(TEMPLATE_SUBJECT, <<"VoIP Services: '{{request.level}}' from '{{request.node}}'">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
 
@@ -46,12 +46,12 @@ init() ->
                                           ,{'cc', ?TEMPLATE_CC}
                                           ,{'bcc', ?TEMPLATE_BCC}
                                           ,{'reply_to', ?TEMPLATE_REPLY_TO}
-                                          ]).
+                                          ]),
+    teletype_bindings:bind(<<"system_alert">>, ?MODULE, 'handle_system_alert').
 
--spec handle_system_alert(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_system_alert(JObj, _Props) ->
+-spec handle_system_alert(kz_json:object()) -> 'ok'.
+handle_system_alert(JObj) ->
     'true' = kapi_notifications:system_alert_v(JObj),
-
     kz_util:put_callid(JObj),
 
     case kz_json:get_value([<<"Details">>, <<"Format">>], JObj) of

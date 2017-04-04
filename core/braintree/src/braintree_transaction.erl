@@ -21,11 +21,13 @@
 -export([xml_to_record/1, xml_to_record/2]).
 -export([record_to_xml/1]).
 -export([record_to_json/1]).
+-export([record_to_notification_props/1]).
 -export([json_to_record/1]).
 
 -define(MIN_AMOUNT, kapps_config:get_float(?CONFIG_CAT, <<"min_amount">>, 5.00)).
 
 -include("bt.hrl").
+-include_lib("kazoo_transactions/include/kazoo_transactions.hrl").
 
 %%--------------------------------------------------------------------
 %% @public
@@ -229,6 +231,7 @@ xml_to_record(Xml, Base) ->
     BillingAddress = braintree_address:xml_to_record(Xml, [Base, "/billing"]),
     Card = braintree_card:xml_to_record(Xml, [Base, "/credit-card"]),
     StatusHistory = get_status_history(Xml, Base),
+    Descriptor = braintree_descriptor:xml_to_record(Xml),
     #bt_transaction{id = kz_xml:get_value([Base, "/id/text()"], Xml)
                    ,status = kz_xml:get_value([Base, "/status/text()"], Xml)
                    ,type = kz_xml:get_value([Base, "/type/text()"], Xml)
@@ -239,7 +242,7 @@ xml_to_record(Xml, Base) ->
                    ,purchase_order = kz_xml:get_value([Base, "/purchase-order-number/text()"], Xml)
                    ,created_at = kz_xml:get_value([Base, "/created-at/text()"], Xml)
                    ,update_at = kz_xml:get_value([Base, "/updated-at/text()"], Xml)
-                   ,refund_id = kz_xml:get_value([Base, "/refund-id/text()"], Xml)
+                   ,refund_ids = kz_xml:get_value([Base, "/refund-ids/text()"], Xml)
                    ,refunded_transaction = kz_xml:get_value([Base, "/refunded-transaction-id /text()"], Xml)
                    ,settlement_batch = kz_xml:get_value([Base, "/settlement-batch-id/text()"], Xml)
                    ,avs_error_code = kz_xml:get_value([Base, "/avs-error-response-code/text()"], Xml)
@@ -263,6 +266,7 @@ xml_to_record(Xml, Base) ->
                    ,discounts = [braintree_discount:xml_to_record(Discounts)
                                  || Discounts <- xmerl_xpath:string(DiscountsPath, Xml)
                                 ]
+                   ,descriptor = Descriptor
                    ,is_api = props:get_value('is_api', StatusHistory)
                    ,is_automatic = props:get_value('is_automatic', StatusHistory)
                    ,is_recurring = props:get_value('is_recurring', StatusHistory)
@@ -410,7 +414,7 @@ record_to_json(#bt_transaction{}=Transaction) ->
             ,{<<"purchase_order">>, Transaction#bt_transaction.purchase_order}
             ,{<<"created_at">>, Transaction#bt_transaction.created_at}
             ,{<<"update_at">>, Transaction#bt_transaction.update_at}
-            ,{<<"refund_id">>, Transaction#bt_transaction.refund_id}
+            ,{<<"refund_ids">>, Transaction#bt_transaction.refund_ids}
             ,{<<"refunded_transaction">>, Transaction#bt_transaction.refunded_transaction}
             ,{<<"settlement_batch">>, Transaction#bt_transaction.settlement_batch}
             ,{<<"avs_error_code">>, Transaction#bt_transaction.avs_error_code}
@@ -457,7 +461,6 @@ json_to_record(JObj) ->
                    ,purchase_order = kz_json:get_binary_value(<<"purchase_order">>, JObj)
                    ,created_at = kz_json:get_binary_value(<<"created_at">>, JObj)
                    ,update_at = kz_json:get_binary_value(<<"update_at">>, JObj)
-                   ,refund_id = kz_json:get_binary_value(<<"refund_id">>, JObj)
                    ,refund_ids = kz_json:get_binary_value(<<"refund_ids">>, JObj)
                    ,refunded_transaction = kz_json:get_binary_value(<<"refunded_transaction">>, JObj)
                    ,settlement_batch = kz_json:get_binary_value(<<"settlement_batch">>, JObj)
@@ -494,3 +497,29 @@ json_to_record(JObj) ->
                    ,is_automatic = kz_json:is_true(<<"is_automatic">>, JObj)
                    ,is_recurring = kz_json:is_true(<<"is_recurring">>, JObj)
       }.
+
+-spec record_to_notification_props(bt_transaction()) -> kz_proplist().
+record_to_notification_props(#bt_transaction{}=BraintreeTransaction) ->
+    Transaction = record_to_json(BraintreeTransaction),
+    RespCode = kz_json:get_value(<<"processor_response_code">>, Transaction, ?CODE_UNKNOWN),
+    props:filter_empty(
+      [{<<"Success">>, kz_term:to_integer(RespCode) < 2000}
+      ,{<<"Amount">>, kz_json:get_value(<<"amount">>, Transaction)}
+      ,{<<"Response">>, kz_json:get_ne_value(<<"processor_response_text">>, Transaction, <<"Missing Response">>)}
+      ,{<<"ID">>, kz_json:get_value(<<"id">>, Transaction)}
+      ,{<<"Add-Ons">>, kz_json:get_value(<<"add_ons">>, Transaction)}
+      ,{<<"Discounts">>, kz_json:get_value(<<"discounts">>, Transaction)}
+      ,{<<"Billing-Address">>, kz_json:get_value(<<"billing_address">>, Transaction)}
+      ,{<<"Card-Last-Four">>, kz_json:get_value([<<"card">>, <<"last_four">>], Transaction)}
+      ,{<<"Tax-Amount">>, kz_json:get_value(<<"tax_amount">>, Transaction)}
+      ,{<<"Timestamp">>, kz_time:current_tstamp()}
+      ,{<<"Purchase-Order">>, purchase_order_reason(Transaction)}
+      ,{<<"Currency-Code">>, kz_json:get_value(<<"currency_code">>, Transaction)}
+      ]).
+
+-spec purchase_order_reason(kz_json:object()) -> api_ne_binary().
+purchase_order_reason(Transaction) ->
+    case kz_json:get_integer_value(<<"purchase_order">>, Transaction) of
+        'undefined' -> 'undefined';
+        Order -> wht_util:code_reason(Order)
+    end.

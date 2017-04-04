@@ -42,7 +42,7 @@ handle_req(JObj, _Props) ->
 
     lager:debug("new voicemail left, sending to email if enabled"),
 
-    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, JObj),
     lager:debug("loading vm box ~s", [VMBoxId]),
@@ -63,7 +63,7 @@ handle_req(JObj, _Props) ->
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
     RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
     MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
-    AccountDb = kz_json:get_value(<<"Account-DB">>, JObj),
+    AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 
 
     'ok' = notify_util:send_update(RespQ, MsgId, <<"pending">>),
@@ -138,7 +138,7 @@ create_template_props(Event, Timezone, Account) ->
                          ,{<<"to_user">>, knm_util:pretty_print(ToE164)}
                          ,{<<"to_realm">>, kz_json:get_value(<<"To-Realm">>, Event)}
                          ,{<<"box">>, kz_json:get_value(<<"Voicemail-Box">>, Event)}
-                         ,{<<"media">>, kz_json:get_value(<<"Voicemail-Name">>, Event)}
+                         ,{<<"media">>, kz_json:get_value(<<"Voicemail-ID">>, Event)}
                          ,{<<"length">>, preaty_print_length(Event)}
                          ,{<<"transcription">>, kz_json:get_value([<<"Voicemail-Transcription">>, <<"text">>], Event)}
                          ,{<<"call_id">>, kz_json:get_value(<<"Call-ID">>, Event)}
@@ -151,7 +151,7 @@ create_template_props(Event, Timezone, Account) ->
 magic_hash(Event) ->
     AccountId = kz_json:get_value(<<"Account-ID">>, Event),
     VMBoxId = kz_json:get_value(<<"Voicemail-Box">>, Event),
-    MessageId = kz_json:get_value(<<"Voicemail-Name">>, Event),
+    MessageId = kz_json:get_value(<<"Voicemail-ID">>, Event),
 
     try list_to_binary([<<"/v1/accounts/">>, AccountId, <<"/vmboxes/">>, VMBoxId
                        ,<<"/messages/">>, MessageId, <<"/raw">>

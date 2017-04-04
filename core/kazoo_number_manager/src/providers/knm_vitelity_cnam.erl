@@ -337,7 +337,7 @@ publish_cnam_update(Number) ->
     Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
              ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
              ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
-             ,{<<"Number">>, knm_phone_number:number(PhoneNumber)}
+             ,{<<"Number">>, knm_util:pretty_print(knm_phone_number:number(PhoneNumber))}
              ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
              ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

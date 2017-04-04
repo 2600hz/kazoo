@@ -39,7 +39,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Loss of Registration for {{last_registration.username}}@{{account.realm}}">>).
+-define(TEMPLATE_SUBJECT, <<"Loss of Registration for '{{last_registration.username}}'">>).
 -define(TEMPLATE_CATEGORY, <<"registration">>).
 -define(TEMPLATE_NAME, <<"Deregister Notice">>).
 

@@ -1,40 +1,112 @@
-Alert
+                System Alert
+
+
+There was problem in your VoIP services.
+
+Here is all related information:
+
+--------------------
+Message:
+--------------------
 {{message}}
-{% if request %}Producer
-{% for key, value in request %}{{ key }}: {{ value }}
+--------------------{% if request %}
+
+=== Producer Details ===
+
+{% for key, value in request %}
+{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if details %}Details
+
+#####################################
+#####################################
+{% endif %}{% if details %}
+
+=== Alert Details ===
+
 {% for key, value in details %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if callflow %}Callflow
+
+#####################################
+#####################################
+{% endif %}{% if callflow %}
+
+=== Callflow Details ===
+
 {% for key, value in callflow %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if error_details %}Error Details
+
+#####################################
+#####################################
+{% endif %}{% if error_details %}
+
+=== Error Details ===
+
 {% for key, value in error_details %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if http_headers %}HTTP Headers
+
+#####################################
+#####################################
+{% endif %}{% if http_headers %}
+
+=== HTTP Headers ===
+
 {% for header in http_headers %}{{ header }}
+-------------
 {% endfor %}
-{% endif %}{% if key_store %}Key Value Store
+
+#####################################
+#####################################
+{% endif %}{% if key_store %}
+
+=== Key Value Store ===
+
 {% for key, value in key_store %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if channel_vars %}Channel Vars
+
+#####################################
+#####################################
+{% endif %}{% if channel_vars %}
+
+=== Channel Variables ===
+
 {% for key, value in channel_vars %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if sip_headers %}SIP Headers
+
+#####################################
+#####################################
+{% endif %}{% if sip_headers %}
+
+=== SIP Headers ===
+
 {% for key, value in sip_headers %}{{ key }}: {{ value }}
+-------------
 {% endfor %}
-{% endif %}{% if account %}Account
-Account ID: {{account.id}}
-Account Name: {{account.name}}
-Account Realm: {{account.realm}}
 
-{% endif %}{% if user %}Admin
-Name: {{user.first_name}} {{user.last_name}}
-Email: {{user.email}}
-Timezone: {{user.timezone}}
-
-{% endif %}{% if account.pvt_wnm_numbers %}Phone Numbers
-{% for number in account.pvt_wnm_numbers %}{{number}}
-{% endfor %}
+#####################################
+#####################################
 {% endif %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+Administrator User Information
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+    Timezone: {{user.timezone}}
+
+
+
+Sent from {{system.hostname}}

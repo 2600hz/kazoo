@@ -1,3 +1,22 @@
-Port request canceled for {{account.name}}.
+                Port Request Canceled
 
- Numbers: {% for number in port_request.numbers %} {{ number }} {% endfor %}.
+Your port request "{{port_request.name}}" of account '{{account.name}}' has been canceled.
+
+
+=== Port Request Numbers ===
+
+{% for number in port_request.numbers %}
+-   {{number}}
+{% endfor %}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

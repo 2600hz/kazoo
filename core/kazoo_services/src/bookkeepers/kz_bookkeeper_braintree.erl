@@ -274,15 +274,8 @@ handle_quick_sale_response(BtTransaction) ->
 
 -spec send_topup_notification(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined' | ne_binary()) ->
                                      {boolean(), ne_binary()}.
-send_topup_notification(Success, BillingId, Amount, 'undefined') ->
-    send_topup_notification(Success, BillingId, Amount, <<"unknown error">>);
-send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary(ResponseText) ->
-    Props = [{<<"Account-ID">>, BillingId}
-            ,{<<"Amount">>, Amount}
-            ,{<<"Success">>, Success}
-            ,{<<"Response">>, ResponseText}
-             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
-            ],
+send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
+    Props = notification_data(Success, BillingId, Amount, BraintreeTransaction),
     _ = case kz_amqp_worker:cast(Props
                                 ,fun kapi_notifications:publish_topup/1
                                 )
@@ -293,11 +286,23 @@ send_topup_notification(Success, BillingId, Amount, ResponseText) when is_binary
                            ,[BillingId, _R]
                            )
         end,
-    {Success, ResponseText};
-send_topup_notification(Success, BillingId, Amount, BraintreeTransaction) ->
-    Transaction = braintree_transaction:record_to_json(BraintreeTransaction),
-    ResponseText = kz_json:get_ne_value(<<"processor_response_text">>, Transaction, <<"missing response">>),
-    send_topup_notification(Success, BillingId, Amount, ResponseText).
+    {Success, props:get_value(<<"Response">>, Props)}.
+
+-spec notification_data(boolean(), ne_binary(), integer(), bt_transaction() | 'undefined') -> kz_proplist().
+notification_data(Success, BillingId, Amount, 'undefined') ->
+    [{<<"Account-ID">>, BillingId}
+    ,{<<"Amount">>, Amount}
+    ,{<<"Success">>, Success}
+    ,{<<"Response">>, <<"Unknown Error">>}
+    ,{<<"Timestamp">>, kz_time:current_tstamp()}
+     | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+    ];
+notification_data(_Success, BillingId, _Amount, BraintreeTransaction) ->
+    props:filter_empty(
+      [{<<"Account-ID">>, BillingId}
+       | braintree_transaction:record_to_notification_props(BraintreeTransaction) ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+      ]
+     ).
 
 %%--------------------------------------------------------------------
 %% @private

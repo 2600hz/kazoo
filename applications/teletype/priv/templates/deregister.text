@@ -1,10 +1,30 @@
-Expired registration in account "{{account.name}}".
-Notifications are enabled for loss of registration on the device {{last_registration.username}}@{{account.realm}}
+                Device Expired Registration
 
-Last Registration:
-Device ID: {{last_registration.authorizing_id}}
-Account ID: {{account.id}}
-User Agent: {{last_registration.user_agent}}
-Contact: {{last_registration.contact}}
 
-This may be due to a network connectivity issue, power outage, or misconfiguration. Please check the device.
+Device "{{last_registration.username}}" in account '{{account.name}}'
+lost its registration.
+
+    This may be due to a network connectivity issue,
+    power outage, or misconfiguration.
+    Please check the device.
+
+
+=== Last Registration Details ====
+
+    Device ID: {{last_registration.authorizing_id}}
+    Account ID: {{account.id}}
+    Account Realm: {{account.realm}}
+    User Agent: {{last_registration.user_agent}}
+    Contact: {{last_registration.contact}}
+
+
+
+Account Information
+
+    Account ID: {{account.id}}
+    Account Name: {{account.name}}
+    Account Realm: {{account.realm}}
+
+
+
+Sent from {{system.hostname}}

@@ -33,7 +33,9 @@
           ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
           ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
           ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
-           | ?DEFAULT_CALL_MACROS
+          ,?MACRO_VALUE(<<"fax.faxbox_id">>, <<"fax_faxbox_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
+          ,?MACRO_VALUE(<<"fax.faxbox_name">>, <<"fax_faxbox_name">>, <<"FaxBox Name">>, <<"FaxBox Name">>)
+           | ?DEFAULT_CALL_MACROS ++ ?USER_MACROS
           ]
          )).
 
@@ -131,16 +133,18 @@ get_owner_doc(FaxJObj, DataJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    [{<<"account">>, kz_json:get_value(<<"account">>, DataJObj)}
-    ,{<<"fax">>, build_fax_template_data(DataJObj)}
-    ,{<<"system">>, teletype_util:system_params()}
-    ,{<<"caller_id">>, caller_id_data(DataJObj)}
-    ,{<<"callee_id">>, callee_id_data(DataJObj)}
-    ,{<<"date_called">>, date_called_data(DataJObj)}
-    ,{<<"from">>, from_data(DataJObj)}
-    ,{<<"to">>, to_data(DataJObj)}
-    ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
-    ].
+    props:filter_undefined(
+      [{<<"account">>, kz_json:get_value(<<"account">>, DataJObj)}
+      ,{<<"fax">>, build_fax_template_data(DataJObj)}
+      ,{<<"system">>, teletype_util:system_params()}
+      ,{<<"caller_id">>, caller_id_data(DataJObj)}
+      ,{<<"callee_id">>, callee_id_data(DataJObj)}
+      ,{<<"date_called">>, date_called_data(DataJObj)}
+      ,{<<"from">>, from_data(DataJObj)}
+      ,{<<"to">>, to_data(DataJObj)}
+      ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
+      ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"owner">>, DataJObj))}
+      ]).
 
 -spec caller_id_data(kz_json:object()) -> kz_proplist().
 caller_id_data(DataJObj) ->
@@ -159,14 +163,8 @@ callee_id_data(DataJObj) ->
 -spec date_called_data(kz_json:object()) -> kz_proplist().
 date_called_data(DataJObj) ->
     DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_time:current_tstamp()),
-    DateTime = calendar:gregorian_seconds_to_datetime(DateCalled),
-    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj, <<"UTC">>),
-    ClockTimezone = kapps_config:get(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
-
-    props:filter_undefined(
-      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
-      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, Timezone)}
-      ]).
+    Timezone = kz_json:get_value([<<"fax">>, <<"rx_result">>, <<"timezone">>], DataJObj),
+    teletype_util:fix_timestamp(DateCalled, Timezone, DataJObj).
 
 -spec from_data(kz_json:object()) -> kz_proplist().
 from_data(DataJObj) ->
@@ -228,5 +226,23 @@ build_fax_template_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_json:get_value(<<"fax_id">>, DataJObj)}
       ,{<<"media">>, kz_json:get_value(<<"fax_name">>, DataJObj)}
+      ,{<<"faxbox_name">>, maybe_add_faxbox_name(DataJObj)}
        | kz_json:to_proplist(kz_json:get_value(<<"rx_result">>, FaxJObj, kz_json:new()))
       ]).
+
+-spec maybe_add_faxbox_name(kz_json:object()) -> api_binary().
+maybe_add_faxbox_name(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'true' -> 'undefined';
+        'false' ->
+            maybe_add_faxbox_name(kz_json:get_ne_binary_value(<<"faxbox_id">>, DataJObj)
+                                 ,kz_json:get_value(<<"account_id">>, DataJObj)
+                                 )
+    end.
+
+-spec maybe_add_faxbox_name(api_binary(), api_binary()) -> api_binary().
+maybe_add_faxbox_name(?NE_BINARY=FaxBoxId, ?NE_BINARY=AccountId) ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    {'ok', FaxBoxJObj} = kz_datamgr:open_cache_doc(AccountDb, FaxBoxId),
+    kz_json:get_ne_binary_value(<<"name">>, FaxBoxJObj);
+maybe_add_faxbox_name(_FaxBoxId, _AccountId) -> 'undefined'.

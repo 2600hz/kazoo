@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>Receipt for your payment of account '{{account.name}}'</title>
+    <title>Payment problem for account '{{account.name}}'</title>
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
         /* CSS Reset */
@@ -18,7 +18,7 @@
 <body width="100%" bgcolor="#eaeaea" style="margin:0;mso-line-height-rule:exactly;background-color:#eaeaea">
     <center style="padding:40px 0;width:100%;background:#eaeaea;text-align:left;">
         <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;mso-hide:all;font-family:sans-serif;">
-            We received your payment for '{{account.name}}' -
+            Unable to process payment for account '{{account.name}}' -
         </div>
         <div style="max-width:600px;margin:auto;" class="email-container">
             <!--[if mso]>
@@ -26,76 +26,56 @@
             <tr>
             <td>
             <![endif]-->
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#5995f7" align="center" width="100%" style="background-color:#5995f7;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" bgcolor="#ff4a33" align="center" width="100%" style="background-color:#ff4a33;border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><td height="10" style="font-size:10px;line-height:10px;">&nbsp;</td></tr>
             </table>
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:40px;text-align:center;">
-                        <h2 style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Payment Receipt</h2>
+                        <h2 style="margin:0;padding:0;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Payment Problem</h2>
                     </td>
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="text-align:left;padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Date:</b>&nbsp;{{transaction.date.local|date:"l, F j, Y H:i"}}</span><br>
-                        <span style="margin:4px 0;padding:25px 0 0;font-size:.9em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;"><b>Invoice ID:</b> {{transaction.id}}</span>
-                    </td>
-                </tr>
-                <tr>
-                    <td bgcolor="#ffffff" style="padding:20px;text-align:center;">
-                        <h3 style="font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Thank you for being a customer!</h3>
-                        <h3 style="font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;line-height:20px;">We received your payment</h3>
+                        <span style="font-size:.9em;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:4px 0;padding:25px 0 0;"><b>Date:</b>&nbsp;{{transaction.date.local|date:"l, F j, Y H:i"}}</span>
                     </td>
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;text-align:center;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">
-                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">We've successfully charged <b>{% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}</b>{% if transaction.card_last_four %} to your card with four last digits <b>{{transaction.card_last_four}}</b>&nbsp;{% endif %}on <b>{{transaction.date.local|date:"n/j/Y"}}</b>.</p>
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">There was a problem processing your credit card.</p>
                     </td>
                 </tr>
-            </table>
-            {% if transaction.address %}
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr>
+                    <td bgcolor="#ffffff" style="padding:20px">
+                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" bgcolor="#f7c659" width="80%" style="background-color:#f7c659;border-radius:5px;">
+                            <tr>
+                                <td style="padding:.9em;font-family:'Open Sans',sans-serif;font-size:.9em;line-height:20px;color:#555555;border-radius:5px;">Please double check your payment information and try again!</td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;">
-                        <table role="presentation" aria-hidden="true" border="0" cellpadding="0" cellspacing="0" align="center" width="100%" style="max-width:560px;border-top:1px solid #dedede;border-bottom:1px solid #dedede;">
+                        <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:left;border-top:1px solid #dedede;border-bottom:1px solid #dedede;">
                             <tr>
-                                <td align="center" valign="top" width="50%">
-                                    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:left;">
-                                        <tr>
-                                            <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:20px 10px;">{% spaceless %}
-                                                <b>Billed To:</b><br>
-                                                {% if transaction.address.first_name %}<span>{{transaction.address.first_name}}&nbsp;</span>{% endif %}
-                                                {% if transaction.address.last_name %}<span>{{transaction.address.last_name}}</span><br>{% endif %}
-                                                {% if transaction.address.company %}<span>{{transaction.address.company}}</span><br>{% endif %}
-                                                {% if transaction.address.locality %}<span>{{transaction.address.locality}},&nbsp;</span>{% endif %}
-                                                {% if transaction.address.region %}<span>{{transaction.address.region}}&nbsp;</span>{% endif %}
-                                                {% if transaction.address.postal_code %}<span>{{transaction.address.postal_code}}&nbsp;</span>{% endif %}
-                                                {% if transaction.address.country_name %}<span>&nbsp;-&nbsp;{{transaction.address.country_name}}</span>{% endif %}
-                                            {% endspaceless %}</td>
-                                        </tr>
-                                    </table>
+                                <td style="padding:10px 10px 3px;text-align:left;font-family:'Open Sans',sans-serif;font-size:.8em;line-height:20px;color:#555555;">
+                                    <b>Failed Reason:</b> {{transaction.response}}
                                 </td>
-                                <td align="center" valign="top" width="50%">
-                                    <table role="presentation" aria-hidden="true" cellspacing="0" cellpadding="0" border="0" width="100%" style="text-align:right;">
-                                        <tr>
-                                            <td style="text-align:left;font-family:sans-serif;font-size:.8em;line-height:20px;color:#555555;padding:15px 10px;">{% spaceless %}
-                                                <b>Billing Address:</b><br>
-                                                {% if transaction.address.street_address %}<span>{{transaction.address.street_address}}</span><br>{% endif %}
-                                                {% if transaction.address.extended_address %}<span>{{transaction.address.extended_address}}</span><br>{% endif %}
-                                                {% if transaction.address.locality %}<span>{{transaction.address.locality}},&nbsp;</span>{% endif %}
-                                                {% if transaction.address.region %}<span>{{transaction.address.region}}&nbsp;</span>{% endif %}
-                                                {% if transaction.address.postal_code %}<span>{{transaction.address.postal_code}}</span>{% endif %}
-                                                {% if transaction.address.country_name %}<span>&nbsp;-&nbsp;{{transaction.address.country_name}}</span>{% endif %}
-                                            {% endspaceless %}</td>
-                                        </tr>
-                                    </table>
+                            </tr>
+                            <tr>
+                                <td style="padding:3px 10px;text-align:left;font-family:'Open Sans',sans-serif;font-size:.8em;line-height:20px;color:#555555;">
+                                    <b>Total Amount to Charge:</b> {% if transaction.currency_code == "USD" %}${% endif %}{{transaction.amount}}{% if transaction.currency_code %} {{transaction.currency_code|upper}}{% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:3px 10px 10px;text-align:left;font-family:'Open Sans',sans-serif;font-size:.8em;line-height:20px;color:#555555;">
+                                    <b>Credit Card Last Digits:</b> {{transaction.card_last_four|default:"No Credit Card info on file"}}
                                 </td>
                             </tr>
                         </table>
                     </td>
                 </tr>
             </table>
-            {% endif %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">

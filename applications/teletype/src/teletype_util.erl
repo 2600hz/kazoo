@@ -21,6 +21,7 @@
         ,find_account_admin/1
         ,find_account_id/1
         ,find_account_db/2
+        ,find_account_params/2
         ,is_notice_enabled/3, is_notice_enabled_default/1
         ,should_handle_notification/1
 
@@ -31,6 +32,8 @@
 
         ,open_doc/3
         ,is_preview/1
+        ,read_preview_doc/1
+        ,fix_timestamp/1, fix_timestamp/2, fix_timestamp/3
 
         ,public_proplist/2
 
@@ -672,35 +675,33 @@ find_addresses(DataJObj, TemplateMetaJObj, ConfigCat) ->
 
 find_addresses(_DataJObj, _TemplateMetaJObj, _ConfigCat, [], Acc) -> Acc;
 find_addresses(DataJObj, TemplateMetaJObj, ConfigCat, [Key|Keys], Acc) ->
-    find_addresses(
-      DataJObj
+    find_addresses(DataJObj
                   ,TemplateMetaJObj
                   ,ConfigCat
                   ,Keys
                   ,[find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key)|Acc]
-     ).
+                  ).
 
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path()) ->
                           {kz_json:path(), api_binaries()}.
 -spec find_address(kz_json:object(), kz_json:object(), ne_binary(), kz_json:path(), api_binary()) ->
                           {kz_json:path(), api_binaries()}.
 find_address(DataJObj, TemplateMetaJObj, ConfigCat, Key) ->
-    find_address(
-      DataJObj
+    find_address(DataJObj
                 ,TemplateMetaJObj
                 ,ConfigCat
                 ,Key
                 ,kz_json:find([Key, <<"type">>]
                              ,[DataJObj, TemplateMetaJObj]
                              )
-     ).
+                ).
 
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, 'undefined') ->
     lager:debug("email type for '~s' not defined in template, checking just the key", [Key]),
     {Key, check_address_value(kz_json:find(Key, [DataJObj, TemplateMetaJObj]))};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     lager:debug("checking template for '~s' email addresses", [Key]),
-    Emails = kz_json:find([Key, <<"email_addresses">>], [DataJObj, TemplateMetaJObj]),
+    Emails = kz_json:find_first_defined([[Key, <<"email_addresses">>], Key], [DataJObj, TemplateMetaJObj]),
     {Key, check_address_value(Emails)};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
@@ -774,12 +775,12 @@ open_doc(Type, DocId, DataJObj) ->
 maybe_load_preview(_Type, Error, 'false') ->
     Error;
 maybe_load_preview(Type, _Error, 'true') ->
-    read_doc(Type).
+    read_preview_doc(Type).
 
--spec read_doc(ne_binary()) ->
-                      {'ok', kz_json:object()} |
-                      {'error', read_file_error()}.
-read_doc(File) ->
+-spec read_preview_doc(ne_binary()) ->
+                              {'ok', kz_json:object()} |
+                              {'error', read_file_error()}.
+read_preview_doc(File) ->
     AppDir = code:lib_dir('teletype'),
     PreviewFile = filename:join([AppDir, "priv", "preview_data", <<File/binary, ".json">>]),
     case file:read_file(PreviewFile) of
@@ -797,9 +798,44 @@ is_preview(DataJObj) ->
       kz_json:get_first_defined([<<"Preview">>, <<"preview">>], DataJObj, 'false')
      ).
 
+%% make timestamp ready to proccess by "date" filter in ErlyDTL
+%% returns a prop list with local, utc time and timezone
+-spec fix_timestamp(integer() | api_ne_binary()) -> kz_proplist().
+fix_timestamp(Timestamp) ->
+    fix_timestamp(Timestamp, <<"GMT">>).
+
+-spec fix_timestamp(integer() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+fix_timestamp('undefined', Thing) ->
+    fix_timestamp(kz_time:current_tstamp(), Thing);
+fix_timestamp(?NE_BINARY=Timestamp, TZ) ->
+    fix_timestamp(kz_term:to_integer(Timestamp), TZ);
+fix_timestamp(Timestamp, ?NE_BINARY=TZ) ->
+    DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
+    ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
+
+    lager:debug("using tz ~s (system ~s) for ~p", [TZ, ClockTimezone, DateTime]),
+
+    props:filter_undefined(
+      [{<<"utc">>, localtime:local_to_utc(DateTime, ClockTimezone)}
+      ,{<<"local">>, localtime:local_to_local(DateTime, ClockTimezone, TZ)}
+      ,{<<"timezone">>, TZ}
+      ]);
+fix_timestamp(Timestamp, 'undefined') ->
+    fix_timestamp(Timestamp, <<"GMT">>);
+fix_timestamp(Timestamp, DataJObj) ->
+    Params = account_params(DataJObj),
+    TZ = props:get_value(<<"timezone">>, Params),
+    fix_timestamp(Timestamp, TZ).
+
+-spec fix_timestamp(integer() | api_ne_binary(), api_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+fix_timestamp(Timestamp, 'undefined', Thing) ->
+    fix_timestamp(Timestamp, Thing);
+fix_timestamp(Timestamp, TZ, _Thing) ->
+    fix_timestamp(Timestamp, TZ).
+
 -spec public_proplist(kz_json:path(), kz_json:object()) -> kz_proplist().
 public_proplist(Key, JObj) ->
-    kz_json:to_proplist(
+    kz_json:recursive_to_proplist(
       kz_json:public_fields(
         kz_json:get_value(Key, JObj, kz_json:new())
        )

@@ -534,13 +534,24 @@ charge_billing_id(Amount, Context) ->
 
     try braintree_transaction:quick_sale(BillingId, kz_term:to_binary(Amount), Props) of
         #bt_transaction{}=Transaction ->
-            kz_notify:transaction(AccountId, braintree_transaction:record_to_json(Transaction)),
+            send_transaction_notify(AccountId, Transaction),
             crossbar_util:response(braintree_transaction:record_to_json(Transaction), Context)
     catch
         'throw':{'api_error', Reason} ->
             crossbar_util:response('error', <<"braintree api error">>, 400, Reason, Context);
         'throw':{Error, Reason} ->
             crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context)
+    end.
+
+-spec send_transaction_notify(ne_binary(), #bt_transaction{}) -> 'ok'.
+send_transaction_notify(AccountId, Transaction) ->
+    Props = [{<<"Account-ID">>, AccountId}
+             | braintree_transaction:record_to_notification_props(Transaction)
+             ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+            ],
+    case kz_amqp_worker:cast(Props, fun kapi_notifications:publish_transaction/1) of
+        'ok' -> lager:debug("transaction notification sent for ~s", [AccountId]);
+        {'error', _R} -> lager:error("failed to send transaction notification for ~s : ~p", [AccountId, _R])
     end.
 
 -spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->

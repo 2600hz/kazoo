@@ -129,15 +129,15 @@
 -define(NOTIFY_SYSTEM_ALERT, <<"notifications.system.alert">>).
 -define(NOTIFY_WEBHOOK_CALLFLOW, <<"notifications.webhook.callflow">>).
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
--define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.denied_emergency_bridge">>).
--define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.customer_update">>).
--define(NOTIFY_SKEL, <<"notifications.skel">>).
+-define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.registration.denied_emergency_bridge">>).
+-define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.user.customer_update">>).
+-define(NOTIFY_SKEL, <<"notifications.account.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
 -define(VOICEMAIL_HEADERS, [<<"From-User">>, <<"From-Realm">>
                            ,<<"To-User">>, <<"To-Realm">>
-                           ,<<"Account-DB">>
-                           ,<<"Voicemail-Box">>, <<"Voicemail-Name">>
+                           ,<<"Account-ID">>
+                           ,<<"Voicemail-Box">>, <<"Voicemail-ID">>
                            ,<<"Voicemail-Timestamp">>
                            ]).
 -define(OPTIONAL_VOICEMAIL_HEADERS, [<<"Voicemail-Length">>, <<"Call-ID">>
@@ -155,8 +155,7 @@
                                 ]).
 
 %% Notify Voicemail full
--define(VOICEMAIL_FULL_HEADERS, [<<"Account-DB">>
-                                ,<<"Voicemail-Box">> ,<<"Voicemail-Number">>
+-define(VOICEMAIL_FULL_HEADERS, [<<"Account-ID">>, <<"Voicemail-Box">>
                                 ,<<"Max-Message-Count">> ,<<"Message-Count">>
                                 ]).
 -define(OPTIONAL_VOICEMAIL_FULL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
@@ -303,7 +302,7 @@
 -define(ACCOUNT_ZONE_CHANGE_HEADERS, [<<"Account-ID">>
                                      ,<<"Zones">>
                                      ]).
--define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, [?DEFAULT_OPTIONAL_HEADERS]).
+-define(OPTIONAL_ACCOUNT_ZONE_CHANGE_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
 -define(ACCOUNT_ZONE_CHANGE_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                     ,{<<"Event-Name">>, <<"account_zone_change">>}
                                     ]).
@@ -429,23 +428,28 @@
                             ]).
 -define(LOW_BALANCE_TYPES, []).
 
+%%% Transaction Common Optional Headers
+-define(COMMON_TRANSACTION_HEADERS, [<<"ID">>, <<"Add-Ons">>, <<"Discounts">>
+                                    ,<<"Billing-Address">>, <<"Card-Last-Four">>, <<"Tax-Amount">>
+                                    , <<"Purchase-Order">>, <<"Currency-Code">>
+                                    ]).
+
 %% Notify Top Up
--define(TOPUP_HEADERS, [<<"Account-ID">>]).
--define(OPTIONAL_TOPUP_HEADERS, [<<"Amount">>
-                                ,<<"Response">>
-                                ,<<"Success">>
-                                     | ?DEFAULT_OPTIONAL_HEADERS
-                                ]).
+-define(TOPUP_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Timestamp">>
+                       ,<<"Response">>, <<"Success">>
+                       ]).
+-define(OPTIONAL_TOPUP_HEADERS, ?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS).
 -define(TOPUP_VALUES, [{<<"Event-Category">>, <<"notification">>}
                       ,{<<"Event-Name">>, <<"topup">>}
                       ]).
 -define(TOPUP_TYPES, []).
 
 %% Notify Transaction
--define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Transaction">>]).
--define(OPTIONAL_TRANSACTION_HEADERS, [<<"Billing-ID">>
-                                      ,<<"Service-Plan">>
-                                           | ?DEFAULT_OPTIONAL_HEADERS
+-define(TRANSACTION_HEADERS, [<<"Account-ID">>, <<"Amount">>, <<"Timestamp">>
+                             ,<<"Response">>, <<"Success">>
+                             ]).
+-define(OPTIONAL_TRANSACTION_HEADERS, [<<"Service-Plan">>
+                                           | ?COMMON_TRANSACTION_HEADERS ++ ?DEFAULT_OPTIONAL_HEADERS
                                       ]).
 -define(TRANSACTION_VALUES, [{<<"Event-Category">>, <<"notification">>}
                             ,{<<"Event-Name">>, <<"transaction">>}

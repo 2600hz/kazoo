@@ -92,6 +92,8 @@ send_topup_notification(BillingId, Transaction) ->
             ,{<<"Amount">>, kz_transaction:amount(Transaction)}
             ,{<<"Response">>, <<"Authorized">>}
             ,{<<"Success">>, <<"true">>}
+            ,{<<"ID">>, kz_transaction:id(Transaction)}
+            ,{<<"Timestamp">>, kz_time:current_tstamp()}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
     case kz_amqp_worker:cast(Props

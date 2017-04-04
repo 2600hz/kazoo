@@ -18,12 +18,13 @@
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
 
 -define(TEMPLATE_MACROS
-       ,kz_json:from_list([?MACRO_VALUE(<<"link">>, <<"link">>, <<"Password Reset Link">>, <<"Link going to click to reset password">>)
-                           | ?ACCOUNT_MACROS ++ ?USER_MACROS
-                          ])
+       ,kz_json:from_list(
+          [?MACRO_VALUE(<<"link">>, <<"link">>, <<"Password Reset Link">>, <<"Link to reset password">>)
+           | ?ACCOUNT_MACROS ++ ?USER_MACROS
+          ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Reset your VoIP services account password.">>).
+-define(TEMPLATE_SUBJECT, <<"Reset your VoIP services user password">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"Password Recovery">>).
 

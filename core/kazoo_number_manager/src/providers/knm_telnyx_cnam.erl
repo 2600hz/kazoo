@@ -87,6 +87,7 @@ handle_outbound_cnam(Number) ->
             FeatureData = kz_json:from_list([{?CNAM_DISPLAY_NAME, NewCNAM}]),
             Number1 = knm_services:activate_feature(Number, {?FEATURE_CNAM_OUTBOUND, FeatureData}),
             _ = set_outbound(Number1, NewCNAM),
+            _ = publish_cnam_update(Number1),
             Number1
     end.
 
@@ -138,3 +139,27 @@ set_outbound(Number, NewCNAM) ->
                              ]),
     Rep = knm_telnyx_util:req(put, ["numbers", knm_telnyx_util:did(Number)], Body),
     NewCNAM = kz_json:get_ne_binary_value(Key, Rep).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec publish_cnam_update(knm_number:knm_number()) -> 'ok'.
+-ifndef(TEST).
+publish_cnam_update(Number) ->
+    PhoneNumber = knm_number:phone_number(Number),
+    Feature = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM),
+    Notify = [{<<"Account-ID">>, knm_phone_number:assigned_to(PhoneNumber)}
+             ,{<<"Number-State">>, knm_phone_number:state(PhoneNumber)}
+             ,{<<"Local-Number">>, knm_phone_number:module_name(PhoneNumber) =:= ?CARRIER_LOCAL}
+             ,{<<"Number">>, knm_util:pretty_print(knm_phone_number:number(PhoneNumber))}
+             ,{<<"Acquired-For">>, knm_phone_number:auth_by(PhoneNumber)}
+             ,{<<"Cnam">>, case Feature of 'undefined' -> kz_json:new(); _ -> Feature end}
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    kapi_notifications:publish_cnam_request(Notify).
+-else.
+publish_cnam_update(_Number) -> 'ok'.
+-endif.

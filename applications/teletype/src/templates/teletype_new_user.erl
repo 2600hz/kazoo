@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"New user">>).
+-define(TEMPLATE_SUBJECT, <<"Your new VoIP services user profile has been created">>).
 -define(TEMPLATE_CATEGORY, <<"user">>).
 -define(TEMPLATE_NAME, <<"New User">>).
 
