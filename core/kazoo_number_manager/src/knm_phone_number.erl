@@ -1642,11 +1642,10 @@ try_delete_from(SplitBy, T0) ->
                 knm_numbers:add_oks(PNs, T);
             (Db, PNs, T) ->
                 ?LOG_DEBUG("deleting from ~s", [Db]),
-                Docs = [to_json(PN) || PN <- PNs],
-                case delete_docs(Db, Docs) of
+                Nums = [kz_doc:id(to_json(PN)) || PN <- PNs],
+                case delete_docs(Db, Nums) of
                     {ok, JObjs} -> handle_bulk_change(Db, JObjs, PNs, T);
                     {error, E} ->
-                        Nums = [kz_doc:id(Doc) || Doc <- Docs],
                         lager:error("failed to delete from ~s (~p): ~p", [Db, E, Nums]),
                         database_error(Nums, E, T)
                 end
@@ -1691,24 +1690,26 @@ database_error(NumOrNums, E, T) ->
 
 -spec save_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
                                                    {error, kz_data:data_errors()}.
--spec delete_docs(ne_binary(), kz_json:objects()) -> {ok, kz_json:objects()} |
-                                                     {error, kz_data:data_errors()}.
+-spec delete_docs(ne_binary(), ne_binaries()) -> {ok, kz_json:objects()} |
+                                                 {error, kz_data:data_errors()}.
 -ifdef(TEST).
-mock_docs_return(Doc) ->
+mock_docs_return(?NE_BINARY=Id) ->
     kz_json:from_list(
-      [{<<"id">>, ?NE_BINARY = kz_doc:id(Doc)}
+      [{<<"id">>, Id}
       ,{<<"ok">>, true}
-      ]).
+      ]);
+mock_docs_return(Doc) ->
+    mock_docs_return(kz_doc:id(Doc)).
 
 save_docs(?NE_BINARY, Docs) ->
     {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
 
-delete_docs(?NE_BINARY, Docs) ->
-    {ok, [mock_docs_return(Doc) || Doc <- Docs]}.
+delete_docs(?NE_BINARY, Ids) ->
+    {ok, [mock_docs_return(Id) || Id <- Ids]}.
 -else.
-delete_docs(Db, Docs) ->
+delete_docs(Db, Ids) ->
     %% Note: deleting unexisting docs returns ok.
-    kz_datamgr:del_docs(Db, Docs).
+    kz_datamgr:del_docs(Db, Ids).
 
 save_docs(Db, Docs) ->
     kz_datamgr:save_docs(Db, Docs).

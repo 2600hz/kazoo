@@ -383,7 +383,7 @@ release(Nums, Options) ->
              ,fun knm_number:new/1
              ,fun knm_providers:delete/1
              ,fun unwind_or_disconnect/1
-             ,fun maybe_unassign/1
+             ,fun unassign_available/1
              ,fun save_phone_numbers/1
              ])).
 
@@ -787,7 +787,7 @@ authorize_release(PN) ->
             NewPN
     end.
 
-maybe_unassign(T0) ->
+unassign_available(T0) ->
     {ToUnassign, Ta} = take_available(T0),
     Unassign = [{fun knm_phone_number:set_assigned_to/2, undefined}],
     Tb = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Unassign) end, ToUnassign),
