@@ -281,7 +281,12 @@ auth_account_doc(Context) ->
     end.
 
 auth_user_id(#cb_context{auth_doc='undefined'}) -> 'undefined';
-auth_user_id(#cb_context{auth_doc=JObj}) -> kz_json:get_value(<<"owner_id">>, JObj).
+auth_user_id(#cb_context{auth_doc=JObj}) ->
+    case kz_doc:type(JObj) of
+        <<"user">> -> kz_doc:id(JObj);
+        _ -> kz_json:get_value(<<"owner_id">>, JObj)
+    end.
+
 req_verb(#cb_context{req_verb=ReqVerb}) -> ReqVerb.
 req_data(#cb_context{req_data=ReqData}) -> ReqData.
 req_files(#cb_context{req_files=ReqFiles}) -> ReqFiles.
