@@ -328,6 +328,7 @@ delete(PN) ->
     lager:debug("deleting permanently ~s", [number(PN)]),
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
+               ,fun try_maybe_remove_from_prev/1
                ,{fun set_state/2, ?NUMBER_STATE_DELETED}
                ],
     {'ok', NewPN} = setters(PN, Routines),
@@ -347,6 +348,15 @@ try_maybe_remove_number_from_account(PN) ->
         {'error', _R} ->
             lager:debug("account doc for ~s not removed: ~p", [number(PN), _R]),
             {'ok', PN}
+    end.
+
+try_maybe_remove_from_prev(PN) ->
+    try unassign_from_prev(PN) of
+        PN -> {ok, PN}
+    catch
+        _:_R ->
+            lager:debug("prev account doc for ~s not removed: ~p", [number(PN), _R]),
+            {ok, PN}
     end.
 
 -spec release(knm_phone_number()) -> knm_phone_number().
