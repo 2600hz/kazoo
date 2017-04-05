@@ -77,7 +77,6 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
 
     Body = encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
-%%    Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, ContentType}
               ],
