@@ -1,9 +1,30 @@
 {
     "_id": "google",
-    "enabled": true,
+    "access_code_url": "https://accounts.google.com/o/oauth2/token",
+    "auth_module": "oauth",
+    "auth_url": "https://accounts.google.com/o/oauth2/token",
+    "discovery": "https://accounts.google.com/.well-known/openid-configuration",
+    "issuer_domains": [
+        "accounts.google.com"
+    ],
+    "jwt_flow": {
+        "audience": "https://www.googleapis.com/oauth2/v4/token",
+        "auth_url": "https://www.googleapis.com/oauth2/v4/token",
+        "claims": [
+            "iat",
+            "exp"
+        ],
+        "sub": "email"
+    },
     "oauth_url": "https://accounts.google.com/o/oauth2/token",
+    "profile_displayName_field": "displayName",
+    "profile_identity_field": "id",
     "profile_url": "https://www.googleapis.com/plus/v1/people/me",
-    "provider_type": "oauth",
+    "public_key_discovery_field": "jwks_uri",
+    "public_key_jwt_field": "kid",
+    "public_key_jwt_location": "header",
+    "public_key_lookup_field": "kid",
+    "public_key_method": "lookup",
     "pvt_type": "provider",
     "scopes": {
         "prediction": "https://www.googleapis.com/auth/prediction",
@@ -14,6 +35,11 @@
     },
     "servers": {
         "xmpp": "talk.google.com"
+    },
+    "token_info_url": "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=",
+    "tokeninfo_new_format_url": {
+        "access": "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=",
+        "id": "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token="
     },
     "tokeninfo_url": "https://www.googleapis.com/oauth2/v1/tokeninfo?access_token="
 }

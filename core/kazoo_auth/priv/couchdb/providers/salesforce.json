@@ -1,0 +1,39 @@
+{
+    "_id": "salesforce",
+    "access_code_url": "https://login.salesforce.com/services/oauth2/token",
+    "auth_module": "oauth",
+    "auth_url": "https://login.salesforce.com/services/oauth2/token",
+    "discovery": "https://login.salesforce.com/.well-known/openid-configuration",
+    "issuer_domains": [
+        "https://login.salesforce.com"
+    ],
+    "jwt_flow": {
+        "audience": "https://login.salesforce.com",
+        "claims": [
+            "iat",
+            "exp"
+        ],
+        "sub": "email"
+    },
+    "profile_identity_fields": [
+        "organization_id",
+        "user_id"
+    ],
+    "profile_url": "https://login.salesforce.com/services/oauth2/userinfo",
+    "public_key_discovery_field": "jwks_uri",
+    "public_key_jwt_field": "kid",
+    "public_key_jwt_location": "header",
+    "public_key_lookup_field": "kid",
+    "public_key_method": "lookup",
+    "pvt_type": "provider",
+    "scopes": {
+        "api": "api",
+        "custom_permissions": "custom_permissions",
+        "full": "full",
+        "id": "id",
+        "openid": "openid",
+        "refresh_token": "refresh_token",
+        "visualforce": "visualforce",
+        "web": "web"
+    }
+}
