@@ -21,7 +21,9 @@
 -define(DRV_MULTIPART_FILE_URL, <<(?DRV_FILE_UPLOAD_URL)/binary, "?fields=id&uploadType=multipart">>).
 -define(FOLDER_CT, <<"application/vnd.google-apps.folder">>).
 -define(DRV_BASE_FETCH_URL, "https://www.googleapis.com/drive/v2/files/").
-
+-define(DRV_SCOPE, <<"https://www.googleapis.com/auth/drive.file">>).
+-define(DRV_SCOPES, [?DRV_SCOPE]).
+-define(DRV_TOKEN_OPTIONS, #{scopes => ?DRV_SCOPES}).
 
 %% ====================================================================
 %% API functions
@@ -49,7 +51,7 @@ encode_multipart_headers([{K, V} | Headers], Encoded) ->
 
 -spec put_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_data:options()) -> any().
 put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _DocId, AName, Contents, Options) ->
-    {'ok', Token} = kazoo_oauth_util:token(TokenDocId),
+    {'ok', #{token := #{authorization := Authorization}}} = kz_auth_client:token_for_auth_id(TokenDocId, ?DRV_TOKEN_OPTIONS),
     CT = kz_mime:from_filename(AName),
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -75,7 +77,8 @@ put_attachment(#{oauth_doc_id := TokenDocId, folder_id := Folder}, _DbName, _Doc
 
     Body = encode_multipart([JsonPart, FilePart], Boundary),
     ContentType = kz_term:to_list(<<"multipart/related; boundary=", Boundary/binary>>),
-    Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
+%%    Headers = [{<<"Authorization">>, kazoo_oauth_util:authorization_header(Token)}
+    Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, ContentType}
               ],
     case kz_http:post(?DRV_MULTIPART_FILE_URL, Headers, Body) of
