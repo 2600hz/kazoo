@@ -316,8 +316,9 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
     %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
     {OkErr, JObjError} = kz_datamgr:open_cache_doc(AccountDb, NBId),
 
+    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, JObjError, OldBoxId),
     case OkErr =:= 'ok'
-        andalso do_copy(AccountId, FromId, OldBoxId, NBId, JObjError, 3)
+        andalso do_copy(AccountId, FromId, ToId, TransformFuns, 3)
     of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
@@ -331,23 +332,27 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
             dict:append(<<"failed">>, Failed, CopiedDict)
     end.
 
--spec do_copy(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object(), 1..3) -> db_ret().
-do_copy(_AccountId, _FromId, _OldBoxId, _NBId, _NBoxJ, 0) ->
-    lager:error("max retries to copy voicemail message ~s from box ~s to new box ~s in account ~s"
-               ,[_FromId, _OldBoxId, _NBId, _AccountId]
-               ),
-    {'error', 'max_save_retries'};
-do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ, Loop) ->
-    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBoxJ, OldBoxId),
-
+-spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs(), 1..3) -> db_ret().
+do_copy(AccountId, FromId, ToId, _Funs, 0) ->
+    FromDb = kvm_util:get_db(AccountId, FromId),
+    ToDb = kvm_util:get_db(AccountId, ToId),
+    case fetch(AccountId, ToId) of
+        {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
+        {'error', _} ->
+            lager:error("max retries to copy voicemail message ~s/~s to ~s/~s"
+                       ,[FromDb, FromId, ToDb, ToId]
+                       ),
+            {'error', 'max_save_retries'}
+    end;
+do_copy(AccountId, FromId, ToId, Funs, Loop) ->
     FromDb = kvm_util:get_db(AccountId, FromId),
     ToDb = kvm_util:get_db(AccountId, ToId),
 
-    lager:debug("copying voicemail ~s/~s (vmbox ~s) to ~s/~s (vmbox ~s)"
-               ,[FromDb, FromId, OldBoxId, ToDb, ToId, NBId]
+    lager:debug("copying voicemail ~s/~s to ~s/~s"
+               ,[FromDb, FromId, ToDb, ToId]
                ),
 
-    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, Funs) end}],
     case kz_datamgr:copy_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
         {'error', 'not_found'} = NotFound ->
@@ -356,9 +361,14 @@ do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ, Loop) ->
                          ),
             NotFound;
         {'error', 'timeout'} ->
-            do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ, Loop - 1);
+            do_copy(AccountId, FromId, ToId, Funs, Loop - 1);
         {'error', 'conflict'} ->
-            do_copy(AccountId, FromId, OldBoxId, NBId, NBoxJ, Loop - 1);
+            Msg = io_lib:format("conflict occured during forwarding voicemail ~s / ~s to ~s / ~s"
+                               ,[FromDb, FromId, ToDb, ToId]
+                               ),
+            Subject = <<"Conflict during forward voicemail message">>,
+            send_system_alert('undefined', AccountId, Subject, Msg),
+            do_copy(AccountId, FromId, ToId, Funs, 0);
         {'error', _}=Error ->
             lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
@@ -407,7 +417,14 @@ create_new_message_doc(Call, Props) ->
     Metadata = kzd_box_message:build_metadata_object(Length, Call, kz_doc:id(JObj), CIDNumber, CIDName, Timestamp),
 
     MsgJObj = kzd_box_message:set_metadata(Metadata, JObj),
-    save_generate_media_url(MsgJObj, props:get_value(<<"Attachment-Name">>, Props), 3).
+
+    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
+    case try_save_document(Call, MsgJObj, 3) of
+        {'ok', SavedJObj} ->
+            MediaUrl = fun() -> kz_media_url:store(SavedJObj, AttachmentName) end,
+            {kz_doc:id(SavedJObj), MediaUrl};
+        {'error', _}=Error -> Error
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -432,32 +449,37 @@ create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
                | VMChangeFuns
               ],
     MsgJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Updates),
-    save_generate_media_url(MsgJObj, props:get_value(<<"Attachment-Name">>, Props), 3).
 
--spec save_generate_media_url(kz_json:object(), ne_binary(), 1..3) ->
-                                     {ne_binary(), sotre_media_url()} |
-                                     {'error', any()}.
-save_generate_media_url(MsgJObj, AttachmentName, 0) ->
-    case fetch(kz_doc:account_id(MsgJObj), kz_doc:id(MsgJObj)) of
+    AttachmentName = props:get_value(<<"Attachment-Name">>, Props),
+    case try_save_document(Call, MsgJObj, 3) of
         {'ok', SavedJObj} ->
-            %% message was saved somehow, moving on
             MediaUrl = fun() -> kz_media_url:store(SavedJObj, AttachmentName) end,
             {kz_doc:id(SavedJObj), MediaUrl};
+        {'error', _}=Error -> Error
+    end.
+
+-spec try_save_document(kapps_call:call(), kz_json:object(), 1..3) -> db_ret().
+try_save_document(_Call, MsgJObj, 0) ->
+    case fetch(kz_doc:account_id(MsgJObj), kz_doc:id(MsgJObj)) of
+        {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
         {'error', _} ->
-            lager:error("max retries to save voicemail message ~s in db ~s"
-                       ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj)]),
+            lager:error("max retries to save new voicemail message ~s in db ~s"
+                       ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj)]
+                       ),
             {'error', 'max_save_retries'}
     end;
-save_generate_media_url(MsgJObj, AttachmentName, Loop) ->
+try_save_document(Call, MsgJObj, Loop) ->
     case kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj) of
-        {'ok', SavedJObj} ->
-            MediaUrl = fun() -> kz_media_url:store(SavedJObj, AttachmentName) end,
-            {kz_doc:id(SavedJObj), MediaUrl};
+        {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
-            save_generate_media_url(MsgJObj, AttachmentName, Loop - 1);
+            RetryFun = fun(J) -> try_save_document(Call, J, Loop - 1) end,
+            retry_conflict(Call, MsgJObj, RetryFun);
+        {'error', 'timeout'} ->
+            try_save_document(Call, MsgJObj, Loop - 1);
         {'error', _Reason}=Error ->
             lager:error("failed to save voicemail message ~s in db ~s : ~p"
-                       ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj), _Reason]),
+                       ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj), _Reason]
+                       ),
             Error
     end.
 
@@ -718,3 +740,63 @@ update_metadata(AccountId, BoxId, MessageId, UpdateFuns) ->
         {'error', _R} ->
             lager:info("error while updating voicemail metadata: ~p", [_R])
     end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Double check document to make sure it's not exists in db
+%% Using `kz_datamgr:ensure_save` is more effient here, but
+%% we're doing this fetch/retry for proof of conecpt whether document's id
+%% had collision or not.
+%% @end
+%%--------------------------------------------------------------------
+-spec retry_conflict(kapps_call:call() | 'undefined', kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
+retry_conflict(Call, JObj, DieAnotherDay) ->
+    case fetch(kz_doc:account_id(JObj), kz_doc:id(JObj)) of
+        {'ok', SavedJObj} -> check_for_collision(Call, JObj, SavedJObj, DieAnotherDay);
+        {'error', 'timeout'} -> DieAnotherDay(JObj);
+        {'error', 'not_found'} -> DieAnotherDay(JObj);
+        {'error', _}=Error -> Error
+    end.
+
+check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
+    OrigPublic = kz_json:public_fields(JObj),
+    SavedPublic = kz_json:public_fields(SavedJObj),
+    case kz_json:are_equal(OrigPublic, SavedPublic) of
+        'true' ->
+            Msg = io_lib:format("saving new voicemail ~s in account ~p resulted in conflict but it saved to db anyway"
+                               ,[kz_doc:id(JObj), kz_doc:account_id(JObj)]
+                               ),
+            Subject = <<"Conflict during saving new voicemail message">>,
+            send_system_alert(Call, kz_doc:account_id(JObj), Subject, kz_term:to_binary(Msg)),
+            {'ok', SavedJObj};
+        'false' ->
+            Msg = io_lib:format("found document id collision during saving a new voicemail, id ~s account_id ~p"
+                               ,[kz_doc:id(JObj), kz_doc:account_id(JObj)]
+                               ),
+            lager:critical(Msg),
+            Subject = <<"Document ID collision detected">>,
+            send_system_alert(Call, kz_doc:account_id(JObj), Subject, kz_term:to_binary(Msg)),
+            NewId = give_me_another_id(kz_doc:id(JObj)),
+            NewJObj = kzd_box_message:update_media_id(NewId, JObj),
+            DieAnotherDay(kz_doc:set_id(NewJObj, NewId))
+    end.
+
+give_me_another_id(?MATCH_MODB_PREFIX(Year, Month, _)) ->
+    ?MODB_MSG_ID(Year, Month, kz_binary:rand_hex(16)).
+
+-spec send_system_alert(kapps_call:call() | 'undefined', ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
+send_system_alert('undefined', AccountId, Subject, Msg) ->
+    Notify = [{<<"Message">>, Msg}
+             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             ,{<<"Account-ID">>, AccountId}
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1);
+send_system_alert(Call, AccountId, Subject, Msg) ->
+    Notify = [{<<"Message">>, Msg}
+             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             ,{<<"Details">>, kapps_call:to_json(Call)}
+             ,{<<"Account-ID">>, AccountId}
+              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
+             ],
+    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
