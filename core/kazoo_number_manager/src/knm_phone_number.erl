@@ -197,6 +197,8 @@ fetch(?BW_EXISTING_DID, Options) ->
     handle_fetch(?BW_EXISTING_JSON, Options);
 fetch(?TEST_EXISTING_TOLL, Options) ->
     handle_fetch(?EXISTING_TOLL, Options);
+fetch(?TEST_AVAILABLE_NON_LOCAL_NUM, Options) ->
+    handle_fetch(?AVAILABLE_NON_LOCAL_NUMBER, Options);
 fetch(?TEST_TELNYX_NUM, Options) ->
     handle_fetch(?TELNYX_NUMBER, Options);
 fetch(?TEST_VITELITY_NUM, Options) ->

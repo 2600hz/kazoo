@@ -72,6 +72,7 @@
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
+-define(TEST_AVAILABLE_NON_LOCAL_NUM, <<"+19162154006">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -274,6 +275,20 @@
            }
           ,{?PVT_MODIFIED, 63610268576}
           ,{?PVT_CREATED, 63610268576}
+          ])).
+
+-define(AVAILABLE_NON_LOCAL_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_AVAILABLE_NON_LOCAL_NUM}
+          ,{<<"_rev">>, <<"1-3dd6a1523e81a4e3c2689140ed3a8e69">>}
+          ,{?PVT_MODIFIED, 63565900001}
+          ,{?PVT_ASSIGNED_TO, undefined}
+          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, []}
+          ,{?PVT_MODULE_NAME, <<"knm_telnyx">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1916">>}
+          ,{?PVT_CREATED, 63565900000}
           ])).
 
 -define(BLOCK_PHONEBOOK_URL, <<"http://blocks.tld">>).
