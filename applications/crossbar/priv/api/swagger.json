@@ -8495,11 +8495,6 @@
                     "description": "crossbar ensure valid schema",
                     "type": "boolean"
                 },
-                "expiry_percentage": {
-                    "default": 75,
-                    "description": "crossbar expiry percentage",
-                    "type": "integer"
-                },
                 "ip": {
                     "description": "crossbar ip",
                     "type": "string"
