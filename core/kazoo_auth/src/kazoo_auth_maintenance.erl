@@ -6,7 +6,7 @@
 %% ====================================================================
 %% API functions
 %% ====================================================================
--export([register_auth_app/5]).
+-export([register_auth_app/4]).
 -export([register_common_providers/0]).
 -export([register_auth_app_key/2]).
 
@@ -17,12 +17,11 @@
 %% Internal functions
 %% ====================================================================
 
--spec register_auth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
-register_auth_app(AccountId, OAuthId, EMail, Secret, Provider) ->
+-spec register_auth_app(ne_binary(), ne_binary(), ne_binary(), ne_binary()) -> any().
+register_auth_app(AccountId, OAuthId, Secret, Provider) ->
     Doc = kz_json:from_list([{<<"_id">>, OAuthId}
                             ,{<<"pvt_account_id">>, AccountId}
                             ,{<<"pvt_secret">>,Secret}
-                            ,{<<"pvt_email">>, EMail}
                             ,{<<"pvt_user_prefix">>, kz_binary:rand_hex(16)}
                             ,{<<"pvt_auth_provider">>, Provider}
                             ,{<<"pvt_type">>, <<"app">>}
@@ -51,5 +50,6 @@ register_common_providers() ->
 
 -spec flush() -> 'ok'.
 flush() ->
+    kz_cache:flush_local(?PROFILE_CACHE),
     kz_cache:flush_local(?PK_CACHE),
     kz_cache:flush_local(?TOKENS_CACHE).
