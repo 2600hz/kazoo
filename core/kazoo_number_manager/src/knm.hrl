@@ -299,10 +299,10 @@
 -define(NUMBER_PHONEBOOK_URL_L, "http://numbers.tld").
 -define(NUMBER_PHONEBOOK_URL, <<?NUMBER_PHONEBOOK_URL_L>>).
 
--define(LOG_ERROR(F,A), io:format(user, F ++ "\n", A)).
--define(LOG_WARN(F,A), io:format(user, F ++ "\n",A)).
--define(LOG_DEBUG(F,A), io:format(user, F ++ "\n",A)).
--define(LOG_DEBUG(F), io:format(user, F ++ "\n",[])).
+-define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
 -else.
 
 -define(LOG_ERROR(F,A), lager:error(F,A)).
