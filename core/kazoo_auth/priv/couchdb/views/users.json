@@ -1,0 +1,9 @@
+{
+    "_id": "_design/users",
+    "language": "javascript",
+    "views": {
+        "list_linked_users": {
+            "map": "function(doc) {if (doc.pvt_type != 'user' || doc.pvt_deleted) return; emit([doc.pvt_account_id, doc.pvt_owner_id], {id : doc._id, app : doc.pvt_app_id, provider : doc.pvt_app_provider_id, scopes : doc.scopes, email : doc.email});}"
+        }
+    }
+}
