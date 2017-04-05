@@ -11,7 +11,7 @@
 
 -include("kazoo_auth.hrl").
 
--define(UPDATE_CHK_FIELDS, [<<"refresh_token">>
+-define(UPDATE_CHK_FIELDS, [<<"pvt_refresh_token">>
                            ,<<"scope">>
                            ,<<"scopes">>
                            ,<<"email">>
@@ -25,6 +25,7 @@
 -define(PROFILE_EMAIL_FIELDS, [<<"email">>
                               ,<<"emailAddress">>
                               ,<<"email_address">>
+                              ,<<"mail">>
                               ]).
 
 -define(TOKEN_VERIFIED_EMAIL_FIELDS, [<<"email_verified">>
@@ -75,7 +76,7 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
     Headers = profile_authorization_headers(Token, AccessToken),
     URL = profile_url(Token),
     lager:debug("getting profile from ~s", [URL]),
-    case kz_http:get(kz_term:to_list(URL), Headers) of
+    case kz_http:get(kz_term:to_list(URL), Headers, [{ssl, [{versions, ['tlsv1.2']}]}]) of
         {'ok', 200, _RespHeaders, RespXML} ->
             Token#{profile => kz_json:decode(RespXML)};
         {'ok', 401, _RespHeaders, _RespXML} ->
@@ -338,7 +339,6 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
             ,{<<"access_type">>, maps:get(access_type, Token, 'undefined')}
             ,{<<"scope">>, Scope}
             ,{<<"scopes">>, binary:split(Scope, ?SCOPE_SEPARATORS, ['global'])}
-            ,{<<"refresh_token">>, maps:get(refresh_token, Token, 'undefined')}
             ,{<<"profile">>, Profile}
             ,{<<"pvt_app_id">>, AppId}
             ,{<<"pvt_app_provider_id">>, ProviderId}
@@ -347,5 +347,6 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
             ,{<<"pvt_owner_id">>, maps:get(linked_owner_id, Token, 'undefined')}
             ,{<<"pvt_type">>, <<"user">>}
             ,{<<"pvt_user_identity">>, Identity}
+            ,{<<"pvt_refresh_token">>, maps:get(refresh_token, Token, 'undefined')}
             ] ++ MapFields,
     props:filter_empty(Props).
