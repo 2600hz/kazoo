@@ -28,7 +28,7 @@
         ,assigned_to/1, set_assigned_to/2
         ,prev_assigned_to/1
         ,used_by/1, set_used_by/2
-        ,features/1, features_list/1, set_features/2
+        ,features/1, features_list/1, set_features/2, reset_features/1
         ,feature/2, set_feature/3
         ,features_allowed/1, features_denied/1
         ,state/1, set_state/2
@@ -43,7 +43,7 @@
         ,batch_run/1, set_batch_run/2
         ,mdn_run/1, set_mdn_run/2
         ,locality/1, set_locality/2
-        ,doc/1, update_doc/2, reset_doc/2
+        ,doc/1, update_doc/2, reset_doc/2, reset_doc/1
         ,modified/1, set_modified/2
         ,created/1, set_created/2
         ,remove_denied_features/1
@@ -59,7 +59,6 @@
 -endif.
 
 -include("knm.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
 
 %% Used by from_json/1
 -define(DEFAULT_FEATURES, kz_json:new()).
@@ -325,7 +324,7 @@ delete(PN=#knm_phone_number{dry_run='true'}) ->
     lager:debug("dry_run-ing btw"),
     PN;
 delete(PN) ->
-    lager:debug("deleting permanently ~s", [number(PN)]),
+    ?LOG_DEBUG("deleting permanently ~s", [number(PN)]),
     Routines = [fun try_delete_number_doc/1
                ,fun try_maybe_remove_number_from_account/1
                ,fun try_maybe_remove_from_prev/1
@@ -397,8 +396,8 @@ authorize_release(PN, AuthBy) ->
 
 -spec authorized_release(knm_phone_number()) -> knm_phone_number().
 authorized_release(PN) ->
-    Routines = [{fun set_features/2, ?DEFAULT_FEATURES}
-               ,{fun set_doc/2, kz_json:private_fields(doc(PN))}
+    Routines = [fun reset_features/1
+               ,fun reset_doc/1
                ,{fun set_assigned_to/2, undefined}
                ,{fun set_state/2, knm_config:released_state()}
                ],
@@ -514,7 +513,7 @@ from_json(JObj) ->
     PN.
 
 maybe_migrate_features(PN, undefined) ->
-    set_features(PN, ?DEFAULT_FEATURES);
+    reset_features(PN);
 maybe_migrate_features(PN, FeaturesList)
   when is_list(FeaturesList) ->
     Features1 = migrate_features(FeaturesList, doc(PN)),
@@ -860,6 +859,15 @@ set_feature(PN0, Feature=?NE_BINARY, Data) ->
         andalso lager:debug("setting ~s feature ~s: ~s", [number(PN), Feature, kz_json:encode(Data)]),
     PN.
 
+-spec reset_features(knm_phone_number()) -> knm_phone_number().
+reset_features(PN=#knm_phone_number{module_name = ?CARRIER_LOCAL}) ->
+    Features = kz_json:set_value(?FEATURE_LOCAL, local_feature(PN), ?DEFAULT_FEATURES),
+    set_features(PN, Features);
+reset_features(PN=#knm_phone_number{module_name = ?CARRIER_MDN}) ->
+    Features = kz_json:set_value(?FEATURE_LOCAL, local_feature(PN), ?DEFAULT_FEATURES),
+    set_features(PN, Features);
+reset_features(PN) ->
+    set_features(PN, ?DEFAULT_FEATURES).
 
 -spec set_features_allowed(knm_phone_number(), ne_binaries()) -> knm_phone_number().
 set_features_allowed(PN=#knm_phone_number{features_allowed = undefined}, Features) ->
@@ -1275,6 +1283,10 @@ reset_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
         false -> ?DIRTY(PN#knm_phone_number{doc = JObj})
     end.
 
+-spec reset_doc(knm_phone_number()) -> knm_phone_number().
+reset_doc(PN) ->
+    reset_doc(PN, kz_json:new()).
+
 doc_from_public_fields(JObj) ->
     maybe_rename_public_features(
       sanitize_public_fields(JObj)).
@@ -1445,7 +1457,7 @@ sanitize_public_fields(JObj) ->
     kz_json:delete_keys(Keys, kz_json:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
