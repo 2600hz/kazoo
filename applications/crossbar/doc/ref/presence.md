@@ -46,6 +46,36 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/presence/terminated
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/terminated
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/presence/early
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/early
+```
+
+#### Change
+
+> POST /v2/accounts/{ACCOUNT_ID}/presence/confirmed
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/confirmed
+```
+
 #### Fetch
 
 > GET /v2/accounts/{ACCOUNT_ID}/presence/report-{REPORT_ID}

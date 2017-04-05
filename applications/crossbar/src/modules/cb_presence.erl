@@ -37,6 +37,13 @@
 -define(MATCH_REPORT_PREFIX(ReportId), <<?REPORT_PREFIX, ReportId/binary>>).
 -define(MATCH_REPORT_PREFIX, <<?REPORT_PREFIX, _ReportId/binary>>).
 
+-define(MANUAL_PRESENCE_DOC, <<"manual_presence">>).
+
+-define(CONFIRMED, <<"confirmed">>).
+-define(EARLY, <<"early">>).
+-define(TERMINATED, <<"terminated">>).
+-define(PRESENCE_STATES, [?CONFIRMED, ?EARLY, ?TERMINATED]).
+
 -type search_result() :: {'ok', kz_json:object()} | {'error', any()}.
 
 %%%===================================================================
@@ -92,8 +99,10 @@ authorize(_Context, _Nouns, _Verb) -> 'false'.
 -spec allowed_methods(path_token()) -> http_methods().
 allowed_methods() ->
     [?HTTP_GET, ?HTTP_POST].
-allowed_methods(?MATCH_REPORT_PREFIX) ->
-    [?HTTP_GET];
+allowed_methods(?MATCH_REPORT_PREFIX) -> [?HTTP_GET];
+allowed_methods(?CONFIRMED) -> [?HTTP_POST];
+allowed_methods(?EARLY) -> [?HTTP_POST];
+allowed_methods(?TERMINATED) -> [?HTTP_POST];
 allowed_methods(_Extension) ->
     [?HTTP_GET, ?HTTP_POST].
 
@@ -148,15 +157,18 @@ validate(Context) ->
 
 validate(Context, ?MATCH_REPORT_PREFIX(Report)) ->
     load_report(Context, Report);
-validate(Context, Extension) ->
-    search_detail(Context, Extension).
+validate(Context, StateOrExtension) ->
+    case lists:member(StateOrExtension, ?PRESENCE_STATES) of
+        'true' -> validate_presence_thing(Context, fun(C) -> C end);
+        'false' -> search_detail(Context, StateOrExtension)
+    end.
 
 -spec validate_thing(cb_context:context(), http_method()) ->
                             cb_context:context().
 validate_thing(Context, ?HTTP_GET) ->
     search_summary(Context);
 validate_thing(Context, ?HTTP_POST) ->
-    validate_thing_reset(Context, cb_context:req_nouns(Context)).
+    validate_presence_thing(Context, fun validate_is_reset_request/1).
 
 -spec search_summary(cb_context:context()) -> cb_context:context().
 search_summary(Context) ->
@@ -232,33 +244,41 @@ process_responses(JObjs, SearchType, Timeout) ->
 extract_subscriptions(JObjs, Fun) ->
     lists:foldl(fun(JObj, Acc) -> Fun(kz_api:remove_defaults(JObj), Acc) end, kz_json:new(), JObjs).
 
--spec validate_thing_reset(cb_context:context(), req_nouns()) ->
-                                  cb_context:context().
-validate_thing_reset(Context, [{<<"presence">>, []}
-                              ,{<<"devices">>, [DeviceId]}
-                              ,{<<"accounts">>, [_AccountId]}
-                              ]) ->
-    maybe_load_thing(Context, DeviceId);
-validate_thing_reset(Context, [{<<"presence">>, []}
-                              ,{<<"users">>, [UserId]}
-                              ,{<<"accounts">>, [_AccountId]}
-                              ]) ->
-    case is_reset_request(Context) of
-        'true' -> validate_user_reset(Context, UserId);
-        'false' -> reset_validation_error(Context)
-    end;
-validate_thing_reset(Context, _ReqNouns) ->
+-type on_success_fun() :: fun((cb_context:context()) -> cb_context:context()).
+
+-spec validate_presence_thing(cb_context:context(), on_success_fun()) -> cb_context:context().
+validate_presence_thing(Context, OnSuccess) ->
+    validate_presence_thing(Context, OnSuccess, cb_context:req_nouns(Context)).
+validate_presence_thing(Context, OnSuccess, [{<<"presence">>, _}
+                                            ,{<<"devices">>, [DeviceId]}
+                                            ,{<<"accounts">>, [_AccountId]}
+                                            ]) ->
+    execute_on_success(load_device(Context, DeviceId), OnSuccess);
+validate_presence_thing(Context, OnSuccess, [{<<"presence">>, _}
+                                            ,{<<"users">>, [UserId]}
+                                            ,{<<"accounts">>, [_AccountId]}
+                                            ]) ->
+    execute_on_success(load_presence_for_user(Context, UserId), OnSuccess);
+validate_presence_thing(Context, _OnSuccess, _ReqNouns) ->
     crossbar_util:response_faulty_request(Context).
 
--spec validate_user_reset(cb_context:context(), ne_binary()) -> cb_context:context().
-validate_user_reset(Context, UserId) ->
-    Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
-    case cb_context:resp_status(Context1) of
-        'success' ->
-            maybe_load_user_devices(Context1);
-        _Status ->
-            Context
+-spec execute_on_success(cb_context:context(), on_success_fun()) -> cb_context:context().
+execute_on_success(Context, OnSuccess) ->
+    case cb_context:resp_status(Context) of
+        'success' -> OnSuccess(Context);
+        _ -> Context
     end.
+
+-spec load_device(cb_context:context(), ne_binary()) -> cb_context:context().
+load_device(Context, ThingId) ->
+    %% validating device
+    crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())).
+
+-spec load_presence_for_user(cb_context:context(), ne_binary()) -> cb_context:context().
+load_presence_for_user(Context, UserId) ->
+    %% load the user_doc if it has a presence_id set, otherwise load all the user's devices
+    Context1 = crossbar_doc:load(UserId, Context, ?TYPE_CHECK_OPTION(kzd_user:type())),
+    execute_on_success(Context1, fun maybe_load_user_devices/1).
 
 -spec maybe_load_user_devices(cb_context:context()) -> cb_context:context().
 maybe_load_user_devices(Context) ->
@@ -274,18 +294,12 @@ load_user_devices(Context) ->
     Devices = kzd_user:devices(User),
     cb_context:set_doc(Context, Devices).
 
--spec maybe_load_thing(cb_context:context(), ne_binary()) -> cb_context:context().
-maybe_load_thing(Context, ThingId) ->
-    case is_reset_request(Context) of
-        'true' -> crossbar_doc:load(ThingId, Context, ?TYPE_CHECK_OPTION(kz_device:type())); %%validating device
-        'false' ->
-            lager:debug("user failed to include reset=true"),
-            reset_validation_error(Context)
+-spec validate_is_reset_request(cb_context:context()) -> cb_context:context().
+validate_is_reset_request(Context) ->
+    case kz_term:is_true(cb_context:req_value(Context, <<"reset">>)) of
+        'true' -> Context;
+        'false' -> reset_validation_error(Context)
     end.
-
--spec is_reset_request(cb_context:context()) -> boolean().
-is_reset_request(Context) ->
-    kz_term:is_true(cb_context:req_value(Context, <<"reset">>)).
 
 -spec reset_validation_error(cb_context:context()) -> cb_context:context().
 reset_validation_error(Context) ->
@@ -303,40 +317,66 @@ reset_validation_error(Context) ->
 post(Context) ->
     Things = cb_context:doc(Context),
     _ = collect_report(Context, Things),
-    send_reset(Context, Things).
+    send_command(Context, fun publish_presence_reset/2, Things).
 
 -spec post(cb_context:context(), ne_binary()) -> cb_context:context().
-post(Context, Extension) ->
+post(Context, StateOrExtension) ->
+    case lists:member(StateOrExtension, ?PRESENCE_STATES) of
+        'true' -> post_presence_state(Context, StateOrExtension);
+        'false' -> post_extension(Context, StateOrExtension)
+    end.
+
+-spec post_presence_state(cb_context:context(), ne_binary()) -> cb_context:context().
+post_presence_state(Context, State) ->
+    Things = cb_context:doc(Context),
+    send_command(Context, fun(C, Id) -> publish_presence_update(C, Id, State) end, Things).
+
+-spec post_extension(cb_context:context(), ne_binary()) -> cb_context:context().
+post_extension(Context, Extension) ->
     _ = collect_report(Context, Extension),
-    publish_presence_reset(cb_context:account_realm(Context), Extension),
+    publish_presence_reset(Context, Extension),
     crossbar_util:response_202(<<"reset command sent for extension ", Extension/binary>>, Context).
 
--spec send_reset(cb_context:context(), kz_json:object() | kz_json:objects()) ->
-                        cb_context:context().
-send_reset(Context, []) ->
-    lager:debug("nothing to reset"),
-    crossbar_util:response(<<"nothing to reset">>, Context);
-send_reset(Context, [_|_]=Things) ->
-    publish_reset(cb_context:account_realm(Context), Things),
-    crossbar_util:response_202(<<"reset commands sent">>, Context);
-send_reset(Context, Thing) ->
-    send_reset(Context, [Thing]).
+-type presence_command_fun() :: fun((cb_context:context(), api_binary()) -> any()).
 
--spec publish_reset(ne_binary(), kz_json:objects()) -> 'ok'.
-publish_reset(Realm, Things) ->
-    F = fun (Thing) -> publish_presence_reset(Realm, find_presence_id(Thing)) end,
-    lists:foreach(F, Things).
+-spec send_command(cb_context:context(), presence_command_fun(), kz_json:object() | kz_json:objects()) ->
+                          cb_context:context().
+send_command(Context, _CommandFun, []) ->
+    lager:debug("nothing to send command to"),
+    crossbar_util:response(<<"nothing to send command to">>, Context);
+send_command(Context, CommandFun, [_|_]=Things) ->
+    lists:foreach(fun(Thing) -> CommandFun(Context, find_presence_id(Thing)) end, Things),
+    crossbar_util:response_202(<<"command sent">>, Context);
+send_command(Context, CommandFun, Thing) ->
+    send_command(Context, CommandFun, [Thing]).
 
--spec publish_presence_reset(ne_binary(), api_binary()) -> 'ok'.
-publish_presence_reset(_Realm, 'undefined') -> 'ok';
-publish_presence_reset(Realm, PresenceId) ->
-    lager:debug("resetting ~s @ ~s", [PresenceId, Realm]),
+-spec publish_presence_reset(cb_context:context(), api_binary()) -> 'ok'.
+publish_presence_reset(_Context, 'undefined') -> 'ok';
+publish_presence_reset(Context, PresenceId) ->
+    Realm = cb_context:account_realm(Context),
+    lager:debug("resetting ~s@~s", [PresenceId, Realm]),
     API = [{<<"Realm">>, Realm}
           ,{<<"Username">>, PresenceId}
           ,{<<"Msg-ID">>, kz_util:get_callid()}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kz_amqp_worker:cast(API, fun kapi_presence:publish_reset/1).
+
+-spec publish_presence_update(cb_context:context(), api_binary(), ne_binary()) -> 'ok'.
+publish_presence_update(_Context, 'undefined', _PresenceState) -> 'ok';
+publish_presence_update(Context, PresenceId, PresenceState) ->
+    Realm = cb_context:account_realm(Context),
+    AccountDb = cb_context:account_db(Context),
+    lager:debug("updating presence for ~s@~s to state ~s", [PresenceId, Realm, PresenceState]),
+    %% persist presence setting
+    {'ok', _} = kz_datamgr:update_doc(AccountDb, ?MANUAL_PRESENCE_DOC, [{PresenceId, PresenceState}]),
+    PresenceString = <<PresenceId/binary, "@", Realm/binary>>,
+    API = [{<<"Presence-ID">>, PresenceString}
+          ,{<<"Call-ID">>, kz_term:to_hex_binary(crypto:hash('md5', PresenceString))}
+          ,{<<"State">>, PresenceState}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    kz_amqp_worker:cast(API, fun kapi_presence:publish_update/1).
 
 -spec find_presence_id(kz_json:object()) -> api_binary().
 find_presence_id(JObj) ->

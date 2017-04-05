@@ -87,7 +87,6 @@ curl -v -X POST \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
 
-
 #### Devices
 
 This API will use the `presence_id' of the device, if present; otherwise it will use the SIP username of the device.
@@ -95,6 +94,10 @@ This API will use the `presence_id' of the device, if present; otherwise it will
 ##### POST to reset presence state
 
     curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"reset":true}}'
+
+##### POST to update presence state
+
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence/{STATE}
 
 #### Users
 
@@ -104,3 +107,6 @@ This API will use the `presence_id` of the user is applicable; otherwise it will
 
     curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"reset":true}}'
 
+##### POST to update presence state
+
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence/{STATE}
