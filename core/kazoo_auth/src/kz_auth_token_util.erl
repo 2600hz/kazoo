@@ -80,7 +80,7 @@ create_claims(#{user_doc := Doc, profile := Profile}=Token) ->
     end;
 create_claims(#{}=Token) -> Token.
 
--type claim_map_input() :: map() | kz_json:object() | kz_json:objects().
+-type claim_map_input() :: map() | kz_json:objects().
 
 -spec build_claims(kz_proplist(), claim_map_input()) -> kz_proplist().
 build_claims(ClaimsMap, BuildFrom) ->
@@ -99,11 +99,6 @@ build_claims([{K1, K2} | KVs], JObjs, Claims)
     case kz_json:find(K1, JObjs) of
         'undefined' -> build_claims(KVs, JObjs, Claims);
         V -> build_claims(KVs, JObjs, [{K2, V} | Claims])
-    end;
-build_claims([{K1, K2} | KVs], JObj, Claims) ->
-    case kz_json:get_value(K1, JObj) of
-        'undefined' -> build_claims(KVs, JObj, Claims);
-        V -> build_claims(KVs, JObj, [{K2, V} | Claims])
     end.
 
 -spec id_token(map()) -> map().
