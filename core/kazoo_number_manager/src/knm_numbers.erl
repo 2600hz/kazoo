@@ -322,7 +322,7 @@ move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = [{'assign_to', MoveTo} | Options0],
+    Options = [{assign_to, MoveTo} | Options0],
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
     Updates = knm_number_options:to_phone_number_setters(Options0),
     TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
