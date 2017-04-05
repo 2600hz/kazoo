@@ -544,28 +544,28 @@ release(Num, Options) ->
     case get(Num, Options) of
         {'error', _R}=E -> E;
         {'ok', Number} ->
-            attempt(fun release_number/2, [Number, Options])
+            attempt(fun release_number/1, [Number])
     end.
 
--spec release_number(knm_number(), knm_number_options:options()) -> knm_number_return().
-release_number(Number, Options) ->
+-spec release_number(knm_number()) -> knm_number_return().
+release_number(Number) ->
     Routines = [fun knm_phone_number:release/1
                ],
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     N1 = knm_providers:delete(set_phone_number(Number, PhoneNumber)),
-    N2 = unwind_or_disconnect(N1, Options),
+    N2 = unwind_or_disconnect(N1),
     NewPN = phone_number(N2),
     case ?NUMBER_STATE_DELETED =:= knm_phone_number:state(NewPN) of
         true -> {ok, N2};
         false -> save_wrap_phone_number(NewPN, N2)
     end.
 
--spec unwind_or_disconnect(knm_number(), knm_number_options:options()) -> knm_number().
-unwind_or_disconnect(Number, Options) ->
+-spec unwind_or_disconnect(knm_number()) -> knm_number().
+unwind_or_disconnect(Number) ->
     PhoneNumber = knm_phone_number:unwind_reserve_history(phone_number(Number)),
     N = set_phone_number(Number, PhoneNumber),
     case knm_phone_number:reserve_history(PhoneNumber) of
-        [] -> disconnect(N, Options);
+        [] -> disconnect(N);
         History -> unwind(N, History)
     end.
 
@@ -577,11 +577,10 @@ unwind(Number, [NewAssignedTo|_]) ->
     {'ok', PhoneNumber} = knm_phone_number:setters(phone_number(Number), Routines),
     set_phone_number(Number, PhoneNumber).
 
--spec disconnect(knm_number(), knm_number_options:options()) -> knm_number().
-disconnect(Number, Options) ->
+-spec disconnect(knm_number()) -> knm_number().
+disconnect(Number) ->
     ModuleName = knm_phone_number:module_name(phone_number(Number)),
-    ShouldDelete = knm_config:should_permanently_delete(
-                     knm_number_options:should_delete(Options))
+    ShouldDelete = knm_config:should_permanently_delete()
         orelse ?CARRIER_LOCAL =:= ModuleName
         orelse ?CARRIER_MDN =:= ModuleName,
     try knm_carriers:disconnect(Number) of

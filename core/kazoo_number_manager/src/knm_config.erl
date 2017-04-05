@@ -1,6 +1,6 @@
 -module(knm_config).
 
--export([should_permanently_delete/0, should_permanently_delete/1
+-export([should_permanently_delete/0
         ,released_state/0
         ,locality_url/0
         ,should_age/0
@@ -16,14 +16,11 @@
 
 -spec should_age() -> boolean().
 should_age() ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_age">>, 'false').
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_age">>, false).
 
 -spec should_permanently_delete() -> boolean().
--spec should_permanently_delete(boolean()) -> boolean().
 should_permanently_delete() ->
-    should_permanently_delete('false').
-should_permanently_delete(Default) ->
-    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, Default).
+    kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"should_permanently_delete">>, false).
 
 -spec released_state() -> ne_binary().
 released_state() ->

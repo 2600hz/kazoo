@@ -83,12 +83,3 @@ release_with_history_test_() ->
      ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
     ].
-
-release_for_hard_delete_test_() ->
-    {ok, N} = knm_number:release(?TEST_IN_SERVICE_NUM, [{'should_delete', 'true'}]),
-    PN = knm_number:phone_number(N),
-    [?_assert(knm_phone_number:is_dirty(PN))
-    ,{"verify number state is moved to DELETED"
-     ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
-     }
-    ].
