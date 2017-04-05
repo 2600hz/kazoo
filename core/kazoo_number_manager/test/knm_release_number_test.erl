@@ -13,7 +13,7 @@
 
 release_unknown_number_test_() ->
     [{"verfiy missing numbers return errors"
-     ,?_assertMatch({'error', 'not_found'}, knm_number:release(?TEST_CREATE_NUM))
+     ,?_assertMatch({error, not_found}, knm_number:release(?TEST_CREATE_NUM))
      }
     ].
 
@@ -68,9 +68,16 @@ release_in_service_mdn_number_test_() ->
     ].
 
 release_in_service_number_test_() ->
-    {ok, N} = knm_number:release(?TEST_IN_SERVICE_NUM),
+    Num = ?TEST_IN_SERVICE_NUM,
+    {ok, N0} = knm_number:get(Num),
+    PN0 = knm_number:phone_number(N0),
+    {ok, N} = knm_number:release(Num),
     PN = knm_number:phone_number(N),
-    [?_assert(knm_phone_number:is_dirty(PN))
+    [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN0))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))
+    ,?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
@@ -80,12 +87,20 @@ release_in_service_number_test_() ->
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN))
     ].
 
 release_with_history_test_() ->
-    {ok, N} = knm_number:release(?TEST_IN_SERVICE_WITH_HISTORY_NUM),
+    Num = ?TEST_IN_SERVICE_WITH_HISTORY_NUM,
+    {ok, N0} = knm_number:get(Num),
+    PN0 = knm_number:phone_number(N0),
+    {ok, N} = knm_number:release(Num),
     PN = knm_number:phone_number(N),
-    [?_assert(knm_phone_number:is_dirty(PN))
+    [?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN0))
+    ,?_assertEqual([?RESELLER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID], knm_phone_number:reserve_history(PN0))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN0))
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN0))
+    ,?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is moved to RESERVED"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN))
      }
@@ -95,4 +110,5 @@ release_with_history_test_() ->
     ,{"verify number is assigned to prev account"
      ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:assigned_to(PN))
      }
+    ,?_assertEqual([?FEATURE_LOCAL], knm_phone_number:features_list(PN))
     ].
