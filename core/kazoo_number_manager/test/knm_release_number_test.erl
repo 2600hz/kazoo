@@ -25,6 +25,9 @@ release_available_number_test_() ->
     ,{"Verify releasing available local number results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
+    ,{"verify number assignment"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
+     }
     ,{"Verify error code for releasing available number"
      ,?_assertEqual(400, knm_errors:code(Error))
      }
@@ -56,7 +59,7 @@ release_in_service_mdn_number_test_() ->
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
     ,{"verify number assignment"
-     ,?_assertNotEqual(undefined, knm_phone_number:state(PN))
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
@@ -72,7 +75,7 @@ release_in_service_number_test_() ->
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
     ,{"verify number assignment"
-     ,?_assertNotEqual(undefined, knm_phone_number:state(PN))
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
@@ -102,6 +105,6 @@ release_for_hard_delete_test_() ->
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
     ,{"verify number assignment"
-     ,?_assertNotEqual(undefined, knm_phone_number:state(PN))
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ].
