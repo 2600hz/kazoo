@@ -49,6 +49,11 @@
                     ,{<<"scope">>, <<"scope">>}
                     ]).
 
+-define(JWT_MAP_CLAIMS, [{access_token, <<"auth_app_token">>}
+                        ,{token_type, <<"auth_app_token_type">>}
+                        ,{id_token, <<"auth_app_id_token">>}
+                        ]).
+
 -type mfa_errors() :: 'no_provider' |
                       'unauthorized' |
                       ne_binary().
