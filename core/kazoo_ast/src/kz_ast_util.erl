@@ -84,11 +84,14 @@ format_name_part(Part) ->
 
 -spec schema_path(binary()) -> file:filename_all().
 schema_path(Base) ->
-    filename:join([code:priv_dir('crossbar')
-                  ,<<"couchdb">>
-                  ,<<"schemas">>
-                  ,Base
-                  ]).
+    case filename:join([code:priv_dir('crossbar')
+                       ,<<"couchdb">>
+                       ,<<"schemas">>
+                       ,Base
+                       ]) of
+        <<"/", _/binary>> = Path -> Path;
+        Path -> <<"./", Path/binary>>
+    end.
 
 -spec api_path(binary()) -> file:filename_all().
 api_path(Base) ->

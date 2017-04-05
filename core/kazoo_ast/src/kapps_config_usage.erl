@@ -26,17 +26,29 @@ to_schema_docs(Schemas) ->
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
     maybe_update_account_schema(Name, AutoGenSchema),
-    Path = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
-    JObj = static_fields(Name, remove_source(AutoGenSchema)),
-    'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj))).
+    SchemaPath = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+
+    GeneratedJObj = filter_system(static_fields(Name, remove_source(AutoGenSchema))),
+    ExistingJObj = existing_schema(SchemaPath),
+    MergedJObj = kz_json:merge(ExistingJObj, GeneratedJObj),
+    'ok' = file:write_file(SchemaPath, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
+
+-spec existing_schema(file:filename_all()) -> kz_json:object().
+existing_schema(Name) ->
+    case kz_json_schema:fload(Name) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> io:format("failed to find ~s: ~p~n", [Name, _E]), kz_json:new()
+    end.
 
 maybe_update_account_schema(Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
     case account_properties(AutoGenSchema) of
-        ?JSON_WRAPPER([]) -> 'ok';
+        ?EMPTY_JSON_OBJECT -> 'ok';
         Properties ->
-            JObj = static_account_fields(Name, remove_source(Properties)),
-            'ok' = file:write_file(Path, kz_json:encode(filter_system(JObj)))
+            GeneratedJObj = filter_system(static_account_fields(Name, remove_source(Properties))),
+            ExistingJObj = existing_schema(Path),
+            MergedJObj = kz_json:merge(ExistingJObj, GeneratedJObj),
+            'ok' = file:write_file(Path, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj)))
     end.
 
 -spec account_properties(kz_json:object()) -> kz_json:object().
@@ -55,15 +67,15 @@ account_properties(JObj0) ->
        )
      ).
 
-remove_source(JObj0) ->
-    kz_json:expand(
-      kz_json:from_list(
-        [KV
-         || {K, _}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
-            not lists:member(?SOURCE, K)
-        ]
-       )
-     ).
+-spec remove_source(kz_json:object()) -> kz_json:object().
+remove_source(JObj) ->
+    Filtered = kz_json:filter(fun filter_no_source/1
+                             ,kz_json:flatten(JObj)
+                             ),
+    kz_json:expand(Filtered).
+
+-spec filter_no_source({kz_json:path(), any()}) -> boolean().
+filter_no_source({K, _}) -> not lists:member(?SOURCE, K).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
