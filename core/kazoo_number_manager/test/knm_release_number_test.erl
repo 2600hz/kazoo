@@ -13,7 +13,7 @@
 
 release_unknown_number_test_() ->
     [{"verfiy missing numbers return errors"
-     ,?_assertMatch({'error', 'not_found'}, knm_number:release(?TEST_CREATE_NUM))
+     ,?_assertMatch({error, not_found}, knm_number:release(?TEST_CREATE_NUM))
      }
     ].
 
@@ -24,6 +24,9 @@ release_available_number_test_() ->
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"Verify releasing available local number results in deletion"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
+     }
+    ,{"verify number assignment"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify error code for releasing available number"
      ,?_assertEqual(400, knm_errors:code(Error))
@@ -40,6 +43,9 @@ release_in_service_bad_carrier_number_test_() ->
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN))
      }
+    ,{"verify number assignment"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
+     }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
@@ -52,9 +58,13 @@ release_in_service_mdn_number_test_() ->
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
      }
+    ,{"verify number assignment"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
+     }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
+    ,?_assertEqual(?CARRIER_MDN, knm_phone_number:module_name(PN))
     ].
 
 release_in_service_number_test_() ->
@@ -63,6 +73,9 @@ release_in_service_number_test_() ->
     [?_assert(knm_phone_number:is_dirty(PN))
     ,{"verify number state is changed"
      ,?_assertEqual(?NUMBER_STATE_DELETED, knm_phone_number:state(PN))
+     }
+    ,{"verify number assignment"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"verify reserve history is empty now"
      ,?_assertEqual([], knm_phone_number:reserve_history(PN))
