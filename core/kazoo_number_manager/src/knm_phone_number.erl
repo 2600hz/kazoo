@@ -509,12 +509,13 @@ delete(T=#{todo := PNs, options := Options}) ->
             knm_numbers:pipe(T, [fun log_permanent_deletion/1
                                 ,fun try_delete_account_doc/1
                                 ,fun try_delete_number_doc/1
+                                ,fun unassign_from_prev/1
                                 ,fun set_state_deleted/1
                                 ])
     end.
 
 log_permanent_deletion(T=#{todo := PNs}) ->
-    F = fun (_PN) -> lager:debug("deleting permanently ~s", [number(_PN)]) end,
+    F = fun (_PN) -> ?LOG_DEBUG("deleting permanently ~s", [number(_PN)]) end,
     lists:foreach(F, PNs),
     knm_numbers:ok(PNs, T).
 
@@ -1140,11 +1141,16 @@ add_reserve_history(?MATCH_ACCOUNT_RAW(AccountId)
 unwind_reserve_history(T=#{todo := PNs}) ->
     NewPNs = [unwind_reserve_history(PN) || PN <- PNs],
     knm_numbers:ok(NewPNs, T);
-unwind_reserve_history(PN) ->
-    ReserveHistory = reserve_history(PN),
-    case lists:delete(prev_assigned_to(PN), ReserveHistory) of
-        ReserveHistory -> PN;
-        NewReserveHistory -> set_reserve_history(PN, NewReserveHistory)
+unwind_reserve_history(PN0) ->
+    case reserve_history(PN0) of
+        [_AssignedTo, NewAssignedTo | NewReserveHistory] ->
+            PN1 = set_assigned_to(PN0, NewAssignedTo),
+            PN2 = set_reserve_history(PN1, [NewAssignedTo|NewReserveHistory]),
+            set_state(PN2, ?NUMBER_STATE_RESERVED);
+        _ ->
+            PN1 = set_assigned_to(PN0, undefined),
+            PN2 = set_reserve_history(PN1, []),
+            set_state(PN2, knm_config:released_state())
     end.
 
 %%--------------------------------------------------------------------
@@ -1625,15 +1631,15 @@ assign(T0) ->
 %%--------------------------------------------------------------------
 -spec unassign_from_prev(knm_numbers:collection()) -> knm_numbers:collection().
 unassign_from_prev(T0) ->
+    ?LOG_DEBUG("unassign_from_prev"),
     try_delete_from(fun split_by_prevassignedto/1, T0).
 
 try_delete_number_doc(T0) ->
+    ?LOG_DEBUG("try_delete_number_doc"),
     try_delete_from(fun split_by_numberdb/1, T0).
 
 try_delete_account_doc(T0) ->
-    [lager:debug(">>>> ~s ~s ~s ~s", [knm_phone_number:number(PN), knm_phone_number:state(PN), knm_phone_number:assigned_to(PN), knm_phone_number:prev_assigned_to(PN)])
-     || PN <- maps:get(todo, T0)
-    ],
+    ?LOG_DEBUG("try_delete_account_doc"),
     try_delete_from(fun split_by_assignedto/1, T0).
 
 try_delete_from(SplitBy, T0) ->

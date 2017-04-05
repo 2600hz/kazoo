@@ -383,7 +383,6 @@ release(Nums, Options) ->
              ,fun knm_number:new/1
              ,fun knm_providers:delete/1
              ,fun unwind_or_disconnect/1
-             ,fun unassign_available/1
              ,fun save_phone_numbers/1
              ])).
 
@@ -660,12 +659,6 @@ take_not_founds(T=#{ko := KOs}) ->
     Nums = [Num || {Num,not_found} <- NumsNotFound],
     {T#{ko := maps:from_list(NewKOs)}, Nums}.
 
-take_available(T=#{todo := Ns}) ->
-    {NsAvailable, OtherNs} = lists:partition(fun is_state_available/1, Ns),
-    T0 = T#{todo => []},
-    %% kos shall be merge later on anyway
-    {T0#{ok => NsAvailable}, T0#{ok => OtherNs}}.
-
 -spec maybe_create(ne_binaries(), t_pn()) -> t_pn().
 maybe_create(NotFounds, T) ->
     Ta = do(fun knm_number:ensure_can_create/1, new(options(T), NotFounds)),
@@ -781,45 +774,23 @@ authorize_release(PN) ->
         true ->
             Routines = [fun knm_phone_number:reset_features/1
                        ,fun knm_phone_number:reset_doc/1
-                       ,{fun knm_phone_number:set_state/2, knm_config:released_state()}
                        ],
             {ok, NewPN} = knm_phone_number:setters(PN, Routines),
             NewPN
     end.
 
-unassign_available(T0) ->
-    {ToUnassign, Ta} = take_available(T0),
-    Unassign = [{fun knm_phone_number:set_assigned_to/2, undefined}],
-    Tb = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Unassign) end, ToUnassign),
-    merge_okkos(Ta, Tb).
-
 unwind_or_disconnect(T) ->
-    [lager:debug(">>>> ~s ~s ~s ~s", [knm_phone_number:number(PN), knm_phone_number:state(PN), knm_phone_number:assigned_to(PN), knm_phone_number:prev_assigned_to(PN)])
-     || N <- maps:get(todo, T),
-        PN <- [knm_number:phone_number(N)]
-    ],
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
-    [lager:debug(">>>> ~s ~s ~s ~s", [knm_phone_number:number(PN), knm_phone_number:state(PN), knm_phone_number:assigned_to(PN), knm_phone_number:prev_assigned_to(PN)])
-     || N <- Ns,
-        PN <- [knm_number:phone_number(N)]
-    ],
-    {ToDisconnect, ToUnwind} = lists:partition(fun is_history_empty/1, Ns),
-    Ta = do_in_wrap(fun unwind/1, ok(ToUnwind, T0)),
+    {ToDisconnect, DontDisconnect} = lists:partition(fun should_disconnect/1, Ns),
+    Ta = ok(DontDisconnect, T0),
     Tb = pipe(ok(ToDisconnect, T0)
              ,[fun knm_carriers:disconnect/1
               ,fun delete_maybe_age/1
               ]),
     merge_okkos(Ta, Tb).
 
-unwind(T0=#{todo := PNs}) ->
-    BaseRoutines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}],
-    F = fun (PN, T) ->
-                [NewAssignedTo|_] = knm_phone_number:reserve_history(PN),
-                Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo} | BaseRoutines],
-                {ok, NewPN} = knm_phone_number:setters(PN, Routines),
-                ok(NewPN, T)
-        end,
-    lists:foldl(F, T0, PNs).
+should_disconnect(N) ->
+    undefined =:= knm_phone_number:assigned_to(knm_number:phone_number(N)).
 
 delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
     case knm_config:should_permanently_delete(
@@ -837,6 +808,12 @@ delete_permanently(T) ->
 split_on(Pred, T=#{todo := Ns}) ->
     {Yes, No} = lists:partition(Pred, Ns),
     {T#{todo => Yes}, T#{todo => No}}.
+
+%% take_available(T=#{todo := Ns}) ->
+%%     {NsAvailable, OtherNs} = lists:partition(fun is_state_available/1, Ns),
+%%     T0 = T#{todo => []},
+%%     %% kos shall be merge later on anyway
+%%     {T0#{ok => NsAvailable}, T0#{ok => OtherNs}}.
 
 is_carrier_local_or_mdn(N) ->
     Carrier = knm_phone_number:module_name(knm_number:phone_number(N)),
@@ -856,9 +833,6 @@ maybe_age(T=#{todo := Ns}) ->
                    ,options(NewOptions, T#{todo => Yes})),
             merge_okkos(Ta, Tb)
     end.
-
-is_history_empty(N) ->
-    [] =:= knm_phone_number:reserve_history(knm_number:phone_number(N)).
 
 is_state_available(N) ->
     ?NUMBER_STATE_AVAILABLE =:= knm_phone_number:state(knm_number:phone_number(N)).
