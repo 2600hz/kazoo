@@ -44,3 +44,6 @@ move_changing_public_fields_test_() ->
      ,?_assertEqual(undefined, public_value(<<"a">>, N0))
      }
     ].
+
+public_value(Key, N) ->
+    kz_json:get_value(Key, knm_number:to_public_json(N)).
