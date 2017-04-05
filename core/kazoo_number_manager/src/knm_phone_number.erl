@@ -1551,7 +1551,7 @@ unassign_from_prev(PN, PrevAssignedTo) ->
 -spec do_unassign_from_prev(knm_phone_number(), ne_binary()) -> knm_phone_number().
 do_unassign_from_prev(PN, PrevAssignedTo) ->
     PrevAccountDb = kz_util:format_account_db(PrevAssignedTo),
-    case kz_datamgr:del_doc(PrevAccountDb, to_json(PN)) of
+    case kz_datamgr:del_doc(PrevAccountDb, kz_doc:id(to_json(PN))) of
         {'ok', _} ->
             lager:debug("successfully unassign_from_prev number ~s from ~s"
                        ,[number(PN), PrevAssignedTo]),
@@ -1603,7 +1603,7 @@ maybe_remove_number_from_account(PN) ->
             lager:debug("assigned_to is empty for ~s, ignoring", [Num]),
             {'ok', PN};
         'false' ->
-            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), to_json(PN)) of
+            case kz_datamgr:del_doc(kz_util:format_account_db(AssignedTo), kz_doc:id(to_json(PN))) of
                 {'error', _R}=E -> E;
                 {'ok', _} -> {'ok', PN}
             end
