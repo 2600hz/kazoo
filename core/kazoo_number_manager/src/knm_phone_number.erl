@@ -1007,6 +1007,12 @@ set_feature(PN0, Feature=?NE_BINARY, Data) ->
     PN.
 
 -spec reset_features(knm_phone_number()) -> knm_phone_number().
+reset_features(PN=#knm_phone_number{module_name = ?CARRIER_LOCAL}) ->
+    Features = kz_json:set_value(?FEATURE_LOCAL, local_feature(PN), ?DEFAULT_FEATURES),
+    set_features(PN, Features);
+reset_features(PN=#knm_phone_number{module_name = ?CARRIER_MDN}) ->
+    Features = kz_json:set_value(?FEATURE_LOCAL, local_feature(PN), ?DEFAULT_FEATURES),
+    set_features(PN, Features);
 reset_features(PN) ->
     set_features(PN, ?DEFAULT_FEATURES).
 
