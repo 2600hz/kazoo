@@ -763,7 +763,7 @@ can_release(T0=#{todo := PNs}) ->
                     false ->
                         {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
                         Reason = knm_errors:to_json(A, B, C),
-                        knm_numbers:ko(knm_phone_number:number(PN), Reason, T)
+                        ko(knm_phone_number:number(PN), Reason, T)
                 end
         end,
     lists:foldl(F, T0, PNs).
