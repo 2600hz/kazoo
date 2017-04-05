@@ -330,8 +330,8 @@ account_id(Context) ->
              ,Master
              ],
     AccountId = hd(lists:filter(fun(undefined) -> false;
-                       (_Id) -> true
-                    end, Source)),
+                                   (_Id) -> true
+                                end, Source)),
     case kz_services:is_reseller(AccountId)
         orelse AccountId =:= Master
     of
