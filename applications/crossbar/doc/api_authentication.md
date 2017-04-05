@@ -17,7 +17,7 @@ curl -v -X GET \
 ```json
 {
    "auth_token":"{AUTH_TOKEN}",
-   "data":{  
+   "data":{
       "api_key":"{API_KEY}"
    },
    "revision":"{REQUEST_ID}",

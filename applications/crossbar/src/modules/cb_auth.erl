@@ -70,11 +70,10 @@ allowed_methods(?APPS_PATH) -> [?HTTP_GET];
 allowed_methods(?KEYS_PATH) -> [?HTTP_GET].
 
 -spec allowed_methods(path_token(), path_token()) -> http_methods().
-allowed_methods(?WHITELABEL_PATH, _Id) -> [?HTTP_GET];
-allowed_methods(?LINKS_PATH, _Id) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
-allowed_methods(?PROVIDERS_PATH, _Id) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
-allowed_methods(?APPS_PATH, _Id) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
-allowed_methods(?KEYS_PATH, _Id) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE].
+allowed_methods(?LINKS_PATH, _LinkId) -> [?HTTP_GET , ?HTTP_PUT , ?HTTP_DELETE];
+allowed_methods(?PROVIDERS_PATH, _ProviderId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
+allowed_methods(?APPS_PATH, _AppId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE];
+allowed_methods(?KEYS_PATH, _KeyId) -> [?HTTP_GET , ?HTTP_POST , ?HTTP_DELETE].
 
 
 %%--------------------------------------------------------------------
@@ -95,11 +94,10 @@ resource_exists(?APPS_PATH) -> 'true';
 resource_exists(?KEYS_PATH) -> 'true'.
 
 -spec resource_exists(path_token(), path_token()) -> boolean().
-resource_exists(?WHITELABEL_PATH, _Id) -> 'true';
-resource_exists(?LINKS_PATH, _Id) -> 'true';
-resource_exists(?PROVIDERS_PATH, _Id) -> 'true';
-resource_exists(?APPS_PATH, _Id) -> 'true';
-resource_exists(?KEYS_PATH, _Id) -> 'true'.
+resource_exists(?LINKS_PATH, _LinkId) -> 'true';
+resource_exists(?PROVIDERS_PATH, _ProviderId) -> 'true';
+resource_exists(?APPS_PATH, _AppId) -> 'true';
+resource_exists(?KEYS_PATH, _KeyId) -> 'true'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -130,7 +128,6 @@ authorize_nouns(_, _, _, _) -> 'false'.
 authorize(Context, PathToken, Id) ->
     authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
-authorize_nouns(_Context, ?WHITELABEL_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?LINKS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?APPS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?PROVIDERS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
@@ -199,8 +196,6 @@ validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
 
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
-validate_path(Context, ?WHITELABEL_PATH, Domain, ?HTTP_GET) ->
-    crossbar_doc:load(Domain, Context, ?TYPE_CHECK_OPTION(<<"app">>));
 
 validate_path(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));

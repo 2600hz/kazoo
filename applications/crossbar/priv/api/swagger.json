@@ -676,7 +676,7 @@
             "additionalProperties": true,
             "description": "callback for authentication providers",
             "properties": {
-                "clientId": {
+                "client_id": {
                     "description": "client id, usually appplication id for oauth providers",
                     "type": "string"
                 },
@@ -688,7 +688,7 @@
                     "description": "provider",
                     "type": "string"
                 },
-                "redirecUri": {
+                "redirect_uri": {
                     "description": "redirect uri",
                     "type": "string"
                 },
@@ -699,9 +699,9 @@
             },
             "required": [
                 "provider",
-                "redirectUri",
-                "clientId",
-                "code"
+                "code",
+                "client_id",
+                "redirect_uri"
             ],
             "type": "object"
         },
@@ -13868,6 +13868,10 @@
             "required": true,
             "type": "string"
         },
+        "key_id": {
+            "$ref": "#/parameters/id",
+            "name": "{KEY_ID}"
+        },
         "language": {
             "in": "path",
             "name": "{LANGUAGE}",
@@ -13883,6 +13887,10 @@
         "ledger_id": {
             "$ref": "#/parameters/id",
             "name": "{LEDGER_ID}"
+        },
+        "link_id": {
+            "$ref": "#/parameters/id",
+            "name": "{LINK_ID}"
         },
         "list_entry_id": {
             "$ref": "#/parameters/id",
@@ -13946,6 +13954,12 @@
         "prompt_id": {
             "in": "path",
             "name": "{PROMPT_ID}",
+            "required": true,
+            "type": "string"
+        },
+        "provider_id": {
+            "in": "path",
+            "name": "{PROVIDER_ID}",
             "required": true,
             "type": "string"
         },
@@ -21982,16 +21996,115 @@
                 ]
             }
         },
+        "/auth/apps": {
+            "get": {}
+        },
+        "/auth/apps/{APP_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/app_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/app_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/app_id"
+                    }
+                ]
+            }
+        },
         "/auth/authorize": {
             "put": {}
         },
         "/auth/callback": {
             "put": {}
         },
+        "/auth/keys": {
+            "get": {}
+        },
+        "/auth/keys/{KEY_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/key_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/key_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/key_id"
+                    }
+                ]
+            }
+        },
         "/auth/links": {
-            "delete": {},
-            "get": {},
-            "post": {}
+            "get": {}
+        },
+        "/auth/links/{LINK_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/link_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/link_id"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/link_id"
+                    }
+                ]
+            }
+        },
+        "/auth/providers": {
+            "get": {}
+        },
+        "/auth/providers/{PROVIDER_ID}": {
+            "delete": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/provider_id"
+                    }
+                ]
+            },
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/provider_id"
+                    }
+                ]
+            },
+            "post": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/provider_id"
+                    }
+                ]
+            }
         },
         "/auth/tokeninfo": {
             "get": {}
