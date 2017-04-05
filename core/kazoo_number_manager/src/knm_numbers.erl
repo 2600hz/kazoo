@@ -794,10 +794,8 @@ unwind_maybe_disconnect(T) ->
 should_disconnect(N) ->
     undefined =:= knm_phone_number:assigned_to(knm_number:phone_number(N)).
 
-delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
-    case knm_config:should_permanently_delete(
-           knm_number_options:should_delete(Options))
-    of
+delete_maybe_age(T=#{todo := _Ns}) ->
+    case knm_config:should_permanently_delete() of
         true -> delete_permanently(T);
         false ->
             {DeleteNs, OtherNs} = split_on(fun is_carrier_local_or_mdn/1, T),
