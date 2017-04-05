@@ -382,7 +382,7 @@ release(Nums, Options) ->
             ,[fun try_release/1
              ,fun knm_number:new/1
              ,fun knm_providers:delete/1
-             ,fun unwind_or_disconnect/1
+             ,fun unwind_maybe_disconnect/1
              ,fun save_phone_numbers/1
              ])).
 
@@ -567,7 +567,7 @@ do(F, T=#{todo := [], ok := OK}) ->
     %% For calls not from pipe/2
     do(F, T#{todo => OK, ok => []});
 do(F, T) ->
-    lager:debug("applying ~p", [F]),
+    ?LOG_DEBUG("applying ~p", [F]),
     NewT = F(T),
     NewT#{todo => []}.
 
@@ -747,39 +747,41 @@ if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
         end,
     lists:foldl(F, T0, Ns).
 
-try_release(T0=#{todo := PNs}) ->
+try_release(T) ->
+    pipe(T
+        ,[fun can_release/1
+         ,fun knm_phone_number:is_authorized/1
+         ,fun reset_features/1
+         ]).
+
+can_release(T0=#{todo := PNs}) ->
+    ToState = knm_config:released_state(),
     F = fun (PN, T) ->
-                case knm_number:attempt(fun try_release/2, [PN, knm_phone_number:state(PN)]) of
-                    {error, Reason} -> ko(knm_phone_number:number(PN), Reason, T);
-                    NewPN -> ok(NewPN, T)
+                FromState = knm_phone_number:state(PN),
+                case can_release(FromState, knm_phone_number:module_name(PN)) of
+                    true -> ok(PN, T);
+                    false ->
+                        {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
+                        Reason = knm_errors:to_json(A, B, C),
+                        knm_numbers:ko(knm_phone_number:number(PN), Reason, T)
                 end
         end,
     lists:foldl(F, T0, PNs).
 
-try_release(PN, ?NUMBER_STATE_RELEASED) -> PN;
-try_release(PN, ?NUMBER_STATE_RESERVED) -> authorize_release(PN);
-try_release(PN, ?NUMBER_STATE_PORT_IN) -> authorize_release(PN);
-try_release(PN, ?NUMBER_STATE_IN_SERVICE) -> authorize_release(PN);
-try_release(PN, FromState) ->
-    case knm_phone_number:module_name(PN) of
-        ?CARRIER_LOCAL -> authorize_release(PN);
-        _ ->
-            To = knm_config:released_state(),
-            knm_errors:invalid_state_transition(PN, FromState, To)
-    end.
+can_release(?NUMBER_STATE_RELEASED, _) -> true;
+can_release(?NUMBER_STATE_RESERVED, _) -> true;
+can_release(?NUMBER_STATE_PORT_IN, _) -> true;
+can_release(?NUMBER_STATE_IN_SERVICE, _) -> true;
+can_release(_, ?CARRIER_LOCAL) -> true;
+can_release(_, _) -> false.
 
-authorize_release(PN) ->
-    case knm_phone_number:is_authorized(PN) of
-        false -> knm_errors:unauthorized();
-        true ->
-            Routines = [fun knm_phone_number:reset_features/1
-                       ,fun knm_phone_number:reset_doc/1
-                       ],
-            {ok, NewPN} = knm_phone_number:setters(PN, Routines),
-            NewPN
-    end.
+reset_features(T) ->
+    Routines = [fun knm_phone_number:reset_features/1
+               ,fun knm_phone_number:reset_doc/1
+               ],
+    knm_phone_number:setters(T, Routines).
 
-unwind_or_disconnect(T) ->
+unwind_maybe_disconnect(T) ->
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
     {ToDisconnect, DontDisconnect} = lists:partition(fun should_disconnect/1, Ns),
     Ta = ok(DontDisconnect, T0),
@@ -809,12 +811,6 @@ split_on(Pred, T=#{todo := Ns}) ->
     {Yes, No} = lists:partition(Pred, Ns),
     {T#{todo => Yes}, T#{todo => No}}.
 
-%% take_available(T=#{todo := Ns}) ->
-%%     {NsAvailable, OtherNs} = lists:partition(fun is_state_available/1, Ns),
-%%     T0 = T#{todo => []},
-%%     %% kos shall be merge later on anyway
-%%     {T0#{ok => NsAvailable}, T0#{ok => OtherNs}}.
-
 is_carrier_local_or_mdn(N) ->
     Carrier = knm_phone_number:module_name(knm_number:phone_number(N)),
     ?CARRIER_LOCAL =:= Carrier
@@ -825,7 +821,6 @@ maybe_age(T=#{todo := Ns}) ->
         false -> ok(Ns, T);
         true ->
             lager:debug("aging for some time"),
-            %% {TYes, Ta} = take_available(Ns),
             {Yes, No} = lists:partition(fun is_state_available/1, Ns),
             Ta = do(fun id/1, T#{todo => No}),
             NewOptions = [{state, ?NUMBER_STATE_AGING} | options(T)],
