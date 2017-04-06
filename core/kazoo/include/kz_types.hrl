@@ -85,7 +85,7 @@
 
 -type kz_proplist_value() :: any().
 -type kz_proplist_values() :: [kz_proplist_value()].
--type kz_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries().
+-type kz_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries() | pid().
 -type kz_proplist_keys() :: [kz_proplist_key(),...].
 -type kz_proplist_kv(K, V) :: [{K, V} | kz_proplist_key(),...] | [].
 -type kz_proplist_k(K) :: kz_proplist_kv(K, kz_proplist_value()).
@@ -297,7 +297,6 @@
 -define(MATCH_PROVISIONER_encoded(Account),
         <<"account%2f", (Account):38/binary, "-provisioner">>
        ).
-
 
 -define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary

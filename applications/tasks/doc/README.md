@@ -1,10 +1,8 @@
-
 # Kazoo Tasks
 
 Run background jobs on Kazoo clusters.
 
 Task inputs are CSV, JSON data or nothing at all & generate a CSV output.
-
 
 ## APIs
 
@@ -27,7 +25,6 @@ A task has to bind to `tasks.Category.help`, `tasks.Category.help.Action` & `tas
 
 Note: `mandatory` & `optional` can both be empty only if `expected_content` is `undefined`.
 Such a task is a *"`noinput` task"*: a task that does not requires CSV input data.
-
 
 ## Writing tasks
 
@@ -97,7 +94,6 @@ Examples of both kinds of tasks can be found in
 * [kt_numbers](../src/modules/kt_numbers.erl)
 * [kt_services](../src/modules/kt_services.erl)
 
-
 ## Task statuses
 
 Once a task has been added it can have one of the following statuses:
@@ -120,3 +116,40 @@ Be careful as a rate too low may corrupt a task's state.
 
 After a task's function (`TaskName`) has been called, the worker will wait a configurable number of milliseconds before proceeding with the next row.
 Set `tasks.wait_after_row_ms` to the pause you want the system to make in between writes to output (default: `500`).
+
+## Headless Tasks
+
+You can create tasks that run periodically (like cronjobs) or that operation on a subset of databases.
+
+There are a number of triggers you can use in your module's `init/0`:
+
+### Triggers
+
+- Cron-like
+    - Minutely
+    - Hourly
+    - Daily
+- Database
+    - Account DBs
+    - Account MODBs
+    - System DBs
+    - Other DBs
+
+You can also combine multiple triggers when binding your module
+
+### `init/0`
+
+A simple example:
+
+```erlang
+init() ->
+    _ = tasks_bindings:bind(?TRIGGER_ALL_DBS, ?MODULE, 'handle_database').
+```
+
+Find the trigger macros in [the tasks header](../src/tasks.hrl). This particular example will bind the module's `handle_database/1` to be run each time a database is processed by the [`kz_tasks_trigger`](../src/kz_tasks_trigger.erl) process.
+
+Cron triggers will need an arity-0 function to callback to; database triggers call an arity-1 function.
+
+### Callback function
+
+All modules bound to a particular trigger will run in serial, so be mindful of that. If your operation is quick, do it directly. If it has the potential to take a while, consider spawning the work so the other modules can get to their business too.

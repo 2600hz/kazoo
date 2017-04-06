@@ -1,8 +1,6 @@
 -module(kazoo_couch).
 -behaviour(kz_data).
 
--include("kz_couch.hrl").
-
 %% Driver callbacks
 -export([new_connection/1
         ,format_error/1
@@ -12,6 +10,8 @@
 -export([server_info/1
         ,server_url/1
         ,get_db/2
+        ,get_admin_dbs/0, get_admin_dbs/1
+        ,get_admin_nodes/0, get_admin_nodes/1
         ,db_url/2
         ]).
 
@@ -49,11 +49,14 @@
 
 %% View-related
 -export([design_info/3
+        ,design_compact/3
         ,all_design_docs/3
         ,get_results/4
         ,get_results_count/4
         ,all_docs/3
         ]).
+
+-include("kz_couch.hrl").
 
 %% Server operations
 -spec new_connection(map()) -> kz_data:connection() |
@@ -69,6 +72,28 @@ format_error(Error) ->
 -spec get_db(kz_data:connection(), ne_binary()) -> any().
 get_db(Server, DbName) ->
     kz_couch_util:get_db(Server, DbName).
+
+-spec get_admin_dbs() -> ne_binary().
+-spec get_admin_dbs(couch_version() | kz_data:connection()) -> ne_binary().
+get_admin_dbs() ->
+    #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
+    get_admin_dbs(Conn).
+
+get_admin_dbs(#server{options=Options}) ->
+    get_admin_dbs(props:get_value('driver_version', Options));
+get_admin_dbs('bigcouch') -> <<"dbs">>;
+get_admin_dbs(_Driver) -> <<"_dbs">>.
+
+-spec get_admin_nodes() -> ne_binary().
+-spec get_admin_nodes(couch_version() | kz_data:connection()) -> ne_binary().
+get_admin_nodes() ->
+    #{server := {_App, #server{}=Conn}} = kzs_plan:plan(),
+    get_admin_nodes(Conn).
+
+get_admin_nodes(#server{options=Options}) ->
+    get_admin_dbs(props:get_value('driver_version', Options));
+get_admin_nodes('bigcouch') -> <<"nodes">>;
+get_admin_nodes(_Driver) -> <<"_nodes">>.
 
 -spec server_url(kz_data:connection()) -> ne_binary().
 server_url(Server) ->
@@ -173,7 +198,9 @@ move_doc(Server, CopySpec, Options) ->
 fetch_attachment(Server, DbName, DocId, AName) ->
     kz_couch_attachments:fetch_attachment(Server, DbName, DocId, AName).
 
--spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) -> any().
+-spec stream_attachment(kz_data:connection(), ne_binary(), ne_binary(), ne_binary(), pid()) ->
+                               {'ok', doc()} |
+                               {'error', any()}.
 stream_attachment(Server, DbName, DocId, AName, Caller) ->
     kz_couch_attachments:stream_attachment(Server, DbName, DocId, AName, Caller).
 
@@ -193,6 +220,10 @@ attachment_url(Server, DbName, DocId, AName, Options) ->
 -spec design_info(kz_data:connection(), ne_binary(), ne_binary()) -> any().
 design_info(Server, DBName, Design) ->
     kz_couch_view:design_info(Server, DBName, Design).
+
+-spec design_compact(kz_data:connection(), ne_binary(), ne_binary()) -> any().
+design_compact(Server, DbName, Design) ->
+    kz_couch_view:design_compact(Server, DbName, Design).
 
 -spec all_design_docs(kz_data:connection(), ne_binary(), kz_data:options()) -> any().
 all_design_docs(#server{}=Server, ?NE_BINARY = DBName, Options) ->

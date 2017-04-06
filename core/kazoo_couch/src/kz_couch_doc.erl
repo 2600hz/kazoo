@@ -40,7 +40,6 @@
 get_db(#server{}=Conn, DbName) ->
     kz_couch_util:get_db(Conn, DbName).
 
-
 %% Document related functions --------------------------------------------------
 
 -spec open_doc(server(), ne_binary(), ne_binary()) ->

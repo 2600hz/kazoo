@@ -33,11 +33,9 @@
                }).
 -type state() :: #state{}.
 
-
 -define(CLEANUP_TIMER
        ,kapps_config:get_integer(?CONFIG_CAT, <<"browse_dbs_interval_s">>, ?SECONDS_IN_DAY)
        ).
-
 
 %%%===================================================================
 %%% API
@@ -94,7 +92,7 @@ handle_call('status', _From, #state{minute_ref = Minute
     Timers = [{'minute', erlang:read_timer(Minute)}
              ,{'hour', erlang:read_timer(Hour)}
              ,{'day', erlang:read_timer(Day)}
-             ,{cleanup, erlang:read_timer(Browse)}
+             ,{'cleanup', erlang:read_timer(Browse)}
              ],
     {'reply', Timers, State};
 
@@ -226,8 +224,9 @@ ref_to_id(Ref) ->
 browse_dbs_for_triggers(Ref) ->
     kz_util:put_callid(<<"cleanup_pass_", (kz_binary:rand_hex(4))/binary>>),
     {'ok', Dbs} = kz_datamgr:db_info(),
+    Shuffled = kz_term:shuffle_list(Dbs),
     lager:debug("starting cleanup pass of databases"),
-    lists:foreach(fun cleanup_pass/1, Dbs),
+    lists:foreach(fun cleanup_pass/1, Shuffled),
     lager:debug("pass completed for ~p", [Ref]),
     gen_server:cast(?SERVER, {'cleanup_finished', Ref}).
 

@@ -15,12 +15,9 @@
 
 -export([start_link/0
         ,init/1
-        ,compactor_pid/0
         ]).
 
-
--define(CHILDREN, [?WORKER('kz_couch_compactor')
-                  ]).
+-define(CHILDREN, []).
 
 %% ===================================================================
 %% API functions
@@ -56,10 +53,3 @@ init([]) ->
     SupFlags = {RestartStrategy, MaxRestarts, MaxSecondsBetweenRestarts},
 
     {'ok', {SupFlags, ?CHILDREN}}.
-
--spec compactor_pid() -> pid() | 'undefined'.
-compactor_pid() ->
-    case [P || {'kz_couch_compactor', P, 'worker', _} <- supervisor:which_children(?MODULE)] of
-        [Pid] -> Pid;
-        [] -> 'undefined'
-    end.
