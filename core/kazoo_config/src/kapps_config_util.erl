@@ -85,10 +85,10 @@ account_schema(Config) when is_binary(Config) ->
 -spec system_config_document_schema(ne_binary()) -> kz_json:object().
 system_config_document_schema(Id) ->
     Flat = [
-            {<<"$schema">>,<<"http://json-schema.org/draft-04/schema#">>}
-           ,{<<"id">>, <<"system_config">>}
+            {[<<"$schema">>],<<"http://json-schema.org/draft-04/schema#">>}
+           ,{[<<"id">>], <<"system_config">>}
            ,{[<<"patternProperties">>, <<".+">>, <<"$ref">>], system_schema_name(Id)}
            ,{[<<"patternProperties">>, <<".+">>, <<"type">>], <<"object">>}
-           ,{<<"type">>, <<"object">>}
+           ,{[<<"type">>], <<"object">>}
            ],
     kz_json:expand(kz_json:from_list(Flat)).
