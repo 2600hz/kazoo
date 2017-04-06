@@ -272,8 +272,10 @@ fetch(NumberDb, NormalizedNum, Options) ->
 -spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {ok, knm_phone_number()}.
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
-    case is_authorized(PN)
-        andalso is_mdn_for_mdn_run(PN, Options)
+    case state(PN) =:= ?NUMBER_STATE_AVAILABLE
+        orelse (is_authorized(PN)
+                andalso is_mdn_for_mdn_run(PN, Options)
+               )
     of
         true -> {ok, PN};
         false -> knm_errors:unauthorized()
