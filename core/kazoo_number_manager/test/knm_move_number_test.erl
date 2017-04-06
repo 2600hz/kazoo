@@ -64,7 +64,18 @@ move_available_non_local_test_() ->
     ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN0))
     ,?_assertEqual([], knm_phone_number:features_list(PN0))
     ]
-        ++ everyone_is_allowed_to_buy_available(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID).
+        ++ everyone_is_allowed_to_buy_available(?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID)
+
+        ++ everyone_is_allowed_to_buy_available(?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID)
+
+        ++ everyone_is_allowed_to_buy_available(?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID)
+        ++ everyone_is_allowed_to_buy_available(?MASTER_ACCOUNT_ID, ?MASTER_ACCOUNT_ID)
+        ++ [].
 
 everyone_is_allowed_to_buy_available(AuthBy, AssignTo) ->
     Num = ?TEST_AVAILABLE_NON_LOCAL_NUM,
