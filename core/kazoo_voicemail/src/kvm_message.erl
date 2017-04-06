@@ -367,7 +367,7 @@ do_copy(AccountId, FromId, ToId, Funs, Loop) ->
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
-            send_system_alert('undefined', AccountId, Subject, Msg),
+            send_system_alert('undefined', AccountId, Subject, kz_term:to_binary(Msg)),
             do_copy(AccountId, FromId, ToId, Funs, 0);
         {'error', _}=Error ->
             lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
