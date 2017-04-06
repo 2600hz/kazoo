@@ -26,7 +26,7 @@
 -define(PVT_TYPE, <<"service">>).
 -define(PVT_FUNS, [fun add_pvt_type/2]).
 -define(CB_LIST, <<"services/crossbar_listing">>).
--define(AUDIT_LOG_LIST, <<"services/audit_logs">>).
+-define(AUDIT_LOG_LIST, <<"services/audit_logs_by_creation">>).
 
 -define(PATH_PLAN, <<"plan">>).
 -define(PATH_AUDIT, <<"audit">>).
@@ -251,19 +251,7 @@ load_audit_logs(Context) ->
 
 -spec normalize_audit_logs(kz_json:object(), kz_json:objects()) -> kz_json:objects().
 normalize_audit_logs(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj) || Acc].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% @end
-%%--------------------------------------------------------------------
--spec pagination_page_size(cb_context:context()) ->pos_integer().
-pagination_page_size(Context) ->
-    case crossbar_doc:pagination_page_size(Context) of
-        'undefined' -> 'undefined';
-        PageSize -> PageSize + 1
-    end.
+    [kz_json:get_value(<<"doc">>, JObj) | Acc].
 
 %%--------------------------------------------------------------------
 %% @private
@@ -274,31 +262,17 @@ pagination_page_size(Context) ->
                                  {'ok', kz_proplist()} |
                                  cb_context:context().
 create_view_options(Context) ->
-    MaxRange = kapps_config:get_integer(?MOD_CONFIG_CAT
-                                       ,<<"maximum_range">>
-                                       ,(?SECONDS_IN_DAY * 31  + ?SECONDS_IN_HOUR)
-                                       ),
-    case cb_modules_util:range_view_options(Context, MaxRange) of
+    AccountId = cb_context:account_id(Context),
+    case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
-            create_view_options(Context, CreatedFrom, CreatedTo);
+            {'ok', [{'startkey', CreatedTo}
+                   ,{'endkey', CreatedFrom}
+                   ,{'databases', lists:reverse(kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo))}
+                   ,'descending'
+                   ,'include_docs'
+                   ]};
         Context1 -> Context1
     end.
-
--spec create_view_options(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
-                                 {'ok', kz_proplist()}.
-create_view_options(Context, CreatedFrom, CreatedTo) ->
-    {'ok', [{'startkey', CreatedTo}
-           ,{'endkey', CreatedFrom}
-           ,{'limit', pagination_page_size(Context)}
-           ,{'databases', ranged_modbs(Context, CreatedFrom, CreatedTo)}
-           ,'descending'
-           ,'include_docs'
-           ]}.
-
--spec ranged_modbs(cb_context:context(), gregorian_seconds(), gregorian_seconds()) ->
-                          ne_binaries().
-ranged_modbs(Context, From, To) ->
-    kazoo_modb:get_range(cb_context:account_id(Context), From, To).
 
 %%--------------------------------------------------------------------
 %% @private
