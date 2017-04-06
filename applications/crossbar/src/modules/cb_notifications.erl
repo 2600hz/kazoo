@@ -11,6 +11,7 @@
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,authorize/1
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/2
         ,content_types_accepted/2
@@ -63,6 +64,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.notifications">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.notifications">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.notifications">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.notifications">>, ?MODULE, 'content_types_accepted'),
@@ -96,6 +98,19 @@ allowed_methods(?SMTP_LOG, _SMTPLogId) ->
     [?HTTP_GET];
 allowed_methods(?CUSTOMER_UPDATE, ?MESSAGE) ->
     [?HTTP_POST].
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+-spec authorize(cb_context:context(), req_nouns(), api_binary()) -> boolean().
+authorize(_Context, [{<<"notifications">>, [?NE_BINARY=_Id]}], 'undefined') ->
+    lager:debug("allowing system notifications request"),
+    'true';
+authorize(Context, [{<<"notifications">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
+    cb_simple_authz:authorize(Context);
+authorize(_Context, _Nouns, _AccountId) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -738,7 +753,7 @@ maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
     lager:debug("~s not found in account and reseller is undefined, reading from master", [Id]),
     read_system_for_account(Context, Id, LoadFrom);
 maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
-    AccountId = cb_context:account_id(Context),
+    AccountId = kz_util:format_account_id(cb_context:account_db(Context)),
     case AccountId =/= ResellerId
         andalso get_parent_account_id(AccountId) of
         'false' ->
