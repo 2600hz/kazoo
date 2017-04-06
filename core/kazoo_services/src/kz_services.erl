@@ -1439,8 +1439,7 @@ get_reseller_id(Parent, Ancestors, JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec maybe_save('false' | services()) -> 'false' |
-                                          services() |
-                                          {'error', 'no_change'}.
+                                          services().
 maybe_save('false') -> 'false';
 maybe_save(#kz_services{jobj=JObj
                        ,updates=UpdatedQuantities
@@ -1452,7 +1451,7 @@ maybe_save(#kz_services{jobj=JObj
             save(Services);
         'false' ->
             lager:debug("no service quantity changes"),
-            {'error', 'no_change'}
+            Services
     end.
 
 %%--------------------------------------------------------------------
