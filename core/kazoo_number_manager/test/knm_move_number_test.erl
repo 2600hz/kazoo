@@ -47,3 +47,46 @@ move_changing_public_fields_test_() ->
 
 public_value(Key, N) ->
     kz_json:get_value(Key, knm_number:to_public_json(N)).
+
+
+move_available_non_local_test_() ->
+    {ok, N0} = knm_number:get(?TEST_AVAILABLE_NON_LOCAL_NUM),
+    PN0 = knm_number:phone_number(N0),
+    [?_assert(not knm_phone_number:is_dirty(PN0))
+    ,{"Verify number is available"
+     ,?_assertEqual(?NUMBER_STATE_AVAILABLE, knm_phone_number:state(PN0))
+     }
+    ,{"Verify an available number is unassgined"
+     ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN0))
+     }
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:prev_assigned_to(PN0))
+    ,?_assertEqual([], knm_phone_number:reserve_history(PN0))
+    ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN0))
+    ,?_assertEqual([], knm_phone_number:features_list(PN0))
+    ]
+        ++ everyone_is_allowed_to_buy_available(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID).
+
+everyone_is_allowed_to_buy_available(AuthBy, AssignTo) ->
+    Num = ?TEST_AVAILABLE_NON_LOCAL_NUM,
+    {ok, N} = knm_number:move(Num, AssignTo, [{auth_by,AuthBy}]),
+    PN = knm_number:phone_number(N),
+    [?_assert(knm_phone_number:is_dirty(PN))
+    ,{"Verify number is now in_service" ++ auth_and_assign(AuthBy, AssignTo)
+     ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN))
+     }
+    ,{"Verify number is now assigned" ++ auth_and_assign(AuthBy, AssignTo)
+     ,?_assertEqual(AssignTo, knm_phone_number:assigned_to(PN))
+     }
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:prev_assigned_to(PN))
+    ,?_assertEqual([], knm_phone_number:reserve_history(PN))
+    ,?_assertEqual(<<"knm_telnyx">>, knm_phone_number:module_name(PN))
+    ,?_assertEqual([], knm_phone_number:features_list(PN))
+    ].
+
+auth_and_assign(AuthBy, AssignTo) ->
+    lists:flatten(
+      [", auth_by/assign_to: "
+      ,binary_to_list(binary:part(AuthBy, 0, 8))
+      ,$/
+      ,binary_to_list(binary:part(AssignTo, 0, 8))
+      ]).
