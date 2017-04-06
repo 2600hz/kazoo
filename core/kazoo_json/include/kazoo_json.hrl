@@ -42,7 +42,7 @@
 -type path() :: keys() | key() | pos_integer() | [pos_integer()].
 -type paths() :: [path()].
 
--type json_proplist() :: [{key(), json_term()}] | [].
+-type json_proplist() :: [{key()|keys(), json_term()}] | [].
 -type json_proplists() :: [json_proplist()].
 
 -type encode_option() :: 'uescape'
