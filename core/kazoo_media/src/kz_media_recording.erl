@@ -49,7 +49,7 @@
                      {'true', 'local'} |
                      {'true', 'other', ne_binary()}.
 
--record(state, {url                        :: api_binary()
+-record(state, {url                       :: api_binary()
                ,format                    :: ne_binary()
                ,sample_rate               :: integer() | 'undefined'
                ,media                     :: media()
@@ -68,6 +68,7 @@
                ,stop_received = 'false'   :: boolean()
                ,retries = 0               :: integer()
                ,verb = 'put'              :: atom()
+               ,account_id                :: api_binary()
                }).
 -type state() :: #state{}.
 
@@ -187,6 +188,7 @@ init([Call, Data]) ->
                  ,record_min_sec = RecordMinSec
                  ,retries = ?STORAGE_RETRY_TIMES(AccountId)
                  ,verb = Verb
+                 ,account_id = AccountId
                  }}.
 
 %%--------------------------------------------------------------------
@@ -498,14 +500,19 @@ store_url(#state{doc_db=Db
                 ,format=Ext
                 ,should_store={'true', 'other', Url}
                 ,verb=Verb
+                ,account_id=AccountId
                 }, _Rev) ->
+    {S1, S2} = case kz_http_util:urlsplit(Url) of
+                   {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
+                   _Else -> {<<"&recording=">>, <<"&">>}
+               end,
     HandlerOpts = #{url => Url
                    ,verb => Verb
                    ,field_separator => <<>>
-                   ,field_list => [<<"call_recording_">>
+                   ,field_list => [<<S1/binary, "call_recording_">>
                                   ,{field, <<"call_id">>}
                                   ,<<".", Ext/binary>>
-                                  ,<<"?from=">>
+                                  ,<<S2/binary, "from=">>
                                   ,{field, <<"from">>}
                                   ,<<"&to=">>
                                   ,{field, <<"to">>}
@@ -519,6 +526,8 @@ store_url(#state{doc_db=Db
                                   ,{field, <<"cdr_id">>}
                                   ,<<"&interaction_id=">>
                                   ,{field, <<"interaction_id">>}
+                                  ,<<"&account_id=">>
+                                  ,AccountId
                                   ]
                    },
     AttHandler = handler_from_url(Url),
