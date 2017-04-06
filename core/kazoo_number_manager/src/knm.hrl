@@ -92,13 +92,14 @@
           ,{<<"my_key">>, <<"my string">>}
           ,{?PVT_MODIFIED, 63565934349}
           ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
-          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
-          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_ASSIGNED_TO, undefined}
+          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, []}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_USED_BY, <<"callflow">>}
+          ,{?PVT_USED_BY, undefined}
           ])).
 
 -define(IN_SERVICE_NUMBER

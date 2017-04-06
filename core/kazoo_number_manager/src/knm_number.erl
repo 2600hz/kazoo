@@ -261,10 +261,21 @@ reserve(Num, Options) ->
 
 -spec do_reserve(knm_number()) -> knm_number_return().
 do_reserve(Number) ->
-    Routines = [fun knm_number_states:to_reserved/1
+    Routines = [fun if_unassigned_then_needs_assign_to/1
+               ,fun knm_number_states:to_reserved/1
                ,fun save_number/1
                ],
     apply_number_routines(Number, Routines).
+
+-spec if_unassigned_then_needs_assign_to(knm_number()) -> knm_number().
+if_unassigned_then_needs_assign_to(N) ->
+    PN = phone_number(N),
+    case knm_phone_number:assigned_to(PN) =:= undefined
+        andalso knm_phone_number:assign_to(PN) =:= undefined
+    of
+        false -> N;
+        true -> knm_errors:assign_failure(PN, assign_to)
+    end.
 
 -spec save_number(knm_number()) -> knm_number().
 save_number(Number) ->
