@@ -47,7 +47,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.auth">>, ?MODULE, 'resource_exists'),
-    _ = crossbar_bindings:bind(<<"*.validate_resource.accounts">>, 'validate_resource'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.auth">>, ?MODULE, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.validate.auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.auth">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.auth">>, ?MODULE, 'post'),
