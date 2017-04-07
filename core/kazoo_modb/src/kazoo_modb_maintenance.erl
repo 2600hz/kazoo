@@ -94,7 +94,7 @@ delete_modb(?MATCH_MODB_SUFFIX_UNENCODED(_,_,_) = AccountModb, ShouldArchive) ->
 delete_modb(?MATCH_MODB_SUFFIX_ENCODED(_,_,_) = AccountModb, ShouldArchive) ->
     'ok' = case ShouldArchive of
                'true' -> kz_datamgr:db_archive(AccountModb);
-               'false' -> io:format("    deleting database ~s~n", [AccountModb])
+               'false' -> io:format("deleting database ~s~n", [AccountModb])
            end,
     _Deleted = kz_datamgr:db_delete(AccountModb),
     io:format("    deleted: ~p~n", [_Deleted]),
