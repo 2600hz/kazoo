@@ -111,6 +111,7 @@ resource_exists(?KEYS_PATH, _KeyId) -> 'true'.
 authorize(Context, PathToken) ->
     authorize_nouns(Context, PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
 authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
@@ -125,6 +126,7 @@ authorize_nouns(_, _, _, _) -> 'false'.
 authenticate(Context, PathToken) ->
     authenticate_nouns(PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authenticate_nouns(cb_context:context(), path_token(), req_nouns()) -> boolean().
 authenticate_nouns(?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
@@ -230,6 +232,7 @@ validate_token_info(Context, Token) ->
         {'ok', Claims} -> send_token_info(Context, Token, Claims)
     end.
 
+-spec send_token_info(cb_context:context(), binary(), kz_json:object()) -> cb_context:context().
 send_token_info(Context, Token, Claims) ->
     AccountId = kz_json:get_value(<<"account_id">>, Claims),
     OwnerId = kz_json:get_value(<<"owner_id">>, Claims),
@@ -320,6 +323,7 @@ maybe_authorize(Context) ->
 normalize_view(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
+-spec account_id(cb_contxt:context()) -> ne_binary().
 account_id(Context) ->
     {ok, Master} = kapps_util:get_master_account_id(),
     Source = [cb_context:req_param(Context, <<"account_id">>)
