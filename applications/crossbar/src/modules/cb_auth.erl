@@ -10,8 +10,9 @@
 -export([init/0
         ,allowed_methods/1, allowed_methods/2
         ,resource_exists/1, resource_exists/2
-        ,authorize/2, authorize/3
+        ,authorize/2 %%, authorize/3
         ,authenticate/2
+        ,validate_resource/1, validate_resource/2, validate_resource/3
         ,validate/2, validate/3
         ,put/2, put/3
         ,post/3
@@ -32,7 +33,8 @@
 
 -define(LINKS_VIEW, <<"users/list_linked_users">>).
 -define(PROVIDERS_VIEW, <<"providers/list_by_id">>).
--define(APPS_VIEW, <<"apps/list_by_account_id">>).
+-define(PROVIDERS_APP_VIEW, <<"apps/list_by_provider">>).
+-define(APPS_VIEW, <<"apps/list_by_account">>).
 -define(KEYS_VIEW, <<"auth/list_keys">>).
 
 %%%===================================================================
@@ -45,6 +47,7 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.authorize.auth">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.auth">>, ?MODULE, 'resource_exists'),
+    _ = crossbar_bindings:bind(<<"*.validate_resource.accounts">>, 'validate_resource'),
     _ = crossbar_bindings:bind(<<"*.validate.auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.put.auth">>, ?MODULE, 'put'),
     _ = crossbar_bindings:bind(<<"*.execute.post.auth">>, ?MODULE, 'post'),
@@ -111,28 +114,7 @@ authorize(Context, PathToken) ->
 authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
-
-authorize_nouns(_Context, ?APPS_PATH, _, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?PROVIDERS_PATH, _, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, _, [{<<"auth">>, _}]) -> 'true';
-
-authorize_nouns(_Context, ?APPS_PATH, ?HTTP_GET, [{<<"auth">>, _} | _]) -> 'true';
-authorize_nouns(_Context, ?PROVIDERS_PATH, _, [{<<"auth">>, _} | _]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, _, [{<<"auth">>, _} | _]) -> 'true';
-
-authorize_nouns(Context, ?LINKS_PATH, ?HTTP_GET, [{<<"auth">>, _}]) ->
-    cb_context:is_authenticated(Context);
 authorize_nouns(_, _, _, _) -> 'false'.
-
--spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
-authorize(Context, PathToken, Id) ->
-    authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
-
-authorize_nouns(_Context, ?LINKS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?APPS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?PROVIDERS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_Context, ?KEYS_PATH, _Id, _Verb, [{<<"auth">>, _}]) -> 'true';
-authorize_nouns(_, _, _, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -146,8 +128,14 @@ authenticate(Context, PathToken) ->
 authenticate_nouns(?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
-authenticate_nouns(?APPS_PATH, ?HTTP_GET, [{<<"auth">>, _} | _]) -> 'true';
 authenticate_nouns(_, _, _) -> 'false'.
+
+-spec validate_resource(cb_context:context()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
+-spec validate_resource(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
+validate_resource(Context) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
+validate_resource(Context, _Path, _Id) -> cb_context:set_account_db(Context, ?KZ_AUTH_DB).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -160,11 +148,11 @@ authenticate_nouns(_, _, _) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context(), path_token()) -> cb_context:context().
 validate(Context, Path) ->
-    validate_path(cb_context:set_account_db(Context, ?KZ_AUTH_DB), Path, cb_context:req_verb(Context)).
+    validate_path(Context, Path, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 validate(Context, Path, Id) ->
-    validate_path(cb_context:set_account_db(Context, ?KZ_AUTH_DB), Path, Id, cb_context:req_verb(Context)).
+    validate_path(Context, Path, Id, cb_context:req_verb(Context)).
 
 -spec validate_path(cb_context:context(), path_token(), http_method()) -> cb_context:context().
 validate_path(Context, ?AUTHORIZE_PATH, ?HTTP_PUT) ->
@@ -186,19 +174,38 @@ validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
     crossbar_doc:load_view(?LINKS_VIEW, Options, Context, fun normalize_view/2);
 
 validate_path(Context, ?PROVIDERS_PATH, ?HTTP_GET) ->
-    crossbar_doc:load_view(?PROVIDERS_VIEW, ['include_docs'], Context, fun normalize_view_doc/2);
+    crossbar_doc:load_view(?PROVIDERS_VIEW, [], Context, fun normalize_view/2);
+validate_path(Context, ?PROVIDERS_PATH, ?HTTP_PUT) ->
+    cb_context:validate_request_data(<<"auth.provider">>, Context, fun add_provider/1);
 
 validate_path(Context, ?APPS_PATH, ?HTTP_GET) ->
     Options = [{'key', account_id(Context)}
               ,'include_docs'
               ],
-    crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2).
+    crossbar_doc:load_view(?APPS_VIEW, Options, Context, fun normalize_view/2);
+validate_path(Context, ?APPS_PATH, ?HTTP_PUT) ->
+    cb_context:validate_request_data(<<"auth.app">>, Context, fun add_app/1).
 
 
 -spec validate_path(cb_context:context(), path_token(), path_token(), http_method()) -> cb_context:context().
 
 validate_path(Context, ?APPS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
+validate_path(Context, ?APPS_PATH, Id, ?HTTP_POST) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
+validate_path(Context, ?APPS_PATH, Id, ?HTTP_DELETE) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"app">>));
+
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_GET) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_POST) ->
+    crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"provider">>));
+validate_path(Context, ?PROVIDERS_PATH, Id, ?HTTP_DELETE) ->
+    Options = [{'key', Id}],
+    case kz_datamgr:get_result_keys(cb_context:account_db(Context), ?PROVIDERS_APP_VIEW, Options) of
+        [] -> Context;
+        _ -> cb_context:add_system_error(<<"apps exist for provider">>, Context)
+    end;
 
 validate_path(Context, ?LINKS_PATH, Id, ?HTTP_GET) ->
     crossbar_doc:load(Id, Context, ?TYPE_CHECK_OPTION(<<"user">>));
@@ -240,11 +247,11 @@ put(Context, ?AUTHORIZE_PATH) ->
 put(Context, ?CALLBACK_PATH) ->
     crossbar_auth:create_auth_token(Context, ?MODULE);
 put(Context, ?APPS_PATH) ->
-    Context;
+    crossbar_doc:save(Context);
 put(Context, ?KEYS_PATH) ->
     Context;
 put(Context, ?PROVIDERS_PATH) ->
-    Context.
+    crossbar_doc:save(Context).
 
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?LINKS_PATH, AuthId) ->
@@ -257,23 +264,23 @@ put(Context, ?LINKS_PATH, AuthId) ->
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?APPS_PATH, _Id) ->
-    Context;
+    crossbar_doc:save(Context);
 post(Context, ?PROVIDERS_PATH, _Id) ->
-    Context.
+    crossbar_doc:save(Context).
 
 -spec delete(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 delete(Context, ?LINKS_PATH, AuthId) ->
-    lager:debug("UNLINKING ~p", [AuthId]),
     case kz_auth:unlink(AuthId) of
         'ok' -> Context;
         {'error', Error} -> cb_context:add_system_error(Error, Context)
     end;
 delete(Context, ?APPS_PATH, _Id) ->
-    Context;
+    crossbar_doc:delete(Context);
 delete(Context, ?KEYS_PATH, _Id) ->
-    Context;
+    crossbar_doc:delete(Context);
 delete(Context, ?PROVIDERS_PATH, _Id) ->
-    Context.
+    crossbar_doc:delete(Context).
+
 
 %%%===================================================================
 %%% Internal functions
@@ -313,10 +320,6 @@ maybe_authorize(Context) ->
 normalize_view(JObj, Acc) ->
     [kz_json:get_value(<<"value">>, JObj)|Acc].
 
--spec normalize_view_doc(kz_json:object(), kz_json:objects()) -> kz_json:objects().
-normalize_view_doc(JObj, Acc) ->
-    [kz_json:get_value(<<"doc">>, JObj)|Acc].
-
 account_id(Context) ->
     {ok, Master} = kapps_util:get_master_account_id(),
     Source = [cb_context:req_param(Context, <<"account_id">>)
@@ -333,3 +336,11 @@ account_id(Context) ->
         'true' -> AccountId;
         'false' -> kz_services:get_reseller_id(AccountId)
     end.
+
+-spec add_app(cb_context:context()) -> cb_context:context().
+add_app(Context) ->
+    Context.
+
+-spec add_provider(cb_context:context()) -> cb_context:context().
+add_provider(Context) ->
+    Context.
