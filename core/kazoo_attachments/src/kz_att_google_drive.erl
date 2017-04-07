@@ -27,13 +27,17 @@
 -define(DRV_TOKEN_OPTIONS, #{scopes => ?DRV_SCOPES}).
 -define(DRV_FOLDER_CT, <<"application/vnd.google-apps.folder">>).
 
+-type gdrive_result() :: {'ok', binary()} | {'error', 'google_drive_error'}.
+
 %% ====================================================================
 %% API functions
 %% ====================================================================
 
+-spec encode_multipart([tuple()], binary()) -> binary().
 encode_multipart(Parts, Boundary) ->
     encode_multipart(Parts, Boundary, <<>>).
 
+-spec encode_multipart([tuple()], binary(), binary()) -> binary().
 encode_multipart([], Boundary, Encoded) ->
     Close = <<"\r\n--" , Boundary/binary, "--">>,
     <<Encoded/binary, Close/binary>>;
@@ -43,9 +47,11 @@ encode_multipart([{Body, Headers} | Parts], Boundary, Encoded) ->
     Acc = <<Encoded/binary, Delimiter/binary, H/binary, Body/binary>>,
     encode_multipart(Parts, Boundary, Acc).
 
+-spec encode_multipart_headers(kz_proplist()) -> binary().
 encode_multipart_headers(Headers) ->
     encode_multipart_headers(Headers, <<>>).
 
+-spec encode_multipart_headers(kz_proplist(), binary()) -> binary().
 encode_multipart_headers([], Encoded) -> <<Encoded/binary, "\r\n">>;
 encode_multipart_headers([{K, V} | Headers], Encoded) ->
     Acc = <<Encoded/binary, K/binary, ": ", V/binary, "\r\n">>,
@@ -68,6 +74,7 @@ get_json_from_url(Url, ReqHeaders) ->
             {'error', Else}
     end.
 
+-spec create_folder(binary(), binary(), binary()) -> gdrive_result().
 create_folder(Name, Parent, Authorization) ->
     Headers = [{<<"Authorization">>, Authorization}
               ,{<<"Content-Type">>, <<"application/json">>}
@@ -82,6 +89,7 @@ create_folder(Name, Parent, Authorization) ->
         Else -> Else
     end.
 
+-spec resolve_id(binary(), binary(), binary()) -> {ok, binary()} | {error, not_found}.
 resolve_id(Name, Parent, Authorization) ->
     Params = ["\"", Parent, "\" in parents"
              ," and name = \"", Name, "\""
@@ -99,6 +107,7 @@ resolve_id(Name, Parent, Authorization) ->
     end.
 
 
+-spec resolve_ids(binaries(), binaries(), binary()) -> binaries().
 resolve_ids([], Acc, _Authorization) ->
     lists:reverse(Acc);
 resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
@@ -111,11 +120,13 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             end
     end.
 
+-spec resolve_ids(binary, binary()) -> binaries().
 resolve_ids(Path, Authorization) ->
     lager:debug("resolving path ~s", [Path]),
     Ids = binary:split(Path, <<"/">>, [global ,trim_all]),
     resolve_ids(Ids, [<<"root">>], Authorization).
 
+-spec resolve_path(map(), binary()) -> binaries().
 resolve_path(Settings, Authorization) ->
     case maps:get(folder_path, Settings, undefined) of
         undefined ->
@@ -124,6 +135,7 @@ resolve_path(Settings, Authorization) ->
         Path -> resolve_ids(Path, Authorization)
     end.
 
+-spec resolve_folder(map(), binary()) -> list().
 resolve_folder(Settings, Authorization) ->
     case maps:get(folder_id, Settings, undefined) of
         undefined ->
@@ -143,6 +155,7 @@ put_attachment(#{oauth_doc_id := TokenDocId}=Settings, _DbName, _DocId, AName, C
         {ok, _}=OK -> OK
     end.
 
+-spec gdrive_post(binary(), kz_proplist(), binary()) -> gdrive_result().
 gdrive_post(Url, Headers, Body) ->
     case kz_http:post(Url, Headers, Body) of
         {'ok', 200, ResponseHeaders, ResponseBody} ->
@@ -156,6 +169,8 @@ gdrive_post(Url, Headers, Body) ->
     end.
 
 
+-spec send_attachment(binary(), binary(), binary(), binary(), binary(), kz_proplist(), binary()) ->
+          {ok, kz_proplist()} | {'error', 'google_drive_error'}.
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
@@ -196,9 +211,11 @@ send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents)
     end.
 
 
+-spec filter_kv(tuple()) -> boolean().
 filter_kv({"x-guploader-uploadid", _V}) -> 'true';
 filter_kv(_KV) -> 'false'.
 
+-spec convert_kv(tuple()) -> tuple().
 convert_kv({K, V})
   when is_list(K) ->
     convert_kv({kz_term:to_binary(K), V});
