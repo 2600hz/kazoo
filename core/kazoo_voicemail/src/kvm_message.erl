@@ -758,6 +758,7 @@ retry_conflict(Call, JObj, DieAnotherDay) ->
         {'error', _}=Error -> Error
     end.
 
+-spec check_for_collision(kapps_call:call(), kz_json:object(), kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
 check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
     OrigPublic = kz_json:public_fields(JObj),
     SavedPublic = kz_json:public_fields(SavedJObj),
@@ -781,6 +782,7 @@ check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
             DieAnotherDay(kz_doc:set_id(NewJObj, NewId))
     end.
 
+-spec give_me_another_id(ne_binary()) -> ne_binary().
 give_me_another_id(?MATCH_MODB_PREFIX(Year, Month, _)) ->
     ?MODB_MSG_ID(Year, Month, kz_binary:rand_hex(16)).
 
