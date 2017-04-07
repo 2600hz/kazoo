@@ -108,8 +108,7 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             case create_folder(Id, Parent, Authorization) of
                 {ok, FolderId} -> resolve_ids(Ids, [FolderId | Acc], Authorization);
                 _Else -> lists:reverse(Acc)
-            end;
-        _Else -> lists:reverse(Acc)
+            end
     end.
 
 resolve_ids(Path, Authorization) ->
