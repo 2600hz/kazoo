@@ -377,8 +377,8 @@ put(Context, _DocId, ?MESSAGES_RESOURCE) ->
     maybe_save_attachment(crossbar_doc:save(Context)).
 
 -spec put(cb_context:context(), path_token(), path_token(), path_token(), path_token()) -> cb_context:context().
-put(Context, _DocId, ?MESSAGES_RESOURCE, _MsgID, ?BIN_DATA) ->
-    maybe_save_attachment(Context).
+put(Context, _DocId, ?MESSAGES_RESOURCE, MsgID, ?BIN_DATA) ->
+    maybe_save_attachment(cb_context:set_account_db(Context, kvm_util:get_db(cb_context:account_id(Context), MsgID))).
 
 %%--------------------------------------------------------------------
 %% @public

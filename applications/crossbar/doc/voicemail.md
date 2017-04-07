@@ -357,7 +357,7 @@ curl -v -X POST \
 
 There are two methods for creating a new voicemail message - they differ in how you attach the media file.
 
-In the first method, you can create a voicemail document first in one request and then put the media file into document with second request using `/messages/{VM_MSG_ID}` API endpoint.
+In the first method, you can create a voicemail document first in one request and then put the media file into the document with a second request using `/messages/{VM_MSG_ID}` API endpoint.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
 
@@ -392,7 +392,7 @@ curl -v -X PUT \
 
 And then you can use PUT method on `/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq` to add the media to file (see PUT method for a message below).
 
-In the second method, you can use a single PUT request and send a multipart content-type to attach both the JSON metadata about the message and the media file itself, in a single request.
+In the second method, you can use a single PUT request and send a multipart content-type to add both the JSON metadata about the message and the media file itself, in a single request.
 
 ```shell
 curl -v -X PUT \
@@ -660,17 +660,17 @@ curl -v -X GET \
 
 #### Add a new voicemail media file to a message
 
-If you add message based on the first method mentioned above (using PUT method on `/messages`), you can use this to upload the media file for the created message.
+If you added a message based on the first method mentioned above (using PUT method on `/messages`), you can use this to upload the media file for the created message.
 
-**Note:** If there's already a media file attachment inside the message document it will be removed first!
+**Note:** If there's already a media file attachment inside the message document it will be removed and replaced with the new media file!
 
 > PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
 
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -H "Content-Type: type=audio/mp3" \
-    -F "content=@voice.mp3" \
+    -H "Content-Type: multipart/mixed" \
+    -F "content=@voice.mp3; type=audio/mp3" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq/raw
 ```
 
