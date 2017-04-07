@@ -733,6 +733,19 @@
             ],
             "type": "object"
         },
+        "auth.provider": {
+            "additionalProperties": true,
+            "description": "provider settings for authentication",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "id"
+            ],
+            "type": "object"
+        },
         "auth_provider": {
             "additionalProperties": true,
             "description": "authentication providers",
