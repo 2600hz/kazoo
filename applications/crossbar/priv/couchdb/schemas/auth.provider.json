@@ -1,0 +1,15 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "auth.provider",
+    "additionalProperties": true,
+    "description": "provider settings for authentication",
+    "properties": {
+        "id": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "id"
+    ],
+    "type": "object"
+}
