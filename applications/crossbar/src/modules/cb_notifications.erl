@@ -107,8 +107,8 @@ authorize(Context) ->
 authorize(_Context, [{<<"notifications">>, [?NE_BINARY=_Id]}], 'undefined') ->
     lager:debug("allowing system notifications request"),
     'true';
-authorize(Context, [{<<"notifications">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
-    cb_simple_authz:authorize(Context);
+authorize(_Context, [{<<"notifications">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
+    'true';
 authorize(_Context, _Nouns, _AccountId) ->
     'false'.
 
@@ -749,6 +749,7 @@ read_account(Context, Id, LoadFrom) ->
             Context1
     end.
 
+-spec maybe_read_from_parent(cb_context:context(), ne_binary(), load_from(), api_binary()) -> cb_context:context().
 maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
     lager:debug("~s not found in account and reseller is undefined, reading from master", [Id]),
     read_system_for_account(Context, Id, LoadFrom);
