@@ -7,6 +7,7 @@
         ,system_schema_name/1
         ,account_schema/1
         ,system_schema/1
+        ,system_config_document_schema/1
         ]).
 
 -spec doc_id(ne_binary()) -> ne_binary().
@@ -80,3 +81,14 @@ account_schema(Config) when is_binary(Config) ->
     Name = account_schema_name(Config),
     {'ok', Schema} = kz_json_schema:load(Name),
     Schema.
+
+-spec system_config_document_schema(ne_binary()) -> kz_json:object().
+system_config_document_schema(Id) ->
+    Flat = [
+            {[<<"$schema">>],<<"http://json-schema.org/draft-04/schema#">>}
+           ,{[<<"id">>], <<"system_config">>}
+           ,{[<<"patternProperties">>, <<".+">>, <<"$ref">>], system_schema_name(Id)}
+           ,{[<<"patternProperties">>, <<".+">>, <<"type">>], <<"object">>}
+           ,{[<<"type">>], <<"object">>}
+           ],
+    kz_json:expand(kz_json:from_list(Flat)).
