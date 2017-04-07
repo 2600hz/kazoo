@@ -119,7 +119,7 @@ transition_port_from_available_test_() ->
      ,?_assertEqual(?NUMBER_STATE_IN_SERVICE, knm_phone_number:state(PN))
      }
     ,{"Verify reserve history"
-     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN))
+     ,?_assertEqual([], knm_phone_number:reserve_history(PN))
      }
     ,{"Verify the configured port in module name is being used"
      ,?_assertEqual(<<"knm_bandwidth2">>, knm_phone_number:module_name(PN))

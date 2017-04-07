@@ -197,6 +197,8 @@ fetch(?BW_EXISTING_DID, Options) ->
     handle_fetch(?BW_EXISTING_JSON, Options);
 fetch(?TEST_EXISTING_TOLL, Options) ->
     handle_fetch(?EXISTING_TOLL, Options);
+fetch(?TEST_AVAILABLE_NON_LOCAL_NUM, Options) ->
+    handle_fetch(?AVAILABLE_NON_LOCAL_NUMBER, Options);
 fetch(?TEST_TELNYX_NUM, Options) ->
     handle_fetch(?TELNYX_NUMBER, Options);
 fetch(?TEST_VITELITY_NUM, Options) ->
@@ -270,8 +272,10 @@ fetch(NumberDb, NormalizedNum, Options) ->
 -spec handle_fetch(kz_json:object(), knm_number_options:options()) -> {ok, knm_phone_number()}.
 handle_fetch(JObj, Options) ->
     PN = from_json_with_options(JObj, Options),
-    case is_authorized(PN)
-        andalso is_mdn_for_mdn_run(PN, Options)
+    case state(PN) =:= ?NUMBER_STATE_AVAILABLE
+        orelse (is_authorized(PN)
+                andalso is_mdn_for_mdn_run(PN, Options)
+               )
     of
         true -> {ok, PN};
         false -> knm_errors:unauthorized()
@@ -1142,12 +1146,11 @@ is_admin(?MASTER_ACCOUNT_ID) -> true;
 is_admin(_) -> false.
 -else.
 is_admin(#knm_phone_number{auth_by=AuthBy}) -> is_admin(AuthBy);
+is_admin(?KNM_DEFAULT_AUTH_BY) ->
+    lager:info("bypassing auth"),
+    true;
 is_admin(AuthBy) ->
-    IsBypassed = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
-    IsBypassed
-        andalso lager:info("bypassing auth"),
-    IsBypassed
-        orelse kz_util:is_system_admin(AuthBy).
+    kz_util:is_system_admin(AuthBy).
 -endif.
 
 %%--------------------------------------------------------------------
@@ -1373,52 +1376,23 @@ list_attachments(PN, AuthBy) ->
         'false' -> {'error', 'unauthorized'}
     end.
 
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-
 %%--------------------------------------------------------------------
-%% @private
-%% @doc Sanitize phone number docs fields and remove deprecated fields
-%% @end
-%%--------------------------------------------------------------------
--spec sanitize_public_fields(kz_json:object()) -> kz_json:object().
-sanitize_public_fields(JObj) ->
-    Keys = [<<"id">>
-           ,<<"used_by">>
-           ],
-    kz_json:delete_keys(Keys, kz_json:public_fields(JObj)).
-
-%%--------------------------------------------------------------------
-%% @private
+%% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec is_authorized(knm_phone_number()) -> boolean().
--ifdef(TEST).
-is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) -> 'true';
-is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
-is_authorized(#knm_phone_number{assigned_to = 'undefined'
-                               ,assign_to = AssignTo
-                               ,auth_by = AuthBy
-                               }) ->
-    is_in_account_hierarchy(AuthBy, AssignTo);
-is_authorized(#knm_phone_number{assigned_to = AssignedTo
-                               ,auth_by = AuthBy
-                               }) ->
-    is_in_account_hierarchy(AuthBy, AssignedTo).
--else.
 is_authorized(#knm_phone_number{auth_by = ?KNM_DEFAULT_AUTH_BY}) ->
     lager:info("bypassing auth"),
-    'true';
-is_authorized(#knm_phone_number{auth_by = 'undefined'}) -> 'false';
-is_authorized(#knm_phone_number{assigned_to = 'undefined'
-                               ,assign_to = 'undefined'
+    true;
+is_authorized(#knm_phone_number{auth_by = undefined}) -> false;
+is_authorized(#knm_phone_number{assigned_to = undefined
+                               ,assign_to = undefined
                                ,auth_by = AuthBy
                                }) ->
     lager:debug("assigns all undefined, checking if auth is super duper"),
-    kz_util:is_system_admin(AuthBy);
-is_authorized(#knm_phone_number{assigned_to = 'undefined'
+    is_admin(AuthBy);
+is_authorized(#knm_phone_number{assigned_to = undefined
                                ,assign_to = AssignTo
                                ,auth_by = AuthBy
                                }) ->
@@ -1427,7 +1401,10 @@ is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
     is_in_account_hierarchy(AuthBy, AssignedTo).
--endif.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
 
 -spec is_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
 -ifdef(TEST).
@@ -1441,9 +1418,21 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
                 ).
 -else.
 is_in_account_hierarchy(AuthBy, AccountId) ->
-    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, 'true').
+    lager:debug("is authz ~s ~s", [AuthBy, AccountId]),
+    kz_util:is_in_account_hierarchy(AuthBy, AccountId, true).
 -endif.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc Sanitize phone number docs fields and remove deprecated fields
+%% @end
+%%--------------------------------------------------------------------
+-spec sanitize_public_fields(kz_json:object()) -> kz_json:object().
+sanitize_public_fields(JObj) ->
+    Keys = [<<"id">>
+           ,<<"used_by">>
+           ],
+    kz_json:delete_keys(Keys, kz_json:public_fields(JObj)).
 
 %%--------------------------------------------------------------------
 %% @private

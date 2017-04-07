@@ -169,11 +169,11 @@ to_in_service(Number, ?NUMBER_STATE_PORT_IN) ->
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
+    %% Everyone MUST be allowed to buy available
+    %% External carriers MUST NOT be contacted
     Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_AVAILABLE) end
-               ,fun authorize/1
                ,fun move_to_in_service_state/1
                ,fun knm_services:activate_phone_number/1
-               ,fun knm_carriers:acquire/1
                ],
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_RESERVED) ->

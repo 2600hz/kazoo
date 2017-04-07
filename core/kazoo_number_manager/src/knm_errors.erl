@@ -95,8 +95,7 @@ invalid(Number, Reason) ->
 multiple_choice(Number, Update) ->
     throw({'error', 'multiple_choice', Number, Update}).
 
--spec assign_failure(knm_phone_number:knm_phone_number(), any()) ->
-                            no_return().
+-spec assign_failure(knm_phone_number:knm_phone_number(), any()) -> no_return().
 assign_failure(PhoneNumber, E) ->
     throw({'error', 'assign_failure', PhoneNumber, E}).
 

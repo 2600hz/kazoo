@@ -181,7 +181,8 @@ attempt_setting_e911_on_explicitly_disallowed_number_test_() ->
 
 reserve_test_() ->
     AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_number_options:default()],
-    {ok, N1} = knm_number:reserve(?TEST_AVAILABLE_NUM, knm_number_options:default()),
+    {ok, N1} = knm_number:reserve(?TEST_AVAILABLE_NUM
+                                 ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
     PN1 = knm_number:phone_number(N1),
     {ok, N2} = knm_number:reserve(?TEST_IN_SERVICE_NUM, knm_number_options:default()),
     PN2 = knm_number:phone_number(N2),
