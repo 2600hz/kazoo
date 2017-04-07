@@ -53,6 +53,20 @@ Key | Description | Type | Default | Required
 `schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
 `timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
 
+##### Voicemail Message Metadata Schema
+
+Schema for a voicemail message metadata
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`call_id` | Schema for a voicemail message metadata | `string` |   | `false`
+`caller_id_name` | The caller id name | `string` |   | `false`
+`caller_id_number` | The caller id number | `string` |   | `false`
+`folder` | The folder the message belongs to | `string` |   | `false`
+`from` | The SIP from header | `string` |   | `false`
+`length` | Length | `integer` |   | `false`
+`timestamp` | The UTC timestamp, in gregorian seconds, that the voicemail was left on | `integer` |   | `false`
+`to` | The SIP to header | `string` |   | `false`
 
 
 #### List all account's voicemail boxes
@@ -339,6 +353,58 @@ curl -v -X POST \
 }
 ```
 
+#### Create a new voicemail message
+
+There are two methods for creating a new voicemail message - they differ in how you attach the media file.
+
+In the first method, you can create a voicemail document first in one request and then put the media file into document with second request using `/messages/{VM_MSG_ID}` API endpoint.
+
+> PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d {"data":{"caller_id_name":"someone","caller_id_number":"6001","folder":"new","from":"someone@farfaraway.com"}} \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+            "timestamp": 63630058722,
+            "from": "someone@farfaraway.com",
+            "to": "1000@sip.somewhere.com",
+            "caller_id_number": "6001",
+            "caller_id_name": "someone",
+            "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+            "folder": "new",
+            "length": 3140,
+            "media_id": "201605-fadnew0mf6fcfgfd8bcdfca312e924bq"
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
+```
+
+And then you can use PUT method on `/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq` to add the media to file (see PUT method for a message below).
+
+In the second method, you can use a single PUT request and send a multipart content-type to attach both the JSON metadata about the message and the media file itself, in a single request.
+
+```shell
+curl -v -X PUT \
+     -H "Content-Type: multipart/mixed" \
+     -F "content=@message.json; type=application/json" \
+     -F "content=@voice.mp3; type=audio/mp3" \
+     -H 'X-Auth-Token: {AUTH_TOKEN}' \
+     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/messages
+```
+
+The response is same as above.
+
 #### Remove all or a list of messages from a voicemail box
 
 > DELETE /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages
@@ -590,4 +656,42 @@ curl -v -X POST \
 curl -v -X GET \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-6aadef09f6fcf5fd8bcdfca312e923ba/raw
+```
+
+#### Add a new voicemail media file to a message
+
+If you add message based on the first method mentioned above (using PUT method on `/messages`), you can use this to upload the media file for the created message.
+
+**Note:** If there's already a media file attachment inside the message document it will be removed first!
+
+> PUT /v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw
+
+```shell
+curl -v -X PUT \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -H "Content-Type: type=audio/mp3" \
+    -F "content=@voice.mp3" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/201605-fadnew0mf6fcfgfd8bcdfca312e924bq/raw
+```
+
+##### Response
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+            "timestamp": 63630058722,
+            "from": "someone@farfaraway.com",
+            "to": "1000@sip.somewhere.com",
+            "caller_id_number": "6001",
+            "caller_id_name": "someone",
+            "call_id": "79959ZDNmM2I5ZTliMzA0NzA4N2FjNjlmODA5OWVkZjUxZWU",
+            "folder": "new",
+            "length": 3140,
+            "media_id": "201605-fadnew0mf6fcfgfd8bcdfca312e924bq"
+    },
+    "revision": "{REVISION}",
+    "request_id": "{REQUEST_ID}",
+    "status": "success"
+}
 ```

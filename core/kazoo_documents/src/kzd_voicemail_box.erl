@@ -23,6 +23,7 @@
         ,is_setup/1, is_setup/2
 
         ,set_notification_emails/2
+        ,media_extension/1
         ]).
 
 -include("kz_documents.hrl").
@@ -43,6 +44,14 @@
 -define(KEY_IS_SETUP, <<"is_setup">>).
 
 -define(PVT_TYPE, <<"vmbox">>).
+
+-define(ACCOUNT_VM_EXTENSION(AccountId),
+        kapps_account_config:get_global(AccountId
+                                       ,<<"callflow">>
+                                       ,[<<"voicemail">>, <<"extension">>]
+                                       ,<<"mp3">>
+                                       )
+       ).
 
 -spec new() -> doc().
 new() ->
@@ -171,3 +180,8 @@ is_setup(Box) ->
     is_setup(Box, 'false').
 is_setup(Box, Default) ->
     kz_json:is_true(?KEY_IS_SETUP, Box, Default).
+
+-spec media_extension(doc()) -> ne_binary().
+media_extension(Box) ->
+    AccountId = kz_doc:account_id(Box),
+    kz_json:get_ne_binary_value(<<"media_extension">>, Box, ?ACCOUNT_VM_EXTENSION(AccountId)).

@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.crossbar.voicemail",
+    "description": "Schema for crossbar.voicemail system_config",
+    "properties": {
+        "normalization_format": {
+            "default": "mp3",
+            "description": "Voicemail default audio format",
+            "type": "string"
+        },
+        "normalize_media": {
+            "default": false,
+            "description": "Whether or not normalize voicemail audio file",
+            "type": "boolean"
+        }
+    },
+    "type": "object"
+}
