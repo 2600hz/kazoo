@@ -53,7 +53,9 @@ Key | Description | Type | Default | Required
 `schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
 `timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
 
-##### Voicemail Message Metadata Schema
+
+
+##### Voicemail Message Metadata
 
 Schema for a voicemail message metadata
 
@@ -67,7 +69,6 @@ Key | Description | Type | Default | Required
 `length` | Length | `integer` |   | `false`
 `timestamp` | The UTC timestamp, in gregorian seconds, that the voicemail was left on | `integer` |   | `false`
 `to` | The SIP to header | `string` |   | `false`
-
 
 #### List all account's voicemail boxes
 

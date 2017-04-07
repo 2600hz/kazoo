@@ -13374,14 +13374,14 @@
                     "description": "The caller id name",
                     "maxLength": 35,
                     "name": "Caller ID Name",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 },
                 "caller_id_number": {
                     "description": "The caller id number",
                     "maxLength": 35,
                     "name": "Caller ID Number",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 },
                 "folder": {
@@ -13392,13 +13392,13 @@
                         "new"
                     ],
                     "name": "Folder",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 },
                 "from": {
                     "description": "The SIP from header",
                     "name": "From",
-                    "required": true,
+                    "required": false,
                     "type": "string"
                 },
                 "length": {
