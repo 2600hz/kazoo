@@ -54,26 +54,12 @@
                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_BOX_NUMBER_LENGTH]
                                 ,15
                                 )).
--define(DEFAULT_VM_EXTENSION
-       ,kapps_config:get(?CF_CONFIG_CAT
-                        ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
-                        ,<<"mp3">>
-                        )
-       ).
 
 -define(MAX_LOGIN_ATTEMPTS
        ,kapps_config:get(?CF_CONFIG_CAT
                         ,[?KEY_VOICEMAIL, ?KEY_MAX_LOGIN_ATTEMPTS]
                         ,3
                         )
-       ).
-
--define(ACCOUNT_VM_EXTENSION(AccountId)
-       ,kapps_account_config:get_global(AccountId
-                                       ,?CF_CONFIG_CAT
-                                       ,[?KEY_VOICEMAIL, ?KEY_EXTENSION]
-                                       ,<<"mp3">>
-                                       )
        ).
 
 -define(DEFAULT_MAX_PIN_LENGTH
@@ -1527,7 +1513,6 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
 get_mailbox_profile(Data, Call) ->
     Id = kz_json:get_ne_binary_value(<<"id">>, Data),
     AccountDb = kapps_call:account_db(Call),
-    AccountId = kapps_call:account_id(Call),
 
     case get_mailbox_doc(AccountDb, Id, Data, Call) of
         {'ok', MailboxJObj} ->
@@ -1600,7 +1585,7 @@ get_mailbox_profile(Data, Call) ->
                     ,not_configurable=
                          kz_json:is_true(<<"not_configurable">>, MailboxJObj, 'false')
                     ,account_db = AccountDb
-                    ,media_extension = kz_json:get_ne_binary_value(<<"media_extension">>, MailboxJObj, ?ACCOUNT_VM_EXTENSION(AccountId))
+                    ,media_extension = kzd_voicemail_box:media_extension(MailboxJObj)
                     ,forward_type = ?DEFAULT_FORWARD_TYPE
                     };
         {'error', R} ->

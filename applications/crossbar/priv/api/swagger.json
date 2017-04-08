@@ -9085,6 +9085,22 @@
             },
             "type": "object"
         },
+        "system_config.crossbar.voicemail": {
+            "description": "Schema for crossbar.voicemail system_config",
+            "properties": {
+                "normalization_format": {
+                    "default": "mp3",
+                    "description": "Voicemail default audio format",
+                    "type": "string"
+                },
+                "normalize_media": {
+                    "default": false,
+                    "description": "Whether or not normalize voicemail audio file",
+                    "type": "boolean"
+                }
+            },
+            "type": "object"
+        },
         "system_config.datamgr": {
             "description": "Schema for datamgr system_config",
             "properties": {
@@ -13340,6 +13356,67 @@
                     },
                     "required": false,
                     "type": "object"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
+        "vm_message_metadata": {
+            "description": "Schema for a voicemail message metadata",
+            "properties": {
+                "call_id": {
+                    "description": "The SIP call-id",
+                    "name": "Call ID",
+                    "required": false,
+                    "type": "string"
+                },
+                "caller_id_name": {
+                    "description": "The caller id name",
+                    "maxLength": 35,
+                    "name": "Caller ID Name",
+                    "required": false,
+                    "type": "string"
+                },
+                "caller_id_number": {
+                    "description": "The caller id number",
+                    "maxLength": 35,
+                    "name": "Caller ID Number",
+                    "required": false,
+                    "type": "string"
+                },
+                "folder": {
+                    "description": "The folder the message belongs to",
+                    "enum": [
+                        "deleted",
+                        "saved",
+                        "new"
+                    ],
+                    "name": "Folder",
+                    "required": false,
+                    "type": "string"
+                },
+                "from": {
+                    "description": "The SIP from header",
+                    "name": "From",
+                    "required": false,
+                    "type": "string"
+                },
+                "length": {
+                    "name": "Length",
+                    "required": false,
+                    "type": "integer"
+                },
+                "timestamp": {
+                    "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
+                    "name": "Timestamp",
+                    "required": false,
+                    "type": "integer"
+                },
+                "to": {
+                    "description": "The SIP to header",
+                    "name": "To",
+                    "required": false,
+                    "type": "string"
                 }
             },
             "required": true,
@@ -21368,6 +21445,28 @@
                         "description": "A listing of messages"
                     }
                 }
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "vmboxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vmboxes"
+                        }
+                    },
+                    {
+                        "$ref": "#/parameters/vm_box_id"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
             }
         },
         "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/raw": {
@@ -21482,6 +21581,31 @@
         "/accounts/{ACCOUNT_ID}/vmboxes/{VM_BOX_ID}/messages/{VM_MSG_ID}/raw": {
             "get": {
                 "parameters": [
+                    {
+                        "$ref": "#/parameters/vm_msg_id"
+                    },
+                    {
+                        "$ref": "#/parameters/vm_box_id"
+                    },
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            },
+            "put": {
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "vmboxes",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/vmboxes"
+                        }
+                    },
                     {
                         "$ref": "#/parameters/vm_msg_id"
                     },
