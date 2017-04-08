@@ -120,7 +120,7 @@ resolve_ids([Id | Ids], [Parent | _]=Acc, Authorization) ->
             end
     end.
 
--spec resolve_ids(binary, binary()) -> binaries().
+-spec resolve_ids(binary(), binary()) -> binaries().
 resolve_ids(Path, Authorization) ->
     lager:debug("resolving path ~s", [Path]),
     Ids = binary:split(Path, <<"/">>, [global ,trim_all]),
@@ -169,8 +169,8 @@ gdrive_post(Url, Headers, Body) ->
     end.
 
 
--spec send_attachment(binary(), binary(), binary(), binary(), binary(), kz_proplist(), binary()) ->
-          {ok, kz_proplist()} | {'error', 'google_drive_error'}.
+-spec send_attachment(binary(), binaries(), binary(), binary(), binary(), kz_proplist(), binary()) ->
+                             {ok, kz_proplist()} | {'error', 'google_drive_error'}.
 send_attachment(Authorization, Folder, TokenDocId, AName, CT, Options, Contents) ->
     JObj = kz_json:from_list(
              props:filter_empty(
