@@ -186,6 +186,8 @@
     "crossbar.use_plaintext": "crossbar use plaintext",
     "crossbar.use_ssl": "crossbar use ssl",
     "crossbar.user_auth_tokens": "crossbar user auth tokens",
+    "crossbar.voicemail.normalization_format": "Voicemail default audio format",
+    "crossbar.voicemail.normalize_media": "Whether or not normalize voicemail audio file",
     "crossbar.workers": "crossbar workers",
     "datamgr.cache_policy": "datamgr cache policy",
     "datamgr.default_archive_folder": "datamgr default archive folder",
