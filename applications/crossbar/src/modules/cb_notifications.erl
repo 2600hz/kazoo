@@ -11,6 +11,7 @@
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1, allowed_methods/2
+        ,authorize/1
         ,resource_exists/0, resource_exists/1, resource_exists/2
         ,content_types_provided/2
         ,content_types_accepted/2
@@ -63,6 +64,7 @@
 -spec init() -> 'ok'.
 init() ->
     _ = crossbar_bindings:bind(<<"*.allowed_methods.notifications">>, ?MODULE, 'allowed_methods'),
+    _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.notifications">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.content_types_provided.notifications">>, ?MODULE, 'content_types_provided'),
     _ = crossbar_bindings:bind(<<"*.content_types_accepted.notifications">>, ?MODULE, 'content_types_accepted'),
@@ -96,6 +98,19 @@ allowed_methods(?SMTP_LOG, _SMTPLogId) ->
     [?HTTP_GET];
 allowed_methods(?CUSTOMER_UPDATE, ?MESSAGE) ->
     [?HTTP_POST].
+
+-spec authorize(cb_context:context()) -> boolean().
+authorize(Context) ->
+    authorize(Context, cb_context:req_nouns(Context), cb_context:account_id(Context)).
+
+-spec authorize(cb_context:context(), req_nouns(), api_binary()) -> boolean().
+authorize(_Context, [{<<"notifications">>, [?NE_BINARY=_Id]}], 'undefined') ->
+    lager:debug("allowing system notifications request"),
+    'true';
+authorize(_Context, [{<<"notifications">>, _}, {<<"accounts">>, [AccountId]}], AccountId) ->
+    'true';
+authorize(_Context, _Nouns, _AccountId) ->
+    'false'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -724,15 +739,34 @@ read_account(Context, Id, LoadFrom) ->
          }
     of
         {404, 'error'} when LoadFrom =:= 'system'; LoadFrom =:= 'system_migrate' ->
-            lager:debug("~s not found in account, reading from master", [Id]),
-            read_system_for_account(Context, Id, LoadFrom);
+            maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
         {_Code, 'success'} ->
-            lager:debug("loaded ~s from account database", [Id]),
+            lager:debug("loaded ~s from account database ~s", [Id, cb_context:account_db(Context)]),
             NewRespData = note_account_override(cb_context:resp_data(Context1)),
             cb_context:set_resp_data(Context1, NewRespData);
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [Id, _Code]),
             Context1
+    end.
+
+-spec maybe_read_from_parent(cb_context:context(), ne_binary(), load_from(), api_binary()) -> cb_context:context().
+maybe_read_from_parent(Context, Id, LoadFrom, 'undefined') ->
+    lager:debug("~s not found in account and reseller is undefined, reading from master", [Id]),
+    read_system_for_account(Context, Id, LoadFrom);
+maybe_read_from_parent(Context, Id, LoadFrom, ResellerId) ->
+    AccountId = kz_util:format_account_id(cb_context:account_db(Context)),
+    case AccountId =/= ResellerId
+        andalso get_parent_account_id(AccountId) of
+        'false' ->
+            lager:debug("~s not found in account and reached to reseller, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
+        'undefined' ->
+            lager:debug("~s not found in account and parent is undefined, reading from master", [Id]),
+            read_system_for_account(Context, Id, LoadFrom);
+        ParentId ->
+            ParentDb = kz_util:format_account_db(ParentId),
+            lager:debug("account doesn't have ~s, reading from parent account ~s", [Id, ParentDb]),
+            read_account(cb_context:set_account_db(Context, ParentDb), Id, LoadFrom)
     end.
 
 -spec read_system_for_account(cb_context:context(), path_token(), load_from()) ->
@@ -749,6 +783,15 @@ read_system_for_account(Context, Id, LoadFrom) ->
         _Status ->
             lager:debug("failed to read master db for ~s", [Id]),
             Context1
+    end.
+
+-spec get_parent_account_id(ne_binary()) -> api_binary().
+get_parent_account_id(AccountId) ->
+    case kz_account:fetch(AccountId) of
+        {'ok', JObj} -> kz_account:parent_account_id(JObj);
+        {'error', _E} ->
+            lager:error("failed to find parent account for ~s", [AccountId]),
+            'undefined'
     end.
 
 -spec revert_context_to_account(cb_context:context(), cb_context:context()) -> cb_context:context().
