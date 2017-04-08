@@ -1,0 +1,39 @@
+{
+    "_id": "office365",
+    "access_code_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    "auth_module": "oauth",
+    "auth_url": "https://login.microsoftonline.com/common/oauth2/v2.0/token",
+    "discovery": "https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration",
+    "issuer_domains": [
+        "login.microsoft.com",
+        "microsoft.com",
+        "https://login.microsoftonline.com/8ce13548-5e82-4be0-b053-f51e07dd2f95/v2.0"
+    ],
+    "jwt_flow": {
+        "audience": "https://login.microsoft.com",
+        "claims": [
+            "iat",
+            "exp"
+        ],
+        "sub": "email"
+    },
+    "profile_displayName_field": "displayName",
+    "profile_identity_field": "id",
+    "profile_url": "https://graph.microsoft.com/v1.0/me",
+    "public_key_discovery_field": "jwks_uri",
+    "public_key_jwt_field": "kid",
+    "public_key_jwt_location": "header",
+    "public_key_lookup_field": "kid",
+    "public_key_method": "lookup",
+    "pvt_type": "provider",
+    "scopes": {
+        "api": "api",
+        "custom_permissions": "custom_permissions",
+        "full": "full",
+        "id": "id",
+        "openid": "openid",
+        "refresh_token": "refresh_token",
+        "visualforce": "visualforce",
+        "web": "web"
+    }
+}

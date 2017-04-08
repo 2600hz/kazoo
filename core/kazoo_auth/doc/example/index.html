@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<title></title>
+		<meta name="description" content="">
+		<meta name="viewport" content="width=device-width initial-scale=1.0">
+
+		<link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700">
+		
+	</head>
+	<body>
+		<div class="core-wrapper"></div>
+
+        <script src="jquery-1.9.1.min.js"></script>
+        <script src="popup.js"></script>
+        <script>
+        function test() {
+        	var params = {
+        		client_id :"YOUR_CLIENT_ID",
+        		response_type : "code",
+        		redirect_uri : "WEB_URL",
+        		scope: ["openid", "profile", "email", "https://www.googleapis.com/auth/drive.file"].join(" "),
+        		include_granted_scopes : true,
+        		access_type : "offline",
+        		authuser : 0
+        	};
+            var url = "https://accounts.google.com/o/oauth2/auth?" + jQuery.param( params );
+            popup(url, params.redirect_uri, function(data) {
+                console.log(data);
+                $("#response")[0].innerText = JSON.stringify(data, null, 2);
+            });
+        }    
+        function popup(url, redirect_url, callback) {
+            var pop = new Popup();
+            pop.open(url, "oauth", {}, redirect_url).then(function(oauth) {
+                callback(oauth)
+            }, function(error) {
+                console.log(error);
+            });
+        }    
+        
+        function decode() {
+        	var Token = $('#token')[0].value;
+            var base64Url = Token.split('.')[1];
+            var base64 = base64Url.replace('-', '+').replace('_', '/');
+        	var decoded = JSON.parse(window.atob(base64));
+        	$('#decoded')[0].innerText = JSON.stringify(decoded, null, 2);
+        }
+        </script>
+        <div style="margin-top:50px;margin-left:100px">
+        <button onclick="test();">AUTHORIZE</button>
+        <h3>AUTHORIZE RESPONSE</h3>
+        <div id="response"></div>
+        <h3>TOKEN</h3>
+        <textarea id="token" rows="10" cols="240" style="width:300px"></textarea>
+        <button onclick="decode()">DECODE TOKEN</button>
+        <h3>DECODED TOKEN</h3>
+        <div id="decoded"></div>
+        </div>
+	</body>
+</html>

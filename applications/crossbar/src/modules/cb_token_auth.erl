@@ -20,7 +20,6 @@
         ,delete/1
         ,authenticate/1
         ,authorize/1
-        ,finish_request/1
         ]).
 
 -include("crossbar.hrl").
@@ -43,7 +42,6 @@ init() ->
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
     _ = crossbar_bindings:bind(<<"*.validate.token_auth">>, ?MODULE, 'validate'),
     _ = crossbar_bindings:bind(<<"*.execute.delete.token_auth">>, ?MODULE, 'delete'),
-    _ = crossbar_bindings:bind(<<"*.finish_request.*.*">>, ?MODULE, 'finish_request'),
     ok.
 
 -spec allowed_methods() -> http_methods().
@@ -91,35 +89,6 @@ delete(Context) ->
         {'error', _E} ->
             lager:debug("failed to delete auth token ~s: ~p", [AuthToken, _E]),
             Context
-    end.
-
--spec finish_request(cb_context:context()) -> 'ok'.
--spec finish_request(cb_context:context(), api_object()) -> 'ok'.
-finish_request(Context) ->
-    finish_request(Context, cb_context:auth_doc(Context)).
-
-finish_request(_Context, 'undefined') -> 'ok';
-finish_request(Context, AuthDoc) ->
-    cb_context:put_reqid(Context),
-    maybe_save_auth_doc(AuthDoc).
-
--spec maybe_save_auth_doc(kz_json:object()) -> any().
-maybe_save_auth_doc(OldAuthDoc) ->
-    OldAuthModified = kz_doc:modified(OldAuthDoc),
-    Now = kz_time:current_tstamp(),
-
-    ToSaveTimeout = (?LOOP_TIMEOUT * ?PERCENT_OF_TIMEOUT) div 100,
-
-    TimeLeft = Now - (OldAuthModified + ToSaveTimeout),
-
-    case TimeLeft > 0 of
-        'true' ->
-            lager:debug("auth doc is past time (~ps after) to be saved, saving", [TimeLeft]),
-            kz_datamgr:ensure_saved(?KZ_TOKEN_DB
-                                   ,kz_doc:set_modified(OldAuthDoc, Now)
-                                   );
-        'false' ->
-            lager:debug("auth doc is too new (~ps to go), not saving", [TimeLeft*-1])
     end.
 
 %%--------------------------------------------------------------------

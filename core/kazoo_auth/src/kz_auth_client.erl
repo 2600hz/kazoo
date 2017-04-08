@@ -37,7 +37,7 @@ token_for_auth_id(AuthId, Options) ->
                ,fun request_token/1
                ,fun authorization_header/1
                ],
-    run(Map, Routines).
+    kz_auth_util:run(Map, Routines).
 
 
 -spec token_for_app(ne_binary()) -> {ok | error, map()}.
@@ -60,26 +60,12 @@ token_for_app(AppId, Options) ->
                ,fun request_token/1
                ,fun authorization_header/1
                ],
-    run(Map, Routines).
+    kz_auth_util:run(Map, Routines).
 
 
 %% ====================================================================
 %% Internal functions
 %% ====================================================================
-
--spec run(map(), list()) -> {ok | error, map()}.
-run(Token, []) -> {ok, Token};
-run(Token, [Fun | Routines]) ->
-    try Fun(Token) of
-        #{error := _Err}=Error -> {error, Error};
-        NewToken -> run(NewToken, Routines)
-    catch
-        _E:_R ->
-            lager:debug("exception executing ~p : ~p , ~p", [Fun, _E, _R]),
-            kz_util:log_stacktrace(),
-            {error, Token}
-    end.
-
 
 add_app(#{app_id := AppId}=Map) ->
     case kz_auth_apps:get_auth_app(AppId, 'app_and_provider') of
@@ -178,20 +164,30 @@ add_subject(#{options := #{auth_id := AuthId}
     end;
 add_subject(#{}=Map) -> Map.
 
+add_subject_claim(#{options := #{sub := Sub}
+                   ,claims := Claims
+                   }=Map) ->
+    Map#{claims => Claims#{sub => Sub}};
 add_subject_claim(#{auth_app := #{jwt_flow := #{sub := Sub}}
-                   ,subject := #{profile := Profile}
+                   ,subject := #{profile := Profile} = Subject
                    ,claims := Claims
                    }=Map) ->
     case kz_maps:get(Sub, Profile) of
-        undefined -> Map;
+        undefined -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
+                         undefined -> Map;
+                         Value -> Map#{claims => Claims#{sub => Value}}
+                     end;
         Value -> Map#{claims => Claims#{sub => Value}}
     end;
 add_subject_claim(#{auth_provider := #{jwt_flow := #{sub := Sub}}
-                   ,subject := #{profile := Profile}
+                   ,subject := #{profile := Profile} = Subject
                    ,claims := Claims
                    }=Map) ->
     case kz_maps:get(Sub, Profile) of
-        undefined -> Map;
+        undefined -> case kz_maps:get(kz_term:to_atom(Sub, 'true'), Subject) of
+                         undefined -> Map;
+                         Value -> Map#{claims => Claims#{sub => Value}}
+                     end;
         Value -> Map#{claims => Claims#{sub => Value}}
     end;
 add_subject_claim(#{}=Map) -> Map.
@@ -205,21 +201,51 @@ authorization_header(#{token := #{token_type := TokenType
     Map#{token => Token#{authorization => Authorization}};
 authorization_header(Map) -> Map.
 
-request_token(#{subject := #{refresh_token := Token}}=Map) ->
+request_token(#{subject := #{pvt_refresh_token := Token}}=Map) ->
     refresh_token_flow(Map#{refresh_token => Token});
-request_token(#{auth_app := #{auth_url := URL}}=Map) ->
-    jwt_flow(URL, Map);
-request_token(#{auth_provider := #{auth_url := URL}}=Map) ->
-    jwt_flow(URL, Map).
+request_token(Map) ->
+    jwt_flow(Map).
 
-jwt_flow(URL, #{claims := Claims}=Map) ->
-    {ok, Assertion} = kz_auth_jwt:encode(Claims),
+jwt_flow(Map) ->
+    Routines = [fun jwt_url/1
+               ,fun jwt_issuer/1
+               ,fun jwt_assertion/1
+               ,fun jwt_request/1
+               ],
+    kz_auth_util:run(Map, Routines).
+
+jwt_url(#{auth_app := #{jwt_flow := #{auth_url := URL}}}=Map) ->
+    Map#{auth_url => URL};
+jwt_url(#{auth_provider := #{jwt_flow := #{auth_url := URL}}}=Map) ->
+    Map#{auth_url => URL};
+jwt_url(#{auth_app := #{auth_url := URL}}=Map) ->
+    Map#{auth_url => URL};
+jwt_url(#{auth_provider := #{auth_url := URL}}=Map) ->
+    Map#{auth_url => URL};
+jwt_url(Map) ->
+    {error, Map#{error => <<"no auth_url">>}}.
+
+jwt_issuer(#{auth_app := #{jwt_flow := #{iss := Issuer}}
+            ,claims := Claims
+            }=Map) ->
+    Map#{claims => Claims#{iss => Issuer}};
+jwt_issuer(Map) -> Map.
+
+jwt_assertion(Map) ->
+    case kz_auth_jwt:encode(Map) of
+        {ok, JWT} -> Map#{jwt => JWT};
+        {error, Error} -> {error, Map#{error => Error}}
+    end.
+
+jwt_request(#{auth_url := URL
+             ,jwt := JWT
+             }=Map) ->
     GrantType = kz_term:to_list(kz_util:uri_encode(?OAUTH_GRANT_TYPE)),
     Headers = [{"Content-Type","application/x-www-form-urlencoded"}
               ,{"User-Agent", "Kazoo"}
               ],
-    Fields = [{"grant_type", GrantType}
-             ,{"assertion", kz_term:to_list(kz_util:uri_encode(Assertion))}
+    Fields = [{"assertion", kz_term:to_list(kz_util:uri_encode(JWT))}
+             ,{"grant_type", GrantType}
              ],
     Body = string:join(lists:append(lists:map(fun({K,V}) -> [string:join([K,V], "=") ] end, Fields)),"&"),
     case kz_http:post(kz_term:to_list(URL), Headers, Body) of
@@ -230,8 +256,9 @@ jwt_flow(URL, #{claims := Claims}=Map) ->
                             ,headers => RespHeaders
                             }
                 };
-        _Else ->
-            Map#{error => kz_term:to_binary(io_lib:format("unable to request service token: ~p", [_Else]))}
+        {_Reply, _Code, _RespHeaders, RespBody} ->
+            lager:debug("received ~p/~p : ~p", [_Reply, _Code, RespBody]),
+            Map#{error => kz_term:to_binary(io_lib:format("unable to request service token: ~p", [RespBody]))}
     end.
 
 refresh_token_flow(#{auth_app := #{name := AppId
@@ -256,8 +283,9 @@ refresh_token_flow(#{auth_app := #{name := AppId
                             ,headers => RespHeaders
                             }
                 };
-        _Else ->
-            Map#{error => kz_term:to_binary(io_lib:format("unable to request service token: ~p", [_Else]))}
+        {_Reply, _Code, _RespHeaders, RespBody} ->
+            lager:debug("received ~p/~p : ~p", [_Reply, _Code, RespBody]),
+            Map#{error => kz_term:to_binary(io_lib:format("unable to request service token: ~p", [RespBody]))}
     end.
 
 

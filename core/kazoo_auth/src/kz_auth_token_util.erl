@@ -43,11 +43,14 @@ access_code(#{code := Code
              } = Token) ->
     AppId = kz_json:get_first_defined(?APPID_KEYS, JObj),
     RedirectURI = kz_json:get_first_defined(?REDIRECT_URI_KEYS, JObj, <<"postmessage">>),
+    lager:debug("trying to get access_code ~p for ~p with redirect ~p", [Code, AppId, RedirectURI]),
     case kz_auth_util:fetch_access_code(AppId, Code, RedirectURI) of
         {'ok', CodeJObj} ->
             Map = kz_maps:keys_to_atoms(kz_json:to_map(CodeJObj)),
             (maps:merge(Token, Map))#{original => kz_json:merge_jobjs(JObj, CodeJObj)};
-        _ -> Token
+        _Else ->
+            lager:error("not expected ~p", [_Else]),
+            Token
     end;
 access_code(#{} = Token) -> Token.
 
@@ -69,19 +72,30 @@ verify(#{}=Token) -> Token#{verified_token => kz_json:new()}.
 
 -spec create_claims(map()) -> map().
 create_claims(#{user_doc := Doc, profile := Profile}=Token) ->
-    case build_claims([Doc, Profile]) of
+    case build_claims(?JWT_CLAIMS, [Doc, Profile]) ++
+        build_claims(?JWT_MAP_CLAIMS, Token)
+    of
         [] -> Token;
         Claims -> Token#{claims => Claims}
     end;
 create_claims(#{}=Token) -> Token.
 
--spec build_claims(kz_json:objects()) -> kz_proplist().
-build_claims(JObjs) ->
-    build_claims(?JWT_CLAIMS, JObjs, []).
+-type claim_map_input() :: map() | kz_json:objects().
 
--spec build_claims(kz_proplist(), kz_json:objects(), kz_proplist()) -> kz_proplist().
-build_claims([], _JObjs, Claims) -> Claims;
-build_claims([{K1, K2} | KVs], JObjs, Claims) ->
+-spec build_claims(kz_proplist(), claim_map_input()) -> kz_proplist().
+build_claims(ClaimsMap, BuildFrom) ->
+    build_claims(ClaimsMap, BuildFrom, []).
+
+-spec build_claims(kz_proplist(), claim_map_input(), kz_proplist()) -> kz_proplist().
+build_claims([], _, Claims) -> Claims;
+build_claims([{K1, K2} | KVs], Map, Claims)
+  when is_map(Map) ->
+    case kz_maps:get(K1, Map) of
+        'undefined' -> build_claims(KVs, Map, Claims);
+        V -> build_claims(KVs, Map, [{K2, V} | Claims])
+    end;
+build_claims([{K1, K2} | KVs], JObjs, Claims)
+  when is_list(JObjs) ->
     case kz_json:find(K1, JObjs) of
         'undefined' -> build_claims(KVs, JObjs, Claims);
         V -> build_claims(KVs, JObjs, [{K2, V} | Claims])

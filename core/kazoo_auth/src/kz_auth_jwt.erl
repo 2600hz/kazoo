@@ -141,53 +141,117 @@ epoch() -> erlang:system_time('seconds').
 -spec encode(kz_proplist() | map()) ->
                     {'ok', ne_binary()} |
                     {'error', any()}.
-encode(ClaimsMap)
-  when is_map(ClaimsMap) ->
-    encode(lists:map(fun({K,V}) -> {kz_term:to_binary(K), V} end, maps:to_list(ClaimsMap)));
-encode(Claims) ->
+encode(Claims) when is_list(Claims) ->
     case props:get_value(<<"iss">>, Claims) of
         undefined -> {'error', 'no_issuer'};
-        Issuer -> encode(Claims, Issuer)
+        Issuer -> encode(#{claims => Claims
+                          ,issuer => Issuer
+                          })
+    end;
+
+encode(Map) when is_map(Map) ->
+    Routines = [fun add_app/1
+               ,fun add_kid/1
+               ,fun add_key/1
+               ,fun add_alg/1
+               ,fun add_digest/1
+               ,fun add_header/1
+               ,fun add_claims/1
+               ,fun add_payload/1
+               ,fun sign/1
+               ],
+    case kz_auth_util:run(Map, Routines) of
+        {ok, #{jwt := #{token := Token}}} -> {ok, Token};
+        {ok, _M} ->
+            lager:debug("JWT encode incomplete : ~p", [_M]),
+            {error, <<"no jwt token encoded">>};
+        {error, #{error := Error} = _M} ->
+            lager:debug("JWT encode error : ~p", [_M]),
+            {error, Error};
+        {error, _M} ->
+            lager:debug("JWT encode unknown error : ~p", [_M]),
+            {error, <<"unknown error">>}
     end.
 
--spec encode(kz_proplist(), ne_binary()) ->
-                    {'ok', ne_binary()} |
-                    {'error', any()}.
-encode(Claims, Issuer) ->
+-spec add_app(map()) -> map().
+add_app(#{auth_app := _}=Map) -> Map;
+add_app(#{issuer := Issuer} = Map) ->
     case kz_auth_apps:get_auth_app(Issuer) of
-        {'error', _} = Error -> Error;
-        #{pvt_server_key := Key
-         ,jwt_algorithm := Alg
-         } -> encode(Alg, Claims, Key);
-        #{pvt_server_key := Key} -> encode(?DEFAULT_ALGORITHM, Claims, Key);
-        _ -> {'error', 'no_key'}
+        {'error', Error} -> {error, Map#{error => Error}};
+        #{}=App -> Map#{auth_app => App}
     end.
 
--spec encode(ne_binary(), kz_proplist(), ne_binary() | {ne_binary(), public_key:rsa_private_key()}) ->
-                    {'ok', ne_binary()} |
-                    {'error', any()}.
-encode(Alg, ClaimsSet, KeyId = ?NE_BINARY) ->
-    {'ok', Key} = kz_auth_keys:private_key(KeyId),
-    encode(Alg, ClaimsSet, {KeyId, Key});
-encode(Alg, ClaimsSet, {KeyId, Key}) ->
+-spec add_kid(map()) -> map().
+add_kid(#{kid := _}=Map) -> Map;
+add_kid(#{auth_app := #{pvt_server_key := Key}} = Map) ->
+    Map#{kid => Key};
+add_kid(Map) ->
+    {error, Map#{error => <<"no key identifier">>}}.
+
+-spec add_key(map()) -> map().
+add_key(#{key := _}=Map) -> Map;
+add_key(#{kid := KeyId} = Map) ->
+    case kz_auth_keys:private_key(KeyId) of
+        {'ok', Key} -> Map#{key => Key};
+        {'error', Error} -> {error, Map#{error => Error}}
+    end.
+
+-spec add_alg(map()) -> map().
+add_alg(#{alg := _}=Map) -> Map;
+add_alg(#{auth_app := #{jwt_algorithm := Alg}} = Map) ->
+    Map#{alg => Alg};
+add_alg(Map) ->
+    Map#{alg => ?DEFAULT_ALGORITHM}.
+
+-spec add_digest(map()) -> map().
+add_digest(#{digest := _}=Map) -> Map;
+add_digest(#{alg := Alg} = Map) ->
+    Map#{digest => alg_2_digest_type(Alg)}.
+
+-spec add_header(map()) -> map().
+add_header(#{alg := Alg
+            ,kid := KeyId
+            } = Map) ->
     Head = [{<<"alg">>, Alg}
            ,{<<"typ">>, <<"JWT">>}
            ,{<<"kid">>, KeyId}
            ],
     Header = kz_base64url:encode(kz_json:encode(kz_json:from_list(Head))),
+    Map#{jwt => #{header => #{keys => Head
+                             ,encoded => Header
+                             }
+                 }}.
+
+-spec add_claims(map()) -> map().
+add_claims(#{claims := ClaimsMap
+            ,jwt := JWT
+            } = Map)
+  when is_map(ClaimsMap) ->
+    ClaimsSet = lists:map(fun({K,V}) -> {kz_term:to_binary(K), V} end, maps:to_list(ClaimsMap)),
+    Map#{jwt => JWT#{claims => ClaimsSet}};
+add_claims(#{claims := Claims
+            ,jwt := JWT
+            } = Map) ->
+    Map#{jwt => JWT#{claims => Claims}}.
+
+-spec add_payload(map()) -> map().
+add_payload(#{jwt := #{claims := ClaimsSet
+                      ,header := #{encoded := Header}
+                      } = JWT
+             } = Map) ->
     Claims = kz_base64url:encode(kz_json:encode(kz_json:from_list(ClaimsSet))),
     Payload = <<Header/binary, ".", Claims/binary>>,
-    case sign(Alg, Payload, Key) of
-        'undefined' -> {'error', 'algorithm_not_supported'};
-        Signature -> {'ok', <<Payload/binary, ".", Signature/binary>>}
-    end.
+    Map#{jwt => JWT#{payload => Payload}}.
 
--spec sign(ne_binary(), ne_binary(),  public_key:rsa_private_key()) -> api_binary().
-sign(Alg, Payload, Key) ->
-    case alg_2_digest_type(Alg) of
-        undefined -> undefined;
-        Crypto -> kz_base64url:encode(public_key:sign(Payload, Crypto, Key))
-    end.
+-spec sign(map()) -> map().
+sign(#{digest := Digest
+      ,key := Key
+      ,jwt := #{payload := Payload} = JWT
+      } = Map) ->
+    Signature = kz_base64url:encode(public_key:sign(Payload, Digest, Key)),
+    Map#{jwt => JWT#{signature => Signature
+                    ,token => <<Payload/binary, ".", Signature/binary>>
+                    }}.
 
 -spec set_provider(map()) -> map().
 set_provider(#{payload := #{<<"iss">> := Issuer}}=Token) ->
