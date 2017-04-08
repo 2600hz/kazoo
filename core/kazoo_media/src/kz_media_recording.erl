@@ -502,10 +502,7 @@ store_url(#state{doc_db=Db
                 ,verb=Verb
                 ,account_id=AccountId
                 }, _Rev) ->
-    {S1, S2} = case kz_http_util:urlsplit(Url) of
-                   {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
-                   _Else -> {<<"&recording=">>, <<"&">>}
-               end,
+    {S1, S2} = check_url(Url),
     HandlerOpts = #{url => Url
                    ,verb => Verb
                    ,field_separator => <<>>
@@ -537,6 +534,25 @@ store_url(#state{doc_db=Db
                },
     Options = [{'plan_override', Handler}],
     kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
+
+-spec check_url(ne_binary()) -> {binary(), binary()}.
+check_url(Url) ->
+    case kz_http_util:urlsplit(Url) of
+        {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
+        {_, _, _, Params, _} -> check_url_query(Params)
+    end.
+
+-spec check_url_query(ne_binary()) -> {binary(), binary()}.
+check_url_query(Query) ->
+    check_url_param(lists:last(binary:split(Query, <<"&">>, [global]))).
+
+-spec check_url_param(ne_binary()) -> {binary(), binary()}.
+check_url_param(Param) ->
+    case binary:split(Param, <<"=">>) of
+        [_] -> {<<"=">>, <<>>};
+        [_, <<>>] -> {<<>>, <<>>};
+        _ -> {<<"&recording=">>, <<>>}
+    end.
 
 -spec handler_from_url(ne_binary()) -> 'kz_att_ftp' | 'kz_att_http' | 'undefined'.
 handler_from_url(Url) ->
