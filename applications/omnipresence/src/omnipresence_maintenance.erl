@@ -14,6 +14,7 @@
         ,count_current_subscriptions/0
         ,subscribe/2
         ,send_mwi_update/3
+        ,reset_zone/0, reset_zone/1
         ,reset_account/1
         ,reset_subscription/1, reset_subscription/2
         ,reset_subscriber/1, reset_subscriber/2
@@ -140,3 +141,11 @@ reset_account(AccountId) ->
         {'ok', JObj} -> reset_subscription(<<"*">>, kz_account:realm(JObj));
         {'error', _} = Error -> Error
     end.
+
+-spec reset_zone() -> any().
+reset_zone() ->
+    reset_zone(kz_term:to_binary(kz_config:zone())).
+
+-spec reset_zone(ne_binary()) -> any().
+reset_zone(Zone) ->
+    reset_subscription(Zone, <<"*">>).
