@@ -79,6 +79,7 @@
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
+-define(TEST_AVAILABLE_NON_LOCAL_NUM, <<"+19162154006">>).
 
 -define(MASTER_ACCOUNT_ID,   <<"master_account_6992af0e9504d0b27">>).
 -define(RESELLER_ACCOUNT_ID, <<"reseller_account_b113394f16cb76d">>).
@@ -98,13 +99,14 @@
           ,{<<"my_key">>, <<"my string">>}
           ,{?PVT_MODIFIED, 63565934349}
           ,{?PVT_FEATURES, ?FEATURES_FOR_LOCAL_NUM}
-          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
-          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_ASSIGNED_TO, undefined}
+          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, []}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
           ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1555">>}
           ,{?PVT_CREATED, 63565934344}
-          ,{?PVT_USED_BY, <<"callflow">>}
+          ,{?PVT_USED_BY, undefined}
           ])).
 
 -define(IN_SERVICE_NUMBER
@@ -282,10 +284,24 @@
           ,{?PVT_CREATED, 63610268576}
           ])).
 
--define(LOG_ERROR(F,A), io:format(user, F++ "\n", A)).
--define(LOG_WARN(F,A), io:format(user, F++ "\n", A)).
--define(LOG_DEBUG(F,A), io:format(user, F++"\n", A)).
--define(LOG_DEBUG(F), io:format(user, F++ "\n", [])).
+-define(AVAILABLE_NON_LOCAL_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_AVAILABLE_NON_LOCAL_NUM}
+          ,{<<"_rev">>, <<"1-3dd6a1523e81a4e3c2689140ed3a8e69">>}
+          ,{?PVT_MODIFIED, 63565900001}
+          ,{?PVT_ASSIGNED_TO, undefined}
+          ,{?PVT_PREVIOUSLY_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, []}
+          ,{?PVT_MODULE_NAME, <<"knm_telnyx">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_AVAILABLE}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1916">>}
+          ,{?PVT_CREATED, 63565900000}
+          ])).
+
+-define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
+-define(LOG_DEBUG(F), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE])).
 -else.
 -define(LOG_ERROR(F,A), lager:error(F,A)).
 -define(LOG_WARN(F,A), lager:warning(F,A)).

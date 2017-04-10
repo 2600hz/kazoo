@@ -192,7 +192,8 @@ reconcile_test_() ->
 
 reserve_test_() ->
     AssignToChild = [{assign_to, ?CHILD_ACCOUNT_ID} | knm_number_options:default()],
-    Ret1 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM], knm_number_options:default()),
+    Ret1 = knm_numbers:reserve([?NOT_NUM, ?TEST_AVAILABLE_NUM]
+                              ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
     Ret2 = knm_numbers:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], knm_number_options:default()),
     Ret3 = knm_numbers:reserve([?NOT_NUM, ?TEST_IN_SERVICE_NUM], AssignToChild),
     [?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret1))

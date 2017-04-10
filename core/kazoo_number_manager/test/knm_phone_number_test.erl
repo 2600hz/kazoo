@@ -883,4 +883,5 @@ nums() ->
     ,?TEST_PORT_IN_NUM
     ,?TEST_PORT_IN2_NUM
     ,?BW_EXISTING_DID
+    ,?TEST_AVAILABLE_NON_LOCAL_NUM
     ].
