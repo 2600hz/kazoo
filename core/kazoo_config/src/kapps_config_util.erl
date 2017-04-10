@@ -51,7 +51,7 @@ load_config_from_reseller(Account, Config) ->
 
 -spec load_config_from_system(api_binary(), ne_binary()) -> {ok, kz_json:object()} | {error, any()}.
 load_config_from_system(_Account, Config) ->
-    kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config))).
+    {'ok', kz_json:get_value(<<"default">>, maybe_new(kapps_config:get_category(Config)))}.
 
 -spec load_default_config(api_binary(), ne_binary()) -> {ok, kz_json:object()}.
 load_default_config(_Account, Config) ->
