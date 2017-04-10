@@ -369,11 +369,18 @@ maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call) ->
     case kz_json:get_ne_binary_value([<<"slots">>, SlotNumber, <<"Call-ID">>], JObj1) of
         ExpectedParkedCall ->
             UpdatedJObj = kz_json:set_value([<<"slots">>, SlotNumber], Slot, JObj1),
-            {'ok', JObj2}=Ok = kz_datamgr:save_doc(AccountDb, UpdatedJObj),
-            lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
-            CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
-            kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
-            Ok;
+            case kz_datamgr:save_doc(AccountDb, UpdatedJObj) of
+                {'error', 'conflict'} ->
+                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call);
+                {'ok', JObj2}=Ok ->
+                    lager:info("conflict when attempting to store call parking data for slot ~s due to a different slot update", [SlotNumber]),
+                    CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
+                    kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj2, CacheProps),
+                    Ok;
+                {'error', _Error} ->
+                    lager:info("error when attempting to store call parking data for slot ~s due to a different slot update : ~p", [SlotNumber, _Error]),
+                    {'error', 'occupied'}
+            end;
         CurrentParkedCall ->
             lager:debug("attempt to store parking data conflicted with a recent update to slot ~s", [SlotNumber]),
             CacheProps = [{'origin', {'db', AccountDb, ?DB_DOC_NAME}}],
