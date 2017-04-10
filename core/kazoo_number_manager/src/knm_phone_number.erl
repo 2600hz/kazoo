@@ -514,11 +514,13 @@ delete(T=#{todo := PNs, options := Options}) ->
                                 ])
     end.
 
+-spec log_permanent_deletion(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 log_permanent_deletion(T=#{todo := PNs}) ->
     F = fun (_PN) -> ?LOG_DEBUG("deleting permanently ~s", [number(_PN)]) end,
     lists:foreach(F, PNs),
     knm_numbers:ok(PNs, T).
 
+-spec set_state_deleted(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 set_state_deleted(T) ->
     setters(T, [{fun set_state/2, ?NUMBER_STATE_DELETED}]).
 
@@ -1611,6 +1613,7 @@ is_in_account_hierarchy(AuthBy, AccountId) ->
     kz_util:is_in_account_hierarchy(AuthBy, AccountId, true).
 -endif.
 
+-spec is_authorized_collection(knm_numbers:pn_collection()) -> knm_numbers:pn_collection().
 is_authorized_collection(T0=#{todo := PNs}) ->
     F = fun (PN, T) ->
                 case is_authorized(PN) of

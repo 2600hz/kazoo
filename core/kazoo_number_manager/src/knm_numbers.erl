@@ -83,7 +83,8 @@
 -type t_pn() :: t(knm_phone_number:knm_phone_number()).
 
 -opaque collection() :: t().
--export_type([collection/0]).
+-opaque pn_collection() :: t_pn().
+-export_type([collection/0, pn_collection/0]).
 
 -type options() :: knm_number_options:options().
 -type plan() :: kz_service_plans:plan() | undefined.
@@ -747,6 +748,7 @@ if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
         end,
     lists:foldl(F, T0, Ns).
 
+-spec try_release(t_pn()) -> t_pn().
 try_release(T) ->
     pipe(T
         ,[fun can_release/1
@@ -754,6 +756,7 @@ try_release(T) ->
          ,fun reset_features/1
          ]).
 
+-spec can_release(t_pn()) -> t_pn().
 can_release(T0=#{todo := PNs}) ->
     ToState = knm_config:released_state(),
     F = fun (PN, T) ->
@@ -768,6 +771,7 @@ can_release(T0=#{todo := PNs}) ->
         end,
     lists:foldl(F, T0, PNs).
 
+-spec can_release(ne_binary(), ne_binary()) -> boolean().
 can_release(?NUMBER_STATE_RELEASED, _) -> true;
 can_release(?NUMBER_STATE_RESERVED, _) -> true;
 can_release(?NUMBER_STATE_PORT_IN, _) -> true;
@@ -775,12 +779,14 @@ can_release(?NUMBER_STATE_IN_SERVICE, _) -> true;
 can_release(_, ?CARRIER_LOCAL) -> true;
 can_release(_, _) -> false.
 
+-spec reset_features(t_pn()) -> t_pn().
 reset_features(T) ->
     Routines = [fun knm_phone_number:reset_features/1
                ,fun knm_phone_number:reset_doc/1
                ],
     knm_phone_number:setters(T, Routines).
 
+-spec unwind_maybe_disconnect(t()) -> t().
 unwind_maybe_disconnect(T) ->
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
     {ToDisconnect, DontDisconnect} = lists:partition(fun should_disconnect/1, Ns),
@@ -791,10 +797,12 @@ unwind_maybe_disconnect(T) ->
               ]),
     merge_okkos(Ta, Tb).
 
+-spec should_disconnect(knm_number:knm_number()) -> boolean().
 should_disconnect(N) ->
     undefined =:= knm_phone_number:assigned_to(knm_number:phone_number(N)).
 
-delete_maybe_age(T=#{todo := _Ns}) ->
+-spec delete_maybe_age(t()) -> t().
+delete_maybe_age(T) ->
     case knm_config:should_permanently_delete() of
         true -> delete_permanently(T);
         false ->
@@ -802,6 +810,7 @@ delete_maybe_age(T=#{todo := _Ns}) ->
             merge_okkos(delete_permanently(DeleteNs), maybe_age(OtherNs))
     end.
 
+-spec delete_permanently(t()) -> t().
 delete_permanently(T) ->
     do_in_wrap(fun knm_phone_number:delete/1, T).
 
