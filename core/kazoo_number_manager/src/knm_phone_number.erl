@@ -333,6 +333,7 @@ delete(PN) ->
     {'ok', NewPN} = setters(PN, Routines),
     NewPN.
 
+-spec try_delete_number_doc(knm_phone_number()) -> {ok, knm_phone_number()}.
 try_delete_number_doc(PN) ->
     case delete_number_doc(PN) of
         {'ok', _}=Ok -> Ok;
@@ -341,6 +342,7 @@ try_delete_number_doc(PN) ->
             {'ok', PN}
     end.
 
+-spec try_maybe_remove_number_from_account(knm_phone_number()) -> {ok, knm_phone_number()}.
 try_maybe_remove_number_from_account(PN) ->
     case maybe_remove_number_from_account(PN) of
         {'ok', _}=Ok -> Ok;
@@ -349,6 +351,7 @@ try_maybe_remove_number_from_account(PN) ->
             {'ok', PN}
     end.
 
+-spec try_maybe_remove_from_prev(knm_phone_number()) -> {ok, knm_phone_number()}.
 try_maybe_remove_from_prev(PN) ->
     try unassign_from_prev(PN) of
         PN -> {ok, PN}
