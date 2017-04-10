@@ -195,6 +195,12 @@ function kz_json_to_kz_http {
     search_and_replace_with_prefix fs[@] "kz_json" "kz_http_util" "json_"
 }
 
+function props_to_kz_http {
+    local fs=(to_querystring
+             )
+    search_and_replace_with_prefix fs[@] "props" "kz_http_util" "props_"
+}
+
 
 echo "ensuring kz_term is used"
 kz_util_to_term
@@ -206,5 +212,7 @@ echo "ensuring kz_json:public/private are moved to kz_doc"
 kz_json_to_kz_doc
 echo "ensuring kz_json:to_querystring is moved to kz_http_util"
 kz_json_to_kz_http
+echo "ensuring props:to_querystring is moved to kz_http_util"
+props_to_kz_http
 
 popd > /dev/null

@@ -13,6 +13,7 @@
         ,urlsplit/1
         ,urlunsplit/1
         ,json_to_querystring/1
+        ,props_to_querystring/1
         ]).
 
 -include_lib("kazoo_stdlib/include/kazoo_json.hrl").
@@ -272,13 +273,22 @@ urlunsplit({S, N, P, Q, F}) ->
 %% Convert {key1:val1,key2:[v2_1, v2_2],key3:{k3_1:v3_1}} =>
 %%   key=val&key2[]=v2_1&key2[]=v2_2&key3[key3_1]=v3_1
 -spec json_to_querystring(object()) -> iolist().
-json_to_querystring(JObj) -> to_querystring(JObj, <<>>).
+json_to_querystring(JObj) -> json_to_querystring(JObj, <<>>).
 
 %% if Prefix is empty, don't wrap keys in array tags, otherwise Prefix[key]=value
--spec to_querystring(object(), iolist() | binary()) -> iolist().
-to_querystring(JObj, Prefix) ->
+-spec json_to_querystring(object(), iolist() | binary()) -> iolist().
+json_to_querystring(JObj, Prefix) ->
     {Vs, Ks} = kz_json:get_values(JObj),
     fold_kvs(Ks, Vs, Prefix, []).
+
+-spec props_to_querystring(kz_proplist()) -> iolist().
+-spec props_to_querystring(kz_proplist(), binary() | ne_binaries()) -> iolist().
+props_to_querystring(Props) ->
+    props_to_querystring(Props, <<>>).
+
+props_to_querystring(Props, Prefix) ->
+    {Vs, Ks} = props:get_values_and_keys(Props),
+    fold_kvs([kz_term:to_binary(K) || K <- Ks], Vs, Prefix, []).
 
 %% foreach key/value pair, encode the key/value with the prefix and prepend the &
 %% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
@@ -304,9 +314,9 @@ encode_kv(Prefix, K, 'false') ->
 
 %% key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
 %% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [K]);
+encode_kv(<<>>, K, ?JSON_WRAPPER(_)=JObj) -> json_to_querystring(JObj, [K]);
 %% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
+encode_kv(Prefix, K, ?JSON_WRAPPER(_)=JObj) -> json_to_querystring(JObj, [Prefix, <<"[">>, K, <<"]">>]).
 
 -spec encode_kv(iolist() | binary(), key(), ne_binary(), string() | binary()) -> iolist().
 encode_kv(<<>>, K, Sep, V) -> [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];

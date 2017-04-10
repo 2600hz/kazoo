@@ -22,6 +22,7 @@
         ,get_keys/1
         ,get_first_defined/2, get_first_defined/3
         ,get_all_values/2
+        ,get_values_and_keys/1
         ,set_values/2
         ,set_value/3
         ,insert_value/2, insert_value/3, insert_values/2
@@ -29,7 +30,6 @@
         ,filter/2
         ,filter_empty/1
         ,filter_undefined/1
-        ,to_querystring/1
         ,to_log/1, to_log/2
         ]).
 
@@ -222,6 +222,15 @@ get_keys(Props) -> [K || {K,_} <- Props].
 -spec get_all_values(kz_proplist_key(), kz_proplist()) -> kz_proplist_values().
 get_all_values(Key, Props) -> [V || {K, V} <- Props, K =:= Key].
 
+-spec get_values_and_keys(kz_proplist()) -> {kz_proplist_values(), kz_proplist_keys()}.
+get_values_and_keys(Props) ->
+    lists:foldr(fun(Key, {Vs, Ks}) ->
+                        {[get_value(Key, Props)|Vs], [Key|Ks]}
+                end
+               ,{[], []}
+               ,get_keys(Props)
+               ).
+
 -spec delete(kz_proplist_key(), kz_proplist()) -> kz_proplist().
 delete(K, Props) ->
     case lists:keyfind(K, 1, Props) of
@@ -250,61 +259,6 @@ unique([Key|T], Uniques) ->
 
 ufun({K, _}, Key) -> K =/= Key;
 ufun(K, Key) -> K =/= Key.
-
--spec get_values_and_keys(kz_proplist()) -> {kz_proplist_values(), kz_proplist_keys()}.
-get_values_and_keys(Props) ->
-    lists:foldr(fun(Key, {Vs, Ks}) ->
-                        {[get_value(Key, Props)|Vs], [Key|Ks]}
-                end, {[], []}, get_keys(Props)).
-
--spec to_querystring(kz_proplist()) -> iolist().
--spec to_querystring(kz_proplist(), binary() | ne_binaries()) -> iolist().
-to_querystring(Props) ->
-    to_querystring(Props, <<>>).
-
-to_querystring(Props, Prefix) ->
-    {Vs, Ks} = get_values_and_keys(Props),
-    fold_kvs([kz_term:to_binary(K) || K <- Ks], Vs, Prefix, []).
-
-%% foreach key/value pair, encode the key/value with the prefix and prepend the &
-%% if the last key/value pair, encode the key/value with the prefix, prepend to accumulator
-%% and reverse the list (putting the key/value at the end of the list)
--spec fold_kvs(ne_binaries(), any(), binary() | iolist(), iolist()) -> iolist().
-fold_kvs([], [], _, Acc) -> Acc;
-fold_kvs([K], [V], Prefix, Acc) -> lists:reverse([encode_kv(Prefix, K, V) | Acc]);
-fold_kvs([K|Ks], [V|Vs], Prefix, Acc) ->
-    fold_kvs(Ks, Vs, Prefix, [<<"&">>, encode_kv(Prefix, K, V) | Acc]).
-
--spec encode_kv(iolist() | binary(), ne_binary(), any()) -> iolist().
-%% If a list of values, use the []= as a separator between the key and each value
-encode_kv(Prefix, K, Vs) when is_list(Vs) ->
-    encode_kv(Prefix, kz_term:to_binary(K), Vs, <<"[]=">>, []);
-%% if the value is a "simple" value, just encode it (url-encoded)
-encode_kv(Prefix, K, V) when is_binary(V)
-                             orelse is_number(V) ->
-    encode_kv(Prefix, K, <<"=">>, kz_http_util:urlencode(V));
-
-                                                % key:{k1:v1, k2:v2} => key[k1]=v1&key[k2]=v2
-%% if no prefix is present, use just key to prefix the key/value pairs in the jobj
-encode_kv(<<>>, K, [_|_]=Props) -> to_querystring(Props, [kz_term:to_binary(K)]);
-%% if a prefix is defined, nest the key in square brackets
-encode_kv(Prefix, K, [_|_]=Props) -> to_querystring(Props, [Prefix, <<"[">>, kz_term:to_binary(K), <<"]">>]).
-
--spec encode_kv(iolist() | binary(), ne_binary(), ne_binary(), string() | binary()) -> iolist().
-encode_kv(<<>>, K, Sep, V) ->
-    [kz_term:to_binary(K), Sep, kz_term:to_binary(V)];
-encode_kv(Prefix, K, Sep, V) ->
-    [Prefix
-    ,<<"[">>, kz_term:to_binary(K), <<"]">>
-    ,Sep, kz_term:to_binary(V)
-    ].
-
--spec encode_kv(iolist() | binary(), ne_binary(), [string()], ne_binary(), iolist()) -> iolist().
-encode_kv(Prefix, K, [V], Sep, Acc) ->
-    lists:reverse([ encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
-encode_kv(Prefix, K, [V|Vs], Sep, Acc) ->
-    encode_kv(Prefix, K, Vs, Sep, [ <<"&">>, encode_kv(Prefix, K, Sep, kz_http_util:urlencode(V)) | Acc]);
-encode_kv(_, _, [], _, Acc) -> lists:reverse(Acc).
 
 -spec to_log(kz_proplist()) -> 'ok'.
 to_log(Props) ->

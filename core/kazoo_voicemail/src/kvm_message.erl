@@ -760,8 +760,8 @@ retry_conflict(Call, JObj, DieAnotherDay) ->
 
 -spec check_for_collision(kapps_call:call(), kz_json:object(), kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
 check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
-    OrigPublic = kz_json:public_fields(JObj),
-    SavedPublic = kz_json:public_fields(SavedJObj),
+    OrigPublic = kz_doc:public_fields(JObj),
+    SavedPublic = kz_doc:public_fields(SavedJObj),
     case kz_json:are_equal(OrigPublic, SavedPublic) of
         'true' ->
             Msg = io_lib:format("saving new voicemail ~s in account ~p resulted in conflict but it saved to db anyway"
