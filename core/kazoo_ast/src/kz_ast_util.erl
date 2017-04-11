@@ -55,6 +55,8 @@ binary_match_to_binary(?BINARY_STRING(V)) ->
     kz_term:to_binary(V);
 binary_match_to_binary(?BINARY_MATCH(Match)) ->
     binary_match_to_binary(Match);
+binary_match_to_binary(?FUN_ARGS(atom_to_binary, [?ATOM(Atom), ?ATOM(utf8)])) ->
+    atom_to_binary(Atom, utf8);
 binary_match_to_binary(Match) when is_list(Match) ->
     iolist_to_binary(
       [binary_part_to_binary(BP) || BP <- Match]
