@@ -28,6 +28,7 @@
 -define(ACCOUNT_PARKED_TYPE(A), kapps_account_config:get(A, ?MOD_CONFIG_CAT, <<"parked_presence_type">>, ?SYSTEM_PARKED_TYPE)).
 -define(PRESENCE_TYPE_KEY, <<"Presence-Type">>).
 -define(PARK_DELAY_CHECK_TIME, ?MILLISECONDS_IN_SECOND * 10).
+-define(PARKING_APP_NAME, <<"park">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -814,7 +815,7 @@ update_presence(State, Slot) ->
                 ,{<<"Expires">>, Expires}
                 ,{<<"Event-Package">>, <<"dialog">>}
 
-                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                 | kz_api:default_headers(?PARKING_APP_NAME, ?APP_VERSION)
                 ]),
     lager:info("update presence-id '~s' with state: ~s", [PresenceId, State]),
     kz_amqp_worker:cast(Command, fun kapi_presence:publish_dialog/1).
