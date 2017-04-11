@@ -114,7 +114,7 @@ config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_HEP
                            }) ->
     Module = ci_parser_hep,
     lager:info("adding child ~s '~s' ~p ~p", [Module, Name, IP, Port]),
-    Args = [{parser_args, kz_term:to_binary(IP), kz_term:to_integer(Port)}],
+    Args = [{parser_args, kz_util:to_binary(IP), kz_util:to_integer(Port)}],
     Id = ci_parsers_util:make_name(hd(Args)),
     ?WORKER_NAME_ARGS(Module, Id, Args);
 config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_FREESWITCH
@@ -124,7 +124,7 @@ config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_FREESWITCH
                            }) ->
     Module = ci_parser_freeswitch,
     lager:info("adding child ~s '~s' ~p ~p ~p", [Module, Name, LogIP, LogPort, Filename]),
-    Args = [{parser_args, Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
+    Args = [{parser_args, Filename, kz_util:to_binary(LogIP), kz_util:to_integer(LogPort)}],
     Id = ci_parsers_util:make_name(hd(Args)),
     ?WORKER_NAME_ARGS(Module, Id, Args);
 config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_KAMAILIO
@@ -134,7 +134,7 @@ config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_KAMAILIO
                            }) ->
     Module = ci_parser_kamailio,
     lager:info("adding child ~s '~s' ~p ~p ~p", [Module, Name, LogIP, LogPort, Filename]),
-    Args = [{parser_args, Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
+    Args = [{parser_args, Filename, kz_util:to_binary(LogIP), kz_utilto_integer(LogPort)}],
     Id = ci_parsers_util:make_name(hd(Args)),
     ?WORKER_NAME_ARGS(Module, Id, Args);
 config_to_childspec(_Name, _Config) ->

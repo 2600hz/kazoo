@@ -73,7 +73,7 @@ make_name(Bin)
     binary_to_atom(Bin, 'utf8');
 make_name({'parser_args', ListenIP, Port})
   when is_integer(Port) ->
-    Name = <<(kz_term:to_binary(ListenIP))/binary, ":", (kz_term:to_binary(Port))/binary>>,
+    Name = <<(kz_util:to_binary(ListenIP))/binary, ":", (kz_util:to_binary(Port))/binary>>,
     make_name(Name);
 make_name({'parser_args', Filename, _IP, _Port}) ->
     FName = filename:absname(Filename),
