@@ -124,10 +124,10 @@ handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined',
 handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, CallId, FSData}, #state{node=Node}=State) ->
     Props = case props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), FSData) of
                 'undefined' ->
-                    InterActionId = ?CALL_INTERACTION_DEFAULT,
+                    InterActionId = props:get_value(?GET_CUSTOM_HEADER(<<"Call-Interaction-ID">>), FSData, ?CALL_INTERACTION_DEFAULT),
                     ecallmgr_fs_command:set(Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]),
                     [{?GET_CCV(<<?CALL_INTERACTION_ID>>), InterActionId}];
-                _InteractioId -> []
+                _InterActionId -> []
             end,
     _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData ++ Props]),
     {'noreply', State, 'hibernate'};
