@@ -62,7 +62,7 @@
                ,cf_module_pid :: {pid(), reference()} | 'undefined'
                ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
                ,status = <<"sane">> :: ne_binary()
-               ,queue :: ne_binary()
+               ,queue :: api_ne_binary()
                ,self = self()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
@@ -837,5 +837,6 @@ hangup_call(Call) ->
     Cmd = [{<<"Event-Name">>, <<"command">>}
           ,{<<"Event-Category">>, <<"call">>}
           ,{<<"Application-Name">>, <<"hangup">>}
+          ,{<<"Insert-At">>, <<"tail">>}
           ],
     send_command(Cmd, kapps_call:control_queue_direct(Call), kapps_call:call_id_direct(Call)).
