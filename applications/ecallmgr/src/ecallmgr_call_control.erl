@@ -1214,14 +1214,19 @@ handle_replaced(Props, #state{fetch_id=FetchId
     case props:get_value(?GET_CCV(<<"Fetch-ID">>), Props) of
         FetchId ->
             ReplacedBy = props:get_value(<<"att_xfer_replaced_by">>, Props),
-            {'ok', Channel} = ecallmgr_fs_channel:fetch(ReplacedBy),
-            OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
-            OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
-            CDR = kz_json:get_value(<<"interaction_id">>, Channel),
-            kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
-            ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-            ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
-            {'noreply', handle_sofia_replaced(ReplacedBy, State)};
+            case ecallmgr_fs_channel:fetch(ReplacedBy) of
+                {'ok', Channel} ->
+                    OtherLeg = kz_json:get_value(<<"other_leg">>, Channel),
+                    OtherUUID = props:get_value(<<"Other-Leg-Unique-ID">>, Props),
+                    CDR = kz_json:get_value(<<"interaction_id">>, Channel),
+                    kz_cache:store_local(?ECALLMGR_INTERACTION_CACHE, CallId, CDR),
+                    ecallmgr_fs_command:set(Node, OtherUUID, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    ecallmgr_fs_command:set(Node, OtherLeg, [{<<?CALL_INTERACTION_ID>>, CDR}]),
+                    {'noreply', handle_sofia_replaced(ReplacedBy, State)};
+                _Else ->
+                    lager:debug("channel replaced was not handled : ~p", [_Else]),
+                    {'noreply', State}
+            end;
         _Else ->
             lager:info("sofia replaced on our channel but different fetch id~n"),
             {'noreply', State}
