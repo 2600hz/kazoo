@@ -5,8 +5,10 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 
 -define(APP, call_inspector).
--define(APP_NAME, <<"call_inspector">>).
--define(APP_VERSION, <<"4.0.0">> ).
+-define(APP_NAME, atom_to_binary(?APP, utf8)).
+-define(APP_VERSION, <<"4.0.0">>).
+
+-define(CONFIG_CAT, ?APP_NAME).
 
 -define(CALL_INSPECTOR_HRL, 'true').
 -endif.
