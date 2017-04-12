@@ -1,7 +1,7 @@
                 Your User Profile
 
 
-Hi {{user.first_name}}
+Welcome {{user.first_name}},
 
 Your user profile is ready to use, here are logindetails to sign in.
 

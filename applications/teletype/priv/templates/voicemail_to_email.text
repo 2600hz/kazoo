@@ -1,7 +1,7 @@
                 New Voicemail
 
 
-Hi {{user.first_name}},
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 You have a new voicemail from {{caller_id.name}} ({{caller_id.number}}) for
 your voicemail box at {{voicemail.vmbox_name}} ({{voicemail.vmbox_number}}).

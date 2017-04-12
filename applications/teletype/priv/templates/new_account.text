@@ -3,7 +3,7 @@
 
 > Thank you for registering!
 
-Welcome {% if admin %}{{admin.first_name}},{% endif %}
+Welcome{% if admin.first_name %} {{admin.first_name}}{% else %} dear customer{% endif %},
 
     Your account new '{{account.name}}' is ready to use,
     here are some details to help get you started!
@@ -14,7 +14,7 @@ Welcome {% if admin %}{{admin.first_name}},{% endif %}
     Account ID: {{account.id}}
     Account Name: {{account.name}}
     Account Realm: {{account.realm}}
-{% if admin %}
+{% if admin.first_name or admin.email %}
 
 
 === Administrator User Information ===
