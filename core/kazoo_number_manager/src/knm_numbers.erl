@@ -322,7 +322,7 @@ move(Nums, MoveTo) ->
     move(Nums, MoveTo, knm_number_options:default()).
 
 move(Nums, ?MATCH_ACCOUNT_RAW(MoveTo), Options0) ->
-    Options = [{'assign_to', MoveTo} | Options0],
+    Options = [{assign_to, MoveTo} | Options0],
     {TFound, NotFounds} = take_not_founds(do_get(Nums, Options)),
     Updates = knm_number_options:to_phone_number_setters(Options0),
     TUpdated = do_in_wrap(fun (T) -> knm_phone_number:setters(T, Updates) end, TFound),
@@ -435,7 +435,10 @@ reconcile(Nums, Options0) ->
 %%--------------------------------------------------------------------
 -spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
-    ret(do(fun to_reserved/1, do_get(Nums, Options))).
+    ret(pipe(do_get(Nums, Options)
+            ,[fun if_unassigned_then_needs_assign_to/1
+             ,fun to_reserved/1
+             ])).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -727,6 +730,22 @@ to_reserved(T) ->
         ,[fun knm_number_states:to_options_state/1
          ,fun save_numbers/1
          ]).
+
+-spec if_unassigned_then_needs_assign_to(t()) -> t().
+if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
+    F = fun (N, T) ->
+                PN = knm_number:phone_number(N),
+                case knm_phone_number:assigned_to(PN) =:= undefined
+                    andalso knm_phone_number:assign_to(PN) =:= undefined
+                of
+                    false -> ok(N, T);
+                    true ->
+                        {error,A,B,C} = (catch knm_errors:assign_failure(PN, assign_to)),
+                        Reason = knm_errors:to_json(A, B, C),
+                        ko(knm_phone_number:number(PN), Reason, T)
+                end
+        end,
+    lists:foldl(F, T0, Ns).
 
 unwind_or_disconnect(T) ->
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),

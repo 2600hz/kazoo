@@ -161,12 +161,12 @@ to_in_service(T, ?NUMBER_STATE_PORT_IN) ->
                      ,fun move_to_in_service_state/1
                      ]);
 to_in_service(T, ?NUMBER_STATE_AVAILABLE) ->
+    %% Everyone MUST be allowed to buy available
+    %% External carriers MUST NOT be contacted
     knm_numbers:pipe(T
                     ,[fun (T0) -> fail_if_mdn(T0, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_AVAILABLE) end
-                     ,fun authorize/1
                      ,fun move_to_in_service_state/1
                      ,fun knm_services:activate_phone_number/1
-                     ,fun knm_carriers:acquire/1
                      ]);
 to_in_service(T, ?NUMBER_STATE_RESERVED) ->
     knm_numbers:pipe(T
