@@ -119,6 +119,7 @@ flush(CallId) ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', #state{}}.
 init([]) ->
+    lager:debug("ensuring directory ~s exists", [?CI_DIR]),
     mkdir(?CI_DIR),
     {'ok', #state{}}.
 
