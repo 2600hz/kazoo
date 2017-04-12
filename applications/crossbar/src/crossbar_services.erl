@@ -267,7 +267,7 @@ base_audit_log(Context, Services) ->
     lists:foldl(fun base_audit_log_fold/2
                ,kzd_audit_log:new()
                ,[{fun kzd_audit_log:set_tree/2, Tree}
-                ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user(Context)}
+                ,{fun kzd_audit_log:set_authenticating_user/2, base_auth_user_info(Context)}
                 ,{fun kzd_audit_log:set_audit_account/3
                  ,AccountId
                  ,base_audit_account(Context, Services)
@@ -295,9 +295,10 @@ base_audit_account(Context, Services) ->
         ]
        )).
 
--spec base_auth_user(cb_context:context()) -> kz_json:object().
-base_auth_user(Context) ->
+-spec base_auth_user_info(cb_context:context()) -> kz_json:object().
+base_auth_user_info(Context) ->
     AccountJObj = cb_context:auth_account_doc(Context),
+    AuthDoc = cb_context:auth_doc(Context),
     kz_json:from_list(
       props:filter_empty(
         [{<<"account_id">>, kz_doc:account_id(AccountJObj)}
@@ -306,6 +307,7 @@ base_auth_user(Context) ->
         ,{<<"realm">>, kz_account:realm(AccountJObj)}
         ,{<<"language">>, kz_account:language(AccountJObj)}
         ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
+        ,{<<"auth_user_id">>, kz_json:get_value(<<"owner_id">>, AuthDoc)}
         ]
       )
      ).
