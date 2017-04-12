@@ -123,7 +123,7 @@ update_ccvs(_, _, JObj) ->
 -spec update_ccvs_foldl(kz_json:path(), kz_json:json_term(), {kz_json:object(), kz_json:object()}) ->
                                {kz_json:object(), kz_json:object()}.
 update_ccvs_foldl(Key, Value,  {JObj, CCVs}=Acc) ->
-    case kz_json:is_private_key(Key) of
+    case kz_doc:is_private_key(Key) of
         'false' -> Acc;
         'true' ->
             {kz_json:set_value(Key, Value, JObj)

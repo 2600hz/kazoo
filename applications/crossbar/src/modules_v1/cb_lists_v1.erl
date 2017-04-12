@@ -259,7 +259,7 @@ filter_entries_by_list_id(Id) ->
 
 -spec entries_from_list(kz_json:objects()) -> kz_json:object().
 entries_from_list(Entries) ->
-    kz_json:from_list([{kz_json:get_value(<<"_id">>, X), kz_json:public_fields(X)}
+    kz_json:from_list([{kz_json:get_value(<<"_id">>, X), kz_doc:public_fields(X)}
                        || X <- Entries
                       ]).
 
@@ -271,5 +271,5 @@ load_list(Context, ListId) ->
                                                    ,fun normalize_view_results/2)),
     Context1 = crossbar_doc:load(ListId, Context, ?TYPE_CHECK_OPTION(<<"list">>)),
     Doc = cb_context:doc(Context1),
-    Doc1 = kz_json:public_fields(kz_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
+    Doc1 = kz_doc:public_fields(kz_json:set_value(<<"entries">>, entries_from_list(Entries), Doc)),
     cb_context:set_resp_data(Context1, Doc1).

@@ -155,7 +155,7 @@ create_voicefabric(Engine, Text, Voice, Opts) ->
                                       {'error', ne_binary()}.
 voicefabric_request_body(<<"urlencode">>, Data) ->
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    Body = props:to_querystring(Data),
+    Body = kz_http_util:props_to_querystring(Data),
     {'ok', Headers, Body};
 voicefabric_request_body(<<"multipart">>, Data) ->
     Boundary = iolist_to_binary([<<"--bound--">>
@@ -258,7 +258,7 @@ attempt_asr_freeform(<<"ispeech">>, Bin, ContentType, Locale, Opts) ->
             ,{<<"audio">>, base64:encode(Bin)}
             ],
     Headers = [{"Content-Type", "application/x-www-form-urlencoded"}],
-    Body = props:to_querystring(Props),
+    Body = kz_http_util:props_to_querystring(Props),
     lager:debug("req body: ~s", [Body]),
     case props:get_value('receiver', Opts) of
         Pid when is_pid(Pid) ->

@@ -184,7 +184,7 @@ fmt: $(FMT)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
-	@$(ROOT)/scripts/kz_util_diaspora.bash
+	@$(ROOT)/scripts/kz_diaspora.bash
 
 apis:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-schemas.escript

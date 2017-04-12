@@ -271,7 +271,7 @@ pdf_user(AccountDb, UserId) ->
             lager:error("failed to fetch user ~s in ~s: ~p", [UserId, AccountDb, _R]),
             [];
         {'ok', Doc} ->
-            kz_json:recursive_to_proplist(kz_json:public_fields(Doc))
+            kz_json:recursive_to_proplist(kz_doc:public_fields(Doc))
     end.
 
 %%--------------------------------------------------------------------
@@ -286,7 +286,7 @@ pdf_callflow(AccountDb, CallflowId) ->
             lager:error("failed to fetch callflow ~s in ~s: ~p", [CallflowId, AccountDb, _R]),
             [];
         {'ok', Doc} ->
-            kz_json:recursive_to_proplist(kz_json:public_fields(Doc))
+            kz_json:recursive_to_proplist(kz_doc:public_fields(Doc))
     end.
 
 %%--------------------------------------------------------------------

@@ -23,7 +23,7 @@
         ]).
 
 -include("crossbar.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(CB_LIST, <<"webhooks/crossbar_listing">>).
 
@@ -439,7 +439,7 @@ normalize_available(JObj, Acc) ->
     case kz_json:get_value(<<"key">>, JObj) of
         <<"skel">> -> Acc;
         _ ->
-            Doc = kz_json:public_fields(kz_json:get_value(<<"doc">>, JObj)),
+            Doc = kz_doc:public_fields(kz_json:get_value(<<"doc">>, JObj)),
             Name = kz_json:get_value(<<"name">>, Doc),
 
             [kz_json:set_value(<<"id">>, Name, Doc) | Acc]

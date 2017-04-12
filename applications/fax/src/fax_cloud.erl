@@ -177,7 +177,7 @@ send_update_job_status(JobId, Status, Authorization) ->
              ,{"semantic_state_diff", kz_json:encode(Status)}
              ],
 
-    Body = props:to_querystring(Fields),
+    Body = kz_http_util:props_to_querystring(Fields),
 
     case kz_http:post(kz_term:to_list(?JOBCTL_URL), Headers, Body) of
         {'ok', 200, _RespHeaders, RespBody} ->

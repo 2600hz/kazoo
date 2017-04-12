@@ -254,16 +254,16 @@ maybe_impact_reseller(Context, Ledger) ->
 
 -spec maybe_impact_reseller(cb_context:context(), kz_json:object(), boolean(), api_binary()) -> cb_context:context().
 maybe_impact_reseller(Context, Ledger, 'false', _ResellerId) ->
-    crossbar_util:response(kz_json:public_fields(Ledger), Context);
+    crossbar_util:response(kz_doc:public_fields(Ledger), Context);
 maybe_impact_reseller(Context, Ledger, 'true', 'undefined') ->
-    crossbar_util:response(kz_json:public_fields(Ledger), Context);
+    crossbar_util:response(kz_doc:public_fields(Ledger), Context);
 maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
     case kazoo_ledger:save(kz_doc:delete_revision(Ledger), ResellerId) of
-        {'ok', _} -> crossbar_util:response(kz_json:public_fields(Ledger), Context);
+        {'ok', _} -> crossbar_util:response(kz_doc:public_fields(Ledger), Context);
         {'error', Error} ->
             Props = kz_json:recursive_to_proplist(Ledger),
             kz_notify:detailed_alert(?NOTIFY_MSG, [ResellerId, Error], Props),
-            crossbar_util:response(kz_json:public_fields(Ledger), Context)
+            crossbar_util:response(kz_doc:public_fields(Ledger), Context)
     end.
 
 %%--------------------------------------------------------------------
@@ -343,7 +343,7 @@ normalize_view_result(Context, JObj) ->
 normalize_view_result(_Context, <<"ledger">>, JObj) ->
     Value = wht_util:units_to_dollars(kazoo_ledger:amount(JObj)),
     Ledger = kazoo_ledger:set_amount(JObj, Value),
-    kz_json:public_fields(maybe_set_doc_modb_prefix(Ledger));
+    kz_doc:public_fields(maybe_set_doc_modb_prefix(Ledger));
 %% Legacy, this would be debit or credit from per-minute transactions
 normalize_view_result(Context, _DocType, JObj) ->
     Transaction = kz_transaction:from_json(JObj),

@@ -38,5 +38,5 @@ validate(Context) ->
             cb_context:set_resp_status(Ctx2, 'success');
 
         ValidDoc ->
-            cb_context:set_resp_data(Ctx1, kz_json:public_fields(kz_json:normalize_jobj(ValidDoc)))
+            cb_context:set_resp_data(Ctx1, kz_doc:public_fields(kz_json:normalize_jobj(ValidDoc)))
     end.

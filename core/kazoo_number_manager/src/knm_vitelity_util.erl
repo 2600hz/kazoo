@@ -73,7 +73,7 @@ default_options(Options) ->
 build_uri(Options) ->
     URI = props:get_value('uri', Options),
     QS = kz_term:to_binary(
-           props:to_querystring(
+           kz_http_util:props_to_querystring(
              props:filter_undefined(
                props:get_value('qs', Options)
               ))),

@@ -190,8 +190,10 @@ Parses the ecallmgr code looking for keys used to access values in the FreeSWITC
 Parses the core/applications code looking for calls to kapps_config (module used to access documents in the system_config database) and building a base JSON schema file for each document found.
 
 Also parses callflow's action modules looking for keys used to access values in the Data JSON object to build a base JSON schema file for each callflow action.
-** =kz_util_diaspora.bash=
-Script for updating Erlang code to account for functions that used to be in kz_util and are now moved to alternative modules.
+** =kz_diaspora.bash=
+Script for updating Erlang code to account for functions that have moved modules.
+- kz_util to alternative modules
+- kz_json to kz_doc for public/private fields
 ** =no_raw_json.escript=
 Erlang has a handful of internal representations of JSON used by the various parses. The kz_json module handles these details and Kazoo programmers should treat the data structure used as opaque. This script parses the codebase looking for instances where the opaqueness of the data structure is violated.
 ** rabbitmq-generic.sh

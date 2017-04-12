@@ -361,7 +361,7 @@ get_doc_updates(Context) ->
     JObj = cb_context:req_data(Context),
     case kz_json:get_value(<<"updates">>, JObj) of
         'undefined' -> 'undefined';
-        Updates -> kz_json:public_fields(Updates)
+        Updates -> kz_doc:public_fields(Updates)
     end.
 
 -spec update_docs(kz_json:object(), cb_context:context()) ->

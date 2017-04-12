@@ -212,7 +212,7 @@ put(Context) ->
     Context1 = faxbox_doc_save(maybe_register_cloud_printer(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            RespData = kz_json:public_fields(leak_private_fields(cb_context:doc(Context1))),
+            RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
             cb_context:set_resp_data(Context1, RespData);
         _ -> Context1
     end.
@@ -229,7 +229,7 @@ post(Context, _Id) ->
     Context1 = faxbox_doc_save(maybe_register_cloud_printer(Context)),
     case cb_context:resp_status(Context1) of
         'success' ->
-            RespData = kz_json:public_fields(leak_private_fields(cb_context:doc(Context1))),
+            RespData = kz_doc:public_fields(leak_private_fields(cb_context:doc(Context1))),
             cb_context:set_resp_data(Context1, RespData);
         _ -> Context1
     end.

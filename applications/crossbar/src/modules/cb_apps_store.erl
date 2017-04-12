@@ -303,10 +303,9 @@ validate_app(Context, Id, ?HTTP_GET) ->
     Context1 = load_app(Context, Id),
     case cb_context:resp_status(Context1) of
         'success' ->
-            cb_context:set_resp_data(
-              Context1
-                                    ,kz_json:public_fields(cb_context:doc(Context1))
-             );
+            cb_context:set_resp_data(Context1
+                                    ,kz_doc:public_fields(cb_context:doc(Context1))
+                                    );
         _ -> Context1
     end;
 validate_app(Context, Id, ?HTTP_PUT) ->
@@ -580,10 +579,9 @@ maybe_get_screenshot(Context, Number) ->
 get_screenshot(Context, Number) ->
     case maybe_get_screenshot(Context, Number) of
         'error' ->
-            crossbar_util:response_bad_identifier(
-              <<?SCREENSHOT/binary , "/", Number/binary>>
+            crossbar_util:response_bad_identifier(<<?SCREENSHOT/binary , "/", Number/binary>>
                                                  ,Context
-             );
+                                                 );
         {'ok', Name, _} ->
             get_attachment(Context, Name)
     end.

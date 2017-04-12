@@ -1876,7 +1876,7 @@ notify(Url, 'post', Data) ->
           ,[{'content_type', "application/json"}]
           );
 notify(Url, 'get', Data) ->
-    notify(uri(Url, kz_json:to_querystring(Data))
+    notify(uri(Url, kz_http_util:json_to_querystring(Data))
           ,[], 'get', <<>>, []
           ).
 

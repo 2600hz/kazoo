@@ -725,7 +725,7 @@ validate_request_data(Schema=?NE_BINARY, Context) ->
 validate_request_data(SchemaJObj, Context) ->
     Strict = kapps_config:get_is_true(?CONFIG_CAT, <<"schema_strict_validation">>, 'false'),
     try kz_json_schema:validate(SchemaJObj
-                               ,kz_json:public_fields(req_data(Context))
+                               ,kz_doc:public_fields(req_data(Context))
                                )
     of
         {'ok', JObj} ->

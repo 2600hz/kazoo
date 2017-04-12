@@ -9,7 +9,7 @@
 %%%-------------------------------------------------------------------
 -module(kz_json_test).
 
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -ifdef(PROPER).
 -include_lib("proper/include/proper.hrl").
@@ -432,27 +432,6 @@ set_value_normalizer_test_() ->
     ,?_assertEqual(kz_json:normalize_jobj(?T5R3), ?T5R3V)
 
     ,?_assertEqual(kz_json:normalize_jobj(?T5R1), ?T5R1V)
-    ].
-
-to_querystring_test_() ->
-    Tests = [{<<"{}">>, <<>>}
-            ,{<<"{\"foo\":\"bar\"}">>, <<"foo=bar">>}
-            ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\"}">>, <<"foo=bar&fizz=buzz">>}
-            ,{<<"{\"foo\":\"bar\",\"fizz\":\"buzz\",\"arr\":[1,3,5]}">>, <<"foo=bar&fizz=buzz&arr[]=1&arr[]=3&arr[]=5">>}
-            ,{<<"{\"Msg-ID\":\"123-abc\"}">>, <<"Msg-ID=123-abc">>}
-            ,{<<"{\"url\":\"http://user:pass@host:port/\"}">>, <<"url=http%3A%2F%2Fuser%3Apass%40host%3Aport%2F">>}
-            ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":\"v2\",\"subkey3\":[\"v31\",\"v32\"]}}">>
-             ,<<"topkey[subkey1]=v1&topkey[subkey2]=v2&topkey[subkey3][]=v31&topkey[subkey3][]=v32">>}
-            ,{<<"{\"topkey\":{\"subkey1\":\"v1\",\"subkey2\":{\"k3\":\"v3\"}}}">>
-             ,<<"topkey[subkey1]=v1&topkey[subkey2][k3]=v3">>}
-            ],
-    [?_assertEqual(QS, kz_term:to_binary(
-                         kz_json:to_querystring(
-                           kz_json:decode(JSON)
-                          )
-                        )
-                  )
-     || {JSON, QS} <- Tests
     ].
 
 -define(D1_values, [<<"d1v1">>

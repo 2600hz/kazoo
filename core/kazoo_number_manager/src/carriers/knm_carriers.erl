@@ -10,7 +10,7 @@
 %%%-------------------------------------------------------------------
 -module(knm_carriers).
 
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 -include("knm.hrl").
 
 -compile({no_auto_import,[apply/3]}).

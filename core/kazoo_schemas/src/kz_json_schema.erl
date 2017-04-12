@@ -28,7 +28,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_documents/include/kazoo_documents.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(DEFAULT_OPTIONS, [{'schema_loader_fun', fun load/1}
                          ,{'allowed_errors', 'infinity'}

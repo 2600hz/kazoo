@@ -45,7 +45,7 @@
         ]).
 
 -include("callflow.hrl").
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -56,21 +56,21 @@
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
 
+-define(MAX_BRANCH_COUNT, kapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
+
 -record(state, {call = kapps_call:new() :: kapps_call:call()
                ,flow = kz_json:new() :: kz_json:object()
                ,flows = [] :: kz_json:objects()
-               ,cf_module_pid :: {pid(), reference()} | 'undefined'
-               ,cf_module_old_pid :: {pid(), reference()} | 'undefined'
+               ,cf_module_pid :: api_pid_ref()
+               ,cf_module_old_pid :: api_pid_ref()
                ,status = <<"sane">> :: ne_binary()
                ,queue :: api_ne_binary()
-               ,self = self()
+               ,self = self() :: pid()
                ,stop_on_destroy = 'true' :: boolean()
                ,destroyed = 'false' :: boolean()
-               ,branch_count :: non_neg_integer()
+               ,branch_count = ?MAX_BRANCH_COUNT :: non_neg_integer()
                }).
 -type state() :: #state{}.
-
--define(MAX_BRANCH_COUNT, kapps_config:get_integer(?CF_CONFIG_CAT, <<"max_branch_count">>, 50)).
 
 %%%===================================================================
 %%% API

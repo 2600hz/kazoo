@@ -10,11 +10,11 @@
 -module(kz_doc).
 
 -include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
--include_lib("kazoo_json/include/kazoo_json.hrl").
+-include_lib("kazoo_stdlib/include/kazoo_json.hrl").
 
 -export([update_pvt_parameters/2, update_pvt_parameters/3
-        ,public_fields/1
-        ,private_fields/1
+        ,public_fields/1, get_public_keys/1
+        ,private_fields/1, is_private_key/1
 
         ,attachments/1, attachments/2
         ,stub_attachments/1, stub_attachments/2
@@ -197,8 +197,20 @@ add_pvt_document_hash(JObj, _, _) ->
 %%--------------------------------------------------------------------
 -spec public_fields(kz_json:object() | kz_json:objects()) ->
                            kz_json:object() | kz_json:objects().
-public_fields(JObjs) when is_list(JObjs) -> [public_fields(J) || J <- JObjs];
-public_fields(JObj) -> kz_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj).
+public_fields(JObjs) when is_list(JObjs) ->
+    [public_fields(J) || J <- JObjs];
+public_fields(JObj) ->
+    kz_json:set_value(<<"id">>, id(JObj, 'null'), filter_public_fields(JObj)).
+
+-spec filter_public_fields(kz_json:object()) -> kz_json:object().
+filter_public_fields(JObj) ->
+    kz_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj).
+
+-spec get_public_keys(kz_json:object()) -> kz_json:keys().
+get_public_keys(JObj) ->
+    [Key || Key <- kz_json:get_keys(JObj),
+            not is_private_key(Key)
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -221,8 +233,10 @@ is_private_key(_) -> 'false'.
 %%--------------------------------------------------------------------
 -spec private_fields(kz_json:object() | kz_json:objects()) ->
                             kz_json:object() | kz_json:objects().
-private_fields(JObjs) when is_list(JObjs) -> [public_fields(JObj) || JObj <- JObjs];
-private_fields(JObj) -> kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
+private_fields(JObjs) when is_list(JObjs) ->
+    [public_fields(JObj) || JObj <- JObjs];
+private_fields(JObj) ->
+    kz_json:filter(fun({K, _}) -> is_private_key(K) end, JObj).
 
 -spec attachments(kz_json:object()) -> api_object().
 -spec attachments(kz_json:object(), Default) -> kz_json:object() | Default.
@@ -470,7 +484,7 @@ set_document_hash(JObj, Hash) ->
 
 -spec calculate_document_hash(kz_json:object()) -> ne_binary().
 calculate_document_hash(JObj) ->
-    PublicJObj = kz_json:public_fields(JObj),
-    Attachments = kz_json:get_value(<<"_attachments">>, JObj),
+    PublicJObj = public_fields(JObj),
+    Attachments = kz_json:get_json_value(?KEY_ATTACHMENTS, JObj),
     Props = [{<<"public">>, PublicJObj}, {<<"attachments">>, Attachments}],
     kz_binary:md5(kz_json:encode(kz_json:from_list(Props))).

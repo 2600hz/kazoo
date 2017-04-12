@@ -332,7 +332,7 @@ remove_config_setting(AccountDb, JObj, Setting) ->
     Id = kz_doc:id(JObj),
     Keys =
         [{Id, Node, Setting}
-         || Node <- kz_json:get_public_keys(JObj)
+         || Node <- kz_doc:get_public_keys(JObj)
         ],
     remove_config_setting(AccountDb, Keys, JObj, []).
 

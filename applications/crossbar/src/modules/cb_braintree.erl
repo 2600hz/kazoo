@@ -427,7 +427,7 @@ create_credits(Context) ->
             cb_context:setters(Context
                               ,[{fun cb_context:set_resp_status/2, 'success'}
                                ,{fun cb_context:set_doc/2, JObj}
-                               ,{fun cb_context:set_resp_data/2, kz_json:public_fields(JObj)}
+                               ,{fun cb_context:set_resp_data/2, kz_doc:public_fields(JObj)}
                                ]);
         {'error', Reason} ->
             crossbar_util:response('error', <<"transaction error">>, 500, Reason, Context)

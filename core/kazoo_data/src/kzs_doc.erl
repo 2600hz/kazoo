@@ -162,7 +162,8 @@ prepare_doc_for_del(Server, DbName, Doc) ->
 -spec prepare_doc_for_save(ne_binary(), kz_json:object()) -> {kz_json:object(), kz_json:object()}.
 -spec prepare_doc_for_save(ne_binary(), kz_json:object(), boolean()) -> {kz_json:object(), kz_json:object()}.
 prepare_doc_for_save(Db, JObj) ->
-    prepare_doc_for_save(Db, JObj, kz_term:is_empty(kz_doc:id(JObj))).
+    Doc = kz_json:delete_key(<<"id">>, JObj),
+    prepare_doc_for_save(Db, Doc, kz_term:is_empty(kz_doc:id(Doc))).
 
 prepare_doc_for_save(_Db, JObj, 'true') ->
     prepare_publish(maybe_set_docid(JObj));
