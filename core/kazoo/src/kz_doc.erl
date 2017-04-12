@@ -200,6 +200,10 @@ add_pvt_document_hash(JObj, _, _) ->
 public_fields(JObjs) when is_list(JObjs) ->
     [public_fields(J) || J <- JObjs];
 public_fields(JObj) ->
+    kz_json:set_value(<<"id">>, id(JObj), filter_public_fields(JObj)).
+
+-spec filter_public_fields(kz_json:object()) -> kz_json:object().
+filter_public_fields(JObj) ->
     kz_json:filter(fun({K, _}) -> not is_private_key(K) end, JObj).
 
 -spec get_public_keys(kz_json:object()) -> kz_json:keys().
