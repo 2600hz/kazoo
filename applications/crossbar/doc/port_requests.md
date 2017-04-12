@@ -1,5 +1,48 @@
 ### Port Requests
 
+* [About Port Requests](#about-port-requests)
+* [Schema](#schema)
+* Utils
+    + [Build an LOA PDF from a port request](#build-an-loa-pdf-from-a-port-request)
+    + [Get port request by phone number](#get-a-port-request-by-phone-number)
+    + [Get port request by phone number for account and descendants](#get-port-request-for-account-and-descendants)
+* Port Request Listing
+    - [List all](#list-port-requests)
+    - [List all for sub accounts](#list-port-requests-of-self-and-sub-accounts)
+    - [List by state](#listing-by-port-state)
+        + [`unconfirmed`](#listing-by-unconfirmed-port)
+        + [`submitted`](#listing-by-submitted-port)
+        + [`pending`](#listing-by-pending-port)
+        + [`scheduled`](#listing-by-scheduled-port)
+        + [`completed`](#listing-by-completed-port)
+        + [`rejected`](#listing-by-rejected-port)
+        + [`canceled`](#listing-by-canceled-port)
+* Port Request Management
+    - [Create](#create-a-new-port-request)
+        + [Success](#success)
+        + [Failure: a port already exists for this number](#failure-a-port-already-exists-for-this-number)
+        + [Failure: an account already owns this number](#failure-an-account-already-owns-this-number)
+    - [Get](#get-port-request-details)
+    - [Update](#edit-a-port-request)
+    - [Delete](#delete-a-port-request)
+* Update Status
+    - [`submitted`](#indicate-a-port-is-ready-to-be-processed)
+        + [Success](#success_1)
+        + [Failure: charges have to be accepted](#failure-charges-have-to-be-accepted)
+    - [`pending`](#put-port-in-pending)
+        + [Success](#success_2)
+        + [Failure: target state illegal given current state](#failure-target-state-illegal-given-current-state)
+    - [`scheduled`](#put-port-in-progress-sent-to-losing-carrier)
+    - [`completed`](#complete-port-numbers-will-activate-in-the-system-account-will-be-billed)
+    - [`rejected`](#reject-a-port)
+    - [`canceled`](#cancel-a-port)
+* Attachments
+    - [Create](#add-an-attachment-to-a-port-request)
+    - [List](#list-attachments-on-a-port-request)
+    - [Get](#get-an-attachment-from-a-port-request)
+    - [Update](#replace-an-attachment-on-a-port-request)
+    - [Delete](#delete-an-attachment-on-a-port-request)
+
 #### About Port Requests
 
 Manage and track number port requests through the Port Requests API.
@@ -569,7 +612,7 @@ curl -v -X PUT \
 ```
 
 
-#### List port request details
+#### Get port request details
 
 > GET /v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}
 
@@ -708,7 +751,7 @@ curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
     -H "Content-Type: application/pdf" \
     --data-binary @/path/to/file.pdf \
-    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments?filename={ATTACHMENT_ID}'
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/port_requests/{PORT_REQUEST_ID}/attachments?filename={ATTACHMENT_ID}
 ```
 
 ```json
