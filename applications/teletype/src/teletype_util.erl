@@ -869,7 +869,7 @@ build_callee_id_data(DataJObj) ->
 build_date_called_data(DataJObj, Timezone) ->
     DateCalled = find_date_called(DataJObj),
     Timezone = kz_json:get_value(<<"timezone">>, DataJObj, Timezone),
-    teletype_util:fix_timestamp(DateCalled, DataJObj, Timezone).
+    fix_timestamp(DateCalled, DataJObj, Timezone).
 
 -spec find_date_called(kz_json:object()) -> api_ne_binary().
 find_date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
