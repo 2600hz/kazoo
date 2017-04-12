@@ -12,7 +12,6 @@
 %%% Public API
 -export([start_link/0]).
 -export([start/1
-        ,restart/1
         ,remove/1
         ]).
 
@@ -89,15 +88,6 @@ start_link() ->
                               }.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
-
--spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
-                                {'error'
-                                ,'not_found' |
-                                 'already_started' |
-                                 any()
-                                }.
-restart(TaskId = ?NE_BINARY) ->
-    gen_server:call(?SERVER, {'restart_task', TaskId}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -250,19 +240,6 @@ handle_call({'start_task', TaskId}, _From, State) ->
             case kz_tasks:task_by_id(TaskId) of
                 [] -> ?REPLY_NOT_FOUND(State);
                 [Task] -> handle_call_start_task(Task, State)
-            end;
-        [#{started := Started}]
-          when Started /= 'undefined' ->
-            lager:info("task ~s exists already", [TaskId]),
-            ?REPLY(State, {'error', 'already_started'})
-    end;
-handle_call({'restart_task', TaskId}, _From, State) ->
-    lager:debug("attempting to restart ~s", [TaskId]),
-    case task_by_id(TaskId, State) of
-        [] ->
-            case kz_tasks:task_by_id(TaskId) of
-                [] -> ?REPLY_NOT_FOUND(State);
-                [Task] -> handle_call_start_task(Task#{finished=>'undefined'}, State)
             end;
         [#{started := Started}]
           when Started /= 'undefined' ->
