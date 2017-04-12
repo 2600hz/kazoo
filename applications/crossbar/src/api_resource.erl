@@ -822,17 +822,21 @@ to_csv(Req, Context) ->
     case cb_context:fetch(Context1, 'is_chunked') of
         'true' -> {'halt', Req1, Context1};
         _ ->
-            JObjs = kz_json:flatten(cb_context:resp_data(Context)),
-            RespBody = kz_csv:from_jobjs(JObjs, [{'header_map', ?CSV_HEADER_MAP}]),
-            RespHeaders1 = [{<<"Content-Type">>, <<"application/octet-stream">>}
-                           ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
-                            | cb_context:resp_headers(Context1)
-                           ],
-            {RespBody
-            ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders1))
+            RespHeaders = [{<<"Content-Type">>, <<"application/octet-stream">>}
+                          ,{<<"Content-Disposition">>, <<"attachment; filename=\"data.csv\"">>}
+                           | cb_context:resp_headers(Context1)
+                          ],
+            {csv_body(cb_context:resp_data(Context))
+            ,api_util:set_resp_headers(Req1, cb_context:set_resp_headers(Context1, RespHeaders))
             ,Context1
             }
     end.
+
+-spec csv_body(ne_binary() | kz_json:object()) -> iolist().
+csv_body(Body=?NE_BINARY) -> Body;
+csv_body(JObj) ->
+    JObjs = kz_json:flatten(JObj),
+    kz_csv:from_jobjs(JObjs, [{'header_map', ?CSV_HEADER_MAP}]).
 
 -spec to_pdf(cowboy_req:req(), cb_context:context()) ->
                     {binary(), cowboy_req:req(), cb_context:context()}.
