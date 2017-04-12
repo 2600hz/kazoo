@@ -204,12 +204,7 @@ request_macros(DataJObj) ->
 
 -spec admin_user_data(kz_json:object()) -> kz_proplist().
 admin_user_data(DataJObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    io:format("~n AccountId ~p~n", [AccountId]),
-    case kz_term:is_not_empty(AccountId)
-        andalso teletype_util:find_account_admin(AccountId)
-    of
-        'false' -> [];
+    case teletype_util:find_account_admin(kz_json:get_value(<<"account_id">>, DataJObj)) of
         'undefined' -> [];
         UserDoc -> teletype_util:user_params(UserDoc)
     end.

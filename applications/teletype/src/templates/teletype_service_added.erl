@@ -108,7 +108,7 @@ reseller_info_data(DataJObj) ->
 sub_account_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
-        'true' -> [];
+        'true' -> teletype_util:account_params(DataJObj);
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             teletype_util:find_account_params(AccountId)
@@ -129,10 +129,16 @@ service_added_data(DataJObj) ->
 auth_user_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
-        'true' -> [];
+        'true' ->
+            case teletype_util:open_doc(<<"user">>, 'undefined', DataJObj) of
+                {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+                {'error', _} -> []
+            end;
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
             UserId = kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
-            {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
-            teletype_util:user_params(UserJObj)
+            case kzd_user:fetch(AccountId, UserId) of
+                {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+                {'error', _} -> []
+            end
     end.
