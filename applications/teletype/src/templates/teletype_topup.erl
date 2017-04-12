@@ -71,11 +71,15 @@ handle_topup(JObj) ->
 
 -spec handle_req(kz_json:object()) -> 'ok'.
 handle_req(DataJObj) ->
+    TransactionProps = transaction_data(DataJObj),
     Macros = [{<<"account">>, teletype_util:account_params(DataJObj)}
              ,{<<"system">>, teletype_util:system_params()}
              ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
-             ,{<<"transaction">>, transaction_data(DataJObj)}
+             ,{<<"transaction">>, TransactionProps}
              ,{<<"balance">>, get_balance(DataJObj)}
+             ,{<<"amount">>, props:get_value(<<"amount">>, TransactionProps)} %% backward compatibility
+             ,{<<"response">>, props:get_value(<<"response">>, TransactionProps)} %% backward compatibility
+             ,{<<"success">>, props:get_value(<<"success">>, TransactionProps)} %% backward compatibility
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),

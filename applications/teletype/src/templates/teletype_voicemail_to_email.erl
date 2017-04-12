@@ -24,7 +24,6 @@
           ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
           ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
           ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
-          ,?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
            | ?DEFAULT_CALL_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
           ])
        ).
@@ -186,64 +185,23 @@ get_extension(MediaJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    [{<<"caller_id">>, build_caller_id_data(DataJObj)}
-    ,{<<"callee_id">>, build_callee_id_data(DataJObj)}
-    ,{<<"date_called">>, build_date_called_data(DataJObj)}
-    ,{<<"voicemail">>, build_voicemail_data(DataJObj)}
-    ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
-    ,{<<"from">>, build_from_data(DataJObj)}
-    ,{<<"to">>, build_to_data(DataJObj)}
+    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"voicemail">>, DataJObj)),
+    [{<<"voicemail">>, build_voicemail_data(DataJObj)}
     ,{<<"account">>, teletype_util:account_params(DataJObj)}
     ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
+    ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))}
+     | teletype_util:build_call_data(DataJObj, Timezone)
     ].
-
--spec build_from_data(kz_json:object()) -> kz_proplist().
-build_from_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"user">>, kz_json:get_value(<<"from_user">>, DataJObj)}
-      ,{<<"realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
-      ]).
-
--spec build_to_data(kz_json:object()) -> kz_proplist().
-build_to_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"user">>, kz_json:get_value(<<"to_user">>, DataJObj)}
-      ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
-      ]).
-
--spec build_caller_id_data(kz_json:object()) -> kz_proplist().
-build_caller_id_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_number">>, DataJObj))}
-      ,{<<"name">>, knm_util:pretty_print(kz_json:get_value(<<"caller_id_name">>, DataJObj))}
-      ]).
-
--spec build_callee_id_data(kz_json:object()) -> kz_proplist().
-build_callee_id_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"number">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_number">>, DataJObj))}
-      ,{<<"name">>, knm_util:pretty_print(kz_json:get_value(<<"callee_id_name">>, DataJObj))}
-      ]).
-
--spec build_date_called_data(kz_json:object()) -> kz_proplist().
-build_date_called_data(DataJObj) ->
-    DateCalled = date_called(DataJObj),
-    Timezone = kzd_voicemail_box:timezone(kz_json:get_value(<<"voicemail">>, DataJObj)),
-    teletype_util:fix_timestamp(DateCalled, Timezone, DataJObj).
-
--spec date_called(api_object() | gregorian_seconds()) -> gregorian_seconds().
-date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
-date_called('undefined') -> kz_time:current_tstamp();
-date_called(DataJObj) ->
-    date_called(kz_json:get_integer_value(<<"voicemail_timestamp">>, DataJObj)).
 
 -spec build_voicemail_data(kz_json:object()) -> kz_proplist().
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"vmbox_id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
+      ,{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)} %% backward compatibility
       ,{<<"vmbox_name">>, kz_json:get_value([<<"voicemail">>, <<"name">>], DataJObj)}
       ,{<<"vmbox_number">>, kz_json:get_value([<<"voicemail">>, <<"mailbox">>], DataJObj)}
       ,{<<"msg_id">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)}
+      ,{<<"name">>, kz_json:get_value(<<"voicemail_id">>, DataJObj)} %% backward compatibility
       ,{<<"transcription">>, kz_json:get_value([<<"voicemail_transcription">>, <<"text">>], DataJObj)}
       ,{<<"length">>, pretty_print_length(DataJObj)}
       ]).

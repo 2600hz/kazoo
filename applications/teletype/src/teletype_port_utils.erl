@@ -106,6 +106,7 @@ fix_port_request_data(JObj) ->
                ,fun fix_notifications/1
                ,fun fix_carrier/1
                ,fun fix_transfer_date/1
+               ,fun fix_scheduled_date/1
                ,fun fix_ui_metadata/1
                ],
     lists:foldl(fun(F, J) -> F(J) end, JObj, Routines).
@@ -147,7 +148,9 @@ fix_comments(JObj) ->
 
             Timestamp = kz_json:get_integer_value(<<"timestamp">>, LastComment),
             Date = kz_json:from_list(teletype_util:fix_timestamp(Timestamp, JObj)),
-            Comment = kz_json:set_value(<<"date">>, Date, LastComment),
+            Comment = kz_json:set_values([{<<"date">>, Date}
+                                         ,{<<"timestamp">>, kz_json:get_value(<<"local">>, Date)} %% backward compatibility
+                                         ], LastComment),
 
             kz_json:set_value(<<"comment">>
                              ,kz_json:to_proplist(Comment)
@@ -175,22 +178,27 @@ fix_date_fold(Key, JObj) ->
 fix_notifications(JObj) ->
     kz_json:set_value(<<"customer_contact">>
                      ,kz_json:get_value([<<"notifications">>, <<"email">>, <<"send_to">>], JObj)
-                     ,kz_json:delete_key(<<"notifications">>, JObj)
+                     ,JObj %% not deleting the key for backward compatibility
                      ).
 
 -spec fix_carrier(kz_json:path()) -> kz_json:object().
 fix_carrier(JObj) ->
     kz_json:set_value(<<"service_provider">>
                      ,kz_json:get_value(<<"carrier">>, JObj)
-                     ,kz_json:delete_key(<<"carrier">>, JObj)
+                     ,JObj %% not deleting the key for backward compatibility
                      ).
 
 -spec fix_transfer_date(kz_json:path()) -> kz_json:object().
 fix_transfer_date(JObj) ->
-    kz_json:set_value(<<"requested_port_date">>
-                     ,kz_json:get_value(<<"transfer_date">>, JObj)
-                     ,kz_json:delete_key(<<"transfer_date">>, JObj)
-                     ).
+    kz_json:set_values([{<<"requested_port_date">>, kz_json:get_value(<<"transfer_date">>, JObj)}
+                       ,{<<"transfer_date">>, kz_json:get_value([<<"transfer_date">>, <<"local">>], JObj)} %% backward compatibility
+                       ], JObj).
+
+-spec fix_scheduled_date(kz_json:path()) -> kz_json:object().
+fix_scheduled_date(JObj) ->
+    kz_json:set_values([{<<"port_scheduled_date">>, kz_json:get_value(<<"scheduled_date">>, JObj)}
+                       ,{<<"scheduled_date">>, kz_json:get_value([<<"scheduled_date">>, <<"local">>], JObj)} %% backward compatibility
+                       ], JObj).
 
 -spec fix_ui_metadata(kz_json:path()) -> kz_json:object().
 fix_ui_metadata(JObj) ->

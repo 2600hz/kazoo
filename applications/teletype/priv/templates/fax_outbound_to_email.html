@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="x-apple-disable-message-reformatting">
-    <title>New Fax Sent to {{callee_id.name}} ({{callee_id.number}})</title>
+    <title>Fax has been sended to {{callee_id.name}} ({{callee_id.number}})</title>
     <!--[if !mso]><link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'><![endif]-->
     <style>
         /* CSS Reset */
@@ -37,14 +37,12 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
-                        {% if user %}
-                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Hi {{user.first_name}},</h3>
-                        {% endif %}
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Hi{% if user.first_name %} {{user.first_name}}{% endif %},</h3>
                     </td>
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">You sent a new fax document to <b>{{callee_id.name}} ({{callee_id.number}})</b> {% if fax.box_name %}from your faxbox <b>{{fax.faxbox_name}}</b>{% endif %}.</p>
+                        <p style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">You sent a new fax document to <b>{{callee_id.name}} ({{callee_id.number}})</b>{% if fax.box_name %} from your faxbox <b>{{fax.box_name}}</b>{% endif %}.</p>
                     </td>
                 </tr>
                 <tr>
@@ -56,10 +54,10 @@
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:0 25px 10px;padding:0;"><b>Sender:</b>&nbsp;{{caller_id.name}} ({{caller_id.number}})</p>
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Callee:</b>&nbsp;{{to.user}} (originally dialed number)</p>
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Sent:</b>&nbsp;{{date_called.local|date:"l, F j, Y \\a\\t H:i"}}</p>
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Total Pages:</b>&nbsp;{{fax.total_pages}}</p>
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Sent:</b>&nbsp;{{date_called.local|date:"l, F j, Y \\a\\t H:i"}}</p>{% if fax.total_pages %}
+                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Total Pages:</b>&nbsp;{{fax.total_pages}}</p>{% endif %}{% if fax.media %}
                         <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Document Name:</b>&nbsp;{{fax.media}}</p>
-                        <p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Document Type:</b>&nbsp;{{fax.encoding}}</p>
+                        {% endif %}{% if fax.document_type %}<p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Document Type:</b>&nbsp;{{fax.document_type|upper}}</p>{% endif %}{% if fax.document_size %}<p style="font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;margin:10px 25px;padding:0;"><b>Document Size:</b>&nbsp;{{fax.document_size|filesizeformat}}</p>{% endif %}
                     </td>
                 </tr>
             </table>

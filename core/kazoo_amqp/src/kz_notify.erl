@@ -56,7 +56,7 @@ system_alert(Subject, Msg, Headers)
     system_alert(kz_term:to_binary(Subject), kz_term:to_binary(Msg), Headers);
 system_alert(Subject, Msg, Headers) ->
     Notify= [{<<"Message">>, Msg}
-            ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+            ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).
@@ -78,7 +78,7 @@ detailed_alert(Subject, Msg, Props, Headers)
     detailed_alert(kz_term:to_binary(Subject), kz_term:to_binary(Msg), Props, Headers);
 detailed_alert(Subject, Msg, Props, Headers) ->
     Notify = [{<<"Message">>, Msg}
-             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Details">>, kz_json:from_list(Props)}
               | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
@@ -92,7 +92,7 @@ detailed_alert(Subject, Format, Args, Props, Headers) ->
 -spec generic_alert(atom() | string() | binary(), atom() | string() | binary()) -> 'ok'.
 generic_alert(Subject, Msg) ->
     Notify= [{<<"Message">>, kz_term:to_binary(Msg)}
-            ,{<<"Subject">>, <<"KAZOO: ", (kz_term:to_binary(Subject))/binary>>}
+            ,{<<"Subject">>, <<"System Alert: ", (kz_term:to_binary(Subject))/binary>>}
              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

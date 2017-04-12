@@ -31,7 +31,12 @@ Thank you for your business!
 
 
 
-Affected Account Information
+{% if user %}User Information Making this Change
+
+    Name: {{user.first_name}} {{user.last_name}}
+    Email: {{user.email}}
+
+{% endif %}Affected Account Information
 
     Account ID: {{account.id}}
     Account Name: {{account.name}}

@@ -1040,7 +1040,7 @@ system_error_props(Context) ->
 -spec system_error(context(), ne_binary()) -> context().
 system_error(Context, Error) ->
     Notify = props:filter_undefined(
-               [{<<"Subject">>, <<"api error - ", Error/binary>>}
+               [{<<"Subject">>, <<"System Alert: API Error - ", Error/binary>>}
                ,{<<"Message">>, Error}
                ,{<<"Details">>, kz_json:from_list(system_error_props(Context))}
                ,{<<"Account-ID">>, auth_account_id(Context)}

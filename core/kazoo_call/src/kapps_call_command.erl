@@ -3033,7 +3033,7 @@ store_file(Filename, Url, Tries, Call) ->
 store_file(Filename, Url, Tries, Timeout, Call) ->
     Msg = case kapps_call:kvs_fetch('alert_msg', Call) of
               'undefined' ->
-                  io_lib:format("error storing file ~s from media server ~s",
+                  io_lib:format("Error Storing File ~s From Media Server ~s",
                                 [Filename, kapps_call:switch_nodename(Call)]);
               ErrorMsg -> ErrorMsg
           end,
@@ -3088,7 +3088,11 @@ retry_store_file(0, _Timeout, _API, Msg, Error, Call) ->
     Funs = [{fun kapps_call:kvs_store/3, 'store_error', Error}
            ,{fun kapps_call:kvs_store/3, 'media_server', kapps_call:switch_nodename(Call)}
            ],
-    kapps_util:system_report(Msg, Error, kapps_call:exec(Funs, Call)),
+    kz_notify:detailed_alert(kz_term:to_binary(Msg)
+                            ,kz_term:to_binary(Error)
+                            ,kapps_call:to_proplist(kapps_call:exec(Funs, Call))
+                            ,[]
+                            ),
     {'error', Error};
 retry_store_file(Tries, Timeout, API, Msg, Error, Call) ->
     lager:critical("~s : ~s", [Msg, Error]),

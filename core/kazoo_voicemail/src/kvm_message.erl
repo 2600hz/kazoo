@@ -789,14 +789,14 @@ give_me_another_id(?MATCH_MODB_PREFIX(Year, Month, _)) ->
 -spec send_system_alert(kapps_call:call() | 'undefined', ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_system_alert('undefined', AccountId, Subject, Msg) ->
     Notify = [{<<"Message">>, Msg}
-             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Account-ID">>, AccountId}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1);
 send_system_alert(Call, AccountId, Subject, Msg) ->
     Notify = [{<<"Message">>, Msg}
-             ,{<<"Subject">>, <<"KAZOO: ", Subject/binary>>}
+             ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
              ,{<<"Details">>, kapps_call:to_json(Call)}
              ,{<<"Account-ID">>, AccountId}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)

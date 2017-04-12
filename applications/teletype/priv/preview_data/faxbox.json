@@ -1,0 +1,30 @@
+{
+    "_id": "hs48f9s2aacb8ba9fa6b7e249649q8d9",
+    "_rev": "1-d6776b5aa1ba730e182985d6fcaa8ace",
+    "attempts": 0,
+    "caller_id": "+15556662233",
+    "caller_name": "John Doe",
+    "fax_header": "2600Hz Fax Printer",
+    "fax_identity": "+1 (555) 666-2233",
+    "media": {},
+    "name": "John's Faxbox",
+    "owner_id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "pvt_account_db": "account%2Fn0%2Ff0%2Fs84aa43ffaee3e3f0c9a84113d12",
+    "pvt_account_id": "a391d64a083b99232f6d2633c47432e3",
+    "pvt_auth_account_id": "n0f0s84aa43ffaee3e3f0c9a84113d12",
+    "pvt_auth_user_id": "bd1683a4a288c4f0b8a34a02906d3520",
+    "pvt_created": 63659088882,
+    "pvt_is_authenticated": true,
+    "pvt_modified": 63659088882,
+    "pvt_request_id": "gfhc2138d4be30a357ff55e1ccdd18a8",
+    "pvt_reseller_id": "n0f0s84aa43ffaee3e3f0c9a84113d12",
+    "pvt_smtp_email_address": "329d06cb.fax.kazoo.io",
+    "pvt_type": "faxbox",
+    "pvt_vsn": "1",
+    "retries": 1,
+    "ui_metadata": {
+        "origin": "voip",
+        "ui": "monster-ui",
+        "version": "3.23"
+    }
+}

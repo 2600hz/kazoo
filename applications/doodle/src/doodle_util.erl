@@ -597,7 +597,7 @@ apply_reschedule_rule(<<"report">>, V, JObj) ->
               ,{<<"Attempts">>, kz_json:get_value(<<"attempts">>, JObj)}
                | safe_to_proplist(V)
               ]),
-    Notify = [{<<"Subject">>, <<"sms_error">>}
+    Notify = [{<<"Subject">>, <<"System Alert: SMS Error">>}
              ,{<<"Message">>, <<"undelivered sms">>}
              ,{<<"Details">>, kz_json:set_values(Props, kz_json:new())}
              ,{<<"Account-ID">>, kapps_call:account_id(Call)}

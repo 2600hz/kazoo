@@ -1,9 +1,6 @@
                 Error Receiving Fax
 
-{% if user %}
-
-Hi {{user.first_name}},
-{% endif %}
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 {% firstof caller_id.name fax.remote_station_id %} ({% firstof caller_id.number fax.remote_station_id "Unknown Number" %}) tried to
 send a fax document to {% if fax.box_name %}your faxbox {{fax.box_name}}{% else %}you{% endif %},
@@ -24,7 +21,7 @@ Here are some more details on what went wrong during transmission.
 
     FaxBox Name: {{fax.box_name}}
     FaxBox ID: {{fax.box_id}}
-    Call ID: {{call_id}}
+    Call ID: {{call_id|default:"N/A"}}
     Receiving Timestamp: {{fax.timestamp}}
 
 

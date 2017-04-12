@@ -59,9 +59,7 @@ handle_req(JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("~s notification handling not configured for this account ~s"
-                              ,[?TEMPLATE_ID, AccountId]
-                              );
+        'false' -> lager:debug("notification handling not configured for this account");
         'true' -> process_req(DataJObj)
     end.
 

@@ -19,16 +19,16 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"vmbox.id">>, <<"id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
-          ,?MACRO_VALUE(<<"vmbox.name">>, <<"name">>, <<"Voicemail Box Name">>, <<"Name of the voicemail box">>)
-          ,?MACRO_VALUE(<<"vmbox.mailbox">>, <<"mailbox">>, <<"Voicemail Box Number">>, <<"Number of the voicemail box">>)
-          ,?MACRO_VALUE(<<"vmbox.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
-          ,?MACRO_VALUE(<<"vmbox.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
+          [?MACRO_VALUE(<<"voicemail.id">>, <<"id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
+          ,?MACRO_VALUE(<<"voicemail.name">>, <<"name">>, <<"Voicemail Box Name">>, <<"Name of the voicemail box">>)
+          ,?MACRO_VALUE(<<"voicemail.mailbox">>, <<"mailbox">>, <<"Voicemail Box Number">>, <<"Number of the voicemail box">>)
+          ,?MACRO_VALUE(<<"voicemail.max_messages">>, <<"max_messages">>, <<"Maximum Messages">>, <<"The maximum number of messages this box can hold">>)
+          ,?MACRO_VALUE(<<"voicemail.message_count">>, <<"message_count">>, <<"Message Count">>, <<"The current number of messages in the voicemail box">>)
            | ?ACCOUNT_MACROS ++ ?USER_MACROS
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"Voicemail box '{{vmbox.name}}' is full">>).
+-define(TEMPLATE_SUBJECT, <<"Voicemail box '{{voicemail.name}}' is full">>).
 -define(TEMPLATE_CATEGORY, <<"voicemail">>).
 -define(TEMPLATE_NAME, <<"Full Voicemail Box">>).
 
@@ -73,7 +73,7 @@ handle_full_voicemail(JObj) ->
 
     ReqData =
         kz_json:set_values(
-          [{<<"voicemail">>, VMBox}
+          [{<<"vmbox">>, VMBox}
           ,{<<"user">>, User}
           ,{<<"to">>, Emails}
           ], DataJObj
@@ -135,15 +135,17 @@ process_req(DataJObj) ->
 
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"voicemail">>, build_voicemail_data(DataJObj)}]
-     ).
+    [{<<"voicemail">>, build_voicemail_data(DataJObj)}
+    ,{<<"owner">>, teletype_util:user_params(kz_json:get_value(<<"user">>, DataJObj))} %% backward compatibility
+    ].
 
 -spec build_voicemail_data(kz_json:object()) -> kz_proplist().
 build_voicemail_data(DataJObj) ->
     props:filter_undefined(
       [{<<"id">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)}
+      ,{<<"box">>, kz_json:get_value(<<"voicemail_box">>, DataJObj)} %% backward compatibility
+      ,{<<"number">>, kz_json:get_binary_value([<<"vmbox">>, <<"mailbox">>], DataJObj)} %% backward compatibility
       ,{<<"max_messages">>, kz_json:get_binary_value(<<"max_message_count">>, DataJObj)}
       ,{<<"message_count">>, kz_json:get_binary_value(<<"message_count">>, DataJObj)}
-       | props:delete(<<"pin">>, teletype_util:public_proplist(<<"voicemail">>, DataJObj))
+       | props:delete(<<"pin">>, teletype_util:public_proplist(<<"vmbox">>, DataJObj))
       ]).
