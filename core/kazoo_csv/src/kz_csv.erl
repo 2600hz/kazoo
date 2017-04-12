@@ -16,6 +16,7 @@
         ,pad_row_to/2
         ,associator/3
         ,row_to_iolist/1
+        ,mapped_row_to_iolist/2
         ,json_to_iolist/1
         ]).
 -export([from_jobjs/1
@@ -27,10 +28,11 @@
 
 -type cell() :: ne_binary() | ?ZILCH.
 -type row() :: [cell(),...].
+-type mapped_row() :: #{ne_binary() => cell()}.
 -type csv() :: binary().
 
 -export_type([cell/0
-             ,row/0
+             ,row/0, mapped_row/0
              ,csv/0
              ,folder/1
              ,fassoc/0
@@ -213,7 +215,7 @@ pad_row_to(_, Row) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type fassoc_ret() :: {'ok', map()} | {'error', ne_binary()}.
+-type fassoc_ret() :: {'ok', mapped_row()} | {'error', ne_binary()}.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
@@ -256,6 +258,15 @@ verify(Verifier, Header, Row, I, Map) ->
 row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
     kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec mapped_row_to_iolist(row(), mapped_row()) -> iodata().
+mapped_row_to_iolist(HeaderRow, Map) ->
+    row_to_iolist([maps:get(Header, Map, ?ZILCH) || Header <- HeaderRow]).
 
 %%--------------------------------------------------------------------
 %% @public
