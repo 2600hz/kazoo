@@ -57,7 +57,7 @@ A port request can be in one of seven **states**:
 * `rejected`: Something has gone wrong during the port process. The port can be resubmitted.
 * `canceled`: The port request is definitely canceled and cannot be resubmitted.
 
-![porting state flow](http://i.imgur.com/js7JLs0.png)
+![porting state flow](images/port-request-states-flow.png)
 
 #### Schema
 
