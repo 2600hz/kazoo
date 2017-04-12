@@ -1450,6 +1450,7 @@ set_terminators(Node, UUID, Ts) ->
     end.
 
 %% FreeSWITCH 'say' or 'say_string' may support more, but for now, map to the primary language
+say_language(<<"mk-bs">>) -> <<"en">>;
 say_language('undefined') -> <<"en">>;
 say_language(<<_:2/binary>> = Lang) -> Lang;
 say_language(<<Lang:2/binary, _/binary>>) -> Lang.
