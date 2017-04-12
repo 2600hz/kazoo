@@ -54,7 +54,9 @@
 
 -type help_error() :: {'error', 'unknown_category_action'}.
 
--type return() :: 'ok' | api_ne_binary() | kz_csv:row() | [kz_csv:row()].
+-type return() :: 'ok' | api_ne_binary() |
+                  kz_csv:row() | [kz_csv:row()] |
+                  kz_csv:mapped_row() | [kz_csv:mapped_row()].
 
 -type iterator() :: 'init' | 'stop' | any().
 

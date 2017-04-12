@@ -17,7 +17,7 @@
                ,api = kz_json:object()
                ,fassoc :: kz_csv:fassoc()
                ,output_header :: kz_csv:row()
-               ,extra_args :: map()
+               ,extra_args :: kz_tasks:extra_args()
                ,total_failed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
                }).
@@ -35,7 +35,7 @@
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec start(kz_tasks:id(), kz_json:object(), map()) -> ok.
+-spec start(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> ok.
 start(TaskId, API, ExtraArgs) ->
     _ = kz_util:put_callid(TaskId),
     case init(TaskId, API, ExtraArgs) of
@@ -52,8 +52,8 @@ start(TaskId, API, ExtraArgs) ->
 %%%===================================================================
 
 %% @private
--spec init(kz_tasks:id(), kz_json:object(), map()) -> {ok, state()} |
-                                                      {error, any()}.
+-spec init(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args()) -> {ok, state()} |
+                                                                      {error, any()}.
 init(TaskId, API, ExtraArgs) ->
     case kz_datamgr:fetch_attachment(?KZ_TASKS_DB, TaskId, ?KZ_TASKS_ANAME_IN) of
         {'error', _R}=Error ->
@@ -65,7 +65,7 @@ init(TaskId, API, ExtraArgs) ->
             init_from_csv(TaskId, API, ExtraArgs, CSV)
     end.
 
--spec init_from_csv(kz_tasks:id(), kz_json:object(), map(), binary()) ->
+-spec init_from_csv(kz_tasks:id(), kz_json:object(), kz_tasks:extra_args(), binary()) ->
                            {'ok', state()} |
                            {'error', any()}.
 init_from_csv(TaskId, API, ExtraArgs, CSV) ->
@@ -183,12 +183,18 @@ is_task_successful(State=#state{api = API
                 [{NewRowOrRows, NewIterValue}] when is_list(NewRowOrRows) ->
                     Written = store_return(State, RowArgs, NewRowOrRows),
                     {'true', Written, NewIterValue};
+                [{NewMappedRowOrMappedRows, NewIterValue}] when is_map(NewMappedRowOrMappedRows) ->
+                    Written = store_return(State, RowArgs, NewMappedRowOrMappedRows),
+                    {'true', Written, NewIterValue};
                 [{Error, NewIterValue}] ->
                     lager:error("~p", [Error]),
                     Written = store_return(State, RowArgs, Error),
                     {'false', Written, NewIterValue};
                 [NewRowOrRows=NewIterValue] when is_list(NewRowOrRows) ->
                     Written = store_return(State, RowArgs, NewRowOrRows),
+                    {'true', Written, NewIterValue};
+                [NewMappedRowOrMappedRows=NewIterValue] when is_map(NewMappedRowOrMappedRows) ->
+                    Written = store_return(State, RowArgs, NewMappedRowOrMappedRows),
                     {'true', Written, NewIterValue};
                 NewRow=NewIterValue ->
                     Written = store_return(State, RowArgs, NewRow),
@@ -214,9 +220,9 @@ store_return(State, Args, Rows=[_List|_]) when is_list(_List) ->
     lists:sum([store_return(State, Args, R) || R <- Rows]);
 store_return(#state{task_id = TaskId
                    ,output_header = Header
-                   }, Args, Reason)
-  when is_map(Args) ->
-    IOList = kz_csv:mapped_row_to_iolist(Header, Args),
+                   }, Row, Reason)
+  when is_map(Row) ->
+    IOList = kz_csv:mapped_row_to_iolist(Header, Row),
     Data = [IOList, $,, reason(Reason), $\n],
     kz_util:write_file(?OUT(TaskId), Data, ['append']),
     1;

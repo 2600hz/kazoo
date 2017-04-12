@@ -300,9 +300,8 @@ list_numbers(AuthBy, E164s) ->
               ,{batch_run, true}
               ],
     #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
-    RowsBad = maps:fold(fun list_bad_rows/3, [], KOs),
-    Rows = lists:map(fun list_number_rows/1, Ns),
-    RowsBad ++ Rows.
+    maps:fold(fun list_bad_rows/3, [], KOs)
+        ++ [list_number(N) || N <- Ns].
 
 list_bad_rows(E164, not_reconcilable, Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
@@ -313,28 +312,29 @@ list_bad_rows(_E164, _R, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
     Rows.
 
-list_number_rows(N) ->
+-spec list_number(knm_number:knm_number()) -> map().
+list_number(N) ->
     PN = knm_number:phone_number(N),
     InboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND),
     OutboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
     E911 = knm_phone_number:feature(PN, ?FEATURE_E911),
-    [knm_phone_number:number(PN)
-    ,knm_phone_number:assigned_to(PN)
-    ,knm_phone_number:prev_assigned_to(PN)
-    ,knm_phone_number:state(PN)
-    ,integer_to_binary(knm_phone_number:created(PN))
-    ,integer_to_binary(knm_phone_number:modified(PN))
-    ,knm_phone_number:used_by(PN)
-    ,kz_term:to_binary(knm_phone_number:ported_in(PN))
-    ,knm_phone_number:module_name(PN)
-    ,kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
-    ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
-    ,kz_json:get_ne_binary_value(?E911_ZIP, E911)
-    ,kz_json:get_ne_binary_value(?E911_STREET1, E911)
-    ,kz_json:get_ne_binary_value(?E911_STREET2, E911)
-    ,kz_json:get_ne_binary_value(?E911_CITY, E911)
-    ,kz_json:get_ne_binary_value(?E911_STATE, E911)
-    ].
+    #{<<"e164">> => knm_phone_number:number(PN)
+     ,<<"account_id">> => knm_phone_number:assigned_to(PN)
+     ,<<"previously_assigned_to">> => knm_phone_number:prev_assigned_to(PN)
+     ,<<"state">> => knm_phone_number:state(PN)
+     ,<<"created">> => integer_to_binary(knm_phone_number:created(PN))
+     ,<<"modified">> => integer_to_binary(knm_phone_number:modified(PN))
+     ,<<"used_by">> => knm_phone_number:used_by(PN)
+     ,<<"ported_in">> => kz_term:to_binary(knm_phone_number:ported_in(PN))
+     ,<<"carrier_module">> => knm_phone_number:module_name(PN)
+     ,<<"cnam.inbound">> => kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
+     ,<<"cnam.outbound">> => kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
+     ,<<"e911.postal_code">> => kz_json:get_ne_binary_value(?E911_ZIP, E911)
+     ,<<"e911.street_address">> => kz_json:get_ne_binary_value(?E911_STREET1, E911)
+     ,<<"e911.extended_address">> => kz_json:get_ne_binary_value(?E911_STREET2, E911)
+     ,<<"e911.locality">> => kz_json:get_ne_binary_value(?E911_CITY, E911)
+     ,<<"e911.region">> => kz_json:get_ne_binary_value(?E911_STATE, E911)
+     }.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list_all(#{account_id := Account}, init) ->
@@ -532,17 +532,12 @@ handle_result(Args, {error, KNMError}) ->
              end,
     format_result(Args, kz_term:to_binary(Reason)).
 
--spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:row().
+-spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
-    M = Args#{?ERROR_COLUMN => Reason},
-    map_to_number_row(M);
+    Args#{?ERROR_COLUMN => Reason};
 format_result(_, N) ->
-    Row0 = list_number_rows(N),
-    Row0 ++ [undefined].
-
--spec map_to_number_row(map()) -> kz_csv:row().
-map_to_number_row(M) ->
-    kz_csv:mapped_row_to_iolist(result_output_header(), M).
+    Map = list_number(N),
+    Map#{?ERROR_COLUMN => undefined}.
 
 %%--------------------------------------------------------------------
 %% @private
