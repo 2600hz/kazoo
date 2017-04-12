@@ -117,7 +117,7 @@ list_output_header() ->
     ,<<"created">>
     ,<<"modified">>
     ,<<"used_by">>
-    ,<<"port_in">>
+    ,<<"ported_in">>
     ,<<"carrier_module">>
     ,<<"cnam.inbound">>
     ,<<"cnam.outbound">>
@@ -138,7 +138,7 @@ list_doc() ->
       "* `created`: timestamp number document was created.\n"
       "* `modified`: timestamp number document was last updated.\n"
       "* `used_by`: Kazoo application handling this number.\n"
-      "* `port_in`: whether this number is linked to an ongoing port request.\n"
+      "* `ported_in`: whether this number was imported as part of a port request.\n"
       "* `carrier_module`: service that created the number document.\n"
       "* `cnam.inbound`: whether inbound CNAM is activated.\n"
       "* `cnam.outbound`: caller ID to use on outbound calls.\n"
@@ -188,7 +188,7 @@ action(<<"import">>) ->
                        ]}
     ,{<<"optional">>, [<<"account_id">>
                       ,<<"carrier_module">>
-                      ,<<"port_in">>
+                      ,<<"ported_in">>
                       ,<<"previously_assigned_to">>
                       ,<<"created">>
                       ,<<"modified">>
@@ -386,7 +386,7 @@ import(#{account_id := Account
              ,<<"account_id">> := AccountId0
              ,<<"carrier_module">> := Carrier
               %%TODO: use all the optional fields
-             ,<<"port_in">> := _PortIn
+             ,<<"ported_in">> := _PortIn
              ,<<"previously_assigned_to">> := _PrevAssignedTo
              ,<<"created">> := _Created
              ,<<"modified">> := _Modified
