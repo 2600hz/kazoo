@@ -1,0 +1,13 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "_id": "system_config.call_inspector",
+    "description": "Schema for call_inspector system_config",
+    "properties": {
+        "startup_parsers": {
+            "default": {},
+            "description": "parser specifications. Will be started on app startup",
+            "type": "object"
+        }
+    },
+    "type": "object"
+}

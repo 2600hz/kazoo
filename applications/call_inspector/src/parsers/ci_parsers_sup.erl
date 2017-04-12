@@ -20,7 +20,25 @@
 
 -define(SERVER, ?MODULE).
 
--define(CHILDREN, []).
+-define(PARSER_TYPE_HEP, <<"hep">>).
+-define(PARSER_TYPE_FREESWITCH, <<"fs_log">>).
+-define(PARSER_TYPE_KAMAILIO, <<"km_log">>).
+-define(PARSER_TYPE, <<"type">>).
+-define(PARSER_IP, <<"ip">>).
+-define(PARSER_PORT, <<"port">>).
+-define(PARSER_LOGFILE, <<"logfile">>).
+%% Example config:
+%%   "startup_parsers": {
+%%       "name_for_my_first_parser": {
+%%           "type": "hep",
+%%           "ip": "107.234.143.94",
+%%           "port": "9061"
+%%       }
+%%   }
+
+-define(DEFAULT_PARSERS, kapps_config:get_json(?CONFIG_CAT, <<"startup_parsers">>, kz_json:new())).
+
+-define(CHILDREN, parsers_from_config(?DEFAULT_PARSERS)).
 
 %% ===================================================================
 %% API functions
@@ -80,5 +98,45 @@ children() ->
     ].
 
 %% Internals
+
+parsers_from_config(JObj) ->
+    lager:debug("read parsers config: ~s", [kz_json:encode(JObj)]),
+    [ChildSpec
+     || {Name, SubJObj} <- kz_json:to_proplist(JObj),
+        ChildSpec <- [config_to_childspec(Name, kz_json:to_map(SubJObj))],
+        ok =/= ChildSpec
+    ].
+
+config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_HEP
+                           ,?PARSER_IP := IP
+                           ,?PARSER_PORT := Port
+                           }) ->
+    Module = ci_parser_hep,
+    lager:info("adding child ~s '~s' ~p ~p", [Module, Name, IP, Port]),
+    Args = [{parser_args, kz_term:to_binary(IP), kz_term:to_integer(Port)}],
+    Id = ci_parsers_util:make_name(hd(Args)),
+    ?WORKER_NAME_ARGS(Module, Id, Args);
+config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_FREESWITCH
+                           ,?PARSER_IP := LogIP
+                           ,?PARSER_PORT := LogPort
+                           ,?PARSER_LOGFILE := Filename
+                           }) ->
+    Module = ci_parser_freeswitch,
+    lager:info("adding child ~s '~s' ~p ~p ~p", [Module, Name, LogIP, LogPort, Filename]),
+    Args = [{parser_args, Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
+    Id = ci_parsers_util:make_name(hd(Args)),
+    ?WORKER_NAME_ARGS(Module, Id, Args);
+config_to_childspec(Name, #{?PARSER_TYPE := ?PARSER_TYPE_KAMAILIO
+                           ,?PARSER_IP := LogIP
+                           ,?PARSER_PORT := LogPort
+                           ,?PARSER_LOGFILE := Filename
+                           }) ->
+    Module = ci_parser_kamailio,
+    lager:info("adding child ~s '~s' ~p ~p ~p", [Module, Name, LogIP, LogPort, Filename]),
+    Args = [{parser_args, Filename, kz_term:to_binary(LogIP), kz_term:to_integer(LogPort)}],
+    Id = ci_parsers_util:make_name(hd(Args)),
+    ?WORKER_NAME_ARGS(Module, Id, Args);
+config_to_childspec(_Name, _Config) ->
+    lager:error("bad parser config for ~p: ~p", [_Name, _Config]).
 
 %% End of Module.

@@ -40,6 +40,7 @@
     "call_command.message_timeout": "call_command message timeout",
     "call_command.retries": "call_command retries",
     "call_command.save_timeout_ms": "call_command save timeout in milliseconds",
+    "call_inspector.startup_parsers": "parser specifications. Will be started on app startup",
     "callflow.call_forward.callfwd_number_timeout": "callflow.call_forward callfwd number timeout",
     "callflow.call_forward.max_callfwd_number_length": "callflow.call_forward maximum callfwd number length",
     "callflow.call_forward.menu_change_number": "callflow.call_forward menu change number",
