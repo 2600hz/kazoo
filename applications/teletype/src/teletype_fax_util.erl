@@ -38,11 +38,10 @@ add_data(DataJObj) ->
 -spec maybe_add_document_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_document_data(Macros, []) -> Macros;
 maybe_add_document_data(Macros, [{ContentType, Filename, Bin}]) ->
-    [_Type, SubType] = binary:split(ContentType, <<"/">>),
     Fax = props:set_values(
             props:filter_undefined(
               [{<<"media">>, Filename}
-              ,{<<"document_type">>, SubType}
+              ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
               ,{<<"document_size">>, erlang:size(Bin)}
               ]
              )

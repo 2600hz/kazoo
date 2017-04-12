@@ -23,7 +23,10 @@
           [?MACRO_VALUE(<<"voicemail.vmbox_id">>, <<"voicemail_vmbox_id">>, <<"Voicemail Box Id">>, <<"Which voicemail box was the message left in">>)
           ,?MACRO_VALUE(<<"voicemail.msg_id">>, <<"voicemail_msg_id">>, <<"Voicemail Message ID">>, <<"Message Id of the voicemail">>)
           ,?MACRO_VALUE(<<"voicemail.transcription">>, <<"voicemail_transcription">>, <<"Voicemail Message Transcription">>, <<"Voicemail Message Transcription">>)
-          ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file">>)
+          ,?MACRO_VALUE(<<"voicemail.length">>, <<"voicemail_length">>, <<"Voicemail Length">>, <<"Length of the voicemail file (formated in HH:MM:SS)">>)
+          ,?MACRO_VALUE(<<"voicemail.file_name">>, <<"voicemail_file_name">>, <<"Voicemail File Name">>, <<"Name of the voicemail file">>)
+          ,?MACRO_VALUE(<<"voicemail.file_type">>, <<"voicemail_file_type">>, <<"Voicemail File Type">>, <<"Type of the voicemail file">>)
+          ,?MACRO_VALUE(<<"voicemail.file_size">>, <<"voicemail_file_size">>, <<"Voicemail File Size">>, <<"Size of the voicemail file in bytes">>)
            | ?DEFAULT_CALL_MACROS ++ ?ACCOUNT_MACROS ++ ?USER_MACROS
           ])
        ).
@@ -113,9 +116,12 @@ get_owner(VMBox, DataJObj) ->
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
 
-    Macros = [{<<"system">>, teletype_util:system_params()}
-              | build_template_data(DataJObj)
-             ],
+    TemplateData = [{<<"system">>, teletype_util:system_params()}
+                    | build_template_data(DataJObj)
+                   ],
+    EmailAttachements = email_attachments(DataJObj, TemplateData),
+    Macros = maybe_add_file_data(TemplateData, EmailAttachements),
+
 
     %% Populate templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -130,7 +136,6 @@ process_req(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    EmailAttachements = email_attachments(DataJObj, Macros),
 
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
@@ -215,3 +220,17 @@ pretty_print_length(Ms) when is_integer(Ms) ->
     kz_term:to_binary(io_lib:format("~2..0w:~2..0w:~2..0w", [H, M, S]));
 pretty_print_length(JObj) ->
     pretty_print_length(kz_json:get_integer_value(<<"voicemail_length">>, JObj)).
+
+-spec maybe_add_file_data(kz_proplist(), attachments()) -> kz_proplist().
+maybe_add_file_data(Macros, []) -> Macros;
+maybe_add_file_data(Macros, [{ContentType, Filename, Bin}]) ->
+    VMF = props:set_values(
+            props:filter_undefined(
+              [{<<"file_name">>, Filename}
+              ,{<<"file_type">>, kz_mime:to_extension(ContentType)}
+              ,{<<"file_size">>, erlang:size(Bin)}
+              ]
+             )
+                          ,props:get_value(<<"voicemail">>, Macros, [])
+           ),
+    props:set_value(<<"voicemail">>, VMF, Macros).
