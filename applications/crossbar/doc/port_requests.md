@@ -47,13 +47,15 @@
 
 Manage and track number port requests through the Port Requests API.
 
-A port request can be in one of five **states**:
+A port request can be in one of seven **states**:
 
 * `unconfirmed`: A port request has been created, but the details have not been confirmed and the port process has not started.
 * `submitted`: Indicates the number port is ready to be processed and sent to the losing carrier.
+* `pending`: The port was submitted to the losing carrier.
 * `scheduled`: The port is in progress and the losing carrier has been notified.
 * `completed`: The port request has been finished, and numbers are activated.
-* `rejected`: The port request has been cancelled, or something has gone wrong during the port process. The port can be resubmitted.
+* `rejected`: Something has gone wrong during the port process. The port can be resubmitted.
+* `canceled`: The port request is definitely canceled and cannot be resubmitted.
 
 ![porting state flow](http://i.imgur.com/js7JLs0.png)
 
