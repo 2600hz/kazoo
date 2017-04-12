@@ -28,7 +28,8 @@ get_keys(Config) ->
 
 -spec get_config(ne_binary()) -> kz_json:object().
 get_config(Id) ->
-    kz_doc:public_fields(maybe_new(kapps_config:get_category(Id))).
+    JObj = kz_doc:public_fields(maybe_new(kapps_config:get_category(Id))),
+    kz_json:filter(fun({_, V}) -> kz_json:is_json_object(V) end, JObj).
 
 -spec get_node(kz_json:object(), ne_binary()) -> kz_json:object().
 get_node(Config, Node) ->
