@@ -865,7 +865,7 @@ build_callee_id_data(DataJObj) ->
       ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
       ]).
 
--spec build_date_called_data(kz_json:object(), api_ne_binary()) -> gregorian_seconds().
+-spec build_date_called_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
 build_date_called_data(DataJObj, Timezone) ->
     DateCalled = find_date_called(DataJObj),
     Timezone = kz_json:get_value(<<"timezone">>, DataJObj, Timezone),
