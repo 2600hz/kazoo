@@ -32,8 +32,8 @@ add_data(DataJObj) ->
         ,{<<"fax">>, kz_doc:public_fields(maybe_get_fax_doc(DataJObj))}
         ]
        )
-      ,DataJObj
-    ).
+                      ,DataJObj
+     ).
 
 -spec maybe_add_document_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_document_data(Macros, []) -> Macros;
@@ -45,8 +45,8 @@ maybe_add_document_data(Macros, [{ContentType, Filename, Bin}]) ->
               ,{<<"document_type">>, SubType}
               ,{<<"document_size">>, erlang:size(Bin)}
               ]
-            )
-           ,props:get_value(<<"fax">>, Macros, [])
+             )
+                          ,props:get_value(<<"fax">>, Macros, [])
            ),
     props:set_value(<<"fax">>, Fax, Macros).
 

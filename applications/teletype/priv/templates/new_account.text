@@ -22,14 +22,14 @@ Welcome {% if admin %}{{admin.first_name}},{% endif %}
     Name: {{admin.first_name}} {{admin.last_name}}
     Email: {{admin.email}}
     Timezone: {{admin.timezone}}
-{% endif %}
+{% endif %}{% if account.parent_id %}
 
 
 === Parent Account Information ===
 
-    Account ID: {{account.id}}
-    Account Name: {{account.name}}
-    Account Realm: {{account.realm}}
+    Account ID: {{account.parent_id}}
+    Account Name: {{account.parent_name}}
+    Account Realm: {{account.parent_realm}}{% endif %}
 
 
 

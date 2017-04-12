@@ -369,17 +369,18 @@ find_account_params(AccountId) ->
                                    ,{<<"id">>, kz_account:id(AccountJObj)}
                                    ,{<<"language">>, kz_account:language(AccountJObj)}
                                    ,{<<"timezone">>, kz_account:timezone(AccountJObj)}
-                                    | maybe_add_parent_params(AccountJObj)
+                                    | maybe_add_parent_params(AccountId, AccountJObj)
                                    ]);
         {'error', _E} ->
             lager:debug("failed to find account doc for ~s: ~p", [AccountId, _E]),
             []
     end.
 
--spec maybe_add_parent_params(kz_json:object()) -> kz_proplist().
-maybe_add_parent_params(AccountJObj) ->
+-spec maybe_add_parent_params(ne_binary(), kz_json:object()) -> kz_proplist().
+maybe_add_parent_params(AccountId, AccountJObj) ->
     case kz_account:parent_account_id(AccountJObj) of
         'undefined' -> [];
+        AccountId -> [];
         ParentAccountId ->
             {'ok', ParentAccountJObj} = kz_account:fetch(ParentAccountId),
             [{<<"parent_name">>, kz_account:name(ParentAccountJObj)}
@@ -879,8 +880,8 @@ find_date_called(DataJObj) ->
       ,<<"fax_timestamp">>
       ,<<"timestamp">>
       ]
-     ,DataJObj
-    ).
+                             ,DataJObj
+     ).
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().
 build_from_data(DataJObj) ->
