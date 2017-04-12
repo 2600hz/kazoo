@@ -51,6 +51,8 @@
                  ,<<"delete">>
                  ]).
 
+-define(ERROR_COLUMN, <<"error">>).
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -102,8 +104,9 @@ cleanup(<<"release">>, _) -> ok;
 cleanup(<<"reserve">>, _) -> ok;
 cleanup(<<"delete">>, _) -> ok.
 
+-spec result_output_header() -> kz_csv:row().
 result_output_header() ->
-    [list_output_header() | <<"error">>].
+    list_output_header() ++ [?ERROR_COLUMN].
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -310,20 +313,20 @@ list_bad_rows(_E164, _R, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
     Rows.
 
-list_number_rows(KNMNumber) ->
-    PhoneNumber = knm_number:phone_number(KNMNumber),
-    InboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_INBOUND),
-    OutboundCNAM = knm_phone_number:feature(PhoneNumber, ?FEATURE_CNAM_OUTBOUND),
-    E911 = knm_phone_number:feature(PhoneNumber, ?FEATURE_E911),
-    [knm_phone_number:number(PhoneNumber)
-    ,knm_phone_number:assigned_to(PhoneNumber)
-    ,knm_phone_number:prev_assigned_to(PhoneNumber)
-    ,knm_phone_number:state(PhoneNumber)
-    ,integer_to_binary(knm_phone_number:created(PhoneNumber))
-    ,integer_to_binary(knm_phone_number:modified(PhoneNumber))
-    ,knm_phone_number:used_by(PhoneNumber)
-    ,kz_term:to_binary(knm_phone_number:ported_in(PhoneNumber))
-    ,knm_phone_number:module_name(PhoneNumber)
+list_number_rows(N) ->
+    PN = knm_number:phone_number(N),
+    InboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND),
+    OutboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
+    E911 = knm_phone_number:feature(PN, ?FEATURE_E911),
+    [knm_phone_number:number(PN)
+    ,knm_phone_number:assigned_to(PN)
+    ,knm_phone_number:prev_assigned_to(PN)
+    ,knm_phone_number:state(PN)
+    ,integer_to_binary(knm_phone_number:created(PN))
+    ,integer_to_binary(knm_phone_number:modified(PN))
+    ,knm_phone_number:used_by(PN)
+    ,kz_term:to_binary(knm_phone_number:ported_in(PN))
+    ,knm_phone_number:module_name(PN)
     ,kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
     ,kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
     ,kz_json:get_ne_binary_value(?E911_ZIP, E911)
@@ -379,23 +382,23 @@ import(#{account_id := Account
         ,auth_account_id := AuthAccountId
         }
       ,AccountIds
-      ,#{<<"e164">> := E164
-        ,<<"account_id">> := AccountId0
-        ,<<"carrier_module">> := Carrier
-         %%TODO: use all the optional fields
-        ,<<"port_in">> := _PortIn
-        ,<<"previously_assigned_to">> := _PrevAssignedTo
-        ,<<"created">> := _Created
-        ,<<"modified">> := _Modified
-        ,<<"used_by">> := _UsedBy
-        ,<<"cnam.inbound">> := CNAMInbound0
-        ,<<"cnam.outbound">> := CNAMOutbound
-        ,<<"e911.postal_code">> := E911PostalCode
-        ,<<"e911.street_address">> := E911StreetAddress
-        ,<<"e911.extended_address">> := E911ExtendedAddress
-        ,<<"e911.locality">> := E911Locality
-        ,<<"e911.region">> := E911Region
-        }=Args
+      ,Args=#{<<"e164">> := E164
+             ,<<"account_id">> := AccountId0
+             ,<<"carrier_module">> := Carrier
+              %%TODO: use all the optional fields
+             ,<<"port_in">> := _PortIn
+             ,<<"previously_assigned_to">> := _PrevAssignedTo
+             ,<<"created">> := _Created
+             ,<<"modified">> := _Modified
+             ,<<"used_by">> := _UsedBy
+             ,<<"cnam.inbound">> := CNAMInbound0
+             ,<<"cnam.outbound">> := CNAMOutbound
+             ,<<"e911.postal_code">> := E911PostalCode
+             ,<<"e911.street_address">> := E911StreetAddress
+             ,<<"e911.extended_address">> := E911ExtendedAddress
+             ,<<"e911.locality">> := E911Locality
+             ,<<"e911.region">> := E911Region
+             }
       ) ->
     AccountId = case undefined =:= AccountId0 of
                     true -> Account;
@@ -416,15 +419,14 @@ import(#{account_id := Account
                   ,{?E911_CITY, E911Locality}
                   ,{?E911_STATE, E911Region}
                   ])),
-    PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911
-        ++ additional_fields_to_json(Args),
+    PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911 ++ additional_fields_to_json(Args),
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, ModuleName}
               ,{public_fields, kz_json:from_list(PublicFields)}
               ],
-    Row = handle_result(E164, AuthAccountId, knm_number:create(E164, Options)),
+    Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
 %% @private
@@ -469,71 +471,80 @@ e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 assign_to(#{auth_account_id := AuthBy, account_id := Account}
          ,_IterValue
-         ,#{<<"e164">> := Num, <<"account_id">> := AccountId0}
+         ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
          ) ->
     AccountId = select_account_id(AccountId0, Account),
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(Num, AuthBy, knm_number:move(Num, AccountId, Options)).
-
-select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
-select_account_id(_, AccountId) -> AccountId.
+    handle_result(Args, knm_number:move(Num, AccountId, Options)).
 
 select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
 select_account_id(_, AccountId) -> AccountId.
 
 -spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-release(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
+release(#{auth_account_id := AuthBy}
+       ,_IterValue
+       ,Args=#{<<"e164">> := Num}
+       ) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(Num, AuthBy, knm_number:release(Num, Options)).
+    handle_result(Args, knm_number:release(Num, Options)).
 
 -spec reserve(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 reserve(#{auth_account_id := AuthBy, account_id := Account}
        ,_IterValue
-       ,#{<<"e164">> := Num, <<"account_id">> := AccountId0}
+       ,Args=#{<<"e164">> := Num, <<"account_id">> := AccountId0}
        ) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ,{assign_to, select_account_id(AccountId0, Account)}
               ],
-    handle_result(Num, AuthBy, knm_number:reserve(Num, Options)).
+    handle_result(Args, knm_number:reserve(Num, Options)).
 
 -spec delete(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
-delete(#{auth_account_id := AuthBy}, _IterValue, #{<<"e164">> := Num}) ->
+delete(#{auth_account_id := AuthBy}
+      ,_IterValue
+      ,Args=#{<<"e164">> := Num}
+      ) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    handle_result(Num, AuthBy, knm_number:delete(Num, Options)).
+    handle_result(Args, knm_number:delete(Num, Options)).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
--spec handle_result(ne_binary(), ne_binary(), knm_number_return()) -> kz_tasks:return().
-handle_result(_, _, {ok, N}) ->
-    list_number_or_error(N, undefined);
-handle_result(Num, AuthBy, {dry_run, _Services, _Charges}) ->
-    list_number_or_error(Num, <<"accept_charges">>);
-handle_result(Num, AuthBy, {error, Reason})
+-spec handle_result(kz_tasks:args(), knm_number_return()) -> kz_tasks:return().
+handle_result(Args, {ok, N}) ->
+    format_result(Args, N);
+handle_result(Args, {dry_run, _Services, _Charges}) ->
+    format_result(Args, <<"accept_charges">>);
+handle_result(Args, {error, Reason})
   when is_atom(Reason) ->
-    list_number_or_error(Num, kz_term:to_binary(Reason));
-handle_result(Num, AuthBy, {error, KNMError}) ->
+    format_result(Args, kz_term:to_binary(Reason));
+handle_result(Args, {error, KNMError}) ->
     Reason = case knm_errors:message(KNMError) of
                  undefined -> knm_errors:error(KNMError);
                  R -> R
              end,
-    list_number_or_error(Num, Reason).
+    format_result(Args, kz_term:to_binary(Reason)).
 
--spec list_number_or_error(knm_number:knm_number(), any(), undefined) -> kz_csv:row();
-                          (ne_binary(), ne_binary(), ne_binary()) -> kz_csv:row().
+-spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:row().
+format_result(Args, Reason=?NE_BINARY) ->
+    M = Args#{?ERROR_COLUMN => Reason},
+    map_to_number_row(M);
+format_result(_, N) ->
+    Row0 = list_number_rows(N),
+    Row0 ++ [undefined].
 
-list_number_or_error(N, undefined) ->
-    [list_number_rows(N) | undefined];
-list_number_or_error(Num, Error) ->
-    {ok, N} = knm_number:get(Num)
+-spec map_to_number_row(map()) -> kz_csv:row().
+map_to_number_row(M) ->
+    [maps:get(M, Header, undefined)
+     || Header <- result_output_header()
+    ].
 
 %%--------------------------------------------------------------------
 %% @private
