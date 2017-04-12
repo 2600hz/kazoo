@@ -104,9 +104,9 @@ cleanup(<<"release">>, _) -> ok;
 cleanup(<<"reserve">>, _) -> ok;
 cleanup(<<"delete">>, _) -> ok.
 
--spec result_output_header() -> kz_csv:row().
+-spec result_output_header() -> {replace, kz_csv:row()}.
 result_output_header() ->
-    list_output_header() ++ [?ERROR_COLUMN].
+    {replace, list_output_header() ++ [?ERROR_COLUMN]}.
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -542,9 +542,7 @@ format_result(_, N) ->
 
 -spec map_to_number_row(map()) -> kz_csv:row().
 map_to_number_row(M) ->
-    [maps:get(M, Header, undefined)
-     || Header <- result_output_header()
-    ].
+    kz_csv:mapped_row_to_iolist(result_output_header(), M).
 
 %%--------------------------------------------------------------------
 %% @private
