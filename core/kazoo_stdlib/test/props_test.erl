@@ -10,6 +10,11 @@
 %%%-------------------------------------------------------------------
 -module(props_test).
 
+-ifdef(PROPER).
+-include_lib("proper/include/proper.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
+-endif.
+
 -include_lib("eunit/include/eunit.hrl").
 
 filter_test_() ->
@@ -80,3 +85,45 @@ is_defined_test_() ->
     [?_assertEqual(Expected, props:is_defined(Key, Props))
      || {Props, Key, Expected} <- Tests
     ].
+
+-ifdef(PROPER).
+
+run_proper_test_() ->
+    {"Runs props PropEr tests"
+    ,{'timeout'
+     ,10000
+     ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
+                                                ,{'numtests', 500}
+                                                ]
+                                      ))
+      ]
+     }
+    }.
+
+prop_set_value() ->
+    ?FORALL({KV, Props}
+           ,{kz_proplist_property(), kz_proplist()}
+           ,?WHENFAIL(io:format("failed to set value ~p in ~p~n", [KV, Props])
+                     ,is_defined(KV, props:set_value(KV, Props))
+                     )
+           ).
+
+prop_set_values() ->
+    ?FORALL({KVs, Props}
+           ,{[kz_proplist_property()], kz_proplist()}
+           ,?WHENFAIL(io:format("failed to set values ~p in ~p~n", [KVs, Props])
+                     ,begin
+                          NewProps = props:set_values(KVs, Props),
+                          lists:all(fun(KV) -> is_defined(KV, NewProps) end
+                                   ,KVs
+                                   )
+                      end
+                     )
+           ).
+
+is_defined({K, _V}, Props) ->
+    'false' =/= lists:keyfind(K, 1, Props);
+is_defined(K, Props) ->
+    'false' =/= lists:keyfind(K, 1, Props).
+
+-endif.
