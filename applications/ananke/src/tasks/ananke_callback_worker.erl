@@ -25,9 +25,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {request      :: kz_proplist()
+-record(state, {request      :: kz_proplist() | 'undefined'
                ,timer        :: api_reference()
-               ,schedule     :: pos_integers()
+               ,schedule     :: pos_integers() | 'undefined'
                ,check = 'true' :: check_fun()
                }).
 
