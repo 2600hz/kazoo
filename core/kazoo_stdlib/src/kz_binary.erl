@@ -11,8 +11,8 @@
 
 -export([rand_hex/1
         ,hexencode/1
-
         ,from_hex/1
+        ,from_hex_string/1
         ]).
 
 -export([ucfirst/1, lcfirst/1
@@ -21,7 +21,6 @@
         ,suffix/2
         ,truncate/2, truncate/3
         ,truncate_left/2, truncate_right/2
-        ,from_hex_string/1
         ]).
 
 -export([clean/1, clean/2
@@ -33,6 +32,7 @@
         ,join/1, join/2
         ,reverse/1
         ]).
+-export([pos/2, closests/2]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 
@@ -213,3 +213,20 @@ ucfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_upper_char(F)):8, Bin/binary>>.
 
 -spec lcfirst(ne_binary()) -> ne_binary().
 lcfirst(<<F:8, Bin/binary>>) -> <<(kz_term:to_lower_char(F)):8, Bin/binary>>.
+
+-spec pos(char(), binary()) -> non_neg_integer() | -1.
+pos(Char, Bin) ->
+    pos(Char, Bin, 0).
+pos(_, <<>>, _) -> -1;
+pos(Char, <<Char:8, _/binary>>, N) -> N;
+pos(Char, <<_:8, Bin/binary>>, N) ->
+    pos(Char, Bin, N + 1).
+
+-spec closests([char(),...], binary()) -> [{char(), non_neg_integer()}].
+closests(Chars, Bin) ->
+    Pairs = [{Char, Pos}
+             || Char <- Chars,
+                Pos <- [pos(Char, Bin)],
+                Pos =/= -1
+            ],
+    lists:keysort(2, Pairs).
