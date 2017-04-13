@@ -46,7 +46,9 @@
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
--define(DEFAULT_VOICE, kapps_config:get(<<"speech">>, <<"tts_default_voice">>, <<"female/en-US">>)).
+-define(DEFAULT_VOICE
+       ,list_to_binary([kazoo_tts:default_voice(), "/", kazoo_tts:default_language()])
+       ).
 -define(NORMALIZATION_FORMAT, kapps_config:get(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
 
 %%%===================================================================
@@ -473,10 +475,10 @@ maybe_save_tts(Context, _Text, _Voice, _Status) ->
 
 -spec maybe_update_tts(cb_context:context(), ne_binary(), ne_binary(), crossbar_status()) ->
                               cb_context:context().
-maybe_update_tts(Context, Text, Voice, 'success') ->
+maybe_update_tts(Context, Text, VoiceLang, 'success') ->
     JObj = cb_context:doc(Context),
-    Voice = kz_json:get_value([<<"tts">>, <<"voice">>], JObj, ?DEFAULT_VOICE),
-    try kapps_speech:create(Text, Voice) of
+
+    try kazoo_tts:create(Text, VoiceLang) of
         {'error', Reason} ->
             crossbar_doc:delete(Context),
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
@@ -514,7 +516,7 @@ maybe_update_tts(Context, _Text, _Voice, _Status) -> Context.
 maybe_merge_tts(Context, MediaId, Text, Voice, 'success') ->
     JObj = cb_context:doc(Context),
 
-    case kapps_speech:create(Text, Voice) of
+    case kazoo_tts:create(Text, Voice) of
         {'error', R} ->
             crossbar_util:response('error', kz_term:to_binary(R), Context);
         {'error', 'tts_provider_failure', R} ->

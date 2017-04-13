@@ -1059,7 +1059,7 @@ media_path(<<"https://", _/binary>> = URI, _Type, _UUID, _) -> get_fs_playback(U
 media_path(<<?HTTP_GET_PREFIX, _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(<<"\$", _/binary>> = Media, _Type, _UUID, _) -> Media;
 media_path(MediaName, Type, UUID, JObj) ->
-    case lookup_media(MediaName, UUID, JObj, Type) of
+    case lookup_media(MediaName, Type, UUID, JObj) of
         {'error', _E} ->
             lager:warning("failed to get media path for ~s: ~p", [MediaName, _E]),
             kz_term:to_binary(MediaName);
@@ -1162,10 +1162,10 @@ convert_kazoo_app_name(App) ->
     [EvtName || {EvtName, AppName} <- ?FS_APPLICATION_NAMES, App =:= AppName].
 
 -type media_types() :: 'new' | 'extant'.
--spec lookup_media(ne_binary(), ne_binary(), kz_json:object(), media_types()) ->
+-spec lookup_media(ne_binary(), media_types(), ne_binary(), kz_json:object()) ->
                           {'ok', ne_binary()} |
                           {'error', any()}.
-lookup_media(MediaName, CallId, JObj, Type) ->
+lookup_media(MediaName, Type, CallId, JObj) ->
     case kz_cache:fetch_local(?ECALLMGR_UTIL_CACHE
                              ,?ECALLMGR_PLAYBACK_MEDIA_KEY(MediaName)
                              )
@@ -1174,23 +1174,21 @@ lookup_media(MediaName, CallId, JObj, Type) ->
             lager:debug("media ~s exists in playback cache as ~s", [MediaName, _Path]),
             Ok;
         {'error', 'not_found'} ->
-            request_media_url(MediaName, CallId, JObj, Type)
+            request_media_url(MediaName, Type, CallId, JObj)
     end.
 
--spec request_media_url(ne_binary(), ne_binary(), kz_json:object(), media_types()) ->
+-spec request_media_url(ne_binary(), media_types(), ne_binary(), kz_json:object()) ->
                                {'ok', ne_binary()} |
                                {'error', any()}.
-request_media_url(MediaName, CallId, JObj, Type) ->
-    Request = kz_json:set_values(
-                props:filter_undefined(
-                  [{<<"Media-Name">>, MediaName}
-                  ,{<<"Stream-Type">>, kz_term:to_binary(Type)}
-                  ,{<<"Call-ID">>, CallId}
-                  ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
-                   | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
-                  ])
-                                ,JObj),
-    case kz_amqp_worker:call_collect(Request
+request_media_url(MediaName, Type, CallId, JObj) ->
+    MsgProps = props:filter_undefined(
+                 [{<<"Media-Name">>, MediaName}
+                 ,{<<"Stream-Type">>, kz_term:to_binary(Type)}
+                 ,{<<"Call-ID">>, CallId}
+                 ,{<<"Msg-ID">>, kz_binary:rand_hex(8)}
+                  | kz_api:default_headers(<<"media">>, <<"media_req">>, ?APP_NAME, ?APP_VERSION)
+                 ]),
+    case kz_amqp_worker:call_collect(kz_json:set_values(MsgProps, JObj)
                                     ,fun kapi_media:publish_req/1
                                     ,{'media_mgr', fun kapi_media:resp_v/1}
                                     )

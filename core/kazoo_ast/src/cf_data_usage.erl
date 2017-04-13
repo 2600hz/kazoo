@@ -111,8 +111,10 @@ maybe_insert_schema(F, [], Default, Schema) ->
     kz_json:insert_values(Updates, Schema).
 
 check_default({_M, _F, _A}) -> 'undefined';
+check_default([<<_/binary>>|_]=L) ->
+    L;
 check_default([_|_]=_L) ->
-    ?DEBUG("unchanged default list ~p~n", [_L]),
+    ?DEBUG("default list ~p~n", [L]),
     'undefined';
 check_default([]) -> [];
 check_default(?EMPTY_JSON_OBJECT=J) -> J;
@@ -166,7 +168,9 @@ guess_type('get_float_value', _) ->
     <<"float">>;
 guess_type('get_json_value', _) ->
     <<"object">>;
-guess_type('get_list_value', _) ->
+guess_type('get_list_value', [<<_/binary>>|_]) ->
+    <<"array(string)">>;
+guess_type('get_list_value', _L) ->
     <<"array">>;
 guess_type('find', _) ->
     'undefined';

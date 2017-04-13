@@ -21,6 +21,16 @@
             "description": "speech asr freeform url",
             "type": "string"
         },
+        "asr_locale": {
+            "default": "en-us",
+            "description": "speech asr default locale",
+            "type": "string"
+        },
+        "asr_mime_type": {
+            "default": "application/wav",
+            "description": "speech asr mime type",
+            "type": "string"
+        },
         "asr_prefered_content_type": {
             "default": "application/mpeg",
             "description": "speech asr prefered content type",
@@ -50,6 +60,11 @@
             "default": "multipart",
             "description": "speech tts args encode",
             "type": "string"
+        },
+        "tts_cache": {
+            "default": 3600000,
+            "description": "How long, in milliseconds, to cache TTS media files",
+            "type": "integer"
         },
         "tts_default_voice": {
             "default": "female/en-US",
