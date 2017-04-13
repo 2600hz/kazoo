@@ -75,7 +75,7 @@ main(CommandLineArgs, Loops) ->
 
 %%% Internals
 
--spec get_target(proplist(), boolean()) -> atom().
+-spec get_target(kz_proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
     Node = props:get_value('node', Options),
     Host = get_host(),
@@ -91,7 +91,7 @@ get_target(Options, Verbose) ->
             print_ping_failed(Target, Cookie)
     end.
 
--spec get_cookie(proplist(), atom()) -> atom().
+-spec get_cookie(kz_proplist(), atom()) -> atom().
 get_cookie(Options, Node) ->
     CookieStr =
         case { props:get_value('cookie', Options, "")
@@ -140,7 +140,7 @@ print_invalid_cli_args() ->
     stderr("Invalid command or wrong number of arguments, please try again", []),
     halt(1).
 
--spec parse_args(string()) -> {'ok', proplist(), list()}.
+-spec parse_args(string()) -> {'ok', kz_proplist(), list()}.
 parse_args(CommandLineArgs) ->
     case getopt:parse(option_spec_list(), CommandLineArgs) of
         {'ok', {Options, Args}} when is_list(Options) ->

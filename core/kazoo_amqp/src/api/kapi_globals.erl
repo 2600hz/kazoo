@@ -420,7 +420,7 @@ publish_query(Req, ContentType) ->
     RoutingKey = ?GLOBALS_EVENT_ROUTING_KEY(<<"query">>, Name),
     publish(RoutingKey, Payload, ContentType).
 
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Name = props:get_value('name', Props, <<"*">>),
     Events = props:get_value('restrict_to', Props, [<<"*">>]),

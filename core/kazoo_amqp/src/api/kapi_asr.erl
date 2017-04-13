@@ -52,7 +52,7 @@
 
 %%--------------------------------------------------------------------
 %% @doc Request asr - see wiki
-%% Takes proplist, creates JSON string or error
+%% Takes kz_proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -72,7 +72,7 @@ req_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Response with asr - see wiki
-%% Takes proplist, creates JSON string or error
+%% Takes kz_proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -84,7 +84,7 @@ resp(Prop) when is_list(Prop) ->
 resp(JObj) ->
     resp(kz_json:to_proplist(JObj)).
 
--spec resp_v(proplist() | kz_json:object()) -> boolean().
+-spec resp_v(api_terms()) -> boolean().
 resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ASR_RESP_HEADERS, ?ASR_RESP_VALUES, ?ASR_RESP_TYPES);
 resp_v(JObj) ->
@@ -92,7 +92,7 @@ resp_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Asr error - see wiki
-%% Takes proplist, creates JSON string or error
+%% Takes kz_proplist(), creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------
 -spec error(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -104,7 +104,7 @@ error(Prop) when is_list(Prop) ->
 error(JObj) ->
     error(kz_json:to_proplist(JObj)).
 
--spec error_v(proplist() | kz_json:object()) -> boolean().
+-spec error_v(api_terms()) -> boolean().
 error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?ASR_ERROR_HEADERS, ?ASR_ERROR_VALUES, ?ASR_ERROR_TYPES);
 error_v(JObj) ->
@@ -115,7 +115,7 @@ error_v(JObj) ->
 %% bind to a queue to the asr exchange and events
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(binary(), proplist()) -> 'ok'.
+-spec bind_q(binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_callctl(Queue, ?KEY_ASR_REQ).
 

@@ -212,7 +212,7 @@ resp_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?OFFNET_RESOURCE_RESP_HEADERS, ?OFFNET_RESOURCE_RESP_VALUES, ?OFFNET_RESOURCE_RESP_TYPES);
 resp_v(JObj) -> resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, _Props) ->
     amqp_util:bind_q_to_resource(Queue, ?KEY_OFFNET_RESOURCE_REQ).
 

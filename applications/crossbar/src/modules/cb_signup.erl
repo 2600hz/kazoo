@@ -468,7 +468,7 @@ create_body(_, _, Body) ->
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% create a proplist to provide to the templates during render
+%% create a kz_proplist() to provide to the templates during render
 %% @end
 %%--------------------------------------------------------------------
 -spec template_props(cb_context:context()) -> [{ne_binary(), kz_proplist() | ne_binary()},...].
@@ -569,7 +569,7 @@ init_state() ->
             #state{}
     end.
 
--spec get_configs() -> {'ok', proplist()} |
+-spec get_configs() -> {'ok', kz_proplist()} |
                        {'error', file:posix() | 'badarg' | 'terminated' | 'system_limit'
                         | {integer(), module(), any()}
                        }.

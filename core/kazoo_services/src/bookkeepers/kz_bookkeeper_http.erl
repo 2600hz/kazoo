@@ -109,7 +109,7 @@ http_payload(#sync{content_type = <<"application/json">>} = Sync) ->
                              ]),
     kz_json:encode(JObj).
 
--spec http_headers(sync()) -> proplist().
+-spec http_headers(sync()) -> kz_proplist().
 http_headers(Sync) ->
     props:filter_empty(
       [{"X-Sync-ID", to_list(Sync#sync.id)}

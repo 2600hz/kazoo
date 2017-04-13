@@ -49,8 +49,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a customer record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_discount()) -> proplist() | bt_xml().
--spec record_to_xml(bt_discount(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_discount()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_discount(), boolean()) -> kz_proplist() | bt_xml().
 
 record_to_xml(Discount) ->
     record_to_xml(Discount, false).

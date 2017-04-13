@@ -102,7 +102,7 @@ get_resp_v(JObj) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Q, Prop) ->
     add_bindings(Q, props:get_value('restrict_to', Prop)).
 
@@ -111,7 +111,7 @@ bind_q(Q, Prop) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec unbind_q(ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Q, Prop) ->
     rm_bindings(Q, props:get_value('restrict_to', Prop)).
 

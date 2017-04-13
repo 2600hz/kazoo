@@ -42,7 +42,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), proplist()) -> 'ok'.
+-spec handle_req(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_req(JObj, _Props) ->
     'true' = kapi_notifications:system_alert_v(JObj),
     kz_util:put_callid(JObj),
@@ -80,7 +80,7 @@ alert_using_email('true', JObj) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(kz_json:object()) -> proplist().
+-spec create_template_props(kz_json:object()) -> kz_proplist().
 create_template_props(Event) ->
     [{<<"request">>, notify_util:json_to_template_props(
                        kz_json:delete_keys([<<"Details">>

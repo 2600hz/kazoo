@@ -402,7 +402,7 @@ cid_key_lookup(CIDKey, Entries, Call) ->
             maybe_set_default_cid('undefined', 'undefined', Call)
     end.
 
--spec cidkey_wanted(binary(), kz_json:object(), proplist()) -> proplist().
+-spec cidkey_wanted(binary(), kz_json:object(), kz_proplist()) -> kz_proplist().
 cidkey_wanted(CIDKey, Entry, Acc) ->
     case kz_json:get_binary_value([<<"value">>, <<"cid_key">>], Entry) == CIDKey of
         'true' -> Acc ++ [{kz_json:get_ne_binary_value([<<"value">>, <<"cid_name">>], Entry)

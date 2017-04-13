@@ -427,7 +427,7 @@ qr_code_image(Text) ->
             'undefined'
     end.
 
--spec get_charset_params(proplist()) -> {proplist(), binary()}.
+-spec get_charset_params(kz_proplist()) -> {kz_proplist(), binary()}.
 get_charset_params(Service) ->
     case props:get_value(<<"template_charset">>, Service) of
         <<>> -> {[], <<>>};

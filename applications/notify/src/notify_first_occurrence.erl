@@ -81,7 +81,7 @@ send(Occurrence, Account) ->
 %% create the props used by the template render function
 %% @end
 %%--------------------------------------------------------------------
--spec create_template_props(kz_json:object(), ne_binary()) -> proplist().
+-spec create_template_props(kz_json:object(), ne_binary()) -> kz_proplist().
 create_template_props(Account, Occurrence) ->
     Admin = notify_util:find_admin(Account),
     [{<<"event">>, Occurrence}
