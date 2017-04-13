@@ -121,7 +121,8 @@ content_types_accepted(Context) ->
 
 -spec content_types_accepted_by_verb(cb_context:context(), http_method()) -> cb_context:context().
 content_types_accepted_by_verb(Context, ?HTTP_POST) ->
-    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]).
+    cb_context:set_content_types_accepted(Context, [{'from_binary', ?UPLOAD_MIME_TYPES}]);
+content_types_accepted_by_verb(Context, _) -> Context.
 
 -spec content_types_provided(cb_context:context()) -> cb_context:context().
 content_types_provided(Context) ->
