@@ -16,6 +16,7 @@
 
 -export([mandatory/1
         ,optional/1
+        ,possible_fields/1
         ,input_mime/1
         ]).
 
@@ -91,6 +92,10 @@ mandatory(APIJObj) ->
 -spec optional(kz_json:object()) -> ne_binaries().
 optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
+
+-spec possible_fields(kz_json:object()) -> ne_binaries().
+possible_fields(APIJObj) ->
+    mandatory(APIJObj) ++ optional(APIJObj).
 
 -spec input_mime(kz_json:object()) -> ne_binary().
 input_mime(APIJObj) ->

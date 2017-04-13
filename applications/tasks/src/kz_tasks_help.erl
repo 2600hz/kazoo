@@ -117,7 +117,7 @@ parse_apis([{Category, Actions}|HelpProps], Acc) ->
 
 -spec verify_unicity_map({ne_binary(), kz_json:object()}) -> 'ok'.
 verify_unicity_map({_Action, API}) ->
-    Fields0 = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
+    Fields0 = kz_tasks:possible_fields(API),
     Fields = [kz_term:to_lower_binary(Field) || Field <- Fields0],
     case
         length(lists:usort(Fields)) == length(Fields)

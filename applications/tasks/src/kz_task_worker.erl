@@ -77,7 +77,7 @@ init_from_csv(TaskId, API, ExtraArgs, CSV) ->
             Error;
         'ok' ->
             Verifier = build_verifier(API),
-            TaskFields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
+            TaskFields = kz_tasks:possible_fields(API),
 
             FAssoc = kz_csv:associator(InputHeader, TaskFields, Verifier),
             State = #state{task_id = TaskId
