@@ -1,7 +1,7 @@
                 New Voicemail
 
 
-Hi {{user.first_name}},
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 You have a new voicemail from {{caller_id.name}} ({{caller_id.number}}) for
 your voicemail box at {{voicemail.vmbox_name}} ({{voicemail.vmbox_number}}).
@@ -18,7 +18,10 @@ Please find the message audio file in the attachment.
     Caller: {{caller_id.name}} ({{caller_id.number}})
     Callee: {{to.user}} (originally dialed number)
     Received: {{date_called.local|date:"l, F j, Y \\a\\t H:i"}}
-    Length: {{voicemail.length}}
+    Length: {{voicemail.length}}{% if voicemail.file_name %}
+    File Name: {{voicemail.file_name}}
+    File Type: {{voicemail.file_type|upper}}
+    File Size: {{voicemail.file_size|filesizeformat}}{% endif %}
 
 
 

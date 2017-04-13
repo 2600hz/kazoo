@@ -125,10 +125,9 @@
         ,?MACRO_VALUE(<<"port_request.name">>, <<"name">>, <<"Name">>, <<"Name">>)
         ,?MACRO_VALUE(<<"port_request.numbers">>, <<"numbers">>, <<"Numbers">>, <<"Numbers">>)
         ,?MACRO_VALUE(<<"port_request.port_state">>, <<"port_state">>, <<"State of Port Request">>, <<"State of Port Request">>)
-        ,?MACRO_VALUE(<<"port_request.transfer_date">>, <<"transfer_date">>, <<"Transfer Date">>, <<"Transfer Date">>)
-        ,?MACRO_VALUE(<<"port_request.scheduled_date.local">>, <<"scheduled_date_local">>, <<"Local Scheduled Date">>, <<"Local Scheduled Date">>)
-        ,?MACRO_VALUE(<<"port_request.scheduled_date.utc">>, <<"scheduled_date_utc">>, <<"UTC Scheduled Date">>, <<"UTC Scheduled Date">>)
-        ,?MACRO_VALUE(<<"port_request.scheduled_date.timezone">>, <<"scheduled_date_timezone">>, <<"Scheduled Date Timezone">>, <<"Scheduled Date Local Timezone">>)
+        ,?MACRO_VALUE(<<"port_request.port_scheduled_date.local">>, <<"port_scheduled_date_local">>, <<"Local Scheduled Date">>, <<"Local Scheduled Date">>)
+        ,?MACRO_VALUE(<<"port_request.port_scheduled_date.utc">>, <<"port_scheduled_date_utc">>, <<"UTC Scheduled Date">>, <<"UTC Scheduled Date">>)
+        ,?MACRO_VALUE(<<"port_request.port_scheduled_date.timezone">>, <<"port_scheduled_date_timezone">>, <<"Scheduled Date Timezone">>, <<"Scheduled Date Local Timezone">>)
         ,?MACRO_VALUE(<<"port_request.service_provider">>, <<"service_provider">>, <<"Service Provider">>, <<"Service Provider">>)
         ,?MACRO_VALUE(<<"port_request.requested_port_date">>, <<"requested_port_date">>, <<"Requested Port Date">>, <<"Requested Port Date">>)
         ]).
@@ -162,16 +161,44 @@
 
 -define(SYSTEM_MACROS
        ,[?MACRO_VALUE(<<"system.hostname">>, <<"system_hostname">>, <<"Hostname">>, <<"Hostname of system generating the email">>)
-        ]
-       ).
+        ]).
+
+-define(FAX_MACROS
+       ,[?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Fax ID">>)
+        ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
+        ,?MACRO_VALUE(<<"fax.media">>, <<"fax_media">>, <<"Fax Name">>, <<"Name of the fax transmission">>)
+        ,?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
+        ,?MACRO_VALUE(<<"fax.document_type">>, <<"fax_document_type">>, <<"Fax Document Type">>, <<"Type of the fax document">>)
+        ,?MACRO_VALUE(<<"fax.document_size">>, <<"fax_document_size">>, <<"Fax Document Size">>, <<"Size of the fax document in bytes">>)
+        ,?MACRO_VALUE(<<"fax.success">>, <<"fax_success">>, <<"Fax Success">>, <<"Was the fax successful">>)
+        ,?MACRO_VALUE(<<"fax.ecm_used">>, <<"fax_ecm_used">>, <<"ECM Used">>, <<"Was ECM used">>)
+        ,?MACRO_VALUE(<<"fax.result_text">>, <<"fax_result_text">>, <<"Fax Result Text">>, <<"Result text from transmission">>)
+        ,?MACRO_VALUE(<<"fax.result_code">>, <<"fax_result_code">>, <<"Fax Result Code">>, <<"Result code from transmission">>)
+        ,?MACRO_VALUE(<<"fax.transferred_pages">>, <<"fax_transferred_pages">>, <<"Transferred Pages">>, <<"How many pages were transferred">>)
+        ,?MACRO_VALUE(<<"fax.bad_rows">>, <<"fax_bad_rows">>, <<"Bad Rows">>, <<"How many bad rows">>)
+        ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
+        ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
+        ,?MACRO_VALUE(<<"fax.box_id">>, <<"fax_box_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
+        ,?MACRO_VALUE(<<"fax.box_name">>, <<"fax_box_name">>, <<"FaxBox Name">>, <<"FaxBox Name">>)
+        ,?MACRO_VALUE(<<"fax.timestamp">>, <<"fax_timestamp">>, <<"Fax Timestamp">>, <<"Fax Timestamp">>)
+        ,?MACRO_VALUE(<<"fax.remote_station_id">>, <<"fax_remote_station_id">>, <<"Fax Remote Station ID">>, <<"Fax Remote Station ID">>)
+        ]).
+
+-define(FAX_ERROR_MACROS
+       ,[?MACRO_VALUE(<<"fax.info">>, <<"fax_info">>, <<"Fax Info">>, <<"Fax Info">>)
+        ,?MACRO_VALUE(<<"error.call_info">>, <<"error_call_info">>, <<"Fax Call Error">>, <<"Fax Call Error">>)
+        ,?MACRO_VALUE(<<"error.fax_info">>, <<"error_fax_info">>, <<"Fax Processor Error">>, <<"Fax Processor Error">>)
+        ]).
+
 
 -define(DEFAULT_CALL_MACROS
-       ,?CALLER_ID_MACROS
-        ++ ?CALLEE_ID_MACROS
-        ++ ?DATE_CALLED_MACROS
-        ++ ?FROM_MACROS
-        ++ ?TO_MACROS
-       ).
+       ,[?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the caller">>)
+         | ?CALLER_ID_MACROS
+         ++ ?CALLEE_ID_MACROS
+         ++ ?DATE_CALLED_MACROS
+         ++ ?FROM_MACROS
+         ++ ?TO_MACROS
+        ]).
 
 -record(email_receipt, {to :: ne_binaries() | ne_binary()
                        ,from :: ne_binary()

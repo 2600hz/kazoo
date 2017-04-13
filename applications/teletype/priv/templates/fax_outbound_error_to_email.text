@@ -1,11 +1,8 @@
                 Error Sending Fax
 
-{% if user %}
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
-Hi {{user.first_name}},
-{% endif %}
-
-An attempt to send a fax document to {% firstof callee_id.name fax.remote_station_id %} ({% firstof callee_id.number fax.remote_station_id "Unknown Number" %}) was unsuccessful
+An attempt to send a fax document to {% firstof callee_id.name fax.remote_station_id %} ({% firstof callee_id.number fax.remote_station_id "Unknown Number" %}) was unsuccessful.
 
 Here are some more details on what went wrong during transmission.
 
@@ -22,7 +19,7 @@ Here are some more details on what went wrong during transmission.
 
     FaxBox Name: {{fax.box_name}}
     FaxBox ID: {{fax.box_id}}
-    Call ID: {{call_id}}
+    Call ID: {{call_id|default:"N/A"}}
     Sent Timestamp: {{fax.timestamp}}
 
 

@@ -63,14 +63,9 @@ handle_req(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
-    ReqData =
-        kz_json:set_value(<<"user">>, teletype_util:find_account_admin(AccountId), DataJObj),
-
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("~s notification handling not configured for account ~s"
-                              ,[?TEMPLATE_ID, AccountId]
-                              );
-        'true' -> process_req(kz_json:merge_jobjs(DataJObj, ReqData))
+        'false' -> lager:debug("notification handling not configured for this account");
+        'true' -> process_req(DataJObj)
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
@@ -79,7 +74,7 @@ process_req(DataJObj) ->
              ,{<<"account">>, reseller_info_data(DataJObj)}
              ,{<<"sub_account">>, sub_account_data(DataJObj)}
              ,{<<"service_changes">>, service_added_data(DataJObj)}
-             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+             ,{<<"user">>, auth_user_data(DataJObj)}
              ],
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -106,17 +101,17 @@ reseller_info_data(DataJObj) ->
         'false' ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             ResellerId = kz_services:find_reseller_id(AccountId),
-            teletype_util:find_account_params(DataJObj, ResellerId)
+            teletype_util:find_account_params(ResellerId)
     end.
 
 -spec sub_account_data(kz_json:object()) -> kz_proplist().
 sub_account_data(DataJObj) ->
     Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
     case teletype_util:is_preview(DataJObj) of
-        'true' -> [];
+        'true' -> teletype_util:account_params(DataJObj);
         'false' ->
             AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
-            teletype_util:find_account_params(DataJObj, AccountId)
+            teletype_util:find_account_params(AccountId)
     end.
 
 -spec service_added_data(kz_json:object()) -> kz_proplist().
@@ -128,4 +123,22 @@ service_added_data(DataJObj) ->
             AccountId = lists:last(kz_json:get_value(<<"tree">>, Audit)),
             Diff = kz_json:get_value([<<"audit">>, AccountId, <<"diff_quantities">>], Audit),
             kz_json:recursive_to_proplist(Diff)
+    end.
+
+-spec auth_user_data(kz_json:object()) -> kz_proplist().
+auth_user_data(DataJObj) ->
+    Audit = kz_json:get_value(<<"audit_log">>, DataJObj),
+    case teletype_util:is_preview(DataJObj) of
+        'true' ->
+            case teletype_util:open_doc(<<"user">>, 'undefined', DataJObj) of
+                {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+                {'error', _} -> []
+            end;
+        'false' ->
+            AccountId = kzd_audit_log:authenticating_user_account_id(Audit),
+            UserId = kz_json:get_value([<<"authenticating_user">>, <<"auth_user_id">>], Audit),
+            case kzd_user:fetch(AccountId, UserId) of
+                {'ok', UserJObj} -> teletype_util:user_params(UserJObj);
+                {'error', _} -> []
+            end
     end.

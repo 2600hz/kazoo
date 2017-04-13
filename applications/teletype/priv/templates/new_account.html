@@ -44,7 +44,7 @@
                 <tr><td height="20" style="background-color:#ffffff;font-size:20px;line-height:20px;">&nbsp;</td></tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;">
-                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">Welcome {% if admin %}{{admin.first_name}},{% endif %}</h3>
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;">Welcome{% if admin.first_name %} {{admin.first_name}}{% else %} dear customer{% endif %},</h3>
                     </td>
                 </tr>
                 <tr>
@@ -75,7 +75,7 @@
                     </td>
                 </tr>
             </table>
-            {% if admin %}
+            {% if admin.first_name or admin.email %}
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
@@ -112,15 +112,15 @@
                         <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%">
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Account Name</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.name}}</td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.parent_name}}</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Account ID</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.id}}</td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.parent_id}}</td>
                             </tr>
                             <tr>
                                 <td style="padding:10px;background-color:#f5f5f5;text-align:right;font-family:'Open Sans',sans-serif;color:#555555;font-size:13px;font-weight:400;line-height:20px;border-size:3px;border-color:#ffffff;border-right-style:solid;border-bottom-style:solid;" width="30%"><b>Account Realm</b></td>
-                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.realm}}</td>
+                                <td style="padding:10px;background-color:#eaeaea;font-size:13px;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;border-size:3px;border-color:#ffffff;border-bottom-style:solid;" width="70%">{{account.parent_realm}}</td>
                             </tr>
                         </table>
                     </td>

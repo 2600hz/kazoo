@@ -12,7 +12,7 @@ Yay! The very first {{event}} was occurred on your account!
 
 
 
-{% if user %}
+{% if user.first_name or user.email %}
 Administrator User Information
 
     Name: {{user.first_name}} {{user.last_name}}

@@ -82,15 +82,28 @@
                         <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Questions?</small></h4>
                         <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Please email us and we'll be happy to help.</small></p>
                         <h4 style="margin:0 0 5px;padding:0;"><small style="font-family:'Open Sans',sans-serif;line-height:20px;color:#555555;">Need to update your billing info?</small></h4>
-                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">The Billing section can be accessed by your Account Owner, <b>{{user.first_name}} {{user.last_name}}</b></small></p><br>
+                        <p style="margin:0 0 10px;padding:0;"><small style="font-size:.8em;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">The Billing section can be accessed by your account owner{% if user.first_name or user.last_name %}, <b>{{user.first_name}} {{user.last_name}}{% endif %}.</b></small></p><br>
                         <p style="margin:0;font-family:'Open Sans',sans-serif;color:#555555;line-height:20px;">Thank you for your business!</p>
                     </td>
                 </tr>
-            </table>
-            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <!-- Clear Spacer : BEGIN -->
                 <tr><td height="50" style="background-color:#ffffff;font-size:50px;line-height:50px;">&nbsp;</td></tr>
                 <!-- Clear Spacer : END -->
+            </table>
+            {% if user.first_name or user.email %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
+                <tr><!-- #6a59f7 -->
+                    <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;border-bottom:2px solid #ffffff">
+                        <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">User Information Making this Change</h4>
+                        <p style="margin:13px;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-size:11px;line-height:18px;">
+                            <b>-&nbsp;&nbsp;&nbsp;Name:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{user.first_name}} {{user.last_name}}</span><br>
+                            <b>-&nbsp;&nbsp;&nbsp;Email:</b>&nbsp;&nbsp;<span style="font-family:monospace;">{{user.email}}</span><br>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            {% endif %}
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" width="100%" style="border-color:#dedede;border-width:1px;border-left-style:solid;border-right-style:solid;max-width:600px;">
                 <tr><!-- #6a59f7 -->
                     <td bgcolor="#e2e2e2" style="padding:0 20px;background-color:#e2e2e2;color:#555555;border-bottom:2px solid #ffffff">
                         <h4 style="font-weight:100;line-height:20px;margin:13px 0;font-family:'Open Sans',sans-serif;color:#555555;">Affected Account Information</h4>

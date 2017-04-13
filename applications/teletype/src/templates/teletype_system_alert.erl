@@ -24,7 +24,7 @@
           ])
        ).
 
--define(TEMPLATE_SUBJECT, <<"VoIP Services: '{{request.level}}' from '{{request.node}}'">>).
+-define(TEMPLATE_SUBJECT, <<"System Alert: '{{request.level}}' from '{{request.node}}'">>).
 -define(TEMPLATE_CATEGORY, <<"system">>).
 -define(TEMPLATE_NAME, <<"System Notifications">>).
 
@@ -95,7 +95,7 @@ process_req(JObj) ->
     lager:debug("template is enabled for account, fetching templates for rendering"),
     Macros = [{<<"system">>, teletype_util:system_params()}
              ,{<<"account">>, teletype_util:account_params(DataJObj)}
-             ,{<<"user">>, teletype_util:public_proplist(<<"user">>, DataJObj)}
+             ,{<<"user">>, admin_user_data(DataJObj)}
              ,{<<"request">>, request_macros(DataJObj)}
              ,{<<"message">>, kz_json:get_value(<<"message">>, DataJObj, <<>>)}
               | details_macros(DataJObj)
@@ -201,3 +201,10 @@ request_macros(DataJObj) ->
                          ,DataJObj
                          )
      ).
+
+-spec admin_user_data(kz_json:object()) -> kz_proplist().
+admin_user_data(DataJObj) ->
+    case teletype_util:find_account_admin(kz_json:get_value(<<"account_id">>, DataJObj)) of
+        'undefined' -> [];
+        UserDoc -> teletype_util:user_params(UserDoc)
+    end.

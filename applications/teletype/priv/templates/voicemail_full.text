@@ -1,7 +1,7 @@
                 Voicemail Box Full
 
 
-Hi {{user.first_name}},
+Hi{% if user.first_name %} {{user.first_name}}{% endif %},
 
 Your voicemail box {{voicemail.name}} ({{voicemail.number}}) reached
 the limit of {{voicemail.max_messages}} messages and no new voicemail

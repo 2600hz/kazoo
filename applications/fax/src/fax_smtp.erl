@@ -308,7 +308,7 @@ maybe_faxbox_log(AccountId, JObj, State) ->
 system_report(#state{errors=[Error | _]}=State) ->
     Props = to_proplist(State),
     Notify = props:filter_undefined(
-               [{<<"Subject">>, <<"fax smtp error">>}
+               [{<<"Subject">>, <<"System Alert: Fax SMTP Error">>}
                ,{<<"Message">>, Error}
                ,{<<"Details">>, kz_json:from_list(Props)}
                ,{<<"Account-ID">>, props:get_value(<<"Account-ID">>, Props)}

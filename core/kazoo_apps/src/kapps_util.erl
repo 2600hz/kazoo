@@ -58,7 +58,6 @@
         ]).
 
 -export([media_local_store_url/2]).
--export([system_report/2, system_report/3]).
 
 -include("kazoo_apps.hrl").
 -include_lib("kazoo_caches/include/kazoo_caches.hrl").
@@ -703,22 +702,3 @@ media_local_store_url(Call, JObj) ->
     MediaId = kz_doc:id(JObj),
     MediaName = kz_json:get_value(<<"name">>, JObj),
     kz_datamgr:attachment_url(AccountDb, MediaId, MediaName).
-
--spec system_report({text(), text()} | text(), kapps_call:call()) -> 'ok'.
-system_report({Subject, Msg}, Call) ->
-    system_report(Subject, Msg, Call);
-system_report(Msg, Call) ->
-    system_report(Msg, Msg, Call).
-
--spec system_report(text(), text(), kapps_call:call()) -> 'ok'.
-system_report(Subject, Msg, Call) ->
-    AppName = kapps_call:application_name(Call),
-    AppVersion = kapps_call:application_version(Call),
-    Notify = props:filter_undefined(
-               [{<<"Subject">>, iolist_to_binary(Subject)}
-               ,{<<"Message">>, iolist_to_binary(Msg)}
-               ,{<<"Details">>, kapps_call:to_json(Call)}
-               ,{<<"Account-ID">>, kapps_call:account_id(Call)}
-                | kz_api:default_headers(AppName, AppVersion)
-               ]),
-    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

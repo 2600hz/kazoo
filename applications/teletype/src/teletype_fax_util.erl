@@ -8,15 +8,47 @@
 %%%-------------------------------------------------------------------
 -module(teletype_fax_util).
 
--export([convert/3
-        ,get_fax_doc/1
+-export([add_data/1, maybe_add_document_data/2
+        ,convert/3
+        ,get_fax_doc/1, maybe_get_fax_doc/1
         ,get_attachments/2
+        ,to_email_addresses/2
         ]).
 
 -include("teletype.hrl").
 
 -define(FAX_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".fax">>).
 -define(TIFF_TO_PDF_CMD, <<"tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"">>).
+
+-spec add_data(kz_json:object()) -> kz_json:object().
+add_data(DataJObj) ->
+    FaxBoxJObj = get_faxbox_doc(DataJObj),
+
+    kz_json:set_values(
+      props:filter_empty(
+        [{<<"error">>, error_data(DataJObj)}
+        ,{<<"faxbox">>, FaxBoxJObj}
+        ,{<<"owner">>, get_owner_doc(DataJObj, FaxBoxJObj)}
+        ,{<<"fax">>, kz_doc:public_fields(maybe_get_fax_doc(DataJObj))}
+        ]
+       )
+                      ,DataJObj
+     ).
+
+-spec maybe_add_document_data(kz_proplist(), attachments()) -> kz_proplist().
+maybe_add_document_data(Macros, []) -> Macros;
+maybe_add_document_data(Macros, [{ContentType, Filename, Bin}]) ->
+    Fax = props:set_values(
+            props:filter_undefined(
+              [{<<"media">>, Filename}
+              ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
+              ,{<<"document_size">>, erlang:size(Bin)}
+              ]
+             )
+                          ,props:get_value(<<"fax">>, Macros, [])
+           ),
+    props:set_value(<<"fax">>, Fax, Macros).
+
 
 -spec convert(ne_binary(), ne_binary(), binary()) -> {ok, binary()} |
                                                      {error, atom() | string()}.
@@ -60,16 +92,10 @@ get_fax_doc(DataJObj) ->
     get_fax_doc(DataJObj, teletype_util:is_preview(DataJObj)).
 
 get_fax_doc(DataJObj, 'true') ->
-    FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
-    AccountDb = kapi_notifications:account_db(DataJObj),
-
-    case kz_datamgr:open_cache_doc(AccountDb, FaxId) of
-        {'ok', JObj} ->
-            JObj;
-        {'error', _E} ->
-            kz_json:new()
+    case teletype_util:open_doc(<<"fax">>, 'undefined', DataJObj) of
+        {'ok', JObj} -> JObj;
+        {'error', _E} -> kz_json:new()
     end;
-
 get_fax_doc(DataJObj, 'false') ->
     FaxId     = kz_json:get_value(<<"fax_id">>, DataJObj),
     AccountDb = kapi_notifications:account_db(DataJObj),
@@ -82,6 +108,10 @@ get_fax_doc(DataJObj, 'false') ->
             teletype_util:send_update(DataJObj, <<"failed">>, <<"Fax-ID was invalid">>),
             throw({'error', 'no_fax_id'})
     end.
+
+-spec maybe_get_fax_doc(kz_json:object()) -> kz_json:object().
+maybe_get_fax_doc(DataJObj) ->
+    try get_fax_doc(DataJObj) catch _:_ -> kz_json:new() end.
 
 -spec get_attachments(kz_json:object(), kz_proplist()) -> attachments().
 -spec maybe_get_attachments(kz_json:object(), kz_proplist(), boolean()) -> attachments().
@@ -192,4 +222,73 @@ fax_db(DataJObj) ->
     case kapi_notifications:account_db(DataJObj) of
         'undefined' -> ?KZ_FAXES_DB;
         Db -> Db
+    end.
+
+-spec to_email_addresses(kz_json:object(), ne_binary()) -> api_binaries().
+to_email_addresses(DataJObj, ModConfigCat) ->
+    to_email_addresses(DataJObj
+                      ,ModConfigCat
+                      ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
+                                                 ,[<<"fax">>, <<"email">>, <<"send_to">>]
+                                                 ,[<<"fax">>, <<"notifications">>, <<"email">>, <<"send_to">>]
+                                                 ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
+                                                 ,[<<"notifications">>, <<"email">>, <<"send_to">>]
+                                                 ,[<<"owner">>, <<"email">>]
+                                                 ,[<<"owner">>, <<"username">>]
+                                                 ]
+                                                ,DataJObj
+                                                )
+                      ).
+
+-spec to_email_addresses(kz_json:object(), ne_binary(), ne_binary() | api_binaries()) -> api_binaries().
+to_email_addresses(_DataJObj, _ModConfigCat, <<_/binary>> = Email) ->
+    [Email];
+to_email_addresses(_DataJObj, _ModConfigCat, [_|_] = Emails) ->
+    Emails;
+to_email_addresses(DataJObj, ModConfigCat, _) ->
+    case teletype_util:find_account_rep_email(DataJObj) of
+        'undefined' ->
+            lager:debug("failed to find account rep email, using defaults"),
+            default_to_addresses(ModConfigCat);
+        Emails ->
+            lager:debug("using ~p for To", [Emails]),
+            Emails
+    end.
+
+-spec default_to_addresses(ne_binary()) -> api_binaries().
+default_to_addresses(ModConfigCat) ->
+    case kapps_config:get(ModConfigCat, <<"default_to">>) of
+        'undefined' -> 'undefined';
+        <<_/binary>> = Email -> [Email];
+        [_|_]=Emails -> Emails
+    end.
+
+-spec get_faxbox_doc(kz_json:object()) -> kz_json:object().
+get_faxbox_doc(DataJObj) ->
+    case teletype_util:open_doc(<<"faxbox">>, kz_json:get_value(<<"faxbox_id">>, DataJObj), DataJObj) of
+        {'ok', J} -> J;
+        {'error', _} -> kz_json:new()
+    end.
+
+-spec get_owner_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
+get_owner_doc(DataJObj, FaxBoxJObj) ->
+    OwnerId = kzd_fax_box:owner_id(FaxBoxJObj, kz_json:get_value(<<"owner_id">>, DataJObj)),
+    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
+        {'ok', J} -> J;
+        {'error', _} -> kz_json:new()
+    end.
+
+-spec error_data(kz_json:object()) -> kz_json:object().
+error_data(DataJObj) ->
+    case teletype_util:is_preview(DataJObj) of
+        'false' ->
+            kz_json:from_list(
+              [{<<"call_info">>, kz_json:get_value(<<"fax_error">>, DataJObj)}
+              ,{<<"fax_info">>, kz_json:get_value([<<"fax_info">>, <<"fax_result_text">>], DataJObj)}
+              ]);
+        'true'->
+            kz_json:from_list(
+              [{<<"call_info">>, <<"CALL_INFO">>}
+              ,{<<"fax_info">>, <<"FAX_INFO">>}
+              ])
     end.

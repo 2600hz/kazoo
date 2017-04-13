@@ -106,7 +106,6 @@ handle_port_request(DataJObj) ->
 
     Emails = teletype_util:find_addresses(DataJObj, TemplateMetaJObj, ?MOD_CONFIG_CAT),
 
-    io:format("~n port_request ~p~n~n", [teletype_util:public_proplist(<<"port_request">>, DataJObj)]),
     EmailAttachements = teletype_port_utils:get_attachments(DataJObj),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' ->
@@ -125,6 +124,6 @@ user_data(DataJObj, 'true') ->
     teletype_util:user_params(teletype_util:find_account_admin(AccountId));
 user_data(DataJObj, 'false') ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
-    UserId= props:get_value(<<"user_id">>, kz_json:get_value([<<"port_request">>, <<"comment">>], DataJObj)),
+    UserId = props:get_value(<<"user_id">>, kz_json:get_value([<<"port_request">>, <<"comment">>], DataJObj)),
     {'ok', UserJObj} = kzd_user:fetch(AccountId, UserId),
     teletype_util:user_params(UserJObj).

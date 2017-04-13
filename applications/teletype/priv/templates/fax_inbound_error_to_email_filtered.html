@@ -37,9 +37,7 @@
                 </tr>
                 <tr>
                     <td bgcolor="#ffffff" style="padding:20px;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">
-                        {% if user %}
-                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Hi {{user.first_name}},</h3>
-                        {% endif %}
+                        <h3 style="margin:0;padding:0;font-family:'Open Sans',sans-serif;color:#555555;font-weight:100;">Hi{% if user.first_name %} {{user.first_name}}{% endif %},</h3>
                     </td>
                 </tr>
                 <tr>
@@ -62,7 +60,7 @@
                         <hr>
                         <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>FaxBox Name:</b>&nbsp;{{fax.box_name}}</p>
                         <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>FaxBox ID:</b>&nbsp;{{fax.box_id}}</p>
-                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Call ID:</b>&nbsp;{{call_id}}</p>
+                        <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Call ID:</b>&nbsp;{{call_id|default:"N/A"}}</p>
                         <p style="margin:0 25px 8px;padding:0;font-size:13px;font-family:'Open Sans', sans-serif;color:#555555;line-height:20px;"><b>Receiving Timestamp:</b>&nbsp;{{fax.timestamp}}</p>
                     </td>
                 </tr>

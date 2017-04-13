@@ -20,25 +20,12 @@
 
 -define(TEMPLATE_MACROS
        ,kz_json:from_list(
-          [?MACRO_VALUE(<<"call_id">>, <<"call_id">>, <<"Call ID">>, <<"Call ID of the fax transmission">>)
-          ,?MACRO_VALUE(<<"fax.total_pages">>, <<"fax_total_pages">>, <<"Total Pages">>, <<"Total number of pages received">>)
-          ,?MACRO_VALUE(<<"fax.id">>, <<"fax_id">>, <<"Fax ID">>, <<"Crossbar ID of the fax transmission">>)
-          ,?MACRO_VALUE(<<"fax.media">>, <<"fax_media">>, <<"Fax Name">>, <<"Name of the fax transmission">>)
-          ,?MACRO_VALUE(<<"fax.success">>, <<"fax_success">>, <<"Fax Success">>, <<"Was the fax successful">>)
-          ,?MACRO_VALUE(<<"fax.ecm_used">>, <<"fax_ecm_used">>, <<"ECM Used">>, <<"Was ECM used">>)
-          ,?MACRO_VALUE(<<"fax.result_text">>, <<"fax_result_text">>, <<"Fax Result Text">>, <<"Result text from transmission">>)
-          ,?MACRO_VALUE(<<"fax.transferred_pages">>, <<"fax_transferred_pages">>, <<"Transferred Pages">>, <<"How many pages were transferred">>)
-          ,?MACRO_VALUE(<<"fax.bad_rows">>, <<"fax_bad_rows">>, <<"Bad Rows">>, <<"How many bad rows">>)
-          ,?MACRO_VALUE(<<"fax.transfer_rate">>, <<"fax_transfer_rate">>, <<"Transfer Rate">>, <<"Transfer Rate">>)
-          ,?MACRO_VALUE(<<"fax.encoding">>, <<"fax_encoding">>, <<"Fax Encoding">>, <<"Encoding of the fax">>)
-          ,?MACRO_VALUE(<<"fax.doc_id">>, <<"fax_doc_id">>, <<"Document ID">>, <<"Crossbar ID of the Fax document">>)
-          ,?MACRO_VALUE(<<"fax.faxbox_id">>, <<"fax_faxbox_id">>, <<"FaxBox ID">>, <<"FaxBox ID">>)
-          ,?MACRO_VALUE(<<"fax.faxbox_name">>, <<"fax_faxbox_name">>, <<"FaxBox Name">>, <<"FaxBox Name">>)
-           | ?DEFAULT_CALL_MACROS ++ ?USER_MACROS
-          ]
+          ?FAX_MACROS
+          ++ ?DEFAULT_CALL_MACROS
+          ++ ?USER_MACROS
          )).
 
--define(TEMPLATE_SUBJECT, <<"Successfully sent fax to {{callee_id.name}} ({{callee_id.number}})">>).
+-define(TEMPLATE_SUBJECT, <<"Fax has been sended to {{callee_id.name}} ({{callee_id.number}})">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax to Email">>).
 
@@ -68,7 +55,7 @@ handle_fax_outbound(JObj) ->
     'true' = kapi_notifications:fax_outbound_v(JObj),
     kz_util:put_callid(JObj),
 
-    lager:debug("processing fax outbound to email ~p", [JObj]),
+    lager:debug("processing fax outbound to email"),
 
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
@@ -76,21 +63,14 @@ handle_fax_outbound(JObj) ->
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
         'false' -> lager:debug("notification handling not configured for this account");
-        'true' -> process_req(DataJObj)
+        'true' -> process_req(teletype_fax_util:add_data(DataJObj))
     end.
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    FaxJObj = teletype_fax_util:get_fax_doc(DataJObj),
-    OwnerJObj = get_owner_doc(FaxJObj, DataJObj),
-
-    Macros = build_template_data(
-               kz_json:set_values([{<<"account">>, teletype_util:account_params(DataJObj)}
-                                  ,{<<"fax">>, kz_doc:public_fields(FaxJObj)}
-                                  ,{<<"owner">>, kz_doc:public_fields(OwnerJObj)}
-                                  ]
-                                 ,DataJObj
-                                 )),
+    TemplateData = build_template_data(DataJObj),
+    EmailAttachements = teletype_fax_util:get_attachments(DataJObj, TemplateData),
+    Macros = teletype_fax_util:maybe_add_document_data(TemplateData, EmailAttachements),
 
     %% Load templates
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
@@ -99,8 +79,7 @@ process_req(DataJObj) ->
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
     Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
-                                          ,Macros
+                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT), Macros
                ),
     lager:debug("rendered subject: ~s", [Subject]),
 
@@ -108,7 +87,7 @@ process_req(DataJObj) ->
         case teletype_util:is_preview(DataJObj) of
             'true' -> DataJObj;
             'false' ->
-                kz_json:set_value(<<"to">>, to_email_addresses(FaxJObj), DataJObj)
+                kz_json:set_value(<<"to">>, teletype_fax_util:to_email_addresses(DataJObj, ?MOD_CONFIG_CAT), DataJObj)
         end,
 
     Emails = teletype_util:find_addresses(EmailsJObj
@@ -116,132 +95,31 @@ process_req(DataJObj) ->
                                          ,?MOD_CONFIG_CAT
                                          ),
 
-    EmailAttachements = teletype_fax_util:get_attachments(DataJObj, Macros),
     case teletype_util:send_email(Emails, Subject, RenderedTemplates, EmailAttachements) of
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
 
--spec get_owner_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
-get_owner_doc(FaxJObj, DataJObj) ->
-    OwnerId = kz_json:get_value(<<"owner_id">>, FaxJObj),
-    case teletype_util:open_doc(<<"user">>, OwnerId, DataJObj) of
-        {'ok', OwnerJObj} -> OwnerJObj;
-        {'error', _} -> kz_json:new()
-    end.
-
 -spec build_template_data(kz_json:object()) -> kz_proplist().
 build_template_data(DataJObj) ->
+    FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),
+    Timezone = kz_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj, kzd_fax_box:timezone(FaxBoxJObj)),
     props:filter_undefined(
-      [{<<"account">>, kz_json:get_value(<<"account">>, DataJObj)}
+      [{<<"account">>, teletype_util:account_params(DataJObj)}
       ,{<<"fax">>, build_fax_template_data(DataJObj)}
       ,{<<"system">>, teletype_util:system_params()}
-      ,{<<"caller_id">>, caller_id_data(DataJObj)}
-      ,{<<"callee_id">>, callee_id_data(DataJObj)}
-      ,{<<"date_called">>, date_called_data(DataJObj)}
-      ,{<<"from">>, from_data(DataJObj)}
-      ,{<<"to">>, to_data(DataJObj)}
-      ,{<<"call_id">>, kz_json:get_value(<<"call_id">>, DataJObj)}
       ,{<<"user">>, teletype_util:user_params(kz_json:get_value(<<"owner">>, DataJObj))}
+       | teletype_util:build_call_data(DataJObj, Timezone)
       ]).
-
--spec caller_id_data(kz_json:object()) -> kz_proplist().
-caller_id_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"name">>, kz_json:get_value(<<"caller_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"caller_id_number">>, DataJObj)}
-      ]).
-
--spec callee_id_data(kz_json:object()) -> kz_proplist().
-callee_id_data(DataJObj) ->
-    props:filter_undefined(
-      [{<<"name">>, kz_json:get_value(<<"callee_id_name">>, DataJObj)}
-      ,{<<"number">>, kz_json:get_value(<<"callee_id_number">>, DataJObj)}
-      ]).
-
--spec date_called_data(kz_json:object()) -> kz_proplist().
-date_called_data(DataJObj) ->
-    DateCalled = kz_json:get_integer_value(<<"fax_timestamp">>, DataJObj, kz_time:current_tstamp()),
-    Timezone = kz_json:get_value([<<"fax">>, <<"tx_result">>, <<"timezone">>], DataJObj),
-    teletype_util:fix_timestamp(DateCalled, Timezone, DataJObj).
-
--spec from_data(kz_json:object()) -> kz_proplist().
-from_data(DataJObj) ->
-    FromE164 = kz_json:get_value(<<"caller_id_number">>, DataJObj),
-
-    props:filter_undefined(
-      [{<<"user">>, knm_util:pretty_print(FromE164)}
-      ,{<<"realm">>, kz_json:get_value(<<"from_realm">>, DataJObj)}
-      ]).
-
--spec to_data(kz_json:object()) -> kz_proplist().
-to_data(DataJObj) ->
-    ToE164 = kz_json:get_value(<<"callee_id_number">>, DataJObj),
-    props:filter_undefined(
-      [{<<"user">>, knm_util:pretty_print(ToE164)}
-      ,{<<"realm">>, kz_json:get_value(<<"to_realm">>, DataJObj)}
-      ]).
-
--spec to_email_addresses(kz_json:object()) -> api_binaries().
-to_email_addresses(DataJObj) ->
-    to_email_addresses(DataJObj
-                      ,kz_json:get_first_defined([[<<"to">>, <<"email_addresses">>]
-                                                 ,[<<"fax">>, <<"email">>, <<"send_to">>]
-                                                 ,[<<"fax_notifications">>, <<"email">>, <<"send_to">>]
-                                                 ,[<<"notifications">>, <<"email">>, <<"send_to">>]
-                                                 ,[<<"owner">>, <<"email">>]
-                                                 ,[<<"owner">>, <<"username">>]
-                                                 ]
-                                                ,DataJObj
-                                                )
-                      ).
-
--spec to_email_addresses(kz_json:object(), ne_binary() | api_binaries()) -> api_binaries().
-to_email_addresses(_DataJObj, <<_/binary>> = Email) ->
-    [Email];
-to_email_addresses(_DataJObj, [_|_] = Emails) ->
-    Emails;
-to_email_addresses(DataJObj, _) ->
-    case teletype_util:find_account_rep_email(kz_json:get_value(<<"account">>, DataJObj)) of
-        'undefined' ->
-            lager:debug("failed to find account rep email, using defaults"),
-            default_to_addresses();
-        Emails ->
-            lager:debug("using ~p for To", [Emails]),
-            Emails
-    end.
-
--spec default_to_addresses() -> api_binaries().
-default_to_addresses() ->
-    case kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>) of
-        'undefined' -> 'undefined';
-        <<_/binary>> = Email -> [Email];
-        [_|_]=Emails -> Emails
-    end.
 
 -spec build_fax_template_data(kz_json:object()) -> kz_proplist().
 build_fax_template_data(DataJObj) ->
     FaxJObj = kz_json:get_value(<<"fax">>, DataJObj),
+    FaxBoxJObj = kz_json:get_value(<<"faxbox">>, DataJObj),
     props:filter_undefined(
       [{<<"id">>, kz_json:get_value(<<"fax_id">>, DataJObj)}
-      ,{<<"media">>, kz_json:get_value(<<"fax_name">>, DataJObj)}
-      ,{<<"faxbox_name">>, maybe_add_faxbox_name(DataJObj)}
+      ,{<<"box_id">>, kz_json:get_value(<<"faxbox_id">>, DataJObj, kz_doc:id(FaxBoxJObj))}
+      ,{<<"box_name">>, kz_json:get_value(<<"name">>, FaxBoxJObj)}
+      ,{<<"timestamp">>, kz_json:get_value(<<"fax_timestamp">>, DataJObj, kz_time:current_tstamp())}
        | kz_json:to_proplist(kz_json:get_value(<<"tx_result">>, FaxJObj, kz_json:new()))
       ]).
-
--spec maybe_add_faxbox_name(kz_json:object()) -> api_binary().
-maybe_add_faxbox_name(DataJObj) ->
-    case teletype_util:is_preview(DataJObj) of
-        'true' -> 'undefined';
-        'false' ->
-            maybe_add_faxbox_name(kz_json:get_ne_binary_value(<<"faxbox_id">>, DataJObj)
-                                 ,kz_json:get_value(<<"account_id">>, DataJObj)
-                                 )
-    end.
-
--spec maybe_add_faxbox_name(api_binary(), api_binary()) -> api_binary().
-maybe_add_faxbox_name(?NE_BINARY=FaxBoxId, ?NE_BINARY=AccountId) ->
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    {'ok', FaxBoxJObj} = kz_datamgr:open_cache_doc(AccountDb, FaxBoxId),
-    kz_json:get_ne_binary_value(<<"name">>, FaxBoxJObj);
-maybe_add_faxbox_name(_FaxBoxId, _AccountId) -> 'undefined'.
