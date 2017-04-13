@@ -156,3 +156,4 @@ See the [installation](./doc/installation.md) page to build.
 * [![2600Hz IRC](https://img.shields.io/badge/irc-%232600Hz-orange.svg)](https://webchat.freenode.net/?channels=2600Hz)
 * [Users mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-users)
 * [Developers mailing list](https://groups.google.com/forum/?fromgroups#!forum/2600Hz-dev)
+
