@@ -69,9 +69,9 @@ init(TaskId, API, ExtraArgs) ->
                            {'ok', state()} |
                            {'error', any()}.
 init_from_csv(TaskId, API, ExtraArgs, CSV) ->
-    {CSVHeader0, CSVRest} = kz_csv:take_row(CSV),
-    CSVHeader = output_csv_header(API, CSVHeader0),
-    case write_output_csv_header(TaskId, CSVHeader) of
+    {InputHeader, CSVRest} = kz_csv:take_row(CSV),
+    OutputHeader = output_csv_header(API, InputHeader),
+    case write_output_csv_header(TaskId, OutputHeader) of
         {'error', _R}=Error ->
             lager:error("failed to write CSV header in ~s", [?OUT(TaskId)]),
             Error;
@@ -79,12 +79,12 @@ init_from_csv(TaskId, API, ExtraArgs, CSV) ->
             Verifier = build_verifier(API),
             TaskFields = kz_tasks:mandatory(API) ++ kz_tasks:optional(API),
 
-            FAssoc = kz_csv:associator(CSVHeader, TaskFields, Verifier),
+            FAssoc = kz_csv:associator(InputHeader, TaskFields, Verifier),
             State = #state{task_id = TaskId
                           ,api = API
                           ,fassoc = FAssoc
                           ,extra_args = ExtraArgs
-                          ,output_header = CSVHeader
+                          ,output_header = OutputHeader
                           },
             _ = put(?IN, CSVRest),
             {'ok', State}
