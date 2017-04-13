@@ -83,7 +83,8 @@
 -type t_pn() :: t(knm_phone_number:knm_phone_number()).
 
 -opaque collection() :: t().
--export_type([collection/0]).
+-opaque pn_collection() :: t_pn().
+-export_type([collection/0, pn_collection/0]).
 
 -type options() :: knm_number_options:options().
 -type plan() :: kz_service_plans:plan() | undefined.
@@ -379,10 +380,10 @@ release(Nums) ->
 
 release(Nums, Options) ->
     ret(pipe(do_get_pn(Nums, Options)
-            ,[fun knm_phone_number:release/1
+            ,[fun try_release/1
              ,fun knm_number:new/1
              ,fun knm_providers:delete/1
-             ,fun unwind_or_disconnect/1
+             ,fun unwind_maybe_disconnect/1
              ,fun save_phone_numbers/1
              ])).
 
@@ -567,7 +568,7 @@ do(F, T=#{todo := [], ok := OK}) ->
     %% For calls not from pipe/2
     do(F, T#{todo => OK, ok => []});
 do(F, T) ->
-    lager:debug("applying ~p", [F]),
+    ?LOG_DEBUG("applying ~p", [F]),
     NewT = F(T),
     NewT#{todo => []}.
 
@@ -747,36 +748,69 @@ if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
         end,
     lists:foldl(F, T0, Ns).
 
-unwind_or_disconnect(T) ->
+-spec try_release(t_pn()) -> t_pn().
+try_release(T) ->
+    pipe(T
+        ,[fun can_release/1
+         ,fun knm_phone_number:is_authorized/1
+         ,fun reset_features/1
+         ]).
+
+-spec can_release(t_pn()) -> t_pn().
+can_release(T0=#{todo := PNs}) ->
+    ToState = knm_config:released_state(),
+    F = fun (PN, T) ->
+                FromState = knm_phone_number:state(PN),
+                case can_release(FromState, knm_phone_number:module_name(PN)) of
+                    true -> ok(PN, T);
+                    false ->
+                        {error,A,B,C} = (catch knm_errors:invalid_state_transition(undefined, FromState, ToState)),
+                        Reason = knm_errors:to_json(A, B, C),
+                        ko(knm_phone_number:number(PN), Reason, T)
+                end
+        end,
+    lists:foldl(F, T0, PNs).
+
+-spec can_release(ne_binary(), ne_binary()) -> boolean().
+can_release(?NUMBER_STATE_RELEASED, _) -> true;
+can_release(?NUMBER_STATE_RESERVED, _) -> true;
+can_release(?NUMBER_STATE_PORT_IN, _) -> true;
+can_release(?NUMBER_STATE_IN_SERVICE, _) -> true;
+can_release(_, ?CARRIER_LOCAL) -> true;
+can_release(_, _) -> false.
+
+-spec reset_features(t_pn()) -> t_pn().
+reset_features(T) ->
+    Routines = [fun knm_phone_number:reset_features/1
+               ,fun knm_phone_number:reset_doc/1
+               ],
+    knm_phone_number:setters(T, Routines).
+
+-spec unwind_maybe_disconnect(t()) -> t().
+unwind_maybe_disconnect(T) ->
     #{ok := Ns} = T0 = do_in_wrap(fun knm_phone_number:unwind_reserve_history/1, T),
-    {ToDisconnect, ToUnwind} = lists:partition(fun is_history_empty/1, Ns),
-    Ta = do_in_wrap(fun unwind/1, ok(ToUnwind, T0)),
+    {ToDisconnect, DontDisconnect} = lists:partition(fun should_disconnect/1, Ns),
+    Ta = ok(DontDisconnect, T0),
     Tb = pipe(ok(ToDisconnect, T0)
              ,[fun knm_carriers:disconnect/1
               ,fun delete_maybe_age/1
               ]),
     merge_okkos(Ta, Tb).
 
-unwind(T0=#{todo := PNs}) ->
-    BaseRoutines = [{fun knm_phone_number:set_state/2, ?NUMBER_STATE_RESERVED}],
-    F = fun (PN, T) ->
-                [NewAssignedTo|_] = knm_phone_number:reserve_history(PN),
-                Routines = [{fun knm_phone_number:set_assigned_to/2, NewAssignedTo} | BaseRoutines],
-                {ok, NewPN} = knm_phone_number:setters(PN, Routines),
-                ok(NewPN, T)
-        end,
-    lists:foldl(F, T0, PNs).
+-spec should_disconnect(knm_number:knm_number()) -> boolean().
+should_disconnect(N) ->
+    undefined =:= knm_phone_number:assigned_to(knm_number:phone_number(N)).
 
-delete_maybe_age(T=#{todo := _Ns, options := Options}) ->
-    case knm_config:should_permanently_delete(
-           knm_number_options:should_delete(Options))
-    of
+-spec delete_maybe_age(t()) -> t().
+delete_maybe_age(T) ->
+    case knm_config:should_permanently_delete() of
         true -> delete_permanently(T);
         false ->
             {DeleteNs, OtherNs} = split_on(fun is_carrier_local_or_mdn/1, T),
             merge_okkos(delete_permanently(DeleteNs), maybe_age(OtherNs))
     end.
 
+-spec delete_permanently(t()) -> t().
 delete_permanently(T) ->
     do_in_wrap(fun knm_phone_number:delete/1, T).
 
@@ -801,9 +835,6 @@ maybe_age(T=#{todo := Ns}) ->
                    ,options(NewOptions, T#{todo => Yes})),
             merge_okkos(Ta, Tb)
     end.
-
-is_history_empty(N) ->
-    [] =:= knm_phone_number:reserve_history(knm_number:phone_number(N)).
 
 is_state_available(N) ->
     ?NUMBER_STATE_AVAILABLE =:= knm_phone_number:state(knm_number:phone_number(N)).

@@ -147,6 +147,7 @@
             "type": "boolean"
         },
         "should_permanently_delete": {
+            "default": false,
             "description": "number_manager should permanently delete",
             "type": "boolean"
         },
