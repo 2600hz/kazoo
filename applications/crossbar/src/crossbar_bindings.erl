@@ -22,7 +22,7 @@
 
 %% API
 -export([bind/3
-        ,map/2
+        ,map/2, pmap/2
         ,fold/2
         ,flush/0, flush/1, flush_mod/1
         ,modules_loaded/0
@@ -70,6 +70,11 @@
 map(Routing, Payload) ->
     lager:debug("mapping ~s", [Routing]),
     kazoo_bindings:map(Routing, Payload).
+
+-spec pmap(ne_binary(), payload()) -> map_results().
+pmap(Routing, Payload) ->
+    lager:debug("pmapping ~s", [Routing]),
+    kazoo_bindings:pmap(Routing, Payload).
 
 %%--------------------------------------------------------------------
 %% @public
