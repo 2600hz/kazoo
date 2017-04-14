@@ -277,7 +277,7 @@ split_row(Line) ->
     {Acc,io,<<>>} = lists:foldl(fun consume/2, {[],io,<<>>}, Splitted),
     lists:reverse(Acc).
 
--type acc() :: {row(), io | $' | $", binary()}.
+-type acc() :: {row(), io | 34 | 39, binary()}.  %% $" | $'
 -spec consume(binary(), acc()) -> acc().
 consume(<<>>, {Acc,io,<<>>}) ->
     {[?ZILCH|Acc], io, <<>>};
