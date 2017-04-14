@@ -751,6 +751,7 @@ map_processor(Routing, Payload, Options) ->
                ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
+-spec pmap_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().
 pmap_processor(Routing, Payload, Options) when not is_list(Payload) ->
     pmap_processor(Routing, [Payload], Options);
 pmap_processor(Routing, Payload, Options) ->
