@@ -22297,7 +22297,8 @@
             }
         },
         "/auth/tokeninfo": {
-            "get": {}
+            "get": {},
+            "post": {}
         },
         "/google_auth": {
             "put": {

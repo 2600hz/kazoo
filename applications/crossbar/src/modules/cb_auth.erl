@@ -15,7 +15,7 @@
         ,validate_resource/1, validate_resource/2, validate_resource/3
         ,validate/2, validate/3
         ,put/2, put/3
-        ,post/3
+        ,post/2, post/3
         ,delete/3
         ]).
 
@@ -64,7 +64,7 @@ init() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec allowed_methods(path_token()) -> http_methods().
-allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET];
+allowed_methods(?TOKENINFO_PATH) -> [?HTTP_GET, ?HTTP_POST];
 allowed_methods(?AUTHORIZE_PATH) -> [?HTTP_PUT];
 allowed_methods(?CALLBACK_PATH) -> [?HTTP_PUT];
 allowed_methods(?LINKS_PATH) -> [?HTTP_GET];
@@ -115,6 +115,7 @@ authorize(Context, PathToken) ->
 authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
+authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, _, _, _) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -130,6 +131,7 @@ authenticate(Context, PathToken) ->
 authenticate_nouns(?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
+authenticate_nouns(?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authenticate_nouns(_, _, _) -> 'false'.
 
 -spec validate_resource(cb_context:context()) -> cb_context:context().
@@ -167,6 +169,15 @@ validate_path(Context, ?TOKENINFO_PATH, ?HTTP_GET) ->
     case cb_context:req_param(Context, <<"token">>) of
         'undefined' -> crossbar_util:response('error', <<"missing token in params">>, 404, Context);
         Token -> validate_token_info(Context, Token)
+    end;
+validate_path(Context, ?TOKENINFO_PATH, ?HTTP_POST) ->
+    case kz_json:get_ne_binary_value(<<"token">>, cb_context:req_data(Context)) of
+        'undefined' ->
+            lager:debug("tokeninfo called with no token in the request : ~p", [cb_context:req_data(Context)]),
+            crossbar_util:response('error', <<"missing token in request">>, 404, Context);
+        Token ->
+            lager:debug("validating posted tokeninfo : ~p", [Token]),
+            validate_token_info(Context, Token)
     end;
 
 validate_path(Context, ?LINKS_PATH, ?HTTP_GET) ->
@@ -229,7 +240,9 @@ validate_token_info(Context, Token) ->
         {'error', Error} ->
             lager:debug("validate token info error ~p", [Error]),
             crossbar_util:response('error', Error, 401, Context);
-        {'ok', Claims} -> send_token_info(Context, Token, Claims)
+        {'ok', Claims} ->
+            lager:debug("token is valid, sending info"),
+            send_token_info(Context, Token, Claims)
     end.
 
 -spec send_token_info(cb_context:context(), binary(), kz_json:object()) -> cb_context:context().
@@ -264,6 +277,10 @@ put(Context, ?LINKS_PATH, AuthId) ->
         'ok' -> Context;
         {'error', Error} -> cb_context:add_system_error(Error, Context)
     end.
+
+-spec post(cb_context:context(), path_token()) -> cb_context:context().
+post(Context, ?TOKENINFO_PATH) ->
+    Context.
 
 -spec post(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 post(Context, ?APPS_PATH, _Id) ->
