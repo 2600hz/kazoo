@@ -83,10 +83,9 @@ Where `{EXTENSION}` could be `*3101`, `110011`, or whatever other extensions are
 ```shell
 curl -v -X POST \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
-    -d '{"data": {"reset": true}' \
+    -d '{"data": {"action": "reset"}' \
     http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/presence/{EXTENSION}
 ```
-
 
 #### Devices
 
@@ -94,13 +93,20 @@ This API will use the `presence_id' of the device, if present; otherwise it will
 
 ##### POST to reset presence state
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"reset":true}}'
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"action":"reset"}}'
+
+##### POST to update presence state
+
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/presence -d '{"data":{"action":"set","state":"{PRESENCE_STATE}"}}'
 
 #### Users
 
-This API will use the `presence_id` of the user is applicable; otherwise it will reset all the user's devices' states
+This API will use the `presence_id` of the user is applicable; otherwise it will use all the user's devices' states
 
 ##### POST to reset presence state
 
-    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"reset":true}}'
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"action":"reset"}}'
 
+##### POST to update presence state
+
+    curl -v -X POST http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/users/{USER_ID}/presence -d '{"data":{"action":"reset","state":"{PRESENCE_STATE}"}}'
