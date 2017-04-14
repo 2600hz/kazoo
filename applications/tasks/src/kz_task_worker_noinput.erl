@@ -139,7 +139,7 @@ is_task_successful(State=#state{api = API
         [{[_|_]=NewRowOrRows, NewIterValue}] ->
             Written = store_return(State, NewRowOrRows),
             {'true', Written, NewIterValue};
-        [{NewMappedRow, NewIterValue}] when is_map(NewMappedRow) ->
+        [{#{}=NewMappedRow, NewIterValue}] ->
             Written = store_return(State, NewMappedRow),
             {'true', Written, NewIterValue};
         [{?NE_BINARY=NewRow, NewIterValue}] ->

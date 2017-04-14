@@ -188,20 +188,26 @@ is_task_successful(State=#state{api = API
                     kz_util:log_stacktrace(_ST),
                     Written = store_return(State, MappedRow, ?WORKER_TASK_FAILED),
                     {'false', Written, 'stop'};
-                [{NewRowOrRows, NewIterValue}] when is_list(NewRowOrRows) ->
+                [{[_|_]=NewRowOrRows, NewIterValue}] ->
                     Written = store_return(State, MappedRow, NewRowOrRows),
                     {'true', Written, NewIterValue};
-                [{NewMappedRowOrMappedRows, NewIterValue}] when is_map(NewMappedRowOrMappedRows) ->
+                [{#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows, NewIterValue}] ->
+                    Written = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    {false, Written, NewIterValue};
+                [{#{}=NewMappedRowOrMappedRows, NewIterValue}] ->
                     Written = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Written, NewIterValue};
                 [{Error, NewIterValue}] ->
                     lager:error("~p", [Error]),
                     Written = store_return(State, MappedRow, Error),
                     {'false', Written, NewIterValue};
-                [NewRowOrRows=NewIterValue] when is_list(NewRowOrRows) ->
+                [[_|_]=NewRowOrRows=NewIterValue] ->
                     Written = store_return(State, MappedRow, NewRowOrRows),
                     {'true', Written, NewIterValue};
-                [NewMappedRowOrMappedRows=NewIterValue] when is_map(NewMappedRowOrMappedRows) ->
+                [#{?OUTPUT_CSV_HEADER_ERROR := ?NE_BINARY}=NewMappedRowOrMappedRows=NewIterValue] ->
+                    Written = store_return(State, MappedRow, NewMappedRowOrMappedRows),
+                    {false, Written, NewIterValue};
+                [#{}=NewMappedRowOrMappedRows=NewIterValue] ->
                     Written = store_return(State, MappedRow, NewMappedRowOrMappedRows),
                     {'true', Written, NewIterValue};
                 NewRow=NewIterValue ->
