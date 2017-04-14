@@ -17,7 +17,7 @@
                ,api :: kz_json:object()
                ,fassoc :: kz_csv:fassoc()
                ,input_header :: kz_csv:row()
-               ,output_header :: kz_csv:row()
+               ,output_header :: kz_tasks:output_header()
                ,extra_args :: kz_tasks:extra_args()
                ,total_failed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
@@ -230,10 +230,27 @@ is_task_successful(State=#state{api = API
 store_return(State, MappedRow, Rows=[_List|_]) when is_list(_List) ->
     lists:sum([store_return(State, MappedRow, Row) || Row <- Rows]);
 store_return(#state{task_id = TaskId
+                   ,output_header = {replace, Header}
+                   }, _InputMappedRow, OutputMappedRow)
+  when is_map(OutputMappedRow) ->
+    IOList = kz_csv:mapped_row_to_iolist(Header, OutputMappedRow),
+    write_row(TaskId, IOList);
+store_return(#state{task_id = TaskId
                    ,output_header = Header
-                   }, MappedRow, Reason) ->
+                   }, InputMappedRow, OutputMappedRow)
+  when is_map(OutputMappedRow) ->
+    MappedRow = maps:merge(InputMappedRow, OutputMappedRow),
     IOList = kz_csv:mapped_row_to_iolist(Header, MappedRow),
-    Data = [IOList, $,, reason(Reason), $\n],
+    write_row(TaskId, IOList);
+store_return(#state{task_id = TaskId
+                   ,output_header = Header
+                   }, InputMappedRow, Reason) ->
+    IOList = kz_csv:mapped_row_to_iolist(Header, InputMappedRow),
+    write_row(TaskId, [IOList, $,, reason(Reason)]).
+
+-spec write_row(kz_tasks:id(), iodata()) -> 1.
+write_row(TaskId, IOList) ->
+    Data = [IOList, $\n],
     kz_util:write_file(?OUT(TaskId), Data, ['append']),
     1.
 
@@ -246,15 +263,17 @@ reason(?NE_BINARY=Reason) ->
 reason(_) -> <<>>.
 
 %% @private
--spec write_output_csv_header(kz_tasks:id(), kz_csv:row()) -> ok | {error, any()}.
+-spec write_output_csv_header(kz_tasks:id(), kz_tasks:output_header()) -> ok | {error, any()}.
+write_output_csv_header(TaskId, {replace,Header}) ->
+    write_output_csv_header(TaskId, Header);
 write_output_csv_header(TaskId, Header) ->
     Data = [kz_csv:row_to_iolist(Header), $\n],
     file:write_file(?OUT(TaskId), Data).
 
--spec output_csv_header(kz_json:object(), kz_csv:row()) -> kz_csv:row().
+-spec output_csv_header(kz_json:object(), kz_csv:row()) -> kz_tasks:output_header().
 output_csv_header(API, HeaderRow) ->
     case kz_tasks_scheduler:get_output_header(API) of
-        {replace, FullHeader} -> FullHeader;
+        H={replace, _FullHeader} -> H;
         HeaderRHS -> HeaderRow ++ HeaderRHS
     end.
 

@@ -15,7 +15,7 @@
 
 -record(state, {task_id :: kz_tasks:id()
                ,api :: kz_json:object()
-               ,output_header :: kz_csv:row()
+               ,output_header :: kz_tasks:output_header()
                ,extra_args :: kz_tasks:extra_args()
                ,total_failed = 0 :: non_neg_integer()
                ,total_succeeded = 0 :: non_neg_integer()
@@ -156,16 +156,16 @@ store_return(State, Rows=[_Row|_]) when is_list(_Row);
                                         is_map(_Row) ->
     lists:sum([store_return(State, Row) || Row <- Rows]);
 store_return(#state{task_id = TaskId
-                   ,output_header = Header
+                   ,output_header = OutputHeader
                    }
             ,Reason
             ) ->
-    Data = [reason(Header, Reason), $\n],
+    Data = [reason(OutputHeader, Reason), $\n],
     kz_util:write_file(?OUT(TaskId), Data, ['append']),
     1.
 
 %% @private
--spec reason(kz_csv:row(), kz_tasks:return()) -> iodata().
+-spec reason(kz_tasks:output_header(), kz_tasks:return()) -> iodata().
 reason(Header, MappedRow) when is_map(MappedRow) ->
     kz_csv:mapped_row_to_iolist(Header, MappedRow);
 reason(_, [_|_]=Row) ->

@@ -173,8 +173,7 @@ attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_output_header(kz_json:object()) -> kz_csv:row() |
-                                             {replace, kz_csv:row()}.
+-spec get_output_header(kz_json:object()) -> kz_tasks:output_header().
 get_output_header(API) ->
     Action = kz_json:get_value(<<"action">>, API),
     case tasks_bindings:apply(API, <<"output_header">>, [Action]) of

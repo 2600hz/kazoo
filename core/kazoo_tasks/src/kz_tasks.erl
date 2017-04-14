@@ -53,6 +53,8 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
+-type output_header() :: kz_csv:row() | {replace, kz_csv:row()}.
+
 -type help_error() :: {'error', 'unknown_category_action'}.
 
 -type return() :: 'ok' | api_ne_binary() |
@@ -69,6 +71,7 @@
 
 -export_type([id/0
              ,input/0
+             ,output_header/0
              ,help_error/0
              ,return/0
              ,iterator/0
