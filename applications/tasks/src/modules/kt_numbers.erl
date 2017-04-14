@@ -51,8 +51,6 @@
                  ,<<"delete">>
                  ]).
 
--define(ERROR_COLUMN, <<"error">>).
-
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -106,7 +104,7 @@ cleanup(<<"delete">>, _) -> ok.
 
 -spec result_output_header() -> {replace, kz_csv:row()}.
 result_output_header() ->
-    {replace, list_output_header() ++ [?ERROR_COLUMN]}.
+    {replace, list_output_header() ++ [?OUTPUT_CSV_HEADER_ERROR]}.
 
 -spec list_output_header() -> kz_csv:row().
 list_output_header() ->
@@ -534,10 +532,10 @@ handle_result(Args, {error, KNMError}) ->
 
 -spec format_result(kz_tasks:args(), ne_binary() | knm_number:knm_number()) -> kz_csv:mapped_row().
 format_result(Args, Reason=?NE_BINARY) ->
-    Args#{?ERROR_COLUMN => Reason};
+    Args#{?OUTPUT_CSV_HEADER_ERROR => Reason};
 format_result(_, N) ->
     Map = list_number(N),
-    Map#{?ERROR_COLUMN => undefined}.
+    Map#{?OUTPUT_CSV_HEADER_ERROR => undefined}.
 
 %%--------------------------------------------------------------------
 %% @private

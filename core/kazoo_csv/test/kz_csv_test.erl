@@ -80,15 +80,31 @@ associator_varargs2_test_() ->
     CSVRow2 = [<<"6b71cb72c876b5b1396a335f8f8a2594">>, <<"+14157215234">>, ?ZILCH, <<"val1">>],
     FAssoc = kz_csv:associator(CSVHeader, Fields, fun verify_account_id_only/2),
     [?_assertEqual({error, <<"account_id">>}, FAssoc(CSVRow1))
-    ,?_assertEqual({ok
-                   ,#{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
-                     ,<<"e164">> => <<"+14157215234">>
-                     ,<<"cnam.outbound">> => ?ZILCH
-                     ,<<"opaque.field1.nest1">> => <<"val1">>
-                     }
+    ,?_assertEqual({ok, #{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
+                         ,<<"e164">> => <<"+14157215234">>
+                         ,<<"cnam.outbound">> => ?ZILCH
+                         ,<<"opaque.field1.nest1">> => <<"val1">>
+                         }
                    }
                   ,FAssoc(CSVRow2)
                   )
+    ].
+
+verify_mapped_row_test_() ->
+    MappedRow1 = #{<<"account_id">> => <<"bla">>
+                  ,<<"e164">> => <<"+14157215235">>
+                  ,<<"cnam.outbound">> => ?ZILCH
+                  ,<<"opaque.field1.nest1">> => ?ZILCH
+                  },
+    MappedRow2 = #{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
+                  ,<<"e164">> => <<"+14157215234">>
+                  ,<<"cnam.outbound">> => ?ZILCH
+                  ,<<"opaque.field1.nest1">> => <<"val1">>
+                  },
+    [?_assertEqual([<<"account_id">>]
+                  ,kz_csv:verify_mapped_row(fun verify_account_id_only/2, MappedRow1))
+    ,?_assertEqual([]
+                  ,kz_csv:verify_mapped_row(fun verify_account_id_only/2, MappedRow2))
     ].
 
 take_row_test_() ->

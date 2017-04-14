@@ -14,6 +14,7 @@
         ,take_row/1, take_mapped_row/2
         ,pad_row_to/2
         ,associator/3
+        ,verify_mapped_row/2
         ,row_to_iolist/1, mapped_row_to_iolist/2
         ,json_to_iolist/1
         ]).
@@ -25,16 +26,18 @@
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
 -type cell() :: ne_binary() | ?ZILCH.
+-type header() :: [ne_binary(),...].
 -type row() :: [cell(),...].
 -type mapped_row() :: #{ne_binary() => cell()}.
 -type csv() :: binary().
 
 -export_type([cell/0
+             ,header/0
              ,row/0, mapped_row/0
              ,csv/0
              ,folder/1
-             ,fassoc/0
-             ,verifier/0
+             ,fassoc/0, verifier/0
+             ,mapped_row_verifier/0
              ]).
 
 -ifdef(TEST).
@@ -178,6 +181,24 @@ verify(Verifier, Header, Row, I, Map) ->
         false -> Field;
         true -> {Field, Cell}
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Returns an unordered list of the name of columns that did not pass validation.
+%% @end
+%%--------------------------------------------------------------------
+-type mapped_row_verifier() :: fun((ne_binary(), cell()) -> boolean()).
+-spec verify_mapped_row(mapped_row_verifier(), mapped_row()) -> [] | header().
+verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
+                                        is_map(MappedRow) ->
+    F = fun (K, V, Acc) ->
+                case Pred(K, V) of
+                    true -> Acc;
+                    false -> [K|Acc]
+                end
+        end,
+    maps:fold(F, [], MappedRow).
 
 %%--------------------------------------------------------------------
 %% @public
