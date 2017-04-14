@@ -27,7 +27,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 
 %% EUNIT and PropEr TESTING %%
--spec binding_matches(ne_binary(), ne_binary()) -> boolean().
+-spec binding_matches(ne_binary(), binary()) -> boolean().
 binding_matches(B, R) ->
     BRev = lists:reverse(binary:split(B, <<".">>, ['global'])),
     RRev = lists:reverse(binary:split(R, <<".">>, ['global'])),

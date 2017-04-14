@@ -798,6 +798,7 @@ map_processor_fold(#kz_binding{binding_parts=BParts
             map_responders(Acc, Map, Responders)
     end.
 
+-spec pmap_processor_fold(kz_binding(), map_results(), map_responder_fun(), ne_binary(), ne_binaries(), kz_rt_options()) -> map_results().
 pmap_processor_fold(#kz_binding{binding=Binding
                                ,binding_responders=Responders
                                }
