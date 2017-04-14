@@ -25,8 +25,8 @@
 -export([start_link/0
         ,bind/3, bind/4
         ,unbind/3, unbind/4
-        ,map/2, map/3
-        ,fold/2,fold/3
+        ,map/2, map/3, pmap/2, pmap/3
+        ,fold/2, fold/3
         ,flush/0, flush/1, flush_mod/1
         ,filter/1
         ,stop/0
@@ -127,12 +127,20 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec map(ne_binary(), payload()) -> map_results().
+-spec map(ne_binary(), payload(), kz_rt_options()) -> map_results().
 map(Routing, Payload) ->
     map_processor(Routing, Payload, rt_options()).
 
--spec map(ne_binary(), payload(), kz_rt_options()) -> map_results().
 map(Routing, Payload, Options) ->
     map_processor(Routing, Payload, rt_options(Options)).
+
+-spec pmap(ne_binary(), payload()) -> map_results().
+-spec pmap(ne_binary(), payload(), kz_rt_options()) -> map_results().
+pmap(Routing, Payload) ->
+    pmap_processor(Routing, Payload, rt_options()).
+
+pmap(Routing, Payload, Options) ->
+    pmap_processor(Routing, Payload, rt_options(Options)).
 
 -spec get_binding_candidates(ne_binary()) -> kz_bindings().
 get_binding_candidates(Routing) ->
@@ -730,7 +738,7 @@ log_function_clause(M, F, Lenth, ST) ->
     lager:error("no matching function clause for ~s:~s/~p", [M, F, Lenth]),
     kz_util:log_stacktrace(ST).
 
--spec map_processor(ne_binary(), payload(), kz_rt_options()) -> list().
+-spec map_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().
 map_processor(Routing, Payload, Options) when not is_list(Payload) ->
     map_processor(Routing, [Payload], Options);
 map_processor(Routing, Payload, Options) ->
@@ -743,6 +751,19 @@ map_processor(Routing, Payload, Options) ->
                ,kazoo_bindings_rt:candidates(Options, Routing)
                ).
 
+-spec pmap_processor(ne_binary(), payload(), kz_rt_options()) -> map_results().
+pmap_processor(Routing, Payload, Options) when not is_list(Payload) ->
+    pmap_processor(Routing, [Payload], Options);
+pmap_processor(Routing, Payload, Options) ->
+    RoutingParts = routing_parts(Routing),
+    Map = map_responder_fun(Payload),
+    lists:foldl(fun(Binding, Acc) ->
+                        pmap_processor_fold(Binding, Acc, Map, Routing, RoutingParts, Options)
+                end
+               ,[]
+               ,kazoo_bindings_rt:candidates(Options, Routing)
+               ).
+
 -type map_responder_fun() :: fun((kz_responder()) -> any()).
 -spec map_responder_fun(payload()) -> map_responder_fun().
 map_responder_fun(Payload) ->
@@ -750,7 +771,7 @@ map_responder_fun(Payload) ->
             apply_responder(Responder, Payload)
     end.
 
--spec map_processor_fold(kz_binding(), list(), map_responder_fun(), ne_binary(), ne_binaries(), kz_rt_options()) -> list().
+-spec map_processor_fold(kz_binding(), map_results(), map_responder_fun(), ne_binary(), ne_binaries(), kz_rt_options()) -> map_results().
 map_processor_fold(#kz_binding{binding=Binding
                               ,binding_responders=Responders
                               }
@@ -778,11 +799,47 @@ map_processor_fold(#kz_binding{binding_parts=BParts
             map_responders(Acc, Map, Responders)
     end.
 
--spec map_responders(list(), map_responder_fun(), queue:queue()) -> list().
+-spec pmap_processor_fold(kz_binding(), map_results(), map_responder_fun(), ne_binary(), ne_binaries(), kz_rt_options()) -> map_results().
+pmap_processor_fold(#kz_binding{binding=Binding
+                               ,binding_responders=Responders
+                               }
+                   ,Acc
+                   ,Map
+                   ,Binding
+                   ,_RoutingParts
+                   ,_Options
+                   ) ->
+    lager:debug("exact match for ~s", [Binding]),
+    map_responders(Acc, Map, Responders);
+pmap_processor_fold(#kz_binding{binding_parts=BParts
+                               ,binding_responders=Responders
+                               }
+                   ,Acc
+                   ,Map
+                   ,_Routing
+                   ,RoutingParts
+                   ,Options
+                   ) ->
+    case kazoo_bindings_rt:matches(Options, BParts, RoutingParts) of
+        'false' -> Acc;
+        'true' ->
+            lager:debug("matched ~p to ~p", [BParts, RoutingParts]),
+            pmap_responders(Acc, Map, Responders)
+    end.
+
+-spec map_responders(map_results(), map_responder_fun(), queue:queue()) -> map_results().
 map_responders(Acc, Map, Responders) ->
     [catch(Map(Responder))
      || Responder <- queue:to_list(Responders)
     ]
+        ++ Acc.
+
+-spec pmap_responders(map_results(), map_responder_fun(), queue:queue()) -> map_results().
+pmap_responders(Acc, MapFun, Responders) ->
+    plists:map(fun(R) -> catch(MapFun(R)) end
+              ,queue:to_list(Responders)
+              ,[{'processes', 'schedulers'}]
+              )
         ++ Acc.
 
 -spec fold_processor(ne_binary(), payload(), kz_rt_options()) -> fold_results().

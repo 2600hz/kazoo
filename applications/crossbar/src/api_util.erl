@@ -703,7 +703,7 @@ is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
 is_authentic(Req, Context0, _ReqVerb) ->
     Event = create_event_name(Context0, <<"authenticate">>),
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0)) of
         [] ->
             is_authentic(Req, Context0, _ReqVerb, cb_context:req_nouns(Context0));
         ['true'|T] ->
@@ -725,7 +725,7 @@ is_authentic(Req, Context, _ReqVerb, []) ->
 is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context, <<"authenticate.", Mod/binary>>),
     Payload = [Context | Params],
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [] ->
             lager:debug("failed to authenticate : ~p", [Mod]),
             ?MODULE:halt(Req, cb_context:add_system_error('invalid_credentials', Context));
@@ -852,7 +852,7 @@ is_permitted_verb(Req, Context, ?HTTP_OPTIONS) ->
     {'true', Req, Context};
 is_permitted_verb(Req, Context0, _ReqVerb) ->
     Event = create_event_name(Context0, <<"authorize">>),
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Context0)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context0)) of
         [] ->
             is_permitted_nouns(Req, Context0, _ReqVerb,cb_context:req_nouns(Context0));
         ['true'|_] ->
@@ -870,7 +870,7 @@ is_permitted_verb(Req, Context0, _ReqVerb) ->
 is_permitted_verb_on_module(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [{'halt', Context1}|_] ->
             lager:debug("authz halted"),
             ?MODULE:halt(Req, Context1);
@@ -888,7 +888,7 @@ is_permitted_nouns(Req, Context, _ReqVerb, []) ->
 is_permitted_nouns(Req, Context0, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     Event = create_event_name(Context0, <<"authorize.", Mod/binary>>),
     Payload = [Context0 | Params],
-    case crossbar_bindings:succeeded(crossbar_bindings:map(Event, Payload)) of
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Payload)) of
         [] ->
             lager:debug("failed to authorize : ~p", [Mod]),
             ?MODULE:halt(Req, cb_context:add_system_error('forbidden', Context0));
@@ -1136,7 +1136,7 @@ finish_request(_Req, Context) ->
     [{Mod, _}|_] = cb_context:req_nouns(Context),
     Verb = cb_context:req_verb(Context),
     Event = create_event_name(Context, [<<"finish_request">>, Verb, Mod]),
-    _ = kz_util:spawn(fun crossbar_bindings:map/2, [Event, Context]),
+    _ = kz_util:spawn(fun crossbar_bindings:pmap/2, [Event, Context]),
     case kz_json:get_value(<<"billing">>, cb_context:doc(Context)) of
         'undefined' -> 'ok';
         _Else -> crossbar_services:reconcile(Context)
