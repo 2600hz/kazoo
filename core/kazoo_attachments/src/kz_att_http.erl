@@ -30,12 +30,19 @@ put_attachment(Params, DbName, DocId, AName, Contents, Options) ->
     FieldSeparator = maps:get('field_separator', Params, <<"/">>),
     DocUrlField = maps:get('document_url_field', Params, 'undefined'),
     BaseUrl = kz_binary:strip_right(BaseUrlParam, $/),
-    Url = list_to_binary([BaseUrl, "/", format_url(Fields, JObj, Args, FieldSeparator)]),
+    Url = list_to_binary([BaseUrl, base_separator(BaseUrl), format_url(Fields, JObj, Args, FieldSeparator)]),
     Headers = [{'content_type', props:get_value('content_type', Options, kz_mime:from_filename(AName))}],
 
     case send_request(Url, kz_term:to_atom(Verb, 'true'), Headers, Contents) of
         {'ok', NewUrl, _Body, _Debug} -> {'ok', url_fields(DocUrlField, NewUrl)};
         {'error', _} = Error -> Error
+    end.
+
+-spec base_separator(ne_binary()) -> binary().
+base_separator(Url) ->
+    case kz_http_util:urlsplit(Url) of
+        {_, _, _, <<>>, _} -> <<"/">>;
+        {_, _, _, _, _} -> <<>>
     end.
 
 send_request(Url, Verb, Headers, Contents) ->
