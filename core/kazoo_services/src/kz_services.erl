@@ -932,6 +932,9 @@ maybe_update_diff(_Key, _ItemQuantity, 'undefined', Updates) ->
 maybe_update_diff(_Key, 0, 0, Updates) ->
     lager:debug("not updating ~p", [_Key]),
     Updates;
+maybe_update_diff(_Key, ItemQuantity, ItemQuantity, Updates) ->
+    lager:debug("same quantity for ~p, ignoring", [_Key]),
+    Updates;
 maybe_update_diff(Key, ItemQuantity, UpdateQuantity, Updates) ->
     lager:debug("updating ~p from ~p to ~p", [Key, ItemQuantity, UpdateQuantity]),
     kz_json:set_value(Key, UpdateQuantity - ItemQuantity, Updates).
@@ -1101,7 +1104,7 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
                           ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
-    UpdatedQuantities = kz_json:merge_jobjs(UpdatesJObj, CurrentQuantities),
+    UpdatedQuantities = kz_json:merge_recursive(CurrentQuantities, UpdatesJObj),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj, UpdatedQuantities),
 

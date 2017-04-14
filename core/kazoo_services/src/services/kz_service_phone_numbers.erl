@@ -144,7 +144,7 @@ update_number_quantities(Services, PN) ->
         'false' -> Services;
         'undefined' -> Services;
         Classification ->
-            Quantity = kz_services:updated_quantity(?PHONE_NUMBERS, Classification, Services),
+            Quantity = kz_services:quantity(?PHONE_NUMBERS, Classification, Services),
             kz_services:update(?PHONE_NUMBERS, Classification, Quantity + 1, Services)
     end.
 
@@ -163,6 +163,6 @@ is_number_billable(PN) ->
 update_feature_quantities([], Services) -> Services;
 update_feature_quantities([Feature|Features], Services) ->
     Name = knm_providers:service_name(Feature, kz_services:account_id(Services)),
-    Quantity = kz_services:updated_quantity(?NUMBER_SERVICES, Name, Services),
+    Quantity = kz_services:quantity(?NUMBER_SERVICES, Name, Services),
     UpdatedServices = kz_services:update(?NUMBER_SERVICES, Name, Quantity + 1, Services),
     update_feature_quantities(Features, UpdatedServices).
