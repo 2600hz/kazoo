@@ -106,7 +106,42 @@ take_row_test_() ->
     ,?_assertEqual({[<<"e">>], CSV6}, kz_csv:take_row(CSV5))
     ,?_assertEqual('eof', kz_csv:take_row(CSV6))
     ,?_assertEqual('eof', kz_csv:take_row(CSV7))
+    ,?_assertEqual({[?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",">>))
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, kz_csv:take_row(<<"1,B">>))
+    ,?_assertEqual({[<<"a">>, ?ZILCH], <<>>}, kz_csv:take_row(<<"a,\n">>))
+    ,?_assertEqual({[?ZILCH, <<"a">>], <<>>}, kz_csv:take_row(<<",a\n">>))
+    ,?_assertEqual({[<<"a">>, ?ZILCH], <<"\n">>}, kz_csv:take_row(<<"a,\n\n">>))
+    ,?_assertEqual({[?ZILCH, <<>>], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
+    ,?_assertEqual({[?ZILCH, <<"bla">>], <<>>}, kz_csv:take_row(<<",\"bla\"\n">>))
+    ,?_assertEqual({[?ZILCH,?ZILCH,?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",,,">>))
+    ,?_assertEqual({[<<"a">>,?ZILCH], <<>>}, kz_csv:take_row(<<"'a',">>))
+    ,?_assertEqual({[?ZILCH,<<"A">>,?ZILCH,<<"B">>,<<"1, 3">>,?ZILCH,<<>>,?ZILCH], <<>>}
+                  ,kz_csv:take_row(<<",A,,B,'1, 3',,'',\n">>)
+                  )
+    ].
+
+take_mapped_row_test_() ->
+    [F] = [<<"F1">>],
+    CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,
+    CSV2 = <<"b\nc\nd\n\re\r\r">>,
+    CSV3 = <<"c\nd\n\re\r\r">>,
+    CSV4 = <<"d\n\re\r\r">>,
+    CSV5 = <<"e\r\r">>,
+    CSV6 = <<>>,
+    CSV7 = <<"\r\r">>,
+    [?_assertEqual({#{F => <<"a">>}, CSV2}, kz_csv:take_mapped_row([F],CSV1))
+    ,?_assertEqual({#{F => <<"b">>}, CSV3}, kz_csv:take_mapped_row([F],CSV2))
+    ,?_assertEqual({#{F => <<"c">>}, CSV4}, kz_csv:take_mapped_row([F],CSV3))
+    ,?_assertEqual({#{F => <<"d">>}, CSV5}, kz_csv:take_mapped_row([F],CSV4))
+    ,?_assertEqual({#{F => <<"e">>}, CSV6}, kz_csv:take_mapped_row([F],CSV5))
+    ,?_assertEqual('eof', kz_csv:take_mapped_row([F],CSV6))
+    ,?_assertEqual('eof', kz_csv:take_mapped_row([F],CSV7))
+    ,?_assertEqual({#{<<"f1">> => <<"B">>, <<"f2">> => <<"1">>}, <<>>}
+                  ,kz_csv:take_mapped_row([<<"f2">>,<<"f1">>], <<"1,B">>)
+                  )
+    ,?_assertEqual({#{<<"f1">> => <<"a">>, <<"f2">> => ?ZILCH}, <<>>}
+                  ,kz_csv:take_mapped_row([<<"f1">>,<<"f2">>], <<"a,\n">>)
+                  )
     ].
 
 pad_row_to_test_() ->
@@ -188,26 +223,22 @@ json_to_iolist_test_() ->
     ].
 
 split_test_() ->
-    Rows = [{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<",">>, [<<>>, <<>>]}
-           ,{<<"test,">>,[<<"test">>,<<>>]}
-           ,{<<"test,,">>,[<<"test">>,<<>>,<<>>]}
-           ,{<<"test,,foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
-           ,{<<"test,"",foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
-           ],
-    lists:foldl(fun add_split_row_assertions/2, [], Rows).
-
-add_split_row_assertions({Row, Split}, Tests) ->
-    {Fields, _} = kz_csv:split_row(Row),
-    [{binary_to_list(Row), ?_assertEqual(Split, Fields)} | Tests].
+    [?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  )
+    ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>)
+                  )
+    ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  )
+    ,?_assertEqual([?ZILCH, ?ZILCH], kz_csv:split_row(<<",">>))
+    ,?_assertEqual([<<"test">>,?ZILCH], kz_csv:split_row(<<"test,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,?ZILCH], kz_csv:split_row(<<"test,,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:split_row(<<"test,,foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,'',foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,\"\",foo bar">>))
+    ].
 
 files_test_() ->
     filelib:fold_files("test/", "\\.csv\$", 'false', fun gen_file_tests/2, []).
