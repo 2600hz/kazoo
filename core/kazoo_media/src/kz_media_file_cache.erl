@@ -241,8 +241,10 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+-spec start_timer() -> reference().
 start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
-stop_timer(Ref) when is_reference(Ref) ->
-    erlang:cancel_timer(Ref);
-stop_timer(_) -> 'ok'.
+
+-spec stop_timer(reference()) -> integer() | boolean() | 'ok'.
+stop_timer(Ref) ->
+    erlang:cancel_timer(Ref).

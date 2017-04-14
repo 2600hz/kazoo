@@ -496,35 +496,13 @@ store_url(#state{doc_db=Db
 store_url(#state{doc_db=Db
                 ,doc_id=MediaId
                 ,media={_,MediaName}
-                ,format=Ext
                 ,should_store={'true', 'other', Url}
                 ,verb=Verb
-                ,account_id=AccountId
-                }, _Rev) ->
-    {S1, S2} = check_url(Url),
+                } = State, _Rev) ->
     HandlerOpts = #{url => Url
                    ,verb => Verb
                    ,field_separator => <<>>
-                   ,field_list => [<<S1/binary, "call_recording_">>
-                                  ,{field, <<"call_id">>}
-                                  ,<<".", Ext/binary>>
-                                  ,<<S2/binary, "from=">>
-                                  ,{field, <<"from">>}
-                                  ,<<"&to=">>
-                                  ,{field, <<"to">>}
-                                  ,<<"&caller_id_name=">>
-                                  ,{field, <<"caller_id_name">>}
-                                  ,<<"&caller_id_number=">>
-                                  ,{field, <<"caller_id_number">>}
-                                  ,<<"&call_id=">>
-                                  ,{field, <<"call_id">>}
-                                  ,<<"&cdr_id=">>
-                                  ,{field, <<"cdr_id">>}
-                                  ,<<"&interaction_id=">>
-                                  ,{field, <<"interaction_id">>}
-                                  ,<<"&account_id=">>
-                                  ,AccountId
-                                  ]
+                   ,field_list => handler_fields(Url, State)
                    },
     AttHandler = handler_from_url(Url),
     Handler = #{att_proxy => 'true'
@@ -534,23 +512,55 @@ store_url(#state{doc_db=Db
     Options = [{'plan_override', Handler}],
     kz_media_url:store(Db, {<<"call_recording">>, MediaId}, MediaName, Options).
 
--spec check_url(ne_binary()) -> {binary(), binary()}.
+-spec handler_fields(ne_binary(), state()) -> list().
+handler_fields(Url, State) ->
+    {Protocol, _, _, _, _} = kz_http_util:urlsplit(Url),
+    handler_fields_for_protocol(Protocol, Url, State).
+
+-spec handler_fields_for_protocol(ne_binary(), ne_binary(), state()) -> list().
+handler_fields_for_protocol(<<"ftp", _/binary>>, _Url, _State) -> [];
+handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=AccountId
+                                                             ,format=Ext
+                                                             }) ->
+    {S1, S2} = check_url(Url),
+    [<<S1/binary, "call_recording_">>
+    ,{field, <<"call_id">>}
+    ,<<".", Ext/binary>>
+    ,<<S2/binary, "from=">>
+    ,{field, <<"from">>}
+    ,<<"&to=">>
+    ,{field, <<"to">>}
+    ,<<"&caller_id_name=">>
+    ,{field, <<"caller_id_name">>}
+    ,<<"&caller_id_number=">>
+    ,{field, <<"caller_id_number">>}
+    ,<<"&call_id=">>
+    ,{field, <<"call_id">>}
+    ,<<"&cdr_id=">>
+    ,{field, <<"cdr_id">>}
+    ,<<"&interaction_id=">>
+    ,{field, <<"interaction_id">>}
+    ,<<"&account_id=">>
+    ,AccountId
+    ].
+
+-spec check_url(ne_binary()) -> {binary(), ne_binary()}.
 check_url(Url) ->
     case kz_http_util:urlsplit(Url) of
         {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
-        {_, _, _, Params, _} -> check_url_query(Params)
+        {_, _, _, Params, _} -> {check_url_query(Params), <<"&">>}
     end.
 
--spec check_url_query(ne_binary()) -> {binary(), binary()}.
+-spec check_url_query(ne_binary()) -> binary().
 check_url_query(Query) ->
     check_url_param(lists:last(binary:split(Query, <<"&">>, [global]))).
 
--spec check_url_param(ne_binary()) -> {binary(), binary()}.
+-spec check_url_param(ne_binary()) -> binary().
 check_url_param(Param) ->
     case binary:split(Param, <<"=">>) of
-        [_] -> {<<"=">>, <<>>};
-        [_, <<>>] -> {<<>>, <<>>};
-        _ -> {<<"&recording=">>, <<>>}
+        [_] -> <<"=">>;
+        [_, <<>>] -> <<>>;
+        _ -> <<"&recording=">>
     end.
 
 -spec handler_from_url(ne_binary()) -> 'kz_att_ftp' | 'kz_att_http' | 'undefined'.
