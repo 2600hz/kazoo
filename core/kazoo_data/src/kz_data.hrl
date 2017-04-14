@@ -13,7 +13,7 @@
 
 -record(data_connection, {id = {kz_time:current_tstamp(), kz_binary:rand_hex(4)}
                          ,app :: atom() | '$1'
-                         ,props = #{} :: #{} | '_'
+                         ,props = #{} :: map() | '_'
                          ,server :: any() | '$2'
                          ,connected = 'false' :: boolean() | '_'
                          ,ready = 'false' :: boolean()

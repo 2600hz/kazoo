@@ -60,7 +60,7 @@
 
 %%--------------------------------------------------------------------
 %% @doc Credit Update - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% Takes kz_proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
 -spec credit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -80,7 +80,7 @@ credit_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Debit Update - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% Takes kz_proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
 -spec debit(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -100,7 +100,7 @@ debit_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Balance Request - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% Takes kz_proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
 -spec balance_req(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -120,7 +120,7 @@ balance_req_v(JObj) ->
 
 %%--------------------------------------------------------------------
 %% @doc Balance Response - see wiki
-%% Takes proplist, creates JSON iolist or error
+%% Takes kz_proplist(), creates JSON iolist or error
 %% @end
 %%--------------------------------------------------------------------
 -spec balance_resp(api_terms()) -> {'ok', iolist()} | {'error', string()}.
@@ -138,12 +138,12 @@ balance_resp_v(Prop) when is_list(Prop) ->
 balance_resp_v(JObj) ->
     balance_resp_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:bind_q_to_configuration(Queue, Routing).
 
--spec unbind_q(ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     Routing = routing_key(Props),
     amqp_util:unbind_q_from_configuration(Queue, Routing).

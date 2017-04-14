@@ -3,15 +3,28 @@
     "_id": "system_config.kazoo_couch",
     "description": "Schema for kazoo_couch system_config",
     "properties": {
+        "admin_port": {
+            "description": "The CouchDB API port, typically 5986",
+            "type": "integer"
+        },
         "allow_maintenance_db_delete": {
             "default": false,
             "description": "kazoo_couch allow maintenance db delete",
             "type": "boolean"
         },
+        "api_port": {
+            "default": 5984,
+            "description": "The CouchDB API port, typically 5984",
+            "type": "integer"
+        },
         "autocompaction_check": {
             "default": 60000,
             "description": "kazoo_couch autocompaction check",
             "type": "integer"
+        },
+        "bigcouch_cookie": {
+            "description": "The cookie value of all the BigCouch nodes",
+            "type": "string"
         },
         "compact_automatically": {
             "default": true,

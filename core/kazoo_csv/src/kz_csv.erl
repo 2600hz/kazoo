@@ -328,8 +328,9 @@ map_io_indices(Header, CSVHeader) ->
 cell_to_binary(?ZILCH) -> <<>>;
 cell_to_binary(<<>>) -> <<>>;
 cell_to_binary(Cell=?NE_BINARY) ->
-    binary:replace(Cell, <<$,>>, <<$;>>, ['global']).
-
+    binary:replace(Cell, <<$,>>, <<$;>>, ['global']);
+cell_to_binary(Cell) ->
+    kz_term:to_binary(Cell).
 
 -spec maybe_transform(kz_json:objects(), kz_proplist()) -> kz_json:objects().
 maybe_transform(JObjs, Options) ->

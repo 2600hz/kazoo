@@ -121,7 +121,7 @@ put(Context) ->
 %% Any errors will also be collected.
 %% @end
 %%--------------------------------------------------------------------
--spec create_extensions(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) -> {proplist(), kz_json:object()}.
+-spec create_extensions(kz_json:object(), cb_context:context(), {kz_proplist(), kz_json:object()}) -> {kz_proplist(), kz_json:object()}.
 create_extensions(JObj, Context, Results) ->
     Extensions = kz_json:get_value(<<"extensions">>, JObj, []),
     create_extensions(Extensions, 1, Context, Results).
@@ -151,8 +151,8 @@ create_extensions([Exten|Extens], Iteration, Context, {PassAcc, FailAcc}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_account(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) ->
-                            {proplist(), kz_json:object()}.
+-spec create_account(kz_json:object(), cb_context:context(), {kz_proplist(), kz_json:object()}) ->
+                            {kz_proplist(), kz_json:object()}.
 create_account(JObj, Context, {Pass, Fail}) ->
     Account = kz_json:get_value(<<"account">>, JObj, kz_json:new()),
     Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
@@ -176,8 +176,8 @@ create_account(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_phone_numbers(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) ->
-                                  {proplist(), kz_json:object()}.
+-spec create_phone_numbers(kz_json:object(), cb_context:context(), {kz_proplist(), kz_json:object()}) ->
+                                  {kz_proplist(), kz_json:object()}.
 create_phone_numbers(JObj, Context, Results) ->
     PhoneNumbers = kz_json:get_value(<<"phone_numbers">>, JObj),
     lists:foldr(fun(Number, R) ->
@@ -207,7 +207,7 @@ create_phone_number(Number, Properties, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_braintree_cards(kz_json:object(), cb_context:context(), {proplist(), kz_json:object()}) -> {proplist(), kz_json:object()}.
+-spec create_braintree_cards(kz_json:object(), cb_context:context(), {kz_proplist(), kz_json:object()}) -> {kz_proplist(), kz_json:object()}.
 create_braintree_cards(JObj, Context, {Pass, Fail}) ->
     Account = get_context_jobj(<<"accounts">>, Pass),
     case kz_doc:id(Account) of
@@ -245,8 +245,8 @@ create_braintree_cards(JObj, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_user(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
-                 -> {proplist(), kz_json:object()}.
+-spec create_user(kz_json:object(), pos_integer(), cb_context:context(), {kz_proplist(), kz_json:object()})
+                 -> {kz_proplist(), kz_json:object()}.
 create_user(JObj, Iteration, Context, {Pass, Fail}) ->
     User = kz_json:get_value(<<"user">>, JObj, kz_json:new()),
     Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
@@ -297,8 +297,8 @@ create_user(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_device(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
-                   -> {proplist(), kz_json:object()}.
+-spec create_device(kz_json:object(), pos_integer(), cb_context:context(), {kz_proplist(), kz_json:object()})
+                   -> {kz_proplist(), kz_json:object()}.
 create_device(JObj, Iteration, Context, {Pass, Fail}) ->
     Device = kz_json:get_value(<<"device">>, JObj, kz_json:new()),
     Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
@@ -356,8 +356,8 @@ create_device(JObj, Iteration, Context, {Pass, Fail}) ->
 %% json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_vmbox(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
-                  -> {proplist(), kz_json:object()}.
+-spec create_vmbox(kz_json:object(), pos_integer(), cb_context:context(), {kz_proplist(), kz_json:object()})
+                  -> {kz_proplist(), kz_json:object()}.
 create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
     VMBox = kz_json:get_value(<<"vmbox">>, JObj, kz_json:new()),
     Generators = [fun(J) -> kz_doc:set_id(J, kz_datamgr:get_uuid()) end
@@ -406,8 +406,8 @@ create_vmbox(JObj, Iteration, Context, {Pass, Fail}) ->
 %% to the error json object.
 %% @end
 %%--------------------------------------------------------------------
--spec create_exten_callflow(kz_json:object(), pos_integer(), cb_context:context(), {proplist(), kz_json:object()})
-                           -> {proplist(), kz_json:object()}.
+-spec create_exten_callflow(kz_json:object(), pos_integer(), cb_context:context(), {kz_proplist(), kz_json:object()})
+                           -> {kz_proplist(), kz_json:object()}.
 create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
     Callflow = kz_json:get_value(<<"callflow">>, JObj, kz_json:new()),
     Generators = [fun(J) ->
@@ -449,8 +449,8 @@ create_exten_callflow(JObj, Iteration, Context, {Pass, Fail}) ->
 %% the objects.  Starts with the account :)
 %% @end
 %%--------------------------------------------------------------------
--spec populate_new_account(proplist(), cb_context:context()) -> cb_context:context().
--spec populate_new_account(proplist(), ne_binary(), kz_json:object()) -> kz_json:object().
+-spec populate_new_account(kz_proplist(), cb_context:context()) -> cb_context:context().
+-spec populate_new_account(kz_proplist(), ne_binary(), kz_json:object()) -> kz_json:object().
 
 populate_new_account(Props, _) ->
     Context = props:get_value(?KZ_ACCOUNTS_DB, Props),
@@ -553,7 +553,7 @@ prepare_props(Props) ->
 %% context records for a specific key.
 %% @end
 %%--------------------------------------------------------------------
--spec get_context_jobj(ne_binary(), proplist()) -> kz_json:object().
+-spec get_context_jobj(ne_binary(), kz_proplist()) -> kz_json:object().
 get_context_jobj(Key, Pass) ->
     case props:get_value(Key, Pass) of
         Context when is_tuple(Context) -> cb_context:doc(Context);

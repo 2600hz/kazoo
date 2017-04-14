@@ -308,8 +308,8 @@ get_transaction_sources([Element|Elements], Sources) ->
 %% Contert the given XML to a transaction record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(bt_transaction()) -> proplist() | bt_xml().
--spec record_to_xml(bt_transaction(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(bt_transaction()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(bt_transaction(), boolean()) -> kz_proplist() | bt_xml().
 
 record_to_xml(Transaction) ->
     record_to_xml(Transaction, 'false').

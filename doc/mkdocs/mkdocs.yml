@@ -258,6 +258,7 @@ pages:
     - 'applications/sysconf/doc/README.md'
   - 'Tasks':
     - 'applications/tasks/doc/README.md'
+    - 'applications/tasks/doc/compaction.md'
     - 'applications/tasks/doc/maintenance.md'
     - 'applications/tasks/doc/rates.md'
   - 'Teletype':
@@ -314,7 +315,6 @@ pages:
     - 'core/kazoo_modb/doc/README.md'
   - 'Kazoo CouchDB':
     - 'core/kazoo_couch/doc/README.md'
-    - 'core/kazoo_couch/doc/compaction.md'
   - 'Kazoo Web':
     - 'core/kazoo_web/doc/README.md'
   - 'Kazoo XML':

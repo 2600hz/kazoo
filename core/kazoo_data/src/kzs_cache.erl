@@ -55,6 +55,8 @@ open_cache_doc(DbName, DocId, Options) ->
             R
     end.
 
+-spec maybe_cache(ne_binary(), ne_binary(), kz_proplist(), data_error() | {'ok', kz_json:object()}) ->
+                         'ok'.
 maybe_cache(DbName, DocId, Options, {error, _}=E) ->
     maybe_cache_failure(DbName, DocId, Options, E);
 maybe_cache(DbName, DocId, _, {ok, JObj}) ->
@@ -251,4 +253,3 @@ flush_cache_docs(Db, Docs, Options) ->
          || Doc <- Docs
         ],
     'ok'.
-

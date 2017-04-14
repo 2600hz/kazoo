@@ -389,7 +389,7 @@ handle_info(_Info, State) ->
 %% @doc
 %% Handling messaging bus events
 %%
-%% @spec handle_event(JObj, State) -> {'noreply', proplist()} |
+%% @spec handle_event(JObj, State) -> {'noreply', kz_proplist()} |
 %%                                    ignore
 %% @end
 %%--------------------------------------------------------------------

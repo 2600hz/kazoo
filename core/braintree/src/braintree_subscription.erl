@@ -37,7 +37,7 @@
 
 -include("bt.hrl").
 
--type changes() :: [{atom(), proplist(), [proplist()]}].
+-type changes() :: [{atom(), kz_proplist(), [kz_proplist()]}].
 -type subscription() :: #bt_subscription{}.
 -type subscriptions() :: [subscription()].
 
@@ -509,8 +509,8 @@ xml_to_record(Xml, Base) ->
 %% Contert the given XML to a subscription record
 %% @end
 %%--------------------------------------------------------------------
--spec record_to_xml(subscription()) -> proplist() | bt_xml().
--spec record_to_xml(subscription(), boolean()) -> proplist() | bt_xml().
+-spec record_to_xml(subscription()) -> kz_proplist() | bt_xml().
+-spec record_to_xml(subscription(), boolean()) -> kz_proplist() | bt_xml().
 
 record_to_xml(Subscription) ->
     record_to_xml(Subscription, 'false').

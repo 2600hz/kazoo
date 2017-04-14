@@ -85,7 +85,7 @@ pretty_print_dollars(Amount) ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], proplist()) -> 'ok'.
+-spec build_and_send_email(iolist(), iolist(), iolist(), ne_binary() | [ne_binary(),...], kz_proplist()) -> 'ok'.
 build_and_send_email(TxtBody, HTMLBody, Subject, To, Props) when is_list(To)->
     _ = [build_and_send_email(TxtBody, HTMLBody, Subject, T, Props) || T <- To],
     ok;

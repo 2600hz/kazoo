@@ -5,23 +5,12 @@
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo_tasks/include/tasks.hrl").
 
+-include_lib("task_modules.hrl").
+
 -define(APP, 'tasks').
 -define(APP_NAME, <<"tasks">>).
 -define(APP_VERSION, <<"4.0.0">> ).
 -define(CONFIG_CAT, ?APP_NAME).
-
-%%TODO: do not hardcode ?TASKS list.
--define(TASKS, ['kt_cleanup'
-               ,'kt_modb'
-               ,'kt_numbers'
-               ,'kt_port_requests'
-               ,'kt_rates'
-               ,'kt_resource_selectors'
-               ,'kt_services'
-               ,'kt_token_auth'
-               ,'kt_webhooks'
-                %% ,'kt_skel'
-               ]).
 
 -define(WORKER_TASK_FAILED, <<"applier crashed">>).
 -define(WORKER_TASK_MAYBE_OK, <<"internal">>).

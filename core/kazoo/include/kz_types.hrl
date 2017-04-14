@@ -33,6 +33,13 @@
 -type pids() :: [pid()].
 -type references() :: [reference()].
 
+-type kz_proplist_key() :: any().
+-type kz_proplist_value() :: any().
+-type kz_proplist_property() :: kz_proplist_key() | {kz_proplist_key(), kz_proplist_value()}.
+-type kz_proplist() :: proplists:proplist().
+-type kz_proplists() :: [kz_proplist()].
+-type kz_proplist_kv(K, V) :: [{K, V}].
+
 -type pid_ref() :: {pid(), reference()}.
 -type pid_refs() :: [pid_ref()].
 -type api_pid_ref() :: pid_ref() | 'undefined'.
@@ -78,22 +85,10 @@
 -type functions() :: [function()].
 
 %% when using gen_smtp to send emails, it takes a 5-tuple for a message-body part
--type mail_message_body() :: {ne_binary(), ne_binary(), proplist(), proplist(), ne_binary() | iolist()}.
+-type mail_message_body() :: {ne_binary(), ne_binary(), kz_proplist(), kz_proplist(), ne_binary() | iolist()}.
 
 %% for setting types on dicts
 -type dict(K,V) :: [{K, V}].
-
--type kz_proplist_value() :: any().
--type kz_proplist_values() :: [kz_proplist_value()].
--type kz_proplist_key() :: ne_binary() | atom() | number() | string() | function() | ne_binaries().
--type kz_proplist_keys() :: [kz_proplist_key(),...].
--type kz_proplist_kv(K, V) :: [{K, V} | kz_proplist_key(),...] | [].
--type kz_proplist_k(K) :: kz_proplist_kv(K, kz_proplist_value()).
--type kz_proplist() :: kz_proplist_kv(kz_proplist_key(), kz_proplist_value()).
--type kz_proplists() :: [kz_proplist()].
-
--type proplist_key() :: kz_proplist_key().
--type proplist() :: kz_proplist().
 
 %% result of calendar:datetime_to_gregorian_seconds({{1970,1,1},{0,0,0}}).
 %% Subtract this value from a gregorian seconds version of a date
@@ -297,7 +292,6 @@
 -define(MATCH_PROVISIONER_encoded(Account),
         <<"account%2f", (Account):38/binary, "-provisioner">>
        ).
-
 
 -define(MATCH_MODB_SUFFIX_RAW(A, B, Rest, Year, Month),
         <<(A):2/binary, (B):2/binary, (Rest):28/binary

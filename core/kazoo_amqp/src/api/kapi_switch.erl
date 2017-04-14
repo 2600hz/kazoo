@@ -188,7 +188,7 @@ fs_reply_v(Prop) when is_list(Prop) ->
 fs_reply_v(JObj) ->
     fs_reply_v(kz_json:to_proplist(JObj)).
 
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, Props) ->
     bind_to_q(Queue, props:get_value('restrict_to', Props), Props).
 
@@ -214,7 +214,7 @@ bind_to_q(Q, ['command'|T], Props) ->
     bind_to_q(Q, T, Props);
 bind_to_q(_Q, [], _Props) -> 'ok'.
 
--spec unbind_q(ne_binary(), proplist()) -> 'ok'.
+-spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, Props) ->
     unbind_q_from(Queue, props:get_value('restrict_to', Props), Props).
 

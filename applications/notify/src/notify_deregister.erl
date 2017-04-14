@@ -43,7 +43,7 @@ init() ->
 %% process the AMQP requests
 %% @end
 %%--------------------------------------------------------------------
--spec handle_req(kz_json:object(), proplist()) -> any().
+-spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
     true = kapi_notifications:deregister_v(JObj),
     _ = kz_util:put_callid(JObj),

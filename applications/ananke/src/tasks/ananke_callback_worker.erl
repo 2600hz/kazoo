@@ -25,9 +25,9 @@
 
 -define(SERVER, ?MODULE).
 
--record(state, {request      :: kz_proplist()
+-record(state, {request      :: kz_proplist() | 'undefined'
                ,timer        :: api_reference()
-               ,schedule     :: pos_integers()
+               ,schedule     :: pos_integers() | 'undefined'
                ,check = 'true' :: check_fun()
                }).
 
@@ -124,7 +124,7 @@ check_condition(#state{check = Fun}, _) when is_function(Fun, 0) ->
             'stop'
     end.
 
--spec send_request(state(), proplist()) -> routine_ret().
+-spec send_request(state(), kz_proplist()) -> routine_ret().
 send_request(State, Req) ->
     lager:debug("sending originate request"),
     ReqTimeout = props:get_value(<<"Timeout">>, Req) * ?MILLISECONDS_IN_SECOND,

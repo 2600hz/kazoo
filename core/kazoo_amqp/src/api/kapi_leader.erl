@@ -99,7 +99,7 @@ publish_req(Routing, Req, ContentType) ->
     {ok, Payload} = kz_api:prepare_api_payload(Req, ?LEADER_REQ_VALUES, fun req/1),
     amqp_util:leader_publish(Routing, Payload, ContentType).
 
--spec bind_q(ne_binary(), proplist()) -> 'ok'.
+-spec bind_q(ne_binary(), kz_proplist()) -> 'ok'.
 bind_q(Queue, [{'name', Name}]) ->
     Node = node(),
     ProcessQ = iolist_to_binary(io_lib:format("~s.~s", [Name, Node])),
@@ -107,6 +107,6 @@ bind_q(Queue, [{'name', Name}]) ->
     _ = ['ok' = amqp_util:bind_q_to_leader(Queue, Bind) || Bind <- [ProcessQ, BroadcastQ]],
     'ok'.
 
--spec unbind_q(ne_binary(), any()) -> 'ok'.
+-spec unbind_q(ne_binary(), kz_proplist()) -> 'ok'.
 unbind_q(Queue, _) ->
     'ok' = amqp_util:unbind_q_from_leader(Queue, <<"process">>).
