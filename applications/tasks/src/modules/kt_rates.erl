@@ -48,7 +48,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".cleanup">>, ?MODULE, 'cleanup'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(ne_binary()) -> kz_csv:row().
+-spec output_header(ne_binary()) -> kz_tasks:output_header().
 output_header(<<"export">>) -> ?DOC_FIELDS.
 
 -spec help(kz_json:object()) -> kz_json:object().

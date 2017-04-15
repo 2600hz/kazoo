@@ -131,7 +131,7 @@ action(<<"compact_db">>) ->
     ,{<<"optional">>, [<<"force">>]}
     ].
 
--spec output_header(ne_binary()) -> kz_csv:row().
+-spec output_header(ne_binary()) -> kz_tasks:output_header().
 output_header(<<"compact_all">>) -> ?OUTPUT_HEADER;
 output_header(<<"compact_node">>) -> ?OUTPUT_HEADER;
 output_header(<<"compact_db">>) -> ?OUTPUT_HEADER.

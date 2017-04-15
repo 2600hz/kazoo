@@ -45,7 +45,7 @@ init() ->
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 
--spec output_header(ne_binary()) -> kz_csv:row().
+-spec output_header(ne_binary()) -> kz_tasks:output_header().
 output_header(<<"descendant_quantities">>) ->
     [<<"account_id">>
     ,<<"year">>
@@ -125,8 +125,7 @@ cleanup(_SystemDb) -> ok.
 %%% Internal functions
 %%%===================================================================
 
--spec rows_for_quantities(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) ->
-                                 [kz_csv:row()].
+-spec rows_for_quantities(ne_binary(), ne_binary(), ne_binary(), kz_json:object(), kz_json:object()) -> [kz_csv:mapped_row()].
 rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
     lists:append(
       [quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem)
@@ -135,17 +134,16 @@ rows_for_quantities(AccountId, YYYY, MM, BoM, EoM) ->
           EoMItem <- [kz_json:get_value(Category, EoM)]
       ]).
 
--spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) ->
-                                  [kz_csv:row()].
+-spec quantities_for_items(ne_binary(), ne_binary(), ne_binary(), ne_binary(), api_object(), api_object()) -> [kz_csv:mapped_row()].
 quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
-    [ [AccountId
-      ,YYYY
-      ,MM
-      ,Category
-      ,Item
-      ,maybe_integer_to_binary(Item, BoMItem)
-      ,maybe_integer_to_binary(Item, EoMItem)
-      ]
+    [#{<<"account_id">> => AccountId
+      ,<<"year">> => YYYY
+      ,<<"month">> => MM
+      ,<<"category">> => Category
+      ,<<"item">> => Item
+      ,<<"quantity_bom">> => maybe_integer_to_binary(Item, BoMItem)
+      ,<<"quantity_eom">> => maybe_integer_to_binary(Item, EoMItem)
+      }
       || Item <- fields(BoMItem, EoMItem)
     ].
 
