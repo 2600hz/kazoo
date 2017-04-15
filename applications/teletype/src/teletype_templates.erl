@@ -163,19 +163,37 @@ templates_source(_TemplateId, 'undefined', _ResellerId) ->
     'undefined';
 templates_source(TemplateId, AccountId, AccountId) ->
     case fetch_notification(TemplateId, AccountId) of
-        {'ok', Template} -> kz_doc:account_id(Template);
+        {'ok', Template} ->
+            templates_source_has_attachments(TemplateId, AccountId, AccountId, Template);
         {'error', 'not_found'} -> ?KZ_CONFIG_DB;
         {'error', _E} -> 'undefined'
     end;
 templates_source(TemplateId, AccountId, ResellerId) ->
     case fetch_notification(TemplateId, AccountId) of
         {'error', 'not_found'} ->
-            lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
-            ParentId = teletype_util:get_parent_account_id(AccountId),
-            templates_source(TemplateId, ParentId, ResellerId);
-        {'ok', Template} -> kz_doc:account_id(Template);
+            parent_templates_source(TemplateId, AccountId, ResellerId);
+        {'ok', Template} ->
+            templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template);
         {'error', _E} -> 'undefined'
     end.
+
+-spec templates_source_has_attachments(ne_binary()
+                                      ,ne_binary()
+                                      ,ne_binary()
+                                      ,kz_json:object()) -> api_binary().
+templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
+    case kz_doc:attachments(Template) of
+        'undefined' -> parent_templates_source(TemplateId, AccountId, ResellerId);
+        _ -> kz_doc:account_id(Template)
+    end.
+
+-spec parent_templates_source(ne_binary(), ne_binary(), ne_binary()) ->
+                                     api_binary().
+parent_templates_source(_TemplateId, AccountId, AccountId) -> ?KZ_CONFIG_DB;
+parent_templates_source(TemplateId, AccountId, ResellerId) ->
+    lager:debug("failed to find template ~s in account ~s", [TemplateId, AccountId]),
+    ParentId = teletype_util:get_parent_account_id(AccountId),
+    templates_source(TemplateId, ParentId, ResellerId).
 
 -spec fetch_notification(ne_binary(), ne_binary()) ->
                                 {'ok', kz_json:object()} |
