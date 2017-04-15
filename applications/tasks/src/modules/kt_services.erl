@@ -33,6 +33,10 @@
 -define(ACTIONS, [<<"descendant_quantities">>
                  ]).
 
+-ifdef(TEST).
+-export([rows_for_quantities/5]).
+-endif.
+
 %%%===================================================================
 %%% API
 %%%===================================================================
@@ -211,103 +215,5 @@ cleanup_orphaned_services_doc(AccountId=?NE_BINARY) ->
     end;
 cleanup_orphaned_services_doc(View) ->
     cleanup_orphaned_services_doc(kz_doc:id(View)).
-
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
-bom_1() ->
-    kz_json:from_list(
-      [{<<"branding">>, kz_json:from_list(
-                          [{<<"whitelabel">>, 0}
-                          ])
-       }
-      ,{<<"users">>, kz_json:new()}
-      ,{<<"ui_apps">>, kz_json:new()}
-      ,{<<"number_services">>, kz_json:new()}
-      ,{<<"phone_numbers">>, kz_json:from_list(
-                               [{<<"did_us">>, 1}
-                               ])
-       }
-      ,{<<"ledgers">>, kz_json:new()}
-      ,{<<"ips">>, kz_json:from_list(
-                     [{<<"dedicated">>, 0}
-                     ])
-       }
-      ,{<<"devices">>, kz_json:new()}
-      ]).
-
-bom_2() ->
-    kz_json:from_list(
-      [{<<"branding">>, kz_json:from_list(
-                          [{<<"whitelabel">>, 0}
-                          ])
-       }
-      ,{<<"users">>, kz_json:new()}
-      ,{<<"ui_apps">>, kz_json:new()}
-      ,{<<"number_services">>, kz_json:new()}
-      ,{<<"phone_numbers">>, kz_json:new()}
-      ,{<<"ledgers">>, kz_json:new()}
-      ,{<<"ips">>, kz_json:from_list(
-                     [{<<"dedicated">>, 0}
-                     ])
-       }
-      ,{<<"devices">>, kz_json:new()}
-      ]).
-
-eom_1() ->
-    kz_json:from_list(
-      [{<<"branding">>, kz_json:from_list(
-                          [{<<"whitelabel">>, 0}
-                          ])
-       }
-      ,{<<"users">>, kz_json:new()}
-      ,{<<"ui_apps">>, kz_json:new()}
-      ,{<<"number_services">>, kz_json:from_list(
-                                 [{<<"local">>, 130}
-                                 ])
-       }
-      ,{<<"phone_numbers">>, kz_json:from_list(
-                               [{<<"did_us">>, 1}
-                               ])
-       }
-      ,{<<"ledgers">>, kz_json:new()}
-      ,{<<"ips">>, kz_json:from_list(
-                     [{<<"dedicated">>, 0}
-                     ])
-       }
-      ,{<<"devices">>, kz_json:new()}
-      ]).
-
-rows_for_missing_eom_test() ->
-    AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
-    Expected =
-        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, 'undefined']
-        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, 'undefined']
-        ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_2(), kz_json:new())).
-
-rows_for_missing_bom_test() ->
-    AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    <<YYYY:4/binary, MM:2/binary>> = <<"201504">>,
-    Expected =
-        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, 'undefined', <<"0">>]
-        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, 'undefined', <<"0">>]
-        ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, kz_json:new(), bom_2())).
-
-rows_for_bom_and_eom_test() ->
-    AccountId = <<"6b71cb72c876b5b1396a335f8f8a2594">>,
-    <<YYYY:4/binary, MM:2/binary>> = <<"201606">>,
-    Expected =
-        [[AccountId, YYYY, MM, <<"branding">>, <<"whitelabel">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYY, MM, <<"ips">>, <<"dedicated">>, <<"0">>, <<"0">>]
-        ,[AccountId, YYYY, MM, <<"number_services">>, <<"local">>, 'undefined', <<"130">>]
-        ,[AccountId, YYYY, MM, <<"phone_numbers">>, <<"did_us">>, <<"1">>, <<"1">>]
-        ],
-    ?assertEqual(Expected, rows_for_quantities(AccountId, YYYY, MM, bom_1(), eom_1())).
-
--endif.
 
 %%% End of Module.
