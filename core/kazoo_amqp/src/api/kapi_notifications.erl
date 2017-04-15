@@ -46,6 +46,7 @@
         ,notify_update/1, notify_update_v/1
         ,denied_emergency_bridge/1, denied_emergency_bridge_v/1
         ,customer_update/1, customer_update_v/1
+        ,missed_call/1, missed_call_v/1
         ,skel/1, skel_v/1
         ,headers/1
         ,account_db/1
@@ -84,6 +85,7 @@
         ,publish_notify_update/2, publish_notify_update/3
         ,publish_denied_emergency_bridge/1, publish_denied_emergency_bridge/2
         ,publish_customer_update/1, publish_customer_update/2
+        ,publish_missed_call/1, publish_missed_call/2
         ,publish_skel/1, publish_skel/2
         ]).
 
@@ -131,6 +133,7 @@
 -define(NOTIFY_WEBHOOK_DISABLED, <<"notifications.webhook.disabled">>).
 -define(NOTIFY_DENIED_EMERGENCY_BRIDGE, <<"notifications.registration.denied_emergency_bridge">>).
 -define(NOTIFY_CUSTOMER_UPDATE, <<"notifications.user.customer_update">>).
+-define(NOTIFY_MISSED_CALL, <<"notifications.sip.missed_call">>).
 -define(NOTIFY_SKEL, <<"notifications.account.skel">>).
 
 %% Notify New Voicemail or Voicemail Saved
@@ -534,6 +537,21 @@
                                 ]).
 -define(CUSTOMER_UPDATE_TYPES, []).
 
+%% Missed Call Alert
+-define(MISSED_CALL_HEADERS, [<<"Account-ID">>,<<"Call-ID">>
+                             ,<<"Call-Bridged">>, <<"Message-Left">>
+                             ]).
+-define(OPTIONAL_MISSED_CALL_HEADERS, [<<"From-User">>, <<"From-Realm">>
+                                      ,<<"To-User">>, <<"To-Realm">>
+                                      ,<<"Caller-ID-Name">>, <<"Caller-ID-Number">>
+                                      ,<<"Timestamp">>, <<"Notify">>, <<"To">>
+                                           | ?DEFAULT_OPTIONAL_HEADERS
+                                      ]).
+-define(MISSED_CALL_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                            ,{<<"Event-Name">>, <<"missed_call">>}
+                            ]).
+-define(MISSED_CALL_TYPES, []).
+
 %% Skeleton
 -define(SKEL_HEADERS, [<<"Account-ID">>, <<"User-ID">>]).
 -define(OPTIONAL_SKEL_HEADERS, ?DEFAULT_OPTIONAL_HEADERS).
@@ -611,6 +629,8 @@ headers(<<"denied_emergency_bridge">>) ->
     ?DENIED_EMERGENCY_BRIDGE_HEADERS ++ ?OPTIONAL_DENIED_EMERGENCY_BRIDGE_HEADERS;
 headers(<<"customer_update">>) ->
     ?CUSTOMER_UPDATE_HEADERS ++ ?OPTIONAL_CUSTOMER_UPDATE_HEADERS;
+headers(<<"missed_call">>) ->
+    ?MISSED_CALL_HEADERS ++ ?OPTIONAL_MISSED_CALL_HEADERS;
 headers(<<"skel">>) ->
     ?SKEL_HEADERS ++ ?OPTIONAL_SKEL_HEADERS;
 headers(_Notification) ->
@@ -1208,6 +1228,24 @@ customer_update_v(Prop) when is_list(Prop) ->
 customer_update_v(JObj) -> customer_update_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
+%% @doc missed_call notification
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec missed_call(api_terms()) -> api_formatter_return().
+missed_call(Prop) when is_list(Prop) ->
+    case missed_call_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?MISSED_CALL_HEADERS, ?OPTIONAL_MISSED_CALL_HEADERS);
+        'false' -> {'error', "Proplist failed validation for missed_call"}
+    end;
+missed_call(JObj) -> missed_call(kz_json:to_proplist(JObj)).
+
+-spec missed_call_v(api_terms()) -> boolean().
+missed_call_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?MISSED_CALL_HEADERS, ?MISSED_CALL_VALUES, ?MISSED_CALL_TYPES);
+missed_call_v(JObj) -> missed_call_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
 %% @doc skel notification - see wiki
 %% Takes proplist, creates JSON string or error
 %% @end
@@ -1258,6 +1296,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'denied_emergency_bridge' |
                        'customer_update' |
                        'service_added' |
+                       'missed_call' |
                        'skel'.
 -type restrictions() :: [restriction()].
 -type option() :: {'restrict_to', restrictions()}.
@@ -1370,6 +1409,9 @@ bind_to_q(Q, ['denied_emergency_bridge'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['customer_update'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_CUSTOMER_UPDATE),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['missed_call'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_MISSED_CALL),
     bind_to_q(Q, T);
 bind_to_q(Q, ['skel'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_SKEL),
@@ -1484,6 +1526,9 @@ unbind_q_from(Q, ['denied_emergency_bridge'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['customer_update'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_CUSTOMER_UPDATE),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['missed_call'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_MISSED_CALL),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['skel'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q, ?NOTIFY_SKEL),
@@ -1733,6 +1778,13 @@ publish_customer_update(JObj) -> publish_customer_update(JObj, ?DEFAULT_CONTENT_
 publish_customer_update(API, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(API, ?CUSTOMER_UPDATE_VALUES, fun customer_update/1),
     amqp_util:notifications_publish(?NOTIFY_CUSTOMER_UPDATE, Payload, ContentType).
+
+-spec publish_missed_call(api_terms()) -> 'ok'.
+-spec publish_missed_call(api_terms(), ne_binary()) -> 'ok'.
+publish_missed_call(JObj) -> publish_missed_call(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_missed_call(API, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(API, ?MISSED_CALL_VALUES, fun missed_call/1),
+    amqp_util:notifications_publish(?NOTIFY_MISSED_CALL, Payload, ContentType).
 
 -spec publish_skel(api_terms()) -> 'ok'.
 -spec publish_skel(api_terms(), ne_binary()) -> 'ok'.

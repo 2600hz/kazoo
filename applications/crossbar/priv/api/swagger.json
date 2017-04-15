@@ -1872,6 +1872,38 @@
             "required": true,
             "type": "object"
         },
+        "callflows.missed_call_alert": {
+            "description": "Validator for the missed_call_alert callflow's data object",
+            "properties": {
+                "recipients": {
+                    "description": "One or more specific email addresses, Kazoo user ids or a combination of both",
+                    "items": {
+                        "properties": {
+                            "id": {
+                                "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
+                                "type": "string"
+                            },
+                            "type": {
+                                "description": "Controls if the ID of this object is a Kazoo user ID or an email address",
+                                "enum": [
+                                    "user",
+                                    "email"
+                                ],
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "address"
+                        ],
+                        "type": "object"
+                    },
+                    "type": "array"
+                }
+            },
+            "required": true,
+            "type": "object"
+        },
         "callflows.move": {
             "description": "Validator for the move callflow's data object",
             "properties": {},

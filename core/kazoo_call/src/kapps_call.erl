@@ -69,6 +69,8 @@
 -export([set_to_tag/2, to_tag/1]).
 -export([set_from_tag/2, from_tag/1]).
 -export([direction/1]).
+-export([set_call_bridged/2, call_bridged/1]).
+-export([set_message_left/2, message_left/1]).
 
 -export([set_dtmf_collection/2, set_dtmf_collection/3
         ,get_dtmf_collection/1, get_dtmf_collection/2
@@ -168,6 +170,8 @@
                     ,to_tag :: api_binary()
                     ,from_tag :: api_binary()
                     ,direction = <<"inbound">> :: ne_binary()
+                    ,call_bridged = 'false' :: boolean()                %% Specified during call termination whether the call had been bridged
+                    ,message_left = 'false' :: boolean()                %% Specified during call termination whether the caller left a voicemail message
                     }).
 
 -type call() :: #kapps_call{}.
@@ -425,6 +429,8 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
                    ,from_tag = kz_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
                    ,direction = kz_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
+                   ,call_bridged = kz_json:is_true(<<"Call-Bridged">>, JObj, call_bridged(Call))
+                   ,message_left = kz_json:is_true(<<"Message-Left">>, JObj, message_left(Call))
                    }.
 
 %%--------------------------------------------------------------------
@@ -490,6 +496,8 @@ to_proplist(#kapps_call{}=Call) ->
     ,{<<"To-Tag">>, to_tag(Call)}
     ,{<<"From-Tag">>, from_tag(Call)}
     ,{<<"Call-Direction">>, direction(Call)}
+    ,{<<"Call-Bridged">>, call_bridged(Call)}
+    ,{<<"Message-Left">>, message_left(Call)}
     ].
 
 -spec is_call(any()) -> boolean().
@@ -983,6 +991,22 @@ from_tag(#kapps_call{from_tag=FromTag}) ->
 -spec direction(call()) -> ne_binary().
 direction(#kapps_call{direction=Direction}) ->
     Direction.
+
+-spec call_bridged(call()) -> boolean().
+call_bridged(#kapps_call{call_bridged=IsBridged}) ->
+    kz_term:is_true(IsBridged).
+
+-spec set_call_bridged(boolean(), call()) -> call().
+set_call_bridged(IsBridged, #kapps_call{}=Call) when is_boolean(IsBridged) ->
+    Call#kapps_call{call_bridged=IsBridged}.
+
+-spec message_left(call()) -> boolean().
+message_left(#kapps_call{message_left=MessageLeft}) ->
+    kz_term:is_true(MessageLeft).
+
+-spec set_message_left(boolean(), call()) -> call().
+set_message_left(MessageLeft, #kapps_call{}=Call) when is_boolean(MessageLeft) ->
+    Call#kapps_call{message_left=MessageLeft}.
 
 -spec remove_custom_channel_vars(kz_json:path(), call()) -> call().
 remove_custom_channel_vars(Keys, #kapps_call{}=Call) ->

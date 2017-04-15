@@ -23,7 +23,7 @@
 
 -export_type([vm_folder/0]).
 
--type new_msg_ret() :: 'ok' | {'error', kapps_call:call(), any()}.
+-type new_msg_ret() :: {'ok', kapps_call:call()} | {'error', kapps_call:call(), any()}.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -667,7 +667,7 @@ archive_malform_vm(Call, ForwardId, Props) ->
 %%--------------------------------------------------------------------
 -type notify_action() :: 'save' | 'delete' | 'nothing'.
 
--spec notify_and_update_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> 'ok'.
+-spec notify_and_update_meta(kapps_call:call(), ne_binary(), integer(), kz_proplist()) -> {'ok', kapps_call:call()}.
 notify_and_update_meta(Call, MediaId, Length, Props) ->
     BoxId = props:get_value(<<"Box-Id">>, Props),
     NotifyAction = props:get_atom_value(<<"After-Notify-Action">>, Props),
@@ -710,9 +710,8 @@ log_notification_response(_Action, MediaId, UpdateJObj, Call) ->
                       ,[MediaId, AccountId])
     end.
 
--spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
+-spec maybe_update_meta(pos_integer(), notify_action(), kapps_call:call(), ne_binary(), ne_binary()) -> {'ok', kapps_call:call()}.
 maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
-    AccountId = kapps_call:account_id(Call),
     case Action of
         'delete' ->
             lager:debug("attachment was sent out via notification, set folder to delete"),
@@ -720,25 +719,28 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
                            kzd_box_message:apply_folder({?VM_FOLDER_DELETED, 'false'}, JObj)
                    end
                   ],
-            update_metadata(AccountId, BoxId, MediaId, Fun);
+            update_metadata(Call, BoxId, MediaId, Fun);
         'save' ->
             lager:debug("attachment was sent out via notification, set folder to saved"),
             Fun = [fun(JObj) ->
                            kzd_box_message:apply_folder(?VM_FOLDER_SAVED, JObj)
                    end
                   ],
-            update_metadata(AccountId, BoxId, MediaId, Fun);
+            update_metadata(Call, BoxId, MediaId, Fun);
         'nothing' ->
             Timestamp = kz_time:current_tstamp(),
-            kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp)
+            kvm_util:publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp),
+            {'ok', Call}
     end.
 
--spec update_metadata(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
-update_metadata(AccountId, BoxId, MessageId, UpdateFuns) ->
+-spec update_metadata(kapps_call:call(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
+update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
+    AccountId = kapps_call:account_id(Call),
     case update(AccountId, BoxId, MessageId, UpdateFuns) of
-        {'ok', _} -> 'ok';
+        {'ok', _} -> {'ok', Call};
         {'error', _R} ->
-            lager:info("error while updating voicemail metadata: ~p", [_R])
+            lager:info("error while updating voicemail metadata: ~p", [_R]),
+            {'ok', Call}
     end.
 
 %%--------------------------------------------------------------------
