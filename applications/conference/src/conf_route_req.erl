@@ -31,7 +31,7 @@ handle_req(JObj, _Props) ->
 maybe_send_route_response(JObj, Call) ->
     case find_conference(Call) of
         {'ok', Conference} ->
-            send_route_response(JObj, Call, bridged_conference(Conference));
+            send_route_response(JObj, Call, Conference);
         {'error', _} -> 'ok'
     end.
 
@@ -110,17 +110,4 @@ find_account_db(Call) ->
                        ,[Realm, _R]
                        ),
             'undefined'
-    end.
-
--spec bridged_conference(kapps_conference:conference()) -> kapps_conference:conference().
-bridged_conference(Conference) ->
-    %% We are relying on the original channel to play media
-    %% so that name announcements always work
-    case ?SUPPORT_NAME_ANNOUNCEMENT(kapps_conference:account_id(Conference)) of
-        'true' ->
-            Updaters = [fun(Conf) -> kapps_conference:set_play_entry_tone('false', Conf) end
-                       ,fun(Conf) -> kapps_conference:set_play_exit_tone('false', Conf) end
-                       ],
-            kapps_conference:update(Updaters, Conference);
-        'false' -> Conference
     end.
