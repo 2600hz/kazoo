@@ -851,12 +851,8 @@ maybe_merge_ancestor_attachments(Context, Id) ->
                                         cb_context:context().
 merge_ancestor_attachments(Context, Id) ->
     AccountId = cb_context:account_id(Context),
-    ResellerId = case cb_context:fetch(Context, 'initial_reseller_id') of
-                     'undefined' -> kz_services:find_reseller_id(AccountId);
-                     ResellerId1 -> ResellerId1
-                 end,
-    Context1 = cb_context:store(Context, 'initial_reseller_id', ResellerId),
-    merge_ancestor_attachments(Context1, Id, AccountId, ResellerId).
+    ResellerId = kz_services:find_reseller_id(AccountId),
+    merge_ancestor_attachments(Context, Id, AccountId, ResellerId).
 
 %% Last attempt was reseller, now try ?KZ_CONFIG_DB
 merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
