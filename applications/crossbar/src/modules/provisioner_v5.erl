@@ -60,8 +60,7 @@ device_settings(JObj) ->
       ,{<<"model">>, get_model(JObj)}
       ,{<<"name">>, kz_device:name(JObj)}
       ,{<<"settings">>, settings(JObj)}
-      ]
-     ).
+      ]).
 
 -spec get_brand(kz_json:object()) -> binary().
 get_brand(JObj) ->
@@ -131,8 +130,8 @@ update_account(Account, AuthToken) ->
 -spec account_settings(kz_json:object()) -> kz_json:object().
 account_settings(JObj) ->
     kz_json:from_list(
-      [{<<"settings">>, settings(JObj)}]
-     ).
+      [{<<"settings">>, settings(JObj)}
+      ]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -167,8 +166,7 @@ maybe_save_device(Device, Settings, AccountId, AuthToken) ->
                 ,{<<"model">>, get_model(Device)}
                 ,{<<"name">>, kz_device:name(Device)}
                 ,{<<"settings">>, Settings}
-                ]
-               ),
+                ]),
     catch save_device(AccountId, Device, Request, AuthToken).
 
 -spec save_device(ne_binary(), kz_json:object(), kz_json:object(), ne_binary()) -> 'ok'.
@@ -176,12 +174,7 @@ save_device(AccountId, Device, Request, AuthToken) ->
     case kz_device:mac_address(Device) of
         'undefined' -> 'ok';
         MacAddress ->
-            send_req('devices_post'
-                    ,Request
-                    ,AuthToken
-                    ,AccountId
-                    ,MacAddress
-                    )
+            send_req('devices_post', Request, AuthToken, AccountId, MacAddress)
     end.
 
 %%--------------------------------------------------------------------
@@ -274,8 +267,7 @@ settings_line_keys(<<"yealink">>, _) ->
     Props = props:filter_empty(
               [{<<"account">>, <<"1">>}
               ,{<<"type">>, <<"15">>}
-              ]
-             ),
+              ]),
     Key = kz_json:from_list([{<<"key">>, kz_json:from_list(Props)}]),
     kz_json:from_list([{<<"0">>, Key}]);
 settings_line_keys(_, _) -> 'undefined'.
@@ -283,9 +275,9 @@ settings_line_keys(_, _) -> 'undefined'.
 -spec settings_lines(kz_json:object()) -> kz_json:object().
 settings_lines(JObj) ->
     case props:filter_empty(
-           [{<<"basic">>, settings_basic(JObj)},
-            {<<"sip">>, settings_sip(JObj)},
-            {<<"advanced">>, settings_advanced(JObj)}
+           [{<<"basic">>, settings_basic(JObj)}
+           ,{<<"sip">>, settings_sip(JObj)}
+           ,{<<"advanced">>, settings_advanced(JObj)}
            ])
     of
         [] -> kz_json:new();
@@ -301,40 +293,37 @@ settings_basic(JObj) ->
     Props = props:filter_undefined(
               [{<<"display_name">>, kz_json:get_ne_value(<<"name">>, JObj)}
               ,{<<"enable">>, Enabled}
-              ]
-             ),
+              ]),
     kz_json:from_list(Props).
 
 -spec settings_sip(kz_json:object()) -> kz_json:object().
 settings_sip(JObj) ->
-    Realm = kz_json:get_first_defined(
-              [[<<"sip">>, <<"realm">>],
-               <<"realm">>
-              ], JObj
-             ),
+    RealmPaths = [[<<"sip">>, <<"realm">>]
+                 ,<<"realm">>
+                 ],
+    Realm = kz_json:get_first_defined(RealmPaths, JObj),
     Props = props:filter_undefined(
               [{<<"username">>, kz_device:sip_username(JObj)}
               ,{<<"password">>, kz_device:sip_password(JObj)}
               ,{<<"realm">>, Realm}
-              ]
-             ),
+              ]),
     kz_json:from_list(Props).
 
 -spec settings_advanced(kz_json:object()) -> kz_json:object().
 settings_advanced(JObj) ->
     EncryptionMethods = kz_json:get_value([<<"media">>, <<"encryption">>, <<"methods">>], JObj, []),
-    Props = props:filter_undefined(
-              [{<<"expire">>, kz_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
-               | [{M, 'true'} || M <- EncryptionMethods]
-              ]),
-    kz_json:from_list(Props).
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"expire">>, kz_json:get_integer_value([<<"sip">>, <<"expire_seconds">>], JObj)}
+         | [{M, 'true'} || M <- EncryptionMethods]
+        ])).
 
 -spec settings_datetime(kz_json:object()) -> kz_json:object().
 settings_datetime(JObj) ->
-    Props = props:filter_empty(
-              [{<<"time">>, settings_time(JObj)}]
-             ),
-    kz_json:from_list(Props).
+    kz_json:from_list(
+      props:filter_empty(
+        [{<<"time">>, settings_time(JObj)}
+        ])).
 
 -spec settings_feature_keys(kz_json:object()) -> kz_json:object().
 settings_feature_keys(JObj) ->
@@ -371,8 +360,7 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
                 ,{<<"value">>, Presence}
                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
                 ,{<<"account">>, get_line_key(Brand, Family)}
-                ])
-             )
+                ]))
     end;
 get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
     kz_json:from_list(
@@ -381,8 +369,7 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
         ,{<<"value">>, Value}
         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
-        ])
-     );
+        ]));
 get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
@@ -394,9 +381,7 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
                 ,{<<"value">>, <<"*3", Presence/binary>>}
                 ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
                 ,{<<"account">>, get_line_key(Brand, Family)}
-                ]
-               )
-             )
+                ]))
     end;
 get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
     kz_json:from_list(
@@ -405,9 +390,7 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
         ,{<<"value">>, <<"*3", Value/binary>>}
         ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
-        ]
-       )
-     ).
+        ])).
 
 -spec get_line_key(ne_binary(), ne_binary()) -> api_binary().
 get_line_key(<<"yealink">>, _) -> <<"0">>;
@@ -430,24 +413,23 @@ get_user(AccountId, UserId) ->
 -spec maybe_add_feature_key(ne_binary(), api_object(), kz_json:object()) -> kz_json:object().
 maybe_add_feature_key(_Key, 'undefined', JObj) -> JObj;
 maybe_add_feature_key(Key, FeatureKey, JObj) ->
-    kz_json:set_value(
-      Key
+    kz_json:set_value(Key
                      ,kz_json:from_list([{<<"key">>, FeatureKey}])
                      ,JObj
-     ).
+                     ).
 
 -spec settings_time(kz_json:object()) -> kz_json:object().
 settings_time(JObj) ->
-    Props = props:filter_undefined(
-              [{<<"timezone">>, kz_json:get_value(<<"timezone">>, JObj)}]
-             ),
-    kz_json:from_list(Props).
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"timezone">>, kz_json:get_value(<<"timezone">>, JObj)}
+        ])).
 
 -spec settings_codecs(kz_json:object()) -> kz_json:object().
 settings_codecs(JObj) ->
     case props:filter_empty(
-           [{<<"audio">>, settings_audio(JObj)}]
-          )
+           [{<<"audio">>, settings_audio(JObj)}
+           ])
     of
         [] -> kz_json:new();
         Props ->
@@ -477,7 +459,6 @@ settings_audio([Codec|Codecs], [Key|Keys], JObj) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec send_req(atom(), api_object(), ne_binary(), ne_binary(), api_binary()) -> 'ok'.
-
 send_req('devices_post', JObj, AuthToken, AccountId, MACAddress) ->
     Data = kz_json:encode(device_payload(JObj)),
     Headers = req_headers(AuthToken),
@@ -530,8 +511,7 @@ account_payload(JObj, AccountId) ->
       ,{<<"reseller_id">>, ResellerId}
       ,{<<"merge">>, 'true'}
       ,{<<"data">>, JObj}
-      ]
-     ).
+      ]).
 
 -spec device_payload(kz_json:object()) -> kz_json:object().
 device_payload(JObj) ->
@@ -540,8 +520,7 @@ device_payload(JObj) ->
       ,{<<"generate">>, 'true'}
       ,{<<"merge">>, 'true'}
       ,{<<"data">>, JObj}
-      ]
-     ).
+      ]).
 
 -spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
 handle_resp({'ok', 200, _, Resp}, _AccountId, _AuthToken) ->
@@ -619,15 +598,9 @@ get_cluster_id() ->
         ClusterId -> ClusterId
     end.
 
-%%--------------------------------------------------------------------
 %% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec check_request(kz_json:object()) ->
-                           {'ok', kz_json:object()} |
-                           jesse_error:error().
+-spec check_request(kz_json:object()) -> {'ok', kz_json:object()} |
+                                         jesse_error:error().
 check_request(Data) ->
     case get_schema() of
         'undefined' ->
