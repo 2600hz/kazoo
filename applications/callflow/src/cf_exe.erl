@@ -58,6 +58,8 @@
                 ,status = <<"sane">> :: ne_binary()
                 ,queue :: api_binary()
                 ,self = self()
+                ,stop_on_destroy = 'false' :: boolean()
+                ,destroyed = 'false' :: boolean()
                }).
 -type state() :: #state{}.
 
@@ -232,7 +234,8 @@ relay_amqp(JObj, Props) ->
                P when is_pid(P) -> [P | props:get_value('cf_event_pids', Props, [])];
                _ -> props:get_value('cf_event_pids', Props, [])
            end,
-    [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)].
+    [whapps_call_command:relay_event(Pid, JObj) || Pid <- Pids, is_pid(Pid)],
+    maybe_flag_destroyed(props:get_value('server', Props), wh_util:get_event_type(JObj)).
 
 -spec send_amqp(pid() | whapps_call:call(), api_terms(), wh_amqp_worker:publish_fun()) -> 'ok'.
 send_amqp(Srv, API, PubFun) when is_pid(Srv), is_function(PubFun, 1) ->
@@ -329,13 +332,19 @@ handle_call(_Request, _From, State) ->
 %%--------------------------------------------------------------------
 handle_cast({'set_call', Call}, State) ->
     {'noreply', State#state{call=Call}};
+handle_cast({'continue', _}, #state{stop_on_destroy='true'
+                                    ,destroyed='true'
+                                   }=State) ->
+    lager:info("channel no longer active, not continuing"),
+    ?MODULE:hard_stop(self()),
+    {'noreply', State};
 handle_cast({'continue', Key}, #state{flow=Flow
                                       ,cf_module_pid=OldPidRef
                                      }=State) ->
     lager:info("continuing to child '~s'", [Key]),
     maybe_stop_caring(OldPidRef),
 
-    case wh_json:get_value([<<"children">>, Key], Flow) of
+	case wh_json:get_value([<<"children">>, Key], Flow) of
         'undefined' when Key =:= <<"_">> ->
             lager:info("wildcard child does not exist, we are lost...hanging up"),
             ?MODULE:stop(self()),
@@ -362,6 +371,8 @@ handle_cast('transfer', State) ->
     {'stop', {'shutdown', 'transfer'}, State};
 handle_cast('control_usurped', State) ->
     {'stop', {'shutdown', 'control_usurped'}, State};
+handle_cast('flag_destroyed', State) ->
+    {'noreply', State#state{destroyed='true'}};
 handle_cast({'continue_with_flow', NewFlow}, State) ->
     lager:info("callflow has been reset"),
     {'noreply', launch_cf_module(State#state{flow=NewFlow})};
@@ -401,8 +412,10 @@ handle_cast('initialize', #state{call=Call}) ->
                ],
     CallWithHelpers = lists:foldr(fun(F, C) -> F(C) end, Call, Updaters),
     spawn('cf_singular_call_hooks', 'maybe_hook_call', [CallWithHelpers]),
+    StopOnDestroy = whapps_config:get_is_true(<<"callflow">>, <<"stop_on_destroy">>, 'false'),
     {'noreply', #state{call=CallWithHelpers
                        ,flow=Flow
+                       ,stop_on_destroy=StopOnDestroy
                       }};
 handle_cast({'gen_listener', {'created_queue', Q}}, #state{call=Call}=State) ->
     {'noreply', State#state{queue=Q
@@ -669,6 +682,12 @@ spawn_cf_module(CFModule, Data, Call) ->
 -spec send_amqp_message(api_terms(), wh_amqp_worker:publish_fun(), ne_binary()) -> 'ok'.
 send_amqp_message(API, PubFun, Q) ->
     PubFun(add_server_id(API, Q)).
+
+-spec maybe_flag_destroyed(pid(), {api_binary(), api_binary()}) -> 'ok'.
+maybe_flag_destroyed(Srv, {<<"call_event">>, <<"CHANNEL_DESTROY">>}) ->
+    gen_listener:cast(Srv, 'flag_destroyed');
+maybe_flag_destroyed(_, _) ->
+    'ok'.
 
 -spec send_command(wh_proplist(), api_binary(), api_binary()) -> 'ok'.
 send_command(_, 'undefined', _) -> lager:debug("no control queue to send command to");
