@@ -148,7 +148,7 @@ quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
       ,<<"quantity_bom">> => maybe_integer_to_binary(Item, BoMItem)
       ,<<"quantity_eom">> => maybe_integer_to_binary(Item, EoMItem)
       }
-      || Item <- fields(BoMItem, EoMItem)
+     || Item <- fields(BoMItem, EoMItem)
     ].
 
 -spec get_descendants(ne_binary()) -> ne_binaries().
