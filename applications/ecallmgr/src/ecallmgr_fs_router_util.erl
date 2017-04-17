@@ -23,18 +23,18 @@
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist()) -> search_ret().
 search_for_route(Section, Node, FetchId, CallId, Props) ->
-    search_for_route(Section, Node, FetchId, CallId, Props, 'true').
+    Authz = ecallmgr_config:is_true(<<"authz_enabled">>, 'false'),
+    search_for_route(Section, Node, FetchId, CallId, Props, Authz).
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), boolean()) -> search_ret().
-search_for_route(Section, Node, FetchId, CallId, Props, 'false' = Authz) ->
-    do_search_for_route(Section, Node, FetchId, CallId, Props, Authz);
-search_for_route(Section, Node, FetchId, CallId, Props, 'true' = Authz) ->
-    SetupCall = props:set_value(<<"Call-Setup">>, <<"true">>, Props),
-    _ = kz_util:spawn(fun ecallmgr_fs_authz:authorize/3, [SetupCall, CallId, Node]),
-    do_search_for_route(Section, Node, FetchId, CallId, Props, Authz).
+search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
+    do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
+search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
+    AuthzWorker = spawn_authorize_call_fun(Node, CallId, Props),
+    do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
 
--spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), boolean()) -> search_ret().
-do_search_for_route(Section, Node, FetchId, CallId, Props, Authz) ->
+-spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
+do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker) ->
     Request = route_req(CallId, FetchId, Props, Node),
     ReqResp = kz_amqp_worker:call(Request
                                  ,fun kapi_route:publish_req/1
@@ -46,32 +46,42 @@ do_search_for_route(Section, Node, FetchId, CallId, Props, Authz) ->
             lager:info("did not receive route response for request ~s: ~p", [FetchId, _R]);
         {'ok', JObj} ->
             'true' = kapi_route:resp_v(JObj),
-            maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, Authz)
+            maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker)
     end.
 
--spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), boolean()) -> search_ret().
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'false') ->
+-spec spawn_authorize_call_fun(atom(), ne_binary(), kz_proplist()) -> pid_ref().
+spawn_authorize_call_fun(Node, CallId, Props) ->
+    Ref = make_ref(),
+    Pid = kz_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, Props]),
+    {Pid, Ref}.
+
+-spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kz_proplist()) -> any().
+authorize_call_fun(Self, Ref, Node, CallId, Props) ->
+    Self ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
+
+-spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
     reply_affirmative(Section, Node, FetchId, CallId, JObj, Props);
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'true') ->
-    case ecallmgr_config:is_true(<<"authz_enabled">>, 'false')
-        andalso kz_json:get_value(<<"Method">>, JObj) =/= <<"error">>
-    of
-        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props);
+maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) ->
+    case kz_json:get_value(<<"Method">>, JObj) =/= <<"error">> of
+        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker);
         'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props)
     end.
 
--spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist()) -> search_ret().
-wait_for_authz(Section, Node, FetchId, CallId, JObj, Props) ->
-    case kz_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-        {'ok', {'true', AuthzCCVs}} ->
-            _ = kz_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
+-spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), pid_ref()) -> search_ret().
+wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
+    receive
+        {'authorize_reply', Ref, 'false'} -> reply_forbidden(Section, Node, FetchId);
+        {'authorize_reply', Ref, 'true'} -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props);
+        {'authorize_reply', Ref, {'true', AuthzCCVs}} ->
             CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
             J = kz_json:set_value(<<"Custom-Channel-Vars">>
                                  ,kz_json:merge_jobjs(CCVs, AuthzCCVs)
                                  ,JObj
                                  ),
-            reply_affirmative(Section, Node, FetchId, CallId, J, Props);
-        _Else -> reply_forbidden(Section, Node, FetchId)
+            reply_affirmative(Section, Node, FetchId, CallId, J, Props)
+    after 5000 ->
+        lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
 %% Reply with a 402 for unauthzed calls
