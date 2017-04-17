@@ -37,7 +37,7 @@
 
 -define(MOD_CAT, <<(?CONFIG_CAT)/binary, ".numbers">>).
 -define(IMPORT_DEFAULTS_TO_CARRIER
-        %% Defaults to knm_carriers:default_carrier()
+        %% Defaults to knm_carriers:default_carrier()'s default value
        ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)).
 
 -define(CATEGORY, "number_management").
