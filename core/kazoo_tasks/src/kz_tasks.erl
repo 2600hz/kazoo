@@ -53,7 +53,7 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
--type output_header() :: kz_csv:row() | {replace, kz_csv:row()}.
+-type output_header() :: kz_csv:header() | {replace, kz_csv:header()}.
 
 -type help_error() :: {'error', 'unknown_category_action'}.
 
