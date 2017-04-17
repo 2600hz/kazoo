@@ -306,7 +306,7 @@
           ,{<<"carrier">>, <<"Unknown Carrier">>}
           ,{<<"numbers">>
            ,kz_json:from_list(
-              [{<<"+19042471591">>, kz_json:from_list([{<<"used_by">>, <<"callflow">>}])}
+              [{?TEST_NEW_PORT_NUM, kz_json:from_list([{<<"used_by">>, <<"callflow">>}])}
               ])
            }
           ,{<<"bill">>

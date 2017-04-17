@@ -197,17 +197,17 @@ is_force_outbound_test_() ->
     {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
     {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props6} = knm_number:lookup_account(?TEST_NEW_PORT_NUM),
-    [{"knm_local + port_in --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props1))
+    [{"knm_local + port_in --> true"
+     ,?_assert(knm_number_options:should_force_outbound(Props1))
      }
     ,{"knm_vitelity + in_service --> false"
      ,?_assert(not knm_number_options:should_force_outbound(Props2))
      }
-    ,{"knm_local + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props3))
+    ,{"knm_local + in_service --> true"
+     ,?_assert(knm_number_options:should_force_outbound(Props3))
      }
-    ,{"knm_mdn + in_service --> false"
-     ,?_assert(not knm_number_options:should_force_outbound(Props4))
+    ,{"knm_mdn + in_service --> true"
+     ,?_assert(knm_number_options:should_force_outbound(Props4))
      }
     ,{"knm_pacwest + in_service --> false"
      ,?_assert(not knm_number_options:should_force_outbound(Props5))

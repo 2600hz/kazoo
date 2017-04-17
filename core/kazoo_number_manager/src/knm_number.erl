@@ -509,8 +509,8 @@ find_transfer_ringback(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec is_force_outbound(knm_phone_number:knm_phone_number()) -> boolean().
 is_force_outbound(PN) ->
-    is_force_outbound(knm_phone_number:module_name(PN)
-                     ,knm_phone_number:state(PN)
+    is_force_outbound(knm_phone_number:state(PN)
+                     ,knm_phone_number:module_name(PN)
                      ,force_outbound_feature(PN)
                      ).
 
@@ -522,6 +522,8 @@ is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_port_out_outbound">>, true)
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
+    force_local_outbound();
+is_force_outbound(_State, ?CARRIER_MDN, _ForceOutbound) ->
     force_local_outbound();
 is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
@@ -535,11 +537,13 @@ force_outbound_feature(PN) ->
 
 -spec force_module_outbound(ne_binary()) -> boolean().
 force_module_outbound(?CARRIER_LOCAL) -> force_local_outbound();
+force_module_outbound(?CARRIER_MDN) -> force_local_outbound();
 force_module_outbound(_Mod) -> false.
 
 -spec force_local_outbound() -> boolean().
 force_local_outbound() ->
     kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"force_local_outbound">>, true).
+
 
 -spec phone_number(knm_number()) -> knm_phone_number:knm_phone_number().
 -spec set_phone_number(knm_number(), knm_phone_number:knm_phone_number()) ->
