@@ -78,6 +78,7 @@
 -define(TEST_VITELITY_NUM, <<"+18122154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
+-define(TEST_PORT_IN3_NUM, <<"+14252151009">>).
 -define(TEST_NEW_PORT_NUM, <<"+19042471591">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(TEST_AVAILABLE_NON_LOCAL_NUM, <<"+19162154006">>).
@@ -250,6 +251,19 @@
           ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
           ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
           ,{?PVT_MODULE_NAME, ?CARRIER_LOCAL}
+          ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
+          ])).
+
+-define(PORT_IN3_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_PORT_IN3_NUM}
+          ,{<<"_rev">>, <<"1-adddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, <<"knm_bandwidth2">>}
           ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
           ,{?PVT_CREATED, 63565935000}

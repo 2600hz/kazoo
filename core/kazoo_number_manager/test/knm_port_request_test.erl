@@ -197,6 +197,7 @@ is_force_outbound_test_() ->
     {ok, ?RESELLER_ACCOUNT_ID, Props4} = knm_number:lookup_account(?TEST_IN_SERVICE_MDN),
     {ok, ?RESELLER_ACCOUNT_ID, Props5} = knm_number:lookup_account(?TEST_IN_SERVICE_BAD_CARRIER_NUM),
     {ok, ?RESELLER_ACCOUNT_ID, Props6} = knm_number:lookup_account(?TEST_NEW_PORT_NUM),
+    {ok, ?RESELLER_ACCOUNT_ID, Props7} = knm_number:lookup_account(?TEST_PORT_IN3_NUM),
     [{"knm_local + port_in --> true"
      ,?_assert(knm_number_options:should_force_outbound(Props1))
      }
@@ -214,5 +215,8 @@ is_force_outbound_test_() ->
      }
     ,{"pending port request --> true"
      ,?_assert(knm_number_options:should_force_outbound(Props6))
+     }
+    ,{"knm_bandwidth2 + port_in --> true"
+     ,?_assert(knm_number_options:should_force_outbound(Props7))
      }
     ].
