@@ -266,10 +266,7 @@ process_route_req(Section, Node, FetchId, CallId, Props) ->
 
 -spec search_for_route(atom(), atom(), ne_binary(), ne_binary(), wh_proplist()) -> 'ok'.
 search_for_route(Section, Node, FetchId, CallId, Props) ->
-    _ = wh_util:spawn('ecallmgr_fs_authz', 'authorize', [props:set_value(<<"Call-Setup">>, <<"true">>, Props)
-                                                         ,CallId
-                                                         ,Node
-                                                        ]),
+    AuthzWorker = maybe_authorize_call(Node, CallId, Props),
     ReqResp = wh_amqp_worker:call(route_req(CallId, FetchId, Props, Node)
                                   ,fun wapi_route:publish_req/1
                                   ,fun wapi_route:is_actionable_resp/1
@@ -281,34 +278,53 @@ search_for_route(Section, Node, FetchId, CallId, Props) ->
         {'ok', JObj} ->
             'true' = wapi_route:resp_v(JObj),
             J = wh_json:set_value(<<"Context">>, hunt_context(Props), JObj),
-            maybe_wait_for_authz(Section, Node, FetchId, CallId, J)
+            maybe_wait_for_authz(AuthzWorker, Section, Node, FetchId, CallId, J)
     end.
+
+-spec maybe_authorize_call(atom(), ne_binary(), wh_proplist()) -> api_pid().
+maybe_authorize_call(Node, CallId, Props) ->
+    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false')) of
+        'true' -> spawn_authorize_call_fun(Node, CallId, Props);
+        'false' -> 'undefined'
+    end.
+
+-spec spawn_authorize_call_fun(atom(), ne_binary(), wh_proplist()) -> pid_ref().
+spawn_authorize_call_fun(Node, CallId, Props) ->
+    Ref = make_ref(),
+    Pid = wh_util:spawn(fun authorize_call_fun/5, [self(), Ref, Node, CallId, Props]),
+    {Pid, Ref}.
+
+-spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), wh_proplist()) -> any().
+authorize_call_fun(Self, Ref, Node, CallId, Props) ->
+    Self ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
 
 -spec hunt_context(wh_proplist()) -> api_binary().
 hunt_context(Props) ->
     props:get_value(<<"Hunt-Context">>, Props, ?DEFAULT_FREESWITCH_CONTEXT).
 
--spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
-    case wh_util:is_true(ecallmgr_config:get(<<"authz_enabled">>, 'false'))
-        andalso wh_json:get_value(<<"Method">>, JObj) =/= <<"error">>
-    of
-        'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj);
+-spec maybe_wait_for_authz('undefined' | pid_ref(), atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+maybe_wait_for_authz('undefined', Section, Node, FetchId, CallId, JObj) ->
+    reply_affirmative(Section, Node, FetchId, CallId, JObj);
+maybe_wait_for_authz(AuthzWorker, Section, Node, FetchId, CallId, JObj) ->
+    case wh_json:get_value(<<"Method">>, JObj) =/= <<"error">> of
+        'true' -> wait_for_authz(AuthzWorker, Section, Node, FetchId, CallId, JObj);
         'false' -> reply_affirmative(Section, Node, FetchId, CallId, JObj)
     end.
 
--spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
-wait_for_authz(Section, Node, FetchId, CallId, JObj) ->
-    case wh_cache:wait_for_key_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)) of
-        {'ok', {'true', AuthzCCVs}} ->
-            _ = wh_cache:erase_local(?ECALLMGR_UTIL_CACHE, ?AUTHZ_RESPONSE_KEY(CallId)),
+-spec wait_for_authz(pid_ref(), atom(), atom(), ne_binary(), ne_binary(), wh_json:object()) -> 'ok'.
+wait_for_authz({Pid, Ref}, Section, Node, FetchId, CallId, JObj) ->
+    receive
+        {'authorize_reply', Ref, 'false'} -> reply_forbidden(Section, Node, FetchId);
+        {'authorize_reply', Ref, 'true'} -> reply_affirmative(Section, Node, FetchId, CallId, JObj);
+        {'authorize_reply', Ref, {'true', AuthzCCVs}} ->
             CCVs = wh_json:get_value(<<"Custom-Channel-Vars">>, JObj, wh_json:new()),
             J = wh_json:set_value(<<"Custom-Channel-Vars">>
                                   ,wh_json:merge_jobjs(CCVs, AuthzCCVs)
                                   ,JObj
                                  ),
-            reply_affirmative(Section, Node, FetchId, CallId, J);
-        _Else -> reply_forbidden(Section, Node, FetchId)
+            reply_affirmative(Section, Node, FetchId, CallId, J)
+    after 3000 ->
+        lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
 %% Reply with a 402 for unauthzed calls

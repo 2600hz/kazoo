@@ -28,8 +28,8 @@
          ,authorizing_id/1
          ,authorizing_type/1
 
-         ,account_id/1, account_billing/1
-         ,reseller_id/1, reseller_billing/1
+         ,account_id/1, account_billing/1, account_trunk_usage/1
+         ,reseller_id/1, reseller_billing/1, reseller_trunk_usage/1
 
          ,from_network_ip/1, from_network_port/1
          ,user_agent/1
@@ -142,6 +142,10 @@ account_id(Props) ->
 account_billing(Props) ->
     ccv(Props, <<"Account-Billing">>).
 
+-spec account_trunk_usage(wh_proplist()) -> api_binary().
+account_trunk_usage(Props) ->
+    ccv(Props, <<"Account-Trunk-Usage">>).
+
 -spec reseller_id(wh_proplist()) -> api_binary().
 reseller_id(Props) ->
     ccv(Props, <<"Reseller-ID">>).
@@ -149,6 +153,10 @@ reseller_id(Props) ->
 -spec reseller_billing(wh_proplist()) -> api_binary().
 reseller_billing(Props) ->
     ccv(Props, <<"Reseller-Billing">>).
+
+-spec reseller_trunk_usage(wh_proplist()) -> api_binary().
+reseller_trunk_usage(Props) ->
+    ccv(Props, <<"Reseller-Trunk-Usage">>).
 
 -spec to_did(wh_proplist()) -> api_binary().
 to_did(Props) ->
