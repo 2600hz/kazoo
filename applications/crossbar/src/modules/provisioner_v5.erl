@@ -239,9 +239,29 @@ settings(JObj) ->
               ,{<<"datetime">>, settings_datetime(JObj)}
               ,{<<"feature_keys">>, settings_feature_keys(JObj)}
               ,{<<"line_keys">>, settings_line_keys(JObj)}
-              ]
-             ),
+              ,{<<"combo_keys">>, settings_combo_keys(JObj)}
+              ]),
     kz_json:from_list(Props).
+
+-spec settings_combo_keys(kz_json:object()) -> kz_json:object().
+settings_combo_keys(JObj) ->
+    ComboKeys = kz_json:get_ne_value([<<"provision">>, <<"combo_keys">>], JObj, kz_json:new()),
+    kz_json:map(fun settings_combo_keys_map/2, ComboKeys).
+
+-spec settings_combo_keys_map(ne_binary(), kz_json:object()) -> {ne_binary(), kz_json:object()}.
+settings_combo_keys_map(Index, JObj) ->
+    Type = case kz_json:get_ne_binary_value(<<"type">>, JObj) of
+               undefined -> undefined;
+               <<"speed_dial">> -> 13;
+               _ -> 16
+           end,
+    NewComboKey = kz_json:from_list(
+                    props:filter_undefined(
+                      [{<<"value">>, kz_json:get_ne_binary_value(<<"value">>, JObj)}
+                      ,{<<"type">>, Type}
+                      ])),
+    NewJObj = kz_json:from_list(props:filter_empty([{<<"key">>, NewComboKey}])),
+    {Index, NewJObj}.
 
 -spec settings_line_keys(kz_json:object()) -> kz_json:object().
 settings_line_keys(JObj) ->
