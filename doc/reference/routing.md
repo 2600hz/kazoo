@@ -263,7 +263,7 @@ sup jonny5_maintenance authz_summary [{ACCOUNT_ID}]
 ```
 
 ```
-sup jonny5_maintenance limits_summary [{ACCOUNT_ID}]
+sup jonny5_maintenance limits_summary
 +----------------------------------+-------+----------------+------------+--------------------------+------------+-------------+
 | Account ID                       | Calls | Resource Calls | Allotments |           Trunks         | Per Minute | Max Postpay |
 |                                  |       |                |            |  In | Out | Both | Burst |            |             |
