@@ -161,8 +161,6 @@
 -define(STARTUP_FILE, [code:priv_dir(?APP), "/startup.config"]).
 -define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).
 
--define(AUTHZ_RESPONSE_KEY(CallId), {'authz_response', CallId}).
-
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}
              ,{'reloadacl', \"\"}
