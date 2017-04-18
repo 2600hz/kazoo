@@ -19,6 +19,7 @@
 -export([e164/1
         ,account_id/1
         ,carrier_module/1
+        ,ported_in/1
         ]).
 
 %% Appliers
@@ -63,6 +64,7 @@ init() ->
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".e164">>, ?MODULE, 'e164'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".account_id">>, ?MODULE, 'account_id'),
     _ = tasks_bindings:bind(<<"tasks."?CATEGORY".carrier_module">>, ?MODULE, 'carrier_module'),
+    _ = tasks_bindings:bind(<<"tasks."?CATEGORY".ported_in">>, ?MODULE, 'ported_in'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
 -spec output_header(ne_binary()) -> kz_tasks:output_header().
@@ -184,21 +186,7 @@ action(<<"import">>) ->
     ,{<<"expected_content">>, <<"text/csv">>}
     ,{<<"mandatory">>, [<<"e164">>
                        ]}
-    ,{<<"optional">>, [<<"account_id">>
-                      ,<<"carrier_module">>
-                      ,<<"ported_in">>
-                      ,<<"previously_assigned_to">>
-                      ,<<"created">>
-                      ,<<"modified">>
-                      ,<<"used_by">>
-                      ,<<"cnam.inbound">>
-                      ,<<"cnam.outbound">>
-                      ,<<"e911.postal_code">>
-                      ,<<"e911.street_address">>
-                      ,<<"e911.extended_address">>
-                      ,<<"e911.locality">>
-                      ,<<"e911.region">>
-                      ]}
+    ,{<<"optional">>, list_output_header() -- [<<"e164">>]}
     ];
 
 action(<<"assign_to">>) ->
@@ -273,6 +261,11 @@ account_id(_) -> 'false'.
 carrier_module(Data) ->
     lists:member(Data, knm_carriers:all_modules()).
 
+-spec ported_in(ne_binary()) -> boolean().
+ported_in(<<"true">>) -> true;
+ported_in(<<"false">>) -> true;
+ported_in(_) -> false.
+
 
 %%% Appliers
 
@@ -316,6 +309,9 @@ list_number(N) ->
     InboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_INBOUND),
     OutboundCNAM = knm_phone_number:feature(PN, ?FEATURE_CNAM_OUTBOUND),
     E911 = knm_phone_number:feature(PN, ?FEATURE_E911),
+    Prepend = knm_phone_number:feature(PN, ?FEATURE_PREPEND),
+    Ringback = knm_phone_number:feature(PN, ?FEATURE_RINGBACK),
+    Failover = knm_phone_number:feature(PN, ?FEATURE_FAILOVER),
     #{<<"e164">> => knm_phone_number:number(PN)
      ,<<"account_id">> => knm_phone_number:assigned_to(PN)
      ,<<"previously_assigned_to">> => knm_phone_number:prev_assigned_to(PN)
@@ -327,11 +323,19 @@ list_number(N) ->
      ,<<"carrier_module">> => knm_phone_number:module_name(PN)
      ,<<"cnam.inbound">> => kz_term:to_binary(kz_json:is_true(?CNAM_INBOUND_LOOKUP, InboundCNAM))
      ,<<"cnam.outbound">> => kz_json:get_ne_binary_value(?CNAM_DISPLAY_NAME, OutboundCNAM)
-     ,<<"e911.postal_code">> => kz_json:get_ne_binary_value(?E911_ZIP, E911)
+     ,<<"e911.locality">> => kz_json:get_ne_binary_value(?E911_CITY, E911)
+     ,<<"e911.name">> => kz_json:get_ne_binary_value(?E911_NAME, E911)
+     ,<<"e911.region">> => kz_json:get_ne_binary_value(?E911_STATE, E911)
      ,<<"e911.street_address">> => kz_json:get_ne_binary_value(?E911_STREET1, E911)
      ,<<"e911.extended_address">> => kz_json:get_ne_binary_value(?E911_STREET2, E911)
-     ,<<"e911.locality">> => kz_json:get_ne_binary_value(?E911_CITY, E911)
-     ,<<"e911.region">> => kz_json:get_ne_binary_value(?E911_STATE, E911)
+     ,<<"e911.postal_code">> => kz_json:get_ne_binary_value(?E911_ZIP, E911)
+     ,<<"prepend.enabled">> => kz_term:to_binary(kz_json:is_true(?PREPEND_ENABLED, Prepend))
+     ,<<"prepend.name">> => kz_json:get_ne_binary_value(?PREPEND_NAME, Prepend)
+     ,<<"prepend.number">> => kz_json:get_ne_binary_value(?PREPEND_NUMBER, Prepend)
+     ,<<"ringback.early">> => kz_json:get_ne_binary_value(?RINGBACK_EARLY, Ringback)
+     ,<<"ringback.transfer">> => kz_json:get_ne_binary_value(?RINGBACK_TRANSFER, Ringback)
+     ,<<"force_outbound">> => kz_term:to_binary(knm_number:force_outbound_feature(PN))
+     ,<<"failover">> => Failover
      }.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
@@ -383,8 +387,8 @@ import(#{account_id := Account
       ,Args=#{<<"e164">> := E164
              ,<<"account_id">> := AccountId0
              ,<<"carrier_module">> := Carrier
+             ,<<"ported_in">> := PortedIn
               %%TODO: use all the optional fields
-             ,<<"ported_in">> := _PortIn
              ,<<"previously_assigned_to">> := _PrevAssignedTo
              ,<<"created">> := _Created
              ,<<"modified">> := _Modified
@@ -422,10 +426,15 @@ import(#{account_id := Account
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, ModuleName}
+              ,{ported_in, is_ported_in(PortedIn)}
               ,{public_fields, kz_json:from_list(PublicFields)}
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
+
+%% @private
+is_ported_in(<<"true">>) -> true;
+is_ported_in(_) -> false.
 
 %% @private
 additional_fields_to_json(Args) ->
