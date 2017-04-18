@@ -166,7 +166,7 @@ authz_response(JObj, Props, CallId, Node) ->
             case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
-                    _ = kz_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
+                    _ = kz_util:spawn(fun kill_channel/2, [Props, Node]),
                     'false'
             end
     end.
@@ -288,7 +288,7 @@ authz_default(Props, CallId, Node) ->
     of
         'false' -> rate_call(Props, CallId, Node);
         'true' ->
-            _ = kz_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
+            _ = kz_util:spawn(fun kill_channel/2, [Props, Node]),
             'false'
     end.
 
