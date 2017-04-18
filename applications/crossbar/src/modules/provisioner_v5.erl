@@ -334,7 +334,7 @@ settings_keys(Assoc, KeyKind, JObj) ->
     end.
 
 -spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary(), kz_json:object()) -> api_object().
-get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId, Assoc) ->
+get_feature_key(<<"presence">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
@@ -347,7 +347,7 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId, Assoc) -
                 ,{<<"account">>, get_line_key(Brand, Family)}
                 ]))
     end;
-get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId, Assoc) ->
+get_feature_key(<<"speed_dial">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, Value}
@@ -355,7 +355,7 @@ get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId, Assoc
         ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
         ]));
-get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId, Assoc) ->
+get_feature_key(<<"personal_parking">>=Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
@@ -368,11 +368,19 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId, 
                 ,{<<"account">>, get_line_key(Brand, Family)}
                 ]))
     end;
-get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId, Assoc) ->
+get_feature_key(<<"parking">>=Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, <<>>}
         ,{<<"value">>, <<"*3", Value/binary>>}
+        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
+        ,{<<"account">>, get_line_key(Brand, Family)}
+        ]));
+get_feature_key(<<"line">>=Type, _Value, Brand, Family, _AccountId, Assoc) ->
+    kz_json:from_list(
+      props:filter_undefined(
+        [{<<"label">>, <<>>}
+        ,{<<"value">>, <<>>}
         ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
         ])).
