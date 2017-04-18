@@ -556,8 +556,8 @@ activation_charges(CategoryId, ItemId, Account=?NE_BINARY) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec commit_transactions(services(), kz_transactions:kz_transactions()) -> atom().
-commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
-    Bookkeeper = select_bookkeeper(BillingId),
+commit_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
+    Bookkeeper = select_bookkeeper(Services),
     Transactions = [Activation
                     || Activation <- Activations
                            ,kz_transaction:amount(Activation) > 0
@@ -571,8 +571,8 @@ commit_transactions(#kz_services{billing_id=BillingId}, Activations) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec charge_transactions(services(), kz_transactions:kz_transactions()) -> kz_json:objects().
-charge_transactions(#kz_services{billing_id=BillingId}, Activations) ->
-    Bookkeeper = select_bookkeeper(BillingId),
+charge_transactions(#kz_services{billing_id=BillingId}=Services, Activations) ->
+    Bookkeeper = select_bookkeeper(Services),
     Transactions = [kz_transaction:to_json(Activation)
                     || Activation <- Activations
                            ,kz_transaction:amount(Activation) > 0
@@ -586,13 +586,29 @@ charge_transactions(#kz_services{billing_id=BillingId}, Activations) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec select_bookkeeper(services() | ne_binary()) -> bookkeeper().
-select_bookkeeper(#kz_services{billing_id=BillingId}) ->
-    select_bookkeeper(BillingId);
-select_bookkeeper(BillingId) ->
-    ResellerId = get_reseller_id(BillingId),
+select_bookkeeper(#kz_services{billing_id=BillingId
+                              ,account_id=AccountId
+                              }
+                 ) ->
+    BillingIdReseller = get_reseller_id(BillingId),
+    {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
+    case BillingIdReseller =/= MasterAccountId of
+        'true' ->
+            case BillingIdReseller == get_reseller_id(AccountId) of
+                'true' -> select_bookkeeper(AccountId);
+                'false' -> 'kz_bookkeeper_local'
+            end;
+        'false' -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
+    end;
+select_bookkeeper(AccountId) ->
+    ResellerId = get_reseller_id(AccountId),
     {'ok', MasterAccountId} = kapps_util:get_master_account_id(),
     case ResellerId =/= MasterAccountId of
-        'true' -> 'kz_bookkeeper_local';
+        'true' ->
+            case ?MAYBE_RESELLER_BOOKKEEPER_LOOKUP of
+                'true' -> ?KZ_LOOKUP_BOOKKEEPER(ResellerId);
+                'false' -> 'kz_bookkeeper_local'
+            end;
         'false' -> ?KZ_SERVICE_MASTER_ACCOUNT_BOOKKEEPER
     end.
 

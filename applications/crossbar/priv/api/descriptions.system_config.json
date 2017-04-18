@@ -602,6 +602,7 @@
     "services.http_sync.http_url": "services http sync http url",
     "services.master_account_bookkeeper": "services master account bookkeeper",
     "services.modules": "services modules",
+    "services.reseller_bookkeeper_lookup": "allow resellers configure bookkeeper for children billing",
     "services.scan_rate": "services scan rate",
     "services.should_save_master_audit_logs": "services should save master audit logs",
     "services.support_billing_id": "services support billing id",
