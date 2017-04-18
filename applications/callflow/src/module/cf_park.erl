@@ -19,7 +19,7 @@
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".park">>).
 
--define(DB_DOC_NAME, kapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
+-define(DB_DOC_NAME, kapps_config:get_binary(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
 -define(DEFAULT_RINGBACK_TM, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_ringback_timeout">>, 120000)).
 -define(DEFAULT_CALLBACK_TM, kapps_config:get_integer(?MOD_CONFIG_CAT, <<"default_callback_timeout">>, 30000)).
 -define(PARKED_CALLS_KEY(Db), {?MODULE, 'parked_calls', Db}).
@@ -543,11 +543,12 @@ get_parked_calls(AccountDb, AccountId) ->
 
 -spec fetch_parked_calls(ne_binary(), ne_binary()) -> kz_json:object().
 fetch_parked_calls(AccountDb, AccountId) ->
-    case kz_datamgr:open_doc(AccountDb, ?DB_DOC_NAME) of
+    DocName = ?DB_DOC_NAME,
+    case kz_datamgr:open_doc(AccountDb, DocName) of
         {'error', 'not_found'} ->
             TS = kz_time:current_tstamp(),
-            Generators = [fun(J) -> kz_doc:set_id(J, <<"parked_calls">>) end
-                         ,fun(J) -> kz_doc:set_type(J, <<"parked_calls">>) end
+            Generators = [fun(J) -> kz_doc:set_id(J, DocName) end
+                         ,fun(J) -> kz_doc:set_type(J, DocName) end
                          ,fun(J) -> kz_doc:set_account_id(J, AccountId) end
                          ,fun(J) -> kz_doc:set_account_db(J, AccountDb) end
                          ,fun(J) -> kz_doc:set_created(J, TS) end
@@ -857,15 +858,14 @@ publish_abandoned(Call, Slot) ->
 %%--------------------------------------------------------------------
 -spec publish_event(kapps_call:call(), ne_binary(), ne_binary()) -> 'ok'.
 publish_event(Call, SlotNumber, Event) ->
-    Cmd = [
-           {<<"Event-Name">>, Event}
-          ,{<<"Call-ID">>, kapps_call:call_id(Call)}
-          ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
-          ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
-          ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
-          ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+    Cmd = [{<<"Call-ID">>, kapps_call:call_id(Call)}
           ,{<<"Callee-ID-Name">>, kapps_call:callee_id_name(Call)}
+          ,{<<"Callee-ID-Number">>, kapps_call:callee_id_number(Call)}
+          ,{<<"Caller-ID-Name">>, kapps_call:caller_id_name(Call)}
+          ,{<<"Caller-ID-Number">>, kapps_call:caller_id_number(Call)}
           ,{<<"Custom-Channel-Vars">>, kapps_call:custom_channel_vars(Call)}
+          ,{<<"Event-Name">>, Event}
+          ,{<<"Parking-Slot">>, kz_term:to_binary(SlotNumber)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
     kapi_call:publish_event(Cmd).
