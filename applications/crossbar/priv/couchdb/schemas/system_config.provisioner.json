@@ -7,6 +7,10 @@
             "description": "provisioner cluster id",
             "type": "string"
         },
+        "combo_keys": {
+            "description": "provisioner combo keys",
+            "type": "object"
+        },
         "feature_keys": {
             "default": {
                 "cisco": {
