@@ -5,12 +5,15 @@
 -define(FEATURE_KEYS, kapps_config:get_json(?MOD_CONFIG_CAT, <<"feature_keys">>, ?LOCAL_FEATURE_KEYS)).
 -define(COMBO_KEYS, kapps_config:get_json(?MOD_CONFIG_CAT, <<"combo_keys">>, ?LOCAL_COMBO_KEYS)).
 
--define(KEYS_FUN(A, B, C, D), kz_json:from_list(
-                                [{<<"presence">>, A}
-                                ,{<<"speed_dial">>, B}
-                                ,{<<"parking">>, C}
-                                ,{<<"personal_parking">>, D}
-                                ])).
+-define(KEYS_FUN(A, B, C, D), ?KEYS_FUN(A, B, C, D, undefined)).
+-define(KEYS_FUN(A, B, C, D, E), kz_json:from_list(
+                                   props:filter_undefined(
+                                     [{<<"presence">>, A}
+                                     ,{<<"speed_dial">>, B}
+                                     ,{<<"parking">>, C}
+                                     ,{<<"personal_parking">>, D}
+                                     ,{<<"line">>, E}
+                                     ]))).
 
 -define(LOCAL_FEATURE_KEYS, kz_json:from_list(
                               [{<<"polycom">>, ?POLYCOM_FEATURE_KEYS}
@@ -47,28 +50,31 @@
 
 
 -define(LOCAL_COMBO_KEYS, kz_json:from_list(
-                            [{<<"polycom">>, ?POLYCOM_COMBO_KEYS}
-                            ,{<<"yealink">>, ?YEALINK_COMBO_KEYS}
+                            [{<<"yealink">>, ?YEALINK_COMBO_KEYS}
                             ,{<<"cisco">>, ?CISCO_COMBO_KEYS}
                             ,{<<"grandstream">>, ?GRANDSTREAM_COMBO_KEYS}
                             ,{<<"obihai">>, ?OBIHAI_COMBO_KEYS}
                             ])).
 
--define(POLYCOM_COMBO_KEYS, ?POLYCOM_FEATURE_KEYS).
-
--define(YEALINK_COMBO_KEYS, ?YEALINK_FEATURE_KEYS).
+-define(YEALINK_COMBO_KEYS,
+        kz_json:from_list(
+          [{<<"_">>, ?KEYS_FUN(<<"16">>, <<"13">>, <<"10">>, <<"10">>, <<"15">>)}]
+         )).
 
 -define(CISCO_COMBO_KEYS,
         kz_json:from_list(
-          [{<<"_">>, ?KEYS_FUN(<<>>, <<>>, <<>>, <<>>)}]
+          [{<<"_">>, ?KEYS_FUN(<<>>, <<>>, <<>>, <<>>, <<>>)}]
          )).
 
 -define(GRANDSTREAM_COMBO_KEYS,
         kz_json:from_list(
-          [{<<"_">>, ?KEYS_FUN(<<"11">>, <<"10">>, <<"19">>, <<"11">>)}]
+          [{<<"_">>, ?KEYS_FUN(<<"11">>, <<"10">>, <<"19">>, <<"11">>, <<"0">>)}]
          )).
 
--define(OBIHAI_COMBO_KEYS, ?OBIHAI_FEATURE_KEYS).
+-define(OBIHAI_COMBO_KEYS,
+        kz_json:from_list(
+          [{<<"_">>, ?KEYS_FUN(<<"Busy Lamp Field">>, <<"Speed Dial">>, <<"Call Park Monitor">>, <<"Busy Lamp Field">>, <<"Call Appearance">>)}]
+         )).
 
 -define(PROVISIONER_V5_HRL, 'true').
 -endif.
