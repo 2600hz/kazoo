@@ -353,7 +353,10 @@ do_save_slot(SlotNumber, Slot, ParkedCalls, Call) ->
                     kz_cache:store_local(?CACHE_NAME, ?PARKED_CALLS_KEY(AccountDb), JObj, CacheProps),
                     Ok;
                 {'error', 'conflict'} ->
-                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call)
+                    maybe_resolve_conflict(SlotNumber, Slot, ParkedCalls, Call);
+                {'error', _Error} ->
+                    lager:info("error when attempting to store call parking data for slot ~s : ~p", [SlotNumber, _Error]),
+                    {'error', 'occupied'}
             end;
         _Else ->
             lager:debug("ignoring attempt to park terminated call ~s", [CallId]),
