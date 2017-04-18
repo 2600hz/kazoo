@@ -121,11 +121,19 @@ list_output_header() ->
     ,<<"carrier_module">>
     ,<<"cnam.inbound">>
     ,<<"cnam.outbound">>
-    ,<<"e911.postal_code">>
+    ,<<"e911.locality">>
+    ,<<"e911.name">>
+    ,<<"e911.region">>
     ,<<"e911.street_address">>
     ,<<"e911.extended_address">>
-    ,<<"e911.locality">>
-    ,<<"e911.region">>
+    ,<<"e911.postal_code">>
+    ,<<"prepend.enabled">>
+    ,<<"prepend.name">>
+    ,<<"prepend.number">>
+    ,<<"ringback.early">>
+    ,<<"ringback.transfer">>
+    ,<<"force_outbound">>
+    ,<<"failover">>
     ].
 
 -spec list_doc() -> ne_binary().
@@ -138,15 +146,23 @@ list_doc() ->
       "* `created`: timestamp number document was created.\n"
       "* `modified`: timestamp number document was last updated.\n"
       "* `used_by`: Kazoo application handling this number.\n"
-      "* `ported_in`: whether this number was imported as part of a port request.\n"
+      "* `ported_in`: whether this number was imported as part of a port request ('true' of 'false').\n"
       "* `carrier_module`: service that created the number document.\n"
-      "* `cnam.inbound`: whether inbound CNAM is activated.\n"
+      "* `cnam.inbound`: whether inbound CNAM is activated ('true' or 'false').\n"
       "* `cnam.outbound`: caller ID to use on outbound calls.\n"
-      "* `e911.post_code`: E911 postal code.\n"
+      "* `e911.locality`: E911 locality.\n"
+      "* `e911.name`: E911 name.\n"
+      "* `e911.region`: E911 region.\n"
       "* `e911.street_address`: E911 street address.\n"
       "* `e911.extended_address`: E911 street address, second field.\n"
-      "* `e911.locality`: E911 locality.\n"
-      "* `e911.region`: E911 region.\n"
+      "* `e911.postal_code`: E911 postal code.\n"
+      "* `prepend.enabled`: whether prepend is enabled ('true' or 'false').\n"
+      "* `prepend.name`: prepend name.\n"
+      "* `prepend.number`: prepend number.\n"
+      "* `ringback.early`: ringback early.\n"
+      "* `ringback.early`: ringback transfer.\n"
+      "* `force_outbound`: whether this number is forced outbound ('true' or 'false').\n"
+      "* `failover`: failover.\n"
     >>.
 
 -spec help(kz_json:object()) -> kz_json:object().
@@ -158,94 +174,87 @@ help(JObj, <<?CATEGORY>>=Category) ->
 
 -spec help(kz_json:object(), ne_binary(), ne_binary()) -> kz_json:object().
 help(JObj, <<?CATEGORY>>=Category, Action) ->
-    kz_json:set_value([Category, Action], kz_json:from_list(action(Action)), JObj).
+    kz_json:set_value([Category, Action], kz_json:from_map(action(Action)), JObj).
 
--spec action(ne_binary()) -> kz_proplist().
+-spec action(ne_binary()) -> map().
 action(<<"list">>) ->
-    [{<<"description">>, <<"List all numbers assigned to the account starting the task">>}
-    ,{<<"doc">>, list_doc()}
-    ];
+    #{<<"description">> => <<"List all numbers assigned to the account starting the task">>
+     ,<<"doc">> => list_doc()
+     };
 action(<<"list_all">>) ->
-    [{<<"description">>, <<"List all numbers assigned to the account starting the task & its subaccounts">>}
-    ,{<<"doc">>, list_doc()}
-    ];
+    #{<<"description">> => <<"List all numbers assigned to the account starting the task & its subaccounts">>
+     ,<<"doc">> => list_doc()
+     };
 action(<<"dump">>) ->
-    [{<<"description">>, <<"List all numbers that exist in the system">>}
-    ,{<<"doc">>, list_doc()}
-    ];
+    #{<<"description">> => <<"List all numbers that exist in the system">>
+     ,<<"doc">> => list_doc()
+     };
 
 action(<<"import">>) ->
-    [{<<"description">>, <<"Bulk-import numbers using superadmin privileges">>}
-    ,{<<"doc">>, <<"Creates numbers from fields similar to list tasks.\n"
-                   "Note: number must be E164-formatted.\n"
-                   "Note: number must not be in the system already.\n"
-                   "If `account_id` is empty, number will be assigned to account creating task.\n"
-                   "`module_name` will be set only if account creating task is system admin.\n"
-                   "Note: `carrier_module` defaults to 'knm_local'.\n"
-                 >>}
-    ,{<<"expected_content">>, <<"text/csv">>}
-    ,{<<"mandatory">>, [<<"e164">>
-                       ]}
-    ,{<<"optional">>, list_output_header() -- [<<"e164">>]}
-    ];
+    #{<<"description">> => <<"Bulk-import numbers using superadmin privileges">>
+     ,<<"doc">> => <<"Creates numbers from fields similar to list tasks.\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must not be in the system already.\n"
+                     "If `account_id` is empty, number will be assigned to account creating task.\n"
+                     "`module_name` will be set only if account creating task is system admin.\n"
+                     "Note: `carrier_module` defaults to '", (?IMPORT_DEFAULTS_TO_CARRIER)/binary, "'.\n"
+                     "To add a public field 'MyPub' to a number, create a column named 'opaque.MyPub'.\n"
+                     "Note: to nest a public field 'my_nested_field' under 'my_field', name the column thusly: 'opaque.my_field.my_nested_field'.\n"
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => list_output_header() -- [<<"e164">>]
+     };
 
 action(<<"assign_to">>) ->
-    [{<<"description">>, <<"Bulk-assign numbers to the provided account">>}
-    ,{<<"doc">>, <<"Assign existing numbers to another account.\n"
-                   "Note: number must be E164-formatted.\n"
-                   "Note: number must already exist.\n"
-                   "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
-                   "Note: target `account_id` must exist.\n"
-                   "Note: after assignment, number state will be 'in_service'.\n"
-                 >>}
-    ,{<<"expected_content">>, <<"text/csv">>}
-    ,{<<"mandatory">>, [<<"e164">>
-                       ]}
-    ,{<<"optional">>, [<<"account_id">>
-                      ]}
-    ];
+    #{<<"description">> => <<"Bulk-assign numbers to the provided account">>
+     ,<<"doc">> => <<"Assign existing numbers to another account.\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must already exist.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                     "Note: target `account_id` must exist.\n"
+                     "Note: after assignment, number state will be 'in_service'.\n"
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => [<<"account_id">>]
+     };
 
 action(<<"release">>) ->
-    [{<<"description">>, <<"Unassign numbers from accounts">>}
-    ,{<<"doc">>, <<"Release numbers (removing happens if account is configured so).\n"
-                   "Note: number must be E164-formatted.\n"
-                   "Note: number must already exist.\n"
-                   "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
-                 >>}
-    ,{<<"expected_content">>, <<"text/csv">>}
-    ,{<<"mandatory">>, [<<"e164">>
-                       ]}
-    ,{<<"optional">>, [
-                      ]}
-    ];
+    #{<<"description">> => <<"Unassign numbers from accounts">>
+     ,<<"doc">> => <<"Release numbers (removing happens if account is configured so).\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must already exist.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => []
+     };
 
 action(<<"reserve">>) ->
-    [{<<"description">>, <<"Bulk-reserve numbers">>}
-    ,{<<"doc">>, <<"Sets numbers to state 'reserved' (creating number if it is missing).\n"
-                   "Note: number must be E164-formatted.\n"
-                   "Note: account creating the task (or `auth_by` account) must have permission to proceed.\n"
-                   "Note: after transitionning state to 'reserved', number is assigned to `account_id`.\n"
-                 >>}
-    ,{<<"expected_content">>, <<"text/csv">>}
-    ,{<<"mandatory">>, [<<"e164">>
-                       ]}
-    ,{<<"optional">>, [<<"account_id">>
-                      ]}
-    ];
+    #{<<"description">> => <<"Bulk-reserve numbers">>
+     ,<<"doc">> => <<"Sets numbers to state 'reserved' (creating number if it is missing).\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permission to proceed.\n"
+                     "Note: after transitionning state to 'reserved', number is assigned to `account_id`.\n"
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => [<<"account_id">>]
+     };
 
 action(<<"delete">>) ->
-    [{<<"description">>, <<"Bulk-remove numbers">>}
-    ,{<<"doc">>, <<"Forces numbers to be deleted from the system.\n"
-                   "Note: number must be E164-formatted.\n"
-                   "Note: number must already exist.\n"
-                   "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
-                 >>}
-    ,{<<"expected_content">>, <<"text/csv">>}
-    ,{<<"mandatory">>, [<<"e164">>
-                       ]}
-    ,{<<"optional">>, [
-                      ]}
-    ].
+    #{<<"description">> => <<"Bulk-remove numbers">>
+     ,<<"doc">> => <<"Forces numbers to be deleted from the system.\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must already exist.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => []
+     }.
 
 %%% Verifiers
 
@@ -312,6 +321,7 @@ list_number(N) ->
     Prepend = knm_phone_number:feature(PN, ?FEATURE_PREPEND),
     Ringback = knm_phone_number:feature(PN, ?FEATURE_RINGBACK),
     Failover = knm_phone_number:feature(PN, ?FEATURE_FAILOVER),
+
     #{<<"e164">> => knm_phone_number:number(PN)
      ,<<"account_id">> => knm_phone_number:assigned_to(PN)
      ,<<"previously_assigned_to">> => knm_phone_number:prev_assigned_to(PN)
@@ -388,24 +398,29 @@ import(#{account_id := Account
              ,<<"account_id">> := AccountId0
              ,<<"carrier_module">> := Carrier
              ,<<"ported_in">> := PortedIn
+             ,<<"previously_assigned_to">> := _
+             ,<<"created">> := _
+             ,<<"modified">> := _
               %%TODO: use all the optional fields
-             ,<<"previously_assigned_to">> := _PrevAssignedTo
-             ,<<"created">> := _Created
-             ,<<"modified">> := _Modified
              ,<<"used_by">> := _UsedBy
              ,<<"cnam.inbound">> := CNAMInbound0
              ,<<"cnam.outbound">> := CNAMOutbound
-             ,<<"e911.postal_code">> := E911PostalCode
+             ,<<"e911.locality">> := E911Locality
+             ,<<"e911.name">> := E911Name
+             ,<<"e911.region">> := E911Region
              ,<<"e911.street_address">> := E911StreetAddress
              ,<<"e911.extended_address">> := E911ExtendedAddress
-             ,<<"e911.locality">> := E911Locality
-             ,<<"e911.region">> := E911Region
+             ,<<"e911.postal_code">> := E911PostalCode
+             ,<<"prepend.enabled">> := _PrependEnabled
+             ,<<"prepend.name">> := _PrependName
+             ,<<"prepend.number">> := _PrependNumber
+             ,<<"ringback.early">> := _RingbackEarly
+             ,<<"ringback.transfer">> := _RingbackTransfer
+             ,<<"force_outbound">> := _ForceOutbound
+             ,<<"failover">> := _Failover
              }
       ) ->
-    AccountId = case undefined =:= AccountId0 of
-                    true -> Account;
-                    false -> AccountId0
-                end,
+
     ModuleName = case kz_util:is_system_admin(Account)
                      andalso Carrier
                  of
@@ -415,13 +430,15 @@ import(#{account_id := Account
                  end,
     CNAMInbound = kz_term:is_true(CNAMInbound0),
     E911 = e911(props:filter_empty(
-                  [{?E911_ZIP, E911PostalCode}
+                  [{?E911_CITY, E911Locality}
+                  ,{?E911_NAME, E911Name}
+                  ,{?E911_STATE, E911Region}
                   ,{?E911_STREET1, E911StreetAddress}
                   ,{?E911_STREET2, E911ExtendedAddress}
-                  ,{?E911_CITY, E911Locality}
-                  ,{?E911_STATE, E911Region}
+                  ,{?E911_ZIP, E911PostalCode}
                   ])),
     PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911 ++ additional_fields_to_json(Args),
+    AccountId = select_account_id(AccountId0, Account),
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
