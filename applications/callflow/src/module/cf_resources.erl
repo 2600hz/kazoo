@@ -220,10 +220,13 @@ get_request_did(Data, Call) ->
     case kz_json:is_true(<<"do_not_normalize">>, Data) of
         'true' -> get_original_request_user(Call);
         'false' ->
-            case kz_endpoint:get(Call) of
-                {'error', _ } -> maybe_bypass_e164(Data, Call);
-                {'ok', Endpoint} ->
-                    maybe_apply_dialplan(Endpoint, Data, Call)
+            AuthId = kapps_call:authorizing_id(Call),
+            EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, AuthId, Call),
+            case EndpointId =/= 'undefined'
+                andalso kz_endpoint:get(EndpointId, kapps_call:account_db(Call))
+            of
+                {'ok', Endpoint} -> maybe_apply_dialplan(Endpoint, Data, Call);
+                _Else -> maybe_bypass_e164(Data, Call)
             end
     end.
 
