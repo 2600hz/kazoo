@@ -146,8 +146,6 @@
 -define(STARTUP_FILE, [code:lib_dir('ecallmgr', 'priv'), "/startup.config"]).
 -define(SETTINGS_FILE, [code:lib_dir('ecallmgr', 'priv'), "/settings.config"]).
 
--define(AUTHZ_RESPONSE_KEY(CallId), {'authz_response', CallId}).
-
 -define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
 {'fs_cmds', [{'load', \"mod_sofia\"}
              ,{'reloadacl', \"\"}
