@@ -25,7 +25,7 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
--type cell() :: ne_binary() | ?ZILCH.
+-type cell() :: binary() | ?ZILCH.
 -type header() :: [ne_binary(),...].
 -type row() :: [cell(),...].
 -type mapped_row() :: #{ne_binary() => cell()}.
@@ -68,7 +68,7 @@ count_rows(CSV) when is_binary(CSV) ->
 
 -spec throw_bad(row(), {integer(), non_neg_integer()}) -> {integer(), non_neg_integer()}.
 throw_bad(Header, {-1,0}) ->
-    case lists:all(fun is_binary/1, Header) of
+    case lists:all(fun kz_term:is_ne_binary/1, Header) of
         %% Strip header line from total rows count
         'true' ->
             {length(Header), 0};
@@ -78,7 +78,7 @@ throw_bad(Header, {-1,0}) ->
     end;
 throw_bad(Row, {MaxRow,RowsCounted}) ->
     case length(Row) of
-        MaxRow -> {MaxRow, RowsCounted+1};
+        MaxRow -> {MaxRow, RowsCounted + 1};
         _ ->
             lager:error("bad row length ~p instead of ~p in ~p", [length(Row), MaxRow, Row]),
             throw({'error', 'bad_csv_row'})
@@ -284,17 +284,29 @@ consume(<<>>, {Acc,io,<<>>}) ->
 consume(<<Sep:8,Bin/binary>>, {Acc,io,<<>>}) when Sep =:= $";
                                                   Sep =:= $' ->
     case binary:split(Bin, <<Sep:8>>) of
-        [BinRest, <<>>] -> {[BinRest|Acc], io, <<>>};
-        _ -> {Acc, Sep, Bin}
+        [BinRest, <<>>] ->
+            {[BinRest|Acc], io, <<>>};
+        [LHS, <<Sep:8,RHS0/binary>>] ->  %% For "escaped" quotes
+            AllButLast = byte_size(RHS0) - 1,
+            <<RHS1:AllButLast/binary, Sep:8>> = RHS0,
+            RHS = binary:replace(RHS1, <<Sep:8,Sep:8>>, <<Sep:8>>),
+            Cell = <<LHS/binary, Sep:8, RHS/binary>>,
+            {[Cell|Acc], io, <<>>};
+        _ ->
+            {Acc, Sep, Bin}
     end;
 consume(Bin, {Acc,io,<<>>}) ->
     {[Bin|Acc], io, <<>>};
 consume(Bin, {Acc,Sep,AccBin}) ->
     case binary:split(Bin, <<Sep:8>>) of
-        [<<>>|_] -> {[AccBin|Acc], io, <<>>};
+        [<<>>|_] ->
+            {[AccBin|Acc], io, <<>>};
         [LastPart, <<>>] ->
             Cell = <<AccBin/binary, $,, LastPart/binary>>,
-            {[Cell|Acc], io, <<>>}
+            {[Cell|Acc], io, <<>>};
+        [Part] ->
+            NewAccBin = <<AccBin/binary, $,, Part/binary>>,
+            {Acc, Sep, NewAccBin}
     end.
 
 %% @private

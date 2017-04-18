@@ -134,6 +134,15 @@ take_row_test_() ->
     ,?_assertEqual({[?ZILCH,<<"A">>,?ZILCH,<<"B">>,<<"1, 3">>,?ZILCH,<<>>,?ZILCH], <<>>}
                   ,kz_csv:take_row(<<",A,,B,'1, 3',,'',\n">>)
                   )
+    ,?_assertEqual({[<<"1">>, <<"{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}'\n">>)
+                  )
+    ,?_assertEqual({[<<"1">>, <<"ha \"ha\" ha">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'ha \"ha\" ha'\n">>)
+                  )
+    ,?_assertEqual({[<<"1">>, <<"ha 'ha' ha">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'ha ''ha'' ha'\n">>)
+                  )
     ].
 
 take_mapped_row_test_() ->
