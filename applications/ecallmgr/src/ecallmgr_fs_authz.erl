@@ -282,7 +282,7 @@ authz_default(Props, CallId, Node) ->
         andalso ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') =/= 'false'
     of
         'false' -> rate_call(Props, CallId, Node);
-        'true' -> 
+        'true' ->
             _ = wh_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
             'false'
     end.
