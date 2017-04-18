@@ -160,14 +160,14 @@ authz_response(JObj, Props, CallId, Node) ->
         'true' -> authorize_account(JObj, Props, CallId, Node);
         'false' ->
             lager:info("channel is unauthorized: ~s/~s"
-                       ,[kz_json:get_value(<<"Account-Billing">>, JObj)
-                         ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
-                        ]),
+                      ,[kz_json:get_value(<<"Account-Billing">>, JObj)
+                       ,kz_json:get_value(<<"Reseller-Billing">>, JObj)
+                       ]),
             case ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') of
                 'true' -> authorize_account(JObj, Props, CallId, Node);
                 'false' ->
                     _ = kz_util:spawn(?MODULE, 'kill_channel', [Props, Node]),
-                   'false'
+                    'false'
             end
     end.
 
@@ -229,13 +229,13 @@ allow_call(Props, _CallId, _Node) ->
     lager:debug("channel authorization succeeded, allowing call"),
     Vars = props:filter_undefined(
              [{<<"Account-ID">>, kzd_freeswitch:account_id(Props)}
-              ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
-              ,{<<"Account-Trunk-Usage">>, kzd_freeswitch:account_trunk_usage(Props)}
-              ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
-              ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
-              ,{<<"Reseller-Trunk-Usage">>, kzd_freeswitch:reseller_trunk_usage(Props)}
-              ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
-              ,{<<"Channel-Authorized">>, <<"true">>}
+             ,{<<"Account-Billing">>, kzd_freeswitch:account_billing(Props)}
+             ,{<<"Account-Trunk-Usage">>, kzd_freeswitch:account_trunk_usage(Props)}
+             ,{<<"Reseller-ID">>, kzd_freeswitch:reseller_id(Props)}
+             ,{<<"Reseller-Billing">>, kzd_freeswitch:reseller_billing(Props)}
+             ,{<<"Reseller-Trunk-Usage">>, kzd_freeswitch:reseller_trunk_usage(Props)}
+             ,{<<"Global-Resource">>, kzd_freeswitch:is_consuming_global_resource(Props)}
+             ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
     case props:is_true(<<"Call-Setup">>, Props, 'false') of
         'false' -> {'true', kz_json:from_list(Vars)};

@@ -81,7 +81,7 @@ wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
                                  ),
             reply_affirmative(Section, Node, FetchId, CallId, J, Props)
     after 5000 ->
-        lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
+            lager:warning("timeout waiting for authz reply from worker ~p", [Pid])
     end.
 
 %% Reply with a 402 for unauthzed calls
