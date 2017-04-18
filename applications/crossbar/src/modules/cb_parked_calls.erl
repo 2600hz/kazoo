@@ -30,7 +30,12 @@ resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    Ctx1 = crossbar_doc:load(?DB_DOC_NAME, Context, [{'expected_type', ?DB_DOC_NAME}]),
+    Ctx1 = crossbar_doc:load(?DB_DOC_NAME
+                            ,Context
+                            ,[{'expected_type', ?DB_DOC_NAME}
+                             ,{'use_cache', 'false'}
+                             ]
+                            ),
 
     case cb_context:doc(Ctx1) of
         'undefined' ->
