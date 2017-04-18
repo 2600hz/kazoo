@@ -236,31 +236,9 @@ settings(JObj) ->
               ]),
     kz_json:from_list(Props).
 
--spec settings_combo_keys(kz_json:object()) -> kz_json:object().
-settings_combo_keys(JObj) ->
-    ComboKeys = kz_json:get_ne_value([<<"provision">>, <<"combo_keys">>], JObj, kz_json:new()),
-    kz_json:map(fun settings_combo_keys_map/2, ComboKeys).
-
--spec settings_combo_keys_map(ne_binary(), kz_json:object()) -> {ne_binary(), kz_json:object()}.
-settings_combo_keys_map(Index, JObj) ->
-    Type = case kz_json:get_ne_binary_value(<<"type">>, JObj) of
-               undefined -> undefined;
-               <<"speed_dial">> -> 13;
-               _ -> 16
-           end,
-    NewComboKey = kz_json:from_list(
-                    props:filter_undefined(
-                      [{<<"value">>, kz_json:get_ne_binary_value(<<"value">>, JObj)}
-                      ,{<<"type">>, Type}
-                      ])),
-    NewJObj = kz_json:from_list(props:filter_empty([{<<"key">>, NewComboKey}])),
-    {Index, NewJObj}.
-
 -spec settings_line_keys(kz_json:object()) -> kz_json:object().
 settings_line_keys(JObj) ->
-    Brand = get_brand(JObj),
-    Family = get_family(JObj),
-    settings_line_keys(Brand, Family).
+    settings_line_keys(get_brand(JObj), get_family(JObj)).
 
 -spec settings_line_keys(ne_binary(), ne_binary()) -> kz_json:object().
 settings_line_keys(<<"yealink">>, _) ->
@@ -327,7 +305,15 @@ settings_datetime(JObj) ->
 
 -spec settings_feature_keys(kz_json:object()) -> kz_json:object().
 settings_feature_keys(JObj) ->
-    FeatureKeys = kz_json:get_value([<<"provision">>, <<"feature_keys">>], JObj, kz_json:new()),
+    settings_keys(?FEATURE_KEYS, <<"feature_keys">>, JObj).
+
+-spec settings_combo_keys(kz_json:object()) -> kz_json:object().
+settings_combo_keys(JObj) ->
+    settings_keys(?COMBO_KEYS, <<"combo_keys">>, JObj).
+
+-spec settings_keys(kz_json:object(), ne_binary(), kz_json:object()) -> kz_json:object().
+settings_keys(Assoc, KeyKind, JObj) ->
+    FeatureKeys = kz_json:get_value([<<"provision">>, KeyKind], JObj, kz_json:new()),
     Brand = get_brand(JObj),
     Family = get_family(JObj),
     AccountId = kz_doc:account_id(JObj),
@@ -336,7 +322,7 @@ settings_feature_keys(JObj) ->
           fun(Key, Value, Acc) ->
                   Type = kz_json:get_binary_value(<<"type">>, Value),
                   V = kz_json:get_binary_value(<<"value">>, Value),
-                  FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId),
+                  FeatureKey = get_feature_key(Type, V, Brand, Family, AccountId, Assoc),
                   maybe_add_feature_key(Key, FeatureKey, Acc)
           end
                      ,kz_json:new()
@@ -347,9 +333,8 @@ settings_feature_keys(JObj) ->
         LineKey -> kz_json:set_value(<<"account">>, LineKey, Keys)
     end.
 
--spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary()) ->
-                             api_object().
-get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
+-spec get_feature_key(ne_binary(), ne_binary(), binary(), binary(), ne_binary(), kz_json:object()) -> api_object().
+get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
@@ -358,19 +343,19 @@ get_feature_key(<<"presence">> = Type, Value, Brand, Family, AccountId) ->
               props:filter_undefined(
                 [{<<"label">>, Presence}
                 ,{<<"value">>, Presence}
-                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
                 ,{<<"account">>, get_line_key(Brand, Family)}
                 ]))
     end;
-get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId) ->
+get_feature_key(<<"speed_dial">> = Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, Value}
         ,{<<"value">>, Value}
-        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
         ]));
-get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) ->
+get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId, Assoc) ->
     {'ok', UserJObj} = get_user(AccountId, Value),
     case kz_device:presence_id(UserJObj) of
         'undefined' -> 'undefined';
@@ -379,16 +364,16 @@ get_feature_key(<<"personal_parking">> = Type, Value, Brand, Family, AccountId) 
               props:filter_undefined(
                 [{<<"label">>, <<>>}
                 ,{<<"value">>, <<"*3", Presence/binary>>}
-                ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+                ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
                 ,{<<"account">>, get_line_key(Brand, Family)}
                 ]))
     end;
-get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
+get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId, Assoc) ->
     kz_json:from_list(
       props:filter_undefined(
         [{<<"label">>, <<>>}
         ,{<<"value">>, <<"*3", Value/binary>>}
-        ,{<<"type">>, get_feature_key_type(Type, Brand, Family)}
+        ,{<<"type">>, get_feature_key_type(Assoc, Type, Brand, Family)}
         ,{<<"account">>, get_line_key(Brand, Family)}
         ])).
 
@@ -396,12 +381,12 @@ get_feature_key(<<"parking">> = Type, Value, Brand, Family, _AccountId) ->
 get_line_key(<<"yealink">>, _) -> <<"0">>;
 get_line_key(_, _) -> 'undefined'.
 
--spec get_feature_key_type(ne_binary(), binary(), binary()) -> api_object().
-get_feature_key_type(Type, Brand, Family) ->
+-spec get_feature_key_type(kz_json:object(), ne_binary(), binary(), binary()) -> api_object().
+get_feature_key_type(Assoc, Type, Brand, Family) ->
     kz_json:get_first_defined([[Brand, Family, Type]
                               ,[Brand, <<"_">>, Type]
                               ]
-                             ,?FEATURE_KEYS
+                             ,Assoc
                              ).
 
 -spec get_user(ne_binary(), ne_binary()) -> {'ok', kz_json:object()} |
