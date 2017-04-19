@@ -2,6 +2,7 @@ ROOT = $(shell readlink -f .)
 RELX = $(ROOT)/deps/relx
 ELVIS = $(ROOT)/deps/elvis
 FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
+QUOTE = $(ROOT)/make/quote-tool/fmt
 
 KAZOODIRS = core/Makefile applications/Makefile
 
@@ -21,6 +22,7 @@ clean: $(KAZOODIRS)
 	$(if $(wildcard scripts/log/*), rm -rf scripts/log/*)
 	$(if $(wildcard rel/dev-vm.args), rm rel/dev-vm.args)
 	$(if $(wildcard $(FMT)), rm -r $(dir $(FMT)))
+	$(if $(wildcard $(QUOTE)), rm -r $(dir $(QUOTE)))
 
 clean-test: ACTION = clean-test
 clean-test: $(KAZOODIRS)
@@ -181,6 +183,13 @@ $(FMT):
 fmt: TO_FMT ?= $(shell find applications core -iname '*.erl' -or -iname '*.hrl' -or -iname '*.app.src')
 fmt: $(FMT)
 	@$(FMT) $(TO_FMT)
+
+$(QUOTE):
+	git clone https://github.com/jamhed/erl-tools $(ROOT)/make/quote-tool
+
+quote: TO_QUOTE ?= $(shell git diff --name-only | grep .*rl$)
+quote: $(QUOTE)
+	$(QUOTE) -i tick $(TO_QUOTE)
 
 code_checks:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/no_raw_json.escript
