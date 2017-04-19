@@ -44,6 +44,8 @@
         %% Defaults to knm_carriers:default_carrier()'s default value
        ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)).
 
+-define(DB_DUMP_BULK_SIZE, 5).
+
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
                  ,<<"list_all">>
@@ -402,15 +404,25 @@ dump(ExtraArgs, init) ->
         _ -> stop
     end;
 dump(_, []) -> stop;
-dump(_, [NumberDb|NumberDbs]) ->
-    case kz_datamgr:get_results(NumberDb, <<"numbers/status">>) of
+dump(_, [Next|NumberDbs]) ->
+    {NumberDb, MoreViewOptions} =
+        case Next of
+            ?NE_BINARY -> {Next, []};
+            StartKey=[_,_,LastNum] ->
+                ViewOpts = [{startkey, StartKey}
+                           ,{skip, 1}
+                           ],
+                {knm_converters:to_db(LastNum), ViewOpts}
+        end,
+    ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
+    case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
         {'ok', []} -> {'ok', NumberDbs};
         {'error', _R} ->
             lager:error("could not get numbers from ~s: ~p", [NumberDb, _R]),
             {'ok', NumberDbs};
-        {'ok', JObjs} ->
-            Rows = list_numbers([kz_doc:id(JObj) || JObj <- JObjs]),
-            {Rows, NumberDbs}
+        {'ok', Keys} ->
+            Rows = list_numbers([lists:last(Key) || Key <- Keys]),
+            {Rows, [lists:last(Keys)|NumberDbs]}
     end.
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
