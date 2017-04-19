@@ -29,6 +29,8 @@
 -export([list/2
         ,list_all/2
         ,dump/2
+        ,dump_aging/2, dump_available/2, dump_deleted/2, dump_discovery/2
+        ,dump_in_service/2, dump_port_in/2, dump_port_out/2, dump_released/2, dump_reserved/2
         ,import/3
         ,assign_to/3
         ,release/3
@@ -51,6 +53,15 @@
 -define(ACTIONS, [<<"list">>
                  ,<<"list_all">>
                  ,<<"dump">>
+                 ,<<"dump_aging">>
+                 ,<<"dump_available">>
+                 ,<<"dump_deleted">>
+                 ,<<"dump_discovery">>
+                 ,<<"dump_in_service">>
+                 ,<<"dump_port_in">>
+                 ,<<"dump_port_out">>
+                 ,<<"dump_released">>
+                 ,<<"dump_reserved">>
                  ,<<"import">>
                  ,<<"assign_to">>
                  ,<<"release">>
@@ -80,6 +91,8 @@ output_header(<<"list_all">>) ->
     list_output_header();
 output_header(<<"dump">>) ->
     list_output_header();
+output_header(<<"dump_", _/binary>>) ->
+    list_output_header();
 output_header(<<"import">>) ->
     result_output_header();
 output_header(<<"assign_to">>) ->
@@ -95,6 +108,7 @@ output_header(<<"delete">>) ->
 cleanup(<<"list">>, _) -> ok;
 cleanup(<<"list_all">>, _) -> ok;
 cleanup(<<"dump">>, _) -> ok;
+cleanup(<<"dump_",_/binary>>, _) -> ok;
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -195,6 +209,10 @@ action(<<"list_all">>) ->
      };
 action(<<"dump">>) ->
     #{<<"description">> => <<"List all numbers that exist in the system">>
+     ,<<"doc">> => list_doc()
+     };
+action(<<"dump_", State/binary>>) ->
+    #{<<"description">> => <<"List all '", State/binary, "' numbers that exist in the system">>
      ,<<"doc">> => list_doc()
      };
 
@@ -386,24 +404,66 @@ list_all(_, Todo) ->
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(ExtraArgs, init) ->
+    init_dump(ExtraArgs);
+dump(_, []) -> stop;
+dump(_, Todo) ->
+    dump_next(fun db_and_view_for_dump/1, Todo).
+
+init_dump(ExtraArgs) ->
     {ok, MasterAccountId} = kapps_util:get_master_account_id(),
     case maps:get(auth_account_id, ExtraArgs) of
         MasterAccountId -> {ok, knm_util:get_all_number_dbs()};
         _ -> stop
-    end;
-dump(_, []) -> stop;
-dump(_, [Next|Rest]) ->
-    {NumberDb, MoreViewOptions} = db_and_view_for_dump(Next),
-    ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
-    case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
-        {ok, []} -> {ok, Rest};
-        {error, _R} ->
-            lager:error("could not get numbers from ~s: ~p", [NumberDb, _R]),
-            {ok, Rest};
-        {ok, Keys} ->
-            Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
-            {Rows, [lists:last(Keys)|Rest]}
     end.
+
+dump_by_state(State, Todo) ->
+    ViewFun = fun (Next) -> db_and_view_for_dump_by_state(State, Next) end,
+    dump_next(ViewFun, Todo).
+
+-spec dump_aging(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_aging(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_aging(_, []) -> stop;
+dump_aging(_, Todo) -> dump_by_state(?NUMBER_STATE_AGING, Todo).
+
+-spec dump_available(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_available(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_available(_, []) -> stop;
+dump_available(_, Todo) -> dump_by_state(?NUMBER_STATE_AVAILABLE, Todo).
+
+-spec dump_deleted(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_deleted(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_deleted(_, []) -> stop;
+dump_deleted(_, Todo) -> dump_by_state(?NUMBER_STATE_DELETED, Todo).
+
+-spec dump_discovery(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_discovery(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_discovery(_, []) -> stop;
+dump_discovery(_, Todo) -> dump_by_state(?NUMBER_STATE_DISCOVERY, Todo).
+
+-spec dump_in_service(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_in_service(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_in_service(_, []) -> stop;
+dump_in_service(_, Todo) -> dump_by_state(?NUMBER_STATE_IN_SERVICE, Todo).
+
+-spec dump_port_in(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_port_in(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_port_in(_, []) -> stop;
+dump_port_in(_, Todo) -> dump_by_state(?NUMBER_STATE_PORT_IN, Todo).
+
+-spec dump_port_out(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_port_out(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_port_out(_, []) -> stop;
+dump_port_out(_, Todo) -> dump_by_state(?NUMBER_STATE_PORT_OUT, Todo).
+
+-spec dump_released(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_released(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_released(_, []) -> stop;
+dump_released(_, Todo) -> dump_by_state(?NUMBER_STATE_RELEASED, Todo).
+
+-spec dump_reserved(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
+dump_reserved(ExtraArgs, init) -> init_dump(ExtraArgs);
+dump_reserved(_, []) -> stop;
+dump_reserved(_, Todo) -> dump_by_state(?NUMBER_STATE_RESERVED, Todo).
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
                     {kz_tasks:return(), sets:set()}.
@@ -600,7 +660,7 @@ format_result(_, N) ->
 
 -type accountid_or_startkey_and_numberdbs() :: [{ne_binary() | ne_binaries(), ne_binary()}].
 -spec list_assigned_to(ne_binary(), accountid_or_startkey_and_numberdbs()) ->
-                              {ok, accountid_or_startkey_and_numberdbs()}.
+                              {ok | [kz_csv:row()], accountid_or_startkey_and_numberdbs()}.
 list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
     ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
@@ -624,6 +684,21 @@ view_for_list_assigned(StartKey=[AccountId,_]) ->
     ,{skip, 1}
     ].
 
+-spec dump_next(fun((ne_binary() | ne_binaries()) -> R), [ne_binary() | ne_binaries()]) -> R when
+      R :: {ne_binary(), kz_datamgr:view_options()}.
+dump_next(ViewFun, [Next|Rest]) ->
+    {NumberDb, MoreViewOptions} = ViewFun(Next),
+    ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
+    case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
+        {ok, []} -> {ok, Rest};
+        {error, _R} ->
+            lager:error("could not get ~p from ~s: ~p", [ViewOptions, NumberDb, _R]),
+            {ok, Rest};
+        {ok, Keys} ->
+            Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
+            {Rows, [lists:last(Keys)|Rest]}
+    end.
+
 -spec db_and_view_for_dump(ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
 db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
 db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
@@ -631,5 +706,18 @@ db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
                ,{skip, 1}
                ],
     {knm_converters:to_db(LastNum), ViewOpts}.
+
+-spec db_and_view_for_dump_by_state(ne_binary(), ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+db_and_view_for_dump_by_state(State, NumberDb=?NE_BINARY) ->
+    ViewOptions = [{startkey, [State]}
+                  ,{endkey, [State, kz_json:new()]}
+                  ],
+    {NumberDb, ViewOptions};
+db_and_view_for_dump_by_state(State, StartKey=[_,_,LastNum]) ->
+    ViewOptions = [{startkey, StartKey}
+                  ,{endkey, [State, kz_json:new()]}
+                  ,{skip, 1}
+                  ],
+    {knm_converters:to_db(LastNum), ViewOptions}.
 
 %%% End of Module.
