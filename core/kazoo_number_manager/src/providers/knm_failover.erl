@@ -25,14 +25,11 @@
 %%--------------------------------------------------------------------
 -spec save(knm_number:knm_number()) -> knm_number:knm_number().
 -spec save(knm_number:knm_number(), ne_binary()) -> knm_number:knm_number().
-save(Number) ->
-    State = knm_phone_number:state(knm_number:phone_number(Number)),
-    save(Number, State).
+save(N) ->
+    save(N, knm_phone_number:state(knm_number:phone_number(N))).
 
-save(Number, ?NUMBER_STATE_IN_SERVICE) ->
-    update_failover(Number);
-save(Number, _State) ->
-    delete(Number).
+save(N, ?NUMBER_STATE_IN_SERVICE) -> update_failover(N);
+save(N, _) -> delete(N).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -42,10 +39,10 @@ save(Number, _State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
-delete(Number) ->
-    case feature(Number) =:= 'undefined' of
-        'true' -> Number;
-        'false' -> knm_services:deactivate_feature(Number, ?KEY)
+delete(N) ->
+    case feature(N) =:= 'undefined' of
+        'true' -> N;
+        'false' -> knm_services:deactivate_feature(N, ?KEY)
     end.
 
 %%%===================================================================
@@ -53,8 +50,8 @@ delete(Number) ->
 %%%===================================================================
 
 -spec feature(knm_number:knm_number()) -> kz_json:api_json_term().
-feature(Number) ->
-    knm_phone_number:feature(knm_number:phone_number(Number), ?KEY).
+feature(N) ->
+    knm_phone_number:feature(knm_number:phone_number(N), ?KEY).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -63,16 +60,12 @@ feature(Number) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec update_failover(knm_number:knm_number()) -> knm_number:knm_number().
-update_failover(Number) ->
-    CurrentFailover = feature(Number),
-    PhoneNumber = knm_number:phone_number(Number),
-    Failover = kz_json:get_ne_value(?KEY, knm_phone_number:doc(PhoneNumber)),
-    NotChanged = kz_json:are_equal(CurrentFailover, Failover),
-    case kz_term:is_empty(Failover) of
-        'true' ->
-            knm_services:deactivate_feature(Number, ?KEY);
-        'false' when NotChanged ->
-            Number;
-        'false' ->
-            knm_services:activate_feature(Number, {?KEY, Failover})
+update_failover(N) ->
+    Private = feature(N),
+    Public = kz_json:get_ne_value(?KEY, knm_phone_number:doc(knm_number:phone_number(N))),
+    NotChanged = kz_json:are_equal(Private, Public),
+    case kz_term:is_empty(Public) of
+        true -> knm_services:deactivate_feature(N, ?KEY);
+        false when NotChanged -> N;
+        false -> knm_services:activate_feature(N, {?KEY, Public})
     end.

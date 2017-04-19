@@ -136,7 +136,8 @@ list_output_header() ->
     ,<<"ringback.early">>
     ,<<"ringback.transfer">>
     ,<<"force_outbound">>
-    ,<<"failover">>
+    ,<<"failover.e164">>
+    ,<<"failover.sip">>
     ].
 
 -spec list_doc() -> ne_binary().
@@ -165,7 +166,8 @@ list_doc() ->
       "* `ringback.early`: ringback early.\n"
       "* `ringback.early`: ringback transfer.\n"
       "* `force_outbound`: whether this number is forced outbound ('true' or 'false').\n"
-      "* `failover`: failover.\n"
+      "* `failover.e164`: number to fail over to.\n"
+      "* `failover.sip`: SIP URI to fail over to.\n"
     >>.
 
 -spec help(kz_json:object()) -> kz_json:object().
@@ -293,7 +295,8 @@ is_cell_boolean(<<"false">>) -> true;
 is_cell_boolean(_) -> false.
 
 %% @private
--spec is_cell_true(ne_binary()) -> boolean().
+-spec is_cell_true(api_ne_binary()) -> boolean().
+is_cell_true(undefined) -> undefined;
 is_cell_true(<<"true">>) -> true;
 is_cell_true(_) -> false.
 
@@ -366,7 +369,8 @@ list_number(N) ->
      ,<<"ringback.early">> => kz_json:get_ne_binary_value(?RINGBACK_EARLY, Ringback)
      ,<<"ringback.transfer">> => kz_json:get_ne_binary_value(?RINGBACK_TRANSFER, Ringback)
      ,<<"force_outbound">> => kz_term:to_binary(knm_number:force_outbound_feature(PN))
-     ,<<"failover">> => Failover
+     ,<<"failover.e164">> => kz_json:get_ne_binary_value(?FAILOVER_E164, Failover)
+     ,<<"failover.sip">> => kz_json:get_ne_binary_value(?FAILOVER_SIP, Failover)
      }.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
@@ -422,8 +426,7 @@ import(#{account_id := Account
              ,<<"previously_assigned_to">> := _
              ,<<"created">> := _
              ,<<"modified">> := _
-              %%TODO: use all the optional fields
-             ,<<"used_by">> := _UsedBy
+             ,<<"used_by">> := _  %%FIXME: decide whether to use this one
              ,<<"cnam.inbound">> := CNAMInbound
              ,<<"cnam.outbound">> := CNAMOutbound
              ,<<"e911.locality">> := E911Locality
@@ -432,17 +435,21 @@ import(#{account_id := Account
              ,<<"e911.street_address">> := E911StreetAddress
              ,<<"e911.extended_address">> := E911ExtendedAddress
              ,<<"e911.postal_code">> := E911PostalCode
-             ,<<"prepend.enabled">> := _PrependEnabled
-             ,<<"prepend.name">> := _PrependName
-             ,<<"prepend.number">> := _PrependNumber
-             ,<<"ringback.early">> := _RingbackEarly
-             ,<<"ringback.transfer">> := _RingbackTransfer
-             ,<<"force_outbound">> := _ForceOutbound
-             ,<<"failover">> := _Failover
+             ,<<"prepend.enabled">> := PrependEnabled
+             ,<<"prepend.name">> := PrependName
+             ,<<"prepend.number">> := PrependNumber
+             ,<<"ringback.early">> := RingbackEarly
+             ,<<"ringback.transfer">> := RingbackTransfer
+             ,<<"force_outbound">> := ForceOutbound
+             ,<<"failover.e164">> := FailoverE164
+             ,<<"failover.sip">> := FailoverSIP
              }
       ) ->
 
-    PublicFields = [cnam(is_cell_true(CNAMInbound), CNAMOutbound)
+    PublicFields = [cnam(props:filter_undefined(
+                           [{?CNAM_DISPLAY_NAME, CNAMOutbound}
+                           ,{?CNAM_INBOUND_LOOKUP, is_cell_true(CNAMInbound)}
+                           ]))
                    ,e911(props:filter_empty(
                            [{?E911_CITY, E911Locality}
                            ,{?E911_NAME, E911Name}
@@ -451,6 +458,20 @@ import(#{account_id := Account
                            ,{?E911_STREET2, E911ExtendedAddress}
                            ,{?E911_ZIP, E911PostalCode}
                            ]))
+                   ,prepend(props:filter_undefined(
+                              [{?PREPEND_ENABLED, is_cell_true(PrependEnabled)}
+                              ,{?PREPEND_NAME, PrependName}
+                              ,{?PREPEND_NUMBER, PrependNumber}
+                              ]))
+                   ,ringback(props:filter_empty(
+                               [{?RINGBACK_EARLY, RingbackEarly}
+                               ,{?RINGBACK_TRANSFER, RingbackTransfer}
+                               ]))
+                   ,props:filter_undefined([{?FEATURE_FORCE_OUTBOUND, is_cell_true(ForceOutbound)}])
+                   ,failover(props:filter_empty(
+                               [{?FAILOVER_E164, FailoverE164}
+                               ,{?FAILOVER_SIP, FailoverSIP}
+                               ]))
                    ,additional_fields_to_json(Args)
                    ],
     AccountId = select_account_id(AccountId0, Account),
@@ -458,11 +479,23 @@ import(#{account_id := Account
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, import_module_name(Account, Carrier)}
-              ,{ported_in, is_cell_true(PortedIn)}
+              ,{ported_in, PortedIn =:= <<"true">>}
               ,{public_fields, kz_json:from_list(lists:flatten(PublicFields))}
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
+
+%% @private
+cnam(Props) -> maybe_nest(?FEATURE_CNAM, Props).
+e911(Props) -> maybe_nest(?FEATURE_E911, Props).
+prepend(Props) -> maybe_nest(?FEATURE_PREPEND, Props).
+ringback(Props) -> maybe_nest(?FEATURE_RINGBACK, Props).
+failover(Props) -> maybe_nest(?FEATURE_FAILOVER, Props).
+
+%% @private
+-spec maybe_nest(ne_binary(), kz_proplist()) -> kz_proplist().
+maybe_nest(_, []) -> [];
+maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
 %% @private
 import_module_name(AccountId, Carrier) ->
@@ -496,21 +529,6 @@ additional_fields(Args) ->
         OpaqueField <- [kz_binary:strip(OpaqueField0)],
         not kz_term:is_empty(OpaqueField)
     ].
-
-%% @private
--spec cnam(boolean(), api_ne_binary()) -> kz_proplist().
-cnam(_, undefined) -> [];
-cnam(Inbound, CallerID=?NE_BINARY) ->
-    [{?FEATURE_CNAM, kz_json:from_list([{?CNAM_DISPLAY_NAME, CallerID}
-                                       ,{?CNAM_INBOUND_LOOKUP, Inbound}
-                                       ])
-     }
-    ].
-
-%% @private
--spec e911(kz_proplist()) -> kz_proplist().
-e911([]) -> [];
-e911(Props) -> [{?FEATURE_E911, kz_json:from_list(Props)}].
 
 
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
