@@ -212,6 +212,7 @@ docs-setup:
 	@$(ROOT)/scripts/setup_docs.bash
 	@cp $(DOCS_ROOT)/mkdocs.yml $(DOCS_ROOT)/mkdocs.local.yml
 	@mkdir -p $(DOCS_ROOT)/theme
+	@if [ -f $(DOCS_ROOT)/theme/global.yml ]; then cat $(DOCS_ROOT)/theme/global.yml >> $(DOCS_ROOT)/mkdocs.local.yml; fi
 
 docs-build:
 	@echo "\ntheme: null\ntheme_dir: '$(DOCS_ROOT)/theme'\ndocs_dir: '$(DOCS_ROOT)/docs'\n" >> $(DOCS_ROOT)/mkdocs.local.yml

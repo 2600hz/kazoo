@@ -20,7 +20,7 @@ dependencies:
       - bash ./scripts/circleci-build-erlang.sh:
           timeout: 1800
       - pip install --upgrade pip
-      - pip install PyYAML mkdocs
+      - pip install PyYAML mkdocs pyembed-markdown
 
 test:
   pre:

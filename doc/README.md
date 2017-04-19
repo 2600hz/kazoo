@@ -16,7 +16,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * Read Github's [great introduction](https://help.github.com/articles/fork-a-repo/) to forking repos and [pull requests](https://help.github.com/articles/using-pull-requests/).
 * Check out our Javascript/HTML/CSS [GUI](https://github.com/2600Hz/monster-ui)
 * Check out some existing SDKs [PHP](https://github.com/2600Hz/kazoo-php-sdk) | [PYTHON](https://github.com/2600hz/kazoo-python-sdk) | [RUBY](https://github.com/2600Hz/kazoo-ruby-sdk)
-* [Learn you some Erlang!](http://learnyousomeerlang.com/) 
+* [Learn you some Erlang!](http://learnyousomeerlang.com/)
 * Bookmark this awesome [Erlang reference/docs](http://erldocs.com/) site
 * Check out the [FreeSWITCH documentation](https://freeswitch.org/confluence/display/FREESWITCH/FreeSWITCH+Explained)
 * Take a look at the [Kamailio documentation](https://www.kamailio.org/w/documentation/)
@@ -29,6 +29,8 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * [AMQP Library](/core/kazoo_amqp/doc)
 * [Number Manager Library](/core/kazoo_number_manager/doc)
 * [Datastore Library](/core/kazoo_data/doc) (docs comming soon)
+* [Kazoo Docs Site](https://docs.2600hz.com/dev)
+* [Testing Kazoo with MakeBusy](https://docs.2600hz.com/testing/)
 
 ## Integrator
 
@@ -36,6 +38,7 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * [Webhooks](/applications/webhooks/doc)
 * [Websockets](/applications/blackhole/doc)
 * [Pivot](/applications/pivot/doc)
+* [User Guide Docs Site](https://docs.2600hz.com/user_guides)
 
 ## Operator
 
@@ -45,3 +48,4 @@ Here are some general resources to keep handy and enjoy your experience with Kaz
 * [Couch Compaction](/core/kazoo_couch/doc/compaction.md)
 * [Internationalization Examples](/doc/internationalization/)
 * [Stepswitch Formatters](/applications/stepswitch/doc/formatters.md)
+* [Sysadmin Docs Site](https://docs.2600hz.com/sysadmin)
