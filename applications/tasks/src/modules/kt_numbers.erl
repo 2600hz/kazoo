@@ -746,8 +746,9 @@ view_for_list_assigned(StartKey=[AccountId,_]) ->
     ,{skip, 1}
     ].
 
--spec dump_next(fun((ne_binary() | ne_binaries()) -> R), [ne_binary() | ne_binaries()]) -> R when
-      R :: {ne_binary(), kz_datamgr:view_options()}.
+-type startkey_or_numberdb() :: ne_binary() | ne_binaries().
+-spec dump_next(fun((startkey_or_numberdb()) -> {ne_binary(), kz_datamgr:view_options()}), startkey_or_numberdb()) ->
+                       {ok | [kz_csv:row()], [startkey_or_numberdb()]}.
 dump_next(ViewFun, [Next|Rest]) ->
     {NumberDb, MoreViewOptions} = ViewFun(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
