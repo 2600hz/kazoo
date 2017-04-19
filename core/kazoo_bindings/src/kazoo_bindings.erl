@@ -828,18 +828,28 @@ pmap_processor_fold(#kz_binding{binding_parts=BParts
 
 -spec map_responders(map_results(), map_responder_fun(), queue:queue()) -> map_results().
 map_responders(Acc, Map, Responders) ->
-    [catch(Map(Responder))
+    [try_map_responders(Map, Responder)
      || Responder <- queue:to_list(Responders)
     ]
         ++ Acc.
 
 -spec pmap_responders(map_results(), map_responder_fun(), queue:queue()) -> map_results().
 pmap_responders(Acc, MapFun, Responders) ->
-    plists:map(fun(R) -> catch(MapFun(R)) end
+    plists:map(fun(R) -> try_map_responders(MapFun, R) end
               ,queue:to_list(Responders)
               ,[{'processes', 'schedulers'}]
               )
         ++ Acc.
+
+-spec try_map_responders(map_responder_fun(), any()) -> any().
+try_map_responders(MapFun, Responder) ->
+    try MapFun(Responder)
+    catch
+        _T:_E ->
+            ST = erlang:get_stacktrace(),
+            lager:error("exception: ~s: ~p", [_T, _E]),
+            kz_util:log_stacktrace(ST)
+    end.
 
 -spec fold_processor(ne_binary(), payload(), kz_rt_options()) -> fold_results().
 fold_processor(Routing, Payload, Options) when not is_list(Payload) ->
