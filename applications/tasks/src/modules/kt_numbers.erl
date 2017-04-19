@@ -44,7 +44,8 @@
         %% Defaults to knm_carriers:default_carrier()'s default value
        ,kapps_config:get_binary(?MOD_CAT, <<"import_defaults_to_carrier">>, ?CARRIER_LOCAL)).
 
--define(DB_DUMP_BULK_SIZE, 5).
+-define(DB_DUMP_BULK_SIZE
+       ,kapps_config:get_integer(?MOD_CAT, <<"db_page_size">>, 1000)).
 
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
@@ -309,18 +310,10 @@ list(#{account_id := ForAccount}, init) ->
     ToList = [{ForAccount, NumberDb} || NumberDb <- knm_util:get_all_number_dbs()],
     {ok, ToList};
 list(_, []) -> stop;
-list(#{auth_account_id := AuthBy}, [{AccountId, NumberDb} | Rest]) ->
-    case number_db_listing(NumberDb, AccountId) of
-        [] -> {ok, Rest};
-        E164s ->
-            Rows = list_numbers(AuthBy, E164s),
-            {Rows, Rest}
-    end.
+list(#{auth_account_id := AuthBy}, Todo) ->
+    list_assigned_to(AuthBy, Todo).
 
--spec list_numbers(ne_binaries()) -> [kz_csv:row()].
 -spec list_numbers(ne_binary(), ne_binaries()) -> [kz_csv:row()].
-list_numbers(E164s) ->
-    list_numbers(?KNM_DEFAULT_AUTH_BY, E164s).
 list_numbers(AuthBy, E164s) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
@@ -388,13 +381,8 @@ list_all(#{account_id := Account}, init) ->
              ],
     {ok, ToList};
 list_all(_, []) -> stop;
-list_all(_, [{AccountId, NumberDb} | Rest]) ->
-    case number_db_listing(NumberDb, AccountId) of
-        [] -> {'ok', Rest};
-        E164s ->
-            Rows = list_numbers(E164s),
-            {Rows, Rest}
-    end.
+list_all(_, Todo) ->
+    list_assigned_to(?KNM_DEFAULT_AUTH_BY, Todo).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(ExtraArgs, init) ->
@@ -404,25 +392,17 @@ dump(ExtraArgs, init) ->
         _ -> stop
     end;
 dump(_, []) -> stop;
-dump(_, [Next|NumberDbs]) ->
-    {NumberDb, MoreViewOptions} =
-        case Next of
-            ?NE_BINARY -> {Next, []};
-            StartKey=[_,_,LastNum] ->
-                ViewOpts = [{startkey, StartKey}
-                           ,{skip, 1}
-                           ],
-                {knm_converters:to_db(LastNum), ViewOpts}
-        end,
+dump(_, [Next|Rest]) ->
+    {NumberDb, MoreViewOptions} = db_and_view_for_dump(Next),
     ViewOptions = [{limit, ?DB_DUMP_BULK_SIZE} | MoreViewOptions],
     case kz_datamgr:get_result_keys(NumberDb, <<"numbers/status">>, ViewOptions) of
-        {'ok', []} -> {'ok', NumberDbs};
-        {'error', _R} ->
+        {ok, []} -> {ok, Rest};
+        {error, _R} ->
             lager:error("could not get numbers from ~s: ~p", [NumberDb, _R]),
-            {'ok', NumberDbs};
-        {'ok', Keys} ->
-            Rows = list_numbers([lists:last(Key) || Key <- Keys]),
-            {Rows, [lists:last(Keys)|NumberDbs]}
+            {ok, Rest};
+        {ok, Keys} ->
+            Rows = list_numbers(?KNM_DEFAULT_AUTH_BY, [lists:last(Key) || Key <- Keys]),
+            {Rows, [lists:last(Keys)|Rest]}
     end.
 
 -spec import(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) ->
@@ -618,23 +598,38 @@ format_result(_, N) ->
     Map = list_number(N),
     Map#{?OUTPUT_CSV_HEADER_ERROR => undefined}.
 
-%%--------------------------------------------------------------------
-%% @public
-%% @doc
-%% List an number db's phone numbers assigned to Account.
-%% @end
-%%--------------------------------------------------------------------
--spec number_db_listing(ne_binary(), ne_binary()) -> ne_binaries().
-number_db_listing(NumberDb, ?MATCH_ACCOUNT_RAW(AssignedTo)) ->
-    ViewOptions = [{'startkey', [AssignedTo]}
-                  ,{'endkey', [AssignedTo, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
-        {'ok', []} -> [];
-        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:debug("error listing numbers for ~s: ~p", [NumberDb, _R]),
-            []
+-type accountid_or_startkey_and_numberdbs() :: [{ne_binary() | ne_binaries(), ne_binary()}].
+-spec list_assigned_to(ne_binary(), accountid_or_startkey_and_numberdbs()) ->
+                              {ok, accountid_or_startkey_and_numberdbs()}.
+list_assigned_to(AuthBy, [{Next,NumberDb}|Rest]) ->
+    ViewOptions = [{limit,?DB_DUMP_BULK_SIZE} | view_for_list_assigned(Next)],
+    case kz_datamgr:get_result_keys(NumberDb, <<"numbers/assigned_to">>, ViewOptions) of
+        {ok, []} -> {ok, Rest};
+        {error, _R} ->
+            lager:error("could not get ~p's numbers in ~s: ~p", [ViewOptions, NumberDb, _R]),
+            {ok, Rest};
+        {ok, Keys} ->
+            Rows = list_numbers(AuthBy, [lists:last(Key) || Key <- Keys]),
+            {Rows, [{lists:last(Keys),NumberDb}|Rest]}
     end.
+
+-spec view_for_list_assigned(ne_binary() | ne_binaries()) -> kz_datamgr:view_options().
+view_for_list_assigned(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    [{startkey, [AccountId]}
+    ,{endkey, [AccountId, kz_json:new()]}
+    ];
+view_for_list_assigned(StartKey=[AccountId,_]) ->
+    [{startkey, StartKey}
+    ,{endkey, [AccountId, kz_json:new()]}
+    ,{skip, 1}
+    ].
+
+-spec db_and_view_for_dump(ne_binary() | ne_binaries()) -> {ne_binary(), kz_datamgr:view_options()}.
+db_and_view_for_dump(NumberDb=?NE_BINARY) -> {NumberDb, []};
+db_and_view_for_dump(StartKey=[_,_,LastNum]) ->
+    ViewOpts = [{startkey, StartKey}
+               ,{skip, 1}
+               ],
+    {knm_converters:to_db(LastNum), ViewOpts}.
 
 %%% End of Module.
