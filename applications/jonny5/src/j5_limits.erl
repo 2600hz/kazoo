@@ -269,7 +269,7 @@ get_limit(Key, JObj, Default) ->
 get_public_limit(Key, JObj, Default) ->
     case kz_json:get_integer_value(Key, JObj) of
         'undefined' -> get_default_limit(Key, Default);
-        Value when Value < 0 -> 0;
+        Value when Value < -1 -> 0;
         Value -> Value
     end.
 
