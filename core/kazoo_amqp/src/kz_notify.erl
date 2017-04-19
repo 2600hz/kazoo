@@ -79,7 +79,7 @@ detailed_alert(Subject, Msg, Props, Headers)
 detailed_alert(Subject, Msg, Props, Headers) ->
     Notify = [{<<"Message">>, Msg}
              ,{<<"Subject">>, <<"System Alert: ", Subject/binary>>}
-             ,{<<"Details">>, kz_json:from_list(Props)}
+             ,{<<"Details">>, kz_json:from_list_recursive(Props)}
               | Headers ++ kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
     kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_system_alert/1).

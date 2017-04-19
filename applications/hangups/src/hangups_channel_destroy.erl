@@ -60,7 +60,7 @@ maybe_add_hangup_specific(<<"UNALLOCATED_NUMBER">>, JObj) ->
 maybe_add_hangup_specific(<<"NO_ROUTE_DESTINATION">>, JObj) ->
     maybe_add_number_info(JObj);
 maybe_add_hangup_specific(_HangupCause, JObj) ->
-    kz_json:to_proplist(JObj).
+    kz_json:recursive_to_proplist(JObj).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -71,7 +71,7 @@ maybe_add_hangup_specific(_HangupCause, JObj) ->
 -spec maybe_add_number_info(kz_call_event:doc()) -> kz_proplist().
 maybe_add_number_info(JObj) ->
     Destination = find_destination(JObj),
-    Props = kz_json:to_proplist(JObj),
+    Props = kz_json:recursive_to_proplist(JObj),
     try knm_number:lookup_account(Destination) of
         {'ok', AccountId, _Props} ->
             Tree = build_account_tree(AccountId),
