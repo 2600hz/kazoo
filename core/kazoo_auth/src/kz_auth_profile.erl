@@ -171,8 +171,8 @@ maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
 maybe_add_display_name(#{display_name := _DisplayName} = Token) -> Token;
 maybe_add_display_name(#{profile_error_code := _Error} = Token) -> Token;
 maybe_add_display_name(#{auth_provider := #{profile_displayName_field := Field}
-                         ,profile := Profile
-                         } = Token) ->
+                        ,profile := Profile
+                        } = Token) ->
     case kz_json:get_first_defined([Field], Profile) of
         'undefined' ->
             lager:debug("user displayName from field '~p' not found into ~p", [Field, Profile]),
@@ -189,8 +189,8 @@ maybe_add_display_name(#{auth_provider := #{name := Prov}}=Token) ->
 maybe_add_photo_url(#{photo_url := _PhotoUrl} = Token) -> Token;
 maybe_add_photo_url(#{profile_error_code := _Error} = Token) -> Token;
 maybe_add_photo_url(#{auth_provider := #{profile_photo_url_field := Field}
-                         ,profile := Profile
-                         } = Token) ->
+                     ,profile := Profile
+                     } = Token) ->
     case kz_json:get_first_defined([Field], Profile) of
         'undefined' ->
             lager:debug("user photoUrl from field '~p' not found into ~p", [Field, Profile]),
