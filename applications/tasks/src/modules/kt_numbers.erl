@@ -20,6 +20,9 @@
         ,account_id/1
         ,carrier_module/1
         ,ported_in/1
+        ,'cnam.inbound'/1
+        ,'prepend.enabled'/1
+        ,force_outbound/1
         ]).
 
 %% Appliers
@@ -271,10 +274,28 @@ carrier_module(Data) ->
     lists:member(Data, knm_carriers:all_modules()).
 
 -spec ported_in(ne_binary()) -> boolean().
-ported_in(<<"true">>) -> true;
-ported_in(<<"false">>) -> true;
-ported_in(_) -> false.
+ported_in(Cell) -> is_cell_boolean(Cell).
 
+-spec 'cnam.inbound'(ne_binary()) -> boolean().
+'cnam.inbound'(Cell) -> is_cell_boolean(Cell).
+
+-spec 'prepend.enabled'(ne_binary()) -> boolean().
+'prepend.enabled'(Cell) -> is_cell_boolean(Cell).
+
+-spec force_outbound(ne_binary()) -> boolean().
+force_outbound(Cell) -> is_cell_boolean(Cell).
+
+
+%% @private
+-spec is_cell_boolean(ne_binary()) -> boolean().
+is_cell_boolean(<<"true">>) -> true;
+is_cell_boolean(<<"false">>) -> true;
+is_cell_boolean(_) -> false.
+
+%% @private
+-spec is_cell_true(ne_binary()) -> boolean().
+is_cell_true(<<"true">>) -> true;
+is_cell_true(_) -> false.
 
 %%% Appliers
 
@@ -403,7 +424,7 @@ import(#{account_id := Account
              ,<<"modified">> := _
               %%TODO: use all the optional fields
              ,<<"used_by">> := _UsedBy
-             ,<<"cnam.inbound">> := CNAMInbound0
+             ,<<"cnam.inbound">> := CNAMInbound
              ,<<"cnam.outbound">> := CNAMOutbound
              ,<<"e911.locality">> := E911Locality
              ,<<"e911.name">> := E911Name
@@ -421,37 +442,37 @@ import(#{account_id := Account
              }
       ) ->
 
-    ModuleName = case kz_util:is_system_admin(Account)
-                     andalso Carrier
-                 of
-                     false -> ?IMPORT_DEFAULTS_TO_CARRIER;
-                     undefined -> ?IMPORT_DEFAULTS_TO_CARRIER;
-                     _ -> Carrier
-                 end,
-    CNAMInbound = kz_term:is_true(CNAMInbound0),
-    E911 = e911(props:filter_empty(
-                  [{?E911_CITY, E911Locality}
-                  ,{?E911_NAME, E911Name}
-                  ,{?E911_STATE, E911Region}
-                  ,{?E911_STREET1, E911StreetAddress}
-                  ,{?E911_STREET2, E911ExtendedAddress}
-                  ,{?E911_ZIP, E911PostalCode}
-                  ])),
-    PublicFields = cnam(CNAMInbound, CNAMOutbound) ++ E911 ++ additional_fields_to_json(Args),
+    PublicFields = [cnam(is_cell_true(CNAMInbound), CNAMOutbound)
+                   ,e911(props:filter_empty(
+                           [{?E911_CITY, E911Locality}
+                           ,{?E911_NAME, E911Name}
+                           ,{?E911_STATE, E911Region}
+                           ,{?E911_STREET1, E911StreetAddress}
+                           ,{?E911_STREET2, E911ExtendedAddress}
+                           ,{?E911_ZIP, E911PostalCode}
+                           ]))
+                   ,additional_fields_to_json(Args)
+                   ],
     AccountId = select_account_id(AccountId0, Account),
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
-              ,{module_name, ModuleName}
-              ,{ported_in, is_ported_in(PortedIn)}
-              ,{public_fields, kz_json:from_list(PublicFields)}
+              ,{module_name, import_module_name(Account, Carrier)}
+              ,{ported_in, is_cell_true(PortedIn)}
+              ,{public_fields, kz_json:from_list(lists:flatten(PublicFields))}
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
 
 %% @private
-is_ported_in(<<"true">>) -> true;
-is_ported_in(_) -> false.
+import_module_name(AccountId, Carrier) ->
+    case kz_util:is_system_admin(AccountId)
+        andalso Carrier
+    of
+        false -> ?IMPORT_DEFAULTS_TO_CARRIER;
+        undefined -> ?IMPORT_DEFAULTS_TO_CARRIER;
+        _ -> Carrier
+    end.
 
 %% @private
 additional_fields_to_json(Args) ->
