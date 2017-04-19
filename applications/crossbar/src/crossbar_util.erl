@@ -588,18 +588,7 @@ move_service_doc(NewTree, NewResellerId, Dirty, JObj) ->
 %%--------------------------------------------------------------------
 -spec get_descendants(ne_binary()) -> ne_binaries().
 get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    ViewOptions = [{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
-        {'ok', JObjs} ->
-            [Id || JObj <- JObjs,
-                   (Id = kz_doc:id(JObj)) =/= AccountId
-            ];
-        {'error', _R} ->
-            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
-            []
-    end.
+    kapps_util:account_descendants(AccountId) -- [AccountId].
 
 -spec mark_dirty(ne_binary() | kz_json:object()) -> kz_std_return().
 mark_dirty(AccountId) when is_binary(AccountId) ->

@@ -381,7 +381,7 @@ quote(Bin) -> <<"'", Bin/binary, "'">>.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list_all(#{account_id := Account}, init) ->
-    ForAccounts = [Account | get_descendants(Account)],
+    ForAccounts = [Account | kapps_util:account_descendants(Account)],
     ToList = [{ForAccount, NumberDb}
               || ForAccount <- ForAccounts,
                  NumberDb <- knm_util:get_all_number_dbs()
@@ -617,25 +617,6 @@ format_result(Args, Reason=?NE_BINARY) ->
 format_result(_, N) ->
     Map = list_number(N),
     Map#{?OUTPUT_CSV_HEADER_ERROR => undefined}.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% List an account's descendants. Does not include the given AccountId.
-%% @end
-%%--------------------------------------------------------------------
--spec get_descendants(ne_binary()) -> ne_binaries().
-get_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    View = <<"accounts/listing_by_descendants">>,
-    ViewOptions = [{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions) of
-        {'ok', JObjs} -> [kz_account:id(JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
-            []
-    end.
 
 %%--------------------------------------------------------------------
 %% @public

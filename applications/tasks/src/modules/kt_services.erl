@@ -97,7 +97,7 @@ action(<<"descendant_quantities">>) ->
 
 -spec descendant_quantities(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 descendant_quantities(#{account_id := AccountId}, init) ->
-    Descendants = get_descendants(AccountId),
+    Descendants = kapps_util:account_descendants(AccountId),
     DescendantsMoDBs = lists:flatmap(fun kapps_util:get_account_mods/1, Descendants),
     lager:debug("found ~p descendants & ~p MoDBs in total"
                ,[length(Descendants), length(DescendantsMoDBs)]),
@@ -150,18 +150,6 @@ quantities_for_items(AccountId, YYYY, MM, Category, BoMItem, EoMItem) ->
       }
      || Item <- fields(BoMItem, EoMItem)
     ].
-
--spec get_descendants(ne_binary()) -> ne_binaries().
-get_descendants(AccountId) ->
-    ViewOptions = [{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_descendants">>, ViewOptions) of
-        {'ok', JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
-        {'error', _R} ->
-            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
-            []
-    end.
 
 -spec modb_service_quantities(ne_binary(), ne_binary()) -> kz_json:object().
 modb_service_quantities(MoDB, Id) ->
