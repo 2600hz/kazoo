@@ -25,6 +25,7 @@
         ]).
 
 -include("blackhole.hrl").
+-include("kapi_blackhole.hrl").
 
 -define(SERVER, ?MODULE).
 
@@ -32,8 +33,12 @@
                }).
 -type state() :: #state{}.
 
+-type mod_inited() :: 'ok' | {'error', atom()} |
+                      'stopped'. %% stopped instead of inited
+
 %% By convention, we put the options here in macros, but not required.
--define(BINDINGS, []).
+-define(BINDINGS, [{'blackhole', [{'restrict_to', ['get', 'module_req']}]}]).
+
 -define(RESPONDERS, [{{?MODULE, 'handle_amqp_event'}
                      ,[{<<"*">>, <<"*">>}]
                      }
@@ -63,6 +68,8 @@ start_link() ->
                            ).
 
 -spec handle_amqp_event(kz_json:object(), kz_proplist(), gen_listener:basic_deliver() | ne_binary()) -> 'ok'.
+handle_amqp_event(EventJObj, _Props, ?MODULE_REQ_ROUTING_KEY) ->
+    handle_module_req(EventJObj);
 handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
     Evt = kz_util:get_event_type(EventJObj),
     lager:debug("recv event ~p (~s)", [Evt, RoutingKey]),
@@ -73,6 +80,93 @@ handle_amqp_event(EventJObj, _Props, <<_/binary>> = RoutingKey) ->
                );
 handle_amqp_event(EventJObj, Props, BasicDeliver) ->
     handle_amqp_event(EventJObj, Props, gen_listener:routing_key_used(BasicDeliver)).
+
+-spec handle_module_req(kz_json:object()) -> 'ok'.
+-spec handle_module_req(kz_json:object(), atom(), ne_binary(), boolean()) -> 'ok'.
+handle_module_req(EventJObj) ->
+    'true' = kapi_blackhole:module_req_v(EventJObj),
+    lager:debug("recv module_req: ~p", [EventJObj]),
+    handle_module_req(EventJObj
+                     ,kz_json:get_atom_value(<<"Module">>, EventJObj)
+                     ,kz_json:get_binary_value(<<"Action">>, EventJObj)
+                     ,kz_json:is_true(<<"Persist">>, EventJObj, 'true')
+                     ).
+
+handle_module_req(EventJObj, BHModule, <<"start">>, Persist) ->
+    case code:which(BHModule) of
+        'non_existing' -> send_error_module_resp(EventJObj, <<"module doesn't exist">>);
+        _Path ->
+            Started = start_module(BHModule),
+            Persisted = maybe_persist(BHModule, Persist, Started),
+            send_module_resp(EventJObj, Started, Persisted)
+    end;
+handle_module_req(EventJObj, BHModule, <<"stop">>, Persist) ->
+    'ok' = blackhole_bindings:flush_mod(BHModule),
+
+    Persist
+        andalso blackhole_config:set_default_autoload_modules(
+                  lists:delete(kz_term:to_binary(BHModule)
+                              ,blackhole_config:autoload_modules()
+                              )
+                 ),
+
+    send_module_resp(EventJObj, 'stopped', 'true').
+
+-spec start_module(atom()) -> mod_inited().
+start_module(BHModule) ->
+    blackhole_bindings:init_mod(BHModule).
+
+-spec maybe_persist(atom(), boolean(), mod_inited()) -> boolean().
+maybe_persist(_BHModule, 'false', _Started) -> 'false';
+maybe_persist(_BHModule, 'true', {'error', _}) -> 'false';
+maybe_persist(BHModule, 'true', 'ok') ->
+    Mods = blackhole_config:autoload_modules(),
+    case lists:member(kz_term:to_binary(BHModule), Mods) of
+        'true' ->
+            lager:debug("module ~s persisted~n", [BHModule]),
+            'true';
+        'false' ->
+            persist_module(BHModule, Mods)
+    end.
+
+-spec persist_module(atom(), ne_binaries()) -> boolean().
+persist_module(Module, Mods) ->
+    case blackhole_config:set_default_autoload_modules(
+           [kz_term:to_binary(Module)
+            | lists:delete(kz_term:to_binary(Module), Mods)
+           ]
+          )
+    of
+        {'ok', _} -> 'true';
+        'ok' -> 'false';
+        {'error', _} -> 'false'
+    end.
+
+-spec send_module_resp(kz_json:object(), mod_inited(), boolean()) -> 'ok'.
+send_module_resp(EventJObj, Started, Persisted) ->
+    Resp = [{<<"Persisted">>, Persisted}
+           ,{<<"Started">>, Started =:= 'ok'}
+           ,{<<"Error">>, maybe_start_error(Started)}
+           ,{<<"Msg-ID">>, kz_api:msg_id(EventJObj)}
+            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+           ],
+    ServerId = kz_api:server_id(EventJObj),
+    kapi_blackhole:publish_module_resp(ServerId, Resp).
+
+-spec maybe_start_error(mod_inited()) -> api_ne_binary().
+maybe_start_error('ok') -> 'undefined';
+maybe_start_error('stopped') -> 'undefined';
+maybe_start_error({'error', E}) -> kz_term:to_binary(E).
+
+-spec send_error_module_resp(kz_json:object(), ne_binary()) -> 'ok'.
+send_error_module_resp(EventJObj, Error) ->
+    Resp = [{<<"Persisted">>, 'false'}
+           ,{<<"Started">>, 'false'}
+           ,{<<"Error">>, Error}
+           ,{<<"Msg-ID">>, kz_api:msg_id(EventJObj)}
+           ],
+    ServerId = kz_api:server_id(EventJObj),
+    kapi_blackhole:publish_module_resp(ServerId, Resp).
 
 -type bh_amqp_binding() :: {'amqp', atom(), kz_proplist()}.
 -type bh_hook_binding() :: {'hook', ne_binary()} | {'hook', ne_binary(), ne_binary()}.

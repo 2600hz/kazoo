@@ -8,8 +8,8 @@
 -module(blackhole_maintenance).
 
 
--export([start_module/1]).
--export([stop_module/1]).
+-export([start_module/1, start_module/2]).
+-export([stop_module/1, stop_module/2]).
 -export([running_modules/0]).
 
 -include("blackhole.hrl").
@@ -22,30 +22,29 @@
 %% @end
 %%--------------------------------------------------------------------
 -spec start_module(text()) -> 'ok'.
-start_module(Module) ->
-    case blackhole_bindings:init_mod(Module) of
-        'ok' -> maybe_autoload_module(kz_term:to_binary(Module));
-        {'error', Error} -> io:format("failed to start ~s: ~p~n", [Module, Error])
+-spec start_module(text(), text() | boolean()) -> 'ok'.
+start_module(ModuleBin) ->
+    start_module(ModuleBin, 'true').
+start_module(ModuleBin, Persist) ->
+    Req = [{<<"Module">>, ModuleBin}
+          ,{<<"Action">>, <<"start">>}
+          ,{<<"Persist">>, kz_term:to_boolean(Persist)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_blackhole:publish_module_req/1
+                                    ,{'blackhole', fun kapi_blackhole:module_resp_v/1, 'true'}
+                                    )
+    of
+        {'ok', JObjs} ->
+            io:format("starting ~s:~n", [ModuleBin]),
+            lists:foreach(fun print_module_resp/1, JObjs);
+        {'timeout', JObjs} ->
+            io:format("timed out waiting for responses~n"),
+            [io:format("resp: ~s~n", [kz_json:encode(JObj)]) || JObj <- JObjs], 'ok';
+        {'error', _E} ->
+            io:format("failed to start module ~s: ~p~n", [ModuleBin, _E])
     end.
-
--spec maybe_autoload_module(ne_binary()) -> 'ok'.
-maybe_autoload_module(Module) ->
-    Mods = blackhole_config:autoload_modules(),
-    case lists:member(Module, Mods) of
-        'true' ->
-            io:format("module ~s started~n", [Module]);
-        'false' ->
-            persist_module(Module, Mods),
-            io:format("started and added ~s to autoloaded modules~n", [Module])
-    end.
-
--spec persist_module(ne_binary(), ne_binaries()) -> 'ok'.
-persist_module(Module, Mods) ->
-    blackhole_config:set_default_autoload_modules(
-      [kz_term:to_binary(Module)
-       | lists:delete(kz_term:to_binary(Module), Mods)
-      ]),
-    'ok'.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -54,12 +53,29 @@ persist_module(Module, Mods) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec stop_module(text()) -> 'ok'.
-stop_module(Module) ->
-    'ok' = blackhole_bindings:flush_mod(Module),
-
-    Mods = blackhole_config:autoload_modules(),
-    blackhole_config:set_default_autoload_modules(lists:delete(kz_term:to_binary(Module), Mods)),
-    io:format("stopped and removed ~s from autoloaded modules~n", [Module]).
+-spec stop_module(text(), text() | boolean()) -> 'ok'.
+stop_module(ModuleBin) ->
+    stop_module(ModuleBin, 'true').
+stop_module(ModuleBin, Persist) ->
+    Req = [{<<"Module">>, ModuleBin}
+          ,{<<"Action">>, <<"stop">>}
+          ,{<<"Persist">>, kz_term:to_boolean(Persist)}
+           | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+          ],
+    case kz_amqp_worker:call_collect(Req
+                                    ,fun kapi_blackhole:publish_module_req/1
+                                    ,{'blackhole', fun kapi_blackhole:module_resp_v/1, 'true'}
+                                    )
+    of
+        {'ok', JObjs} ->
+            io:format("stopping ~s:~n", [ModuleBin]),
+            lists:foreach(fun print_module_resp/1, JObjs);
+        {'timeout', JObjs} ->
+            io:format("timed out waiting for responses~n"),
+            [io:format("resp: ~s~n", [kz_json:encode(JObj)]) || JObj <- JObjs], 'ok';
+        {'error', _E} ->
+            io:format("failed to stop module ~s: ~p~n", [ModuleBin, _E])
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -69,3 +85,13 @@ stop_module(Module) ->
 %%--------------------------------------------------------------------
 -spec running_modules() -> atoms().
 running_modules() -> blackhole_bindings:modules_loaded().
+
+-spec print_module_resp(kz_json:objdct()) -> 'ok'.
+print_module_resp(JObj) ->
+    Fields = kz_api:remove_defaults(JObj),
+    io:format("node ~s returned:~n", [kz_api:node(JObj)]),
+    kz_json:foreach(fun print_field_resp/1, Fields).
+
+-spec print_field_resp({kz_json:key(), kz_json:json_term()}) -> 'ok'.
+print_field_resp({Field, Value}) ->
+    io:format("  ~s: ~s~n", [Field, Value]).

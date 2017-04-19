@@ -61,9 +61,7 @@
 -spec new() -> context().
 -spec new(pid(), ne_binary()) -> context().
 new()->
-    Setters = [{fun set_timestamp/2, kz_time:current_tstamp()}
-              ],
-    setters(#bh_context{}, Setters).
+    #bh_context{}.
 
 new(SessionPid, SessionId) ->
     Setters = [{fun set_websocket_session_id/2, SessionId}
