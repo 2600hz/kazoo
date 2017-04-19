@@ -733,7 +733,7 @@ maybe_update_meta(Length, Action, Call, MediaId, BoxId) ->
             {'ok', Call}
     end.
 
--spec update_metadata(kapps_call:call(), ne_binary(), ne_binary(), update_funs()) -> 'ok'.
+-spec update_metadata(kapps_call:call(), ne_binary(), ne_binary(), update_funs()) -> {'ok', kapps_call:call()}.
 update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
     AccountId = kapps_call:account_id(Call),
     case update(AccountId, BoxId, MessageId, UpdateFuns) of

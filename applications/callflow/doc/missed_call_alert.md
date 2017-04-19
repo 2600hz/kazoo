@@ -2,7 +2,7 @@
 
 #### Overview
 
-The `missed_call_alert` callflow  users to receive an email notification for unanswered inbound calls that do not result in a voicemail message.
+The `missed_call_alert` callflow allows users to receive an email notification for unanswered inbound calls that do not result in a voicemail message.
 
 An inbound call in the scope of this module is defined as one that originates external to the Kazoo system, as opposed to calls between users/devices in the Kazoo account.
 
@@ -22,16 +22,20 @@ Key | Description | Type | Default | Required
 
 #### Description
 
-The Kazoo callflow executor allows modules to register functions that should be executed when the call is terminated (on `CHANNEL_DESTROY` or `CHANNEL_DISCONNECTED` events). After modules registered themself, each registered module will be executed serially. As a call is processed by the callflow executor, it will observe the event stream for the channel and set a flag on the Kazoo call object if a successful bridge is performed. The callflow voicemail module will also set a flag on the Kazoo call object when a voicemail message is successfully left.
+The Kazoo callflow executor allows modules to register functions that should be executed when the call is terminated (on `CHANNEL_DESTROY` or `CHANNEL_DISCONNECTED` events). After modules registered themself, each registered module will be executed serially.
 
-When `missed_call_alert` executed as part of a callflow or preflow, will determine if the call originated as an inbound call to the account. If the call was inbound, then it will register itself as a termination function with the callflow executor. When this function is invoked from the calllflow executor it will inspect the Kazoo call object, specifically the two said above flags. If neither are set to `true` this function will then publish a new AMQP message to the notification exchange. This message will be received by the Kazoo teletype which will process a email template for missed calls, and send the email.
+As a call is processed by the callflow executor, it will observe the event stream for the channel and set a flag on the Kazoo call object if a successful bridge is performed. The callflow voicemail module will also set a flag on the Kazoo call object when a voicemail message is successfully left.
+
+When `missed_call_alert` executed as part of a callflow or preflow, will determine if the call originated as an inbound call to the account. If the call was inbound, then it will register itself as a termination function with the callflow executor.
+
+When this function is invoked from the calllflow executor it will inspect the Kazoo call object, specifically the two said above flags. If neither are set to `true` this function will then publish a new AMQP message to the notification exchange. This message will be received by the Kazoo teletype which will process a email template for missed calls, and send the email.
 
 #### Configuring Recipients
 
 The data object of this module can define one or more specific email addresses, Kazoo user ids or a combination of both. If a Kazoo user is provided, then the currently configured user email address is used. If no recipients are provided, then it will be assumed to be configured on the email template.
 
 #### Example Callflow
-
+```json
 {
     "flow":{
         "data":{
@@ -81,3 +85,4 @@ The data object of this module can define one or more specific email addresses, 
         "+15554441111"
     ]
 }
+```

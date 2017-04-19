@@ -257,7 +257,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ,{<<"Voicemail-Timestamp">>, kz_time:current_tstamp()}
                  ,{<<"Voicemail-Length">>, Length}
                  ,{<<"Voicemail-Transcription">>, Transcription}
-                 ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+                 ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
                   | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                  ],
 
@@ -287,7 +287,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Caller-ID-Name">>, get_caller_id_name(Call)}
            ,{<<"Voicemail-Timestamp">>, Timestamp}
            ,{<<"Voicemail-Length">>, Length}
-           ,{<<"Call-ID">>, kapps_call:call_id(Call)}
+           ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
     kapi_notifications:publish_voicemail_saved(Prop),

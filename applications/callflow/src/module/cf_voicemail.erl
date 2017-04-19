@@ -553,8 +553,8 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                     _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
                     'ok';
                 {'branch', Flow} ->
-                    _ = new_message(AttachmentName, Length, Box, Call),
                     cf_exe:update_call(Call, Routins),
+                    _ = new_message(AttachmentName, Length, Box, Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     {'branch', Flow}
             end;
