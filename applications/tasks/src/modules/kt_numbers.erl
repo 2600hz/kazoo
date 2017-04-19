@@ -33,6 +33,7 @@
         ,dump_in_service/2, dump_port_in/2, dump_port_out/2, dump_released/2, dump_reserved/2
         ,import/3
         ,assign_to/3
+        ,update_merge/3, update_overwrite/3
         ,release/3
         ,reserve/3
         ,delete/3
@@ -49,6 +50,12 @@
 -define(DB_DUMP_BULK_SIZE
        ,kapps_config:get_integer(?MOD_CAT, <<"db_page_size">>, 1000)).
 
+-define(ON_SETTING_PUBLIC_FIELDS,
+        "To add a public field 'MyPub' to a number, create a column named 'opaque.MyPub'.\n"
+        "Note: to nest a public field 'my_nested_field' under 'my_field', name the column thusly: 'opaque.my_field.my_nested_field'.\n"
+        "Note: some fields may be disabled by configuration in which case it is forbidden to set them.\n"
+       ).
+
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
                  ,<<"list_all">>
@@ -64,6 +71,8 @@
                  ,<<"dump_reserved">>
                  ,<<"import">>
                  ,<<"assign_to">>
+                 ,<<"update_merge">>
+                 ,<<"update_overwrite">>
                  ,<<"release">>
                  ,<<"reserve">>
                  ,<<"delete">>
@@ -93,22 +102,10 @@ output_header(<<"dump">>) ->
     list_output_header();
 output_header(<<"dump_", _/binary>>) ->
     list_output_header();
-output_header(<<"import">>) ->
-    result_output_header();
-output_header(<<"assign_to">>) ->
-    result_output_header();
-output_header(<<"release">>) ->
-    result_output_header();
-output_header(<<"reserve">>) ->
-    result_output_header();
-output_header(<<"delete">>) ->
+output_header(?NE_BINARY) ->
     result_output_header().
 
 -spec cleanup(ne_binary(), any()) -> any().
-cleanup(<<"list">>, _) -> ok;
-cleanup(<<"list_all">>, _) -> ok;
-cleanup(<<"dump">>, _) -> ok;
-cleanup(<<"dump_",_/binary>>, _) -> ok;
 cleanup(<<"import">>, 'init') ->
     %% Hit iff no rows at all succeeded.
     'ok';
@@ -119,10 +116,7 @@ cleanup(<<"import">>, AccountIds) ->
         end,
     lists:foreach(F, sets:to_list(AccountIds)),
     kz_datamgr:enable_change_notice();
-cleanup(<<"assign_to">>, _) -> ok;
-cleanup(<<"release">>, _) -> ok;
-cleanup(<<"reserve">>, _) -> ok;
-cleanup(<<"delete">>, _) -> ok.
+cleanup(?NE_BINARY, _) -> ok.
 
 -spec result_output_header() -> kz_tasks:output_header().
 result_output_header() ->
@@ -187,6 +181,19 @@ list_doc() ->
       "* `failover.sip`: SIP URI to fail over to.\n"
     >>.
 
+optional_public_fields() ->
+    [?FEATURE_RENAME_CARRIER]
+        ++ (list_output_header() -- [<<"e164">>
+                                    ,<<"account_id">>
+                                    ,<<"previously_assigned_to">>
+                                    ,<<"state">>
+                                    ,<<"created">>
+                                    ,<<"modified">>
+                                    ,<<"used_by">>
+                                    ,<<"ported_in">>
+                                    ,<<"carrier_module">>
+                                    ]).
+
 -spec help(kz_json:object()) -> kz_json:object().
 help(JObj) -> help(JObj, <<?CATEGORY>>).
 
@@ -224,8 +231,7 @@ action(<<"import">>) ->
                      "If `account_id` is empty, number will be assigned to account creating task.\n"
                      "`module_name` will be set only if account creating task is system admin.\n"
                      "Note: `carrier_module` defaults to '", (?IMPORT_DEFAULTS_TO_CARRIER)/binary, "'.\n"
-                     "To add a public field 'MyPub' to a number, create a column named 'opaque.MyPub'.\n"
-                     "Note: to nest a public field 'my_nested_field' under 'my_field', name the column thusly: 'opaque.my_field.my_nested_field'.\n"
+                     ?ON_SETTING_PUBLIC_FIELDS
                    >>
      ,<<"expected_content">> => <<"text/csv">>
      ,<<"mandatory">> => [<<"e164">>]
@@ -244,6 +250,34 @@ action(<<"assign_to">>) ->
      ,<<"expected_content">> => <<"text/csv">>
      ,<<"mandatory">> => [<<"e164">>]
      ,<<"optional">> => [<<"account_id">>]
+     };
+
+action(<<"update_merge">>) ->
+    #{<<"description">> => <<"Bulk-update numbers">>
+     ,<<"doc">> => <<"Update features and/or public fields of existing numbers.\n"
+                     "Note: if a field is already set on number but empty in the row, it will not be modified.\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must already exist.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                     ?ON_SETTING_PUBLIC_FIELDS
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => optional_public_fields()
+     };
+
+action(<<"update_overwrite">>) ->
+    #{<<"description">> => <<"Bulk-update numbers">>
+     ,<<"doc">> => <<"Reset features and/or public fields of existing numbers.\n"
+                     "Note: if a field is already set on number but empty in the row, it will be unset.\n"
+                     "Note: number must be E164-formatted.\n"
+                     "Note: number must already exist.\n"
+                     "Note: account creating the task (or `auth_by` account) must have permissions on number.\n"
+                     ?ON_SETTING_PUBLIC_FIELDS
+                   >>
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => optional_public_fields()
      };
 
 action(<<"release">>) ->
@@ -483,63 +517,68 @@ import(#{account_id := Account
              ,<<"created">> := _
              ,<<"modified">> := _
              ,<<"used_by">> := _  %%FIXME: decide whether to use this one
-             ,<<"cnam.inbound">> := CNAMInbound
-             ,<<"cnam.outbound">> := CNAMOutbound
-             ,<<"e911.locality">> := E911Locality
-             ,<<"e911.name">> := E911Name
-             ,<<"e911.region">> := E911Region
-             ,<<"e911.street_address">> := E911StreetAddress
-             ,<<"e911.extended_address">> := E911ExtendedAddress
-             ,<<"e911.postal_code">> := E911PostalCode
-             ,<<"prepend.enabled">> := PrependEnabled
-             ,<<"prepend.name">> := PrependName
-             ,<<"prepend.number">> := PrependNumber
-             ,<<"ringback.early">> := RingbackEarly
-             ,<<"ringback.transfer">> := RingbackTransfer
-             ,<<"force_outbound">> := ForceOutbound
-             ,<<"failover.e164">> := FailoverE164
-             ,<<"failover.sip">> := FailoverSIP
              }
       ) ->
-
-    PublicFields = [cnam(props:filter_undefined(
-                           [{?CNAM_DISPLAY_NAME, CNAMOutbound}
-                           ,{?CNAM_INBOUND_LOOKUP, is_cell_true(CNAMInbound)}
-                           ]))
-                   ,e911(props:filter_empty(
-                           [{?E911_CITY, E911Locality}
-                           ,{?E911_NAME, E911Name}
-                           ,{?E911_STATE, E911Region}
-                           ,{?E911_STREET1, E911StreetAddress}
-                           ,{?E911_STREET2, E911ExtendedAddress}
-                           ,{?E911_ZIP, E911PostalCode}
-                           ]))
-                   ,prepend(props:filter_undefined(
-                              [{?PREPEND_ENABLED, is_cell_true(PrependEnabled)}
-                              ,{?PREPEND_NAME, PrependName}
-                              ,{?PREPEND_NUMBER, PrependNumber}
-                              ]))
-                   ,ringback(props:filter_empty(
-                               [{?RINGBACK_EARLY, RingbackEarly}
-                               ,{?RINGBACK_TRANSFER, RingbackTransfer}
-                               ]))
-                   ,props:filter_undefined([{?FEATURE_FORCE_OUTBOUND, is_cell_true(ForceOutbound)}])
-                   ,failover(props:filter_empty(
-                               [{?FAILOVER_E164, FailoverE164}
-                               ,{?FAILOVER_SIP, FailoverSIP}
-                               ]))
-                   ,additional_fields_to_json(Args)
-                   ],
     AccountId = select_account_id(AccountId0, Account),
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
               ,{module_name, import_module_name(Account, Carrier)}
               ,{ported_in, PortedIn =:= <<"true">>}
-              ,{public_fields, kz_json:from_list(lists:flatten(PublicFields))}
+              ,{public_fields, public_fields(Args)}
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
+
+%% @private
+public_fields(Args) -> kz_json:from_list(lists:flatten(pub_fields(Args))).
+pub_fields(Args=#{?FEATURE_RENAME_CARRIER := RenameCarrier
+                 ,<<"cnam.inbound">> := CNAMInbound
+                 ,<<"cnam.outbound">> := CNAMOutbound
+                 ,<<"e911.locality">> := E911Locality
+                 ,<<"e911.name">> := E911Name
+                 ,<<"e911.region">> := E911Region
+                 ,<<"e911.street_address">> := E911StreetAddress
+                 ,<<"e911.extended_address">> := E911ExtendedAddress
+                 ,<<"e911.postal_code">> := E911PostalCode
+                 ,<<"prepend.enabled">> := PrependEnabled
+                 ,<<"prepend.name">> := PrependName
+                 ,<<"prepend.number">> := PrependNumber
+                 ,<<"ringback.early">> := RingbackEarly
+                 ,<<"ringback.transfer">> := RingbackTransfer
+                 ,?FEATURE_FORCE_OUTBOUND := ForceOutbound
+                 ,<<"failover.e164">> := FailoverE164
+                 ,<<"failover.sip">> := FailoverSIP
+                 }) ->
+    [props:filter_undefined([{?FEATURE_RENAME_CARRIER, RenameCarrier}])
+    ,cnam(props:filter_undefined(
+            [{?CNAM_DISPLAY_NAME, CNAMOutbound}
+            ,{?CNAM_INBOUND_LOOKUP, is_cell_true(CNAMInbound)}
+            ]))
+    ,e911(props:filter_empty(
+            [{?E911_CITY, E911Locality}
+            ,{?E911_NAME, E911Name}
+            ,{?E911_STATE, E911Region}
+            ,{?E911_STREET1, E911StreetAddress}
+            ,{?E911_STREET2, E911ExtendedAddress}
+            ,{?E911_ZIP, E911PostalCode}
+            ]))
+    ,prepend(props:filter_undefined(
+               [{?PREPEND_ENABLED, is_cell_true(PrependEnabled)}
+               ,{?PREPEND_NAME, PrependName}
+               ,{?PREPEND_NUMBER, PrependNumber}
+               ]))
+    ,ringback(props:filter_empty(
+                [{?RINGBACK_EARLY, RingbackEarly}
+                ,{?RINGBACK_TRANSFER, RingbackTransfer}
+                ]))
+    ,props:filter_undefined([{?FEATURE_FORCE_OUTBOUND, is_cell_true(ForceOutbound)}])
+    ,failover(props:filter_empty(
+                [{?FAILOVER_E164, FailoverE164}
+                ,{?FAILOVER_SIP, FailoverSIP}
+                ]))
+    ,additional_fields_to_json(Args)
+    ].
 
 %% @private
 cnam(Props) -> maybe_nest(?FEATURE_CNAM, Props).
@@ -586,6 +625,10 @@ additional_fields(Args) ->
         not kz_term:is_empty(OpaqueField)
     ].
 
+%% @private
+select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
+select_account_id(_, AccountId) -> AccountId.
+
 
 -spec assign_to(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 assign_to(#{auth_account_id := AuthBy, account_id := Account}
@@ -598,8 +641,27 @@ assign_to(#{auth_account_id := AuthBy, account_id := Account}
               ],
     handle_result(Args, knm_number:move(Num, AccountId, Options)).
 
-select_account_id(?MATCH_ACCOUNT_RAW(_)=AccountId, _) -> AccountId;
-select_account_id(_, AccountId) -> AccountId.
+-spec update_merge(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+update_merge(#{auth_account_id := AuthBy}
+            ,_IterValue
+            ,Args=#{<<"e164">> := Num}
+            ) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
+              ],
+    Updates = [{fun knm_phone_number:update_doc/2, public_fields(Args)}],
+    handle_result(Args, knm_number:update(Num, Updates, Options)).
+
+-spec update_overwrite(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+update_overwrite(#{auth_account_id := AuthBy}
+                ,_IterValue
+                ,Args=#{<<"e164">> := Num}
+                ) ->
+    Options = [{auth_by, AuthBy}
+              ,{batch_run, true}
+              ],
+    Updates = [{fun knm_phone_number:reset_doc/2, public_fields(Args)}],
+    handle_result(Args, knm_number:update(Num, Updates, Options)).
 
 -spec release(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
 release(#{auth_account_id := AuthBy}
