@@ -95,41 +95,43 @@ equal_sign_1234_test_() ->
     ].
 
 sign_request_test_() ->
-    SignResult = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?TEST_CONFIG_JOBJ),
     [{"Verifying sign request without user"
      ,?_assertEqual('true'
-                   ,is_invalid_error(kz_mfa_duo:authenticate([], ?TEST_CONFIG_JOBJ))
+                   ,is_validation_error(kz_mfa_duo:authenticate([], ?TEST_CONFIG_JOBJ))
                    )
      }
     ,{"Verifying sign request with invalid ikey"
      ,?_assertEqual('true'
-                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"integration_key">>)))
+                   ,is_validation_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"integration_key">>)))
                    )
      }
     ,{"Verifying sign request with invalid skey"
      ,?_assertEqual('true'
-                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"secret_key">>)))
+                   ,is_validation_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"secret_key">>)))
                    )
      }
     ,{"Verifying sign request with invalid akey"
      ,?_assertEqual('true'
-                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>)))
+                   ,is_validation_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?WRONG_XKEY(<<"application_secret_key">>)))
                    )
      }
     ,{"Verifying sign request without api_hostname"
      ,?_assertEqual('true'
-                   ,is_invalid_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:delete_key(<<"api_hostname">>, ?TEST_CONFIG_JOBJ)))
+                   ,is_validation_error(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:delete_key(<<"api_hostname">>, ?TEST_CONFIG_JOBJ)))
                    )
      }
     ,{"Verifying sign request with extra config variable"
-     ,?_assertEqual(SignResult
-                   ,kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:set_value(<<"happy_var">>, <<"happy_val">>, ?TEST_CONFIG_JOBJ))
+     ,?_assertEqual('true'
+                   ,is_challenge_resp(kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, kz_json:set_value(<<"happy_var">>, <<"happy_val">>, ?TEST_CONFIG_JOBJ)))
                    )
      }
     ].
 
-is_invalid_error({'error', <<"invalid duo configuration", _/binary>>}) -> 'true';
-is_invalid_error(_) -> 'false'.
+is_validation_error({'error', <<"invalid duo configuration", _/binary>>}) -> 'true';
+is_validation_error(_) -> 'false'.
+
+is_challenge_resp({error, 401, J}) -> kz_json:is_json_object(J);
+is_challenge_resp(_) -> 'false'.
 
 verify_request_test_() ->
     {_, _, SignReq} = kz_mfa_duo:authenticate(?TEST_SIGN_CLAIM, ?TEST_CONFIG_JOBJ),
