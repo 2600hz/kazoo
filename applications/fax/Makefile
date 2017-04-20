@@ -1,5 +1,6 @@
 ROOT = ../..
 PROJECT = fax
+ERLC_OPTS += -I../../core
 
 all: compile
 

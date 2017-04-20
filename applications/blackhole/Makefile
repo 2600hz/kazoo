@@ -1,5 +1,6 @@
 ROOT = ../..
 PROJECT = blackhole
+ERLC_OPTS += -I../../core
 
 all: compile
 

@@ -1,5 +1,6 @@
 ROOT = ../..
 PROJECT = callflow
+ERLC_OPTS += -I../../core
 
 all: schemas compile
 
