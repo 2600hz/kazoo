@@ -321,7 +321,7 @@ patch_and_validate(Id, Context, ValidateFun) ->
 
 patch_and_validate_doc(Id, Context, ValidateFun, 'success') ->
     PubJObj = kz_doc:public_fields(cb_context:req_data(Context)),
-    PatchedJObj = kz_json:merge(cb_context:doc(Context), PubJObj),
+    PatchedJObj = kz_json:merge(PubJObj, cb_context:doc(Context)),
     Context1 = cb_context:set_req_data(Context, PatchedJObj),
     ValidateFun(Id, Context1);
 patch_and_validate_doc(Id, Context, ValidateFun, _RespStatus) ->
