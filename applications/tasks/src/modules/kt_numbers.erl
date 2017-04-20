@@ -385,16 +385,19 @@ list_numbers(AuthBy, E164s) ->
     Options = [{auth_by, AuthBy}
               ,{batch_run, true}
               ],
-    #{ok := Ns, ko := KOs} = knm_numbers:get(E164s, Options),
-    maps:fold(fun list_bad_rows/3, [], KOs)
-        ++ [list_number(N) || N <- Ns].
+    {OKs, KOs} = lists:partition(fun group_by_result/1, knm_numbers:get(E164s, Options)),
+    lists:foldl(fun list_bad_rows/2, [], KOs)
+        ++ [list_number(N) || {_, {ok,N}} <- OKs].
 
-list_bad_rows(E164, not_reconcilable, Rows) ->
+group_by_result({_Num, {ok, _N}}) -> true;
+group_by_result({_Num, {error, _R}}) -> false.
+
+list_bad_rows({E164, {error, not_reconcilable}}, Rows) ->
     %% Numbers that shouldn't be in the system (e.g. '+141510010+14')
     %% Their fields are not queriable but we return the id to show it exists.
     Row = [E164 | lists:duplicate(length(list_output_header()) - 1, undefined)],
     [Row|Rows];
-list_bad_rows(_E164, _R, Rows) ->
+list_bad_rows({_E164, {error, _R}}, Rows) ->
     lager:error("wild number ~s appeared: ~p", [_E164, _R]),
     Rows.
 
