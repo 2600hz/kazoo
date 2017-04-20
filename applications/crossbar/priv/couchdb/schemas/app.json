@@ -63,6 +63,12 @@
             "required": true,
             "type": "string"
         },
+        "masqueradable": {
+            "default": true,
+            "description": "Whether an application is masqueradable or not",
+            "required": false,
+            "type": "boolean"
+        },
         "name": {
             "description": "Application name",
             "maxLength": 64,
