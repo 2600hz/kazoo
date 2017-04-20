@@ -78,6 +78,8 @@
 -define(TEST_VITELITY_NUM, <<"+18122154006">>).
 -define(TEST_PORT_IN_NUM, <<"+14252151007">>).
 -define(TEST_PORT_IN2_NUM, <<"+14252151008">>).
+-define(TEST_PORT_IN3_NUM, <<"+14252151009">>).
+-define(TEST_NEW_PORT_NUM, <<"+19042471591">>).
 -define(BW_EXISTING_DID, <<"+14122065197">>).
 -define(TEST_AVAILABLE_NON_LOCAL_NUM, <<"+19162154006">>).
 
@@ -254,6 +256,19 @@
           ,{?PVT_CREATED, 63565935000}
           ])).
 
+-define(PORT_IN3_NUMBER
+       ,kz_json:from_list(
+          [{<<"_id">>, ?TEST_PORT_IN3_NUM}
+          ,{<<"_rev">>, <<"1-adddead523e81a4e3c2689140ed3abeef">>}
+          ,{?PVT_MODIFIED, 63565935527}
+          ,{?PVT_ASSIGNED_TO, ?RESELLER_ACCOUNT_ID}
+          ,{?PVT_RESERVE_HISTORY, [?RESELLER_ACCOUNT_ID]}
+          ,{?PVT_MODULE_NAME, <<"knm_bandwidth2">>}
+          ,{?PVT_STATE, ?NUMBER_STATE_PORT_IN}
+          ,{?PVT_DB_NAME, <<"numbers%2F%2B1425">>}
+          ,{?PVT_CREATED, 63565935000}
+          ])).
+
 -define(BW_EXISTING_JSON
        ,kz_json:from_list(
           [{<<"_id">>, <<"+14122065197">>}
@@ -297,6 +312,84 @@
           ,{?PVT_DB_NAME, <<"numbers%2F%2B1916">>}
           ,{?PVT_CREATED, 63565900000}
           ])).
+
+-define(TEST_NEW_PORT_REQ
+       ,kz_json:from_list(
+          [{<<"_id">>, <<"bd99a9e8c6b16480449d78e1bca6817b">>}
+          ,{<<"_rev">>, <<"6-dead6acb1e87d94408461b6c8e9a99db">>}
+          ,{<<"carrier">>, <<"Unknown Carrier">>}
+          ,{<<"numbers">>
+           ,kz_json:from_list(
+              [{?TEST_NEW_PORT_NUM, kz_json:from_list([{<<"used_by">>, <<"callflow">>}])}
+              ])
+           }
+          ,{<<"bill">>
+           ,kz_json:from_list(
+              [{<<"name">>, <<"Karl Anderson">>}
+              ,{<<"address">>, <<"140 Geary Street">>}
+              ,{<<"locality">>, <<"San Francisco">>}
+              ,{<<"region">>, <<"CA">>}
+              ,{<<"postal_code">>, <<"94108">>}
+              ])
+           }
+          ,{<<"name">>, <<"Test Port">>}
+          ,{<<"notifications">>
+           ,kz_json:from_list(
+              [{<<"email">>, kz_json:from_list([{<<"send_to">>, <<"lark@1300hz.com">>}])}
+              ])
+           }
+          ,{<<"transfer_date">>, 63655056000}
+          ,{<<"port_state">>, <<"unconfirmed">>}
+          ,{<<"ui_metadata">>
+           ,kz_json:from_list(
+              [{<<"version">>, <<"4.0-20">>}
+              ,{<<"ui">>,<<"monster-ui">>}
+              ,{<<"origin">>,<<"common">>}
+              ])
+           }
+          ,{<<"pvt_port_state">>, <<"submitted">>}
+          ,{<<"pvt_type">>, <<"port_request">>}
+          ,{<<"pvt_tree">>, [?MASTER_ACCOUNT_ID, <<"bbbbbd7435c9d8822406d27e72a1e91d">>]}
+          ,{<<"pvt_vsn">>, <<"1">>}
+          ,{<<"pvt_account_id">>, ?RESELLER_ACCOUNT_ID}
+          ,{<<"pvt_account_db">>, <<"port_requests">>}
+          ,{<<"pvt_created">>, 63654578539}
+          ,{<<"pvt_modified">>, 63654578549}
+          ,{<<"pvt_request_id">>, <<"d19e1a27e72d6042288d9c5347d9e6d4">>}
+          ,{<<"pvt_auth_user_id">>, <<"aaaaad7435c9d8822406d27e72a1e91d">>}
+          ,{<<"pvt_auth_account_id">>, ?MASTER_ACCOUNT_ID}
+          ,{<<"pvt_is_authenticated">>, true}
+          ,{<<"_attachments">>
+           ,kz_json:from_list(
+              [{<<"resporg.pdf">>
+               ,kz_json:from_list(
+                  [{<<"content_type">>, <<"application/pdf">>}
+                  ,{<<"revpos">>, 4}
+                  ,{<<"digest">>, <<"md5-eEYd+NQg/SR6QXReENaxKQ==">>}
+                  ,{<<"length">>, 81352}
+                  ,{<<"stub">>, true}
+                  ])
+               }
+              ,{<<"loa.pdf">>
+               ,kz_json:from_list(
+                  [{<<"content_type">>, <<"application/pdf">>}
+                  ,{<<"revpos">>, 3}
+                  ,{<<"digest">>, <<"md5-eEYd+NQg/SR6QXReENaxKQ==">>}
+                  ,{<<"length">>, 81352}
+                  ,{<<"stub">>, true}
+                  ])
+               }
+              ,{<<"bill.pdf">>
+               ,kz_json:from_list(
+                  [{<<"content_type">>, <<"application/pdf">>}
+                  ,{<<"revpos">>, 2}
+                  ,{<<"digest">>, <<"md5-eEYd+NQg/SR6QXReENaxKQ==">>}
+                  ,{<<"length">>, 81352}
+                  ,{<<"stub">>, true}
+                  ])
+               }])
+           }])
+       ).
 
 -define(LOG_ERROR(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).
 -define(LOG_WARN(F,A), io:format(user, "~s:~p  " ++ F ++ "\n", [?MODULE,?LINE|A])).

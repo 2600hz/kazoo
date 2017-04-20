@@ -371,8 +371,7 @@ test_fetch(?TEST_AVAILABLE_NON_LOCAL_NUM) ->
     {ok, ?AVAILABLE_NON_LOCAL_NUMBER};
 test_fetch(?TEST_TELNYX_NUM) ->
     {ok, ?TELNYX_NUMBER};
-test_fetch(?TEST_VITELITY_NUM) ->
-    {ok, ?VITELITY_NUMBER};
+test_fetch(?TEST_VITELITY_NUM) -> {ok, ?VITELITY_NUMBER};
 test_fetch(?TEST_OLD1_NUM) ->
     {ok, kz_json:decode(list_to_binary(knm_util:fixture("old_vsn_1_in.json")))};
 test_fetch(?TEST_OLD1_1_NUM) ->
@@ -405,6 +404,7 @@ test_fetch(?TEST_PORT_IN_NUM) ->
     {ok, ?PORT_IN_NUMBER};
 test_fetch(?TEST_PORT_IN2_NUM) ->
     {ok, ?PORT_IN2_NUMBER};
+test_fetch(?TEST_PORT_IN3_NUM) -> {ok, ?PORT_IN3_NUMBER};
 test_fetch(_DID=?NE_BINARY) ->
     {error, not_found}.
 -else.
