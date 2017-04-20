@@ -93,7 +93,7 @@ fold_query({Db, View, CouchOpts, Mapper}, {Limit, LastKey, Res})
                            kz_json:objects().
 limited_query(Limit, _, _, _) when Limit =< 0 -> [];
 limited_query(Limit, Db, View, CouchOpts) ->
-    case kz_datamgr:get_results(Db, View, [{'limit', Limit} | CouchOpts]) of
+    case kazoo_modb:get_results(Db, View, [{'limit', Limit} | CouchOpts]) of
         {'ok', JObjs} -> JObjs;
         {'error', 'not_found'} -> [];
         {'error', Error} -> throw(Error)

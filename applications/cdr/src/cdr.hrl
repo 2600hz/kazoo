@@ -8,8 +8,6 @@
 -define(APP_VERSION, <<"4.0.0">>).
 -define(CONFIG_CAT, ?APP_NAME).
 
--define(MAX_RETRIES, 3).
-
 -type account_id() :: ne_binary().
 -type account_db() :: ne_binary().
 

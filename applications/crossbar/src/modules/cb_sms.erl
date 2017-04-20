@@ -109,7 +109,12 @@ validate_sms(Context, Id, ?HTTP_DELETE) ->
 %%--------------------------------------------------------------------
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->
-    crossbar_doc:save(Context).
+    Doc = cb_context:doc(Context),
+    case kazoo_modb:save_doc(cb_context:account_db(Context), Doc) of
+        {'ok', Saved} -> crossbar_util:response(Saved, Context);
+        {'error', Error} ->
+            crossbar_doc:handle_datamgr_errors(Error, kz_doc:id(Doc), Context)
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -157,7 +162,6 @@ on_successful_validation(Context) ->
     JObj = cb_context:doc(Context),
     AccountId = cb_context:account_id(Context),
     AccountDb = cb_context:account_modb(Context),
-    kazoo_modb:maybe_create(AccountDb),
     ResellerId = cb_context:reseller_id(Context),
     Realm = kz_util:get_account_realm(AccountId),
 
