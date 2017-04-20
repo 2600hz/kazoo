@@ -20,6 +20,8 @@
                            ,<<"profile">>
                            ,<<"pvt_account_id">>
                            ,<<"pvt_owner_id">>
+                           ,<<"display_name">>
+                           ,<<"photo_url">>
                            ]).
 
 -define(PROFILE_EMAIL_FIELDS, [<<"email">>
@@ -46,6 +48,8 @@ token(Token) ->
     Routines = [fun maybe_load_profile/1
                ,fun maybe_add_user_identity/1
                ,fun maybe_add_user_email/1
+               ,fun maybe_add_display_name/1
+               ,fun maybe_add_photo_url/1
                ,fun maybe_add_user/1
                ],
     token_fold(Token, Routines).
@@ -163,6 +167,39 @@ maybe_add_user_identity(#{auth_provider := #{name := Prov}}=Token) ->
     lager:debug("provider '~s' doesn't support identity profile info", [Prov]),
     Token.
 
+-spec maybe_add_display_name(map()) -> map().
+maybe_add_display_name(#{display_name := _DisplayName} = Token) -> Token;
+maybe_add_display_name(#{profile_error_code := _Error} = Token) -> Token;
+maybe_add_display_name(#{auth_provider := #{profile_displayName_field := Field}
+                        ,profile := Profile
+                        } = Token) ->
+    case kz_json:get_first_defined([Field], Profile) of
+        'undefined' ->
+            lager:debug("user displayName from field '~p' not found into ~p", [Field, Profile]),
+            Token;
+        DisplayName ->
+            lager:debug("found user displayName ~p", [DisplayName]),
+            Token#{display_name => DisplayName}
+    end;
+maybe_add_display_name(#{auth_provider := #{name := Prov}}=Token) ->
+    lager:debug("provider '~s' doesn't support displayName profile info", [Prov]),
+    Token.
+
+-spec maybe_add_photo_url(map()) -> map().
+maybe_add_photo_url(#{photo_url := _PhotoUrl} = Token) -> Token;
+maybe_add_photo_url(#{profile_error_code := _Error} = Token) -> Token;
+maybe_add_photo_url(#{auth_provider := #{profile_photo_url_field := Field}
+                     ,profile := Profile
+                     } = Token) ->
+    case kz_json:get_first_defined([Field], Profile) of
+        'undefined' ->
+            lager:debug("user photoUrl from field '~p' not found into ~p", [Field, Profile]),
+            Token;
+        PhotoUrl ->
+            lager:debug("found user photoUrl ~p", [PhotoUrl]),
+            Token#{photo_url => PhotoUrl}
+    end;
+maybe_add_photo_url(Token) -> Token.
 
 -spec maybe_add_user_email(map()) -> map().
 maybe_add_user_email(#{user_email := _UserEmail} = Token) -> Token;
@@ -340,6 +377,8 @@ format_user_doc(#{auth_provider := #{name := ProviderId} = Provider
             ,{<<"scope">>, Scope}
             ,{<<"scopes">>, binary:split(Scope, ?SCOPE_SEPARATORS, ['global'])}
             ,{<<"profile">>, Profile}
+            ,{<<"display_name">>, maps:get(display_name, Token, 'undefined')}
+            ,{<<"photo_url">>, maps:get(photo_url, Token, 'undefined')}
             ,{<<"pvt_app_id">>, AppId}
             ,{<<"pvt_app_provider_id">>, ProviderId}
             ,{<<"pvt_app_account_id">>, AppAccountId}
