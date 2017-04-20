@@ -10,7 +10,7 @@
 -export([init/0
         ,allowed_methods/1, allowed_methods/2
         ,resource_exists/1, resource_exists/2
-        ,authorize/2 %%, authorize/3
+        ,authorize/2, authorize/3
         ,authenticate/2
         ,validate_resource/1, validate_resource/2, validate_resource/3
         ,validate/2, validate/3
@@ -111,12 +111,22 @@ resource_exists(?KEYS_PATH, _KeyId) -> 'true'.
 authorize(Context, PathToken) ->
     authorize_nouns(Context, PathToken, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+-spec authorize(cb_context:context(), path_token(), path_token()) -> boolean().
+authorize(Context, PathToken, Id) ->
+    authorize_nouns(Context, PathToken, Id, cb_context:req_verb(Context), cb_context:req_nouns(Context)).
+
 -spec authorize_nouns(cb_context:context(), path_token(), req_verb(), req_nouns()) -> boolean().
 authorize_nouns(_Context, ?CALLBACK_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?AUTHORIZE_PATH, ?HTTP_PUT, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_GET, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_Context, ?TOKENINFO_PATH, ?HTTP_POST, [{<<"auth">>, _}]) -> 'true';
 authorize_nouns(_, _, _, _) -> 'false'.
+
+-spec authorize_nouns(cb_context:context(), path_token(), path_token(), req_verb(), req_nouns()) -> boolean().
+authorize_nouns(Context, ?LINKS_PATH, _Id, ?HTTP_PUT, [{<<"auth">>, _}]) ->
+    cb_context:is_authenticated(Context);
+authorize_nouns(Context, ?LINKS_PATH, _Id, ?HTTP_DELETE, [{<<"auth">>, _}]) ->
+    cb_context:is_authenticated(Context).
 
 %%--------------------------------------------------------------------
 %% @public
