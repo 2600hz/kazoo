@@ -311,7 +311,7 @@ get_view_results([], _View, _ViewOpts, NormFun, ViewResults) ->
         not kz_term:is_empty(JObj)
     ];
 get_view_results([Db | Dbs], View, ViewOpts, NormFun, Acc) ->
-    case kz_datamgr:get_results(Db, View, ViewOpts) of
+    case kazoo_modb:get_results(Db, View, ViewOpts) of
         {'ok', []} -> get_view_results(Dbs, View, ViewOpts, NormFun, Acc);
         {'ok', Msgs} -> get_view_results(Dbs, View, ViewOpts, NormFun, Msgs ++ Acc);
         {'error', _}=_E ->

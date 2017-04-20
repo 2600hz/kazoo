@@ -60,7 +60,7 @@ fold_query({Db, View, CouchOpts, Mapper}, {Limit, LastKey, Res}) when is_integer
 -spec limited_query(integer(), ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
 limited_query(Limit, _, _, _) when Limit =< 0 -> [];
 limited_query(Limit, Db, View, CouchOpts) ->
-    case kz_datamgr:get_results(Db, View, [{limit, Limit} | CouchOpts]) of
+    case kazoo_modb:get_results(Db, View, [{limit, Limit} | CouchOpts]) of
         {ok, JObjs} -> JObjs;
         {error, not_found} -> [];
         {error, Error} -> throw(Error)
@@ -101,7 +101,7 @@ get_ordered(AccountId, View, Start, End, Mapper, CouchOptions) when Start < End 
 
 -spec unlimited_query(ne_binary(), ne_binary(), kz_datamgr:view_options()) -> kz_json:objects().
 unlimited_query(Db, View, CouchOpts) ->
-    case kz_datamgr:get_results(Db, View, CouchOpts) of
+    case kazoo_modb:get_results(Db, View, CouchOpts) of
         {ok, JObjs} -> JObjs;
         {error, not_found} -> [];
         {error, Error} -> throw(Error)
