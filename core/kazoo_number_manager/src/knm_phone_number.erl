@@ -248,6 +248,8 @@ fetch(?TEST_PORT_IN_NUM, Options) ->
     handle_fetch(?PORT_IN_NUMBER, Options);
 fetch(?TEST_PORT_IN2_NUM, Options) ->
     handle_fetch(?PORT_IN2_NUMBER, Options);
+fetch(?TEST_PORT_IN3_NUM, Options) ->
+    handle_fetch(?PORT_IN3_NUMBER, Options);
 fetch(_DID, _Options) ->
     {'error', 'not_found'}.
 -else.

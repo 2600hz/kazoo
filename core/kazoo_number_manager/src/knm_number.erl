@@ -668,9 +668,15 @@ maybe_update_assignment(Number, NewApp) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec lookup_account(api_binary()) -> lookup_account_return().
-lookup_account('undefined') ->
-    {'error', 'not_reconcilable'};
+-spec lookup_account(api_ne_binary()) -> lookup_account_return().
+-ifdef(TEST).
+lookup_account(undefined) -> {error, not_reconcilable};
+lookup_account(Num) ->
+    %%FIXME: use knm_converters:is_reconcilable/1
+    NormalizedNum = knm_converters:normalize(Num),
+    fetch_account_from_number(NormalizedNum).
+-else.
+lookup_account(undefined) -> {error, not_reconcilable};
 lookup_account(Num) ->
     NormalizedNum = knm_converters:normalize(Num),
     Key = {'account_lookup', NormalizedNum},
@@ -686,7 +692,7 @@ lookup_account(Num) ->
                 Else -> Else
             end
     end.
-
+-endif.
 
 %%%===================================================================
 %%% Internal functions
@@ -734,7 +740,7 @@ check_number(PhoneNumber) ->
 -spec check_account(knm_phone_number:knm_phone_number()) -> lookup_account_return().
 check_account(PhoneNumber) ->
     AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    case kz_util:is_account_enabled(AssignedTo) of
+    case is_account_enabled(AssignedTo) of
         'false' -> {'error', {'account_disabled', AssignedTo}};
         'true' ->
             Module = knm_phone_number:module_name(PhoneNumber),
@@ -752,6 +758,12 @@ check_account(PhoneNumber) ->
                     ],
             {'ok', AssignedTo, Props}
     end.
+
+-ifdef(TEST).
+is_account_enabled(?MATCH_ACCOUNT_RAW(_)) -> true.
+-else.
+is_account_enabled(AccountId) -> kz_util:is_account_enabled(AccountId).
+-endif.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -826,6 +838,8 @@ is_force_outbound(?NUMBER_STATE_PORT_OUT, Module, _ForceOutbound) ->
         orelse force_module_outbound(Module);
 is_force_outbound(_State, ?CARRIER_LOCAL, _ForceOutbound) ->
     force_local_outbound();
+is_force_outbound(_State, ?CARRIER_MDN, _ForceOutbound) ->
+    force_local_outbound();
 is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
@@ -843,6 +857,7 @@ force_outbound_feature(PhoneNumber) ->
 %%--------------------------------------------------------------------
 -spec force_module_outbound(ne_binary()) -> boolean().
 force_module_outbound(?CARRIER_LOCAL) -> force_local_outbound();
+force_module_outbound(?CARRIER_MDN) -> force_local_outbound();
 force_module_outbound(_Mod) -> 'false'.
 
 %%--------------------------------------------------------------------
@@ -883,12 +898,15 @@ fetch_account_from_ports(NormalizedNum, Error) ->
         {'error', _E} -> Error;
         {'ok', Port} ->
             AccountId = kz_doc:account_id(Port),
-            Props = [{'force_outbound', 'true'}
-                    ,{'pending_port', 'true'}
+            Props = [{'pending_port', 'true'}
                     ,{'local', 'true'}
-                    ,{'inbound_cnam', 'false'}
                     ,{'number', NormalizedNum}
                     ,{'account_id', AccountId}
+                     %% No prepend
+                    ,{'inbound_cnam', 'false'}
+                     %% No ringback_media
+                     %% No transfer_media
+                    ,{'force_outbound', 'true'}
                     ],
             {'ok', AccountId, Props}
     end.
