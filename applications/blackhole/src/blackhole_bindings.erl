@@ -166,7 +166,8 @@ unbind([_|_]=Bindings, Module, Fun, Payload) ->
     _ = [unbind(Binding, Module, Fun, Payload) || Binding <- Bindings],
     'ok';
 unbind(Binding, Module, Fun, Payload) when is_binary(Binding) ->
-    kazoo_bindings:unbind(Binding, Module, Fun, Payload).
+    _ = kazoo_bindings:unbind(Binding, Module, Fun, Payload),
+    'ok'.
 
 -spec filter(kazoo_bindings:filter_fun()) -> 'ok'.
 filter(Predicate) ->
@@ -183,7 +184,7 @@ flush(Binding) -> kazoo_bindings:flush(Binding).
 flush_mod(BHMod)
   when is_binary(BHMod) ->
     flush_mod(kz_term:to_atom(BHMod, 'true'));
-flush_mod(BHMod) -> kazoo_bindings:flush(BHMod).
+flush_mod(BHMod) -> kazoo_bindings:flush_mod(BHMod).
 
 -spec modules_loaded() -> atoms().
 modules_loaded() ->
@@ -205,18 +206,27 @@ init() ->
     Mods = lists:usort(blackhole_config:autoload_modules() ++ ?COMMAND_MODULES),
     lists:foreach(fun init_mod/1, Mods).
 
--spec init_mod(ne_binary() | atom()) -> 'ok'.
+-spec init_mod(ne_binary() | atom()) ->
+                      'ok' |
+                      {'error', 'undefined' | 'unknown'}.
 init_mod(ModuleName) ->
     lager:debug("initializing module: ~p", [ModuleName]),
     maybe_init_mod(ModuleName).
 
+-spec maybe_init_mod(ne_binary() | atom()) ->
+                            'ok' |
+                            {'error', 'undefined' | 'unknown'}.
 maybe_init_mod(ModuleName) ->
     lager:debug("trying to init module: ~p", [ModuleName]),
     try (kz_term:to_atom(ModuleName, 'true')):init() of
         _ -> 'ok'
     catch
+        'error':'undef' ->
+            lager:warning("failed to find module ~s", [ModuleName]),
+            {'error', 'undefined'};
         _E:_R ->
-            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R])
+            lager:warning("failed to initialize ~s: ~p, ~p.", [ModuleName, _E, _R]),
+            {'error', 'unknown'}
     end.
 
 -spec bindings() -> kazoo_bindings:kz_bindings().

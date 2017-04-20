@@ -481,12 +481,14 @@ update_default(Category, Key, Value, Options) ->
     update_category(Category, Key, Value, ?KEY_DEFAULT, Options).
 
 -spec set_node(config_category(), config_key(), any(), ne_binary() | atom()) ->
+                      'ok' |
                       {'ok', kz_json:object()}.
 set_node(Category, _, _, 'undefined') -> get_category(Category);
 set_node(Category, Key, Value, Node) ->
     update_category(Category, Key, Value, Node, [{'node_specific', 'true'}]).
 
 -spec update_category(config_category(), config_key(), any(), ne_binary() | atom(), update_options()) ->
+                             'ok' |
                              {'ok', kz_json:object()} |
                              {'error', any()}.
 update_category('undefined', _, _, _, _) -> 'ok';

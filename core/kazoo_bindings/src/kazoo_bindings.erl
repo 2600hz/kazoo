@@ -330,7 +330,6 @@ unbind(Binding, Module, Fun, Payload) ->
     lager:debug("removing binding ~s for ~s:~s (~p)", [Binding, Module, Fun, Payload]),
     gen_server:call(?SERVER, {'unbind', Binding, Module, Fun, Payload}, 'infinity').
 
-
 -spec flush() -> 'ok'.
 flush() -> gen_server:cast(?SERVER, 'flush').
 

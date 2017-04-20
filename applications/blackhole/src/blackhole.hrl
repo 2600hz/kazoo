@@ -31,7 +31,7 @@
                     ,websocket_session_id :: api_binary() | '_'
                     ,websocket_pid :: api_pid() | '_'
                     ,req_id = kz_binary:rand_hex(16) :: ne_binary() | '_'
-                    ,timestamp :: gregorian_seconds() | '_'
+                    ,timestamp = kz_time:current_tstamp() :: gregorian_seconds() | '_'
                     ,name :: api_binary() | '_'
                     ,metadata :: any() | '_'
                     ,destination = kz_util:node_hostname() :: ne_binary() | '_'

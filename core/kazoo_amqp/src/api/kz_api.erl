@@ -402,7 +402,7 @@ headers_to_json([_|_]=HeadersProp) ->
 %% Checks Prop for all default headers, throws error if one is missing
 %% defaults(PassedProps, MessageHeaders) -> { Headers, NewPropList } | {error, Reason}
 
--spec defaults(api_terms(), kz_proplist()) ->
+-spec defaults(api_terms(), api_headers()) ->
                       {kz_proplist(), kz_proplist()} |
                       {'error', string()}.
 defaults(Prop, MsgHeaders) -> defaults(Prop, expand_headers(MsgHeaders), []).

@@ -370,6 +370,7 @@ call_collect(Req, PubFun, {UntilFun, Acc}, Timeout, Worker)
     call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker);
 call_collect(Req, PubFun, UntilFun, Timeout, Worker) ->
     call_collect(Req, PubFun, UntilFun, Timeout, 'undefined', Worker).
+
 call_collect(Req, PubFun, UntilFun, Timeout, Acc, Worker) ->
     Prop = maybe_convert_to_proplist(Req),
     try gen_listener:call(Worker
@@ -469,6 +470,8 @@ collect_from_whapp_or_validate(Whapp, VFun, IncludeFederated, 'false') ->
     collect_or_validate_fun(VFun, Count).
 
 -spec collect_or_validate_fun(validate_fun(), pos_integer()) -> collect_until_fun().
+collect_or_validate_fun(VFun, 0) ->
+    fun([Response|_]) -> VFun(Response) end;
 collect_or_validate_fun(VFun, Count) ->
     fun([Response|_]=Responses) ->
             length(Responses) >= Count

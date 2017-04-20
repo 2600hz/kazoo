@@ -22,10 +22,16 @@ flush() -> kapps_config:flush(?CONFIG_CAT).
 autoload_modules() ->
     kapps_config:get(?CONFIG_CAT, <<"autoload_modules">>, ?DEFAULT_MODULES ++ ?COMMAND_MODULES).
 
--spec set_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
+-spec set_autoload_modules(ne_binaries() | atoms()) ->
+                                  {'ok', kz_json:object()} |
+                                  'ok' |
+                                  {'error', any()}.
 set_autoload_modules(Modules) ->
     kapps_config:set(?CONFIG_CAT, <<"autoload_modules">>, Modules).
 
--spec set_default_autoload_modules(ne_binaries() | atoms()) -> {'ok', kz_json:object()}.
+-spec set_default_autoload_modules(ne_binaries() | atoms()) ->
+                                          {'ok', kz_json:object()} |
+                                          'ok' |
+                                          {'error', any()}.
 set_default_autoload_modules(Modules) ->
     kapps_config:set_default(?CONFIG_CAT, <<"autoload_modules">>, Modules).
