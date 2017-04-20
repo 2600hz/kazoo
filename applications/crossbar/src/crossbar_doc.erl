@@ -35,7 +35,9 @@
         ]).
 
 -ifdef(TEST).
--export([filter_doc_by_querystring/2]).
+-export([filter_doc_by_querystring/2
+        ,patch_the_doc/2
+        ]).
 -endif.
 
 -export_type([view_options/0
@@ -320,12 +322,16 @@ patch_and_validate(Id, Context, ValidateFun) ->
     patch_and_validate_doc(Id, Context1, ValidateFun, cb_context:resp_status(Context1)).
 
 patch_and_validate_doc(Id, Context, ValidateFun, 'success') ->
-    PubJObj = kz_doc:public_fields(cb_context:req_data(Context)),
-    PatchedJObj = kz_json:merge(PubJObj, cb_context:doc(Context)),
+    PatchedJObj = patch_the_doc(cb_context:req_data(Context), cb_context:doc(Context)),
     Context1 = cb_context:set_req_data(Context, PatchedJObj),
     ValidateFun(Id, Context1);
 patch_and_validate_doc(Id, Context, ValidateFun, _RespStatus) ->
     ValidateFun(Id, Context).
+
+-spec patch_the_doc(kz_json:object(), kz_json:object()) -> kz_json:object().
+patch_the_doc(RequestData, ExistingDoc) ->
+    PubJObj = kz_doc:public_fields(RequestData),
+    kz_json:merge(fun kz_json:merge_left/2, PubJObj, ExistingDoc).
 
 %%--------------------------------------------------------------------
 %% @public
