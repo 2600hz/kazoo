@@ -532,8 +532,7 @@ import(#{account_id := Account
 
 %% @private
 public_fields(Args) -> kz_json:from_list(lists:flatten(pub_fields(Args))).
-pub_fields(Args=#{?FEATURE_RENAME_CARRIER := RenameCarrier
-                 ,<<"cnam.inbound">> := CNAMInbound
+pub_fields(Args=#{<<"cnam.inbound">> := CNAMInbound
                  ,<<"cnam.outbound">> := CNAMOutbound
                  ,<<"e911.locality">> := E911Locality
                  ,<<"e911.name">> := E911Name
@@ -550,6 +549,7 @@ pub_fields(Args=#{?FEATURE_RENAME_CARRIER := RenameCarrier
                  ,<<"failover.e164">> := FailoverE164
                  ,<<"failover.sip">> := FailoverSIP
                  }) ->
+    RenameCarrier = maps:get(?FEATURE_RENAME_CARRIER, Args, undefined),
     [props:filter_undefined([{?FEATURE_RENAME_CARRIER, RenameCarrier}])
     ,cnam(props:filter_undefined(
             [{?CNAM_DISPLAY_NAME, CNAMOutbound}
