@@ -65,8 +65,8 @@
 -define(SYSCONF_FLUSH_REQ_VALUES, [{<<"Event-Name">>, <<"flush_req">>} | ?SYSCONF_VALUES]).
 
 %% answer to a write request
--define(SYSCONF_SET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY, ?VALUE_KEY]).
--define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Status">>]).
+-define(SYSCONF_SET_RESP_HEADERS, [?CAT_KEY, ?KEY_KEY]).
+-define(OPTIONAL_SYSCONF_SET_RESP_HEADERS, [<<"Status">>, ?VALUE_KEY]).
 -define(SYSCONF_SET_RESP_VALUES, [{<<"Event-Name">>, <<"set_resp">>} | ?SYSCONF_VALUES]).
 
 -define(SYSCONF_TYPES, [{?CAT_KEY, fun is_binary/1}
