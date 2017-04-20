@@ -266,6 +266,7 @@ split_test_() ->
     ].
 
 files_test_() ->
+    %% Attribution: https://github.com/maxogden/csv-spectrum/tree/master/csvs
     filelib:fold_files("test/", "\\.csv\$", 'false', fun gen_file_tests/2, []).
 
 gen_file_tests(File, Tests) ->
