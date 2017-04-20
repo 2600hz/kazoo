@@ -712,19 +712,11 @@ find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_SPECIFIED) ->
     {Key, check_address_value(Emails)};
 find_address(DataJObj, TemplateMetaJObj, _ConfigCat, Key, ?EMAIL_ORIGINAL) ->
     lager:debug("checking data for '~s' email address(es)", [Key]),
-    {Key, find_address(Key, DataJObj, TemplateMetaJObj)};
+    Emails = kz_json:find_first_defined([Key, [Key, <<"email_addresses">>]], [DataJObj, TemplateMetaJObj]),
+    {Key, check_address_value(Emails)};
 find_address(DataJObj, _TemplateMetaJObj, ConfigCat, Key, ?EMAIL_ADMINS) ->
     lager:debug("looking for admin emails for '~s'", [Key]),
     {Key, find_admin_emails(DataJObj, ConfigCat, Key)}.
-
--spec find_address(kz_json:path(), kz_json:object(), kz_json:object()) ->
-                          api_binaries().
-find_address(Key, DataJObj, TemplateMetaJObj) ->
-    case check_address_value(kz_json:get_value(Key, DataJObj)) of
-        'undefined' ->
-            check_address_value(kz_json:get_value(Key, TemplateMetaJObj));
-        Emails -> Emails
-    end.
 
 -spec check_address_value(binary() | binaries() | kz_json:object() | 'undefined') -> api_binaries().
 check_address_value('undefined') -> 'undefined';

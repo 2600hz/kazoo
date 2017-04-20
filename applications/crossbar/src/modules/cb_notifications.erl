@@ -520,6 +520,8 @@ publish_fun(<<"first_occurrence">>) ->
     fun kapi_notifications:publish_first_occurrence/1;
 publish_fun(<<"low_balance">>) ->
     fun kapi_notifications:publish_low_balance/1;
+publish_fun(<<"missed_call">>) ->
+    fun kapi_notifications:publish_missed_call/1;
 publish_fun(<<"new_account">>) ->
     fun kapi_notifications:publish_new_account/1;
 publish_fun(<<"new_user">>) ->

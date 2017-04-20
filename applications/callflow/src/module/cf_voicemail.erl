@@ -533,6 +533,8 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                              ]),
     kapps_call_command:tones([Tone], Call),
     lager:info("composing new voicemail to ~s", [AttachmentName]),
+    Routins = [{fun kapps_call:set_message_left/2, 'true'}
+              ],
     case kapps_call_command:b_record(AttachmentName, ?ANY_DIGIT, kz_term:to_binary(MaxMessageLength), Call) of
         {'ok', Msg} ->
             Length = kz_json:get_integer_value(<<"Length">>, Msg, 0),
@@ -540,15 +542,18 @@ record_voicemail(AttachmentName, #mailbox{max_message_length=MaxMessageLength
                 andalso review_recording(AttachmentName, 'true', Box, Call)
             of
                 'false' ->
+                    cf_exe:update_call(Call, Routins),
                     new_message(AttachmentName, Length, Box, Call);
                 {'ok', 'record'} ->
                     record_voicemail(tmp_file(Ext), Box, Call);
                 {'ok', _Selection} ->
+                    cf_exe:update_call(Call, Routins),
                     cf_util:start_task(fun new_message/4, [AttachmentName, Length, Box], Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     _ = kapps_call_command:prompt(<<"vm-thank_you">>, Call),
                     'ok';
                 {'branch', Flow} ->
+                    cf_exe:update_call(Call, Routins),
                     _ = new_message(AttachmentName, Length, Box, Call),
                     _ = kapps_call_command:prompt(<<"vm-saved">>, Call),
                     {'branch', Flow}
@@ -985,7 +990,7 @@ forward_message(AttachmentName, Length, Message, SrcBoxId, #mailbox{mailbox_numb
                     ]
                    ),
     case kvm_message:forward_message(Call, Message, SrcBoxId, NewMsgProps) of
-        'ok' -> send_mwi_update(DestBox, Call);
+        {'ok', NewCall} -> send_mwi_update(DestBox, NewCall);
         {'error', _, _Msg} ->
             lager:warning("failed to save forwarded voice mail message recorded media : ~p", [_Msg])
     end.
@@ -1498,7 +1503,7 @@ new_message(AttachmentName, Length, #mailbox{mailbox_number=BoxNum
                   ,{<<"Timezone">>, Timezone}
                   ],
     case kvm_message:new(Call, NewMsgProps) of
-        'ok' -> send_mwi_update(Box, Call);
+        {'ok', NewCall} -> send_mwi_update(Box, NewCall);
         {'error', _, _Msg} -> lager:warning("failed to save voice mail message recorded media : ~p", [_Msg])
     end.
 
