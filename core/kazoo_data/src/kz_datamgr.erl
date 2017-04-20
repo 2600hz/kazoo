@@ -1112,9 +1112,9 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     end.
 
 -spec get_result_keys(ne_binary(), ne_binary()) ->
-                             {'ok', ne_binaries()} | data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 -spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
-                             {'ok', ne_binaries()} | data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 get_result_keys(DbName, DesignDoc, Options) ->
