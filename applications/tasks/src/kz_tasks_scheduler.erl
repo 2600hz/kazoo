@@ -95,7 +95,7 @@ start(TaskId=?NE_BINARY) ->
 -spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
                                 {'error'
                                 ,'not_found' |
-                                  'already_started' |
+                                 'already_started' |
                                  any()
                                 }.
 restart(TaskId = ?NE_BINARY) ->
