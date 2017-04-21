@@ -80,15 +80,31 @@ associator_varargs2_test_() ->
     CSVRow2 = [<<"6b71cb72c876b5b1396a335f8f8a2594">>, <<"+14157215234">>, ?ZILCH, <<"val1">>],
     FAssoc = kz_csv:associator(CSVHeader, Fields, fun verify_account_id_only/2),
     [?_assertEqual({error, <<"account_id">>}, FAssoc(CSVRow1))
-    ,?_assertEqual({ok
-                   ,#{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
-                     ,<<"e164">> => <<"+14157215234">>
-                     ,<<"cnam.outbound">> => ?ZILCH
-                     ,<<"opaque.field1.nest1">> => <<"val1">>
-                     }
+    ,?_assertEqual({ok, #{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
+                         ,<<"e164">> => <<"+14157215234">>
+                         ,<<"cnam.outbound">> => ?ZILCH
+                         ,<<"opaque.field1.nest1">> => <<"val1">>
+                         }
                    }
                   ,FAssoc(CSVRow2)
                   )
+    ].
+
+verify_mapped_row_test_() ->
+    MappedRow1 = #{<<"account_id">> => <<"bla">>
+                  ,<<"e164">> => <<"+14157215235">>
+                  ,<<"cnam.outbound">> => ?ZILCH
+                  ,<<"opaque.field1.nest1">> => ?ZILCH
+                  },
+    MappedRow2 = #{<<"account_id">> => <<"6b71cb72c876b5b1396a335f8f8a2594">>
+                  ,<<"e164">> => <<"+14157215234">>
+                  ,<<"cnam.outbound">> => ?ZILCH
+                  ,<<"opaque.field1.nest1">> => <<"val1">>
+                  },
+    [?_assertEqual([<<"account_id">>]
+                  ,kz_csv:verify_mapped_row(fun verify_account_id_only/2, MappedRow1))
+    ,?_assertEqual([]
+                  ,kz_csv:verify_mapped_row(fun verify_account_id_only/2, MappedRow2))
     ].
 
 take_row_test_() ->
@@ -106,7 +122,51 @@ take_row_test_() ->
     ,?_assertEqual({[<<"e">>], CSV6}, kz_csv:take_row(CSV5))
     ,?_assertEqual('eof', kz_csv:take_row(CSV6))
     ,?_assertEqual('eof', kz_csv:take_row(CSV7))
+    ,?_assertEqual({[?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",">>))
     ,?_assertEqual({[<<"1">>,<<"B">>], <<>>}, kz_csv:take_row(<<"1,B">>))
+    ,?_assertEqual({[<<"a">>, ?ZILCH], <<>>}, kz_csv:take_row(<<"a,\n">>))
+    ,?_assertEqual({[?ZILCH, <<"a">>], <<>>}, kz_csv:take_row(<<",a\n">>))
+    ,?_assertEqual({[<<"a">>, ?ZILCH], <<"\n">>}, kz_csv:take_row(<<"a,\n\n">>))
+    ,?_assertEqual({[?ZILCH, <<>>], <<>>}, kz_csv:take_row(<<",\"\"\n">>))
+    ,?_assertEqual({[?ZILCH, <<"bla">>], <<>>}, kz_csv:take_row(<<",\"bla\"\n">>))
+    ,?_assertEqual({[?ZILCH,?ZILCH,?ZILCH,?ZILCH], <<>>}, kz_csv:take_row(<<",,,">>))
+    ,?_assertEqual({[<<"a">>,?ZILCH], <<>>}, kz_csv:take_row(<<"'a',">>))
+    ,?_assertEqual({[?ZILCH,<<"A">>,?ZILCH,<<"B">>,<<"1, 3">>,?ZILCH,<<>>,?ZILCH], <<>>}
+                  ,kz_csv:take_row(<<",A,,B,'1, 3',,'',\n">>)
+                  )
+    ,?_assertEqual({[<<"1">>, <<"{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'{\"type\": \"Point\", \"coordinates\": [102.0, 0.5]}'\n">>)
+                  )
+    ,?_assertEqual({[<<"1">>, <<"ha \"ha\" ha">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'ha \"ha\" ha'\n">>)
+                  )
+    ,?_assertEqual({[<<"1">>, <<"ha 'ha' ha">>], <<>>}
+                  ,kz_csv:take_row(<<"1,'ha ''ha'' ha'\n">>)
+                  )
+    ].
+
+take_mapped_row_test_() ->
+    [F] = [<<"F1">>],
+    CSV1 = <<"a\r\nb\nc\nd\n\re\r\r">>,
+    CSV2 = <<"b\nc\nd\n\re\r\r">>,
+    CSV3 = <<"c\nd\n\re\r\r">>,
+    CSV4 = <<"d\n\re\r\r">>,
+    CSV5 = <<"e\r\r">>,
+    CSV6 = <<>>,
+    CSV7 = <<"\r\r">>,
+    [?_assertEqual({#{F => <<"a">>}, CSV2}, kz_csv:take_mapped_row([F],CSV1))
+    ,?_assertEqual({#{F => <<"b">>}, CSV3}, kz_csv:take_mapped_row([F],CSV2))
+    ,?_assertEqual({#{F => <<"c">>}, CSV4}, kz_csv:take_mapped_row([F],CSV3))
+    ,?_assertEqual({#{F => <<"d">>}, CSV5}, kz_csv:take_mapped_row([F],CSV4))
+    ,?_assertEqual({#{F => <<"e">>}, CSV6}, kz_csv:take_mapped_row([F],CSV5))
+    ,?_assertEqual('eof', kz_csv:take_mapped_row([F],CSV6))
+    ,?_assertEqual('eof', kz_csv:take_mapped_row([F],CSV7))
+    ,?_assertEqual({#{<<"f1">> => <<"B">>, <<"f2">> => <<"1">>}, <<>>}
+                  ,kz_csv:take_mapped_row([<<"f2">>,<<"f1">>], <<"1,B">>)
+                  )
+    ,?_assertEqual({#{<<"f1">> => <<"a">>, <<"f2">> => ?ZILCH}, <<>>}
+                  ,kz_csv:take_mapped_row([<<"f1">>,<<"f2">>], <<"a,\n">>)
+                  )
     ].
 
 pad_row_to_test_() ->
@@ -137,6 +197,40 @@ row_to_iolist_test_() ->
                                     ]
            ].
 
+mapped_row_to_iolist_test_() ->
+    H = [<<"1">>, <<"2">>, <<"3">>, <<"4">>, <<"5">>],
+    [?_assertException('error', 'function_clause', kz_csv:mapped_row_to_iolist([], #{}))
+    ]
+        ++ [?_assertEqual(Expected, iolist_to_binary(Got))
+            || {N, Expected, Input} <- mapped_row_data(),
+               Header <- [lists:sublist(H, 1, N)],
+               Got <- [kz_csv:mapped_row_to_iolist(Header, Input)]
+           ].
+
+mapped_row_data() ->
+    [{5, <<",,,,">>, #{}}
+    ,{5, <<"a,b,,,">>, #{<<"1">> => <<"a">>, <<"2">> => <<"b">>}}
+    ,{2, <<"a,b">>, #{<<"1">> => <<"a">>, <<"2">> => <<"b">>}}
+    ,{3, <<"a,,b">>, #{<<"1">> => <<"a">>, <<"2">> => ?ZILCH, <<"3">> => <<"b">>}}
+    ,{2, <<"a,">>, #{<<"1">> => <<"a">>, <<"2">> => ?ZILCH, <<"3">> => <<"b">>}}
+    ,{3, <<",,b">>, #{<<"1">> => ?ZILCH, <<"2">> => ?ZILCH, <<"3">> => <<"b">>}}
+    ,{2, <<",">>, #{<<"1">> => ?ZILCH, <<"2">> => ?ZILCH, <<"3">> => <<"b">>}}
+    ,{3, <<"a,b,">>, #{<<"1">> => <<"a">>, <<"2">> => <<"b">>, <<"3">> => ?ZILCH}}
+    ,{2, <<"a,b">>, #{<<"1">> => <<"a">>, <<"2">> => <<"b">>, <<"3">> => ?ZILCH}}
+    ,{5, <<"a,b,,,c">>, #{<<"1">> => <<"a">>
+                         ,<<"2">> => <<"b">>
+                         ,<<"3">> => ?ZILCH
+                         ,<<"4">> => ?ZILCH
+                         ,<<"5">> => <<"c">>
+                         }}
+    ,{4, <<"a,b,,">>, #{<<"1">> => <<"a">>
+                       ,<<"2">> => <<"b">>
+                       ,<<"3">> => ?ZILCH
+                       ,<<"4">> => ?ZILCH
+                       ,<<"5">> => <<"c">>
+                       }}
+    ].
+
 json_to_iolist_test_() ->
     Records1 = [kz_json:from_list([{<<"A">>, <<"a1">>}])
                ,kz_json:from_list([{<<"A">>, <<"42">>}])
@@ -154,28 +248,25 @@ json_to_iolist_test_() ->
     ].
 
 split_test_() ->
-    Rows = [{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>
-            ,[<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
-            }
-           ,{<<",">>, [<<>>, <<>>]}
-           ,{<<"test,">>,[<<"test">>,<<>>]}
-           ,{<<"test,,">>,[<<"test">>,<<>>,<<>>]}
-           ,{<<"test,,foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
-           ,{<<"test,"",foo bar">>,[<<"test">>,<<>>,<<"foo bar">>]}
-           ],
-    lists:foldl(fun add_split_row_assertions/2, [], Rows).
-
-add_split_row_assertions({Row, Split}, Tests) ->
-    {Fields, _} = kz_csv:split_row(Row),
-    [{binary_to_list(Row), ?_assertEqual(Split, Fields)} | Tests].
+    [?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  )
+    ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"\"0.1651\",\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",0">>)
+                  )
+    ,?_assertEqual([<<"0.1651">>, <<"ZAMBIA, MOBILE">>, <<"ZAMBIA, MOBILE-26094">>, <<"ZAMBIA, MOBILE">>, <<"26094">>, <<"0">>]
+                  ,kz_csv:split_row(<<"0.1651,\"ZAMBIA, MOBILE\",\"ZAMBIA, MOBILE-26094\",\"ZAMBIA, MOBILE\",\"26094\",\"0\"">>)
+                  )
+    ,?_assertEqual([?ZILCH, ?ZILCH], kz_csv:split_row(<<",">>))
+    ,?_assertEqual([<<"test">>,?ZILCH], kz_csv:split_row(<<"test,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,?ZILCH], kz_csv:split_row(<<"test,,">>))
+    ,?_assertEqual([<<"test">>,?ZILCH,<<"foo bar">>], kz_csv:split_row(<<"test,,foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,'',foo bar">>))
+    ,?_assertEqual([?ZILCH,<<"test">>,<<>>,<<"foo bar">>], kz_csv:split_row(<<",test,\"\",foo bar">>))
+    ].
 
 files_test_() ->
+    %% Attribution: https://github.com/maxogden/csv-spectrum/tree/master/csvs
     filelib:fold_files("test/", "\\.csv\$", 'false', fun gen_file_tests/2, []).
 
 gen_file_tests(File, Tests) ->

@@ -16,6 +16,7 @@
 
 -export([mandatory/1
         ,optional/1
+        ,possible_fields/1
         ,input_mime/1
         ]).
 
@@ -52,9 +53,13 @@
 
 -type input() :: api_ne_binary() | kz_json:objects().
 
+-type output_header() :: kz_csv:header() | {replace, kz_csv:header()}.
+
 -type help_error() :: {'error', 'unknown_category_action'}.
 
--type return() :: 'ok' | api_ne_binary() | kz_csv:row() | [kz_csv:row()].
+-type return() :: 'ok' | api_ne_binary() |
+                  kz_csv:row() | [kz_csv:row()] |
+                  kz_csv:mapped_row() | [kz_csv:mapped_row()].
 
 -type iterator() :: 'init' | 'stop' | any().
 
@@ -66,6 +71,7 @@
 
 -export_type([id/0
              ,input/0
+             ,output_header/0
              ,help_error/0
              ,return/0
              ,iterator/0
@@ -89,6 +95,10 @@ mandatory(APIJObj) ->
 -spec optional(kz_json:object()) -> ne_binaries().
 optional(APIJObj) ->
     kz_json:get_list_value(?API_OPTIONAL, APIJObj, []).
+
+-spec possible_fields(kz_json:object()) -> ne_binaries().
+possible_fields(APIJObj) ->
+    mandatory(APIJObj) ++ optional(APIJObj).
 
 -spec input_mime(kz_json:object()) -> ne_binary().
 input_mime(APIJObj) ->

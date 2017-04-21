@@ -33,7 +33,9 @@
         ]).
 -export([is_master_account/1]).
 -export([account_depth/1]).
--export([account_has_descendants/1]).
+-export([account_has_descendants/1
+        ,account_descendants/1
+        ]).
 -export([get_account_name/1]).
 -export([find_oldest_doc/1]).
 -export([get_event_type/1]).
@@ -200,19 +202,33 @@ account_depth(Account) ->
     length(kz_account:tree(JObj)).
 
 %%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% List an account's descendants (including the provided AccountId).
+%% @end
+%%--------------------------------------------------------------------
+-spec account_descendants(ne_binary()) -> ne_binaries().
+account_descendants(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    View = <<"accounts/listing_by_descendants">>,
+    ViewOptions = [{startkey, [AccountId]}
+                  ,{endkey, [AccountId, kz_json:new()]}
+                  ],
+    case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions) of
+        {ok, JObjs} -> [kz_account:id(JObj) || JObj <- JObjs];
+        {error, _R} ->
+            lager:debug("unable to get descendants of ~s: ~p", [AccountId, _R]),
+            []
+    end.
+
+%%--------------------------------------------------------------------
 %% @public
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec account_has_descendants(ne_binary()) -> boolean().
 account_has_descendants(Account) ->
-    View = <<"accounts/listing_by_descendants">>,
     AccountId = kz_util:format_account_id(Account),
-    ViewOptions = [{'startkey', [AccountId]}
-                  ,{'endkey', [AccountId, kz_json:new()]}
-                  ],
-    {'ok', JObjs} = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, View, ViewOptions),
-    lists:any(fun (JObj) -> kz_account:id(JObj) =/= AccountId end, JObjs).
+    [] =/= (account_descendants(AccountId) -- [AccountId]).
 
 %%--------------------------------------------------------------------
 %% @public

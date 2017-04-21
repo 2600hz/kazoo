@@ -40,7 +40,6 @@
                                 | ?PDF_CONTENT_TYPES
                                ]).
 
--define(AGG_VIEW_DESCENDANTS, <<"accounts/listing_by_descendants">>).
 -define(ACCOUNTS_BY_SIMPLE_ID, <<"accounts/listing_by_simple_id">>).
 -define(PORT_REQ_NUMBERS, <<"port_requests/port_in_numbers">>).
 -define(ALL_PORT_REQ_NUMBERS, <<"port_requests/all_port_in_numbers">>).
@@ -699,16 +698,10 @@ build_keys(Context, Number) ->
         [AccountId] ->
             [[AccountId, E164]];
         [AccountId, ?PORT_DESCENDANTS] ->
-            ViewOptions = [{'startkey', [AccountId]}
-                          ,{'endkey', [AccountId, kz_json:new()]}
-                          ],
-            case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?AGG_VIEW_DESCENDANTS, ViewOptions) of
-                {'error', _R} ->
-                    lager:error("failed to query view ~p", [_R]),
-                    [];
-                {'ok', JObjs} ->
-                    lists:reverse([[kz_doc:id(JObj), E164] || JObj <- JObjs])
-            end
+            lists:reverse(
+              [[AnAccountId, E164]
+               || AnAccountId <- kapps_util:account_descendants(AccountId)
+              ])
     end.
 
 -spec load_summary(cb_context:context(), crossbar_doc:view_options() | [{'normalize', boolean()}]) ->

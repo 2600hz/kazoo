@@ -190,50 +190,29 @@ check_as_payload(Context, JObj, AccountId) ->
         {AsAccountId, AsOwnerId} -> check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId)
     end.
 
--spec check_descendants(cb_context:context(), kz_json:object()
-                       ,ne_binary() ,ne_binary() ,ne_binary()
-                       ) ->
+-spec check_descendants(cb_context:context(), kz_json:object(), ne_binary(), ne_binary(), ne_binary()) ->
                                boolean() |
                                {'true', cb_context:context()}.
 check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
-    case get_descendants(AccountId) of
-        {'error', _} -> 'false';
-        {'ok', Descendants} ->
+    case kapps_util:account_descendants(AccountId) of
+        [] -> false;
+        Descendants ->
             case lists:member(AsAccountId, Descendants) of
                 'false' -> 'false';
                 'true' ->
-                    JObj1 = kz_json:set_values(
-                              [{<<"account_id">>, AsAccountId}
-                              ,{<<"owner_id">>, AsOwnerId}
-                              ]
+                    JObj1 = kz_json:set_values([{<<"account_id">>, AsAccountId}
+                                               ,{<<"owner_id">>, AsOwnerId}
+                                               ]
                                               ,JObj
-                             ),
+                                              ),
                     {'true', set_auth_doc(Context, JObj1)}
             end
     end.
 
--spec get_descendants(ne_binary()) ->
-                             {'ok', ne_binaries()} |
-                             kz_data:data_error().
-get_descendants(AccountId) ->
-    case kz_datamgr:get_results(<<"accounts">>
-                               ,<<"accounts/listing_by_descendants">>
-                               ,[{'startkey', [AccountId]}
-                                ,{'endkey', [AccountId, kz_json:new()]}
-                                ]
-                               )
-    of
-        {'error', _}=Error -> Error;
-        {'ok', JObjs} ->
-            {'ok', [kz_doc:id(JObj) || JObj <- JObjs]}
-    end.
-
--spec set_auth_doc(cb_context:context(), kz_json:object()) ->
-                          cb_context:context().
+-spec set_auth_doc(cb_context:context(), kz_json:object()) -> cb_context:context().
 set_auth_doc(Context, JObj) ->
-    Setters = [{fun cb_context:set_auth_doc/2, JObj}
-              ,{fun cb_context:set_auth_account_id/2
-               ,kz_json:get_ne_value(<<"account_id">>, JObj)
-               }
-              ],
-    cb_context:setters(Context, Setters).
+    cb_context:setters(Context, [{fun cb_context:set_auth_doc/2, JObj}
+                                ,{fun cb_context:set_auth_account_id/2
+                                 ,kz_json:get_ne_value(<<"account_id">>, JObj)
+                                 }
+                                ]).

@@ -11,11 +11,11 @@
 %% Public API
 -export([count_rows/1
         ,fold/3
-        ,take_row/1
-        ,split_row/1
+        ,take_row/1, take_mapped_row/2
         ,pad_row_to/2
         ,associator/3
-        ,row_to_iolist/1
+        ,verify_mapped_row/2
+        ,row_to_iolist/1, mapped_row_to_iolist/2
         ,json_to_iolist/1
         ]).
 -export([from_jobjs/1
@@ -25,17 +25,25 @@
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo_csv/include/kazoo_csv.hrl").
 
--type cell() :: ne_binary() | ?ZILCH.
+-type cell() :: binary() | ?ZILCH.
+-type header() :: [ne_binary(),...].
 -type row() :: [cell(),...].
+-type mapped_row() :: #{ne_binary() => cell()}.
 -type csv() :: binary().
 
 -export_type([cell/0
-             ,row/0
+             ,header/0
+             ,row/0, mapped_row/0
              ,csv/0
              ,folder/1
-             ,fassoc/0
-             ,verifier/0
+             ,fassoc/0, verifier/0
+             ,mapped_row_verifier/0
              ]).
+
+-ifdef(TEST).
+-export([take_line/1]).
+-export([split_row/1]).
+-endif.
 
 %%%===================================================================
 %%% API
@@ -48,7 +56,7 @@
 %% Returns 0 if a row is longer/smaller than the header row.
 %% @end
 %%--------------------------------------------------------------------
--spec count_rows(binary()) -> non_neg_integer().
+-spec count_rows(csv()) -> non_neg_integer().
 count_rows(<<>>) -> 0;
 count_rows(CSV) when is_binary(CSV) ->
     try fold(CSV, fun throw_bad/2, {-1,0}) of
@@ -60,7 +68,7 @@ count_rows(CSV) when is_binary(CSV) ->
 
 -spec throw_bad(row(), {integer(), non_neg_integer()}) -> {integer(), non_neg_integer()}.
 throw_bad(Header, {-1,0}) ->
-    case lists:all(fun is_binary/1, Header) of
+    case lists:all(fun kz_term:is_ne_binary/1, Header) of
         %% Strip header line from total rows count
         'true' ->
             {length(Header), 0};
@@ -70,7 +78,7 @@ throw_bad(Header, {-1,0}) ->
     end;
 throw_bad(Row, {MaxRow,RowsCounted}) ->
     case length(Row) of
-        MaxRow -> {MaxRow, RowsCounted+1};
+        MaxRow -> {MaxRow, RowsCounted + 1};
         _ ->
             lager:error("bad row length ~p instead of ~p in ~p", [length(Row), MaxRow, Row]),
             throw({'error', 'bad_csv_row'})
@@ -97,13 +105,15 @@ fold(CSV, Fun, Acc)
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec take_row(binary()) -> {row(), binary()} |
-                            'eof'.
-take_row(<<>>) -> 'eof';
-take_row(CSV=?NE_BINARY) ->
-    case split_row(CSV) of
-        {[], <<>>} -> 'eof';
-        {Row, Rest} -> {Row, Rest}
+-spec take_row(csv()) -> {row(), csv()} | 'eof'.
+take_row(CSV)
+  when is_binary(CSV) ->
+    case take_line(CSV) of
+        eof -> eof;
+        [Line] ->
+            {split_row(Line), <<>>};
+        [Line, CSVRest] ->
+            {split_row(Line), CSVRest}
     end.
 
 %%--------------------------------------------------------------------
@@ -111,90 +121,15 @@ take_row(CSV=?NE_BINARY) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec split_row(ne_binary()) -> {row() | [], binary()}.
-split_row(Row=?NE_BINARY) ->
-    split_fields(Row, []).
-
--spec split_fields(binary(), [binary()]) -> {row() | [], binary()}.
-split_fields(<<>>, Fields) ->
-    {lists:reverse(Fields), <<>>};
-
-split_fields(<<"\n\r", Rest/binary>>, Fields) ->
-    {lists:reverse(Fields), Rest};
-split_fields(<<"\r\n", Rest/binary>>, Fields) ->
-    {lists:reverse(Fields), Rest};
-split_fields(<<"\r\r", Rest/binary>>, Fields) ->
-    {lists:reverse(Fields), Rest};
-
-split_fields(<<"\n", Rest/binary>>, Fields) ->
-    {lists:reverse(Fields), Rest};
-split_fields(<<"\r", Rest/binary>>, Fields) ->
-    {lists:reverse(Fields), Rest};
-
-split_fields(<<$", Row/binary>>, Fields) ->
-    split_field(Row, $", Fields);
-split_fields(<<$', Row/binary>>, Fields) ->
-    split_field(Row, $', Fields);
-split_fields(Row, Fields) ->
-    split_field(Row, $,, Fields).
-
--type field_terminator() :: 34 | 39 | 44. %% $" | $' | $,
-
--spec split_field(binary(), field_terminator(), row()) ->
-                         {row(), binary()}.
--spec split_field(binary(), field_terminator(), row(), [byte()]) ->
-                         {row(), binary()}.
-split_field(Row, EndChar, Fields) ->
-    split_field(Row, EndChar, Fields, []).
-
-split_field(<<$,>>, $,, Fields, FieldSoFar) ->
-    split_fields(<<>>, [<<>>, iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<$,, Row/binary>>, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<"\n\r", _/binary>>=Row, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<"\r\n", _/binary>>=Row, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<"\r\r", _/binary>>=Row, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<"\n", _/binary>>=Row, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<"\r", _/binary>>=Row, $,, Fields, FieldSoFar) ->
-    split_fields(Row, [iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-
-split_field(<<EndChar, EndChar, Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    split_field(Row, EndChar, Fields, [EndChar, EndChar | FieldSoFar]);
-split_field(<<EndChar, $,, Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(Row, [Field | Fields]);
-
-split_field(<<EndChar, "\r\n", Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<"\r\n", Row/binary>>, [Field | Fields]);
-split_field(<<EndChar, "\n", Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<"\n", Row/binary>>, [Field | Fields]);
-split_field(<<EndChar, "\r\r", Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<"\r\r", Row/binary>>, [Field | Fields]);
-split_field(<<EndChar, "\r\n", Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<"\r\n", Row/binary>>, [Field | Fields]);
-split_field(<<EndChar, "\r", Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<"\r", Row/binary>>, [Field | Fields]);
-
-split_field(<<>>, $,, Fields, FieldSoFar) ->
-    split_fields(<<>>, [<<>>, iolist_to_binary(lists:reverse(FieldSoFar)) | Fields]);
-split_field(<<EndChar>>, EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse(FieldSoFar)),
-    split_fields(<<>>, [Field | Fields]);
-
-split_field(<<Char:1/binary>>, _EndChar, Fields, FieldSoFar) ->
-    Field = iolist_to_binary(lists:reverse([Char | FieldSoFar])),
-    split_fields(<<>>, [Field | Fields]);
-split_field(<<Char:8, Row/binary>>, EndChar, Fields, FieldSoFar) ->
-    split_field(Row, EndChar, Fields, [Char | FieldSoFar]).
+-spec take_mapped_row(row(), csv()) -> {mapped_row(), csv()} | 'eof'.
+take_mapped_row(Header, CSV)
+  when is_binary(CSV) ->
+    case take_row(CSV) of
+        eof -> eof;
+        {Row, CSVRest} ->
+            MappedRow = maps:from_list(lists:zip(Header, Row)),
+            {MappedRow, CSVRest}
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -213,7 +148,7 @@ pad_row_to(_, Row) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--type fassoc_ret() :: {'ok', map()} | {'error', ne_binary()}.
+-type fassoc_ret() :: {'ok', mapped_row()} | {'error', ne_binary()}.
 -type fassoc() :: fun((row()) -> fassoc_ret()).
 -type verifier() :: fun((atom(), cell()) -> boolean()).
 -spec associator(row(), row(), verifier()) -> fassoc().
@@ -250,12 +185,39 @@ verify(Verifier, Header, Row, I, Map) ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Returns an unordered list of the name of columns that did not pass validation.
+%% @end
+%%--------------------------------------------------------------------
+-type mapped_row_verifier() :: fun((ne_binary(), cell()) -> boolean()).
+-spec verify_mapped_row(mapped_row_verifier(), mapped_row()) -> [] | header().
+verify_mapped_row(Pred, MappedRow) when is_function(Pred, 2),
+                                        is_map(MappedRow) ->
+    F = fun (K, V, Acc) ->
+                case Pred(K, V) of
+                    true -> Acc;
+                    false -> [K|Acc]
+                end
+        end,
+    maps:fold(F, [], MappedRow).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% @end
 %%--------------------------------------------------------------------
 -spec row_to_iolist(row()) -> iodata().
 row_to_iolist([Cell]) -> cell_to_binary(Cell);
 row_to_iolist(Row=[_|_]) ->
     kz_util:iolist_join($,, [cell_to_binary(Cell) || Cell <- Row]).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec mapped_row_to_iolist(row(), mapped_row()) -> iodata().
+mapped_row_to_iolist(HeaderRow, Map) ->
+    row_to_iolist([maps:get(Header, Map, ?ZILCH) || Header <- HeaderRow]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -301,6 +263,51 @@ from_jobjs(JObjs, Options) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+-spec take_line(csv()) -> [csv(),...] | eof.
+take_line(CSV) ->
+    case binary:split(CSV, [<<"\r\n">>, <<"\n\r">>, <<"\r\r">>, <<$\n>>, <<$\r>>]) of
+        [<<>>|_] -> eof;
+        Split -> Split
+    end.
+
+-spec split_row(ne_binary()) -> row().
+split_row(Line) ->
+    Splitted = binary:split(Line, <<$,>>, [global]),
+    {Acc,io,<<>>} = lists:foldl(fun consume/2, {[],io,<<>>}, Splitted),
+    lists:reverse(Acc).
+
+-type acc() :: {row(), io | 34 | 39, binary()}.  %% $" | $'
+-spec consume(binary(), acc()) -> acc().
+consume(<<>>, {Acc,io,<<>>}) ->
+    {[?ZILCH|Acc], io, <<>>};
+consume(<<Sep:8,Bin/binary>>, {Acc,io,<<>>}) when Sep =:= $";
+                                                  Sep =:= $' ->
+    case binary:split(Bin, <<Sep:8>>) of
+        [BinRest, <<>>] ->
+            {[BinRest|Acc], io, <<>>};
+        [LHS, <<Sep:8,RHS0/binary>>] ->  %% For "escaped" quotes
+            AllButLast = byte_size(RHS0) - 1,
+            <<RHS1:AllButLast/binary, Sep:8>> = RHS0,
+            RHS = binary:replace(RHS1, <<Sep:8,Sep:8>>, <<Sep:8>>),
+            Cell = <<LHS/binary, Sep:8, RHS/binary>>,
+            {[Cell|Acc], io, <<>>};
+        _ ->
+            {Acc, Sep, Bin}
+    end;
+consume(Bin, {Acc,io,<<>>}) ->
+    {[Bin|Acc], io, <<>>};
+consume(Bin, {Acc,Sep,AccBin}) ->
+    case binary:split(Bin, <<Sep:8>>) of
+        [<<>>|_] ->
+            {[AccBin|Acc], io, <<>>};
+        [LastPart, <<>>] ->
+            Cell = <<AccBin/binary, $,, LastPart/binary>>,
+            {[Cell|Acc], io, <<>>};
+        [Part] ->
+            NewAccBin = <<AccBin/binary, $,, Part/binary>>,
+            {Acc, Sep, NewAccBin}
+    end.
 
 %% @private
 -spec find_position(ne_binary(), ne_binaries()) -> pos_integer().
@@ -411,7 +418,7 @@ csv_ize([F|Rest]) ->
 try_to_binary(Value) ->
     try kz_term:to_binary(Value)
     catch
-        _E:_R -> <<"">>
+        _E:_R -> <<>>
     end.
 
 -spec json_to_csv(kz_json:object()) -> iolist().

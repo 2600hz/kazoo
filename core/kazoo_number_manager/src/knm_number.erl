@@ -30,6 +30,7 @@
         ,charges/2, set_charges/3
         ,to_public_json/1
         ,is_number/1
+        ,force_outbound_feature/1
         ]).
 
 -export([attempt/2
@@ -528,6 +529,7 @@ is_force_outbound(_State, ?CARRIER_MDN, _ForceOutbound) ->
 is_force_outbound(_State, _Module, ForceOutbound) ->
     ForceOutbound.
 
+%% FIXME: move to kpn
 -spec force_outbound_feature(knm_phone_number:knm_phone_number()) -> boolean().
 force_outbound_feature(PN) ->
     case knm_phone_number:feature(PN, ?FEATURE_FORCE_OUTBOUND) of

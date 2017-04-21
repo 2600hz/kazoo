@@ -15,7 +15,7 @@
 -define(WORKER_TASK_FAILED, <<"applier crashed">>).
 -define(WORKER_TASK_MAYBE_OK, <<"internal">>).
 
--define(OUTPUT_CSV_HEADER_ROW, [<<"error">>]).
+-define(OUTPUT_CSV_HEADER_ERROR, <<"error">>).
 
 -define(TRIGGER_ACCOUNT, <<"tasks.triggers.account">>).
 -define(TRIGGER_ACCOUNT_MOD, <<"tasks.triggers.account_mod">>).

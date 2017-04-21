@@ -55,7 +55,6 @@ compile_commands.json
 /doc/mkdocs/site/
 /doc/mkdocs/mkdocs.local.yml
 /doc/mkdocs/theme
-/core/kazoo_csv/test/*.csv
 /doc/blog/.org/*.csv
 /doc/blog/.org/*.shell
 /applications/tasks/src/modules/kt_rates.hrl

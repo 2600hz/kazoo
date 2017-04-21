@@ -70,6 +70,7 @@
         ,get_results/2, get_results/3
         ,get_results_count/3
         ,get_result_keys/1, get_result_keys/3, get_result_keys/2
+        ,get_result_ids/1, get_result_ids/2, get_result_ids/3
         ,get_single_result/3
         ,design_info/2
         ,design_compact/2
@@ -1175,9 +1176,9 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     end.
 
 -spec get_result_keys(ne_binary(), ne_binary()) ->
-                             {'ok', ne_binaries()} | data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 -spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
-                             {'ok', ne_binaries()} | data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 get_result_keys(DbName, DesignDoc, Options) ->
@@ -1192,6 +1193,23 @@ get_result_keys(JObjs) ->
     [kz_json:get_value(<<"key">>, JObj)
      || JObj <- JObjs
     ].
+
+-spec get_result_ids(ne_binary(), ne_binary()) ->
+                            {'ok', ne_binaries()} | data_error().
+-spec get_result_ids(ne_binary(), ne_binary(), view_options()) ->
+                            {'ok', ne_binaries()} | data_error().
+get_result_ids(DbName, DesignDoc) ->
+    get_result_ids(DbName, DesignDoc, []).
+get_result_ids(DbName, DesignDoc, Options) ->
+    Opts = maybe_add_doc_type_from_view(DesignDoc, Options),
+    case kzs_view:get_results(kzs_plan:plan(DbName, Opts), DbName, DesignDoc, Options) of
+        {'ok', JObjs} -> {'ok', get_result_ids(JObjs)};
+        {'error', _} = Error -> Error
+    end.
+
+-spec get_result_ids(kz_json:objects()) -> ne_binaries().
+get_result_ids(JObjs) ->
+    [kz_doc:id(JObj) || JObj <- JObjs].
 
 %%--------------------------------------------------------------------
 %% @public

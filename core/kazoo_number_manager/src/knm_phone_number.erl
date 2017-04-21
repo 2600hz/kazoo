@@ -691,27 +691,34 @@ migrate_features(FeaturesList, JObj) ->
     lists:foldl(F, ?DEFAULT_FEATURES, FeaturesList).
 
 %% Note: if a feature matches here that means it was enabled in 3.22.
-features_fold(?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
-    Data = kz_json:is_true(?FEATURE_FORCE_OUTBOUND, JObj),
-    kz_json:set_value(?FEATURE_FORCE_OUTBOUND, Data, Acc);
-features_fold(?FEATURE_RINGBACK, Acc, JObj) ->
+features_fold(Feature=?FEATURE_FORCE_OUTBOUND, Acc, JObj) ->
+    Data = kz_json:is_true(Feature, JObj),
+    kz_json:set_value(Feature, Data, Acc);
+features_fold(Feature=?FEATURE_RINGBACK, Acc, JObj) ->
     Data = kz_json:from_list(
              props:filter_undefined(
-               [{?RINGBACK_EARLY, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_EARLY], JObj)}
-               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([?FEATURE_RINGBACK, ?RINGBACK_TRANSFER], JObj)}
+               [{?RINGBACK_EARLY, kz_json:get_ne_value([Feature, ?RINGBACK_EARLY], JObj)}
+               ,{?RINGBACK_TRANSFER, kz_json:get_ne_value([Feature, ?RINGBACK_TRANSFER], JObj)}
                ])),
-    kz_json:set_value(?FEATURE_RINGBACK, Data, Acc);
-features_fold(?FEATURE_PREPEND, Acc, JObj) ->
-    IsEnabled = kz_json:is_true([?FEATURE_PREPEND, ?PREPEND_ENABLED], JObj),
-    Data0 = kz_json:get_ne_value(?FEATURE_PREPEND, JObj, kz_json:new()),
+    kz_json:set_value(Feature, Data, Acc);
+features_fold(Feature=?FEATURE_FAILOVER, Acc, JObj) ->
+    Data = kz_json:from_list(
+             props:filter_undefined(
+               [{?FAILOVER_E164, kz_json:get_ne_value([Feature, ?FAILOVER_E164], JObj)}
+               ,{?FAILOVER_SIP, kz_json:get_ne_value([Feature, ?FAILOVER_SIP], JObj)}
+               ])),
+    kz_json:set_value(Feature, Data, Acc);
+features_fold(Feature=?FEATURE_PREPEND, Acc, JObj) ->
+    IsEnabled = kz_json:is_true([Feature, ?PREPEND_ENABLED], JObj),
+    Data0 = kz_json:get_ne_value(Feature, JObj, kz_json:new()),
     Data = kz_json:set_value(?PREPEND_ENABLED, IsEnabled, Data0),
-    kz_json:set_value(?FEATURE_PREPEND, Data, Acc);
-features_fold(?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
+    kz_json:set_value(Feature, Data, Acc);
+features_fold(Feature=?FEATURE_CNAM_OUTBOUND, Acc, JObj) ->
     DisplayName = kz_json:get_ne_binary_value([?FEATURE_CNAM, ?CNAM_DISPLAY_NAME], JObj),
     Data = kz_json:from_list([{?CNAM_DISPLAY_NAME, DisplayName}]),
-    kz_json:set_value(?FEATURE_CNAM_OUTBOUND, Data, Acc);
-features_fold(?CNAM_INBOUND_LOOKUP, Acc, _) ->
-    Data = kz_json:from_list([{?CNAM_INBOUND_LOOKUP, true}]),
+    kz_json:set_value(Feature, Data, Acc);
+features_fold(?CNAM_INBOUND_LOOKUP=Feature, Acc, _) ->
+    Data = kz_json:from_list([{Feature, true}]),
     kz_json:set_value(?FEATURE_CNAM_INBOUND, Data, Acc);
 features_fold(?LEGACY_DASH_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
@@ -723,10 +730,9 @@ features_fold(?LEGACY_TELNYX_E911=Feature, Acc, JObj) ->
     Data = kz_json:get_value(Feature, JObj),
     kz_json:set_value(?FEATURE_E911, Data, Acc);
 features_fold(FeatureKey, Acc, JObj) ->
-    %% Encompasses at least:
-    %%   ?FEATURE_PORT & ?FEATURE_FAILOVER
+    %% Encompasses at least: ?FEATURE_PORT
     Data = kz_json:get_ne_value(FeatureKey, JObj, kz_json:new()),
-    lager:debug("emcompassed ~s", [FeatureKey, kz_json:encode(Data)]),
+    ?LOG_DEBUG("emcompassed ~p ~s", [FeatureKey, kz_json:encode(Data)]),
     kz_json:set_value(FeatureKey, Data, Acc).
 
 %%--------------------------------------------------------------------
@@ -1526,6 +1532,12 @@ private_to_public() ->
                  ,[?FEATURE_PREPEND, ?PREPEND_NAME]
                  ,[?FEATURE_PREPEND, ?PREPEND_NUMBER]
                  ],
+    FailoverPub = [[?FEATURE_FAILOVER, ?FAILOVER_E164]
+                  ,[?FEATURE_FAILOVER, ?FAILOVER_SIP]
+                  ],
+    RingbackPub = [[?FEATURE_RINGBACK, ?RINGBACK_EARLY]
+                  ,[?FEATURE_RINGBACK, ?RINGBACK_TRANSFER]
+                  ],
     #{?FEATURE_E911 => E911Pub
      ,?LEGACY_VITELITY_E911 => E911Pub
      ,?LEGACY_DASH_E911 => E911Pub
@@ -1534,7 +1546,9 @@ private_to_public() ->
      ,?FEATURE_CNAM_INBOUND => CNAMPub
      ,?FEATURE_CNAM_OUTBOUND => CNAMPub
      ,?FEATURE_PREPEND => PrependPub
-     ,?FEATURE_FAILOVER => [[?FEATURE_FAILOVER]]
+     ,?FEATURE_FAILOVER => FailoverPub
+     ,?FEATURE_RINGBACK => RingbackPub
+     ,?FEATURE_FORCE_OUTBOUND => [[?FEATURE_FORCE_OUTBOUND]]
      }.
 
 %%--------------------------------------------------------------------

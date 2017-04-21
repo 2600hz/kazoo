@@ -687,6 +687,7 @@
     "tasks.discovery_expiry_d": "tasks discovery expiry in days",
     "tasks.interaccount_delay_ms": "tasks interaccount delay in milliseconds",
     "tasks.low_balance_repeat_s": "tasks low balance repeat in seconds",
+    "tasks.numbers.db_page_size": "maximum count of numbers read from db at once",
     "tasks.numbers.import_defaults_to_carrier": "carrier module to use if none provided during numbers import",
     "tasks.pause_between_upload_output_attempts_s": "the amount of time to pause between attempts to upload resulting CSV in seconds",
     "tasks.send_progress_after_processed": "tasks send progress after processed",

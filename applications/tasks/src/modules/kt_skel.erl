@@ -46,7 +46,7 @@ init() ->
     _ = tasks_bindings:bind(?TRIGGER_MINUTELY, ?MODULE, 'my_minute_job'),
     tasks_bindings:bind_actions(<<"tasks."?CATEGORY>>, ?MODULE, ?ACTIONS).
 
--spec output_header(ne_binary()) -> kz_csv:row().
+-spec output_header(ne_binary()) -> kz_tasks:output_header().
 output_header(<<"id2">>) ->
     [<<"Col1">>, <<"Col2">>].
 
