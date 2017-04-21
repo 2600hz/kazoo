@@ -70,6 +70,7 @@ Key | Description | Type | Default | Required
 `ringtones.internal` | The alert info SIP header added when the call is from external sources | `string(0..256)` |   | `false`
 `timezone` | User's timezone | `string` |   | `false`
 `username` | The GUI login username - alpha-numeric, dashes, at symbol, periods, plusses, and underscores allowed | `string(1..256)` |   | `false`
+`password` | The GUI login password
 `verified` | Determines if the user has been verified | `boolean` | `false` | `false`
 `vm_to_email_enabled` | Determines if the user would like voicemails emailed to them | `boolean` | `true` | `false`
 `voicemail` |   | `object` |   | `false`
