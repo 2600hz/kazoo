@@ -115,7 +115,11 @@ relay_stream_attachment(Caller, Ref, Msg) ->
                                {'ok', kz_json:object()} |
                                couchbeam_error().
 do_put_attachment(#db{}=Db, DocId, AName, Contents, Options) ->
-    ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, Options)).
+    Timeout = kapps_config:get_integer(?CONFIG_CAT, <<"attachment_put_timeout">>, 60000),
+    UseOpts = Options ++ [{'recv_timeout', Timeout}],
+
+    lager:info("put_attachment with options: ~p", [UseOpts]),
+    ?RETRY_504(couchbeam:put_attachment(Db, DocId, AName, Contents, UseOpts)).
 
 -spec do_del_attachment(couchbeam_db(), ne_binary(), ne_binary(), kz_proplist()) ->
                                {'ok', kz_json:object()} |
