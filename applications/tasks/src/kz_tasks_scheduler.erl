@@ -15,6 +15,9 @@
         ,remove/1
         ]).
 
+%%% For playfull debugging
+-export([restart/1]).
+
 %%% API used by workers
 -export([worker_finished/4
         ,worker_error/1
@@ -88,6 +91,15 @@ start_link() ->
                               }.
 start(TaskId=?NE_BINARY) ->
     gen_server:call(?SERVER, {'start_task', TaskId}).
+
+-spec restart(kz_tasks:id()) -> {'ok', kz_json:object()} |
+                                {'error'
+                                ,'not_found' |
+                                 'already_started' |
+                                 any()
+                                }.
+restart(TaskId = ?NE_BINARY) ->
+    gen_server:call(?SERVER, {'restart_task', TaskId}).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -173,17 +185,18 @@ attempt_upload(TaskId, AName, CSVOut, Output, Retries, Max) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_output_header(kz_json:object()) -> kz_csv:row().
+-spec get_output_header(kz_json:object()) -> kz_tasks:output_header().
 get_output_header(API) ->
     Action = kz_json:get_value(<<"action">>, API),
     case tasks_bindings:apply(API, <<"output_header">>, [Action]) of
         [[_|_]=Header] -> Header;
+        [{replace, [_|_]}=Header] -> Header;
         [{'EXIT', {_E, _R}}] ->
             lager:debug("output_header not found for ~s (~p), using default", [Action, _E]),
-            ?OUTPUT_CSV_HEADER_ROW;
+            [?OUTPUT_CSV_HEADER_ERROR];
         _NotARow ->
             lager:debug("bad CSV output header ~p, using default", [_NotARow]),
-            ?OUTPUT_CSV_HEADER_ROW
+            [?OUTPUT_CSV_HEADER_ERROR]
     end.
 
 %%--------------------------------------------------------------------
@@ -241,6 +254,21 @@ handle_call({'start_task', TaskId}, _From, State) ->
             end;
         [#{started := Started}]
           when Started /= 'undefined' ->
+            lager:info("task ~s exists already", [TaskId]),
+            ?REPLY(State, {'error', 'already_started'})
+    end;
+
+handle_call({'restart_task', TaskId}, _From, State) ->
+    lager:debug("attempting to restart ~s", [TaskId]),
+    case task_by_id(TaskId, State) of
+        [] ->
+            case kz_tasks:task_by_id(TaskId) of
+                [] -> ?REPLY_NOT_FOUND(State);
+                [Task] -> handle_call_start_task(Task#{finished=>'undefined'}, State)
+            end;
+        [#{started := Started}]
+          when Started /= 'undefined' ->
+            lager:info("task ~s exists already", [TaskId]),
             ?REPLY(State, {'error', 'already_started'})
     end;
 

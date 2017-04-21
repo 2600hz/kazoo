@@ -128,5 +128,8 @@
 -define(RINGBACK_EARLY, <<"early">>).
 -define(RINGBACK_TRANSFER, <<"transfer">>).
 
+-define(FAILOVER_E164, <<"e164">>).
+-define(FAILOVER_SIP, <<"sip">>).
+
 -define(KNM_NUMBER_MANAGER_HRL, 'true').
 -endif.

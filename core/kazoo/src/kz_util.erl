@@ -142,6 +142,7 @@
 
 -export([uniq/1]).
 -export([iolist_join/2]).
+-export([pos/2, closests/2]).
 
 -include_lib("kernel/include/inet.hrl").
 
@@ -1786,6 +1787,24 @@ iolist_join(Sep, [H|T]) ->
 iolist_join_prepend(_, []) -> [];
 iolist_join_prepend(Sep, [H|T]) ->
     [Sep, H | iolist_join_prepend(Sep, T)].
+
+
+-spec pos(char(), binary()) -> non_neg_integer() | -1.
+pos(Char, Bin) ->
+    pos(Char, Bin, 0).
+pos(_, <<>>, _) -> -1;
+pos(Char, <<Char:8, _/binary>>, N) -> N;
+pos(Char, <<_:8, Bin/binary>>, N) ->
+    pos(Char, Bin, N + 1).
+
+-spec closests([char(),...], binary()) -> [{char(), non_neg_integer()}].
+closests(Chars, Bin) ->
+    Pairs = [{Char, Pos}
+             || Char <- Chars,
+                Pos <- [pos(Char, Bin)],
+                Pos =/= -1
+            ],
+    lists:keysort(2, Pairs).
 
 
 -spec binary_reverse(binary()) -> binary().
