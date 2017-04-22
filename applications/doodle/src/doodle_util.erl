@@ -185,10 +185,15 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
               ,{<<"_rev">>, Rev}
               ]),
     JObjDoc = kz_json:set_values(Props, Doc),
-    kazoo_modb:maybe_create(AccountDb),
+
     case kz_datamgr:save_doc(AccountDb, JObjDoc, Opts) of
         {'ok', Saved} ->
             kapps_call:kvs_store(<<"_rev">>, kz_doc:revision(Saved), Call);
+        {'error', 'not_found'} ->
+            case kazoo_modb:maybe_create(AccountDb) of
+              'true' -> save_sms(JObj, DocId, Doc, Call);
+              'false' -> Call
+            end;
         {'error', E} ->
             lager:error("error saving sms doc : ~p", [E]),
             Call

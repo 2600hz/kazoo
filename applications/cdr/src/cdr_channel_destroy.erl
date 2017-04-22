@@ -190,8 +190,4 @@ set_interaction(_AccountId, _Timestamp, JObj) ->
 -spec save_cdr(api_binary(), gregorian_seconds(), kz_json:object()) -> kz_json:object().
 save_cdr(_, _, JObj) ->
     CDRDb = kz_doc:account_db(JObj),
-    case cdr_util:save_cdr(CDRDb, kz_json:normalize_jobj(JObj)) of
-        {'error', 'max_retries'} ->
-            lager:error("write failed to ~s, too many retries", [CDRDb]);
-        'ok' -> 'ok'
-    end.
+    cdr_util:save_cdr(CDRDb, kz_json:normalize_jobj(JObj)).
