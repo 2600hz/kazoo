@@ -13,6 +13,7 @@
 -module(knm_simwood).
 -behaviour(knm_gen_carrier).
 
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
@@ -36,6 +37,16 @@
 -define(SW_AUTH_USERNAME, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_username">>, <<>>)).
 -define(SW_AUTH_PASSWORD, kapps_config:get_binary(?KNM_SW_CONFIG_CAT, <<"auth_password">>, <<>>)).
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 3
+     }.
 
 %%--------------------------------------------------------------------
 %% @public

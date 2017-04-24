@@ -12,6 +12,7 @@
 -module(knm_other).
 -behaviour(knm_gen_carrier).
 
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([is_number_billable/1]).
@@ -58,6 +59,16 @@
                           ,{<<"data">>, ?NUMBERS_DATA}
                           ])).
 -endif.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 10
+     }.
 
 %%--------------------------------------------------------------------
 %% @public

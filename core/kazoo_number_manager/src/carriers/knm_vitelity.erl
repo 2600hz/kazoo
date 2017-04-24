@@ -12,6 +12,7 @@
 -module(knm_vitelity).
 -behaviour(knm_gen_carrier).
 
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
@@ -23,6 +24,16 @@
 -include("knm.hrl").
 -include("knm_vitelity.hrl").
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 3
+     }.
 
 %%--------------------------------------------------------------------
 %% @public

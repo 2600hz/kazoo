@@ -55,6 +55,8 @@
 
 -define(KNM_AVAILABLE_STATES, [?NUMBER_STATE_DISCOVERY, ?NUMBER_STATE_AVAILABLE]).
 
+-define(CARRIER_INFO_MAX_PREFIX, <<"maximal_prefix">>).
+
 -define(CARRIER_INUM, <<"knm_inum">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).
 -define(CARRIER_INVENTORY, <<"knm_inventory">>).

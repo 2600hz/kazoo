@@ -11,6 +11,7 @@
 -module(knm_voip_innovations).
 -behaviour(knm_gen_carrier).
 
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([acquire_number/1]).
@@ -65,6 +66,16 @@
                        {'error', any()}.
 
 %%% API
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 3
+     }.
 
 %%--------------------------------------------------------------------
 %% @public
