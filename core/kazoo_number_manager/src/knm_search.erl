@@ -331,7 +331,12 @@ next(Options) ->
     Results = qlc:next_answers(QLC, Quantity),
     qlc:delete_cursor(QLC),
     lager:debug("returning ~B results", [length(Results)]),
-    [kz_json:from_list([{<<"number">>, Num}]) || {Num, _, _, _} <- Results].
+    [kz_json:from_list(
+       [{<<"number">>, Num}
+       ,{<<"state">>, State}
+       ])
+     || {Num, _ModuleName, State, _CarrierData} <- Results
+    ].
 
 %%--------------------------------------------------------------------
 %% @public
