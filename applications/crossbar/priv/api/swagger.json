@@ -2732,7 +2732,8 @@
                     "description": "What TTS engine to use",
                     "enum": [
                         "flite",
-                        "ispeech"
+                        "ispeech",
+                        "voicefabric"
                     ],
                     "required": false,
                     "type": "string"
