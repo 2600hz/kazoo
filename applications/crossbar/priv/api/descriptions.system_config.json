@@ -475,6 +475,7 @@
     "number_manager.local_feature_override": "overrides the filtering of external features for local numbers",
     "number_manager.locality.url": "number_manager.locality url",
     "number_manager.maximum_search_quantity": "maximum number of returned DIDs in search query",
+    "number_manager.number_search_timeout_ms": "number manager number search timeout in milliseconds",
     "number_manager.other.default_country": "number_manager.other default country",
     "number_manager.other.endpoints": "number_manager.other endpoints",
     "number_manager.other.phonebook_url": "number_manager.other phonebook url",

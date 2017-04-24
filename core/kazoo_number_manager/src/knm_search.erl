@@ -56,9 +56,13 @@
 
 -define(POLLING_INTERVAL, 5000).
 
+-define(NUMBER_SEARCH_TIMEOUT, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5000)).
+
 -define(EOT, '$end_of_table').
 
--type state() :: #{}.
+-type state() :: #{node => ne_binary()
+                  ,cache => ets:tid() | atom()
+                  }.
 
 -define(ETS_DISCOVERY_CACHE, 'knm_discovery_cache').
 -define(ETS_DISCOVERY_CACHE_OPTIONS, ['bag', 'named_table', {'read_concurrency', 'true'}]).
@@ -243,13 +247,10 @@ find(Options, _) ->
 do_find(Options, 'true') ->
     next(Options);
 do_find(Options, 'false') ->
-    QueryId = query_id(Options),
-    Quantity = quantity(Options),
-    Offset = offset(Options),
-    Payload = [{<<"Query-ID">>, QueryId}
+    Payload = [{<<"Query-ID">>, query_id(Options)}
               ,{<<"Prefix">>, normalized_prefix(Options)}
-              ,{<<"Quantity">>, Quantity}
-              ,{<<"Offset">>, Offset}
+              ,{<<"Quantity">>, quantity(Options)}
+              ,{<<"Offset">>, offset(Options)}
               ,{<<"Account-ID">>, account_id(Options)}
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ],
@@ -312,8 +313,8 @@ wait_for_search(N) ->
         _Other ->
             lager:debug("unexpected search result ~p", [_Other]),
             wait_for_search(N - 1)
-    after 5000 ->
-            lager:debug("timeout (~B) collecting responses from search providers", [5000]),
+    after ?NUMBER_SEARCH_TIMEOUT ->
+            lager:debug("timeout (~B) collecting responses from search providers", [?NUMBER_SEARCH_TIMEOUT]),
             wait_for_search(N - 1)
     end.
 
@@ -443,7 +444,8 @@ local_discovery(_Num, _Options) -> {'error', 'not_found'}.
 local_discovery(Num, Options) ->
     case ets:match_object(?ETS_DISCOVERY_CACHE, {'_', {Num, '_', ?NUMBER_STATE_DISCOVERY, '_'}}) of
         [] -> {'error', 'not_found'};
-        [{_QID, {Num, Carrier, _, Data}} | _] -> {'ok', create_discovery(Num, Carrier, Data, Options)}
+        [{_QID, {Num, Carrier, _, Data}} | _] ->
+            {'ok', create_discovery(Num, Carrier, Data, Options)}
     end.
 -endif.
 
