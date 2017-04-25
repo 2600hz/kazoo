@@ -26,7 +26,7 @@ get_config(Account, Config) ->
 -spec get_config(ne_binary(), ne_binary(), [fun()]) -> kz_json:object().
 get_config(Account, Config, Programm) ->
     Confs = [maybe_new(P(Account, Config)) || P <- Programm],
-    kz_json:merge_recursive(lists:reverse(Confs)).
+    kz_json:merge(lists:reverse(Confs)).
 
 -spec get_reseller_config(ne_binary(), ne_binary()) -> kz_json:object().
 get_reseller_config(Account, Config) ->

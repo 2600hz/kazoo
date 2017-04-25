@@ -71,7 +71,7 @@ overrides(Plan, Default) ->
 
 -spec merge_overrides(doc(), kz_json:object()) -> doc().
 merge_overrides(Plan, Overrides) ->
-    kz_json:merge_recursive(Plan, kz_json:from_list([{?PLAN, Overrides}])).
+    kz_json:merge(Plan, kz_json:from_list([{?PLAN, Overrides}])).
 
 -spec item_activation_charge(doc(), ne_binary(), ne_binary()) -> api_float().
 -spec item_activation_charge(doc(), ne_binary(), ne_binary(), Default) -> float() | Default.

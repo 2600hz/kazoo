@@ -117,7 +117,7 @@ set_authenticating_user(JObj, User) ->
 -spec set_audit_account(doc(), ne_binary(), kz_json:object()) -> doc().
 set_audit_account(JObj, AccountId, AuditJObj) ->
     OldAudit = audit_account_id(JObj, AccountId, kz_json:new()),
-    NewAudit = kz_json:merge_recursive(OldAudit, AuditJObj),
+    NewAudit = kz_json:merge(OldAudit, AuditJObj),
     kz_json:set_value([?KEY_AUDIT, AccountId], NewAudit, JObj).
 
 -spec save(kz_services:services(), doc()) -> 'ok'.

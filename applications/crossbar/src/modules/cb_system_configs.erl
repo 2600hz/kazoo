@@ -146,13 +146,13 @@ validate_document(Context, Id, ?HTTP_PUT) ->
 validate_document(Context, Id, ?HTTP_POST) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
     DefaultConfig = kapps_config_doc:default_config(Id, kapps_config_doc:get_keys(RequestData)),
-    FullConfig = kz_json:merge_recursive(DefaultConfig, RequestData),
+    FullConfig = kz_json:merge(DefaultConfig, RequestData),
     validate_document_request(Context, Id, FullConfig);
 
 validate_document(Context, Id, ?HTTP_PATCH) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
     StoredConfig = kapps_config_doc:stored_config(Id, kapps_config_doc:get_keys(RequestData)),
-    FullConfig = kz_json:merge_recursive(StoredConfig, RequestData),
+    FullConfig = kz_json:merge(StoredConfig, RequestData),
     validate_document_request(Context, Id, FullConfig);
 
 validate_document(Context, Id, ?HTTP_DELETE) ->
@@ -186,13 +186,13 @@ validate_document_node(Context, Id, ?HTTP_PUT, Node) -> validate_document_node(C
 validate_document_node(Context, Id, ?HTTP_POST, Node) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
     DefaultConfig = kapps_config_doc:default_node(Id, Node),
-    FullConfig = kz_json:merge_recursive(DefaultConfig, RequestData),
+    FullConfig = kz_json:merge(DefaultConfig, RequestData),
     validate_node_request(Context, Id, Node, FullConfig);
 
 validate_document_node(Context, Id, ?HTTP_PATCH, Node) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
     StoredConfig = kapps_config_doc:stored_node(Id, Node),
-    FullConfig = kz_json:merge_recursive(StoredConfig, RequestData),
+    FullConfig = kz_json:merge(StoredConfig, RequestData),
     validate_node_request(Context, Id, Node, FullConfig);
 
 validate_document_node(Context, Id, ?HTTP_DELETE, _Node) ->
@@ -321,7 +321,7 @@ set_db_to_system(Context) ->
 -spec maybe_set_private_fields(ne_binary(), kz_json:object()) -> kz_json:object().
 maybe_set_private_fields(ConfigId, JObj) ->
     case kapps_config:get_category(ConfigId) of
-        {ok, Doc} -> kz_json:merge_recursive(JObj, kz_doc:private_fields(Doc));
+        {ok, Doc} -> kz_json:merge(JObj, kz_doc:private_fields(Doc));
         _ -> kz_doc:set_id(JObj, ConfigId)
     end.
 

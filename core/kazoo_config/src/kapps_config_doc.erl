@@ -38,7 +38,7 @@ get_node(Config, Node) ->
 -spec apply_default_values(kz_json:object(), ne_binary(), kz_json:object()) -> kz_json:object().
 apply_default_values(Config, Node, Default) ->
     NodeValue = get_node(Config, Node),
-    kz_json:set_value(Node, kz_json:merge_recursive(Default, NodeValue), Config).
+    kz_json:set_value(Node, kz_json:merge(Default, NodeValue), Config).
 
 -spec apply_default_node(kz_json:object()) -> kz_json:object().
 apply_default_node(Config) ->

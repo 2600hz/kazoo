@@ -978,7 +978,7 @@ category_quantity(CategoryId, ItemExceptions, #kz_services{updates=UpdatedQuanti
     CatUpdates = kz_json:get_value(CategoryId, UpdatedQuantities, kz_json:new()),
 
     %% replaces CatQs values with CatUpdate
-    Quantities = kz_json:merge_recursive(CatQuantities, CatUpdates),
+    Quantities = kz_json:merge(CatQuantities, CatUpdates),
 
     %% Removes ItemExceptions, if any
     QsMinusEx = kz_json:delete_keys(ItemExceptions, Quantities),
@@ -1104,7 +1104,7 @@ calculate_services_charges(#kz_services{jobj=ServiceJObj
                           ,ServicePlans
                           ) ->
     CurrentQuantities = kzd_services:quantities(ServiceJObj),
-    UpdatedQuantities = kz_json:merge_recursive(CurrentQuantities, UpdatesJObj),
+    UpdatedQuantities = kz_json:merge(CurrentQuantities, UpdatesJObj),
 
     UpdatedServiceJObj = kzd_services:set_quantities(ServiceJObj, UpdatedQuantities),
 

@@ -75,7 +75,7 @@ validate(Context, ?HTTP_POST, ConfigId) ->
 -spec validate_with_parent(cb_context:context(), ne_binary(), kz_json:object()) -> cb_context:context().
 validate_with_parent(Context, ConfigId, Parent) ->
     RequestData = strip_id(cb_context:req_data(Context)),
-    FullConfig = kz_json:merge_recursive(Parent, RequestData),
+    FullConfig = kz_json:merge(Parent, RequestData),
     Schema = kapps_config_util:account_schema_name(ConfigId),
     cb_context:validate_request_data(Schema, cb_context:set_req_data(Context, FullConfig),
                                      fun(Ctx) ->
@@ -124,6 +124,6 @@ maybe_save_or_delete(Context, ConfigId) ->
         {?EMPTY_JSON_OBJECT, _} ->
             crossbar_doc:delete(cb_context:set_doc(Context, Stored));
         {Diff, _} ->
-            crossbar_doc:save(Context, kz_json:merge_recursive(Stored, Diff), [])
+            crossbar_doc:save(Context, kz_json:merge(Stored, Diff), [])
     end,
     set_config_to_context(ConfigId, Context).

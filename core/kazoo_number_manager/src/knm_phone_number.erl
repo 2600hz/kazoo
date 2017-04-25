@@ -1271,7 +1271,7 @@ set_carrier_data(PN, Data) ->
 -spec update_carrier_data(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_carrier_data(PN=#knm_phone_number{carrier_data = Data}, JObj) ->
     'true' = kz_json:is_json_object(JObj),
-    Updated = kz_json:merge_recursive(JObj, Data),
+    Updated = kz_json:merge(JObj, Data),
     case kz_json:are_equal(PN#knm_phone_number.carrier_data, Updated) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{carrier_data = Updated})
@@ -1427,7 +1427,7 @@ set_doc(PN, JObj0) ->
 -spec update_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 update_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
     true = kz_json:is_json_object(JObj0),
-    JObj1 = kz_json:merge_recursive(kz_doc:public_fields(JObj0), Doc),
+    JObj1 = kz_json:merge(kz_doc:public_fields(JObj0), Doc),
     JObj = doc_from_public_fields(JObj1),
     case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;
@@ -1437,7 +1437,7 @@ update_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
 -spec reset_doc(knm_phone_number(), kz_json:object()) -> knm_phone_number().
 reset_doc(PN=#knm_phone_number{doc = Doc}, JObj0) ->
     true = kz_json:is_json_object(JObj0),
-    JObj1 = kz_json:merge_recursive(kz_doc:public_fields(JObj0), kz_doc:private_fields(Doc)),
+    JObj1 = kz_json:merge(kz_doc:public_fields(JObj0), kz_doc:private_fields(Doc)),
     JObj = doc_from_public_fields(JObj1),
     case kz_json:are_equal(JObj, PN#knm_phone_number.doc) of
         true -> PN;

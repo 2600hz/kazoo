@@ -233,7 +233,7 @@ add_permissions(App, JObj) ->
     case kz_json:get_ne_value(kz_doc:id(App), AppsPerm) of
         'undefined' -> App;
         AppPerm ->
-            kz_json:merge_recursive([kzd_app:publish(App), AppPerm])
+            kz_json:merge([kzd_app:publish(App), AppPerm])
     end.
 
 %%--------------------------------------------------------------------

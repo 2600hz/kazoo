@@ -77,7 +77,7 @@ create_test_() ->
     ,?_assertEqual(true, knm_phone_number:is_phone_number(pn_x(1, Ret)))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
     ,{"Verify feature is properly set"
-     ,?_assertEqual(E911, knm_phone_number:feature(pn_x(1, Ret), ?FEATURE_E911))
+     ,?_assert(kz_json:are_equal(E911, knm_phone_number:feature(pn_x(1, Ret), ?FEATURE_E911)))
      }
     ,{"Verify we are keeping track of intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>

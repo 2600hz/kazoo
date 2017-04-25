@@ -241,7 +241,7 @@ post(Context, PlanId, ?OVERRIDE) ->
     Doc = cb_context:doc(Context),
 
     Overrides = kz_json:get_value([<<"plans">>, PlanId, <<"overrides">>], Doc, kz_json:new()),
-    Overriden = kz_json:merge_recursive([Overrides, cb_context:req_data(Context)]),
+    Overriden = kz_json:merge([Overrides, cb_context:req_data(Context)]),
 
     NewDoc = kz_json:set_value([<<"plans">>, PlanId, <<"overrides">>], Overriden, Doc),
 

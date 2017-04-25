@@ -238,9 +238,9 @@ to_swagger_paths(Paths, BasePaths) ->
          || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
             Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
         ],
-    kz_json:merge_recursive(kz_json:set_values(Endpoints, kz_json:new())
-                           ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
-                           ).
+    kz_json:merge(kz_json:set_values(Endpoints, kz_json:new())
+                 ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
+                 ).
 
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),

@@ -201,7 +201,6 @@ function props_to_kz_http {
     search_and_replace_with_prefix fs[@] "props" "kz_http_util" "props_"
 }
 
-
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"

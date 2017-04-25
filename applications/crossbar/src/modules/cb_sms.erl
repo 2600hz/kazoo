@@ -244,7 +244,7 @@ get_default_caller_id(Context, OwnerId) ->
     {'ok', JObj2} = kz_datamgr:open_cache_doc(AccountDb, OwnerId),
     kz_json:get_first_defined(
       [?CALLER_ID_INTERNAL, ?CALLER_ID_EXTERNAL]
-                             ,kz_json:merge_recursive(JObj1, JObj2)
+                             ,kz_json:merge(JObj1, JObj2)
                              ,kz_privacy:anonymous_caller_id_number(cb_context:account_id(Context))
      ).
 

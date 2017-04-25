@@ -206,7 +206,7 @@ check_MAC(MacAddress, AuthToken) ->
 set_owner(JObj) ->
     OwnerId = kz_json:get_ne_value(<<"owner_id">>, JObj),
     case get_owner(OwnerId, kz_doc:account_id(JObj)) of
-        {'ok', Doc} -> kz_json:merge_recursive(Doc, JObj);
+        {'ok', Doc} -> kz_json:merge(Doc, JObj);
         {'error', _R} -> JObj
     end.
 

@@ -102,7 +102,7 @@ e911_test_() ->
     PN2 = knm_number:phone_number(N2),
     [?_assert(knm_phone_number:is_dirty(PN1))
     ,{"Verify feature is properly set"
-     ,?_assertEqual(E911, knm_phone_number:feature(PN1, ?FEATURE_E911))
+     ,?_assert(kz_json:are_equal(E911, knm_phone_number:feature(PN1, ?FEATURE_E911)))
      }
     ,{"Verify we are keeping track of intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>
@@ -111,7 +111,7 @@ e911_test_() ->
      }
     ,?_assertEqual(false, knm_phone_number:is_dirty(PN2))
     ,{"Verify feature is still properly set"
-     ,?_assertEqual(E911, knm_phone_number:feature(PN2, ?FEATURE_E911))
+     ,?_assert(kz_json:are_equal(E911, knm_phone_number:feature(PN2, ?FEATURE_E911)))
      }
     ,{"Verify we are keeping track of same intermediary address_id"
      ,?_assertEqual(<<"421564943280637078">>
