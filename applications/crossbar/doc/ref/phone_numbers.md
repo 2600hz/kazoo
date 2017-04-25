@@ -181,6 +181,16 @@ curl -v -X POST \
 
 #### Fetch
 
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+
+```shell
+curl -v -X GET \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+```
+
+#### Fetch
+
 > GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/identify
 
 ```shell

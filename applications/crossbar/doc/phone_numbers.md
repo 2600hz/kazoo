@@ -144,6 +144,31 @@ curl -v -X GET \
 ```
 
 
+#### See how many digits a `{PREFIX}` can take
+
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+
+Depending on your carriers configuration you may be allowed to query numbers
+by NPA-NXX instead of just NPA.
+
+```shell
+curl -v -X GET \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "maximal_prefix_length": 3
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
 #### List an account's phone numbers
 
 This lists the numbers an account owns, along with their properties.
