@@ -31,7 +31,7 @@
                ,server_id :: api_binary()
                ,controller_q :: api_binary()
                ,originate_req = kz_json:new() :: kz_json:object()
-               ,uuid :: created_uuid()
+               ,uuid :: created_uuid() | 'undefined'
                ,action :: api_binary()
                ,app :: api_binary()
                ,dialstrings :: api_binary()
@@ -566,7 +566,7 @@ originate_execute(Node, Dialstrings, Timeout) ->
     case freeswitch:api(Node
                        ,'originate'
                        ,kz_term:to_list(Dialstrings)
-                       ,Timeout*?MILLISECONDS_IN_SECOND
+                       ,Timeout * ?MILLISECONDS_IN_SECOND + 2000
                        )
     of
         {'ok', <<"+OK ", ID/binary>>} ->
