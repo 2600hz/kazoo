@@ -160,7 +160,11 @@ curl -v -X GET \
 {
     "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "maximal_prefix_length": 3
+        "maximal_prefix_length": 3,
+        "usable_modules": [
+            "knm_bandwidth2",
+            "knm_local"
+        ]
     },
     "request_id": "{REQUEST_ID}",
     "revision": "{REVISION}",
@@ -431,6 +435,8 @@ curl -v -X POST \
 Adds a number to the database, returning its properties.
 
 Note: payload is facultative.
+
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -856,6 +862,8 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
+
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -1148,6 +1156,8 @@ curl -v -X GET \
 
 
 #### Create a number in the `port_in` state
+
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port
 
