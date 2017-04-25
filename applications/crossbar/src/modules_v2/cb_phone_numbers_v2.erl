@@ -41,6 +41,7 @@
 -define(IDENTIFY, <<"identify">>).
 -define(COLLECTION, <<"collection">>).
 -define(COLLECTION_NUMBERS, <<"numbers">>).
+-define(CARRIERS_INFO, <<"carriers_info">>).
 -define(FIX, <<"fix">>).
 -define(MIME_TYPES, [{<<"application">>, <<"pdf">>}
                     ,{<<"application">>, <<"x-gzip">>}
@@ -149,6 +150,8 @@ maybe_authorize(_Verb, _Nouns) ->
 allowed_methods() ->
     [?HTTP_GET].
 
+allowed_methods(?CARRIERS_INFO) ->
+    [?HTTP_GET];
 allowed_methods(?FIX) ->
     [?HTTP_POST];
 allowed_methods(?CLASSIFIERS) ->
@@ -192,6 +195,7 @@ allowed_methods(_PhoneNumber, ?IDENTIFY) ->
 -spec resource_exists(path_token(), path_token()) -> boolean().
 resource_exists() -> 'true'.
 
+resource_exists(?CARRIERS_INFO) -> 'true';
 resource_exists(?FIX) -> 'true';
 resource_exists(?PREFIX) -> 'true';
 resource_exists(?LOCALITY) -> 'true';
@@ -255,6 +259,15 @@ validate_phone_numbers(Context, ?HTTP_GET, _AccountId) ->
         _Prefix -> maybe_find_numbers(Context)
     end.
 
+validate(Context, ?CARRIERS_INFO) ->
+    case pick_account_and_reseller_id(Context) of
+        {error, Reason} ->
+            crossbar_util:response(error, Reason, 404, Context);
+        {ok, AccountId, ResellerId} ->
+            cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
+                                    ,knm_carriers:info(AccountId, ResellerId)
+                                    )
+    end;
 validate(Context, ?FIX) ->
     cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
                             ,kz_json:new()
