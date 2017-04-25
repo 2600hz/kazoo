@@ -69,8 +69,18 @@
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
        ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+-ifdef(TEST).
+-define(CARRIER_MODULES(AccountId)
+       ,(fun (?CHILD_ACCOUNT_ID) ->
+                 %% CHILD_ACCOUNT_ID is not a reseller but that's okay
+                 [?CARRIER_LOCAL, <<"knm_bandwidth2">>];
+             (_) ->
+                 kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+         end)(AccountId)).
+-else.
 -define(CARRIER_MODULES(AccountId)
        ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
+-endif.
 
 -define(MAX_QUANTITY, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 50)).
 
