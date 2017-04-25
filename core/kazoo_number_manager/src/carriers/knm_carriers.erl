@@ -186,8 +186,11 @@ info(AccountId, ResellerId) ->
               ],
     Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
             },
-    JObj = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
-    kz_json:from_map(JObj).
+    Map = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
+    kz_json:from_map(
+      Map#{?CARRIER_INFO_USABLE_MODULES => usable_modules()
+          }
+     ).
 
 info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
     try apply(Module, info, []) of
@@ -201,6 +204,11 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
             kz_util:log_stacktrace(),
             Info
     end.
+
+usable_modules() ->
+    all_modules() -- [?CARRIER_RESERVED
+                     ,?CARRIER_RESERVED_RESELLER
+                     ].
 
 %%--------------------------------------------------------------------
 %% @public
