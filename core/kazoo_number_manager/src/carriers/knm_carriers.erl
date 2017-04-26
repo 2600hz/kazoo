@@ -16,7 +16,7 @@
 
 -export([find/1, find/2
         ,check/1, check/2
-        ,available_carriers/1
+        ,available_carriers/1, info/2
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
@@ -69,8 +69,18 @@
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
 -define(CARRIER_MODULES
        ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+-ifdef(TEST).
+-define(CARRIER_MODULES(AccountId)
+       ,(fun (?CHILD_ACCOUNT_ID) ->
+                 %% CHILD_ACCOUNT_ID is not a reseller but that's okay
+                 [?CARRIER_LOCAL, <<"knm_bandwidth2">>];
+             (_) ->
+                 kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+         end)(AccountId)).
+-else.
 -define(CARRIER_MODULES(AccountId)
        ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
+-endif.
 
 -define(MAX_QUANTITY, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 50)).
 
@@ -285,6 +295,35 @@ default_carrier() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% Get information on the available carriers
+%% @end
+%%--------------------------------------------------------------------
+-spec info(api_ne_binary(), api_ne_binary()) -> kz_json:object().
+info(AccountId, ResellerId) ->
+    Options = [{account_id, AccountId}
+              ,{reseller_id, ResellerId}
+              ],
+    Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
+            },
+    JObj = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
+    kz_json:from_map(JObj).
+
+info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
+    try apply(Module, info, []) of
+        #{?CARRIER_INFO_MAX_PREFIX := Lower}
+          when is_integer(Lower), Lower < MaxPrefix ->
+            Info#{?CARRIER_INFO_MAX_PREFIX => Lower
+                 };
+        _ -> Info
+    catch
+        _E:_R ->
+            kz_util:log_stacktrace(),
+            Info
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Buy a number from its carrier module
 %% @end
 %%--------------------------------------------------------------------
@@ -302,7 +341,12 @@ acquire(Number, 'undefined', _DryRun) ->
 acquire(Number, _Mod, 'true') ->
     Number;
 acquire(Number, ?NE_BINARY=Mod, 'false') ->
-    apply(Mod, acquire_number, [Number]).
+    case false =:= kz_util:try_load_module(Mod) of
+        false -> apply(Mod, acquire_number, [Number]);
+        true ->
+            lager:info("carrier '~s' does not exist, skipping", [Mod]),
+            Number
+    end.
 
 %%--------------------------------------------------------------------
 %% @public

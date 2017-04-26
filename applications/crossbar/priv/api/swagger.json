@@ -10460,6 +10460,11 @@
                     "description": "maximum number of returned DIDs in search query",
                     "type": "integer"
                 },
+                "number_search_timeout_ms": {
+                    "default": 5000,
+                    "description": "number manager number search timeout in milliseconds",
+                    "type": "integer"
+                },
                 "parallel_jobs_count": {
                     "default": 1,
                     "description": "number of concurrent workers that can process a migration at the same time (1=non parallel behavior, MUST be >0)",
@@ -17606,6 +17611,19 @@
             }
         },
         "/accounts/{ACCOUNT_ID}/phone_numbers": {
+            "get": {
+                "parameters": [
+                    {
+                        "$ref": "#/parameters/auth_token_header",
+                        "required": true
+                    },
+                    {
+                        "$ref": "#/parameters/account_id"
+                    }
+                ]
+            }
+        },
+        "/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info": {
             "get": {
                 "parameters": [
                     {

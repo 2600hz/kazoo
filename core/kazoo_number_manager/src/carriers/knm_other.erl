@@ -12,6 +12,7 @@
 -module(knm_other).
 -behaviour(knm_gen_carrier).
 
+-export([info/0]).
 -export([is_local/0]).
 -export([find_numbers/3]).
 -export([check_numbers/2]).
@@ -46,6 +47,16 @@
 -define(PHONEBOOK_URL(_Options), kapps_config:get(?KNM_OTHER_CONFIG_CAT, <<"phonebook_url">>)).
 -endif.
 
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec info() -> map().
+info() ->
+    #{?CARRIER_INFO_MAX_PREFIX => 10
+     }.
 
 %%--------------------------------------------------------------------
 %% @public
