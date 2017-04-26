@@ -184,7 +184,9 @@ reserve_test_() ->
     {ok, N1} = knm_number:reserve(?TEST_AVAILABLE_NUM
                                  ,[{assign_to,?RESELLER_ACCOUNT_ID}, {auth_by,?MASTER_ACCOUNT_ID}]),
     PN1 = knm_number:phone_number(N1),
-    {ok, N2} = knm_number:reserve(?TEST_IN_SERVICE_NUM, knm_number_options:default()),
+    {error, Error2} = knm_number:reserve(?TEST_IN_SERVICE_NUM, knm_number_options:default()),
+    {ok, N2} = knm_number:reserve(?TEST_IN_SERVICE_NUM
+                                 ,[{assign_to,?RESELLER_ACCOUNT_ID} | knm_number_options:default()]),
     PN2 = knm_number:phone_number(N2),
     {ok, N3} = knm_number:reserve(?TEST_IN_SERVICE_NUM, AssignToChild),
     PN3 = knm_number:phone_number(N3),
@@ -192,8 +194,13 @@ reserve_test_() ->
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN1))
      }
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN1))
     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN1))
+    ,{"Verify an unset assign_to gives an error"
+     ,?_assertEqual(<<"assign_failure">>, knm_errors:error(Error2))
+     }
     ,?_assert(knm_phone_number:is_dirty(PN2))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(PN2))
     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN2))
     ,{"verify number is now reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN2))
@@ -202,6 +209,7 @@ reserve_test_() ->
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(PN3))
      }
+    ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(PN3))
     ,?_assertEqual([?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(PN3))
     ].
 
