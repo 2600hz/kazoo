@@ -415,18 +415,15 @@ delete(Nums, Options) ->
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binaries(), knm_number_options:options()) -> ret().
 reconcile(Nums, Options0) ->
-    case knm_number_options:assign_to(Options0) =:= undefined of
-        true ->
-            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
-            ret(new(Options0, [], Nums, Error));
-        false ->
-            Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
-            {T0, NotFounds} = take_not_founds(do_get(Nums, Options)),
-            %% Ensures state to be IN_SERVICE
-            Ta = do_move_not_founds(NotFounds, Options),
-            Tb = do(fun (T) -> reconcile_number(T, Options) end, T0),
-            ret(merge_okkos(Ta, Tb))
-    end.
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
+    T0 = pipe(do_get(Nums, Options)
+             ,[fun fail_if_assign_to_is_not_an_account_id/1
+              ]),
+    {T1, NotFounds} = take_not_founds(T0),
+    %% Ensures state to be IN_SERVICE
+    Ta = do_move_not_founds(NotFounds, Options),
+    Tb = do(fun (T) -> reconcile_number(T, Options) end, T1),
+    ret(merge_okkos(Ta, Tb)).
 
 %%--------------------------------------------------------------------
 %% @public
