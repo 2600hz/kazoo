@@ -263,7 +263,7 @@ merge_attribute(<<"call_forward">> = Key, Account, Endpoint, Owner) ->
         'false' ->
             AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
             OwnerAttr = kz_json:get_ne_value(Key, Owner, kz_json:new()),
-            Merged = kz_json:merge_recursive([AccountAttr, EndpointAttr, OwnerAttr]),
+            Merged = kz_json:merge([AccountAttr, EndpointAttr, OwnerAttr]),
             kz_json:set_value(Key, Merged, Endpoint)
     end;
 merge_attribute(<<"call_waiting">> = Key, Account, Endpoint, Owner) ->
@@ -273,7 +273,7 @@ merge_attribute(<<"call_waiting">> = Key, Account, Endpoint, Owner) ->
     %% allow the device to override the owner preference (and vice versa) so
     %%  endpoints such as mobile device can disable call_waiting while sip phone
     %%  might still have it enabled
-    Merged = kz_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(<<"caller_id">> = Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),
@@ -305,7 +305,7 @@ merge_attribute(<<"record_call">> = Key, Account, Endpoint, Owner) ->
     EndpointAttr = get_record_call_properties(Endpoint),
     AccountAttr = get_record_call_properties(Account),
     OwnerAttr = get_record_call_properties(Owner),
-    Merged = kz_json:merge_recursive([AccountAttr, OwnerAttr, EndpointAttr]),
+    Merged = kz_json:merge([AccountAttr, OwnerAttr, EndpointAttr]),
     kz_json:set_value(Key, Merged, Endpoint);
 merge_attribute(Key, Account, Endpoint, Owner) ->
     AccountAttr = kz_json:get_ne_value(Key, Account, kz_json:new()),

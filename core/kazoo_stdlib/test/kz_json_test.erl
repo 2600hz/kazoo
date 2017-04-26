@@ -83,15 +83,11 @@ prop_to_proplist() ->
            ).
 
 prop_flatten_expand() ->
-    ?FORALL(Prop
-           ,json_proplist()
-           ,begin
-                L = props:unique(Prop),
-                JObj = kz_json:from_list(L),
-                ?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
-                         ,JObj =:= kz_json:expand(kz_json:flatten(JObj))
-                         )
-            end
+    ?FORALL(JObj
+           ,test_object()
+           ,?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
+                     ,kz_json:are_equal(JObj, kz_json:expand(kz_json:flatten(JObj)))
+                     )
            ).
 
 prop_expand_flatten() ->
@@ -105,6 +101,69 @@ prop_expand_flatten() ->
                          )
             end
            ).
+
+prop_merge_right() ->
+    ?FORALL({LeftJObj, RightJObj}
+           ,{test_object(), test_object()}
+           ,begin
+                MergedJObj = kz_json:merge(fun kz_json:merge_right/2, LeftJObj, RightJObj),
+
+                ?WHENFAIL(io:format("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
+                                   ,[LeftJObj, RightJObj, MergedJObj]
+                                   )
+                         ,are_all_properties_found(MergedJObj, RightJObj)
+                         )
+            end
+           ).
+
+prop_merge_left() ->
+    ?FORALL({LeftJObj, RightJObj}
+           ,{test_object(), test_object()}
+           ,begin
+                MergedJObj = kz_json:merge(fun kz_json:merge_left/2, LeftJObj, RightJObj),
+
+                ?WHENFAIL(io:format("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
+                                   ,[LeftJObj, RightJObj, MergedJObj]
+                                   )
+                         ,are_all_properties_found(MergedJObj, LeftJObj)
+                         )
+            end
+           ).
+
+test_object() ->
+    ?LET(JObj, object(), remove_duplicate_keys(JObj)).
+
+remove_duplicate_keys(?EMPTY_JSON_OBJECT) -> ?EMPTY_JSON_OBJECT;
+remove_duplicate_keys(?JSON_WRAPPER(_)=JObj) ->
+    kz_json:foldl(fun no_dups/3, kz_json:new(), JObj);
+remove_duplicate_keys(V) -> V.
+
+no_dups(Key, ?JSON_WRAPPER(_)=JObj, Acc) ->
+    DeDuped = remove_duplicate_keys(JObj),
+    kz_json:set_value(Key, DeDuped, Acc);
+no_dups(Key, Value, Acc) ->
+    kz_json:set_value(Key, Value, Acc).
+
+are_all_properties_found(Merged, Favored) ->
+    kz_json:all(fun({K,V}) -> is_property_found(K, V, Merged) end, Favored).
+
+is_property_found(Key, ?JSON_WRAPPER(_)=Value, Merged) ->
+    case kz_json:get_value(Key, Merged) of
+        ?JSON_WRAPPER(_)=MergedV -> are_all_properties_found(Value, MergedV);
+        Missing ->
+            log_failure(Key, Value, Missing),
+            'false'
+    end;
+is_property_found(Key, Value, Merged) ->
+    case kz_json:get_value(Key, Merged) of
+        Value -> 'true';
+        Missing ->
+            log_failure(Key, Value, Missing),
+            'false'
+    end.
+
+log_failure(Key, Value, Missing) ->
+    ?debugFmt("failed to find ~p~nexpected: ~p~nfound: ~p~n", [Key, Value, Missing]).
 
 -endif.
 
@@ -185,6 +244,13 @@ merge_recursive_test_() ->
     New = ?D2_MERGE,
     JObj = kz_json:merge_recursive(Base, New),
     JObj1 = kz_json:merge_recursive([Base, New]),
+    lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
+
+merge_test_() ->
+    Base = kz_json:set_value([<<"blip">>, <<"blop">>], 42, ?D2),
+    New = ?D2_MERGE,
+    JObj = kz_json:merge(Base, New),
+    JObj1 = kz_json:merge([Base, New]),
     lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
 
 do_merge_recursive(J) ->
@@ -613,3 +679,37 @@ flatten_expand_diff_test() ->
      ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
     ,?_assertEqual(kz_json:diff(X, X2), Delta)
     ].
+
+-define(REQUEST, kz_json:from_list([{<<"a">>, 1}
+                                   ,{<<"b">>, [2, 3, 4]}
+                                   ,{<<"c">>, kz_json:from_list([{<<"c.a">>, 1.1}])}
+                                   ])).
+-define(DOCUMENT, kz_json:from_list([{<<"a">>, 99}
+                                    ,{<<"b">>, [98, 97, 96]}
+                                    ,{<<"c">>, kz_json:from_list([{<<"c.a">>, 99.99}])}
+                                    ])).
+
+merge_vs_merge_recursive_test_() ->
+    M1 = kz_json:merge(fun kz_json:merge_left/2, ?DOCUMENT, ?REQUEST),
+    M2 = kz_json:merge_recursive(?DOCUMENT, ?REQUEST),
+    M3 = kz_json:merge(fun kz_json:merge_right/2, ?DOCUMENT, ?REQUEST),
+
+    [?_assert(kz_json:are_equal(M1, ?DOCUMENT))
+    ,?_assert(kz_json:are_equal(M2, ?REQUEST))
+    ,?_assert(kz_json:are_equal(M3, ?REQUEST))
+    ].
+
+-ifdef(PERF).
+-define(REPEAT, 100000).
+
+horse_merge() ->
+    horse:repeat(?REPEAT
+                ,kz_json:merge(?D1, ?D2)
+                ).
+
+horse_merge_recursive() ->
+    horse:repeat(?REPEAT
+                ,kz_json:merge_recursive(?D1, ?D2)
+                ).
+
+-endif.

@@ -226,7 +226,7 @@ search_resp_value(_) -> 0.
 
 -spec accumulator_fun(ne_binary()) -> acc_function().
 accumulator_fun(<<"summary">>) -> fun kz_json:sum/2;
-accumulator_fun(<<"detail">>) -> fun kz_json:merge_recursive/2.
+accumulator_fun(<<"detail">>) -> fun kz_json:merge/2.
 
 -spec process_responses(kz_json:objects(), ne_binary(), atom()) -> {'ok', kz_json:object()}.
 process_responses(JObjs, SearchType, Timeout) ->

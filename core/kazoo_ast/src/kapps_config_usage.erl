@@ -30,7 +30,7 @@ update_schema({Name, AutoGenSchema}) ->
 
     GeneratedJObj = filter_system(static_fields(Name, remove_source(AutoGenSchema))),
     ExistingJObj = existing_schema(SchemaPath),
-    MergedJObj = kz_json:merge(ExistingJObj, GeneratedJObj),
+    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
     'ok' = file:write_file(SchemaPath, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -47,7 +47,7 @@ maybe_update_account_schema(Name, AutoGenSchema) ->
         Properties ->
             GeneratedJObj = filter_system(static_account_fields(Name, remove_source(Properties))),
             ExistingJObj = existing_schema(Path),
-            MergedJObj = kz_json:merge(ExistingJObj, GeneratedJObj),
+            MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
             'ok' = file:write_file(Path, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj)))
     end.
 

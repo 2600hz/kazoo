@@ -367,7 +367,7 @@ get_doc_updates(Context) ->
 -spec update_docs(kz_json:object(), cb_context:context()) ->
                          cb_context:context().
 update_docs(Updates, Context) ->
-    JObjs = [kz_json:merge_recursive(JObj, Updates)
+    JObjs = [kz_json:merge(JObj, Updates)
              || JObj <- cb_context:doc(Context)
             ],
     cb_context:set_doc(Context, JObjs).

@@ -481,7 +481,7 @@ merge_device(MACAddress, Context) ->
                ,fun(J) ->
                         OwnerId = kz_json:get_ne_value(<<"owner_id">>, JObj),
                         Owner = get_owner(OwnerId, AccountId),
-                        kz_json:merge_recursive(J, Owner)
+                        kz_json:merge(J, Owner)
                 end
                ,fun(J) -> kz_json:delete_key(<<"apps">>, J) end
                ,fun(J) -> kz_json:set_value(<<"account_id">>, AccountId, J) end
@@ -654,7 +654,7 @@ set_global_overrides(_) ->
     [fun(J) ->
              case kz_json:get_value(<<"defaults">>, GlobalDefaults) of
                  'undefined' -> J;
-                 Overrides -> kz_json:merge_recursive(J, Overrides)
+                 Overrides -> kz_json:merge(J, Overrides)
              end
      end
     ].
@@ -675,7 +675,7 @@ set_account_overrides(Context) ->
     [fun(J) ->
              case kz_json:get_value([<<"provision">>, <<"overrides">>], Account) of
                  'undefined' -> J;
-                 Overrides -> kz_json:merge_recursive(J, Overrides)
+                 Overrides -> kz_json:merge(J, Overrides)
              end
      end
     ].
@@ -699,7 +699,7 @@ set_user_overrides(Context) ->
     [fun(J) ->
              case kz_json:get_value([<<"provision">>, <<"overrides">>], User) of
                  'undefined' -> J;
-                 Overrides -> kz_json:merge_recursive(J, Overrides)
+                 Overrides -> kz_json:merge(J, Overrides)
              end
      end
     ].
@@ -718,7 +718,7 @@ set_device_overrides(Context) ->
              case kz_json:get_value([<<"provision">>, <<"overrides">>], Device) of
                  'undefined' -> J;
                  Overrides ->
-                     kz_json:merge_recursive(J, Overrides)
+                     kz_json:merge(J, Overrides)
              end
      end
     ].

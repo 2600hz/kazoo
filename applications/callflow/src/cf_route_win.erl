@@ -55,7 +55,7 @@ should_restrict_call(EndpointId, Call) ->
 -spec maybe_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
     Id = kz_doc:id(JObj),
-    Services = kz_json:merge_recursive(
+    Services = kz_json:merge(
                  kz_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
                  kz_json:get_value(<<"pvt_services">>, JObj, kz_json:new())),
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
@@ -70,7 +70,7 @@ maybe_service_unavailable(JObj, Call) ->
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = kapps_call:account_id(Call),
     {'ok', Doc} = kz_account:fetch(AccountId),
-    Services = kz_json:merge_recursive(
+    Services = kz_json:merge(
                  kz_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
                  kz_json:get_value(<<"pvt_services">>, Doc, kz_json:new())),
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of

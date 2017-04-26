@@ -68,7 +68,7 @@
 -export([merge_recursive/1
         ,merge_recursive/2
         ,merge_recursive/3
-        ,merge/2, merge/3
+        ,merge/1, merge/2, merge/3
         ,merge_left/2, merge_right/2
         ]).
 
@@ -272,30 +272,36 @@ recursive_from_list({{_, _, _}, {_, _, _}}=DateTime) -> kz_time:iso8601(DateTime
 recursive_from_list(_Else) -> null.
 
 %% Lifted from Jesper's post on the ML (Nov 2016) on merging maps
+-spec merge(objects()) -> object().
 -spec merge(object(), object()) -> object().
+merge([JObjInit | JObjs]) ->
+    lists:foldl(fun(JObj, Acc) -> merge(Acc, JObj) end
+               ,JObjInit
+               ,JObjs
+               ).
 merge(JObj1, JObj2) ->
-    merge(fun merge_left/2, JObj1, JObj2).
+    merge(fun merge_right/2, JObj1, JObj2).
 
 -type merge_arg_2() :: {'left' | 'right', json_term()} | {'both', json_term(), json_term()}.
 -type merge_fun_result() :: 'undefined' | {'ok', json_term()}.
 -type merge_fun() :: fun((key(), merge_arg_2()) -> merge_fun_result()).
 -spec merge(merge_fun(), object(), object()) -> object().
-merge(F, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB)) ->
+merge(MergeFun, ?JSON_WRAPPER(PropsA), ?JSON_WRAPPER(PropsB)) ->
     ListA = lists:sort(PropsA),
     ListB = lists:sort(PropsB),
-    merge(F, ListA, ListB, []).
+    merge(MergeFun, ListA, ListB, []).
 
-merge(_F, [], [], Acc) ->
+merge(_MergeFun, [], [], Acc) ->
     from_list(Acc);
-merge(F, [{KX, VX}|Xs], [], Acc) ->
-    merge(F, Xs, [], f(KX, F(KX, {'left', VX}), Acc));
-merge(F, [], [{KY, VY}|Ys], Acc) ->
-    merge(F, Ys, [], f(KY, F(KY, {'right', VY}), Acc));
-merge(F, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc) ->
+merge(MergeFun, [{KX, VX}|Xs], [], Acc) ->
+    merge(MergeFun, Xs, [], f(KX, MergeFun(KX, {'left', VX}), Acc));
+merge(MergeFun, [], [{KY, VY}|Ys], Acc) ->
+    merge(MergeFun, Ys, [], f(KY, MergeFun(KY, {'right', VY}), Acc));
+merge(MergeFun, [{KX, VX}|Xs]=Left, [{KY, VY}|Ys]=Right, Acc) ->
     if
-        KX < KY -> merge(F, Xs, Right, f(KX, F(KX, {'left', VX}), Acc));
-        KX > KY -> merge(F, Left, Ys, f(KY, F(KY, {'right', VY}), Acc));
-        KX =:= KY -> merge(F, Xs, Ys, f(KX, F(KX, {'both', VX, VY}), Acc))
+        KX < KY -> merge(MergeFun, Xs, Right, f(KX, MergeFun(KX, {'left', VX}), Acc));
+        KX > KY -> merge(MergeFun, Left, Ys, f(KY, MergeFun(KY, {'right', VY}), Acc));
+        KX =:= KY -> merge(MergeFun, Xs, Ys, f(KX, MergeFun(KX, {'both', VX, VY}), Acc))
     end.
 
 -spec f(key(), merge_fun_result(), list()) -> list().
@@ -303,15 +309,37 @@ f(_K, 'undefined', Acc) -> Acc;
 f(K, {'ok', R}, Acc) -> [{K, R} | Acc].
 
 -spec merge_left(key(), merge_arg_2()) -> merge_fun_result().
+merge_left(_K, {_Dir, 'null'}) -> 'undefined';
+merge_left(_K, {_Dir, 'undefined'}) -> 'undefined';
+merge_left(_K, {'both', 'null', _Right}) -> 'undefined';
+merge_left(_K, {'both', 'undefined', _Right}) -> 'undefined';
+
+merge_left(_K, {'left', ?JSON_WRAPPER(_)=Left}) ->
+    {'ok', merge(fun merge_left/2, Left, new())};
 merge_left(_K, {'left', V}) -> {'ok', V};
+
+merge_left(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
+    {'ok', merge(fun merge_left/2, Right, new())};
 merge_left(_K, {'right', V}) -> {'ok', V};
+
 merge_left(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_left/2, Left, Right)};
 merge_left(_K, {'both', Left, _Right}) -> {'ok', Left}.
 
 -spec merge_right(key(), merge_arg_2()) -> merge_fun_result().
+merge_right(_K, {_Dir, 'null'}) -> 'undefined';
+merge_right(_K, {_Dir, 'undefined'}) -> 'undefined';
+merge_right(_K, {'both', _Left, 'null'}) -> 'undefined';
+merge_right(_K, {'both', _Left, 'undefined'}) -> 'undefined';
+
+merge_right(_K, {'left', ?JSON_WRAPPER(_)=Left}) ->
+    {'ok', merge(fun merge_right/2, new(), Left)};
 merge_right(_K, {'left', V}) -> {'ok', V};
+
+merge_right(_K, {'right', ?JSON_WRAPPER(_)=Right}) ->
+    {'ok', merge(fun merge_right/2, new(), Right)};
 merge_right(_K, {'right', V}) -> {'ok', V};
+
 merge_right(_K, {'both', ?JSON_WRAPPER(_)=Left, ?JSON_WRAPPER(_)=Right}) ->
     {'ok', merge(fun merge_right/2, Left, Right)};
 merge_right(_K, {'both', _Left, Right}) -> {'ok', Right}.
@@ -890,6 +918,7 @@ set_value1([Key|T], Value, JObjs) when is_list(JObjs) ->
 
 %% Figure out how to set the current key in an existing object
 set_value1([_|_]=Keys, 'null', JObj) -> delete_key(Keys, JObj);
+set_value1([_|_]=Keys, 'undefined', JObj) -> delete_key(Keys, JObj);
 set_value1([Key1|T], Value, ?JSON_WRAPPER(Props)) ->
     case lists:keyfind(Key1, 1, Props) of
         {Key1, ?JSON_WRAPPER(_)=V1} ->

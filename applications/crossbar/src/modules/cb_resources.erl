@@ -297,7 +297,7 @@ validate_collection_resource(Resource, Context, ?HTTP_PUT) ->
                                                 {'ok', cb_context:context()} |
                                                 {'error', kz_json:object()}.
 validate_collection_resource_patch(PatchJObj, Context) ->
-    PatchedJObj = kz_json:merge_recursive(cb_context:doc(Context), kz_doc:public_fields(PatchJObj)),
+    PatchedJObj = kz_json:merge(cb_context:doc(Context), kz_doc:public_fields(PatchJObj)),
     Context1 = update(kz_doc:id(PatchedJObj)
                      ,cb_context:set_req_data(Context, PatchedJObj)
                      ),

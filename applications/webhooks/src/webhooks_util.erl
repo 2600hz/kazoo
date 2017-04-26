@@ -590,7 +590,7 @@ init_metadata(Id, JObj, MasterAccountDb) ->
         {'error', _} -> load_metadata(MasterAccountDb, JObj);
         {'ok', Doc} ->
             lager:debug("~s already exists, updating", [Id]),
-            Merged = kz_json:merge_recursive(Doc, JObj),
+            Merged = kz_json:merge(Doc, JObj),
             load_metadata(MasterAccountDb, Merged)
     end.
 

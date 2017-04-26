@@ -193,7 +193,7 @@ handle_config_req(Node, Id, <<"sofia.conf">>, _Props) ->
         'true' ->
             Profiles = ecallmgr_config:fetch(<<"fs_profiles">>, kz_json:new()),
             DefaultProfiles = default_sip_profiles(Node),
-            try ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge_recursive(DefaultProfiles, Profiles)) of
+            try ecallmgr_fs_xml:sip_profiles_xml(kz_json:merge(DefaultProfiles, Profiles)) of
                 {'ok', ConfigXml} ->
                     lager:debug("sending sofia XML to ~s: ~s", [Node, ConfigXml]),
                     freeswitch:fetch_reply(Node, Id, 'configuration', erlang:iolist_to_binary(ConfigXml))

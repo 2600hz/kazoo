@@ -183,7 +183,7 @@ receive_statuses([{Pid, Ref} | Reqs], AccJObj) ->
     receive
         {'statuses', Statuses, Pid} ->
             clear_monitor(Ref),
-            receive_statuses(Reqs, kz_json:merge_recursive(Statuses, AccJObj));
+            receive_statuses(Reqs, kz_json:merge(Statuses, AccJObj));
         {'DOWN', Ref, 'process', Pid, _R} ->
             lager:debug("req in ~p died: ~p", [Pid, _R]),
             clear_monitor(Ref),
