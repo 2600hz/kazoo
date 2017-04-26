@@ -147,11 +147,13 @@ state_for_create(Options) ->
     case {knm_number_options:state(Options)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
+         ,knm_phone_number:is_admin(knm_number_options:auth_by(Options))
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
-        {_, true, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
+        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {State=?NE_BINARY, _, _, true} -> State;
         _ -> ?NUMBER_STATE_RESERVED
     end.
 
@@ -218,19 +220,17 @@ ensure_can_create(Num, Options) ->
         kz_account:fetch(AccountId)).
 -endif.
 
-ensure_account_can_create(_, undefined) ->
-    knm_errors:unauthorized();
-ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    'true';
-ensure_account_can_create(Options, _AccountId) ->
+ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     knm_number_options:ported_in(Options)
         orelse knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN
         orelse begin
-                   {'ok', JObj} = ?LOAD_ACCOUNT(Options, _AccountId),
+                   {'ok', JObj} = ?LOAD_ACCOUNT(Options, AccountId),
                    kz_account:allow_number_additions(JObj)
                end
-        orelse knm_errors:unauthorized().
+        orelse knm_phone_number:is_admin(AccountId)
+        orelse knm_errors:unauthorized();
+ensure_account_can_create(_, _) ->
+    knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
 -ifdef(TEST).
