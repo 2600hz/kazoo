@@ -731,8 +731,7 @@ map_processor(Routing, Payload, Options) when not is_list(Payload) ->
 map_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
     lists:foldl(fun(Binding, Acc) ->
-                        io:format("~n Binding ~p Routing ~p ~n Options ~p~n~n", [Binding, Routing, Options]),
-                        map_processor_fold(Binding, Acc, Map, Routing, RoutingParts, Options)
+                        map_processor_fold(Binding, Acc, Payload, Routing, RoutingParts, Options)
                 end
                ,[]
                ,kazoo_bindings_rt:candidates(Options, Routing)
