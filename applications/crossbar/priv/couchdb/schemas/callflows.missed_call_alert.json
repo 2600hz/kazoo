@@ -9,7 +9,10 @@
                 "properties": {
                     "id": {
                         "description": "The email address/user ID or the list of email addresses/user IDs based on sepecified type",
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "array"
+                        ]
                     },
                     "type": {
                         "description": "Controls if the ID of this object is a Kazoo user ID or an email address",
@@ -21,8 +24,8 @@
                     }
                 },
                 "required": [
-                    "type",
-                    "address"
+                    "id",
+                    "type"
                 ],
                 "type": "object"
             },
