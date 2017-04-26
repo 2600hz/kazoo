@@ -10,7 +10,6 @@
                 "one-way",
                 "two-way"
             ],
-            "required": true,
             "type": "string"
         },
         "barge_calls": {
