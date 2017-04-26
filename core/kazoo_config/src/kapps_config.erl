@@ -832,6 +832,10 @@ get_category(Category, 'false') ->
         ,{{<<"fax">>, <<"conversion_command">>}
          ,{<<"fax">>, <<"conversion_pdf_command">>}
          }
+
+        ,{{<<"media">>, <<"tts_cache">>}
+         ,{<<"speech">>, <<"tts_cache">>}
+         }
         ]).
 
 -spec migrate() -> 'ok'.
