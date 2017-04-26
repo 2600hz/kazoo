@@ -436,15 +436,15 @@ reconcile(Nums, Options0) ->
 %%--------------------------------------------------------------------
 -spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
-    case knm_number_options:assign_to(Options) =:= undefined of
-        true ->
-            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
-            ret(new(Options, [], Nums, Error));
-        false ->
+    case knm_number_options:assign_to(Options) of
+        ?MATCH_ACCOUNT_RAW(_) ->
             ret(pipe(do_get(Nums, Options)
                     ,[fun if_unassigned_then_needs_assign_to/1
                      ,fun to_reserved/1
-                     ]))
+                     ]));
+        _ ->
+            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
+            ret(new(Options, [], Nums, Error))
     end.
 
 %%--------------------------------------------------------------------
