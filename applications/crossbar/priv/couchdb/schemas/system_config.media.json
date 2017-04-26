@@ -130,11 +130,6 @@
             "description": "media support account overrides",
             "type": "boolean"
         },
-        "tts_cache": {
-            "default": 3600000,
-            "description": "media tts cache",
-            "type": "integer"
-        },
         "use_https": {
             "default": false,
             "description": "media use https",

@@ -32,7 +32,7 @@ handle(Data, Call) ->
     NoopId = kapps_call_command:tts(kz_json:get_binary_value(<<"text">>, Data)
                                    ,kz_json:get_binary_value(<<"voice">>, Data)
                                    ,kz_json:get_binary_value(<<"language">>, Data)
-                                   ,?ANY_DIGIT
+                                   ,kz_json:get_list_value(<<"terminators">>, Data, ?ANY_DIGIT)
                                    ,kz_json:get_binary_value(<<"engine">>, Data)
                                    ,Call
                                    ),

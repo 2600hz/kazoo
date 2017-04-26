@@ -698,7 +698,7 @@ try_split(<<_/binary>> = Bin) ->
                             {'error', file:posix() | 'badarg' | 'terminated'}.
 write_tts_file(Path, Say) ->
     lager:debug("trying to save TTS media to ~s", [Path]),
-    {'ok', _, Wav} = kapps_speech:create(Say),
+    {'ok', _, Wav} = kazoo_tts:create(Say),
     file:write_file(Path, Wav).
 
 -spec to_magic_hash(iodata()) -> ne_binary().
