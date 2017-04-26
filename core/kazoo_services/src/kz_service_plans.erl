@@ -81,7 +81,7 @@ public_json([#kz_service_plans{plans=Plans}|ServicePlans], JObj) ->
 
 -spec merge_plans(kzd_service_plan:doc(), kz_json:object()) -> kz_json:object().
 merge_plans(SerivcePlan, JObj) ->
-    kz_json:merge(fun kz_json:merge_left/2, JObj, kzd_service_plan:plan(SerivcePlan)).
+    kz_json:merge(JObj, kzd_service_plan:plan(SerivcePlan)).
 
 %%--------------------------------------------------------------------
 %% @public
