@@ -144,6 +144,35 @@ curl -v -X GET \
 ```
 
 
+#### See how many digits a `{PREFIX}` can take
+
+> GET /v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+
+Depending on your carriers configuration you may be allowed to query numbers
+by NPA-NXX instead of just NPA.
+
+```shell
+curl -v -X GET \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}/phone_numbers/carriers_info
+```
+
+```json
+{
+    "auth_token": "{AUTH_TOKEN}",
+    "data": {
+        "maximal_prefix_length": 3,
+        "usable_modules": [
+            "knm_bandwidth2",
+            "knm_local"
+        ]
+    },
+    "request_id": "{REQUEST_ID}",
+    "revision": "{REVISION}",
+    "status": "success"
+}
+```
+
+
 #### List an account's phone numbers
 
 This lists the numbers an account owns, along with their properties.
@@ -406,6 +435,8 @@ curl -v -X POST \
 Adds a number to the database, returning its properties.
 
 Note: payload is facultative.
+
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}
 
@@ -831,6 +862,8 @@ curl -v -X POST \
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
+
 ```shell
 curl -v -X PUT \
     -H "X-Auth-Token: {AUTH_TOKEN}" \
@@ -1123,6 +1156,8 @@ curl -v -X GET \
 
 
 #### Create a number in the `port_in` state
+
+Note: add `module_name={CARRIER_MODULE}` to the query string to create with `{CARRIER_MODULE}` as the module name.
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/{PHONE_NUMBER}/port
 

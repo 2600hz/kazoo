@@ -10,6 +10,18 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("knm.hrl").
 
+info_test_() ->
+    InfoJObj1 = knm_carriers:info(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
+    InfoJObj2 = knm_carriers:info(?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
+    InfoJObj3 = knm_carriers:info(?CHILD_ACCOUNT_ID, undefined),
+    InfoJObj4 = knm_carriers:info(?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID),
+    [?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj1))
+    ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj2))
+    ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj3))
+    ,?_assertEqual(3, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj4))
+    ,?_assert(lists:member(?CARRIER_LOCAL, kz_json:get_value(<<"usable_modules">>, InfoJObj4)))
+    ].
+
 is_number_billable_test_() ->
     {ok, N} = knm_number:get(?TEST_OLD1_NUM),
     PN1 = knm_number:phone_number(N),
