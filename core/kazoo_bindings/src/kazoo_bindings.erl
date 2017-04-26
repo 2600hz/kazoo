@@ -727,7 +727,6 @@ map_processor(Routing, Payload, Options) ->
     RoutingParts = routing_parts(Routing),
     Map = map_responder_fun(Payload),
     lists:foldl(fun(Binding, Acc) ->
-                        io:format("~n Binding ~p Routing ~p ~n Options ~p~n~n", [Binding, Routing, Options]),
                         map_processor_fold(Binding, Acc, Map, Routing, RoutingParts, Options)
                 end
                ,[]
