@@ -24,7 +24,6 @@
 
 -define(CONFIG_CAT, <<"pivot">>).
 
--define(TTS_CONFIG_CAT, <<"speech">>).
 -define(TTS_SIZE_LIMIT, 4000).
 
 -define(STATUS_QUEUED, <<"queued">>).
@@ -39,8 +38,8 @@
 -define(APP_NAME, <<"translator">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(DEFAULT_TTS_LANG, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_language">>, <<"en-US">>)).
--define(DEFAULT_TTS_VOICE, kapps_config:get_binary(?TTS_CONFIG_CAT, <<"tts_voice">>, <<"male">>)).
+-define(DEFAULT_TTS_LANG, kazoo_tts:default_language()).
+-define(DEFAULT_TTS_VOICE, kazoo_tts:default_voice()).
 
 -define(KZT_HRL, 'true').
 -endif.

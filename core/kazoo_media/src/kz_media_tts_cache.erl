@@ -30,14 +30,11 @@
 
 -define(SERVER, ?MODULE).
 
--define(MOD_CONFIG_CAT, <<"speech">>).
+-define(TIMEOUT_LIFETIME, kazoo_tts:cache_time_ms()).
 
--define(TIMEOUT_LIFETIME
-       ,kapps_config:get_integer(?CONFIG_CAT, <<"tts_cache">>, ?MILLISECONDS_IN_HOUR)
-       ).
 -define(TIMEOUT_MESSAGE, {'$kz_media_tts_cache', 'tts_timeout'}).
 
--record(state, {text :: ne_binary()
+-record(state, {text :: api_ne_binary()
                ,contents = <<>> :: binary()
                ,status :: 'streaming' | 'ready'
                ,kz_http_req_id :: kz_http:req_id()
@@ -88,14 +85,14 @@ stop(Srv) ->
 init([Text, JObj]) ->
     kz_util:put_callid(kz_binary:md5(Text)),
 
-    Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, <<"female">>), "/"
-                           ,get_language(kz_json:get_value(<<"Language">>, JObj, <<"en-us">>))
+    Voice = list_to_binary([kz_json:get_value(<<"Voice">>, JObj, kazoo_tts:default_voice()), "/"
+                           ,get_language(kz_json:get_value(<<"Language">>, JObj, kazoo_tts:default_language()))
                            ]),
 
     Format = kz_json:get_value(<<"Format">>, JObj, <<"wav">>),
     Engine = kz_json:get_value(<<"Engine">>, JObj),
 
-    {'ok', ReqID} = kapps_speech:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
+    {'ok', ReqID} = kazoo_tts:create(Engine, Text, Voice, Format, [{'receiver', self()}]),
 
     MediaName = kz_binary:md5(Text),
     lager:debug("text '~s' has id '~s'", [Text, MediaName]),
@@ -299,11 +296,10 @@ kv_to_bin(L) ->
 start_timer() ->
     erlang:start_timer(?TIMEOUT_LIFETIME, self(), ?TIMEOUT_MESSAGE).
 
--spec stop_timer(reference() | _) -> 'ok'.
+-spec stop_timer(reference()) -> 'ok'.
 stop_timer(Ref) when is_reference(Ref) ->
     _ = erlang:cancel_timer(Ref),
-    'ok';
-stop_timer(_) -> 'ok'.
+    'ok'.
 
 -spec publish_doc_update(ne_binary()) -> 'ok'.
 publish_doc_update(Id) ->

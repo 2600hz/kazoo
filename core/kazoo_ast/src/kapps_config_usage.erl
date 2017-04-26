@@ -229,6 +229,7 @@ key_to_key_path(?BINARY_MATCH(K)) ->
     catch 'error':'function_clause' -> 'undefined'
     end.
 
+guess_type('get_list', Default) -> guess_type_by_default(Default);
 guess_type('is_true', _Default) -> <<"boolean">>;
 guess_type('get_is_true', _Default) -> <<"boolean">>;
 guess_type('get_boolean', _Default) -> <<"boolean">>;
@@ -257,6 +258,7 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
+guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> <<"array(string)">>;
 guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>;
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;

@@ -359,7 +359,7 @@ maybe_transcribe(_, _, 'false') -> 'undefined'.
 maybe_transcribe(_, _, _, 'undefined') -> 'undefined';
 maybe_transcribe(_, _, <<>>, _) -> 'undefined';
 maybe_transcribe(Db, MediaDoc, Bin, ContentType) ->
-    case kapps_speech:asr_freeform(Bin, ContentType) of
+    case kazoo_asr:freeform(Bin, ContentType) of
         {'ok', Resp} ->
             lager:info("transcription resp: ~p", [Resp]),
             MediaDoc1 = kz_json:set_value(<<"transcription">>, Resp, MediaDoc),

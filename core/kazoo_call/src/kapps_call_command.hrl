@@ -10,7 +10,5 @@
 -define(APP_NAME, <<"kapps_call_command">>).
 -define(APP_VERSION, <<"4.0.0">>).
 
--define(MOD_CONFIG_CAT, <<"speech">>).
-
 -define(KAPPS_CALL_COMMAND_HRL, 'true').
 -endif.

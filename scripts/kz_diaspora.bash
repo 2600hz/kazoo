@@ -46,7 +46,7 @@ function search_and_replace_prefix {
     PREFIX=$4
 
     for FUN in "${FUNS[@]}"; do
-        for FILE in `grep -rl "$FROM:$FUN" $ROOT/{core,applications}`; do
+        for FILE in $(grep -rl "$FROM:$FUN" $ROOT/{core,applications}); do
             replace_call_prefix $FROM $TO "$FUN" "$PREFIX" $FILE
         done
     done
@@ -190,15 +190,24 @@ function kz_json_to_kz_doc {
 }
 
 function kz_json_to_kz_http {
-    local fs=(to_querystring
-             )
+    local fs=(to_querystring)
     search_and_replace_with_prefix fs[@] "kz_json" "kz_http_util" "json_"
 }
 
 function props_to_kz_http {
-    local fs=(to_querystring
-             )
+    local fs=(to_querystring)
     search_and_replace_with_prefix fs[@] "props" "kz_http_util" "props_"
+}
+
+function kapps_speech_to_kazoo_speech {
+    local fs=(create)
+
+    local asrs=(asr_freeform
+                asr_commands
+               )
+
+    search_and_replace fs[@] "kapps_speech" "kazoo_tts" ""
+    search_and_replace_prefix asrs[@] "kapps_speech" "kazoo_asr" "asr_"
 }
 
 echo "ensuring kz_term is used"
@@ -213,5 +222,7 @@ echo "ensuring kz_json:to_querystring is moved to kz_http_util"
 kz_json_to_kz_http
 echo "ensuring props:to_querystring is moved to kz_http_util"
 props_to_kz_http
+echo "ensuring kapps_speech to kazoo_speech"
+kapps_speech_to_kazoo_speech
 
 popd > /dev/null
