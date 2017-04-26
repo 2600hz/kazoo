@@ -294,14 +294,16 @@ from_jobjs(JObjs) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
-    ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
-    T0 = do_get_pn(Nums
-                  ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
-                  ,knm_errors:to_json(not_reconcilable)
-                  ),
+    T0 = pipe(do_get_pn(Nums
+                       ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
+                       ,knm_errors:to_json(not_reconcilable)
+                       )
+             ,[fun fail_if_assign_to_is_not_an_account_id/1
+              ]),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
+            AccountId = knm_number_options:assign_to(Options),
             ToState = knm_number:state_for_create(AccountId, Options),
             lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
             NewOptions = [{'state', ToState} | Options],
@@ -729,13 +731,18 @@ to_reserved(T) ->
          ,fun save_numbers/1
          ]).
 
--spec fail_if_assign_to_is_not_an_account_id(t()) -> t().
-fail_if_assign_to_is_not_an_account_id(T=#{todo := Ns, options := Options}) ->
+-spec fail_if_assign_to_is_not_an_account_id(t()) -> t();
+                                            (t_pn()) -> t_pn().
+fail_if_assign_to_is_not_an_account_id(T=#{todo := NsOrPNs, options := Options}) ->
     case knm_number_options:assign_to(Options) of
-        ?MATCH_ACCOUNT_RAW(_) -> ok(Ns, T);
+        ?MATCH_ACCOUNT_RAW(_) -> ok(NsOrPNs, T);
         _ ->
             Reason = knm_errors:to_json(assign_failure, undefined, field_undefined),
-            ko(Ns, Reason, T)
+            NsOrNums = case knm_phone_number:is_phone_number(hd(NsOrPNs)) of
+                           false -> NsOrPNs;
+                           true -> [knm_phone_number:number(PN) || PN <- NsOrPNs]
+                       end,
+            ko(NsOrNums, Reason, T)
     end.
 
 -spec try_release(t_pn()) -> t_pn().
