@@ -206,16 +206,19 @@ reserve_test_() ->
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
      }
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret1)))
     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret1)))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret2)))
     ,?_assertEqual([?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret2)))
     ,{"verify number is now reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret2)))
      }
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret2)))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret3)))
     ,{"verify number was indeed reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret3)))
      }
+    ,?_assertEqual(?CHILD_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret3)))
     ,?_assertEqual([?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID], knm_phone_number:reserve_history(pn_x(1, Ret3)))
     ].
 
@@ -249,6 +252,7 @@ release_test_() ->
     ,{"Verify number went from in_service to reserved"
      ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret1)))
      }
+    ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret1)))
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
     ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret2)))
