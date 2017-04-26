@@ -20,6 +20,7 @@
                  'threshold_undefined' |
                  'balance_above_threshold' |
                  'amount_and_threshold_undefined' |
+                 'topup_daily_limit' |
                  atom().
 
 
@@ -43,6 +44,12 @@ init(Account, CurrentBalance) ->
             maybe_top_up(AccountId, Balance, Amount, Threshold)
     end.
 
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
 -spec should_topup(ne_binary()) -> boolean().
 -spec should_topup(ne_binary(), integer()) -> boolean().
 should_topup(AccountId) ->
@@ -58,11 +65,40 @@ should_topup(AccountId, CurrentBalance) ->
         {'ok', _Amount, Threshold} ->
             lager:info("checking if account ~s balance $~w is below top up threshold $~w"
                       ,[AccountId, Balance, Threshold]),
-            case should_topup(AccountId, Balance, Threshold) of
-                {'error', _} -> 'false';
-                Boolean -> Boolean
-            end
+            should_topup(AccountId, Balance, Threshold) =:= 'true'
     end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec should_topup(ne_binary(), number(), integer()) ->
+                          'true' |
+                          {'error', error()}.
+should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
+    To = kz_time:current_tstamp(),
+    From = To - ?SECONDS_IN_DAY,
+    case kz_transactions:fetch_local(AccountId, From, To) of
+        {'error', _Reason} = Error ->
+            lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
+            Error;
+        {'ok', Transactions} ->
+            TopupTransactions = kz_transactions:filter_by_reason(<<"topup">>, Transactions),
+            is_topup_today(AccountId, TopupTransactions)
+    end;
+should_topup(_AccountId, _Balance, _Threshold) ->
+    lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [_Balance, _Threshold, _AccountId]),
+    {'error', 'balance_above_threshold'}.
+
+-spec is_topup_today(ne_binary(), kz_json:objects()) -> 'true' | {'error', error()}.
+is_topup_today(_AccountId, []) ->
+    lager:info("no top up transactions found for ~s, processing...", [_AccountId]),
+    'true';
+is_topup_today(_AccountId, _TopupTransactions) ->
+    lager:info("today auto top up for ~s already done, skipping...", [_AccountId]),
+    {'error', 'topup_daily_limit'}.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -111,41 +147,8 @@ get_top_up(JObj) ->
 maybe_top_up(AccountId, Balance, Amount, Threshold) ->
     case should_topup(AccountId, Balance, Threshold) of
         'true' -> top_up(AccountId, Amount);
-        'false' -> 'ok';
         {'error', _} = Error -> Error
     end.
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec should_topup(ne_binary(), number(), integer()) ->
-                          boolean() |
-                          {'error', error()}.
-should_topup(AccountId, Balance, Threshold) when Balance =< Threshold ->
-    To = kz_time:current_tstamp(),
-    From = To - ?SECONDS_IN_DAY,
-    case kz_transactions:fetch_local(AccountId, From, To) of
-        {'error', _Reason} = Error ->
-            lager:warning("failed to fetch recent transactions for ~s: ~p", [AccountId, _Reason]),
-            Error;
-        {'ok', Transactions} ->
-            TopupTransactions = kz_transactions:filter_by_reason(<<"topup">>, Transactions),
-            is_topup_today(AccountId, TopupTransactions)
-    end;
-should_topup(_AccountId, _Balance, _Threshold) ->
-    lager:warning("balance (~p) is still > to threshold (~p) for account ~s", [_Balance, _Threshold, _AccountId]),
-    {'error', 'balance_above_threshold'}.
-
--spec is_topup_today(ne_binary(), kz_json:objects()) -> boolean().
-is_topup_today(_AccountId, []) ->
-    lager:info("no top up transactions found for ~s, processing...", [_AccountId]),
-    'true';
-is_topup_today(_AccountId, _TopupTransactions) ->
-    lager:info("today auto top up for ~s already done, skipping...", [_AccountId]),
-    'false'.
 
 %%--------------------------------------------------------------------
 %% @private
