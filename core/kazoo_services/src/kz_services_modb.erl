@@ -20,7 +20,7 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     _Pid = kz_util:spawn(fun kazoo_modb:add_routine/1, [?MODULE]),
-    io:format("started add_rountine in ~p~n", [_Pid]),
+    io:format("started services modb add_rountine in ~p~n", [_Pid]),
     'ignore'.
 
 -spec modb(ne_binary()) -> 'ok'.

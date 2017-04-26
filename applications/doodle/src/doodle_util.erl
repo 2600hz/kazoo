@@ -131,7 +131,7 @@ save_sms(JObj, DocId, Call) ->
                       kapps_call:call().
 save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
     AccountId = kapps_call:account_id(Call),
-    AccountDb = kazoo_modb:get_modb(AccountId, Year, Month),
+    AccountMODB = kazoo_modb:get_modb(AccountId, Year, Month),
     OwnerId = kapps_call:owner_id(Call),
     AuthType = kapps_call:authorizing_type(Call),
     AuthId = kapps_call:authorizing_id(Call),
@@ -155,7 +155,7 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
               ,{<<"pvt_type">>, <<"sms">>}
               ,{<<"account_id">>, AccountId}
               ,{<<"pvt_account_id">>, AccountId}
-              ,{<<"pvt_account_db">>, AccountDb}
+              ,{<<"pvt_account_db">>, AccountMODB}
               ,{<<"owner_id">>, OwnerId}
               ,{<<"pvt_owner_id">>, OwnerId}
               ,{<<"authorization_type">>, AuthType}
@@ -185,8 +185,7 @@ save_sms(JObj, ?MATCH_MODB_PREFIX(Year,Month,_) = DocId, Doc, Call) ->
               ,{<<"_rev">>, Rev}
               ]),
     JObjDoc = kz_json:set_values(Props, Doc),
-    kazoo_modb:maybe_create(AccountDb),
-    case kz_datamgr:save_doc(AccountDb, JObjDoc, Opts) of
+    case kazoo_modb:save_doc(AccountMODB, JObjDoc, Opts) of
         {'ok', Saved} ->
             kapps_call:kvs_store(<<"_rev">>, kz_doc:revision(Saved), Call);
         {'error', E} ->
