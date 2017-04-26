@@ -36,7 +36,7 @@
 -export([attempt/2
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
-        ,state_for_create/2
+        ,state_for_create/1
         ]).
 
 -ifdef(TEST).
@@ -142,44 +142,18 @@ get(Num, Options) ->
 create(Num, Options) ->
     ?TRY2(create, Num, Options).
 
--spec state_for_create(ne_binary(), knm_number_options:options()) -> ne_binary().
--ifdef(TEST).
-state_for_create(AccountId, Options) ->
+-spec state_for_create(knm_number_options:options()) -> ne_binary().
+state_for_create(Options) ->
     case {knm_number_options:state(Options)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
-         ,AccountId
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
-        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, _, ?MASTER_ACCOUNT_ID} -> ?NUMBER_STATE_AVAILABLE;
-        {_, _, _, ?RESELLER_ACCOUNT_ID} -> ?NUMBER_STATE_RESERVED;
-        _ -> ?NUMBER_STATE_IN_SERVICE
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
+        {_, true, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
+        _ -> ?NUMBER_STATE_RESERVED
     end.
--else.
-state_for_create(AccountId, Options) ->
-    case knm_number_options:state(Options) of
-        ?NUMBER_STATE_PORT_IN=PortIn -> PortIn;
-        _ ->
-            case knm_number_options:ported_in(Options) of
-                true -> ?NUMBER_STATE_IN_SERVICE;
-                _ ->
-                    case ?CARRIER_MDN =:= knm_number_options:module_name(Options) of
-                        true -> ?NUMBER_STATE_IN_SERVICE;
-                        _ ->
-                            case kz_services:is_reseller(AccountId)
-                                andalso kapps_util:get_master_account_id()
-                            of
-                                'false' -> ?NUMBER_STATE_IN_SERVICE;
-                                {'ok', AccountId} -> ?NUMBER_STATE_AVAILABLE;
-                                {'ok', _} -> ?NUMBER_STATE_RESERVED
-                            end
-                    end
-            end
-    end.
--endif.
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
                                (knm_numbers:collection()) -> knm_numbers:collection().
