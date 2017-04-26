@@ -5,7 +5,7 @@
 %%% @contributors:
 %%%   Max Lay
 %%%-------------------------------------------------------------------
--module(cb_me).
+-module(cb_account).
 
 -export([init/0
         ,allowed_methods/0, allowed_methods/1
@@ -32,14 +32,14 @@
 %%--------------------------------------------------------------------
 -spec init() -> 'ok'.
 init() ->
-    Bindings = [{<<"*.allowed_methods.me">>, 'allowed_methods'}
-               ,{<<"*.resource_exists.me">>, 'resource_exists'}
-               ,{<<"*.validate_resource.me">>, 'validate_resource'}
-               ,{<<"*.validate.me">>, 'validate'}
-               ,{<<"*.execute.put.me">>, 'put'}
-               ,{<<"*.execute.post.me">>, 'post'}
-               ,{<<"*.execute.patch.me">>, 'patch'}
-               ,{<<"*.execute.delete.me">>, 'delete'}
+    Bindings = [{<<"*.allowed_methods.account">>, 'allowed_methods'}
+               ,{<<"*.resource_exists.account">>, 'resource_exists'}
+               ,{<<"*.validate_resource.account">>, 'validate_resource'}
+               ,{<<"*.validate.account">>, 'validate'}
+               ,{<<"*.execute.put.account">>, 'put'}
+               ,{<<"*.execute.post.account">>, 'post'}
+               ,{<<"*.execute.patch.account">>, 'patch'}
+               ,{<<"*.execute.delete.account">>, 'delete'}
                ],
     cb_modules_util:bind(?MODULE, Bindings).
 
@@ -95,7 +95,7 @@ transform_nouns(Context) ->
     lager:debug("new request nouns ~p", [NewNouns]),
     cb_context:set_req_nouns(Context, NewNouns).
 
-maybe_transform_group(Context, {<<"me">>, PathTokens}) ->
+maybe_transform_group(Context, {<<"account">>, PathTokens}) ->
     {<<"accounts">>, [cb_context:auth_account_id(Context) | PathTokens]};
 maybe_transform_group(_Context, Group) ->
     Group.
