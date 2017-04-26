@@ -202,7 +202,14 @@ reserve_test_() ->
     ,?_assertMatch([_], maps:get(ok, Ret1))
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret2))
     ,?_assertMatch([_], maps:get(ok, Ret2))
-    ,?_assertEqual([?NOT_NUM, ?TEST_IN_SERVICE_NUM], lists:reverse(lists:usort(maps:keys(maps:get(ko, Ret2b)))))
+    ,?_assertEqual(#{?NOT_NUM => not_reconcilable
+                    ,?TEST_IN_SERVICE_NUM => kz_json:from_list(
+                                               [{<<"code">>, 400}
+                                               ,{<<"error">>, <<"assign_failure">>}
+                                               ,{<<"cause">>, <<"field_undefined">>}
+                                               ,{<<"message">>, <<"invalid account to assign to">>}
+                                               ])
+                    }, maps:get(ko, Ret2b))
     ,?_assertEqual([], maps:get(ok, Ret2b))
     ,?_assertEqual(#{?NOT_NUM => not_reconcilable}, maps:get(ko, Ret3))
     ,?_assertMatch([_], maps:get(ok, Ret3))
