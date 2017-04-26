@@ -144,15 +144,16 @@ get_balance(DataJObj) ->
         {'error', _} -> <<"\"not known at the moment\"">>
     end.
 
+%% amount is expected to be in dollars
 -spec get_topup_amount(kz_json:object()) -> ne_binary().
 get_topup_amount(DataJObj) ->
     IsPreview = teletype_util:is_preview(DataJObj),
-    case kz_json:get_integer_value(<<"amount">>, DataJObj) of
+    case kz_json:get_float_value(<<"amount">>, DataJObj) of
         'undefined' when IsPreview -> 20.0;
         'undefined' ->
             lager:warning("failed to get topup amount from data: ~p", [DataJObj]),
             throw({'error', 'no_topup_amount'});
-        Amount -> wht_util:units_to_dollars(Amount)
+        Amount -> Amount
     end.
 
 -spec purchase_order(kz_json:object()) -> binary().

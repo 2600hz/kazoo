@@ -226,7 +226,7 @@ handle_charged_transactions(BillingId, Code, JObjs) ->
     {Success, _} = braintree_quick_sale(BillingId, Amount, Props),
     Success.
 
--spec handle_topup(ne_binary(), kz_json:objects()) -> boolean().
+-spec handle_topup(ne_binary(), kz_json:objects()) -> 'true' | {boolean(), ne_binary()}.
 handle_topup(BillingId, []) ->
     lager:debug("no top-up transaction found for ~s", [BillingId]),
     'true';

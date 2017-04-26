@@ -144,11 +144,12 @@ transaction_data(Event) ->
       ]
      ).
 
+%% amount is expected to be in dollars
 -spec get_transaction_amount(kz_proplist()) -> api_binary().
 get_transaction_amount(Props) ->
-    case props:get_integer_value(<<"amount">>, Props) of
+    case kz_term:to_float(props:get_value(<<"amount">>, Props)) of
         'undefined' -> 'undefined';
-        Amount -> wht_util:units_to_dollars(Amount)
+        Amount -> Amount
     end.
 
 -spec purchase_order(kz_proplist()) -> binary().
