@@ -287,12 +287,13 @@ handle_cast('join_local', #participant{call=Call
     {'noreply', Participant};
 handle_cast({'join_remote', JObj}, #participant{call=Call
                                                ,conference=Conference
+                                               ,name_pronounced=Name
                                                }=Participant) ->
     Route = binary:replace(kz_json:get_value(<<"Switch-URL">>, JObj)
                           ,<<"mod_sofia">>
                           ,<<"conference">>
                           ),
-    bridge_to_conference(Route, Conference, Call),
+    bridge_to_conference(Route, Conference, Call, Name),
     {'noreply', Participant#participant{remote='true'}};
 handle_cast({'sync_participant', JObj}, #participant{call=Call}=Participant) ->
     Event = kz_json:get_ne_binary_value(<<"Event">>, JObj),
@@ -439,8 +440,9 @@ notify_requestor(MyQ, MyId, DiscoveryEvent, ConferenceId) ->
     end.
 
 
--spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call()) -> 'ok'.
-bridge_to_conference(Route, Conference, Call) ->
+-spec bridge_to_conference(ne_binary(), kapps_conference:conference(), kapps_call:call(), conf_pronounced_name:name_pronounced()) ->
+                                  'ok'.
+bridge_to_conference(Route, Conference, Call, Name) ->
     lager:debug("bridging to conference running at '~s'", [Route]),
     Endpoint = kz_json:from_list([{<<"Invite-Format">>, <<"route">>}
                                  ,{<<"Route">>, Route}
@@ -454,8 +456,9 @@ bridge_to_conference(Route, Conference, Call) ->
                                                  >>
                                   }
                                  ]),
-    SIPHeaders = [{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}
-                 ],
+    SIPHeaders = props:filter_undefined([{<<"X-Conf-Flags-Moderator">>, kapps_conference:moderator(Conference)}
+                                         | name_pronounced_headers(Name)
+                                        ]),
     Command = [{<<"Application-Name">>, <<"bridge">>}
               ,{<<"Endpoints">>, [Endpoint]}
               ,{<<"Timeout">>, 20}
@@ -478,6 +481,12 @@ get_account_realm(Call) ->
                     <<"unknown">>
             end
     end.
+
+-spec name_pronounced_headers(conf_pronounced_name:name_pronounced()) -> kz_proplist().
+name_pronounced_headers('undefined') -> [];
+name_pronounced_headers({_, AccountId, MediaId}) ->
+    [{<<"X-Conf-Values-Pronounced-Name-Account-ID">>, AccountId}
+    ,{<<"X-Conf-Values-Pronounced-Name-Media-ID">>, MediaId}].
 
 -spec send_conference_command(kapps_conference:conference(), kapps_call:call()) -> 'ok'.
 send_conference_command(Conference, Call) ->
