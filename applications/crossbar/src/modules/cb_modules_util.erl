@@ -598,55 +598,73 @@ validate_number_ownership([Number|Numbers], Unauthorized, Context) ->
             validate_number_ownership(Numbers, Unauthorized, Context)
     end.
 
+-type assignment_to_apply() :: {ne_binary(), api_binary()}.
+-type assignments_to_apply() :: [assignment_to_apply()].
+-type port_req_assignment() :: {ne_binary(), api_binary(), kz_json:object()}.
+-type port_req_assignments() :: [port_req_assignment()].
 -type assignment_update() :: {ne_binary(), knm_number:knm_number_return()} |
                              {ne_binary(), {'ok', kz_json:object()}} |
                              {ne_binary(), {'error', any()}}.
 -type assignment_updates() :: [assignment_update()].
 
--spec apply_assignment_updates([{ne_binary(), api_binary()}], cb_context:context()) ->
+-spec apply_assignment_updates(assignments_to_apply(), cb_context:context()) ->
                                       assignment_updates().
 apply_assignment_updates(Updates, Context) ->
     AccountId = cb_context:account_id(Context),
-    [maybe_assign_to_port_number(DID, Assign, AccountId)
-     || {DID, Assign} <- Updates
-    ].
-
--spec maybe_assign_to_port_number(ne_binary(), api_binary(), ne_binary()) ->
-                                         assignment_update().
-maybe_assign_to_port_number(DID, Assign, AccountId) ->
-    Num = knm_converters:normalize(DID),
-    case knm_port_request:get(Num) of
-        {'error', _} ->
-            maybe_assign_to_app(DID, Assign, AccountId);
-        {'ok', JObj} ->
-            {DID, knm_port_request:assign_to_app(Num, Assign, JObj)}
-    end.
-
--spec maybe_assign_to_app(ne_binary(), api_binary(), ne_binary()) ->
-                                 assignment_update().
-maybe_assign_to_app(DID, Assign, AccountId) ->
-    case knm_number:get(DID) of
-        {'ok', Number} ->
-            PhoneNumber = knm_number:phone_number(Number),
-            AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-            maybe_assign_to_app(DID, Assign, AccountId, AssignedTo);
-        {'error', _}=E -> {DID, E}
-    end.
+    {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, Updates),
+    PortAssignResults = assign_to_port_number(PRUpdates),
+    AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
+    lager:debug("AssignResults ~p", [AssignResults]),
+    PortAssignResults ++ AssignResults.
 
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
-%% Only update used_by (via assign_to_app) when the account being
-%% operated on is the one that the number is assigned to
+%% Split a list of assignment updates into a 2-element tuple; element
+%% 1 is a list of port requests, element 2 is a list of numbers that
+%% are already active.
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec maybe_assign_to_app(ne_binary(), api_binary(), ne_binary(), api_binary()) ->
-                                 assignment_update().
-maybe_assign_to_app(DID, Assign, AccountId, AccountId) ->
-    {DID, knm_number:assign_to_app(DID, Assign)};
-maybe_assign_to_app(DID, _, _, _) ->
-    {DID, {'error', 'unauthorized'}}.
+-spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
+                                 {port_req_assignments(), assignments_to_apply()}.
+split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->
+    Num = knm_converters:normalize(DID),
+    case knm_port_request:get(Num) of
+        {'ok', JObj} ->
+            {[{Num, Assign, JObj}|PRUpdates], NumUpdates};
+        {'error', _} ->
+            {PRUpdates, [ToApply|NumUpdates]}
+    end.
+
+-spec assign_to_port_number(port_req_assignments()) ->
+                                   assignment_updates().
+assign_to_port_number(PRUpdates) ->
+    lists:foldl(fun({Num, Assign, JObj}, Acc) ->
+                        [{Num, knm_port_request:assign_to_app(Num, Assign, JObj)}
+                         | Acc]
+                end, [], PRUpdates).
+
+-spec maybe_assign_to_app(assignments_to_apply(), ne_binary()) ->
+                                 assignment_updates().
+maybe_assign_to_app(NumUpdates, AccountId) ->
+    Options = [{'auth_by', AccountId}],
+    Groups = group_by_assign_to(NumUpdates),
+    maps:fold(fun(Assign, Nums, Acc) ->
+                      [knm_numbers:assign_to_app(Nums, Assign, Options) | Acc]
+              end, [], Groups).
+
+-type assign_to_groups() :: #{api_binary() => ne_binaries()}.
+
+-spec group_by_assign_to(assignments_to_apply()) -> assign_to_groups().
+group_by_assign_to(NumUpdates) ->
+    group_by_assign_to(NumUpdates, #{}).
+
+group_by_assign_to([], Groups) -> Groups;
+group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
+    DIDs = maps:get(Groups, Assign, []),
+    Groups1 = Groups#{Assign => [DID|DIDs]},
+    group_by_assign_to(NumUpdates, Groups1).
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
