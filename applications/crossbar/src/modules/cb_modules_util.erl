@@ -662,7 +662,7 @@ group_by_assign_to(NumUpdates) ->
 
 group_by_assign_to([], Groups) -> Groups;
 group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
-    DIDs = maps:get(Groups, Assign, []),
+    DIDs = maps:get(Assign, Groups, []),
     Groups1 = Groups#{Assign => [DID|DIDs]},
     group_by_assign_to(NumUpdates, Groups1).
 
