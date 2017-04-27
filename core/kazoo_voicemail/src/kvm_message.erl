@@ -229,12 +229,11 @@ update(AccountId, BoxId, ?NE_BINARY = MsgId, Funs) ->
         Error ->
             Error
     end;
-update(AccountId, _BoxId, JObj, Funs) ->
+update(_AccountId, _BoxId, JObj, Funs) ->
     NewJObj = lists:foldl(fun(F, J) -> F(J) end, JObj, Funs),
-    Db = kvm_util:get_db(AccountId, NewJObj),
-    case kazoo_modb:save_doc(Db, NewJObj) of
-        {'ok', _} = OK -> OK;
-        {'error', _R} = Error ->
+    case try_save_document('undefined', NewJObj, 3) of
+        {'ok', _}=OK -> OK;
+        {'error', _R}=Error ->
             lager:debug("failed to update voicemail message ~s: ~p", [kz_doc:id(NewJObj), _R]),
             Error
     end.
@@ -269,16 +268,22 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
                ,[FromDb, FromId, OldBoxId, ToDb, ToId, NewBoxId]
                ),
 
-    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}],
-    case kz_datamgr:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, TransformFuns) end}
+           ,{max_retries, 3}
+           ],
+    case kazoo_modb:move_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
-        {'error', 'not_found'} = NotFound ->
-            lager:warning("could not copy ~s/~s to ~s/~s, modb is not exists (or maybe the original message is not exists)"
-                         ,[FromDb, FromId, ToDb, ToId]
-                         ),
-            NotFound;
+        {'error', 'timeout'} ->
+            move_copy_final_check(AccountId, FromId, ToId);
+        {'error', 'conflict'} ->
+            Msg = io_lib:format("conflict occured during moving voicemail ~s / ~s to ~s / ~s"
+                               ,[FromDb, FromId, ToDb, ToId]
+                               ),
+            Subject = <<"Conflict during forward voicemail message">>,
+            send_system_alert('undefined', AccountId, Subject, kz_term:to_binary(Msg)),
+            move_copy_final_check(AccountId, FromId, ToId);
         {'error', _} = Error ->
-            lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
+            lager:debug("failed to move ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
     end.
 
@@ -318,7 +323,7 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
 
     {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, JObjError, OldBoxId),
     case OkErr =:= 'ok'
-        andalso do_copy(AccountId, FromId, ToId, TransformFuns, 3)
+        andalso do_copy(AccountId, FromId, ToId, TransformFuns)
     of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
@@ -332,19 +337,8 @@ copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
             dict:append(<<"failed">>, Failed, CopiedDict)
     end.
 
--spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs(), 1..3) -> db_ret().
-do_copy(AccountId, FromId, ToId, _Funs, 0) ->
-    FromDb = kvm_util:get_db(AccountId, FromId),
-    ToDb = kvm_util:get_db(AccountId, ToId),
-    case fetch(AccountId, ToId) of
-        {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
-        {'error', _} ->
-            lager:error("max retries to copy voicemail message ~s/~s to ~s/~s"
-                       ,[FromDb, FromId, ToDb, ToId]
-                       ),
-            {'error', 'max_save_retries'}
-    end;
-do_copy(AccountId, FromId, ToId, Funs, Loop) ->
+-spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
+do_copy(AccountId, FromId, ToId, Funs) ->
     FromDb = kvm_util:get_db(AccountId, FromId),
     ToDb = kvm_util:get_db(AccountId, ToId),
 
@@ -352,26 +346,36 @@ do_copy(AccountId, FromId, ToId, Funs, Loop) ->
                ,[FromDb, FromId, ToDb, ToId]
                ),
 
-    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, Funs) end}],
-    case kz_datamgr:copy_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
+    Opts = [{'transform', fun(_, B) -> lists:foldl(fun(F, J) -> F(J) end, B, Funs) end}
+           ,{max_retries, 3}
+           ],
+    case kazoo_modb:copy_doc(FromDb, {kzd_box_message:type(), FromId}, ToDb, ToId, Opts) of
         {'ok', _} = OK -> OK;
-        {'error', 'not_found'} = NotFound ->
-            lager:warning("could not copy ~s/~s to ~s/~s, modb is not exists (or maybe the original message is not exists)"
-                         ,[FromDb, FromId, ToDb, ToId]
-                         ),
-            NotFound;
         {'error', 'timeout'} ->
-            do_copy(AccountId, FromId, ToId, Funs, Loop - 1);
+            move_copy_final_check(AccountId, FromId, ToId);
         {'error', 'conflict'} ->
             Msg = io_lib:format("conflict occured during forwarding voicemail ~s / ~s to ~s / ~s"
                                ,[FromDb, FromId, ToDb, ToId]
                                ),
             Subject = <<"Conflict during forward voicemail message">>,
             send_system_alert('undefined', AccountId, Subject, kz_term:to_binary(Msg)),
-            do_copy(AccountId, FromId, ToId, Funs, 0);
+            move_copy_final_check(AccountId, FromId, ToId);
         {'error', _}=Error ->
             lager:debug("failed to copy ~s/~s to ~s/~s", [FromDb, FromId, ToDb, ToId]),
             Error
+    end.
+
+-spec move_copy_final_check(ne_binary(), ne_binary(), ne_binary()) -> db_ret().
+move_copy_final_check(AccountId, FromId, ToId) ->
+    FromDb = kvm_util:get_db(AccountId, FromId),
+    ToDb = kvm_util:get_db(AccountId, ToId),
+    case fetch(AccountId, ToId) of
+        {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
+        {'error', _} ->
+            lager:error("max retries to copy or move voicemail message ~s/~s to ~s/~s"
+                       ,[FromDb, FromId, ToDb, ToId]
+                       ),
+            {'error', 'max_save_retries'}
     end.
 
 %%--------------------------------------------------------------------
@@ -463,19 +467,17 @@ try_save_document(_Call, MsgJObj, 0) ->
     case fetch(kz_doc:account_id(MsgJObj), kz_doc:id(MsgJObj)) of
         {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
         {'error', _} ->
-            lager:error("max retries to save new voicemail message ~s in db ~s"
+            lager:error("max retries to save voicemail message ~s in db ~s"
                        ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj)]
                        ),
             {'error', 'max_save_retries'}
     end;
 try_save_document(Call, MsgJObj, Loop) ->
-    case kz_datamgr:save_doc(kz_doc:account_db(MsgJObj), MsgJObj) of
+    case kazoo_modb:save_doc(kz_doc:account_db(MsgJObj), MsgJObj, [{max_retries, 3}]) of
         {'ok', _}=OK -> OK;
         {'error', 'conflict'} ->
             RetryFun = fun(J) -> try_save_document(Call, J, Loop - 1) end,
-            retry_conflict(Call, MsgJObj, RetryFun);
-        {'error', 'timeout'} ->
-            try_save_document(Call, MsgJObj, Loop - 1);
+            maybe_retry_conflict(Call, MsgJObj, RetryFun);
         {'error', _Reason}=Error ->
             lager:error("failed to save voicemail message ~s in db ~s : ~p"
                        ,[kz_doc:id(MsgJObj), kz_doc:account_db(MsgJObj), _Reason]
@@ -751,8 +753,8 @@ update_metadata(Call, BoxId, MessageId, UpdateFuns) ->
 %% had collision or not.
 %% @end
 %%--------------------------------------------------------------------
--spec retry_conflict(kapps_call:call() | 'undefined', kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
-retry_conflict(Call, JObj, DieAnotherDay) ->
+-spec maybe_retry_conflict(kapps_call:call() | 'undefined', kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
+maybe_retry_conflict(Call, JObj, DieAnotherDay) ->
     case fetch(kz_doc:account_id(JObj), kz_doc:id(JObj)) of
         {'ok', SavedJObj} -> check_for_collision(Call, JObj, SavedJObj, DieAnotherDay);
         {'error', 'timeout'} -> DieAnotherDay(JObj);
@@ -760,7 +762,7 @@ retry_conflict(Call, JObj, DieAnotherDay) ->
         {'error', _}=Error -> Error
     end.
 
--spec check_for_collision(kapps_call:call(), kz_json:object(), kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
+-spec check_for_collision(kapps_call:call() | 'undefined', kz_json:object(), kz_json:object(), fun((kz_json:object()) -> db_ret())) -> db_ret().
 check_for_collision(Call, JObj, SavedJObj, DieAnotherDay) ->
     OrigPublic = kz_doc:public_fields(JObj),
     SavedPublic = kz_doc:public_fields(SavedJObj),

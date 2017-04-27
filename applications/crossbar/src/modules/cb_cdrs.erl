@@ -585,9 +585,7 @@ get_cdr_ids(Db, View, ViewOptions) ->
 maybe_add_design_doc(Db) ->
     case kz_datamgr:lookup_doc_rev(Db, <<"_design/cdrs">>) of
         {'ok', _} -> 'ok';
-        {'error', 'not_found'} ->
-            lager:warning("adding cdr views to modb: ~s", [Db]),
-            kz_datamgr:revise_doc_from_file(Db, 'kazoo_modb', <<"views/cdrs.json">>)
+        {'error', 'not_found'} -> kazoo_modb:refresh_views(Db)
     end.
 
 -spec load_chunked_cdrs(ne_binary(), ne_binaries(), payload()) -> payload().

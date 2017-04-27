@@ -465,8 +465,7 @@ store_recording_meta(#state{call=Call
                      ]))
                                            ,Db
                 ),
-    kazoo_modb:maybe_create(Db),
-    case kz_datamgr:ensure_saved(Db, MediaDoc) of
+    case kazoo_modb:save_doc(Db, MediaDoc, [{ensure_saved, true}]) of
         {'ok', JObj} -> kz_doc:revision(JObj);
         {'error', _}= Err -> Err
     end.

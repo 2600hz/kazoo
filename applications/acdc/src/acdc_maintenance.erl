@@ -194,15 +194,20 @@ refresh() ->
 -spec refresh_account(ne_binary()) -> 'ok'.
 refresh_account(Acct) ->
     MoDB = acdc_stats_util:db_name(Acct),
-    refresh_account(MoDB, kz_datamgr:db_create(MoDB)),
+    refresh_account(MoDB, kazoo_modb:maybe_create(MoDB)),
     lager:debug("refreshed: ~s", [MoDB]).
 
 refresh_account(MoDB, 'true') ->
     lager:debug("created ~s", [MoDB]),
     kz_datamgr:revise_views_from_folder(MoDB, 'acdc');
 refresh_account(MoDB, 'false') ->
-    lager:debug("exists ~s", [MoDB]),
-    kz_datamgr:revise_views_from_folder(MoDB, 'acdc').
+    case kz_datamgr:db_exists(MoDB) of
+        'true' ->
+            lager:debug("exists ~s", [MoDB]),
+            kz_datamgr:revise_views_from_folder(MoDB, 'acdc');
+        'false' ->
+            lager:debug("modb ~s was not created", [MoDB])
+    end.
 
 -spec migrate() -> 'ok'.
 migrate() ->

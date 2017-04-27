@@ -13,6 +13,8 @@
 -export([get_results/3]).
 -export([open_doc/2, open_doc/3, open_doc/4]).
 -export([save_doc/2, save_doc/3, save_doc/4]).
+-export([move_doc/4, move_doc/5]).
+-export([copy_doc/4, copy_doc/5]).
 -export([get_modb/1, get_modb/2, get_modb/3]).
 -export([maybe_archive_modb/1]).
 -export([refresh_views/1]).
@@ -30,7 +32,7 @@
                        kz_datamgr:view_option().
 -type view_options() :: [view_option()].
 
--define(MAX_RETRIES, 3).
+-define(MAX_RETRIES, 2).
 
 -export_type([view_options/0]).
 
@@ -44,20 +46,24 @@
 -spec get_results(ne_binary(), ne_binary(), view_options()) ->
                          {'ok', kz_json:objects()} |
                          {'error', atom()}.
--spec get_results(ne_binary(), ne_binary(), view_options(), non_neg_integer()) ->
+-spec get_results(ne_binary(), ne_binary(), view_options(), atom(), non_neg_integer()) ->
                          {'ok', kz_json:objects()} |
                          {'error', atom()}.
 get_results(Account, View, ViewOptions) ->
-    get_results(Account, View, ViewOptions, ?MAX_RETRIES).
+    MaxRetries = props:get_integer_value('max_retries', ViewOptions, ?MAX_RETRIES),
+    get_results(Account, View, ViewOptions, 'first_try', MaxRetries).
 
-get_results(_Account, _View, _ViewOptions, Retry) when Retry =< 0 ->
-    {'error', 'retries_exceeded'};
-get_results(Account, View, ViewOptions, Retry) ->
+get_results(_Account, _View, _ViewOptions, Reason, Retry) when Retry =< 0 ->
+    lager:debug("max retries to get view ~s/~s results: ~p", [_Account, _View, Reason]),
+    {'error', Reason};
+get_results(Account, View, ViewOptions, _Reason, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:get_results(EncodedMODb, View, strip_modb_options(ViewOptions)) of
         {'error', 'not_found'} ->
-            get_results_not_found(Account, View, ViewOptions, Retry);
+            get_results_missing_db(Account, View, ViewOptions, Retry);
+        {'error', 'timeout'} ->
+            get_results(Account, View, ViewOptions, 'timeout', Retry-1);
         Results -> Results
     end.
 
@@ -71,31 +77,24 @@ strip_modb_options(ViewOptions) ->
 is_modb_option({'year', _}) -> 'true';
 is_modb_option({'month', _}) -> 'true';
 is_modb_option({'create_db', _}) -> 'true';
+is_modb_option({'ensure_saved', _}) -> 'true';
+is_modb_option({'max_retries', _}) -> 'true';
 is_modb_option(_) -> 'false'.
-
--spec get_results_not_found(ne_binary(), ne_binary(), view_options(), integer()) ->
-                                   {'ok', kz_json:objects()}.
-get_results_not_found(Account, View, ViewOptions, Retry) ->
-    AccountMODb = get_modb(Account, ViewOptions),
-    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    case kz_datamgr:db_exists(EncodedMODb, View) of
-        'true' ->
-            refresh_views(AccountMODb),
-            get_results(Account, View, ViewOptions, Retry-1);
-        'false' ->
-            get_results_missing_db(Account, View, ViewOptions, Retry)
-    end.
 
 -spec get_results_missing_db(ne_binary(), ne_binary(), view_options(), integer()) ->
                                     {'ok', kz_json:objects()}.
 get_results_missing_db(Account, View, ViewOptions, Retry) ->
     AccountMODb = get_modb(Account, ViewOptions),
     ShouldCreate = props:get_is_true('create_db', ViewOptions, 'true'),
-    case maybe_create_current_modb(AccountMODb) of
-        'true' when ShouldCreate ->
-            lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
-            get_results(Account, View, ViewOptions, Retry-1);
-        _ -> {'ok', []}
+    lager:info("modb ~p not found, maybe creating...", [AccountMODb]),
+    case ShouldCreate
+        andalso maybe_create_current_modb(AccountMODb)
+    of
+        'true' -> get_results(Account, View, ViewOptions, 'not_found', Retry-1);
+        'false' when ShouldCreate -> {'ok', []};
+        'false' ->
+            lager:info("create_db is false, not creating modb ~s ...", [AccountMODb]),
+            {'ok', []}
     end.
 
 %%--------------------------------------------------------------------
@@ -149,9 +148,7 @@ couch_open(AccountMODb, DocId, Options) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:open_doc(EncodedMODb, DocId, Options) of
         {'ok', _}=Ok -> Ok;
-        {'error', _E}=Error ->
-            lager:error("fail to open doc ~p in ~p reason: ~p", [DocId, EncodedMODb, _E]),
-            Error
+        Error -> Error
     end.
 
 %%--------------------------------------------------------------------
@@ -174,41 +171,148 @@ save_doc(Account, Doc) ->
 
 save_doc(Account, Doc, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account),
-    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES);
+    MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
+    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
 save_doc(Account, Doc, Timestamp) ->
     save_doc(Account, Doc, Timestamp, []).
 
 save_doc(Account, Doc, Timestamp, Options) when is_list(Options) ->
     AccountMODb = get_modb(Account, Timestamp),
-    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES);
+    MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
+    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries);
 save_doc(Account, Doc, Year, Month) ->
     save_doc(Account, Doc, Year, Month, []).
 
 save_doc(Account, Doc, Year, Month, Options) ->
     AccountMODb = get_modb(Account, Year, Month),
-    couch_save(AccountMODb, Doc, Options, ?MAX_RETRIES).
+    MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
+    couch_save(AccountMODb, Doc, Options, 'first_try', MaxRetries).
 
--spec couch_save(ne_binary(), kz_json:object(), kz_proplist(), integer()) ->
+-spec couch_save(ne_binary(), kz_json:object(), kz_proplist(), atom(), integer()) ->
                         {'ok', kz_json:object()} |
                         {'error', atom()}.
-couch_save(AccountMODb, _Doc, _Options, 0) ->
-    lager:error("failed to save doc in ~p", [AccountMODb]),
-    {'error', 'max_save_retries'};
-couch_save(AccountMODb, Doc, Options, Retry) ->
+couch_save(AccountMODb, _Doc, _Options, Reason, Retry) when Retry =< 0 ->
+    lager:debug("max retries to save doc in ~s: ~p", [AccountMODb, Reason]),
+    {'error', Reason};
+couch_save(AccountMODb, Doc, Options, _Reason, Retry) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
-    ShouldCreate = props:get_is_true('create_db', Options, 'true'),
-    case kz_datamgr:save_doc(EncodedMODb, Doc, strip_modb_options(Options)) of
+    SaveFun = save_fun(props:get_is_true('ensure_saved', Options, 'false')),
+    case SaveFun(EncodedMODb, Doc, strip_modb_options(Options)) of
         {'ok', _}=Ok -> Ok;
         {'error', 'not_found'} = NotFound ->
-            case maybe_create_current_modb(AccountMODb) of
-                'true' when ShouldCreate ->
-                    lager:warning("modb ~p not found, maybe creating...", [AccountMODb]),
-                    couch_save(AccountMODb, Doc, Options, Retry - 1);
-                _ -> NotFound
+            ShouldCreate = props:get_is_true('create_db', Options, 'true'),
+            lager:info("modb ~p not found, maybe creating...", [AccountMODb]),
+            case ShouldCreate
+                andalso maybe_create_current_modb(AccountMODb)
+            of
+                'true' -> couch_save(AccountMODb, Doc, Options, 'not_found', Retry-1);
+                'false' when ShouldCreate -> NotFound;
+                'false' ->
+                    lager:info("create_db is false, not creating modb ~s ...", [AccountMODb]),
+                    NotFound
             end;
-        {'error', _E}=Error ->
-            lager:error("account mod save error: ~p", [_E]),
-            Error
+        {'error', 'conflict'}=Conflict -> Conflict;
+        {'error', 'timeout'} -> couch_save(AccountMODb, Doc, Options, 'timeout', Retry-1);
+        Error -> Error
+    end.
+
+-spec save_fun(boolean()) -> function().
+save_fun('false') -> fun kz_datamgr:save_doc/3;
+save_fun('true') -> fun kz_datamgr:ensure_saved/3.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+move_doc(FromDb, FromId, ToDb, ToId) ->
+    move_doc(FromDb, FromId, ToDb, ToId, []).
+
+-spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+move_doc(FromDb, FromId, ToDb, ToId, Options) ->
+    MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
+    move_doc(FromDb, FromId, ToDb, ToId, Options, 'first_try', MaxRetries).
+
+-spec move_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist(), atom(), integer()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+move_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 0 ->
+    lager:error("max retries to move doc from ~s/~s to ~s/~s : ~p"
+               ,[_FromDb, _FromId, _ToDb, _ToId]
+               ),
+    {'error', Reason};
+move_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
+    case kz_datamgr:move_doc(FromDb, {<<"fax">>, FromId}, ToDb, ToId, strip_modb_options(Options)) of
+        {'ok', _}=OK -> OK;
+        {'error', 'not_found'} ->
+            case maybe_create_destination_db(FromDb, ToDb, Options) of
+                'true' -> move_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
+                'false' -> {'error', 'not_found'}
+            end;
+        {'error', 'conflict'}=Conflict -> Conflict;
+        {'error', 'timeout'} -> move_doc(FromDb, FromId, ToDb, ToId, Options, 'timeout', Retry-1);
+        Error -> Error
+    end.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% @end
+%%--------------------------------------------------------------------
+-spec copy_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+copy_doc(FromDb, FromId, ToDb, ToId) ->
+    copy_doc(FromDb, FromId, ToDb, ToId, []).
+
+-spec copy_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+copy_doc(FromDb, FromId, ToDb, ToId, Options) ->
+    MaxRetries = props:get_integer_value('max_retries', Options, ?MAX_RETRIES),
+    copy_doc(FromDb, FromId, ToDb, ToId, Options, 'first_try', MaxRetries).
+
+-spec copy_doc(ne_binary(), kazoo_data:docid(), ne_binary(), kazoo_data:docid(), kz_proplist(), atom(), integer()) ->
+                      {'ok', kz_json:object()} |
+                      {'error', atom()}.
+copy_doc(_FromDb, _FromId, _ToDb, _ToId, _Options, Reason, Retry) when Retry =< 0 ->
+    lager:error("max retries to copy doc from ~s/~s to ~s/~s : ~p"
+               ,[_FromDb, _FromId, _ToDb, _ToId, Reason]
+               ),
+    {'error', Reason};
+copy_doc(FromDb, FromId, ToDb, ToId, Options, _Reason, Retry) ->
+    case kz_datamgr:copy_doc(FromDb, {<<"fax">>, FromId}, ToDb, ToId, strip_modb_options(Options)) of
+        {'ok', _}=OK -> OK;
+        {'error', 'not_found'} ->
+            case maybe_create_destination_db(FromDb, ToDb, Options) of
+                'true' -> copy_doc(FromDb, FromId, ToDb, ToId, Options, 'not_found', Retry-1);
+                'false' -> {'error', 'not_found'}
+            end;
+        {'error', 'conflict'}=Conflict -> Conflict;
+        {'error', 'timeout'} -> copy_doc(FromDb, FromId, ToDb, ToId, Options, 'timeout', Retry-1);
+        {'error', _}=Error -> Error
+    end.
+
+-spec maybe_create_destination_db(ne_binary(), ne_binary(), kz_proplist()) -> boolean().
+maybe_create_destination_db(FromDb, ToDb, Options) ->
+    ShouldCreate = props:get_is_true('create_db', Options, 'true'),
+    lager:info("destination modb ~p not found, maybe creating...", [ToDb]),
+    case ShouldCreate
+        andalso kz_datamgr:db_exists(FromDb)
+    of
+        'false' when ShouldCreate ->
+            lager:info("source modb ~s does not exist, not creating destination modb ~s", [FromDb, ToDb]),
+            'false';
+        'false' ->
+            lager:info("create_db is false, not creating modb ~s ...", [ToDb]),
+            'false';
+        'true' ->
+            maybe_create_current_modb(ToDb)
     end.
 
 %%--------------------------------------------------------------------
@@ -271,10 +375,9 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_RAW(_AccountId, Year, Month) = Acco
     {Y, M, _} = erlang:date(),
     case {kz_term:to_binary(Y), kz_time:pad_month(M)} of
         {Year, Month} ->
-            maybe_create(AccountMODb),
-            'true';
+            maybe_create(AccountMODb);
         {_Year, _Month} ->
-            lager:warning("modb ~p is not for the current month, skip creating", [AccountMODb]),
+            lager:info("modb ~p is not for the current month, skip creating", [AccountMODb]),
             'false'
     end;
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
@@ -282,8 +385,7 @@ maybe_create_current_modb(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
 maybe_create_current_modb(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
     maybe_create_current_modb(kz_util:format_account_modb(AccountMODb, 'raw')).
 
--spec maybe_create(ne_binary()) -> 'ok'.
--spec maybe_create(ne_binary(), boolean()) -> 'ok'.
+-spec maybe_create(ne_binary()) -> boolean().
 maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb) ->
     maybe_create(AccountMODb, is_account_deleted(AccountId));
 maybe_create(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
@@ -291,28 +393,34 @@ maybe_create(?MATCH_MODB_SUFFIX_ENCODED(_, _, _) = AccountMODb) ->
 maybe_create(?MATCH_MODB_SUFFIX_UNENCODED(_, _, _) = AccountMODb) ->
     maybe_create(kz_util:format_account_modb(AccountMODb, 'raw')).
 
-maybe_create(?MATCH_MODB_SUFFIX_RAW(AccountId, _, _) = AccountMODb, 'true') ->
-    lager:warning("account ~s is deleted, not creating modb ~s", [AccountId, AccountMODb]);
+-spec maybe_create(ne_binary(), boolean()) -> boolean().
+maybe_create(?MATCH_MODB_SUFFIX_RAW(_AccountId, _, _) = _AccountMODb, 'true') ->
+    lager:info("account ~s is deleted, not creating modb ~s", [_AccountId, _AccountMODb]),
+    'false';
 maybe_create(AccountMODb, 'false') ->
     create(AccountMODb).
 
-
--spec create(ne_binary()) -> 'ok'.
+-spec create(ne_binary()) -> boolean().
 create(AccountMODb) ->
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     IsDbExists = kz_datamgr:db_exists_all(EncodedMODb),
     do_create(AccountMODb, IsDbExists).
 
--spec do_create(ne_binary(), boolean()) -> 'ok'.
-do_create(_AccountMODb, 'true') ->
-    lager:warning("modb ~p is exists, not creating", [_AccountMODb]);
+-spec do_create(ne_binary(), boolean()) -> boolean().
+do_create(AccountMODb, 'true') ->
+    lager:info("modb ~p is exists, just refreshing views...", [AccountMODb]),
+    EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
+    refresh_views(EncodedMODb),
+    run_routines(AccountMODb),
+    'true';
 do_create(AccountMODb, 'false') ->
-    lager:debug("create modb ~p", [AccountMODb]),
+    lager:debug("creating modb ~p", [AccountMODb]),
     EncodedMODb = kz_util:format_account_modb(AccountMODb, 'encoded'),
     case kz_datamgr:db_create(EncodedMODb) of
         'true' ->
             refresh_views(EncodedMODb),
-            create_routines(AccountMODb);
+            run_routines(AccountMODb),
+            'true';
         _ -> 'false'
     end.
 
@@ -351,8 +459,8 @@ fetch_modb_views() ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec create_routines(ne_binary()) -> 'ok'.
-create_routines(AccountMODb) ->
+-spec run_routines(ne_binary()) -> 'ok'.
+run_routines(AccountMODb) ->
     Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
     _ = [run_routine(AccountMODb, Routine) || Routine <- Routines],
     'ok'.
