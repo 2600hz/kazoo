@@ -630,8 +630,7 @@ maybe_assign_to_app(DID, Assign, AccountId) ->
             PhoneNumber = knm_number:phone_number(Number),
             AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
             maybe_assign_to_app(DID, Assign, AccountId, AssignedTo);
-        {'error', _}=E -> {DID, E};
-        {'dry_run', _, _} -> {DID, {'error', 'dry_run'}}
+        {'error', _}=E -> {DID, E}
     end.
 
 %%--------------------------------------------------------------------
