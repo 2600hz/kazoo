@@ -361,12 +361,11 @@ add_pattern_conflict(Context, JObj) ->
 -spec validate_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
 validate_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) ->
-                        C1 = validate_callflow_elements(on_successful_validation(CallflowId, C)),
-                        C2 = validate_uniqueness(CallflowId, C1),
+                        C1 = validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C)),
 
-                        Doc = cb_context:doc(C2),
+                        Doc = cb_context:doc(C1),
                         Nums = kz_json:get_list_value(<<"numbers">>, Doc, []),
-                        cb_modules_util:validate_number_ownership(Nums, C2)
+                        cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
