@@ -35,6 +35,13 @@
 -export([purge_deleted/0, purge_deleted/1]).
 -export([update_number_services_view/1]).
 
+-export([feature_permissions_on_number/1]).
+-export([add_allowed_feature_on_number/2
+        ,remove_allowed_feature_on_number/2
+        ,add_denied_feature_on_number/2
+        ,remove_denied_feature_on_number/2
+        ]).
+
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
 
@@ -632,3 +639,88 @@ purge_number_db(NumberDb, State) ->
             kz_datamgr:del_docs(NumberDb, JObjs),
             purge_number_db(NumberDb, State)
     end.
+
+
+%% @private
+-spec is_feature_valid(any()) -> boolean().
+is_feature_valid(Thing) ->
+    lists:member(Thing, ?ALL_KNM_FEATURES).
+
+%% @private
+-spec invalid_feature(ne_binary()) -> no_return.
+invalid_feature(Feature) ->
+    io:format("Feature '~s' is not a known feature. Known features:\n"
+              "\t~s\n"
+             ,[Feature, list_features(?ALL_KNM_FEATURES)]
+             ),
+    no_return.
+
+%% @private
+-spec list_features(ne_binaries()) -> iodata().
+list_features(Features) ->
+    kz_util:iolist_join($\s, Features).
+
+%% @private
+-spec error_with_number(ne_binary(), any()) -> no_return.
+error_with_number(Num, Error) ->
+    Reason = case kz_json:is_json_object(Error) of
+                 false -> Error;
+                 true -> knm_errors:error(Error)
+             end,
+    io:format("Error with number ~s: ~s\n", [Num, Reason]),
+    no_return.
+
+%% @private
+-spec list_number_feature_permissions(knm_number:knm_number()) -> no_return.
+list_number_feature_permissions(N) ->
+    PN = knm_number:phone_number(N),
+    Num = knm_phone_number:number(PN),
+    Allowed = knm_phone_number:features_allowed(PN),
+    Denied = knm_phone_number:features_denied(PN),
+    io:format("Feature permissions on ~s:\n"
+              "\tFeatures allowed: ~s\n"
+              "\tFeatures denied: ~s\n"
+             ,[Num, list_features(Allowed), list_features(Denied)]
+             ),
+    no_return.
+
+%% @private
+-spec edit_feature_permissions_on_number(ne_binary(), fun(), ne_binary()) -> no_return.
+edit_feature_permissions_on_number(Num, Fun, Feature) ->
+    case is_feature_valid(Feature) of
+        false -> invalid_feature(Feature);
+        true ->
+            Updates = [{Fun, Feature}],
+            case knm_number:update(Num, Updates) of
+                {ok, N} -> list_number_feature_permissions(N);
+                {error, Error} -> error_with_number(Num, Error)
+            end
+    end.
+
+%% @public
+-spec feature_permissions_on_number(ne_binary()) -> no_return.
+feature_permissions_on_number(Num) ->
+    case knm_number:get(Num) of
+        {error, Error} -> error_with_number(Num, Error);
+        {ok, N} -> list_number_feature_permissions(N)
+    end.
+
+%% @public
+-spec add_allowed_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+add_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
+    edit_feature_permissions_on_number(Num, fun knm_phone_number:add_allowed_feature/2, Feature).
+
+%% @public
+-spec remove_allowed_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+remove_allowed_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
+    edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_allowed_feature/2, Feature).
+
+%% @public
+-spec add_denied_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+add_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
+    edit_feature_permissions_on_number(Num, fun knm_phone_number:add_denied_feature/2, Feature).
+
+%% @public
+-spec remove_denied_feature_on_number(ne_binary(), ne_binary()) -> no_return.
+remove_denied_feature_on_number(?NE_BINARY=Feature, ?NE_BINARY=Num) ->
+    edit_feature_permissions_on_number(Num, fun knm_phone_number:remove_denied_feature/2, Feature).

@@ -23,16 +23,17 @@
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
 
--define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
--define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
-
--define(LOCAL_FEATURE_OVERRIDE, <<"local_feature_override">>).
-
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
 
 -define(E911_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
+
+-define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
+-define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
+
+-define(LOCAL_FEATURE_OVERRIDE
+       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')).
 
 -define(FEATURES_ALLOWED_RESELLER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
@@ -47,7 +48,7 @@
         kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
 -define(FEATURES_ALLOWED_SYSTEM,
-        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES)).
+        ?FEATURES_ALLOWED_SYSTEM(?ALL_KNM_FEATURES)).
 
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
@@ -242,7 +243,7 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
 -spec local_denied_features(feature_parameters()) -> ne_binaries().
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
-    case kapps_config:get_is_true(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE, 'false') of
+    case ?LOCAL_FEATURE_OVERRIDE of
         'true' ->
             ?LOG_DEBUG("not denying external features on local number due to override"),
             [];
