@@ -29,6 +29,7 @@
 -spec to_options_state(t()) -> t().
 to_options_state(T=#{options := Options}) ->
     TargetState = knm_number_options:state(Options),
+    ?LOG_DEBUG("attempting to change to state ~s", [TargetState]),
     change_state(T, TargetState).
 
 -spec change_state(t(), ne_binary()) -> t().
@@ -187,24 +188,8 @@ to_in_service(T, State) ->
 -endif.
 
 -spec authorize(t()) -> t().
-authorize(T0=#{todo := Ns, options := Options}) ->
-    case knm_number_options:auth_by(Options) of
-        ?KNM_DEFAULT_AUTH_BY ->
-            lager:info("bypassing auth"),
-            knm_numbers:ok(Ns, T0);
-        AuthBy ->
-            F = fun (N, T) -> authorize_fold(N, T, AuthBy) end,
-            lists:foldl(F, T0, Ns)
-    end.
-
-authorize_fold(N, T, AuthBy) ->
-    AssignTo = knm_phone_number:assign_to(knm_number:phone_number(N)),
-    case ?ACCT_HIERARCHY(AuthBy, AssignTo, 'true') of
-        true -> knm_numbers:ok(N, T);
-        false ->
-            Reason = knm_errors:to_json(unauthorized),
-            knm_numbers:ko(N, Reason, T)
-    end.
+authorize(T) ->
+    knm_numbers:do_in_wrap(fun knm_phone_number:is_authorized/1, T).
 
 -spec in_service_from_reserved_authorize(kn()) -> kn();
                                         (t()) -> t().
