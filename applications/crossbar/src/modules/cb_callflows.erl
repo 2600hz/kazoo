@@ -433,7 +433,7 @@ track_assignment('post', Context) ->
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
-    Updates = cb_modules_util:apply_assignment_updates(Unassigned ++ Assigned),
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned ++ Assigned, Context),
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('put', Context) ->
     NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
@@ -443,7 +443,7 @@ track_assignment('put', Context) ->
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
-    Updates = cb_modules_util:apply_assignment_updates(Assigned),
+    Updates = cb_modules_util:apply_assignment_updates(Assigned, Context),
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
@@ -452,7 +452,7 @@ track_assignment('delete', Context) ->
                    || Num <- Nums,
                       knm_converters:is_reconcilable(Num, AccountId)
                   ],
-    Updates = cb_modules_util:apply_assignment_updates(Unassigned),
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned, Context),
     cb_modules_util:log_assignment_updates(Updates).
 
 -spec filter_callflow_list(api_binary(), kz_json:objects()) -> kz_json:objects().

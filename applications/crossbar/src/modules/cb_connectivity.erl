@@ -166,13 +166,13 @@ track_assignment('post', Context) ->
                      not (lists:member(Num, NewNums))
                  ],
 
-    Updates = cb_modules_util:apply_assignment_updates(Assigned ++ Unassigned),
+    Updates = cb_modules_util:apply_assignment_updates(Assigned ++ Unassigned, Context),
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = get_numbers(cb_context:doc(Context)),
     Unassigned = [{Num, 'undefined'} || Num <- Nums],
 
-    Updates = cb_modules_util:apply_assignment_updates(Unassigned),
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned, Context),
     cb_modules_util:log_assignment_updates(Updates).
 
 %%--------------------------------------------------------------------

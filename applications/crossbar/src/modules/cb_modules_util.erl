@@ -29,7 +29,7 @@
         ,remove_plaintext_password/1
 
         ,validate_number_ownership/2
-        ,apply_assignment_updates/1
+        ,apply_assignment_updates/2
         ,log_assignment_updates/1
         ]).
 
@@ -603,23 +603,51 @@ validate_number_ownership([Number|Numbers], Unauthorized, Context) ->
                              {ne_binary(), {'error', any()}}.
 -type assignment_updates() :: [assignment_update()].
 
--spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
+-spec apply_assignment_updates([{ne_binary(), api_binary()}], cb_context:context()) ->
                                       assignment_updates().
-apply_assignment_updates(Updates) ->
-    [maybe_assign_to_port_number(DID, Assign)
+apply_assignment_updates(Updates, Context) ->
+    AccountId = cb_context:account_id(Context),
+    [maybe_assign_to_port_number(DID, Assign, AccountId)
      || {DID, Assign} <- Updates
     ].
 
--spec maybe_assign_to_port_number(ne_binary(), api_binary()) ->
+-spec maybe_assign_to_port_number(ne_binary(), api_binary(), ne_binary()) ->
                                          assignment_update().
-maybe_assign_to_port_number(DID, Assign) ->
+maybe_assign_to_port_number(DID, Assign, AccountId) ->
     Num = knm_converters:normalize(DID),
     case knm_port_request:get(Num) of
         {'error', _} ->
-            {DID, knm_number:assign_to_app(DID, Assign)};
+            maybe_assign_to_app(DID, Assign, AccountId);
         {'ok', JObj} ->
             {DID, knm_port_request:assign_to_app(Num, Assign, JObj)}
     end.
+
+-spec maybe_assign_to_app(ne_binary(), api_binary(), ne_binary()) ->
+                                 assignment_update().
+maybe_assign_to_app(DID, Assign, AccountId) ->
+    case knm_number:get(DID) of
+        {'ok', Number} ->
+            PhoneNumber = knm_number:phone_number(Number),
+            AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
+            maybe_assign_to_app(DID, Assign, AccountId, AssignedTo);
+        {'error', _}=E -> {DID, E};
+        {'dry_run', _, _} -> {DID, {'error', 'dry_run'}}
+    end.
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Only update used_by (via assign_to_app) when the account being
+%% operated on is the one that the number is assigned to
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec maybe_assign_to_app(ne_binary(), api_binary(), ne_binary(), api_binary()) ->
+                                 assignment_update().
+maybe_assign_to_app(DID, Assign, AccountId, AccountId) ->
+    {DID, knm_number:assign_to_app(DID, Assign)};
+maybe_assign_to_app(DID, _, _, _) ->
+    {DID, {'error', 'unauthorized'}}.
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
