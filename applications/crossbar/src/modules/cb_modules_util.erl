@@ -575,11 +575,9 @@ remove_plaintext_password(Context) ->
 -spec validate_number_ownership([{knm_numbers:num(), knm_numbers:ko()}], ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
 validate_number_ownership(Numbers, Context) ->
-    Filtered = [knm_converters:normalize(Num)
-                || Num <- Numbers,
-                   knm_converters:is_reconcilable(Num)
-               ],
-    validate_number_ownership(Filtered, [], Context).
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
+    #{ko := KOs} = knm_numbers:get(Numbers, Options),
+    validate_number_ownership(maps:to_list(KOs), [], Context).
 
 validate_number_ownership([], [], Context) -> Context;
 validate_number_ownership([], Unauthorized, Context) ->
@@ -587,15 +585,14 @@ validate_number_ownership([], Unauthorized, Context) ->
     Numbers = kz_binary:join(Unauthorized, <<", ">>),
     Message = <<Prefix/binary, Numbers/binary>>,
     cb_context:add_system_error(403, 'forbidden', Message, Context);
-validate_number_ownership([Number|Numbers], Unauthorized, Context) ->
-    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
-    case knm_number:get(Number, Options) of
-        {'error', 'not_found'} ->
-            validate_number_ownership(Numbers, Unauthorized, Context);
-        {'error', _} ->
-            validate_number_ownership(Numbers, [Number | Unauthorized], Context);
-        _ ->
-            validate_number_ownership(Numbers, Unauthorized, Context)
+validate_number_ownership([{_, Reason}|KOs], Unauthorized, Context) when is_atom(Reason) ->
+    %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
+    validate_number_ownership(KOs, Unauthorized, Context);
+validate_number_ownership([{Number, ReasonJObj}|KOs], Unauthorized, Context) ->
+    case knm_errors:error(ReasonJObj) of
+        <<"forbidden">> ->
+            validate_number_ownership(KOs, [Number|Unauthorized], Context);
+        _ -> validate_number_ownership(KOs, Unauthorized, Context)
     end.
 
 -type assignment_to_apply() :: {ne_binary(), api_binary()}.
