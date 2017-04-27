@@ -651,7 +651,8 @@ maybe_assign_to_app(NumUpdates, AccountId) ->
     Options = [{'auth_by', AccountId}],
     Groups = group_by_assign_to(NumUpdates),
     maps:fold(fun(Assign, Nums, Acc) ->
-                      [knm_numbers:assign_to_app(Nums, Assign, Options) | Acc]
+                      Results = knm_numbers:assign_to_app(Nums, Assign, Options),
+                      format_assignment_results(Results) ++ Acc
               end, [], Groups).
 
 -type assign_to_groups() :: #{api_binary() => ne_binaries()}.
@@ -665,6 +666,33 @@ group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
     DIDs = maps:get(Assign, Groups, []),
     Groups1 = Groups#{Assign => [DID|DIDs]},
     group_by_assign_to(NumUpdates, Groups1).
+
+-spec format_assignment_results(knm_numbers:ret()) -> assignment_updates().
+format_assignment_results(#{ok := OKs
+                           ,ko := KOs}) ->
+    format_assignment_oks(OKs) ++ format_assignment_kos(maps:to_list(KOs)).
+
+-spec format_assignment_oks(knm_number:knm_numbers()) -> assignment_updates().
+format_assignment_oks(Numbers) ->
+    lists:foldl(fun(Number, Acc) ->
+                        PN = knm_number:phone_number(Number),
+                        [{knm_phone_number:number(PN), {'ok', Number}} | Acc]
+                end, [], Numbers).
+
+-spec format_assignment_kos([{knm_numbers:num(), knm_numbers:ko()}]) -> assignment_updates().
+-spec format_assignment_kos([{knm_numbers:num(), knm_numbers:ko()}], assignment_updates()) ->
+                                   assignment_updates().
+format_assignment_kos(KOs) ->
+    format_assignment_kos(KOs, []).
+
+format_assignment_kos([], Acc) -> Acc;
+format_assignment_kos([{Num, Reason}|KOs], Acc) when is_atom(Reason) ->
+    Acc1 = [{Num, {'error', Reason}} | Acc],
+    format_assignment_kos(KOs, Acc1);
+format_assignment_kos([{Num, ReasonJObj}|KOs], Acc) ->
+    Error = knm_errors:error(ReasonJObj),
+    Acc1 = [{Num, {'error', Error}} | Acc],
+    format_assignment_kos(KOs, Acc1).
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
