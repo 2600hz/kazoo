@@ -871,13 +871,8 @@ merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
     end;
 %% Not yet at reseller, try parent account
 merge_ancestor_attachments(Context, Id, AccountId, ResellerId) ->
-    AccountContext = masquerade(Context, AccountId),
-    AccountContext1 = crossbar_doc:load(AccountId, AccountContext, ?TYPE_CHECK_OPTION(kz_account:type())),
-    AccountJObj = cb_context:doc(AccountContext1),
-    case kz_account:parent_account_id(AccountJObj) of
-        'undefined' ->
-            lager:error("where was the parent account for ~s?", [AccountId]),
-            Context;
+    case get_parent_account_id(AccountId) of
+        'undefined' -> Context;
         ParentAccountId ->
             lager:debug("trying attachments in account ~s", [ParentAccountId]),
             try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId)
