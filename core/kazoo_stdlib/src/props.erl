@@ -26,6 +26,7 @@
         ,set_values/2
         ,set_value/2, set_value/3
         ,insert_value/2, insert_value/3, insert_values/2
+        ,replace_value/3
         ,unique/1
         ,filter/2
         ,filter_empty/1
@@ -82,6 +83,11 @@ insert_value(K, V, Props) ->
 -spec insert_values(kz_proplist(), kz_proplist()) -> kz_proplist().
 insert_values(KVs, Props) ->
     lists:foldl(fun insert_value/2, Props, KVs).
+
+%% replaces value of Key with Value if Key exists; otherwise Props is unchanged
+-spec replace_value(any(), any(), kz_proplist()) -> kz_proplist().
+replace_value(Key, Value, Props) ->
+    lists:keyreplace(Key, 1, Props, {Key, Value}).
 
 -type filter_fun() :: fun((kz_proplist_property()) -> boolean()).
 -spec filter(filter_fun(), kz_proplist()) -> kz_proplist();

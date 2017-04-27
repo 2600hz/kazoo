@@ -9,7 +9,7 @@
 %% Helper macros for processing Erlang AST forms
 
 -define(AST_FUNCTION(Name, Arity, Clauses)
-       ,{'function', _, F, Arity, Clauses}
+       ,{'function', _, Name, Arity, Clauses}
        ).
 
 -define(AST_RECORD(Name, Fields)
@@ -19,6 +19,7 @@
 -define(CLAUSE(Args, Guards, Body)
        ,{'clause', _, Args, Guards, Body}
        ).
+
 -define(BEGIN_END(Exprs), {'block', _, Exprs}).
 
 -define(VAR(Line, Name), {'var', Line, Name}).

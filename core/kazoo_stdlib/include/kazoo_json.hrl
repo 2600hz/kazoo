@@ -30,7 +30,7 @@
 -type json_string() :: ne_binary().
 -type json_number() :: integer() | float().
 
--type object() :: ?JSON_WRAPPER(json_proplist()) | ?EMPTY_JSON_OBJECT.
+-type object() :: ?JSON_WRAPPER(json_proplist()).
 -type objects() :: [object()] | [].
 
 -type flat_proplist() :: [{keys(), flat_json_term()}] | [].

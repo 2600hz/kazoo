@@ -45,14 +45,17 @@ api_to_ref_doc({Module, Paths}) ->
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     BaseName = base_module_name(Module),
-    PathToSection = fun(K, Acc) -> api_path_to_section(Module, K, Acc) end,
+
+    PathToSection = fun(Path, Acc) -> api_path_to_section(Module, Path, Acc) end,
     Sections = lists:foldl(PathToSection, ref_doc_header(BaseName), Paths),
+
     Doc = lists:reverse(Sections),
     DocPath = ?REF_PATH(BaseName),
     'ok' = file:write_file(DocPath, Doc);
 api_to_ref_doc(_Module, _Paths, _Version) ->
     'ok'.
 
+-spec api_path_to_section(atom(), {atom(), http_methods()}, iolist()) -> iolist().
 api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     ModuleName = path_name(Module),
     F = fun(Path, Acc1) -> methods_to_section(ModuleName, Path, Acc1) end,
@@ -105,12 +108,14 @@ method_to_section(Method, Acc, APIPath) ->
      | Acc
     ].
 
+-spec method_as_action(ne_binary()) -> ne_binary().
 method_as_action(?HTTP_GET) -> <<"Fetch">>;
 method_as_action(?HTTP_PUT) -> <<"Create">>;
 method_as_action(?HTTP_POST) -> <<"Change">>;
 method_as_action(?HTTP_DELETE) -> <<"Remove">>;
 method_as_action(?HTTP_PATCH) -> <<"Patch">>.
 
+-spec ref_doc_header(ne_binary()) -> iolist().
 ref_doc_header(BaseName) ->
     CleanedUpName = kz_ast_util:smash_snake(BaseName),
     [[maybe_add_schema(BaseName)]
@@ -118,6 +123,7 @@ ref_doc_header(BaseName) ->
     ,["### ", CleanedUpName, "\n\n"]
     ].
 
+-spec maybe_add_schema(ne_binary()) -> iolist().
 maybe_add_schema(BaseName) ->
     case kz_ast_util:load_ref_schema(BaseName) of
         'undefined' -> [?SCHEMA_SECTION, "\n\n"];
@@ -144,6 +150,11 @@ schema_to_doc(Schema, Doc) ->
             io:format("file ~s appears to have a schema section already~n", [DocFile])
     end.
 
+-type ref_table() :: {ne_binary(), ref_tables()} | ne_binary().
+-type ref_tables() :: [ref_table()] | [].
+
+-spec ref_tables_to_doc(ref_tables()) -> iolist().
+-spec ref_tables_to_doc(ref_tables(), iolist()) -> iolist().
 ref_tables_to_doc([]) -> [];
 ref_tables_to_doc(Tables) ->
     ref_tables_to_doc(Tables, []).
@@ -152,6 +163,7 @@ ref_tables_to_doc([], Acc) -> lists:reverse(Acc);
 ref_tables_to_doc([Table | Tables], Acc) ->
     ref_tables_to_doc(Tables, [[ref_table_to_doc(Table)] | Acc]).
 
+-spec ref_table_to_doc(ref_table()) -> iodata().
 ref_table_to_doc({Schema, [SchemaTable | RefTables]}) ->
     [?SUB_SCHEMA_SECTION_HEADER, " ", Schema, "\n\n"
     ,SchemaTable, $\n
@@ -170,7 +182,7 @@ ref_table_to_doc(RefTable) ->
 
 -define(SWAGGER_EXTERNALDOCS
        ,kz_json:from_list([{<<"description">>, <<"Kazoo documentation's Git repository">>}
-                          ,{<<"url">>, <<"https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc">>}
+                          ,{<<"url">>, <<"https://docs.2600hz.com/dev">>}
                           ])
        ).
 
@@ -199,7 +211,12 @@ to_swagger_json() ->
 -spec to_swagger_definitions() -> kz_json:object().
 to_swagger_definitions() ->
     SchemasPath = kz_ast_util:schema_path(<<>>),
-    filelib:fold_files(SchemasPath, "\\.json\$", 'false', fun process_schema/2, kz_json:new()).
+    filelib:fold_files(kz_term:to_list(SchemasPath)
+                      ,"\\.json\$"
+                      ,'false'
+                      ,fun process_schema/2
+                      ,kz_json:new()
+                      ).
 
 -spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
 process_schema(Filename, Definitions) ->
@@ -219,34 +236,41 @@ process_schema(Filename, Definitions) ->
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
--define(SWAGGER_JSON,
-        filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
+-define(SWAGGER_JSON
+       ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
+       ).
 
+-spec read_swagger_json() -> kz_json:object().
 read_swagger_json() ->
     case file:read_file(?SWAGGER_JSON) of
         {'ok', Bin} -> kz_json:decode(Bin);
         {'error', 'enoent'} -> kz_json:new()
     end.
 
+-spec write_swagger_json(kz_json:object()) -> 'ok'.
 write_swagger_json(Swagger) ->
-    file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
+    'ok' = file:write_file(?SWAGGER_JSON, kz_json:encode(Swagger)).
 
+-spec to_swagger_paths(kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_paths(Paths, BasePaths) ->
     Endpoints =
-        [{[Path,Method], kz_json:get_value([Path,Method], BasePaths, kz_json:new())}
-         || {Path,AllowedMethods} <- kz_json:to_proplist(Paths),
+        [{[Path, Method], kz_json:get_value([Path, Method], BasePaths, kz_json:new())}
+         || {Path, AllowedMethods} <- kz_json:to_proplist(Paths),
             Method <- kz_json:get_list_value(<<"allowed_methods">>, AllowedMethods, [])
         ],
     kz_json:merge(kz_json:set_values(Endpoints, kz_json:new())
                  ,kz_json:foldl(fun to_swagger_path/3, kz_json:new(), Paths)
                  ).
 
+-spec to_swagger_path(kz_json:key(), kz_json:object(), kz_json:object()) -> kz_json:object().
 to_swagger_path(Path, PathMeta, Acc) ->
-    Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),
+    Methods = kz_json:get_list_value(<<"allowed_methods">>, PathMeta, []),
     SchemaParameter = swagger_params(PathMeta),
     F = fun(Method, Acc1) -> add_swagger_path(Method, Acc1, Path, SchemaParameter) end,
     lists:foldl(F, Acc, Methods).
 
+-spec add_swagger_path(ne_binary(), kz_json:object(), kz_json:key(), api_object()) ->
+                              kz_json:object().
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Parameters = make_parameters(Path, Method, SchemaParameter),
@@ -258,6 +282,7 @@ add_swagger_path(Method, Acc, Path, SchemaParameter) ->
            ]),
     kz_json:insert_values(Vs, Acc).
 
+-spec make_parameters(ne_binary(), ne_binary(), api_object()) -> ne_binaries().
 make_parameters(Path, Method, SchemaParameter) ->
     lists:usort(fun compare_parameters/2
                ,lists:flatten(
@@ -270,10 +295,12 @@ make_parameters(Path, Method, SchemaParameter) ->
                       not kz_term:is_empty(Parameter)
                   ])).
 
+-spec compare_parameters(kz_json:object(), kz_json:object()) -> boolean().
 compare_parameters(Param1, Param2) ->
     Keys = [<<"name">>, <<"$ref">>],
     kz_json:get_first_defined(Keys, Param1) >= kz_json:get_first_defined(Keys, Param2).
 
+-spec maybe_add_schema(any(), ne_binary(), kz_json:object()) -> api_object().
 maybe_add_schema(_Path, Method, Schema)
   when Method =:= <<"put">>;
        Method =:= <<"post">> ->
@@ -281,8 +308,9 @@ maybe_add_schema(_Path, Method, Schema)
 maybe_add_schema(_Path, _Method, _Parameters) ->
     'undefined'.
 
+-spec swagger_params(kz_json:object()) -> api_object().
 swagger_params(PathMeta) ->
-    case kz_json:get_value(<<"schema">>, PathMeta) of
+    case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
         Schema ->
             kz_json:from_list([{<<"name">>, Schema}
@@ -292,6 +320,7 @@ swagger_params(PathMeta) ->
                               ])
     end.
 
+-spec auth_token_param(ne_binary(), ne_binary()) -> api_object().
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
@@ -304,31 +333,38 @@ is_authtoken_required(<<"/"?ACCOUNTS_PREFIX"/", _/binary>>=Path) ->
     not is_api_c2c_connect(Path);
 is_authtoken_required(_Path) -> 'undefined'.
 
+-spec is_api_c2c_connect(ne_binary()) -> boolean().
 is_api_c2c_connect(<<"/"?ACCOUNTS_PREFIX"/clicktocall/", _/binary>>=Path) ->
     kz_binary:suffix(<<"/connect">>, Path);
 is_api_c2c_connect(_) -> 'false'.
 
+-spec path_params(ne_binary(), any()) -> kz_json:objects().
 path_params(Path, _Method) ->
     [path_param(Param) || <<"{",_/binary>> = Param <- split_url(Path)].
 
+-spec path_param(ne_binary()) -> kz_json:object().
 path_param(PathToken) ->
     Param = unbrace_param(PathToken),
     kz_json:from_list([{<<"$ref">>, <<"#/parameters/", Param/binary>>}]).
 
+-spec split_url(ne_binary()) -> ne_binaries().
 split_url(Path) ->
-    binary:split(Path, <<$/>>, [global]).
+    binary:split(Path, <<$/>>, ['global']).
 
+-spec format_as_path_centric(callback_configs()) -> kz_json:object().
+format_as_path_centric(Configs) ->
+    lists:foldl(fun format_pc_module/2, kz_json:new(), Configs).
 
-format_as_path_centric(Data) ->
-    lists:foldl(fun format_pc_module/2, kz_json:new(), Data).
-
-format_pc_module({Module, Config}, Acc) ->
+-spec format_pc_module(callback_config(), kz_json:object()) -> kz_json:object().
+format_pc_module({Module, CallbackConfig}, Acc) ->
     ModuleName = path_name(Module),
     F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, Module, ModuleName) end,
-    lists:foldl(F, Acc, Config);
+    lists:foldl(F, Acc, CallbackConfig);
 format_pc_module(_MC, Acc) ->
     Acc.
 
+-spec format_pc_config(path_with_methods(), kz_json:object(), module(), api_ne_binary()) ->
+                              kz_json:object().
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
     F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, Module, ModuleName, Callback) end,
@@ -336,7 +372,9 @@ format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
 
 format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
 format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
-    io:format("~s not supported ~s\n", [_ModuleName, _Path]),
+    io:format("module ~s supported path ~s~nm: ~p c: ~p~n"
+             ,[_ModuleName, _Path, _Module, _Callback]
+             ),
     Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
@@ -404,6 +442,7 @@ swagger_api_path(Path, ModuleName) ->
     API = kz_util:iolist_join($/, [ModuleName | format_path_tokens(Path)]),
     iolist_to_binary([$/, API]).
 
+-spec path_name(atom()) -> api_ne_binary().
 path_name(Module) ->
     case grep_cb_module(Module) of
         {'match', [<<"about">>=Name]} -> Name;
@@ -429,18 +468,19 @@ path_name(Module) ->
 
 %% API
 
--type config() :: [{callback(), [{path(), methods()}]}].
+-type callback_config() :: {callback(), [allowed_methods() | content_types_provided()]}.
+-type callback_configs() :: [callback_config()].
 -type callback() :: module().
--type path() :: ne_binary().
--type methods() :: ne_binaries().
--spec get() -> config().
+-spec get() -> callback_configs().
 get() ->
     Apps = ['crossbar', 'acdc'],
     lists:foldl(fun get_app/2, [], Apps).
 
+-spec get_app(module(), callback_configs()) -> callback_configs().
 get_app(App, Acc) ->
     process_application(App, Acc).
 
+-spec process_application(atom(), callback_configs()) -> callback_configs().
 process_application(App, Acc) ->
     EBinDir = code:lib_dir(App, 'ebin'),
     io:format("processing ~s modules: ", [App]),
@@ -448,6 +488,7 @@ process_application(App, Acc) ->
     io:format(" done~n"),
     Processed.
 
+-spec process_module(file:filename_all(), callback_configs()) -> callback_configs().
 process_module(File, Acc) ->
     {'ok', {Module, [{'exports', Fs}]}} = beam_lib:chunks(File, ['exports']),
     io:format("."),
@@ -457,10 +498,16 @@ process_module(File, Acc) ->
         Exports -> [Exports | Acc]
     end.
 
+-type fun_arity() :: {atom(), arity()}.
+-type fun_arities() :: [fun_arity()].
+
+-spec is_api_function(fun_arity()) -> boolean().
 is_api_function({'allowed_methods', _Arity}) -> 'true';
 %%is_api_function({'content_types_provided', _Arity}) -> 'true';
 is_api_function(_) ->  'false'.
 
+-spec process_exports(file:filename_all(), module(), fun_arities()) ->
+                             callback_config() | 'undefined' | [].
 process_exports(_File, 'api_resource', _) -> [];
 process_exports(_File, 'cb_context', _) -> [];
 process_exports(File, Module, Fs) ->
@@ -469,6 +516,7 @@ process_exports(File, Module, Fs) ->
         'true' -> process_api_module(File, Module)
     end.
 
+-spec process_api_module(file:filename_all(), module()) -> callback_config() | 'undefined'.
 process_api_module(File, Module) ->
     {'ok', {Module, [{'abstract_code', AST}]}} = beam_lib:chunks(File, ['abstract_code']),
     try process_api_ast(Module, AST)
@@ -480,18 +528,30 @@ process_api_module(File, Module) ->
             'undefined'
     end.
 
+-spec process_api_ast(module(), kz_ast_util:abstract_code()) ->
+                             {module(), [allowed_methods() | content_types_provided()]}.
 process_api_ast(Module, {'raw_abstract_v1', Attributes}) ->
     APIFunctions = [{F, A, Clauses}
-                    || {'function', _Line, F, A, Clauses} <- Attributes,
+                    || ?AST_FUNCTION(F, A, Clauses) <- Attributes,
                        is_api_function({F, A})
                    ],
     process_api_ast_functions(Module, APIFunctions).
 
+-type path_with_methods() :: {iodata(), http_methods()}.
+-type paths_with_methods() :: [path_with_methods()].
+-type allowed_methods() :: {'allowed_methods', paths_with_methods()}.
+-type content_types_provided() :: {'content_types_provided', paths_with_methods()}.
+
+-spec process_api_ast_functions(module(), [{atom(), arity(), [erl_parse:abstract_clause()]}]) ->
+                                       {module(), [allowed_methods() | content_types_provided()]}.
 process_api_ast_functions(Module, Functions) ->
     {Module
     ,[process_api_ast_function(Module, F, A, Cs) || {F, A, Cs} <- Functions]
     }.
 
+-spec process_api_ast_function(module(), atom(), arity(), [erl_parse:abstract_clause()]) ->
+                                      allowed_methods() |
+                                      content_types_provided().
 process_api_ast_function(_Module, 'allowed_methods', _Arity, Clauses) ->
     Methods = find_http_methods(Clauses),
     {'allowed_methods', Methods};
@@ -499,18 +559,23 @@ process_api_ast_function(_Module, 'content_types_provided', _Arity, Clauses) ->
     ContentTypes = find_http_methods(Clauses),
     {'content_types_provided', ContentTypes}.
 
+-spec find_http_methods([erl_parse:abstract_clause()]) -> paths_with_methods().
 find_http_methods(Clauses) ->
     lists:foldl(fun find_http_methods_from_clause/2, [], Clauses).
 
+-spec find_http_methods_from_clause(erl_parse:abstract_clause(), paths_with_methods()) ->
+                                           paths_with_methods().
 find_http_methods_from_clause(?CLAUSE(ArgsList, _Guards, ClauseBody), Methods) ->
     [{args_list_to_path(ArgsList), find_methods(ClauseBody)}
      | Methods
     ].
 
+-spec args_list_to_path([erl_parse:abstract_expr()]) -> iodata().
 args_list_to_path([]) -> <<"/">>;
 args_list_to_path(Args) ->
     lists:reverse(lists:foldl(fun arg_to_path/2, [], Args)).
 
+-spec arg_to_path(erl_parse:abstract_expr(), iodata()) -> iodata().
 arg_to_path(?BINARY_MATCH(Matches), Acc) ->
     [binary_match_to_path(Matches) | Acc];
 arg_to_path(?VAR('Context'), Acc) ->
@@ -520,8 +585,13 @@ arg_to_path(?VAR(Name), Acc) ->
 arg_to_path(?MATCH(?BINARY_MATCH(_), ?VAR(Name)), Acc) ->
     [kz_term:to_binary(Name) | Acc].
 
+-spec binary_match_to_path([?BINARY_STRING(atom()) | ?BINARY_VAR(atom())]) ->
+                                  ne_binary().
 binary_match_to_path(Matches) ->
     iolist_to_binary([binary_to_path(Match) || Match <- Matches]).
+
+-spec binary_to_path(?BINARY_STRING(Name) | ?BINARY_VAR(atom())) ->
+                            Name | iodata().
 binary_to_path(?BINARY_STRING(Name)) ->
     Name;
 binary_to_path(?BINARY_VAR(VarName)) ->
@@ -534,6 +604,7 @@ find_methods(ClauseBody, Acc) ->
 
 -define(CB_CONTEXT_CALL(Fun), ?MOD_FUN('cb_context', Fun)).
 
+-spec find_methods_in_clause(erl_parse:abstract_expr(), ne_binaries()) -> ne_binaries().
 find_methods_in_clause(?VAR('Context'), Acc) ->
     Acc;
 find_methods_in_clause(?VAR('Context1'), Acc) ->
@@ -552,6 +623,8 @@ find_methods_in_clause(?MOD_FUN_ARGS('cb_context'
                                     )
                       ,Acc) ->
     find_methods_in_clause(Args, Acc);
+find_methods_in_clause(?MOD_FUN_ARGS(_Mod, _Fun, _Args), Acc) ->
+    Acc;
 find_methods_in_clause(?LAGER, Acc) ->
     Acc;
 find_methods_in_clause(?FUN_ARGS('content_types_provided_for_fax', _Args), Acc) ->
@@ -586,6 +659,11 @@ find_methods_in_clause(?FUN_ARGS('content_types_provided_get', _Args), Acc) ->
     [kz_binary:join([Type, SubType], <<"/">>)
      || {Type, SubType} <- cb_port_requests:acceptable_content_types()
     ] ++ Acc;
+find_methods_in_clause(?FUN_ARGS('allowed_methods_on_account', _Args), Acc) ->
+    AccountMethods = cb_accounts:allowed_methods_on_account(<<"account">>, {'ok', <<"master">>}),
+    AccountMethods ++ Acc;
+find_methods_in_clause(?FUN_ARGS(_Fun, _Args), Acc) ->
+    Acc;
 find_methods_in_clause(?ATOM('ok'), Acc) ->
     Acc;
 find_methods_in_clause(?MATCH(_Left, _Right), Acc) ->
@@ -650,6 +728,8 @@ find_methods_in_clause(?CASE(_CaseConditional, CaseClauses), Acc0) ->
 -define(CONTENT_TYPE_BINS(Type, SubType), [?BINARY(Type), ?BINARY(SubType)]).
 -define(CONTENT_TYPE_VARS(Type, SubType), [?VAR(Type), ?VAR(SubType)]).
 
+-spec find_content_types_in_clause(erl_parse:abstract_expr(), ne_binaries()) ->
+                                          ne_binaries().
 find_content_types_in_clause(?EMPTY_LIST, Acc) -> Acc;
 find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_VARS(_Type, _SubType))
                                   ,Rest
@@ -663,6 +743,9 @@ find_content_types_in_clause(?LIST(?TUPLE(?CONTENT_TYPE_BINS(Type, SubType))
     CT = kz_binary:join([Type, SubType], <<"/">>),
     find_content_types_in_clause(Rest, [CT | Acc]).
 
+-spec grep_cb_module(atom() | ne_binary()) ->
+                            {'match', ne_binaries()} |
+                            'nomatch'.
 grep_cb_module(Module) when is_atom(Module) ->
     grep_cb_module(kz_term:to_binary(Module));
 grep_cb_module(?NE_BINARY=Module) ->
@@ -671,7 +754,7 @@ grep_cb_module(?NE_BINARY=Module) ->
           ,[{'capture', 'all_but_first', 'binary'}]
           ).
 
-
+-spec to_swagger_parameters(ne_binaries()) -> kz_json:object().
 to_swagger_parameters(Paths) ->
     Params = [Param || Path <- Paths,
                        Param = <<"{",_/binary>> <- split_url(Path)
@@ -684,16 +767,17 @@ to_swagger_parameters(Paths) ->
           || Param <- lists:usort(lists:flatten(Params))
          ]).
 
+-spec parameter_auth_token(boolean()) -> kz_json:object().
 parameter_auth_token(IsRequired) ->
-    kz_json:from_list(
-      [{<<"name">>, <<"X-Auth-Token">>}
-      ,{<<"in">>, <<"header">>}
-      ,{<<"type">>, <<"string">>}
-      ,{<<"minLength">>, 32}
-      ,{<<"required">>, IsRequired}
-      ,{<<"description">>, <<"request authentication token">>}
-      ]).
+    kz_json:from_list([{<<"name">>, <<"X-Auth-Token">>}
+                      ,{<<"in">>, <<"header">>}
+                      ,{<<"type">>, <<"string">>}
+                      ,{<<"minLength">>, 32}
+                      ,{<<"required">>, IsRequired}
+                      ,{<<"description">>, <<"request authentication token">>}
+                      ]).
 
+-spec generic_id_path_param(ne_binary()) -> kz_json:json_proplist().
 generic_id_path_param(Name) ->
     [{<<"minLength">>, 32}
     ,{<<"maxLength">>, 32}
@@ -701,6 +785,7 @@ generic_id_path_param(Name) ->
      | base_path_param(Name)
     ].
 
+-spec base_path_param(ne_binary()) -> kz_json:json_proplist().
 base_path_param(Param) ->
     [{<<"name">>, unbrace_param(Param)}
     ,{<<"in">>, <<"path">>}
@@ -708,6 +793,7 @@ base_path_param(Param) ->
     ,{<<"type">>, <<"string">>}
     ].
 
+-spec modb_id_path_param(ne_binary()) -> kz_json:json_proplist().
 modb_id_path_param(Param) ->
     %% Matches an MoDB id:
     [{<<"pattern">>, <<"^[0-9a-f-]+\$">>}
@@ -717,6 +803,7 @@ modb_id_path_param(Param) ->
     ].
 
 %% When param represents an account id (i.e. 32 bytes of hexa):
+-spec def_path_param(ne_binary()) -> kz_json:json_proplist().
 def_path_param(<<"{ACCOUNT_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{ADDRESS_ID}">>=P) -> generic_id_path_param(P);
 def_path_param(<<"{ALERT_ID}">>=P) -> generic_id_path_param(P);
@@ -788,7 +875,6 @@ def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
 
 %% For all the edge cases out there:
-
 def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
     [{<<"pattern">>, <<"^[0-9]+\$">>}
      | base_path_param(P)
@@ -843,7 +929,6 @@ def_path_param(<<"{UUID}">>=P) ->
     [{<<"pattern">>, <<"^[a-f0-9-]+\$">>}
      | base_path_param(P)
     ];
-
 def_path_param(_Param) ->
     io:format(standard_error, "No Swagger definition of path parameter '~s'.\n", [_Param]),
     halt(1).
