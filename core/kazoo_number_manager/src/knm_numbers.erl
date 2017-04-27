@@ -210,7 +210,7 @@ add_oks(Numbers, T=#{ok := OKs}) when is_list(Numbers) ->
     T#{ok => Numbers ++ OKs}.
 
 %% @public
--spec ko(num() | knm_number:knm_number() | nums(), ko(), t()) -> t().
+-spec ko(num() | knm_number:knm_number() | nums() | [knm_number:knm_number()], ko(), t()) -> t().
 ko(?NE_BINARY=Num, Reason, T) ->
     lager:debug("number ~s error: ~p", [Num, Reason]),
     KOs = maps:get(ko, T),
@@ -294,14 +294,16 @@ from_jobjs(JObjs) ->
 %%--------------------------------------------------------------------
 -spec create(ne_binaries(), knm_number_options:options()) -> ret().
 create(Nums, Options) ->
-    ?MATCH_ACCOUNT_RAW(AccountId) = knm_number_options:assign_to(Options), %%FIXME: can crash
-    T0 = do_get_pn(Nums
-                  ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
-                  ,knm_errors:to_json(not_reconcilable)
-                  ),
+    T0 = pipe(do_get_pn(Nums
+                       ,?OPTIONS_FOR_LOAD(Nums, props:delete(state, Options))
+                       ,knm_errors:to_json(not_reconcilable)
+                       )
+             ,[fun fail_if_assign_to_is_not_an_account_id/1
+              ]),
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
+            AccountId = knm_number_options:assign_to(Options),
             ToState = knm_number:state_for_create(AccountId, Options),
             lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
             NewOptions = [{'state', ToState} | Options],
@@ -415,18 +417,15 @@ delete(Nums, Options) ->
 %%--------------------------------------------------------------------
 -spec reconcile(ne_binaries(), knm_number_options:options()) -> ret().
 reconcile(Nums, Options0) ->
-    case knm_number_options:assign_to(Options0) =:= undefined of
-        true ->
-            Error = knm_errors:to_json(assign_failure, undefined, field_undefined),
-            ret(new(Options0, [], Nums, Error));
-        false ->
-            Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
-            {T0, NotFounds} = take_not_founds(do_get(Nums, Options)),
-            %% Ensures state to be IN_SERVICE
-            Ta = do_move_not_founds(NotFounds, Options),
-            Tb = do(fun (T) -> reconcile_number(T, Options) end, T0),
-            ret(merge_okkos(Ta, Tb))
-    end.
+    Options = [{'auth_by', ?KNM_DEFAULT_AUTH_BY} | Options0],
+    T0 = pipe(do_get(Nums, Options)
+             ,[fun fail_if_assign_to_is_not_an_account_id/1
+              ]),
+    {T1, NotFounds} = take_not_founds(T0),
+    %% Ensures state to be IN_SERVICE
+    Ta = do_move_not_founds(NotFounds, Options),
+    Tb = do(fun (T) -> reconcile_number(T, Options) end, T1),
+    ret(merge_okkos(Ta, Tb)).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -437,7 +436,7 @@ reconcile(Nums, Options0) ->
 -spec reserve(ne_binaries(), knm_number_options:options()) -> ret().
 reserve(Nums, Options) ->
     ret(pipe(do_get(Nums, Options)
-            ,[fun if_unassigned_then_needs_assign_to/1
+            ,[fun fail_if_assign_to_is_not_an_account_id/1
              ,fun to_reserved/1
              ])).
 
@@ -732,21 +731,19 @@ to_reserved(T) ->
          ,fun save_numbers/1
          ]).
 
--spec if_unassigned_then_needs_assign_to(t()) -> t().
-if_unassigned_then_needs_assign_to(T0=#{todo := Ns}) ->
-    F = fun (N, T) ->
-                PN = knm_number:phone_number(N),
-                case knm_phone_number:assigned_to(PN) =:= undefined
-                    andalso knm_phone_number:assign_to(PN) =:= undefined
-                of
-                    false -> ok(N, T);
-                    true ->
-                        {error,A,B,C} = (catch knm_errors:assign_failure(PN, assign_to)),
-                        Reason = knm_errors:to_json(A, B, C),
-                        ko(knm_phone_number:number(PN), Reason, T)
-                end
-        end,
-    lists:foldl(F, T0, Ns).
+-spec fail_if_assign_to_is_not_an_account_id(t()) -> t();
+                                            (t_pn()) -> t_pn().
+fail_if_assign_to_is_not_an_account_id(T=#{todo := NsOrPNs, options := Options}) ->
+    case knm_number_options:assign_to(Options) of
+        ?MATCH_ACCOUNT_RAW(_) -> ok(NsOrPNs, T);
+        _ ->
+            Reason = knm_errors:to_json(assign_failure, undefined, field_undefined),
+            NsOrNums = case knm_phone_number:is_phone_number(hd(NsOrPNs)) of
+                           false -> NsOrPNs;
+                           true -> [knm_phone_number:number(PN) || PN <- NsOrPNs]
+                       end,
+            ko(NsOrNums, Reason, T)
+    end.
 
 -spec try_release(t_pn()) -> t_pn().
 try_release(T) ->
