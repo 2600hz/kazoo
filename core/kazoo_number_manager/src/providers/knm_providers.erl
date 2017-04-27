@@ -29,27 +29,6 @@
 -define(E911_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
 
--define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
--define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
-
--define(LOCAL_FEATURE_OVERRIDE
-       ,kapps_config:get_is_true(?KNM_CONFIG_CAT, <<"local_feature_override">>, 'false')).
-
--define(FEATURES_ALLOWED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
-
--define(FEATURES_DENIED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
-
--define(SYSTEM_PROVIDERS,
-        kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
-
--define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
-
--define(FEATURES_ALLOWED_SYSTEM,
-        ?FEATURES_ALLOWED_SYSTEM(?ALL_KNM_FEATURES)).
-
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
 -record(feature_parameters, {is_local = false :: boolean()

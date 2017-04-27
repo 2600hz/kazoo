@@ -1059,7 +1059,7 @@ add_allowed_feature(PN=#knm_phone_number{features_allowed = Allowed}, Feature=?N
 remove_allowed_feature(PN=#knm_phone_number{features_allowed = Allowed}, Feature=?NE_BINARY) ->
     case lists:member(Feature, Allowed) of
         false -> PN;
-        true -> ?DIRTY(PN#knm_phone_number{features_allowed = Allowed -- [Feature]})
+        true -> ?DIRTY(PN#knm_phone_number{features_allowed = lists:delete(Feature, Allowed)})
     end.
 
 -spec add_denied_feature(knm_phone_number(), ne_binary()) -> knm_phone_number().
@@ -1073,7 +1073,7 @@ add_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?NE_B
 remove_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?NE_BINARY) ->
     case lists:member(Feature, Denied) of
         false -> PN;
-        true -> ?DIRTY(PN#knm_phone_number{features_denied = Denied -- [Feature]})
+        true -> ?DIRTY(PN#knm_phone_number{features_denied = lists:delete(Feature, Denied)})
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().
