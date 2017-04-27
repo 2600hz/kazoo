@@ -36,8 +36,10 @@ DEPS = amqp_client \
 	wsock \
 	zucchini
 
-BUILD_DEPS = parse_trans
+BUILD_DEPS = parse_trans erlscp
 IGNORE_DEPS = hamcrest
+
+dep_erlscp = git https://github.com/fenollp/erlscp kazoo
 
 ifeq ($(USER),travis)
     DEPS += coveralls
