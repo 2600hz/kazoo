@@ -33,7 +33,7 @@
         ,feature/2, set_feature/3
         ,features_allowed/1, features_denied/1
         ,state/1, set_state/2
-        ,reserve_history/1, add_reserve_history/2, unwind_reserve_history/1
+        ,reserve_history/1, add_reserve_history/2, push_reserve_history/1, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
         ,module_name/1, set_module_name/2
         ,carrier_data/1, set_carrier_data/2, update_carrier_data/2
@@ -1149,6 +1149,12 @@ add_reserve_history(?MATCH_ACCOUNT_RAW(AccountId)
                    ,PN=#knm_phone_number{reserve_history=ReserveHistory}
                    ) ->
     ?DIRTY(PN#knm_phone_number{reserve_history=[AccountId|ReserveHistory]}).
+
+-spec push_reserve_history(knm_numbers:collection()) -> knm_numbers:collection().
+push_reserve_history(T=#{todo := PNs, options := Options}) ->
+    AssignTo = knm_number_options:assign_to(Options),
+    NewPNs = [add_reserve_history(AssignTo, PN) || PN <- PNs],
+    knm_numbers:ok(NewPNs, T).
 
 -spec unwind_reserve_history(knm_phone_number()) -> knm_phone_number();
                             (knm_numbers:collection()) -> knm_numbers:collection().

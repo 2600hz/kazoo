@@ -300,20 +300,9 @@ is_auth_by_authorized(Number) ->
         'false' -> knm_errors:unauthorized()
     end.
 
--spec update_reserve_history(kn()) -> kn().
-update_reserve_history(T0=#{todo := Ns}) ->
-    F = fun (N, T) ->
-                case knm_number:attempt(fun update_reserve_history/1, [N]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
-                    {error, R} -> knm_numbers:ko(N, R, T)
-                end
-        end,
-    lists:foldl(F, T0, Ns);
-update_reserve_history(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AssignTo = knm_phone_number:assign_to(PhoneNumber),
-    PN = knm_phone_number:add_reserve_history(AssignTo, PhoneNumber),
-    knm_number:set_phone_number(Number, PN).
+-spec update_reserve_history(t()) -> t().
+update_reserve_history(T) ->
+    knm_numbers:do_in_wrap(fun knm_phone_number:push_reserve_history/1, T).
 
 -spec move_to_port_in_state(t()) -> t().
 move_to_port_in_state(T) ->
