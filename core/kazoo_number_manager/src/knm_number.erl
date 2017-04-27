@@ -220,6 +220,9 @@ ensure_can_create(Num, Options) ->
         kz_account:fetch(AccountId)).
 -endif.
 
+ensure_account_can_create(_, ?KNM_DEFAULT_AUTH_BY) ->
+    lager:info("bypassing auth"),
+    'true';
 ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     knm_number_options:ported_in(Options)
         orelse knm_number_options:state(Options) =:= ?NUMBER_STATE_PORT_IN
@@ -229,7 +232,8 @@ ensure_account_can_create(Options, ?MATCH_ACCOUNT_RAW(AccountId)) ->
                end
         orelse knm_phone_number:is_admin(AccountId)
         orelse knm_errors:unauthorized();
-ensure_account_can_create(_, _) ->
+ensure_account_can_create(_, _NotAnAccountId) ->
+    ?LOG_DEBUG("'~p' is not an account id", [_NotAnAccountId]),
     knm_errors:unauthorized().
 
 -spec ensure_number_is_not_porting(ne_binary(), knm_number_options:options()) -> 'true'.
