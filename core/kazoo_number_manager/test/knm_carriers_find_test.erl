@@ -19,7 +19,7 @@ info_test_() ->
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj2))
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj3))
     ,?_assertEqual(3, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj4))
-    ,?_assert(lists:member(?CARRIER_LOCAL, kz_json:get_value(<<"usable_modules">>, InfoJObj4)))
+    ,?_assert(lists:member(<<"local">>, kz_json:get_value(<<"usable_carriers">>, InfoJObj4)))
     ].
 
 is_number_billable_test_() ->
