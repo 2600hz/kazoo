@@ -186,9 +186,11 @@ to_in_service(Number, State) ->
     knm_errors:invalid_state_transition(Number, State, ?NUMBER_STATE_IN_SERVICE).
 
 -spec authorize(kn()) -> kn().
--spec authorize(kn(), api_binary()) -> kn().
-authorize(Number) ->
-    authorize(Number, knm_phone_number:auth_by(knm_number:phone_number(Number))).
+authorize(N) ->
+    case knm_phone_number:is_authorized(knm_number:phone_number(N)) of
+        true -> N;
+        false -> knm_errors:unauthorized()
+    end.
 
 -ifdef(TEST).
 -define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
@@ -200,16 +202,6 @@ authorize(Number) ->
        ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
        ).
 -endif.
-
-authorize(Number, ?KNM_DEFAULT_AUTH_BY) ->
-    lager:info("bypassing auth"),
-    Number;
-authorize(Number, AuthBy) ->
-    AssignTo = knm_phone_number:assign_to(knm_number:phone_number(Number)),
-    case ?ACCT_HIERARCHY(AuthBy, AssignTo, 'true') of
-        'false' -> knm_errors:unauthorized();
-        'true' -> Number
-    end.
 
 -spec in_service_from_reserved_authorize(kn()) -> kn().
 in_service_from_reserved_authorize(Number) ->
