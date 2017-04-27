@@ -572,7 +572,7 @@ remove_plaintext_password(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
--spec validate_number_ownership(ne_binaries(), ne_binaries(), cb_context:context()) ->
+-spec validate_number_ownership([{knm_numbers:num(), knm_numbers:ko()}], ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
 validate_number_ownership(Numbers, Context) ->
     Filtered = [knm_converters:normalize(Num)
