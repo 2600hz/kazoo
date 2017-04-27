@@ -126,7 +126,14 @@ create(Num, Options) ->
     case knm_converters:is_reconcilable(Num) of
         'false' -> {'error', knm_errors:to_json('not_reconcilable', Num)};
         'true' ->
-            attempt(fun create_or_load/2, [Num, Options])
+            attempt(fun do_create/2, [Num, Options])
+    end.
+
+-spec do_create(ne_binary(), knm_number_options:options()) -> dry_run_or_number_return().
+do_create(Num, Options) ->
+    case knm_number_options:assign_to(Options) of
+        ?MATCH_ACCOUNT_RAW(_) -> create_or_load(Num, Options);
+        _ -> knm_errors:assign_failure(Num, assign_to)
     end.
 
 -spec create_or_load(ne_binary(), knm_number_options:options()) ->
@@ -262,20 +269,18 @@ reserve(Num, Options) ->
 
 -spec do_reserve(knm_number()) -> knm_number_return().
 do_reserve(Number) ->
-    Routines = [fun if_unassigned_then_needs_assign_to/1
+    Routines = [fun fail_if_assign_to_is_not_an_account_id/1
                ,fun knm_number_states:to_reserved/1
                ,fun save_number/1
                ],
     apply_number_routines(Number, Routines).
 
--spec if_unassigned_then_needs_assign_to(knm_number()) -> knm_number().
-if_unassigned_then_needs_assign_to(N) ->
+-spec fail_if_assign_to_is_not_an_account_id(knm_number()) -> knm_number().
+fail_if_assign_to_is_not_an_account_id(N) ->
     PN = phone_number(N),
-    case knm_phone_number:assigned_to(PN) =:= undefined
-        andalso knm_phone_number:assign_to(PN) =:= undefined
-    of
-        false -> N;
-        true -> knm_errors:assign_failure(PN, assign_to)
+    case knm_phone_number:assign_to(PN) of
+        ?MATCH_ACCOUNT_RAW(_) -> N;
+        _ -> knm_errors:assign_failure(PN, assign_to)
     end.
 
 -spec save_number(knm_number()) -> knm_number().
