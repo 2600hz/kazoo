@@ -177,10 +177,8 @@ templates_source(TemplateId, AccountId, ResellerId) ->
         {'error', _E} -> 'undefined'
     end.
 
--spec templates_source_has_attachments(ne_binary()
-                                      ,ne_binary()
-                                      ,ne_binary()
-                                      ,kz_json:object()) -> api_binary().
+-spec templates_source_has_attachments(ne_binary(), ne_binary(), ne_binary(), kz_json:object()) ->
+                                              api_binary().
 templates_source_has_attachments(TemplateId, AccountId, ResellerId, Template) ->
     case kz_doc:attachments(Template) of
         'undefined' -> parent_templates_source(TemplateId, AccountId, ResellerId);
