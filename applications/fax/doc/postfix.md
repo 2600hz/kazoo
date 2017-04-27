@@ -63,8 +63,8 @@ policy-spf  unix  -       n       n       -       0       spawn
 ## Todo
 * use couchdb views to get kazoo faxboxes configuration into postfix
 * edit domains and permitteed users from kazoo
-* `postconf /etc/postfix/kz_smtp_domains`
-* `postconf /etc/postfix/kz_allowed_senders`
+* `postmap /etc/postfix/kz_smtp_domains`
+* `postmap /etc/postfix/kz_allowed_senders`
 * `postfix reload`
 * put into a bash script
 * add it to a cron table
