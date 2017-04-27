@@ -100,7 +100,8 @@
 -define(ADMIN_ONLY_FEATURES, [?FEATURE_RENAME_CARRIER
                              ]).
 
--define(ALL_KNM_FEATURES, ?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES).
+-define(ALL_KNM_FEATURES
+       ,lists:usort(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES)).
 
 %% Keys on number document's root reserved to update features
 -define(FEATURES_ROOT_KEYS, [?FEATURE_CNAM
