@@ -43,6 +43,7 @@
 
 -export([pipe/2]).
 -export([do/2]).
+-export([do_in_wrap/2]).
 -export([merge_okkos/2, merge_okkos/1]).
 -export([from_jobjs/1]).
 
@@ -573,6 +574,9 @@ do(F, T) ->
     NewT#{todo => []}.
 
 %% @private
+%% @doc
+%% Exported ONLY for knm_number_states use.
+%% @end
 -spec do_in_wrap(applier(t_pn()), t()) -> t().
 do_in_wrap(_, T=#{todo := [], ok := []}) -> T;
 do_in_wrap(F, T=#{todo := [], ok := OK}) ->
