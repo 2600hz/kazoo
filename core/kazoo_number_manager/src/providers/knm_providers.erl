@@ -19,6 +19,7 @@
         ]).
 -export([e911_caller_name/2]).
 -export([features_denied/1]).
+-export([system_allowed_features/0]).
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
@@ -28,6 +29,8 @@
 
 -define(E911_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
+
+-define(SYSTEM_PROVIDERS, kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
 
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 

@@ -47,6 +47,10 @@
         ,add_denied_feature_on_reseller_of/2
         ,remove_denied_feature_on_reseller_of/2
         ]).
+-export([feature_permissions_on_system_config/0]).
+-export([add_allowed_feature_on_system_config/1
+        ,remove_allowed_feature_on_system_config/1
+        ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
        ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
@@ -797,3 +801,33 @@ add_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(Account
 -spec remove_denied_feature_on_reseller_of(ne_binary(), ne_binary()) -> no_return.
 remove_denied_feature_on_reseller_of(?NE_BINARY=Feature, ?MATCH_ACCOUNT_RAW(AccountId)) ->
     edit_denied_feature_permissions_on_reseller_of(AccountId, fun lists:delete/2, Feature).
+
+%% @public
+-spec feature_permissions_on_system_config() -> no_return.
+feature_permissions_on_system_config() ->
+    Allowed = knm_providers:system_allowed_features(),
+    io:format("Features allowed on system config document:\n\t~s\n", [list_features(Allowed)]),
+    no_return.
+
+%% @private
+-spec edit_allowed_feature_permissions_on_system_config(fun(), ne_binary()) -> no_return.
+edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
+    case is_feature_valid(Feature) of
+        false -> invalid_feature(Feature);
+        true ->
+            Allowed = knm_providers:system_allowed_features(),
+            NewFeatures = lists:usort(Fun(Feature, Allowed)),
+            _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, NewFeatures),
+            feature_permissions_on_system_config()
+    end.
+
+%% @public
+-spec add_allowed_feature_on_system_config(ne_binary()) -> no_return.
+add_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
+    Cons = fun (AFeature, Features) -> [AFeature|Features] end,
+    edit_allowed_feature_permissions_on_system_config(Cons, Feature).
+
+%% @public
+-spec remove_allowed_feature_on_system_config(ne_binary()) -> no_return.
+remove_allowed_feature_on_system_config(?NE_BINARY=Feature) ->
+    edit_allowed_feature_permissions_on_system_config(fun lists:delete/2, Feature).
