@@ -143,6 +143,7 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
+    ?LOG_DEBUG("is admin? ~s", [Parameters#feature_parameters.is_admin]),
     Allowed = cleanse_features(list_allowed_features(Parameters)),
     Denied = cleanse_features(list_denied_features(Parameters)),
     Available = [Feature
@@ -332,7 +333,7 @@ provider_module(?FEATURE_PORT, _) ->
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
-    <<"knm_rename_carrier">>;
+    ?PROVIDER_RENAME_CARRIER;
 provider_module(Other, _) ->
     ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.
