@@ -614,7 +614,6 @@ apply_assignment_updates(Updates, Context) ->
     {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, Updates),
     PortAssignResults = assign_to_port_number(PRUpdates),
     AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
-    lager:debug("AssignResults ~p", [AssignResults]),
     PortAssignResults ++ AssignResults.
 
 %%--------------------------------------------------------------------
