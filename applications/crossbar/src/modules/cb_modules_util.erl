@@ -28,6 +28,7 @@
 
         ,remove_plaintext_password/1
 
+        ,validate_number_ownership/2
         ,apply_assignment_updates/1
         ,log_assignment_updates/1
         ]).
@@ -562,6 +563,40 @@ remove_plaintext_password(Context) ->
                              ,cb_context:doc(Context)
                              ),
     cb_context:set_doc(Context, Doc).
+
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
+                                       cb_context:context().
+-spec validate_number_ownership(ne_binaries(), ne_binaries(), cb_context:context()) ->
+                                       cb_context:context().
+validate_number_ownership(Numbers, Context) ->
+    Filtered = [knm_converters:normalize(Num)
+                || Num <- Numbers,
+                   knm_converters:is_reconcilable(Num)
+               ],
+    validate_number_ownership(Filtered, [], Context).
+
+validate_number_ownership([], [], Context) -> Context;
+validate_number_ownership([], Unauthorized, Context) ->
+    Prefix = <<"unauthorized to use ">>,
+    Numbers = kz_binary:join(Unauthorized, <<", ">>),
+    Message = <<Prefix/binary, Numbers/binary>>,
+    cb_context:add_system_error(403, 'forbidden', Message, Context);
+validate_number_ownership([Number|Numbers], Unauthorized, Context) ->
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
+    case knm_number:get(Number, Options) of
+        {'error', 'not_found'} ->
+            validate_number_ownership(Numbers, Unauthorized, Context);
+        {'error', _} ->
+            validate_number_ownership(Numbers, [Number | Unauthorized], Context);
+        _ ->
+            validate_number_ownership(Numbers, Unauthorized, Context)
+    end.
 
 -type assignment_update() :: {ne_binary(), knm_number:knm_number_return()} |
                              {ne_binary(), {'ok', kz_json:object()}} |

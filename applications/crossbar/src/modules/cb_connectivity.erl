@@ -199,7 +199,11 @@ get_numbers_fold(Server, Acc) ->
 -spec create(cb_context:context()) -> cb_context:context().
 create(Context) ->
     OnSuccess = fun(C) ->
-                        validate_number_ownership(on_successful_validation('undefined', C))
+                        C1 = on_successful_validation('undefined', C),
+
+                        Doc = cb_context:doc(C1),
+                        Nums = get_numbers(Doc),
+                        cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -223,7 +227,11 @@ read(Id, Context) ->
 -spec update(ne_binary(), cb_context:context()) -> cb_context:context().
 update(Id, Context) ->
     OnSuccess = fun(C) ->
-                        validate_number_ownership(on_successful_validation(Id, C))
+                        C1 = on_successful_validation(Id, C),
+
+                        Doc = cb_context:doc(C1),
+                        Nums = get_numbers(Doc),
+                        cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"connectivity">>, Context, OnSuccess).
 
@@ -249,69 +257,6 @@ on_successful_validation('undefined', Context) ->
     cb_context:set_doc(Context, kz_doc:set_type(cb_context:doc(Context), <<"sys_info">>));
 on_successful_validation(Id, Context) ->
     crossbar_doc:load_merge(Id, Context, ?TYPE_CHECK_OPTION(<<"sys_info">>)).
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--type assigned_tuple() :: {ne_binary(), ne_binaries()}.
--type assigned_tuples() :: [assigned_tuple()].
-
--spec validate_number_ownership(cb_context:context()) -> cb_context:context().
-validate_number_ownership(Context) ->
-    NewNums = get_numbers(cb_context:doc(Context)),
-
-    Assigned =  [knm_converters:normalize(Num)
-                 || Num <- NewNums,
-                    knm_converters:is_reconcilable(Num)
-                ],
-
-    AssignedTo = all_assigned_to_fold(Assigned, []),
-    validate_parent(AssignedTo, Context).
-
--spec all_assigned_to_fold(ne_binaries(), assigned_tuples()) ->
-                                  assigned_tuples().
-all_assigned_to_fold([], Acc) -> Acc;
-all_assigned_to_fold([Number|_]=Numbers, Acc) ->
-    Db = knm_converters:to_db(Number),
-    {SamePrefix, DiffPrefix} = lists:partition(fun(Number1) ->
-                                                       knm_converters:to_db(Number1) =:= Db
-                                               end
-                                              ,Numbers),
-    case kz_datamgr:get_results(Db, <<"numbers/assigned_to">>) of
-        {'ok', Results} ->
-            Acc1 = assigned_to_fold(SamePrefix, Results, Acc),
-            all_assigned_to_fold(DiffPrefix, Acc1);
-        _ -> Acc
-    end.
-
--spec assigned_to_fold(ne_binaries(), kz_json:objects(), assigned_tuples()) ->
-                              assigned_tuples().
-assigned_to_fold([], _, Acc) -> Acc;
-assigned_to_fold([Number|Numbers], ViewJObjs, Acc) ->
-    case kz_json:find_value(<<"id">>, Number, ViewJObjs) of
-        'undefined' -> assigned_to_fold(Numbers, ViewJObjs, Acc);
-        JObj ->
-            AssignedTo = hd(kz_json:get_value(<<"key">>, JObj)),
-            NumbersForAssignedTo = props:get_value(AssignedTo, Acc, []),
-            NumbersForAssignedTo1 = [Number | NumbersForAssignedTo],
-            Acc1 = props:set_value(AssignedTo, NumbersForAssignedTo1, Acc),
-            assigned_to_fold(Numbers, ViewJObjs, Acc1)
-    end.
-
--spec validate_parent(assigned_tuples(), cb_context:context()) ->
-                             cb_context:context().
-validate_parent([], Context) -> Context;
-validate_parent([{AssignedTo, Numbers}|AssignedTuples], Context) ->
-    AuthBy = cb_context:auth_account_id(Context),
-    case kz_util:is_in_account_hierarchy(AuthBy, AssignedTo, 'true') of
-        'true' -> validate_parent(AssignedTuples, Context);
-        'false' ->
-            Message = <<"unauthorized to add/modify ", (hd(Numbers))/binary>>,
-            cb_context:add_system_error(403, 'forbidden', Message, Context)
-    end.
 
 %%--------------------------------------------------------------------
 %% @private
