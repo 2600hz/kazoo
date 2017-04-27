@@ -150,7 +150,10 @@ authorize(Context) ->
 -spec maybe_deny_access(cb_context:context()) -> boolean().
 maybe_deny_access(Context) ->
     AuthDoc = cb_context:auth_doc(Context),
-    case kz_json:get_json_value(<<"restrictions">>, AuthDoc) of
+    case AuthDoc =:= 'undefined'
+        orelse kz_json:get_json_value(<<"restrictions">>, AuthDoc)
+    of
+        'true' -> 'false';
         'undefined' -> 'false';
         Restrictions ->
             maybe_deny_access(Context, Restrictions)
