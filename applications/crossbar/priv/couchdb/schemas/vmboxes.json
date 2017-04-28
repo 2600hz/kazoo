@@ -44,6 +44,16 @@
             "required": false,
             "type": "object"
         },
+        "media_extension": {
+            "default": "mp3",
+            "description": "Voicemail audio format",
+            "enum": [
+                "mp3",
+                "mp4",
+                "wav"
+            ],
+            "type": "string"
+        },
         "name": {
             "description": "A friendly name for the voicemail box",
             "maxLength": 128,

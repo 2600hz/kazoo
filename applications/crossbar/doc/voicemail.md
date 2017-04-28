@@ -25,6 +25,7 @@ Key | Description | Type | Default | Required
 `mailbox` | The voicemail box number | `string(1..30)` |   | `true`
 `media` | The media (prompt) parameters | `object` | `{}` | `false`
 `media.unavailable` | The ID of a media object that should be used as the unavailable greeting | `string(32)` |   | `false`
+`media_extension` | Voicemail audio format | `string('mp3', 'mp4', 'wav')` | `mp3` | `false`
 `name` | A friendly name for the voicemail box | `string(1..128)` |   | `true`
 `not_configurable` | Determines if the user can configure this voicemail. | `boolean` | `false` | `false`
 `notify` |   | `object` |   | `false`
