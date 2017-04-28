@@ -221,22 +221,9 @@ in_service_from_reserved_authorize(Number) ->
             Number
     end.
 
--spec in_service_from_in_service_authorize(kn()) -> kn();
-                                          (t()) -> t().
-in_service_from_in_service_authorize(T0=#{todo := Ns}) ->
-    F = fun (N, T) ->
-                case knm_number:attempt(fun in_service_from_in_service_authorize/1, [N]) of
-                    {ok, NewN} -> knm_numbers:ok(NewN, T);
-                    {error, R} -> knm_numbers:ko(N, R, T)
-                end
-        end,
-    lists:foldl(F, T0, Ns);
-in_service_from_in_service_authorize(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    case knm_phone_number:is_authorized(PhoneNumber) of
-        'true' -> Number;
-        'false' -> knm_errors:unauthorized()
-    end.
+-spec in_service_from_in_service_authorize(t()) -> t().
+in_service_from_in_service_authorize(T) ->
+    knm_numbers:do_in_wrap(fun knm_phone_number:is_authorized/1, T).
 
 -spec not_assigning_to_self(kn()) -> kn();
                            (t()) -> t().
