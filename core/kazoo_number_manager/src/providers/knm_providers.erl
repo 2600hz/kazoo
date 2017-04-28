@@ -19,14 +19,10 @@
         ]).
 -export([e911_caller_name/2]).
 -export([features_denied/1]).
+-export([system_allowed_features/0]).
 
 -define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
 -define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
-
--define(KEY_FEATURES_ALLOW, [<<"features">>, <<"allow">>]).
--define(KEY_FEATURES_DENY, [<<"features">>, <<"deny">>]).
-
--define(LOCAL_FEATURE_OVERRIDE, <<"local_feature_override">>).
 
 -define(CNAM_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
@@ -34,20 +30,7 @@
 -define(E911_PROVIDER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
 
--define(FEATURES_ALLOWED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW)).
-
--define(FEATURES_DENIED_RESELLER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
-
--define(SYSTEM_PROVIDERS,
-        kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
-
--define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
-
--define(FEATURES_ALLOWED_SYSTEM,
-        ?FEATURES_ALLOWED_SYSTEM(?KAZOO_NUMBER_FEATURES ++ ?EXTERNAL_NUMBER_FEATURES ++ ?ADMIN_ONLY_FEATURES)).
+-define(SYSTEM_PROVIDERS, kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
 
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
@@ -143,6 +126,7 @@ service_name(Feature) -> Feature.
 
 -spec list_available_features(feature_parameters()) -> ne_binaries().
 list_available_features(Parameters) ->
+    ?LOG_DEBUG("is admin? ~s", [Parameters#feature_parameters.is_admin]),
     Allowed = cleanse_features(list_allowed_features(Parameters)),
     Denied = cleanse_features(list_denied_features(Parameters)),
     Available = [Feature
@@ -241,7 +225,7 @@ reseller_denied_features(#feature_parameters{assigned_to = AccountId}=Parameters
 -spec local_denied_features(feature_parameters()) -> ne_binaries().
 local_denied_features(#feature_parameters{is_local = 'false'}) -> [];
 local_denied_features(#feature_parameters{is_local = 'true'}) ->
-    case kapps_config:get_is_true(?KNM_CONFIG_CAT, ?LOCAL_FEATURE_OVERRIDE, 'false') of
+    case ?LOCAL_FEATURE_OVERRIDE of
         'true' ->
             ?LOG_DEBUG("not denying external features on local number due to override"),
             [];
@@ -332,7 +316,7 @@ provider_module(?FEATURE_PORT, _) ->
 provider_module(?FEATURE_FAILOVER, _) ->
     <<"knm_failover">>;
 provider_module(?FEATURE_RENAME_CARRIER, _) ->
-    <<"knm_rename_carrier">>;
+    ?PROVIDER_RENAME_CARRIER;
 provider_module(Other, _) ->
     ?LOG_DEBUG("unmatched feature provider ~p, allowing", [Other]),
     Other.
