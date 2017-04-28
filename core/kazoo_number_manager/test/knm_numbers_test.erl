@@ -84,13 +84,36 @@ create_test_() ->
                    ,kz_json:get_value(<<"address_id">>, knm_phone_number:carrier_data(pn_x(1, Ret)))
                    )
      }
-    ,?_assertMatch(#{ko := #{?NOT_NUM := _
-                            ,?TEST_CREATE_NUM := _
-                            }
-                    ,ok := [_]
-                    }
-                  ,knm_numbers:create([Num, ?NOT_NUM, ?TEST_CREATE_NUM], Options)
-                  )
+    ].
+
+
+not_reconcilable() ->
+    kz_json:from_list(
+      [{<<"code">>, 500}
+      ,{<<"error">>, <<"unspecified_fault">>}
+      ,{<<"message">>, <<"not_reconcilable">>}
+      ]).
+
+
+create_new_test_() ->
+    Num = ?TEST_TELNYX_NUM,
+    Options = [{'auth_by', ?MASTER_ACCOUNT_ID}
+              ,{'assign_to', ?RESELLER_ACCOUNT_ID}
+              ,{<<"auth_by_account">>, kz_json:new()}
+              ],
+    Ret = knm_numbers:create([Num, ?NOT_NUM, ?TEST_CREATE_NUM], Options),
+    [?_assertEqual(#{?NOT_NUM => not_reconcilable()}, maps:get(ko, Ret))
+    ,?_assertMatch([_, _], maps:get(ok, Ret))
+    ,?_assertEqual(true, knm_number:is_number(n_x(1, Ret)))
+    ,?_assertEqual(true, knm_number:is_number(n_x(2, Ret)))
+    ,?_assertEqual(true, knm_phone_number:is_phone_number(pn_x(1, Ret)))
+    ,?_assertEqual(true, knm_phone_number:is_phone_number(pn_x(2, Ret)))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(1, Ret)))
+    ,?_assert(knm_phone_number:is_dirty(pn_x(2, Ret)))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(1, Ret)))
+    ,?_assertEqual(?RESELLER_ACCOUNT_ID, knm_phone_number:assigned_to(pn_x(2, Ret)))
+    ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(1, Ret)))
+    ,?_assertEqual(?NUMBER_STATE_RESERVED, knm_phone_number:state(pn_x(2, Ret)))
     ].
 
 

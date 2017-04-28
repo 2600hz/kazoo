@@ -140,9 +140,10 @@ fail_new_number_test_() ->
     ].
 
 create_new_available_number_test_() ->
-    Props = [{'auth_by', ?KNM_DEFAULT_AUTH_BY}
+    Props = [{'auth_by', ?MASTER_ACCOUNT_ID}
             ,{'assign_to', ?MASTER_ACCOUNT_ID}
             ,{'dry_run', 'false'}
+            ,{state, ?NUMBER_STATE_AVAILABLE}
             ,{<<"auth_by_account">>
              ,kz_account:set_allow_number_additions(?RESELLER_ACCOUNT_DOC, 'true')
              }
@@ -154,7 +155,7 @@ create_new_available_number_test_() ->
      ,?_assertEqual(undefined, knm_phone_number:assigned_to(PN))
      }
     ,{"Verify new phone number auth_by field was stored"
-     ,?_assertEqual(?KNM_DEFAULT_AUTH_BY, knm_phone_number:auth_by(PN))
+     ,?_assertEqual(?MASTER_ACCOUNT_ID, knm_phone_number:auth_by(PN))
      }
     ,{"Verify new phone number database is properly set"
      ,?_assertEqual(<<"numbers%2F%2B1555">>, knm_phone_number:number_db(PN))

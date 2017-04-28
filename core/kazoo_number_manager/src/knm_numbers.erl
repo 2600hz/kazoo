@@ -304,9 +304,8 @@ create(Nums, Options) ->
     case take_not_founds(T0) of
         {#{ok := []}, []} -> T0;
         {T1, NotFounds} ->
-            AccountId = knm_number_options:assign_to(Options),
-            ToState = knm_number:state_for_create(AccountId, Options),
-            lager:debug("picked state ~s for ~s for ~p", [ToState, AccountId, Nums]),
+            ToState = knm_number:state_for_create(Options),
+            lager:debug("picked state ~s for ~s for ~p", [ToState, knm_number_options:assign_to(Options), Nums]),
             NewOptions = [{'state', ToState} | Options],
             ret(pipe(maybe_create(NotFounds, options(NewOptions, T1))
                     ,[fun knm_number:new/1
