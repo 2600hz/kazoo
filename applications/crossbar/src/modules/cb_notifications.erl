@@ -48,6 +48,9 @@
 -define(NOTIFICATION_TIMEOUT
        ,kapps_config:get_integer(?MOD_CONFIG_CAT, <<"notification_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)
        ).
+-define(INHERIT_DEFAULT_VALUES
+       ,kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"inherit_default_values">>, 'false')
+       ).
 
 -define(PVT_TYPE_SMTPLOG, <<"notify_smtp_log">>).
 
@@ -1063,9 +1066,17 @@ maybe_update(Context, Id) ->
 
 -spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
 update_notification(Context, Id) ->
-    Context1 = set_required_field_defaults(Context, cb_context:doc(read(Context, Id))),
+    Context1 = maybe_set_required_field_defaults(Context, cb_context:doc(read(Context, Id))),
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"notifications">>, Context1, OnSuccess).
+
+-spec maybe_set_required_field_defaults(cb_context:context(), api_object()) ->
+                                               cb_context:context().
+maybe_set_required_field_defaults(Context, Doc) ->
+    case ?INHERIT_DEFAULT_VALUES of
+        'true' -> set_required_field_defaults(Context, Doc);
+        'false' -> Context
+    end.
 
 -spec set_required_field_defaults(cb_context:context(), api_object()) ->
                                          cb_context:context().
