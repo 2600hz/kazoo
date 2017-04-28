@@ -572,27 +572,27 @@ remove_plaintext_password(Context) ->
 %%--------------------------------------------------------------------
 -spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
                                        cb_context:context().
--spec validate_number_ownership([{knm_numbers:num(), knm_numbers:ko()}], ne_binaries(), cb_context:context()) ->
-                                       cb_context:context().
 validate_number_ownership(Numbers, Context) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}],
     #{ko := KOs} = knm_numbers:get(Numbers, Options),
-    validate_number_ownership(maps:to_list(KOs), [], Context).
+    case maps:fold(fun validate_number_ownership_fold/3, [], KOs) of
+        [] -> Context;
+        Unauthorized ->
+            Prefix = <<"unauthorized to use ">>,
+            Numbers = kz_binary:join(Unauthorized, <<", ">>),
+            Message = <<Prefix/binary, Numbers/binary>>,
+            cb_context:add_system_error(403, 'forbidden', Message, Context)
+    end.
 
-validate_number_ownership([], [], Context) -> Context;
-validate_number_ownership([], Unauthorized, Context) ->
-    Prefix = <<"unauthorized to use ">>,
-    Numbers = kz_binary:join(Unauthorized, <<", ">>),
-    Message = <<Prefix/binary, Numbers/binary>>,
-    cb_context:add_system_error(403, 'forbidden', Message, Context);
-validate_number_ownership([{_, Reason}|KOs], Unauthorized, Context) when is_atom(Reason) ->
+-spec validate_number_ownership_fold(knm_numbers:num(), knm_numbers:ko(), ne_binaries()) ->
+                                            ne_binaries().
+validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
     %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
-    validate_number_ownership(KOs, Unauthorized, Context);
-validate_number_ownership([{Number, ReasonJObj}|KOs], Unauthorized, Context) ->
+    Unauthorized;
+validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
     case knm_errors:error(ReasonJObj) of
-        <<"forbidden">> ->
-            validate_number_ownership(KOs, [Number|Unauthorized], Context);
-        _ -> validate_number_ownership(KOs, Unauthorized, Context)
+        <<"forbidden">> -> [Number|Unauthorized];
+        _ -> Unauthorized
     end.
 
 -type assignment_to_apply() :: {ne_binary(), api_binary()}.
@@ -636,10 +636,9 @@ split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->
 -spec assign_to_port_number(port_req_assignments()) ->
                                    assignment_updates().
 assign_to_port_number(PRUpdates) ->
-    lists:foldl(fun({Num, Assign, JObj}, Acc) ->
-                        [{Num, knm_port_request:assign_to_app(Num, Assign, JObj)}
-                         | Acc]
-                end, [], PRUpdates).
+    [{Num, knm_port_request:assign_to_app(Num, Assign, JObj)}
+     || {Num, Assign, JObj} <- PRUpdates
+    ].
 
 -spec maybe_assign_to_app(assignments_to_apply(), ne_binary()) ->
                                  assignment_updates().
@@ -666,29 +665,25 @@ group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
 -spec format_assignment_results(knm_numbers:ret()) -> assignment_updates().
 format_assignment_results(#{ok := OKs
                            ,ko := KOs}) ->
-    format_assignment_oks(OKs) ++ format_assignment_kos(maps:to_list(KOs)).
+    format_assignment_oks(OKs) ++ format_assignment_kos(KOs).
 
 -spec format_assignment_oks(knm_number:knm_numbers()) -> assignment_updates().
 format_assignment_oks(Numbers) ->
-    lists:foldl(fun(Number, Acc) ->
-                        PN = knm_number:phone_number(Number),
-                        [{knm_phone_number:number(PN), {'ok', Number}} | Acc]
-                end, [], Numbers).
+    [{knm_phone_number:number(knm_number:phone_number(Number)), {'ok', Number}}
+     || Number <- Numbers
+    ].
 
--spec format_assignment_kos([{knm_numbers:num(), knm_numbers:ko()}]) -> assignment_updates().
--spec format_assignment_kos([{knm_numbers:num(), knm_numbers:ko()}], assignment_updates()) ->
-                                   assignment_updates().
+-spec format_assignment_kos(knm_numbers:kos()) -> assignment_updates().
 format_assignment_kos(KOs) ->
-    format_assignment_kos(KOs, []).
+    maps:fold(fun format_assignment_kos_fold/3, [], KOs).
 
-format_assignment_kos([], Acc) -> Acc;
-format_assignment_kos([{Num, Reason}|KOs], Acc) when is_atom(Reason) ->
-    Acc1 = [{Num, {'error', Reason}} | Acc],
-    format_assignment_kos(KOs, Acc1);
-format_assignment_kos([{Num, ReasonJObj}|KOs], Acc) ->
+-spec format_assignment_kos_fold(knm_numbers:num(), knm_numbers:ko(), assignment_updates()) ->
+                                        assignment_updates().
+format_assignment_kos_fold(Number, Reason, Updates) when is_atom(Reason) ->
+    [{Number, {'error', Reason}} | Updates];
+format_assignment_kos_fold(Number, ReasonJObj, Updates) ->
     Error = knm_errors:error(ReasonJObj),
-    Acc1 = [{Num, {'error', Error}} | Acc],
-    format_assignment_kos(KOs, Acc1).
+    [{Number, {'error', Error}} | Updates].
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
