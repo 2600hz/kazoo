@@ -18,6 +18,9 @@
         ,reset_account/1
         ,reset_subscription/1, reset_subscription/2
         ,reset_subscriber/1, reset_subscriber/2
+        ,reset_realm/1
+        ,reset_server/1
+        ,reset_cluster/0
         ]).
 
 -spec count_current_subscriptions() -> 'no_return'.
@@ -138,9 +141,13 @@ reset_subscriber(User, Realm) ->
 -spec reset_account(ne_binary()) -> any().
 reset_account(AccountId) ->
     case kz_account:fetch(AccountId) of
-        {'ok', JObj} -> reset_subscription(<<"*">>, kz_account:realm(JObj));
+        {'ok', JObj} -> reset_realm(kz_account:realm(JObj));
         {'error', _} = Error -> Error
     end.
+
+-spec reset_realm(ne_binary()) -> any().
+reset_realm(Realm) ->
+    reset_subscription(<<"*">>, Realm).
 
 -spec reset_zone() -> any().
 reset_zone() ->
@@ -149,3 +156,11 @@ reset_zone() ->
 -spec reset_zone(ne_binary()) -> any().
 reset_zone(Zone) ->
     reset_subscription(Zone, <<"*">>).
+
+-spec reset_server(ne_binary()) -> any().
+reset_server(Server) ->
+    reset_subscription(Server, <<"*">>).
+
+-spec reset_cluster() -> any().
+reset_cluster() ->
+    reset_subscription(<<"*">>, <<"*">>).
