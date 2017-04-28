@@ -45,8 +45,23 @@
 
 -spec from_map(map()) -> doc().
 from_map(Map) ->
-    Rate = kz_json:from_map(Map),
-    set_type(Rate).
+    Rate = kz_doc:public_fields(kz_json:from_map(Map)),
+    ensure_id(set_type(Rate)).
+
+-spec ensure_id(doc()) -> doc().
+ensure_id(Rate) ->
+    case kz_doc:id(Rate) of
+        'undefined' -> set_rate_id(Rate);
+        _Id -> Rate
+    end.
+
+-spec set_rate_id(doc()) -> doc().
+set_rate_id(Rate) ->
+    ID = list_to_binary([iso_country_code(Rate, <<"XX">>)
+                        ,<<"-">>
+                        ,prefix(Rate)
+                        ]),
+    kz_doc:set_id(Rate, ID).
 
 -spec minimum(doc()) -> integer().
 -spec minimum(doc(), integer()) -> integer().
