@@ -32,6 +32,8 @@
         ,features/1, features_list/1, set_features/2, reset_features/1
         ,feature/2, set_feature/3
         ,features_allowed/1, features_denied/1
+        ,add_allowed_feature/2, remove_allowed_feature/2, add_denied_feature/2, remove_denied_feature/2
+        ,remove_denied_features/1
         ,state/1, set_state/2
         ,reserve_history/1, add_reserve_history/2, push_reserve_history/1, unwind_reserve_history/1
         ,ported_in/1, set_ported_in/2
@@ -47,7 +49,6 @@
         ,doc/1, update_doc/2, reset_doc/2, reset_doc/1
         ,modified/1, set_modified/2
         ,created/1, set_created/2
-        ,remove_denied_features/1
         ]).
 
 -export([list_attachments/2]).
@@ -1045,6 +1046,34 @@ set_features_denied(PN, Features) ->
     case lists:usort(PN#knm_phone_number.features_denied) =:= lists:usort(Features) of
         true -> PN;
         false -> ?DIRTY(PN#knm_phone_number{features_denied = Features})
+    end.
+
+-spec add_allowed_feature(knm_phone_number(), ne_binary()) -> knm_phone_number().
+add_allowed_feature(PN=#knm_phone_number{features_allowed = Allowed}, Feature=?NE_BINARY) ->
+    case lists:member(Feature, Allowed) of
+        true -> PN;
+        false -> ?DIRTY(PN#knm_phone_number{features_allowed = [Feature|Allowed]})
+    end.
+
+-spec remove_allowed_feature(knm_phone_number(), ne_binary()) -> knm_phone_number().
+remove_allowed_feature(PN=#knm_phone_number{features_allowed = Allowed}, Feature=?NE_BINARY) ->
+    case lists:member(Feature, Allowed) of
+        false -> PN;
+        true -> ?DIRTY(PN#knm_phone_number{features_allowed = lists:delete(Feature, Allowed)})
+    end.
+
+-spec add_denied_feature(knm_phone_number(), ne_binary()) -> knm_phone_number().
+add_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?NE_BINARY) ->
+    case lists:member(Feature, Denied) of
+        true -> PN;
+        false -> ?DIRTY(PN#knm_phone_number{features_denied = [Feature|Denied]})
+    end.
+
+-spec remove_denied_feature(knm_phone_number(), ne_binary()) -> knm_phone_number().
+remove_denied_feature(PN=#knm_phone_number{features_denied = Denied}, Feature=?NE_BINARY) ->
+    case lists:member(Feature, Denied) of
+        false -> PN;
+        true -> ?DIRTY(PN#knm_phone_number{features_denied = lists:delete(Feature, Denied)})
     end.
 
 -spec features_allowed(knm_phone_number()) -> ne_binaries().

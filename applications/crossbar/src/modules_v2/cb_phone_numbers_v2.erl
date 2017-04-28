@@ -67,7 +67,6 @@
 -define(CHECK, <<"check">>).
 -define(COUNTRY, <<"country">>).
 -define(KNM_CONFIG_CAT, <<"number_manager">>).
--define(QS_MODULE_NAME, <<"module_name">>).
 
 -define(UNAUTHORIZED_NUMBERS_LOOKUP(ResellerId)
        ,kapps_account_config:get_global(ReqResellerId
@@ -393,7 +392,6 @@ put(Context, Number) ->
               ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
-               | maybe_set_module_name(Context)
               ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
@@ -426,7 +424,6 @@ put(Context, Number, ?PORT) ->
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:doc(Context)}
               ,{'state', ?NUMBER_STATE_PORT_IN}
-               | maybe_set_module_name(Context)
               ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> put(cb_context:set_accepting_charges(Context), Number, ?PORT) end,
@@ -1025,7 +1022,6 @@ numbers_action(Context, ?HTTP_PUT, Numbers) ->
               ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
               ,{'public_fields', cb_context:req_data(Context)}
-               | maybe_set_module_name(Context)
               ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
@@ -1052,14 +1048,6 @@ pick_release_or_delete(Context, Options) ->
            end,
     lager:debug("picked ~s", [Pick]),
     Pick.
-
-%% @private
--spec maybe_set_module_name(cb_context:context()) -> knm_number_options:options().
-maybe_set_module_name(Context) ->
-    case kz_json:get_ne_binary_value(?QS_MODULE_NAME, cb_context:query_string(Context)) of
-        ModuleName=?NE_BINARY -> [{module_name, ModuleName}];
-        _ -> []
-    end.
 
 %%--------------------------------------------------------------------
 %% @private

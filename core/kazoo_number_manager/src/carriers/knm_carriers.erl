@@ -188,7 +188,7 @@ info(AccountId, ResellerId) ->
             },
     Map = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
     kz_json:from_map(
-      Map#{?CARRIER_INFO_USABLE_MODULES => usable_modules()
+      Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
           }
      ).
 
@@ -205,10 +205,11 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
             Info
     end.
 
-usable_modules() ->
-    all_modules() -- [?CARRIER_RESERVED
-                     ,?CARRIER_RESERVED_RESELLER
-                     ].
+usable_carriers() ->
+    Modules = all_modules() -- [?CARRIER_RESERVED
+                               ,?CARRIER_RESERVED_RESELLER
+                               ],
+    [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
 
 %%--------------------------------------------------------------------
 %% @public
