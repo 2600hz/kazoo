@@ -1063,8 +1063,39 @@ maybe_update(Context, Id) ->
 
 -spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
 update_notification(Context, Id) ->
+    Context1 = set_required_field_defaults(Context, cb_context:doc(read(Context, Id))),
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
-    cb_context:validate_request_data(<<"notifications">>, Context, OnSuccess).
+    cb_context:validate_request_data(<<"notifications">>, Context1, OnSuccess).
+
+-spec set_required_field_defaults(cb_context:context(), api_object()) ->
+                                         cb_context:context().
+set_required_field_defaults(Context, 'undefined') -> Context;
+set_required_field_defaults(Context, InheritedDefaultsDoc) ->
+    Fields = [<<"subject">>
+             ,<<"to">>
+             ],
+    ReqData = set_required_field_defaults_fold(Fields
+                                              ,cb_context:req_data(Context)
+                                              ,InheritedDefaultsDoc),
+    cb_context:set_req_data(Context, ReqData).
+
+-spec set_required_field_defaults_fold(kz_json:keys(), kz_json:object(), kz_json:object()) ->
+                                              kz_json:object().
+set_required_field_defaults_fold([], ReqData, _) -> ReqData;
+set_required_field_defaults_fold([Field|Fields], ReqData, DefaultsDoc) ->
+    case kz_json:get_value(Field, ReqData) of
+        'undefined' ->
+            Default = kz_json:get_value(Field, DefaultsDoc),
+            ReqData1 = set_required_field_default(Field, Default, ReqData),
+            set_required_field_defaults_fold(Fields, ReqData1, DefaultsDoc);
+        _ -> set_required_field_defaults_fold(Fields, ReqData, DefaultsDoc)
+    end.
+
+-spec set_required_field_default(kz_json:keys(), kz_json:api_json_term(), kz_json:object()) ->
+                                        kz_json:object().
+set_required_field_default(_, 'undefined', JObj) -> JObj;
+set_required_field_default(Key, Value, JObj) ->
+    kz_json:set_value(Key, Value, JObj).
 
 -spec update_template(cb_context:context(), path_token(), kz_json:object()) ->
                              cb_context:context().
