@@ -198,21 +198,28 @@ db_url(#server{}=Conn, DbName) ->
 %% @end
 %%------------------------------------------------------------------------------
 -spec get_db(kz_data:connection(), ne_binary()) -> db().
-get_db(#server{}=Conn, <<"_dbs">> = DbName) ->
-    AdminServer = maybe_use_admin_conn(Conn),
-    {'ok', Db} = couchbeam:open_db(AdminServer, DbName),
-    Db;
-get_db(#server{}=Conn, <<"_users">> = DbName) ->
-    AdminServer = maybe_use_admin_conn(Conn),
-    {'ok', Db} = couchbeam:open_db(AdminServer, DbName),
-    Db;
-get_db(#server{}=Conn, <<"_nodes">> = DbName) ->
-    AdminServer = maybe_use_admin_conn(Conn),
-    {'ok', Db} = couchbeam:open_db(AdminServer, DbName),
-    Db;
-get_db(#server{}=Conn, DbName) ->
-    {'ok', Db} = couchbeam:open_db(Conn, DbName),
+-spec get_db(kz_data:connection(), ne_binary(), couch_version()) -> db().
+get_db(#server{options=Options}=Conn, DbName) ->
+    get_db(Conn, DbName, props:get_value('driver_version', Options)).
+get_db(Conn, DbName, Driver) ->
+    ConnToUse =
+        case is_admin_db(DbName, Driver) of
+            'true' -> maybe_use_admin_conn(Conn);
+            'false' -> Conn
+        end,
+    {'ok', Db} = couchbeam:open_db(ConnToUse, DbName),
     Db.
+
+-spec is_admin_db(ne_binary(), couch_version()) -> boolean().
+is_admin_db(<<"_dbs">>, 'couchdb_2') -> 'true';
+is_admin_db(<<"_users">>, 'couchdb_2') -> 'true';
+is_admin_db(<<"_nodes">>, 'couchdb_2') -> 'true';
+is_admin_db(<<"_dbs">>, 'couchdb_1_6') -> 'true';
+is_admin_db(<<"_users">>, 'couchdb_1_6') -> 'true';
+is_admin_db(<<"_nodes">>, 'couchdb_1_6') -> 'true';
+is_admin_db(<<"dbs">>, 'bigcouch') -> 'true';
+is_admin_db(<<"users">>, 'bigcouch') -> 'true';
+is_admin_db(_Db, _Driver) -> 'false'.
 
 -spec maybe_use_admin_conn(kz_data:connection()) -> kz_data:connection().
 maybe_use_admin_conn(#server{options=Options}=Conn) ->
