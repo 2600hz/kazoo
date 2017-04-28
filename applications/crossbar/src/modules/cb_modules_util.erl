@@ -579,8 +579,8 @@ validate_number_ownership(Numbers, Context) ->
         [] -> Context;
         Unauthorized ->
             Prefix = <<"unauthorized to use ">>,
-            Numbers = kz_binary:join(Unauthorized, <<", ">>),
-            Message = <<Prefix/binary, Numbers/binary>>,
+            NumbersStr = kz_binary:join(Unauthorized, <<", ">>),
+            Message = <<Prefix/binary, NumbersStr/binary>>,
             cb_context:add_system_error(403, 'forbidden', Message, Context)
     end.
 
