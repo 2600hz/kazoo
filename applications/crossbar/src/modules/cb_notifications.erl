@@ -1081,7 +1081,7 @@ maybe_inherit_defaults(Context, Doc) ->
 -spec inherit_defaults(cb_context:context(), api_object()) -> cb_context:context().
 inherit_defaults(Context, 'undefined') -> Context;
 inherit_defaults(Context, InheritedDefaultsDoc) ->
-    Fields = kz_json:get_public_keys(InheritedDefaultsDoc),
+    Fields = kz_doc:get_public_keys(InheritedDefaultsDoc),
     ReqData = inherit_defaults_fold(Fields
                                    ,cb_context:req_data(Context)
                                    ,InheritedDefaultsDoc),
