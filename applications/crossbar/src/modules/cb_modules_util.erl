@@ -683,8 +683,7 @@ format_assignment_kos(KOs) ->
 format_assignment_kos_fold(Number, Reason, Updates) when is_atom(Reason) ->
     [{Number, {'error', Reason}} | Updates];
 format_assignment_kos_fold(Number, ReasonJObj, Updates) ->
-    Error = knm_errors:error(ReasonJObj),
-    [{Number, {'error', Error}} | Updates].
+    [{Number, {'error', ReasonJObj}} | Updates].
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
