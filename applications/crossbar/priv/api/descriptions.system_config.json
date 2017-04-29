@@ -169,6 +169,7 @@
     "crossbar.maximum_range": "crossbar maximum range",
     "crossbar.media.normalization_format": "crossbar.media normalization format",
     "crossbar.media.normalize_media": "crossbar.media normalize media",
+    "crossbar.notifications.inherit_default_values": "crossbar.notifications use parent notifications doc as default values, to be overridden by request data (prior to validation)",
     "crossbar.notifications.notification_timeout_ms": "crossbar.notifications notification timeout in milliseconds",
     "crossbar.onboard.default_callflow_start_exten": "crossbar.onboard default callflow start exten",
     "crossbar.onboard.default_extension_callflow": "crossbar.onboard default extension callflow",
