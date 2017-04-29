@@ -3,6 +3,11 @@
     "_id": "system_config.crossbar.notifications",
     "description": "Schema for crossbar.notifications system_config",
     "properties": {
+        "inherit_default_values": {
+            "default": false,
+            "description": "crossbar.notifications use parent notifications doc as default values, to be overridden by request data (prior to validation)",
+            "type": "boolean"
+        },
         "notification_timeout_ms": {
             "default": 5000,
             "description": "crossbar.notifications notification timeout in milliseconds",
