@@ -1066,46 +1066,43 @@ maybe_update(Context, Id) ->
 
 -spec update_notification(cb_context:context(), ne_binary()) -> cb_context:context().
 update_notification(Context, Id) ->
-    Context1 = maybe_set_required_field_defaults(Context, cb_context:doc(read(Context, Id))),
+    Context1 = maybe_inherit_defaults(Context, cb_context:doc(read(Context, Id))),
     OnSuccess = fun(C) -> on_successful_validation(Id, C) end,
     cb_context:validate_request_data(<<"notifications">>, Context1, OnSuccess).
 
--spec maybe_set_required_field_defaults(cb_context:context(), api_object()) ->
-                                               cb_context:context().
-maybe_set_required_field_defaults(Context, Doc) ->
+-spec maybe_inherit_defaults(cb_context:context(), api_object()) ->
+                                    cb_context:context().
+maybe_inherit_defaults(Context, Doc) ->
     case ?INHERIT_DEFAULT_VALUES of
-        'true' -> set_required_field_defaults(Context, Doc);
+        'true' -> inherit_defaults(Context, Doc);
         'false' -> Context
     end.
 
--spec set_required_field_defaults(cb_context:context(), api_object()) ->
-                                         cb_context:context().
-set_required_field_defaults(Context, 'undefined') -> Context;
-set_required_field_defaults(Context, InheritedDefaultsDoc) ->
-    Fields = [<<"subject">>
-             ,<<"to">>
-             ],
-    ReqData = set_required_field_defaults_fold(Fields
-                                              ,cb_context:req_data(Context)
-                                              ,InheritedDefaultsDoc),
+-spec inherit_defaults(cb_context:context(), api_object()) -> cb_context:context().
+inherit_defaults(Context, 'undefined') -> Context;
+inherit_defaults(Context, InheritedDefaultsDoc) ->
+    Fields = kz_json:get_public_keys(InheritedDefaultsDoc),
+    ReqData = inherit_defaults_fold(Fields
+                                   ,cb_context:req_data(Context)
+                                   ,InheritedDefaultsDoc),
     cb_context:set_req_data(Context, ReqData).
 
--spec set_required_field_defaults_fold(kz_json:keys(), kz_json:object(), kz_json:object()) ->
-                                              kz_json:object().
-set_required_field_defaults_fold([], ReqData, _) -> ReqData;
-set_required_field_defaults_fold([Field|Fields], ReqData, DefaultsDoc) ->
+-spec inherit_defaults_fold(kz_json:keys(), kz_json:object(), kz_json:object()) ->
+                                   kz_json:object().
+inherit_defaults_fold([], ReqData, _) -> ReqData;
+inherit_defaults_fold([Field|Fields], ReqData, DefaultsDoc) ->
     case kz_json:get_value(Field, ReqData) of
         'undefined' ->
             Default = kz_json:get_value(Field, DefaultsDoc),
-            ReqData1 = set_required_field_default(Field, Default, ReqData),
-            set_required_field_defaults_fold(Fields, ReqData1, DefaultsDoc);
-        _ -> set_required_field_defaults_fold(Fields, ReqData, DefaultsDoc)
+            ReqData1 = inherit_default(Field, Default, ReqData),
+            inherit_defaults_fold(Fields, ReqData1, DefaultsDoc);
+        _ -> inherit_defaults_fold(Fields, ReqData, DefaultsDoc)
     end.
 
--spec set_required_field_default(kz_json:keys(), kz_json:api_json_term(), kz_json:object()) ->
-                                        kz_json:object().
-set_required_field_default(_, 'undefined', JObj) -> JObj;
-set_required_field_default(Key, Value, JObj) ->
+-spec inherit_default(kz_json:keys(), kz_json:api_json_term(), kz_json:object()) ->
+                             kz_json:object().
+inherit_default(_, 'undefined', JObj) -> JObj;
+inherit_default(Key, Value, JObj) ->
     kz_json:set_value(Key, Value, JObj).
 
 -spec update_template(cb_context:context(), path_token(), kz_json:object()) ->
