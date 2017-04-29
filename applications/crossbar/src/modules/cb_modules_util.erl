@@ -669,8 +669,9 @@ format_assignment_results(#{ok := OKs
 
 -spec format_assignment_oks(knm_number:knm_numbers()) -> assignment_updates().
 format_assignment_oks(Numbers) ->
-    [{knm_phone_number:number(knm_number:phone_number(Number)), {'ok', Number}}
-     || Number <- Numbers
+    [{knm_phone_number:number(PN), {'ok', Number}}
+     || Number <- Numbers,
+        PN <- [knm_number:phone_number(Number)]
     ].
 
 -spec format_assignment_kos(knm_numbers:kos()) -> assignment_updates().
