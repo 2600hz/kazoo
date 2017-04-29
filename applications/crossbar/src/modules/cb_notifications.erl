@@ -1081,29 +1081,9 @@ maybe_inherit_defaults(Context, Doc) ->
 -spec inherit_defaults(cb_context:context(), api_object()) -> cb_context:context().
 inherit_defaults(Context, 'undefined') -> Context;
 inherit_defaults(Context, InheritedDefaultsDoc) ->
-    Fields = kz_doc:get_public_keys(InheritedDefaultsDoc),
-    ReqData = inherit_defaults_fold(Fields
-                                   ,cb_context:req_data(Context)
-                                   ,InheritedDefaultsDoc),
+    PublicDefaults = kz_doc:public_fields(InheritedDefaultsDoc),
+    ReqData = kz_json:merge(PublicDefaults, cb_context:req_data(Context)),
     cb_context:set_req_data(Context, ReqData).
-
--spec inherit_defaults_fold(kz_json:keys(), kz_json:object(), kz_json:object()) ->
-                                   kz_json:object().
-inherit_defaults_fold([], ReqData, _) -> ReqData;
-inherit_defaults_fold([Field|Fields], ReqData, DefaultsDoc) ->
-    case kz_json:get_value(Field, ReqData) of
-        'undefined' ->
-            Default = kz_json:get_value(Field, DefaultsDoc),
-            ReqData1 = inherit_default(Field, Default, ReqData),
-            inherit_defaults_fold(Fields, ReqData1, DefaultsDoc);
-        _ -> inherit_defaults_fold(Fields, ReqData, DefaultsDoc)
-    end.
-
--spec inherit_default(kz_json:keys(), kz_json:api_json_term(), kz_json:object()) ->
-                             kz_json:object().
-inherit_default(_, 'undefined', JObj) -> JObj;
-inherit_default(Key, Value, JObj) ->
-    kz_json:set_value(Key, Value, JObj).
 
 -spec update_template(cb_context:context(), path_token(), kz_json:object()) ->
                              cb_context:context().
