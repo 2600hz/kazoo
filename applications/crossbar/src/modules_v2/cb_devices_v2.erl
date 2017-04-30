@@ -272,8 +272,8 @@ post(Context, DeviceId) ->
 -spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().
 prune_null_provisioner_fields(Context) ->
     Filter = fun({_, Val}) ->
-        case Val of 'null' -> 'false'; _ -> 'true' end
-    end,
+                     case Val of 'null' -> 'false'; _ -> 'true' end
+             end,
 
     Data    = cb_context:doc(Context),
     Old     = kz_json:get_value([<<"provision">>, <<"combo_keys">>], Data),
