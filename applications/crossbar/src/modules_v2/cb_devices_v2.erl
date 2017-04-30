@@ -258,15 +258,29 @@ post(Context, DeviceId) ->
         'true' ->
             _ = crossbar_util:maybe_refresh_fs_xml('device', Context),
             Context1 = cb_modules_util:take_sync_field(Context),
-            Context2 = crossbar_doc:save(Context1),
-            _ = maybe_aggregate_device(DeviceId, Context2),
+            Context2 = prune_null_provisioner_fields(Context1),
+            Context3 = crossbar_doc:save(Context2),
+            _ = maybe_aggregate_device(DeviceId, Context3),
             _ = kz_util:spawn(
                   fun() ->
-                          _ = provisioner_util:maybe_provision(Context2),
+                          _ = provisioner_util:maybe_provision(Context1),
                           _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
                   end),
-            maybe_add_mobile_mdn(Context2)
+            maybe_add_mobile_mdn(Context3)
     end.
+
+-spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().
+prune_null_provisioner_fields(Context) ->
+    Filter = fun({_, Val}) ->
+        case Val of 'null' -> 'false'; _ -> 'true' end
+    end,
+
+    Data    = cb_context:doc(Context),
+    Old     = kz_json:get_value([<<"provision">>, <<"combo_keys">>], Data),
+    Combos  = kz_json:filter(Filter, Old),
+    NewData = kz_json:set_value([<<"provision">>, <<"combo_keys">>], Combos, Data),
+
+    cb_context:set_doc(Context, NewData).
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
                   cb_context:context().
