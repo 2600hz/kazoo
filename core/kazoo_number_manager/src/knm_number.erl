@@ -144,7 +144,7 @@ create(Num, Options) ->
 
 -spec state_for_create(knm_number_options:options()) -> ne_binary().
 state_for_create(Options) ->
-    case {knm_number_options:state(Options)
+    case {knm_number_options:state(Options, ?NUMBER_STATE_RESERVED)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
          }

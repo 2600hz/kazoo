@@ -27,6 +27,7 @@ info_test_() ->
                                             ])
                             ,sets:from_list(kz_json:get_value(<<"usable_creation_states">>, InfoJObj4))
                             )
+             )
     ,?_assertEqual([?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED]
                   ,lists:usort(kz_json:get_value(<<"usable_creation_states">>, InfoJObj5))
                   )

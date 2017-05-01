@@ -163,12 +163,28 @@ curl -v -X GET \
         "maximal_prefix_length": 3,
         "usable_carriers": [
             "bandwidth2",
-            "local"
+            "bandwidth",
+            "inum",
+            "local",
+            "inventory",
+            "managed",
+            "mdn",
+            "other",
+            "simwood",
+            "telnyx",
+            "vitelity",
+            "voip_innovations"
+        ],
+        "usable_creation_states": [
+            "reserved",
+            "in_service"
         ]
     },
+    "node": "{NODE}",
     "request_id": "{REQUEST_ID}",
-    "revision": "{REVISION}",
-    "status": "success"
+    "status": "success",
+    "timestamp": "2017-05-01T20:31:35",
+    "version": "4.0.0"
 }
 ```
 
@@ -433,6 +449,8 @@ curl -v -X POST \
 #### Add a number to the database
 
 Adds a number to the database, returning its properties.
+
+Note: set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
 
 Note: payload is facultative.
 
@@ -857,6 +875,8 @@ curl -v -X POST \
 
 
 #### Add a list of numbers to the database
+
+Note: set field `"create_with_state"` in payload to your desired number state (defaults to `"reserved"`).
 
 > PUT /v2/accounts/{ACCOUNT_ID}/phone_numbers/collection
 
