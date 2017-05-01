@@ -874,8 +874,14 @@ log_short_lived(#kz_amqp_assignment{assigned=Timestamp}=Assignment) ->
     case Duration < 5 of
         'false' -> 'ok';
         'true' ->
-            lager:warning("short lived assignment (~ps): ~p"
-                         ,[Duration, Assignment])
+            #kz_amqp_assignment{consumer=Consumer
+                               ,type=Type
+                               ,channel=Channel
+                               ,broker=Broker
+                               } = Assignment,
+            lager:warning("short lived assignment (~ps) for ~p (channel ~p type ~p broker ~p)"
+                         ,[Duration, Consumer, Channel, Type, Broker]
+                         )
     end.
 
 -spec register_channel_handlers(pid(), pid()) -> 'ok'.
@@ -891,7 +897,6 @@ unregister_channel_handlers(Channel) ->
     _ = (catch amqp_channel:unregister_confirm_handler(Channel)),
     _ = (catch amqp_channel:unregister_flow_handler(Channel)),
     lager:debug("unregistered handlers for channel ~p", [Channel]).
-
 
 -spec release_handlers({kz_amqp_assignments(), ets:continuation()} | '$end_of_table' | pid()) -> 'ok'.
 release_handlers(Consumer)

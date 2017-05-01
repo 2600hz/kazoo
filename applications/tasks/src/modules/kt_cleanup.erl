@@ -34,6 +34,8 @@ init() ->
 %%% Triggerables
 
 -spec cleanup_soft_deletes(ne_binary()) -> ok.
+cleanup_soft_deletes(?KZ_ACCOUNTS_DB) ->
+    do_cleanup(?KZ_ACCOUNTS_DB);
 cleanup_soft_deletes(Account) ->
     kz_datamgr:suppress_change_notice(),
     case kapps_util:is_account_db(Account) of

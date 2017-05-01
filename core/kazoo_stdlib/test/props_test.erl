@@ -92,10 +92,14 @@ run_proper_test_() ->
     {"Runs props PropEr tests"
     ,{'timeout'
      ,10000
-     ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
-                                                ,{'numtests', 500}
-                                                ]
-                                      ))
+     ,[{atom_to_list(F)
+       ,fun() ->
+                ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}]))
+        end
+       }
+       || {F, 0} <- ?MODULE:module_info('exports'),
+          F > 'prop_',
+          F < 'prop`'
       ]
      }
     }.

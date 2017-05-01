@@ -19,21 +19,28 @@
 %% PropEr Testing
 -ifdef(PROPER).
 
-is_json_object_proper_test_() ->
+%% Lifted from Erlang ML
+proper_test_() ->
     {"Runs kz_json PropEr tests"
     ,{'timeout'
      ,10000
-     ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
-                                                ,{'numtests', 500}
-                                                ]
-                                      ))
+     ,[{atom_to_list(F)
+       ,fun () ->
+                ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
+                                                       ,{'numtests', 500}
+                                                       ]))
+        end
+       }
+       || {F, 0} <- ?MODULE:module_info('exports'),
+          F > 'prop_',
+          F < 'prop`'
       ]
      }
     }.
 
 prop_is_object() ->
     ?FORALL(JObj
-           ,object()
+           ,test_object()
            ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
                      ,kz_json:is_json_object(JObj)
                      )
@@ -48,12 +55,12 @@ prop_from_list() ->
            ).
 
 prop_get_value() ->
-    ?FORALL(Prop
-           ,json_proplist()
-           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
+    ?FORALL(JObj
+           ,test_object()
+           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [JObj])
                      ,begin
-                          JObj = kz_json:from_list(Prop),
-                          case length(Prop) > 0
+                          Prop = kz_json:to_proplist(JObj),
+                          case Prop =/= []
                               andalso hd(Prop)
                           of
                               {K,V} ->
@@ -88,18 +95,6 @@ prop_flatten_expand() ->
            ,?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:expand(kz_json:flatten(JObj)))
                      )
-           ).
-
-prop_expand_flatten() ->
-    ?FORALL(Prop
-           ,flat_proplist()
-           ,begin
-                L = props:unique(Prop),
-                JObj = kz_json:from_list(L),
-                ?WHENFAIL(io:format("Failed to expand/flatten: ~p~n", [JObj])
-                         ,JObj =:= kz_json:flatten(kz_json:expand(JObj))
-                         )
-            end
            ).
 
 prop_merge_right() ->
