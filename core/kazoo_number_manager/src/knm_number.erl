@@ -170,7 +170,7 @@ allowed_creation_states(AuthBy) ->
             ,?NUMBER_STATE_RESERVED
             ];
         false ->
-            case kz_services:is_reseller(AuthBy) of
+            case is_reseller(AuthBy) of
                 false -> [?NUMBER_STATE_RESERVED];
                 true ->
                     [?NUMBER_STATE_RESERVED
@@ -178,6 +178,15 @@ allowed_creation_states(AuthBy) ->
                     ]
             end
     end.
+
+-ifdef(TEST).
+is_reseller(?MASTER_ACCOUNT_ID) -> true;
+is_reseller(?RESELLER_ACCOUNT_ID) -> true;
+is_reseller(?MATCH_ACCOUNT_RAW(_)) -> false.
+-else.
+is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    kz_services:is_reseller(AccountId).
+-endif.
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
                                (knm_numbers:collection()) -> knm_numbers:collection().
