@@ -263,8 +263,9 @@ validate(Context, ?CARRIERS_INFO) ->
         {error, Reason} ->
             crossbar_util:response(error, Reason, 404, Context);
         {ok, AccountId, ResellerId} ->
+            AuthAccountId = cb_context:auth_account_id(Context),
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
-                                    ,knm_carriers:info(AccountId, ResellerId)
+                                    ,knm_carriers:info(AuthAccountId, AccountId, ResellerId)
                                     )
     end;
 validate(Context, ?FIX) ->

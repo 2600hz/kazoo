@@ -16,7 +16,7 @@
 -compile({no_auto_import,[apply/3]}).
 
 -export([check/1
-        ,available_carriers/1, all_modules/0, info/2
+        ,available_carriers/1, all_modules/0, info/3
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
@@ -179,16 +179,17 @@ all_modules() ->
 %% Get information on the available carriers
 %% @end
 %%--------------------------------------------------------------------
--spec info(api_ne_binary(), api_ne_binary()) -> kz_json:object().
-info(AccountId, ResellerId) ->
-    Options = [{account_id, AccountId}
-              ,{reseller_id, ResellerId}
-              ],
+-spec info(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_json:object().
+info(AuthAccountId, AccountId, ResellerId) ->
+    AvailableCarriers = available_carriers([{account_id, AccountId}
+                                           ,{reseller_id, ResellerId}
+                                           ]),
     Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
             },
-    Map = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
+    Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
     kz_json:from_map(
       Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => creation_states(AuthAccountId)
           }
      ).
 
@@ -210,6 +211,26 @@ usable_carriers() ->
                                ,?CARRIER_RESERVED_RESELLER
                                ],
     [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
+
+creation_states(undefined) -> [];
+creation_states(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    case {knm_phone_number:is_admin(AccountId)
+         ,kz_services:is_reseller(AccountId)
+         }
+    of
+        {false, false} -> [];
+        {true, _} ->
+            [?NUMBER_STATE_AGING
+            ,?NUMBER_STATE_AVAILABLE
+            ,?NUMBER_STATE_IN_SERVICE
+            ,?NUMBER_STATE_PORT_IN
+            ,?NUMBER_STATE_RESERVED
+            ];
+        {_, true} ->
+            [?NUMBER_STATE_RESERVED
+            ,?NUMBER_STATE_IN_SERVICE
+            ]
+        end.
 
 %%--------------------------------------------------------------------
 %% @public
