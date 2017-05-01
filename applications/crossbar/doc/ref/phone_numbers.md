@@ -10,6 +10,7 @@ Key | Description | Type | Default | Required
 `cnam` |   | `object` |   | `false`
 `cnam.display_name` |   | `string(1..15)` |   | `false`
 `cnam.inbound_lookup` |   | `boolean` |   | `false`
+`create_with_state` |   | `string(1..30)` |   | `false`
 `e911` |   | `object` |   | `false`
 `e911.activated_time` | The time stamp e911 was provisioned | `string` |   | `false`
 `e911.caller_name` | The name that will show to emergency services | `string(3..)` |   | `false`

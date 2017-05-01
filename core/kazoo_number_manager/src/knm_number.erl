@@ -36,6 +36,11 @@
         ,force_outbound_feature/1
         ]).
 
+-export([attempt/2
+        ,ensure_can_create/1
+        ,ensure_can_load_to_create/1
+        ,state_for_create/1, allowed_creation_states/1
+        ]).
 
 -ifdef(TEST).
 -export([attempt/2]).
@@ -145,30 +150,59 @@ create_or_load(Num, Options0) ->
 
 -spec state_for_create(knm_number_options:options()) -> ne_binary().
 state_for_create(Options) ->
-    case {knm_number_options:state(Options)
+    case {knm_number_options:state(Options, ?NUMBER_STATE_RESERVED)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
-         ,knm_phone_number:is_admin(knm_number_options:auth_by(Options))
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
-        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {State=?NE_BINARY, _, _, true} -> State;
-        _ -> ?NUMBER_STATE_RESERVED
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
+        {_, true, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
+        {State, _, _} ->
+            true = lists:member(State, allowed_creation_states(knm_number_options:auth_by(Options))),
+            State
     end.
 
--spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
-                            dry_run_or_number_return().
+-spec allowed_creation_states(api_ne_binary()) -> ne_binaries().
+allowed_creation_states(undefined) -> [];
+allowed_creation_states(AuthBy) ->
+    %% Note: AuthBy can be ?KNM_DEFAULT_AUTH_BY
+    case knm_phone_number:is_admin(AuthBy) of
+        true ->
+            [?NUMBER_STATE_AGING
+            ,?NUMBER_STATE_AVAILABLE
+            ,?NUMBER_STATE_IN_SERVICE
+            ,?NUMBER_STATE_PORT_IN
+            ,?NUMBER_STATE_RESERVED
+            ];
+        false ->
+            case is_reseller(AuthBy) of
+                false -> [?NUMBER_STATE_RESERVED];
+                true ->
+                    [?NUMBER_STATE_RESERVED
+                    ,?NUMBER_STATE_IN_SERVICE
+                    ]
+            end
+    end.
+
 -ifdef(TEST).
--define(OPTIONS_FOR_LOAD(Num, Options),
-        case knm_number_options:ported_in(Options) of
-            false -> Options;
-            true ->
-                case Num of
-                    ?TEST_PORT_IN2_NUM -> [{module_name, <<"knm_telnyx">>}|Options];
-                    ?TEST_AVAILABLE_NUM -> [{module_name, <<"knm_bandwidth2">>}|Options];
-                    _ -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
+is_reseller(?MASTER_ACCOUNT_ID) -> true;
+is_reseller(?RESELLER_ACCOUNT_ID) -> true;
+is_reseller(?MATCH_ACCOUNT_RAW(_)) -> false.
+-else.
+is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    kz_services:is_reseller(AccountId).
+-endif.
+
+-spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
+                               (knm_numbers:collection()) -> knm_numbers:collection().
+ensure_can_load_to_create(T0=#{todo := PNs}) ->
+    F = fun (PN, T) ->
+                case attempt(fun ensure_can_load_to_create/1, [PN]) of
+                    true -> knm_numbers:ok(PN, T);
+                    {error, R} ->
+                        Num = knm_phone_number:number(PN),
+                        knm_numbers:ko(Num, R, T)
                 end
         end).
 -else.

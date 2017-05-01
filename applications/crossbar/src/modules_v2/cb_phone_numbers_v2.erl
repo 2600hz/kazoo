@@ -59,6 +59,7 @@
 -define(SCHEMA_PHONE_NUMBERS, <<"phone_numbers">>).
 -define(SCHEMA_FIND_NUMBERS, <<"find_numbers">>).
 
+-define(PUBLIC_FIELDS_STATE, <<"create_with_state">>).
 -define(KEY_PHONEBOOK_FREE_URL, <<"phonebook_url">>).
 -define(PREFIX, <<"prefix">>).
 -define(QUANTITY, <<"quantity">>).
@@ -264,8 +265,9 @@ validate(Context, ?CARRIERS_INFO) ->
         {error, Reason} ->
             crossbar_util:response(error, Reason, 404, Context);
         {ok, AccountId, ResellerId} ->
+            AuthAccountId = cb_context:auth_account_id(Context),
             cb_context:set_resp_data(cb_context:set_resp_status(Context, 'success')
-                                    ,knm_carriers:info(AccountId, ResellerId)
+                                    ,knm_carriers:info(AuthAccountId, AccountId, ResellerId)
                                     )
     end;
 validate(Context, ?FIX) ->
@@ -391,10 +393,12 @@ put(Context, ?COLLECTION) ->
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), ?COLLECTION) end,
     set_response(Results, Context, CB);
 put(Context, Number) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    Doc = cb_context:doc(Context),
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'public_fields', cb_context:doc(Context)}
+              ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, Doc)}
+               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, Doc))
               ],
     Result = knm_number:create(Number, Options),
     CB = fun() -> ?MODULE:put(cb_context:set_accepting_charges(Context), Number) end,
@@ -1068,10 +1072,12 @@ numbers_action(Context, ?ACTIVATE, Numbers) ->
               ],
     knm_numbers:move(Numbers, cb_context:account_id(Context), Options);
 numbers_action(Context, ?HTTP_PUT, Numbers) ->
-    Options = [{'assign_to', cb_context:account_id(Context)}
-              ,{'auth_by', cb_context:auth_account_id(Context)}
+    ReqData = cb_context:req_data(Context),
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}
+              ,{'assign_to', cb_context:account_id(Context)}
               ,{'dry_run', not cb_context:accepting_charges(Context)}
-              ,{'public_fields', cb_context:req_data(Context)}
+              ,{'public_fields', kz_json:delete_key(?PUBLIC_FIELDS_STATE, ReqData)}
+               | maybe_ask_for_state(kz_json:get_ne_binary_value(?PUBLIC_FIELDS_STATE, ReqData))
               ],
     knm_numbers:create(Numbers, Options);
 numbers_action(Context, ?HTTP_POST, Numbers) ->
@@ -1103,6 +1109,11 @@ pick_release_or_delete(Context, Options) ->
            end,
     lager:debug("picked ~s", [Pick]),
     Pick.
+
+%% @private
+-spec maybe_ask_for_state(api_ne_binary()) -> [{state, ne_binary()}].
+maybe_ask_for_state(undefined) -> [];
+maybe_ask_for_state(StateAskedFor) -> [{state, StateAskedFor}].
 
 %%--------------------------------------------------------------------
 %% @private

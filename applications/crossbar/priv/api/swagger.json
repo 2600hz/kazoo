@@ -5590,6 +5590,11 @@
                     },
                     "type": "object"
                 },
+                "create_with_state": {
+                    "maxLength": 30,
+                    "minLength": 1,
+                    "type": "string"
+                },
                 "e911": {
                     "properties": {
                         "activated_time": {

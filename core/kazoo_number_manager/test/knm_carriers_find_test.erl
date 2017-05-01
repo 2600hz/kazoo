@@ -11,14 +11,26 @@
 -include("knm.hrl").
 
 info_test_() ->
-    InfoJObj1 = knm_carriers:info(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
-    InfoJObj2 = knm_carriers:info(?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
-    InfoJObj3 = knm_carriers:info(?CHILD_ACCOUNT_ID, undefined),
-    InfoJObj4 = knm_carriers:info(?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID),
+    InfoJObj1 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
+    InfoJObj2 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
+    InfoJObj3 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, undefined),
+    InfoJObj4 = knm_carriers:info(?MASTER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, ?CHILD_ACCOUNT_ID),
+    InfoJObj5 = knm_carriers:info(?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID),
     [?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj1))
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj2))
     ,?_assertEqual(10, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj3))
     ,?_assertEqual(3, kz_json:get_value(<<"maximal_prefix_length">>, InfoJObj4))
+    ,?_assert(lists:member(<<"local">>, kz_json:get_value(<<"usable_carriers">>, InfoJObj4)))
+    ,?_assert(sets:is_subset(sets:from_list([?NUMBER_STATE_IN_SERVICE
+                                            ,?NUMBER_STATE_RESERVED
+                                            ,?NUMBER_STATE_AVAILABLE
+                                            ])
+                            ,sets:from_list(kz_json:get_value(<<"usable_creation_states">>, InfoJObj4))
+                            )
+             )
+    ,?_assertEqual([?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED]
+                  ,lists:usort(kz_json:get_value(<<"usable_creation_states">>, InfoJObj5))
+                  )
     ].
 
 is_number_billable_test_() ->
