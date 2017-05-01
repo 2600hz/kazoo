@@ -61,7 +61,12 @@ authorize_call_fun(Self, Ref, Node, CallId, Props) ->
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
-    reply_affirmative(Section, Node, FetchId, CallId, JObj, Props);
+     CCVs = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new()),
+     J = kz_json:set_value(<<"Custom-Channel-Vars">>
+                          ,kz_json:set_value(<<"Channel-Authorized">>, <<"true">>, CCVs)
+                          ,JObj
+                          ),
+    reply_affirmative(Section, Node, FetchId, CallId, J, Props);
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) ->
     case kz_json:get_value(<<"Method">>, JObj) =/= <<"error">> of
         'true' -> wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker);
