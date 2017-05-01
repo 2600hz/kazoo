@@ -16,6 +16,7 @@
                           ,"kapps_account_config"
                           ,"kapps_config"
                           ,"kapps_controller"
+                          ,"kz_metrics"
                           ]).
 
 %% API
