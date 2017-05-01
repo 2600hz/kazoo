@@ -89,7 +89,7 @@ handle_topup(BillingId, [Transaction|Transactions]) ->
 -spec send_topup_notification(ne_binary(), kz_transaction:transaction()) -> 'ok'.
 send_topup_notification(BillingId, Transaction) ->
     Props = [{<<"Account-ID">>, BillingId}
-            ,{<<"Amount">>, kz_transaction:amount(Transaction)}
+            ,{<<"Amount">>, wht_util:units_to_dollars(kz_transaction:amount(Transaction))}
             ,{<<"Response">>, <<"Authorized">>}
             ,{<<"Success">>, <<"true">>}
             ,{<<"ID">>, kz_transaction:id(Transaction)}

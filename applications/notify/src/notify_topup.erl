@@ -57,6 +57,7 @@ handle_req(JObj, _Props) ->
 %% @private
 %% @doc
 %% create the props used by the template render function
+%% NOTE: amount is expected to be in dollars
 %% @end
 %%--------------------------------------------------------------------
 -spec create_template_props(kz_json:object(), kz_json:object()) -> kz_proplist().
@@ -65,7 +66,7 @@ create_template_props(_, AccountJObj) ->
     Threshold = kz_json:get_value([<<"topup">>, <<"threshold">>], AccountJObj),
     props:filter_empty([
                         {<<"account">>, notify_util:json_to_template_props(AccountJObj)}
-                       ,{<<"amount">>, pretty_print_dollars(wht_util:units_to_dollars(Amount))}
+                       ,{<<"amount">>, pretty_print_dollars(Amount)}
                        ,{<<"threshold">>, pretty_print_dollars(Threshold)}
                        ]).
 
