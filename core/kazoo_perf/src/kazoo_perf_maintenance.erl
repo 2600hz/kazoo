@@ -3,24 +3,25 @@
 %% fetches memory and process statistics and prints them in a Sensu compatible way
 %% for metrics gathering (great for Graphite)
 %%
--module(kz_metrics).
+-module(kazoo_perf_maintenance).
 
--export([for_graphite/3
-        ,as_json/0
+-export([graphite_metrics/3
+        ,json_metrics/0
         ]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 
 %% API
 
--spec for_graphite(ne_binary(), ne_binary(), ne_binary()) -> no_return.
-for_graphite(Account, Cluster, Zone) ->
+-spec graphite_metrics(ne_binary(), ne_binary(), ne_binary()) -> no_return.
+graphite_metrics(Account, Cluster, Zone) ->
     Scheme = scheme(Account, Cluster, Zone),
     F = fun ({Metric, Measured}) -> graphite(Scheme, Metric, Measured) end,
-    lists:foreach(F, collect()).
+    lists:foreach(F, collect()),
+    no_return.
 
--spec as_json() -> no_return.
-as_json() ->
+-spec json_metrics() -> no_return.
+json_metrics() ->
     JObj = kz_json:from_list_recursive(
              [{<<"timestamp">>, get(timestamp)}
               | [{Metric, to_props(Metric, Measure)} || {Metric, Measure} <- collect()]
