@@ -744,8 +744,9 @@ read_account(Context, Id, LoadFrom) ->
             maybe_read_from_parent(Context, Id, LoadFrom, cb_context:reseller_id(Context));
         {_Code, 'success'} ->
             lager:debug("loaded ~s from account database ~s", [Id, cb_context:account_db(Context)]),
-            NewRespData = note_account_override(cb_context:resp_data(Context1)),
-            cb_context:set_resp_data(Context1, NewRespData);
+            Context2 = maybe_merge_ancestor_attachments(Context1, Id),
+            NewRespData = note_account_override(cb_context:resp_data(Context2)),
+            cb_context:set_resp_data(Context2, NewRespData);
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [Id, _Code]),
             Context1
@@ -836,6 +837,73 @@ maybe_hard_delete(Context, Id) ->
         {'error', _E} ->
             lager:debug("error deleting ~s from ~s: ~p", [Id, cb_context:account_db(Context), _E])
     end.
+
+-spec maybe_merge_ancestor_attachments(cb_context:context(), ne_binary()) ->
+                                              cb_context:context().
+maybe_merge_ancestor_attachments(Context, Id) ->
+    case kz_doc:attachments(cb_context:doc(Context)) of
+        'undefined' -> merge_ancestor_attachments(Context, Id);
+        _ -> Context
+    end.
+
+-spec merge_ancestor_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
+-spec merge_ancestor_attachments(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) ->
+                                        cb_context:context().
+merge_ancestor_attachments(Context, Id) ->
+    AccountId = cb_context:account_id(Context),
+    ResellerId = kz_services:find_reseller_id(AccountId),
+    merge_ancestor_attachments(Context, Id, AccountId, ResellerId).
+
+%% Last attempt was reseller, now try ?KZ_CONFIG_DB
+merge_ancestor_attachments(Context, Id, AccountId, AccountId) ->
+    lager:debug("trying attachments in ~s", [?KZ_CONFIG_DB]),
+    case kz_doc:attachments(cb_context:doc(read_system(Context, Id))) of
+        'undefined' ->
+            lager:error("the ~s ~s template is missing", [?KZ_CONFIG_DB, Id]),
+            Context;
+        Attachments ->
+            lager:debug("found attachments in ~s", [?KZ_CONFIG_DB]),
+            Doc = kz_json:set_value(<<"_attachments">>, Attachments, cb_context:doc(Context)),
+            cb_context:setters(Context
+                              ,[{fun cb_context:store/3, 'db_doc', Doc}
+                               ,{fun cb_context:set_doc/2, Doc}
+                               ,{fun cb_context:store/3, 'attachments_db', ?KZ_CONFIG_DB}])
+    end;
+%% Not yet at reseller, try parent account
+merge_ancestor_attachments(Context, Id, AccountId, ResellerId) ->
+    case get_parent_account_id(AccountId) of
+        'undefined' -> Context;
+        ParentAccountId ->
+            lager:debug("trying attachments in account ~s", [ParentAccountId]),
+            try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId)
+    end.
+
+-spec try_parent_attachments(cb_context:context(), ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                                    cb_context:context().
+try_parent_attachments(Context, Id, AccountId, ParentAccountId, ResellerId) ->
+    ParentNotificationContext = crossbar_doc:load(Id
+                                                 ,masquerade(Context, ParentAccountId)
+                                                 ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())),
+    Doc = cb_context:doc(ParentNotificationContext),
+    case kz_doc:attachments(Doc) of
+        'undefined' -> merge_ancestor_attachments(Context, Id, ParentAccountId, ResellerId);
+        Attachments ->
+            lager:debug("found attachments in account ~s", [ParentAccountId]),
+            Doc = kz_json:set_value(<<"_attachments">>, Attachments, cb_context:doc(Context)),
+            AttachmentsDb = kz_util:format_account_id(ParentAccountId, 'encoded'),
+            cb_context:setters(Context
+                              ,[{fun cb_context:store/3, 'db_doc', Doc}
+                               ,{fun cb_context:set_doc/2, Doc}
+                               ,{fun cb_context:store/3, 'attachments_db', AttachmentsDb}])
+    end.
+
+-spec masquerade(cb_context:context(), ne_binary()) -> cb_context:context().
+masquerade(Context, AccountId) ->
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_account_id/2, AccountId}
+                       ,{fun cb_context:set_account_db/2, AccountDb}
+                       ]).
 
 -spec maybe_note_notification_preference(cb_context:context()) -> 'ok'.
 -spec maybe_note_notification_preference(ne_binary(), kz_json:object()) -> 'ok'.
@@ -944,14 +1012,6 @@ attachment_filename(Id, Accept) ->
     ,$., kz_mime:to_extension(Accept)
     ].
 
--spec read_system_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-read_system_attachment(Context, DocId, Name) ->
-    crossbar_doc:load_attachment(DocId
-                                ,Name
-                                ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
-                                ,cb_context:set_account_db(Context, ?KZ_CONFIG_DB)
-                                ).
-
 -spec read_account_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
 read_account_attachment(Context, DocId, Name) ->
     Context1 = crossbar_doc:load_attachment(DocId, Name, ?TYPE_CHECK_OPTION(kz_notification:pvt_type()), Context),
@@ -960,14 +1020,27 @@ read_account_attachment(Context, DocId, Name) ->
          }
     of
         {404, 'error'} ->
-            lager:debug("~s not found in account, reading from master", [DocId]),
-            read_system_attachment(Context, DocId, Name);
+            lager:debug("~s not found in account, checking for ancestor attachments", [DocId]),
+            maybe_read_other_account_attachment(Context, DocId, Name);
         {_Code, 'success'} ->
             lager:debug("loaded ~s from account database", [DocId]),
             Context1;
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [DocId, _Code]),
             Context1
+    end.
+
+-spec maybe_read_other_account_attachment(cb_context:context(), ne_binary(), ne_binary()) ->
+                                                 cb_context:context().
+maybe_read_other_account_attachment(Context, DocId, Name) ->
+    case cb_context:fetch(Context, 'attachments_db') of
+        'undefined' -> Context;
+        AttachmentsDb ->
+            lager:debug("attachments_db ~s is specified, load from it", [AttachmentsDb]),
+            crossbar_doc:load_attachment(DocId
+                                        ,Name
+                                        ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
+                                        ,cb_context:set_account_db(Context, AttachmentsDb))
     end.
 
 %%--------------------------------------------------------------------
