@@ -213,24 +213,25 @@ usable_carriers() ->
     [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
 
 creation_states(undefined) -> [];
-creation_states(?MATCH_ACCOUNT_RAW(AccountId)) ->
-    case {knm_phone_number:is_admin(AccountId)
-         ,kz_services:is_reseller(AccountId)
-         }
-    of
-        {false, false} -> [];
-        {true, _} ->
+creation_states(AuthBy) ->
+    %% Note: AuthBy can be ?KNM_DEFAULT_AUTH_BY
+    case knm_phone_number:is_admin(AuthBy) of
+        true ->
             [?NUMBER_STATE_AGING
             ,?NUMBER_STATE_AVAILABLE
             ,?NUMBER_STATE_IN_SERVICE
             ,?NUMBER_STATE_PORT_IN
             ,?NUMBER_STATE_RESERVED
             ];
-        {_, true} ->
-            [?NUMBER_STATE_RESERVED
-            ,?NUMBER_STATE_IN_SERVICE
-            ]
-        end.
+        false ->
+            case kz_services:is_reseller(AuthBy) of
+                false -> [];
+                true ->
+                    [?NUMBER_STATE_RESERVED
+                    ,?NUMBER_STATE_IN_SERVICE
+                    ]
+            end
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
