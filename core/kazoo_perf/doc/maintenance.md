@@ -1,9 +1,9 @@
 # Kazoo Perf maintenance
 
 
-## Metrics in Graphite format
+## graphite_metrics
 
-> sup kz_metrics for_graphite {ACCOUNT} {CLUSTER} {ZONE}
+> sup kazoo_perf_maintenance graphite_metrics {ACCOUNT} {CLUSTER} {ZONE}
 
 ```
 {ACCOUNT}.{CLUSTER}.{ZONE}.termina::tor.kazoo_apps.memory_total 89895592 1493666091
@@ -51,9 +51,9 @@
 ```
 
 
-## Metrics in plain JSON
+## json_metrics
 
-> sup kz_metrics as_json
+> sup kazoo_perf_maintenance json_metrics
 
 ```json
 {
