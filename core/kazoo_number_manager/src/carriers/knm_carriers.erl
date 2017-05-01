@@ -189,7 +189,7 @@ info(AuthAccountId, AccountId, ResellerId) ->
     Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
     kz_json:from_map(
       Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
-          ,?CARRIER_INFO_USABLE_CREATION_STATES => creation_states(AuthAccountId)
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_number:allowed_creation_states(AuthAccountId)
           }
      ).
 
@@ -211,27 +211,6 @@ usable_carriers() ->
                                ,?CARRIER_RESERVED_RESELLER
                                ],
     [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
-
-creation_states(undefined) -> [];
-creation_states(AuthBy) ->
-    %% Note: AuthBy can be ?KNM_DEFAULT_AUTH_BY
-    case knm_phone_number:is_admin(AuthBy) of
-        true ->
-            [?NUMBER_STATE_AGING
-            ,?NUMBER_STATE_AVAILABLE
-            ,?NUMBER_STATE_IN_SERVICE
-            ,?NUMBER_STATE_PORT_IN
-            ,?NUMBER_STATE_RESERVED
-            ];
-        false ->
-            case kz_services:is_reseller(AuthBy) of
-                false -> [];
-                true ->
-                    [?NUMBER_STATE_RESERVED
-                    ,?NUMBER_STATE_IN_SERVICE
-                    ]
-            end
-    end.
 
 %%--------------------------------------------------------------------
 %% @public
