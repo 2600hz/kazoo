@@ -1513,7 +1513,7 @@ notify_new_account(Context, _AuthDoc) ->
              ,{<<"Account-DB">>, cb_context:account_db(Context)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kapi_notifications:publish_new_account(Notify).
+    kz_amqp_worker:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
 %%--------------------------------------------------------------------
 %% @private
