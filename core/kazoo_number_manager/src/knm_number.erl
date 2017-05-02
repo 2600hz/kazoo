@@ -190,7 +190,7 @@ is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
 
 -spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
                             dry_run_or_number_return().
-ifdef(TEST).
+-ifdef(TEST).
 -define(OPTIONS_FOR_LOAD(Num, Options),
         case knm_number_options:ported_in(Options) of
             false -> Options;
