@@ -91,7 +91,7 @@ graphite(Scheme, ets_tables_sizes, Tabs) ->
     ].
 
 to_props(memory_statistics, MemoryMetrics) ->
-    [{"memory_" ++ atom_to_list(Key), Value}
+    [{<<"memory_", (kz_util:to_binary(Key))/binary>>, Value}
      || {Key, Value} <- MemoryMetrics
     ];
 to_props(number_of_processes, LiveProcesses) ->
@@ -115,7 +115,7 @@ to_props(processes_in_run_queue_of_each_schedulers, RunQueue) ->
     [{run_queue, RunQueue}
     ];
 to_props(ets_tables_sizes, Tabs) ->
-    [{"tab_" ++ kz_util:to_list(Tab), Size}
+    [{<<"tab_", (kz_util:to_binary(Tab))/binary>>, Size}
      || {Tab, Size} <- Tabs,
         Size =/= 0
     ].
