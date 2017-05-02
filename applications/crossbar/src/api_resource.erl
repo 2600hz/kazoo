@@ -619,7 +619,9 @@ does_request_validate(Req, Context0) ->
             {'false', Req, Context2};
         'false' ->
             lager:debug("failed to validate resource"),
-            api_util:halt(Req, Context2)
+            Data = cb_context:resp_data(Context2),
+            Msg  = kz_json:get_value(<<"message">>, Data, <<"validation failed">>),
+            api_util:halt(Req, cb_context:set_resp_error_msg(Context2, Msg))
     end.
 
 -spec moved_temporarily(cowboy_req:req(), cb_context:context()) ->
