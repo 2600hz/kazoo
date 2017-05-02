@@ -36,12 +36,6 @@
         ,force_outbound_feature/1
         ]).
 
--export([attempt/2
-        ,ensure_can_create/1
-        ,ensure_can_load_to_create/1
-        ,state_for_create/1, allowed_creation_states/1
-        ]).
-
 -ifdef(TEST).
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
@@ -194,15 +188,17 @@ is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
     kz_services:is_reseller(AccountId).
 -endif.
 
--spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
-                               (knm_numbers:collection()) -> knm_numbers:collection().
-ensure_can_load_to_create(T0=#{todo := PNs}) ->
-    F = fun (PN, T) ->
-                case attempt(fun ensure_can_load_to_create/1, [PN]) of
-                    true -> knm_numbers:ok(PN, T);
-                    {error, R} ->
-                        Num = knm_phone_number:number(PN),
-                        knm_numbers:ko(Num, R, T)
+-spec create_or_load(ne_binary(), knm_number_options:options(), knm_phone_number_return()) ->
+                            dry_run_or_number_return().
+ifdef(TEST).
+-define(OPTIONS_FOR_LOAD(Num, Options),
+        case knm_number_options:ported_in(Options) of
+            false -> Options;
+            true ->
+                case Num of
+                    ?TEST_PORT_IN2_NUM -> [{module_name, <<"knm_telnyx">>}|Options];
+                    ?TEST_AVAILABLE_NUM -> [{module_name, <<"knm_bandwidth2">>}|Options];
+                    _ -> [{module_name, ?PORT_IN_MODULE_NAME}|Options]
                 end
         end).
 -else.
