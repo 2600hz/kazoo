@@ -22,9 +22,11 @@ graphite_metrics(Account, Cluster, Zone) ->
 
 -spec json_metrics() -> no_return.
 json_metrics() ->
-    JObj = kz_json:from_list_recursive(
+    JObj = kz_json:from_list(
              [{<<"timestamp">>, get(timestamp)}
-              | [{Metric, to_props(Metric, Measure)} || {Metric, Measure} <- collect()]
+              | [{Metric, kz_json:from_list(to_props(Metric, Measure))}
+                 || {Metric, Measure} <- collect()
+                ]
              ]),
     io:format("~s\n", [kz_json:encode(JObj)]),
     no_return.
@@ -57,7 +59,7 @@ collect() ->
     plists:map(fun (Metric) -> {Metric, measure(Metric)} end, Metrics, Malt).
 
 scheme(Account, Cluster, Zone) ->
-    [Service, Hostname0] = binary:split(kz_term:to_binary(node()), <<$@>>),
+    [Service, Hostname0] = binary:split(kz_util:to_binary(node()), <<$@>>),
     Hostname = binary:replace(Hostname0, <<$.>>, <<"::">>, [global]),
     kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
@@ -83,7 +85,7 @@ graphite(Scheme, scheduler_reductions, {TotalReductions, _ReductionsSinceLastCal
 graphite(Scheme, processes_in_run_queue_of_each_schedulers, RunQueue) ->
     print_metric(Scheme, run_queue, RunQueue);
 graphite(Scheme, ets_tables_sizes, Tabs) ->
-    [print_metric(Scheme, "tab_" ++ kz_term:to_list(Tab), Size)
+    [print_metric(Scheme, "tab_" ++ kz_util:to_list(Tab), Size)
      || {Tab, Size} <- Tabs,
         Size =/= 0
     ].
@@ -113,7 +115,7 @@ to_props(processes_in_run_queue_of_each_schedulers, RunQueue) ->
     [{run_queue, RunQueue}
     ];
 to_props(ets_tables_sizes, Tabs) ->
-    [{"tab_" ++ kz_term:to_list(Tab), Size}
+    [{"tab_" ++ kz_util:to_list(Tab), Size}
      || {Tab, Size} <- Tabs,
         Size =/= 0
     ].
