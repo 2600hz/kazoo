@@ -10,7 +10,9 @@
 -export([db_classification/1]).
 
 %% Settings-related
--export([max_bulk_insert/0]).
+-export([max_bulk_insert/0
+        ,max_bulk_read/0
+        ]).
 
 %% format
 -export([format_error/1]).
@@ -34,10 +36,12 @@
         ,save_docs/2, save_docs/3
         ,open_cache_doc/2, open_cache_doc/3
         ,open_cache_docs/2, open_cache_docs/3
+        ,open_cache_docs_chunked/2, open_cache_docs_chunked/3
         ,update_cache_doc/3
         ,flush_cache_doc/2, flush_cache_doc/3
         ,flush_cache_docs/0, flush_cache_docs/1
         ,add_to_doc_cache/3
+        ,open_docs_chunked/2, open_docs_chunked/3
         ,open_doc/2,open_doc/3
         ,open_docs/2, open_docs/3
         ,del_doc/2, del_docs/2
@@ -658,6 +662,50 @@ open_docs(DbName, DocIds, Options) ->
     NewOptions = [{keys, DocIds}, include_docs | Options],
     all_docs(DbName, NewOptions).
 
+-spec open_docs_chunked(text(), docids()) ->
+                               {'ok', kz_json:objects()} |
+                               data_error() |
+                               {'error', 'not_found'}.
+-spec open_docs_chunked(text(), docids(), kz_proplist()) ->
+                               {'ok', kz_json:objects()} |
+                               data_error() |
+                               {'error', 'not_found'}.
+
+open_docs_chunked(DbName, DocIds) ->
+    open_docs_chunked(DbName, DocIds, []).
+open_docs_chunked(DbName, DocIds, Options) ->
+    read_chunked(fun open_docs/3, DbName, DocIds, Options).
+
+read_chunked(Opener, DbName, DocIds, Options) ->
+    read_chunked(Opener, DbName, DocIds, Options, []).
+read_chunked(Opener, DbName, DocIds, Options, Acc) ->
+    %% try lists:split(max_bulk_read(), DocIds) of
+    try lists:split(3, DocIds) of
+        {NewDocIds, DocIdsLeft} ->
+            NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
+            read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
+    catch error:badarg ->
+            case read_chunked_results(Opener, DbName, DocIds, Options, Acc) of
+                {error, _R}=E -> E;
+                JObjs -> {ok, lists:flatten(lists:reverse(JObjs))}
+            end
+    end.
+
+read_chunked_results(_, _, _, _, {error,_}=Acc) -> Acc;
+read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
+    read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
+read_chunked_results(_DocIds, {ok, JObjs}, Acc) ->
+    [JObjs | Acc];
+read_chunked_results(_DocIds, {error,_}=Reason, []) ->
+    Reason;
+read_chunked_results(DocIds, {error, Reason}, Acc) ->
+    [kz_json:from_list(
+       [{<<"id">>, DocId}
+       ,{<<"error">>, Reason}
+       ])
+     || DocId <- DocIds
+    ] ++ Acc.
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
@@ -687,6 +735,20 @@ open_cache_docs(DbName, DocIds, Options) ->
         {'ok', Db} -> open_cache_docs(Db, DocIds, Options);
         {'error', _}=E -> E
     end.
+
+-spec open_cache_docs_chunked(text(), docids()) ->
+                                     {'ok', kz_json:objects()} |
+                                     data_error() |
+                                     {'error', 'not_found'}.
+-spec open_cache_docs_chunked(text(), docids(), kz_proplist()) ->
+                                     {'ok', kz_json:objects()} |
+                                     data_error() |
+                                     {'error', 'not_found'}.
+
+open_cache_docs_chunked(DbName, DocIds) ->
+    open_cache_docs_chunked(DbName, DocIds, []).
+open_cache_docs_chunked(DbName, DocIds, Options) ->
+    read_chunked(fun open_cache_docs/3, DbName, DocIds, Options).
 
 
 -spec all_docs(text()) ->
@@ -1339,6 +1401,14 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 %%------------------------------------------------------------------------------
 -spec max_bulk_insert() -> ?MAX_BULK_INSERT.
 max_bulk_insert() -> ?MAX_BULK_INSERT.
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc How many documents are chunked when doing a bulk read
+%% @end
+%%------------------------------------------------------------------------------
+-spec max_bulk_read() -> ?MAX_BULK_READ.
+max_bulk_read() -> ?MAX_BULK_READ.
 
 -spec db_classification(text()) -> db_classifications().
 db_classification(DBName) -> kzs_util:db_classification(DBName).

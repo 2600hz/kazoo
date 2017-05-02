@@ -130,6 +130,7 @@
 -define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>, <<"pvt_attachments">>]).
 
 -define(MAX_BULK_INSERT, 2000).
+-define(MAX_BULK_READ, 2000).
 
 -define(KZ_DATA_HRL, 'true').
 -endif.
