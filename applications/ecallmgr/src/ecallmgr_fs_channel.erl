@@ -620,7 +620,12 @@ process_specific_event(<<"CHANNEL_CREATE">>, UUID, Props, Node) ->
     case props:get_value(?GET_CCV(<<"Ecallmgr-Node">>), Props)
         =:= kz_util:to_binary(node())
     of
-        'true' -> ecallmgr_fs_authz:authorize(Props, UUID, Node);
+        'true' ->
+            case ecallmgr_fs_authz:authorize(Props, UUID, Node) of
+                {'true', CCVs} ->
+                    ecallmgr_fs_command:set(Node, UUID, kz_json:to_proplist(CCVs));
+                Authz -> Authz
+            end;
         'false' -> 'ok'
     end;
 process_specific_event(<<"CHANNEL_DESTROY">>, UUID, Props, Node) ->
