@@ -544,23 +544,23 @@ handler_fields_for_protocol(<<"http", _/binary>>, Url, #state{account_id=Account
     ,AccountId
     ].
 
--spec check_url(ne_binary()) -> {binary(), binary()}.
+-spec check_url(ne_binary()) -> {binary(), ne_binary()}.
 check_url(Url) ->
     case kz_http_util:urlsplit(Url) of
         {_, _, _, <<>>, _} -> {<<>>, <<"?">>};
-        {_, _, _, Params, _} -> check_url_query(Params)
+        {_, _, _, Params, _} -> {check_url_query(Params), <<"&">>}
     end.
 
--spec check_url_query(ne_binary()) -> {binary(), binary()}.
+-spec check_url_query(ne_binary()) -> binary().
 check_url_query(Query) ->
     check_url_param(lists:last(binary:split(Query, <<"&">>, [global]))).
 
--spec check_url_param(ne_binary()) -> {binary(), binary()}.
+-spec check_url_param(ne_binary()) -> binary().
 check_url_param(Param) ->
     case binary:split(Param, <<"=">>) of
-        [_] -> {<<"=">>, <<>>};
-        [_, <<>>] -> {<<>>, <<>>};
-        _ -> {<<"&recording=">>, <<>>}
+        [_] -> <<"=">>;
+        [_, <<>>] -> <<>>;
+        _ -> <<"&recording=">>
     end.
 
 -spec handler_from_url(ne_binary()) -> 'kz_att_ftp' | 'kz_att_http' | 'undefined'.
