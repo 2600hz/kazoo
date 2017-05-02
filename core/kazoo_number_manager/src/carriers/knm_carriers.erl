@@ -349,6 +349,12 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
             Info
     end.
 
+usable_carriers() ->
+    Modules = all_modules() -- [?CARRIER_RESERVED
+                               ,?CARRIER_RESERVED_RESELLER
+                               ],
+    [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
+
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
