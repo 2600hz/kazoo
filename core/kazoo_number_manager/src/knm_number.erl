@@ -36,6 +36,8 @@
         ,force_outbound_feature/1
         ]).
 
+-export([allowed_creation_states/1]).
+
 -ifdef(TEST).
 -export([attempt/2]).
 -export([ensure_can_load_to_create/1]).
