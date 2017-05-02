@@ -1413,12 +1413,22 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
               ,fun set_sip_invite_domain/1
               ,fun maybe_set_call_waiting/1
               ,fun maybe_auto_answer/1
+              ,fun maybe_set_webrtc/1
               ],
     Acc0 = {Endpoint, Call, CallFwd, kz_json:new()},
     {_Endpoint, _Call, _CallFwd, CCVs} = lists:foldr(fun(F, Acc) -> F(Acc) end, Acc0, CCVFuns),
     CCVs.
 
 -type ccv_acc() :: {kz_json:object(), kapps_call:call(), api_object(), kz_json:object()}.
+
+-spec maybe_set_webrtc(ccv_acc()) -> ccv_acc().
+maybe_set_webrtc({Endpoint, Call, CallFwd, CCVs} = Acc) ->
+    case kz_json:is_true(<<"media_webrtc">>, Endpoint) of
+        'true' ->
+            {Endpoint, Call, CallFwd, kz_json:set_value(<<"Media-Webrtc">>, <<"true">>, CCVs)};
+        'false' ->
+            Acc
+    end.
 
 -spec maybe_retain_caller_id(ccv_acc()) -> ccv_acc().
 maybe_retain_caller_id({_Endpoint, _Call, 'undefined', _JObj}=Acc) ->
