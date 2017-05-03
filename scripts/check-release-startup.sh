@@ -12,10 +12,15 @@ sup_() {
     RELX_REPLACE_OS_VARS=true KZname="-name $rel" exec $PWD/_rel/kazoo/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
 }
 
-sleep 300 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
-sleep 360 && sup_ kapps_maintenance migrate &
-sleep 720 && sup_ init stop &
+script() {
+    sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!'
+    sleep 3
+    sup_ kapps_maintenance migrate
+    sleep 3
+    sup_ init stop
+}
 
+sleep 240 && script &
 export KAZOO_CONFIG=$PWD/rel/ci-config.ini
 REL=$rel make release
 code=$?
