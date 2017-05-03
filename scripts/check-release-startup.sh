@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 [[ ! -d _rel ]] && echo 'Cannot find _rel/ Is the release built?' && exit -1
 
@@ -25,3 +25,16 @@ sleep 720 && sup_ 'ok' init stop &
 
 export KAZOO_CONFIG=$PWD/rel/ci-config.ini
 REL=$rel make release
+code=$?
+if [[ -f erl_crash.dump ]]; then
+    echo A crash dump was generated!
+    code=3
+fi
+error_log='./_rel/kazoo/log/error.log'
+if [[ $(wc -l $error_log | awk '{print $1}') -gt 1 ]]; then
+    echo
+    echo Error log:
+    cat $error_log
+    code=4
+fi
+exit $code
