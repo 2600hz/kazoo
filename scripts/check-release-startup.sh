@@ -27,12 +27,13 @@ sleep 720 && sup_ 'ok' init stop &
 export KAZOO_CONFIG=$PWD/rel/ci-config.ini
 REL=$rel make release
 code=$?
+
 if [[ -f erl_crash.dump ]]; then
     echo A crash dump was generated!
     code=3
 fi
-error_log='./_rel/kazoo/log/error.log'
-if [[ $(wc -l $error_log | awk '{print $1}') -gt 1 ]]; then
+error_log=$PWD/_rel/kazoo/log/error.log
+if [[ -s $error_log ]]; then
     echo
     echo Error log:
     cat $error_log
