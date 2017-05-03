@@ -17,6 +17,8 @@ script() {
     sleep 3
     sup_ kapps_maintenance migrate
     sleep 3
+    sup_ kapps_maintenance migrate_to_4_0
+    sleep 3
     sup_ init stop
 }
 
