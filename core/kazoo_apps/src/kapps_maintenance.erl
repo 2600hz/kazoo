@@ -310,7 +310,6 @@ refresh(?KZ_ACCOUNTS_DB) ->
     Views = [kapps_util:get_view_json('kazoo_apps', ?MAINTENANCE_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?ACCOUNTS_AGG_VIEW_FILE)
             ,kapps_util:get_view_json('kazoo_apps', ?SEARCH_VIEW_FILE)
-            ,kapps_util:get_view_json('notify', ?ACCOUNTS_AGG_NOTIFY_VIEW_FILE)
             ],
     kapps_util:update_views(?KZ_ACCOUNTS_DB, Views, 'true'),
     'ok';
