@@ -57,6 +57,7 @@
 
 -define(CARRIER_INFO_MAX_PREFIX, <<"maximal_prefix_length">>).
 -define(CARRIER_INFO_USABLE_CARRIERS, <<"usable_carriers">>).
+-define(CARRIER_INFO_USABLE_CREATION_STATES, <<"usable_creation_states">>).
 
 -define(CARRIER_INUM, <<"knm_inum">>).
 -define(CARRIER_LOCAL, <<"knm_local">>).

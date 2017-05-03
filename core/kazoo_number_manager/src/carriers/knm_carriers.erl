@@ -16,7 +16,7 @@
 -compile({no_auto_import,[apply/3]}).
 
 -export([check/1
-        ,available_carriers/1, all_modules/0, info/2
+        ,available_carriers/1, all_modules/0, info/3
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
@@ -179,16 +179,17 @@ all_modules() ->
 %% Get information on the available carriers
 %% @end
 %%--------------------------------------------------------------------
--spec info(api_ne_binary(), api_ne_binary()) -> kz_json:object().
-info(AccountId, ResellerId) ->
-    Options = [{account_id, AccountId}
-              ,{reseller_id, ResellerId}
-              ],
+-spec info(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_json:object().
+info(AuthAccountId, AccountId, ResellerId) ->
+    AvailableCarriers = available_carriers([{account_id, AccountId}
+                                           ,{reseller_id, ResellerId}
+                                           ]),
     Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
             },
-    Map = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
+    Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
     kz_json:from_map(
       Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_number:allowed_creation_states(AuthAccountId)
           }
      ).
 

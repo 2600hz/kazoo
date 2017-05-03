@@ -36,7 +36,7 @@
 -export([attempt/2
         ,ensure_can_create/1
         ,ensure_can_load_to_create/1
-        ,state_for_create/1
+        ,state_for_create/1, allowed_creation_states/1
         ]).
 
 -ifdef(TEST).
@@ -144,18 +144,49 @@ create(Num, Options) ->
 
 -spec state_for_create(knm_number_options:options()) -> ne_binary().
 state_for_create(Options) ->
-    case {knm_number_options:state(Options)
+    case {knm_number_options:state(Options, ?NUMBER_STATE_RESERVED)
          ,knm_number_options:ported_in(Options)
          ,knm_number_options:module_name(Options)
-         ,knm_phone_number:is_admin(knm_number_options:auth_by(Options))
          }
     of
-        {?NUMBER_STATE_PORT_IN=PortIn, _, _, _} -> PortIn;
-        {_, true, _, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {_, _, ?CARRIER_MDN, _} -> ?NUMBER_STATE_IN_SERVICE;
-        {State=?NE_BINARY, _, _, true} -> State;
-        _ -> ?NUMBER_STATE_RESERVED
+        {?NUMBER_STATE_PORT_IN=PortIn, _, _} -> PortIn;
+        {_, true, _} -> ?NUMBER_STATE_IN_SERVICE;
+        {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
+        {State, _, _} ->
+            true = lists:member(State, allowed_creation_states(knm_number_options:auth_by(Options))),
+            State
     end.
+
+-spec allowed_creation_states(api_ne_binary()) -> ne_binaries().
+allowed_creation_states(undefined) -> [];
+allowed_creation_states(AuthBy) ->
+    %% Note: AuthBy can be ?KNM_DEFAULT_AUTH_BY
+    case knm_phone_number:is_admin(AuthBy) of
+        true ->
+            [?NUMBER_STATE_AGING
+            ,?NUMBER_STATE_AVAILABLE
+            ,?NUMBER_STATE_IN_SERVICE
+            ,?NUMBER_STATE_PORT_IN
+            ,?NUMBER_STATE_RESERVED
+            ];
+        false ->
+            case is_reseller(AuthBy) of
+                false -> [?NUMBER_STATE_RESERVED];
+                true ->
+                    [?NUMBER_STATE_RESERVED
+                    ,?NUMBER_STATE_IN_SERVICE
+                    ]
+            end
+    end.
+
+-ifdef(TEST).
+is_reseller(?MASTER_ACCOUNT_ID) -> true;
+is_reseller(?RESELLER_ACCOUNT_ID) -> true;
+is_reseller(?MATCH_ACCOUNT_RAW(_)) -> false.
+-else.
+is_reseller(?MATCH_ACCOUNT_RAW(AccountId)) ->
+    kz_services:is_reseller(AccountId).
+-endif.
 
 -spec ensure_can_load_to_create(knm_phone_number:knm_phone_number()) -> 'true';
                                (knm_numbers:collection()) -> knm_numbers:collection().
