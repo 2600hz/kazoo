@@ -81,9 +81,9 @@ main(CommandLineArgs, Loops) ->
 -spec in_kazoo(module(), atom(), binaries()) -> no_return().
 in_kazoo(M, F, As) ->
     kz_util:put_callid(<<"sup_", (kz_binary:rand_hex(8))/binary>>),
-    lager:notice("sup: ~s ~s ~s", [M, F, kz_util:iolist_join($,, As)]),
+    lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
     R = apply(M, F, As),
-    lager:notice("sup result: ~p", [R]),
+    lager:notice("~s result: ~p", [?MODULE, R]),
     R.
 
 %%% Internals
