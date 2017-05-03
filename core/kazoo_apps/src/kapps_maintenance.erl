@@ -146,7 +146,7 @@ migrate(Pause, Databases) ->
     io:format("removing depreciated databases...~n"),
     _  = remove_depreciated_databases(Databases),
 
-    kazoo_bindings:map(binding('migrate'), Accounts),
+    kazoo_bindings:map(binding('migrate'), [Accounts]),
 
     'no_return'.
 
