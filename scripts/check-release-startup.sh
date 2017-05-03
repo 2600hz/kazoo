@@ -16,6 +16,7 @@ sup_() {
     declare -a a=()
     for arg in "$@"; do a+=( '<<"'"$arg"'">>' ); done
     IFS=, eval 'A=${a[*]}'
+    printf '\e[1;3m%s\e[0m\n' "# SUP $M $F $A"
     erl -noshell -setcookie change_me -name sup_$RANDOM@${rel##*@} -eval "$RET = rpc:call('$rel', $M, $F, [$A])." -s init stop
 }
 
