@@ -14,5 +14,4 @@ fi
 export NAME_ARG="-name ${DEFAULT_REL}"
 
 RELX_REPLACE_OS_VARS=true KZname="-name ${DEFAULT_REL}" "${DEFAULT_ROOT}"/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
-
 exit $?

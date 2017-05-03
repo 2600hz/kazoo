@@ -2,27 +2,20 @@
 
 [[ ! -d _rel ]] && echo 'Cannot find _rel/ Is the release built?' && exit -1
 
-echo 'Checking the startup of the release...'
-
 rel=${REL:-kazoo_apps}  # kazoo_apps | ecallmgr | ...
-[[ $rel != *@* ]] && rel=$rel@127.0.0.1
-
+[[ $rel != *@* ]] && rel=$rel@$(hostname -f)
 [[ $rel != kazoo_apps* ]] && export KAZOO_APPS='ecallmgr'
 
+echo "Checking release startup with node $rel..."
+
 sup_() {
-    local RET=$1; shift
-    local M=$1; shift
-    local F=$1; shift
-    declare -a a=()
-    for arg in "$@"; do a+=( '<<"'"$arg"'">>' ); done
-    IFS=, eval 'A=${a[*]}'
-    printf '\e[1;3m%s\e[0m\n' "# SUP $M $F $A"
-    erl -noshell -setcookie change_me -name sup_$RANDOM@${rel##*@} -eval "$RET = rpc:call('$rel', $M, $F, [$A])." -s init stop
+    printf '\e[1;3m%s\e[0m\n' "# SUP $*"
+    RELX_REPLACE_OS_VARS=true KZname="-name $rel" exec $PWD/_rel/kazoo/bin/kazoo escript lib/sup-*/priv/sup.escript "$*"
 }
 
-sleep 300 && sup_ 'ok' crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
-sleep 360 && sup_ 'no_return' kapps_maintenance migrate &
-sleep 720 && sup_ 'ok' init stop &
+sleep 300 && sup_ crossbar_maintenance create_account 'compte_maitre' 'royaume' 'superduperuser' 'pwd!' &
+sleep 360 && sup_ kapps_maintenance migrate &
+sleep 720 && sup_ init stop &
 
 export KAZOO_CONFIG=$PWD/rel/ci-config.ini
 REL=$rel make release
