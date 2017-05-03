@@ -30,7 +30,7 @@ if [[ -f erl_crash.dump ]]; then
     code=3
 fi
 error_log=$PWD/_rel/kazoo/log/error.log
-if [[ -s $error_log ]]; then
+if [[ $(grep -c -v -F 'exit with reason shutdown' $error_log) -gt 0 ]]; then
     echo
     echo Error log:
     cat $error_log
