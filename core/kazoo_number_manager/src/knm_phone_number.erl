@@ -1723,7 +1723,7 @@ try_delete_account_doc(T0) ->
 
 try_delete_from(SplitBy, T0) ->
     F = fun (undefined, PNs, T) ->
-                ?LOG_DEBUG("no db for ~p", [[number(PN) || PN <- PNs]]),
+                ?LOG_DEBUG("skipping: no db for ~s", [[[number(PN),$\s] || PN <- PNs]]),
                 knm_numbers:add_oks(PNs, T);
             (Db, PNs, T) ->
                 ?LOG_DEBUG("deleting from ~s", [Db]),
