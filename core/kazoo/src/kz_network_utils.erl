@@ -19,7 +19,7 @@
 -export([to_cidr/1
         ,to_cidr/2
         ,verify_cidr/2
-%%        ,expand_cidr/1
+         %%        ,expand_cidr/1
         ]).
 -export([find_nameservers/1
         ,find_nameservers/2
