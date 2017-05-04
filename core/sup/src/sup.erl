@@ -69,11 +69,7 @@ main(CommandLineArgs, Loops) ->
                 no_return when IsMaintenanceCommand ->
                     halt(0);
                 Result when IsMaintenanceCommand ->
-                    Fmt = case IsVerbose of
-                              false -> "~s";
-                              true -> "Result: ~s"
-                          end,
-                    stdout(Fmt, [Result]),
+                    print_result(Result, IsVerbose),
                     Code = case ok =:= Result of
                                true -> 0;
                                false -> 2
@@ -82,15 +78,15 @@ main(CommandLineArgs, Loops) ->
                 'no_return' ->
                     halt(0);
                 Result when IsVerbose ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    stdout("Result: ~s", [String]),
+                    print_result(Result, IsVerbose),
                     halt(0);
                 Result ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    stdout("~s", [String]),
+                    print_result(Result, IsVerbose),
                     halt(0)
             end
     end.
+
+%%% Internals
 
 -spec in_kazoo(module(), atom(), binaries()) -> no_return().
 in_kazoo(M, F, As) ->
@@ -100,7 +96,19 @@ in_kazoo(M, F, As) ->
     lager:notice("~s result: ~p", [?MODULE, R]),
     R.
 
-%%% Internals
+-spec print_result(any(), boolean()) -> ok.
+print_result(Result, true) ->
+    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+    try stdout("Result: ~s", [String])
+    catch
+        erro:badarg -> stdout("Result: ~p", [String])
+    end;
+print_result(Result, false) ->
+    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+    try stdout("~s", [String])
+    catch
+        erro:badarg -> stdout("~p", [String])
+    end.
 
 -spec get_target(kz_proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
