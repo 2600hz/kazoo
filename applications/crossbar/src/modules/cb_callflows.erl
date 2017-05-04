@@ -22,6 +22,10 @@
 
 -include("crossbar.hrl").
 
+-ifdef(TEST).
+-include("test/cb_callflows_test.hrl").
+-endif.
+
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".callflows">>).
 
 -define(SERVER, ?MODULE).
@@ -165,7 +169,6 @@ load_callflow(CallflowId, Context) ->
         'success' ->
             Meta = get_metadata(kz_json:get_value(<<"flow">>, cb_context:doc(Context1))
                                ,cb_context:account_db(Context1)
-                               ,kz_json:new()
                                ),
             cb_context:set_resp_data(Context1
                                     ,kz_json:set_value(<<"metadata">>, Meta, cb_context:resp_data(Context1))
@@ -468,30 +471,47 @@ filter_callflow_list(CallflowId, JObjs) ->
 %% collect addional informat about the objects referenced in the flow
 %% @end
 %%--------------------------------------------------------------------
--spec get_metadata(api_object(), ne_binary(), kz_json:object()) ->
+
+-spec ids_in_flow(kz_json:object()) -> ne_binaries().
+ids_in_flow(FlowJObj) ->
+    ids_in_data(kz_json:get_values(<<"data">>, FlowJObj)).
+
+-spec ids_in_data({kz_json:json_terms(), kz_json:keys()}) -> ne_binaries().
+-spec ids_in_data({kz_json:json_terms(), kz_json:keys()}, ne_binaries()) -> ne_binaries().
+ids_in_data(Values) ->
+    ids_in_data(Values, []).
+
+ids_in_data({[], []}, IDs) -> IDs;
+ids_in_data({[V|Vs], [<<"id">>|Ks]}, IDs) ->
+    ids_in_data({Vs, Ks}, [V | IDs]);
+ids_in_data({[V|Vs], [K|Ks]}, IDs) ->
+    case binary:matches(K, <<"_id">>) of
+        [] -> ids_in_data({Vs, Ks}, IDs);
+        _Match -> ids_in_data({Vs, Ks}, [V | IDs])
+    end.
+
+-spec get_metadata(api_object(), ne_binary()) -> kz_json:object().
+-spec get_metadata(kz_json:object(), ne_binary(), kz_json:object()) ->
                           kz_json:object().
-get_metadata('undefined', _, JObj) -> JObj;
-get_metadata(Flow, Db, JObj) ->
-    JObj1 = case kz_json:get_first_defined([[<<"data">>, <<"id">>]
-                                           ,[<<"data">>, <<"faxbox_id">>]
-                                           ]
-                                          ,Flow
-                                          )
-            of
-                %% this node has no id, dont change the metadata
-                'undefined' -> JObj;
-                %% node has an id, try to update the metadata
-                Id -> create_metadata(Db, Id, JObj)
-            end,
-    case kz_json:get_value(<<"children">>, Flow) of
-        'undefined' -> JObj1;
+get_metadata('undefined', _Db) -> kz_json:new();
+get_metadata(Flow, Db) -> get_metadata(Flow, Db, kz_json:new()).
+
+get_metadata(Flow, Db, Metadata) ->
+    UpdatedMetadata
+        = lists:foldl(fun(ID, MetaAcc) -> create_metadata(Db, ID, MetaAcc) end
+                     ,Metadata
+                     ,ids_in_flow(Flow)
+                     ),
+
+    case kz_json:get_json_value(<<"children">>, Flow) of
+        'undefined' -> UpdatedMetadata;
         Children ->
             %% iterate through each child, collecting metadata on the
             %% branch name (things like temporal routes)
-            kz_json:foldl(fun(K, Child, J) ->
-                                  get_metadata(Child, Db, create_metadata(Db, K, J))
+            kz_json:foldl(fun(Branch, ChildFlow, MetaAcc) ->
+                                  get_metadata(ChildFlow, Db, create_metadata(Db, Branch, MetaAcc))
                           end
-                         ,JObj1
+                         ,UpdatedMetadata
                          ,Children
                          )
     end.
@@ -506,56 +526,66 @@ get_metadata(Flow, Db, JObj) ->
 %%--------------------------------------------------------------------
 -spec create_metadata(ne_binary(), ne_binary(), kz_json:object()) ->
                              kz_json:object().
-create_metadata(_, <<"_">>, JObj) -> JObj;
-create_metadata(_, Id, JObj) when byte_size(Id) < 2 -> JObj;
-create_metadata(Db, Id, JObj) ->
-    case kz_json:get_value(Id, JObj) =:= 'undefined'
-        andalso kz_datamgr:open_cache_doc(Db, Id)
+create_metadata(_, <<"_">>, Metadata) -> Metadata;
+create_metadata(_, Id, Metadata) when byte_size(Id) < 2 -> Metadata;
+create_metadata(Db, Id, Metadata) ->
+    case 'undefined' =:= kz_json:get_ne_binary_value(Id, Metadata)
+        andalso fetch_id_from_db(Db, Id)
     of
-        'false'  -> JObj;
-        {'ok', Doc} ->  kz_json:set_value(Id, create_metadata(Doc), JObj);
-        {'error', _E} -> JObj
+        'false' -> Metadata;
+        {'ok', Doc} ->  kz_json:set_value(Id, create_metadata(Doc), Metadata);
+        {'error', _E} -> Metadata
     end.
+
+-spec fetch_id_from_db(ne_binary(), ne_binary()) ->
+                              {'ok', kz_json:object()} |
+                              kazoo_data:data_error().
+-ifdef(TEST).
+fetch_id_from_db(_Db, <<"{USER_ID}">>) ->
+    {'ok', ?TEST_USER};
+fetch_id_from_db(_Db, <<"{VM_ID}">>) ->
+    {'ok', ?TEST_VM};
+fetch_id_from_db(_Db, <<"{RING_GROUP_ID}">>) ->
+    {'ok', ?TEST_RING_GROUP}.
+-else.
+fetch_id_from_db(Db, Id) ->
+    kz_datamgr:open_cache_doc(Db, Id).
+-endif.
 
 -spec create_metadata(kz_json:object()) -> kz_json:object().
 create_metadata(Doc) ->
-    %% list of keys to extract from documents and set on the metadata
-    Funs = [fun(J) -> metadata_builder(<<"name">>, Doc, J) end
-           ,fun(J) -> metadata_builder(<<"numbers">>, Doc, J) end
-           ,fun(J) -> metadata_builder(<<"pvt_type">>, Doc, J) end
-           ],
-    %% do it
-    lists:foldl(fun(Fun, JObj) ->
-                        Fun(JObj)
-                end
+    lists:foldl(fun(Key, Meta) -> metadata_builder(Key, Doc, Meta) end
                ,kz_json:new()
-               ,Funs
+               ,[<<"name">>
+                ,<<"numbers">>
+                ,<<"pvt_type">>
+                ]
                ).
 
 -spec metadata_builder(kz_json:path(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
-metadata_builder(<<"name">> = K, D, J) ->
-    case kz_doc:type(D) of
+metadata_builder(<<"name">> = Key, Doc, Metadata) ->
+    case kz_doc:type(Doc) of
         <<"user">> ->
-            metadata_user_name(D, J);
+            metadata_user_name(Doc, Metadata);
         _Type ->
-            maybe_copy_value(K, D, J)
+            maybe_copy_value(Key, Doc, Metadata)
     end;
-metadata_builder(K, D, J) ->
-    maybe_copy_value(K, D, J).
+metadata_builder(Key, Doc, Metadata) ->
+    maybe_copy_value(Key, Doc, Metadata).
 
 -spec maybe_copy_value(kz_json:path(), kz_json:object(), kz_json:object()) ->
                               kz_json:object().
-maybe_copy_value(K, D, J) ->
-    case kz_json:get_value(K, D) of
-        'undefined' -> J;
-        V -> kz_json:set_value(K, V, J)
+maybe_copy_value(Key, Doc, Metadata) ->
+    case kz_json:get_value(Key, Doc) of
+        'undefined' -> Metadata;
+        Value -> kz_json:set_value(Key, Value, Metadata)
     end.
 
 -spec metadata_user_name(kz_json:object(), kz_json:object()) -> kz_json:object().
-metadata_user_name(Doc, JObj) ->
+metadata_user_name(Doc, Metadata) ->
     case kzd_user:name(Doc) of
-        <<>> -> JObj;
-        <<" ">> -> JObj;
-        Name -> kz_json:set_value(<<"name">>, Name, JObj)
+        <<>> -> Metadata;
+        <<" ">> -> Metadata;
+        Name -> kz_json:set_value(<<"name">>, Name, Metadata)
     end.
