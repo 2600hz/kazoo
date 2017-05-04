@@ -223,8 +223,8 @@ fetch_in(NumberDb, [Num], Options) ->
     fetch(NumberDb, Num, Options);
 fetch_in(NumberDb, Nums, Options) ->
     case knm_number_options:batch_run(Options) of
-        true -> kz_datamgr:open_docs(NumberDb, Nums);
-        false -> kz_datamgr:open_cache_docs(NumberDb, Nums)
+        true -> kz_datamgr:open_docs_chunked(NumberDb, Nums);
+        false -> kz_datamgr:open_cache_docs_chunked(NumberDb, Nums)
     end.
 -endif.
 
