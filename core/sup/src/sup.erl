@@ -64,7 +64,7 @@ main(CommandLineArgs, Loops) ->
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
-                    halt(1);
+                    halt(3);
                 'no_return' ->
                     halt(0);
                 Result when IsVerbose ->
