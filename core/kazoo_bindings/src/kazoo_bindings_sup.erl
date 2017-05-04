@@ -10,7 +10,6 @@
 -behaviour(supervisor).
 
 -export([start_link/0
-        ,stop/0
         ]).
 -export([init/1]).
 
@@ -43,10 +42,6 @@
 -spec start_link() -> startlink_ret().
 start_link() ->
     supervisor:start_link({'local', ?SERVER}, ?MODULE, []).
-
--spec stop() -> 'ok' | {'error', 'not_found'}.
-stop() ->
-    supervisor:terminate_child(?SERVER, ?ID).
 
 %% ===================================================================
 %% Supervisor callbacks

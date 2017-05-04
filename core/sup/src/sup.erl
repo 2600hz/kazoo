@@ -11,6 +11,7 @@
 -module(sup).
 
 -export([main/1]).
+-export([in_kazoo/3]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
@@ -37,8 +38,8 @@ main(CommandLineArgs, Loops) ->
             {'ok', Options, Args} = parse_args(CommandLineArgs),
             lists:member('help', Options)
                 andalso print_help(),
-            Verbose = props:get_value('verbose', Options) =/= 'undefined',
-            Target = get_target(Options, Verbose),
+            IsVerbose = props:get_value('verbose', Options) =/= 'undefined',
+            Target = get_target(Options, IsVerbose),
             Module =
                 case props:get_value('module', Options) of
                     'undefined' -> print_invalid_cli_args();
@@ -49,19 +50,24 @@ main(CommandLineArgs, Loops) ->
                     'undefined' -> print_invalid_cli_args();
                     F -> list_to_atom(F)
                 end,
+            Arguments = [list_to_binary(Arg) || Arg <- Args],
             Timeout = case props:get_value('timeout', Options) of 0 -> 'infinity'; T -> T * 1000 end,
-            Verbose
+            IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
-            case rpc:call(Target, Module, Function, [list_to_binary(Arg) || Arg <- Args], Timeout) of
+
+            case rpc:call(Target, ?MODULE, in_kazoo, [Module, Function, Arguments], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
+                {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
+                    stderr("Command failed: timeout", []),
+                    halt(1);
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
                     halt(1);
                 'no_return' ->
                     halt(0);
-                Result when Verbose ->
+                Result when IsVerbose ->
                     String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
                     stdout("Result: ~s", [String]),
                     halt(0);
@@ -72,6 +78,13 @@ main(CommandLineArgs, Loops) ->
             end
     end.
 
+-spec in_kazoo(module(), atom(), binaries()) -> no_return().
+in_kazoo(M, F, As) ->
+    kz_util:put_callid(<<"sup_", (kz_binary:rand_hex(8))/binary>>),
+    lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
+    R = apply(M, F, As),
+    lager:notice("~s result: ~p", [?MODULE, R]),
+    R.
 
 %%% Internals
 
