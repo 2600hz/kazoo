@@ -60,7 +60,7 @@ main(CommandLineArgs, Loops) ->
                     print_invalid_cli_args();
                 {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
                     stderr("Command failed: timeout", []),
-                    halt(1);
+                    halt(4);
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
