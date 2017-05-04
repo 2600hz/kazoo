@@ -45,6 +45,7 @@ main(CommandLineArgs, Loops) ->
                     'undefined' -> print_invalid_cli_args();
                     M -> list_to_atom(M)
                 end,
+            IsMaintenanceCommand = lists:suffix("_maintenance", props:get_value('module', Options)),
             Function =
                 case props:get_value('function', Options) of
                     'undefined' -> print_invalid_cli_args();
@@ -65,6 +66,19 @@ main(CommandLineArgs, Loops) ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
                     halt(3);
+                no_return when IsMaintenanceCommand ->
+                    halt(0);
+                Result when IsMaintenanceCommand ->
+                    Fmt = case IsVerbose of
+                              false -> "~s";
+                              true -> "Result: ~s"
+                          end,
+                    stdout(Fmt, [Result]),
+                    Code = case ok =:= Result of
+                               true -> 0;
+                               false -> 2
+                           end,
+                    halt(Code);
                 'no_return' ->
                     halt(0);
                 Result when IsVerbose ->
