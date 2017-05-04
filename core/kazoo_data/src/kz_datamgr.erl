@@ -1407,7 +1407,7 @@ max_bulk_insert() -> ?MAX_BULK_INSERT.
 %% @doc How many documents are chunked when doing a bulk read
 %% @end
 %%------------------------------------------------------------------------------
--spec max_bulk_read() -> ?MAX_BULK_READ.
+-spec max_bulk_read() -> pos_integer().
 max_bulk_read() -> ?MAX_BULK_READ.
 
 -spec db_classification(text()) -> db_classifications().

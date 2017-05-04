@@ -22,6 +22,11 @@
             "description": "datamgr default archive folder",
             "type": "string"
         },
+        "max_chunked_read_size": {
+            "default": 2000,
+            "description": "maximum number of documents fetched as part of one chunk of documents",
+            "type": "integer"
+        },
         "no_caching_doc_types": {
             "default": [
                 "media",

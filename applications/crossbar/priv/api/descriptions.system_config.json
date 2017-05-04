@@ -221,6 +221,7 @@
     "crossbar.workers": "crossbar workers",
     "datamgr.cache_policy": "datamgr cache policy",
     "datamgr.default_archive_folder": "datamgr default archive folder",
+    "datamgr.max_chunked_read_size": "maximum number of documents fetched as part of one chunk of documents",
     "datamgr.no_caching_doc_types": "datamgr no caching doc types",
     "datamgr.performance": "datamgr performance",
     "doodle.api_preserve_caller_id": "doodle.api preserve caller id",
