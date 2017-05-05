@@ -11,7 +11,7 @@
 -module(sup).
 
 -export([main/1]).
--export([in_kazoo/3]).
+-export([in_kazoo/4]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
@@ -28,7 +28,8 @@ main(CommandLineArgs) ->
 main(CommandLineArgs, Loops) ->
     _ = os:cmd("epmd -daemon"),
     _ = net_kernel:stop(),
-    case net_kernel:start([my_name(), long_or_short_name()]) of
+    SUPName = my_name(),
+    case net_kernel:start([SUPName, long_or_short_name()]) of
         {'error', _} when Loops < 3 ->
             stderr("Unable to start command bridge network kernel, try again", []),
             halt(1);
@@ -56,7 +57,7 @@ main(CommandLineArgs, Loops) ->
             IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
 
-            case rpc:call(Target, ?MODULE, in_kazoo, [Module, Function, Arguments], Timeout) of
+            case rpc:call(Target, ?MODULE, in_kazoo, [SUPName, Module, Function, Arguments], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
                 {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
@@ -88,9 +89,9 @@ main(CommandLineArgs, Loops) ->
 
 %%% Internals
 
--spec in_kazoo(module(), atom(), binaries()) -> no_return().
-in_kazoo(M, F, As) ->
-    kz_util:put_callid(<<"sup_", (kz_binary:rand_hex(8))/binary>>),
+-spec in_kazoo(atom(), module(), atom(), binaries()) -> no_return().
+in_kazoo(SUPName, M, F, As) ->
+    kz_util:put_callid(SUPName),
     lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
     R = apply(M, F, As),
     lager:notice("~s result: ~p", [?MODULE, R]),
@@ -154,9 +155,10 @@ get_host() ->
             print_unresolvable_host(Host)
     end.
 
--spec my_name() -> atom().
+-spec my_name() -> ne_binary().
 my_name() ->
-    list_to_atom("sup_" ++ os:getpid() ++ "@" ++ localhost()).
+    Name = iolist_to_binary(["sup_", kz_binary:rand_hex(2), $@, localhost()]),
+    kz_term:to_atom(Name, true).
 
 -spec localhost() -> nonempty_string().
 localhost() ->
