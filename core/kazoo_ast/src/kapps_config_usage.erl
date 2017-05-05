@@ -13,6 +13,7 @@
 -define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
+-define(FIELD_TYPE, <<"type">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
 
 -spec to_schema_docs() -> 'ok'.
@@ -26,56 +27,46 @@ to_schema_docs(Schemas) ->
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
     maybe_update_account_schema(Name, AutoGenSchema),
-    SchemaPath = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+    update_schema(<<"system_config">>, Name, AutoGenSchema).
 
-    GeneratedJObj = filter_system(static_fields(Name, remove_source(AutoGenSchema))),
-    ExistingJObj = existing_schema(SchemaPath),
-    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
-    'ok' = file:write_file(SchemaPath, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
+-spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
+update_schema(ConfigType, Name, AutoGenSchema) ->
+    Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
+    GeneratedJObj = filter_system(static_fields(ConfigType, Name, remove_source(AutoGenSchema))),
+    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
+    UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
+    'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
 existing_schema(Name) ->
     case kz_json_schema:fload(Name) of
         {'ok', JObj} -> JObj;
-        {'error', _E} -> io:format("failed to find ~s: ~p~n", [Name, _E]), kz_json:new()
+        {'error', _E} ->
+            io:format("failed to find ~s: ~p~n", [Name, _E]),
+            kz_json:new()
     end.
 
 maybe_update_account_schema(Name, AutoGenSchema) ->
-    Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
-    case account_properties(AutoGenSchema) of
-        ?EMPTY_JSON_OBJECT -> 'ok';
-        Properties ->
-            GeneratedJObj = filter_system(static_account_fields(Name, remove_source(Properties))),
-            ExistingJObj = existing_schema(Path),
-            MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
-            'ok' = file:write_file(Path, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj)))
+    PropertiesJObj = account_properties(AutoGenSchema),
+    case PropertiesJObj =:= kz_json:new() of
+        true -> ok;
+        false -> update_schema(<<"account_config">>, Name, PropertiesJObj)
     end.
 
 -spec account_properties(kz_json:object()) -> kz_json:object().
-account_properties(JObj0) ->
-    Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
-    Keep = [lists:droplast(K)
-            || {K, V} <- Flat,
-               V =:= <<"kapps_account_config">>
-           ],
+account_properties(JObj) ->
     kz_json:expand(
       kz_json:from_list(
         [KV
-         || {K,_V}=KV <- Flat,
-            lists:member(lists:droplast(K), Keep)
-        ]
-       )
-     ).
+         || {_K,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj)),
+            V =:= <<"kapps_account_config">>
+        ])).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().
 remove_source(JObj) ->
-    Filtered = kz_json:filter(fun filter_no_source/1
-                             ,kz_json:flatten(JObj)
-                             ),
+    F = fun ({K, _}) -> not lists:member(?SOURCE, K) end,
+    Filtered = kz_json:filter(F, kz_json:flatten(JObj)),
     kz_json:expand(Filtered).
-
--spec filter_no_source({kz_json:path(), any()}) -> boolean().
-filter_no_source({K, _}) -> not lists:member(?SOURCE, K).
 
 filter_system(JObj) ->
     filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
@@ -89,50 +80,31 @@ filter_system_fold({[V | Vc], [K | Kc]}, JObj) ->
         'false' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, V, JObj))
     end.
 
-static_fields(Name, JObj) ->
-    Id = <<"system_config.", Name/binary>>,
-    Description = <<"Schema for ", Name/binary, " system_config">>,
-
-    Values = [{<<"description">>, Description}
+static_fields(ConfigType, Name, JObj) ->
+    Id = <<ConfigType/binary, ".", Name/binary>>,
+    Values = [{<<"description">>, <<"Schema for ", Name/binary, " ", ConfigType/binary>>}
              ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
-             ,{<<"type">>, <<"object">>}
-             ],
-    kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
-
-static_account_fields(Name, JObj) ->
-    Id = <<"account_config.", Name/binary>>,
-    Description = <<"Schema for ", Name/binary, " account_config">>,
-
-    Values = [{<<"description">>, Description}
-             ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
-             ,{<<"type">>, <<"object">>}
+             ,{?FIELD_TYPE, <<"object">>}
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
 -spec process_project() -> kz_json:object().
 process_project() ->
     io:format("processing kapps_config/kapps_account_config usage: "),
-
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', kz_json:new()}
               ],
-
     Usage = kazoo_ast:walk_project(Options),
     io:format(" done~n"),
     Usage.
 
 -spec process_app(atom()) -> kz_json:object().
--spec process_app(atom(), kz_json:object()) -> kz_json:object().
 process_app(App) ->
-    process_app(App, kz_json:new()).
-
-process_app(App, Schemas) ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
-              ,{'accumulator', Schemas}
+              ,{'accumulator', kz_json:new()}
               ],
-
     kazoo_ast:walk_app(App, Options).
 
 print_dot(_Module, Acc) ->
@@ -278,25 +250,23 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _A
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
-guess_properties(Document, Source, Key, Type, Default)
-  when is_binary(Key) ->
+guess_properties(Document, Source, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
     Description = fetch_description(DescriptionKey),
-    case Description of
-        'undefined' ->
+    case undefined =:= Description of
+        false -> ok;
+        true ->
             io:format("\nYou need to add the key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
-            halt(1);
-        _ -> 'ok'
+            halt(1)
     end,
     kz_json:from_list(
       props:filter_undefined(
-        [{<<"type">>, Type}
+        [{?FIELD_TYPE, Type}
         ,{?SOURCE, erlang:atom_to_binary(Source, utf8)}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
-        ]
-       )
-     );
+        ]));
+
 guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Source, Key, Type, Default);
