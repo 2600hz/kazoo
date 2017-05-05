@@ -145,7 +145,7 @@ listen_to_ping(Family, Cmd, Try) ->
 -spec listen_to_ping(inet:address_family(), string(), port(), integer(), list()) -> boolean().
 listen_to_ping(Family, Cmd, Port, Try, Acc) ->
     IsIPv6 = Family =:= 'inet6'
-                 andalso Cmd =:= ping_cmd_option(Family),
+        andalso Cmd =:= ping_cmd_option(Family),
     receive
         {Port, {'data', Msg}} -> listen_to_ping(Family, Cmd, Port, Try, Acc ++ Msg);
         {Port, {'exit_status', 0}} ->
