@@ -80,6 +80,7 @@ create_template_props(Event, Account) ->
     ,{<<"request">>, notify_util:json_to_template_props(Request)}
     ,{<<"account">>, notify_util:json_to_template_props(Account)}
     ,{<<"service">>, notify_util:get_service_props(Request, Account, ?MOD_CONFIG_CAT)}
+    ,{<<"link">>, kz_json:get_first_defined([<<"password_reset_link">>, <<"Password-Reset-Link">>], Request)}
     ].
 
 %%--------------------------------------------------------------------
