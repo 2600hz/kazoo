@@ -148,7 +148,7 @@ get_binding_ip() ->
                                  ),
                     DefaultIPAddress;
                 {'ok', _} ->
-                    lager:error("address ~s is ipv4, but system reports that ipv4 and ipv6 are not supported by the system, enforcing default ip ~s"
+                    lager:warning("address ~s is ipv4, but system reports that ipv4 and ipv6 are not supported by the system, enforcing default ip ~s"
                                ,[IP, inet:ntoa(DefaultIPAddress)]
                                ),
                     DefaultIPAddress;
