@@ -174,7 +174,7 @@ ip_family_to_ping_option('local') -> "-4".
 %%--------------------------------------------------------------------
 -spec default_binding_all_ip() -> ne_binary().
 default_binding_all_ip() ->
-    default_binding_all_ip(is_ip_family_supported('inet')).
+    default_binding_all_ip(is_ip_family_supported('inet6')).
 
 -spec default_binding_all_ip(boolean()) -> ne_binary().
 default_binding_all_ip('true') -> <<"::">>;
