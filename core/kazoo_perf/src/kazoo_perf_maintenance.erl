@@ -115,7 +115,7 @@ to_props(processes_in_run_queue_of_each_schedulers, RunQueue) ->
     [{run_queue, RunQueue}
     ];
 to_props(ets_tables_sizes, Tabs) ->
-    [{<<"tab_", (kz_util:to_binary(Tab))/binary>>, Size}
+    [{kz_util:to_binary(Tab), Size}
      || {Tab, Size} <- Tabs,
         Size =/= 0
     ].
