@@ -26,7 +26,9 @@ to_schema_docs(Schemas) ->
 
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
-    maybe_update_account_schema(Name, AutoGenSchema),
+    AccountSchema = account_properties(AutoGenSchema),
+    _ = kz_json:new() =/= AccountSchema
+        andalso update_schema(<<"account_config">>, Name, AccountSchema),
     update_schema(<<"system_config">>, Name, AutoGenSchema).
 
 -spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
@@ -46,20 +48,19 @@ existing_schema(Name) ->
             kz_json:new()
     end.
 
-maybe_update_account_schema(Name, AutoGenSchema) ->
-    PropertiesJObj = account_properties(AutoGenSchema),
-    case PropertiesJObj =:= kz_json:new() of
-        true -> ok;
-        false -> update_schema(<<"account_config">>, Name, PropertiesJObj)
-    end.
-
 -spec account_properties(kz_json:object()) -> kz_json:object().
-account_properties(JObj) ->
+account_properties(AutoGenSchema) ->
+    Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
+    KeepPaths = [lists:droplast(K)
+                 || {K, V} <- Flat,
+                    ?SOURCE =:= lists:last(K),
+                    V =:= kapps_account_config
+                ],
     kz_json:expand(
       kz_json:from_list(
         [KV
-         || {_K,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj)),
-            V =:= <<"kapps_account_config">>
+         || {K,_}=KV <- Flat,
+            lists:member(lists:droplast(K), KeepPaths)
         ])).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().
@@ -250,7 +251,7 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _A
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
-guess_properties(Document, Source, Key=?NE_BINARY, Type, Default) ->
+guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
     Description = fetch_description(DescriptionKey),
     case undefined =:= Description of
@@ -262,7 +263,7 @@ guess_properties(Document, Source, Key=?NE_BINARY, Type, Default) ->
     kz_json:from_list(
       props:filter_undefined(
         [{?FIELD_TYPE, Type}
-        ,{?SOURCE, erlang:atom_to_binary(Source, utf8)}
+        ,{?SOURCE, SourceModule}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
         ]));
