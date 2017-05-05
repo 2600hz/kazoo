@@ -13,6 +13,8 @@
 -export([is_ipv4/1
         ,is_ipv6/1
         ,is_ip/1
+        ,is_ip_family_supported/1
+        ,default_binding_all_ip/0
         ]).
 -export([to_cidr/1
         ,to_cidr/2
@@ -118,6 +120,65 @@ is_ipv6(Address) when is_list(Address) ->
 is_ip(Address) ->
     is_ipv4(Address)
         orelse is_ipv6(Address).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Detects if specified IP family is supported by system
+%% (Need 'ping' command installed on the system.
+%%  ping is part of iputils package)
+%% @end
+%%--------------------------------------------------------------------
+-spec is_ip_family_supported(inet:address_family()) -> boolean().
+is_ip_family_supported(Family) ->
+    Options = ['exit_status'
+              ,'use_stdio'
+              ,'stderr_to_stdout'
+              ,{'args', ["-c 1"
+                        ,ip_family_to_ping_option(Family)
+                        ,"localhost"
+                        ]
+               }
+              ],
+    %%FIXME: on old systems which are not updated since 2015 ping doesn't supports "-6" option
+    case os:find_executable("ping") of
+        'false' ->
+            lager:error("os ping command is missing"),
+            'false';
+        Cmd ->
+            Port = erlang:open_port({spawn_executable, Cmd}, Options),
+            listen_to_ping(Port, [])
+    end.
+
+-spec listen_to_ping(port(), list()) -> boolean().
+listen_to_ping(Port, Acc) ->
+    receive
+        {Port, {'data', Msg}} -> listen_to_ping(Port, Acc ++ Msg);
+        {Port, {'exit_status', 0}} ->
+            case Acc of
+                "PING"++_ -> 'true';
+                _ -> 'false'
+            end;
+        {Port, {'exit_status', _}} -> 'false'
+    end.
+
+-spec ip_family_to_ping_option(inet:address_family()) -> string().
+ip_family_to_ping_option('inet6') -> "-6";
+ip_family_to_ping_option('inet') -> "-4";
+ip_family_to_ping_option('local') -> "-4".
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc Default binding IP address (bind on all interfaces) based
+%%      on supported IP family
+%% @end
+%%--------------------------------------------------------------------
+-spec default_binding_all_ip() -> ne_binary().
+default_binding_all_ip() ->
+    default_binding_all_ip(is_ip_family_supported('inet')).
+
+-spec default_binding_all_ip(boolean()) -> ne_binary().
+default_binding_all_ip('true') -> <<"::">>;
+default_binding_all_ip('false') -> <<"0.0.0.0">>.
 
 %%--------------------------------------------------------------------
 %% @public

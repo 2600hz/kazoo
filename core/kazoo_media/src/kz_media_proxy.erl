@@ -122,50 +122,35 @@ find_file(File, Root) ->
 
 -spec get_binding_ip() -> inet:ip_address().
 get_binding_ip() ->
-    IsIPv6Enabled = is_ip_family_supported('inet6'),
-    IsIPv4Enabled = is_ip_family_supported('inet'),
+    IsIPv6Enabled = kz_network_utils:is_ip_family_supported('inet6'),
+    IsIPv4Enabled = kz_network_utils:is_ip_family_supported('inet'),
+
+    DefaultIP = kz_network_utils:default_binding_all_ip(),
 
     %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"proxy_ip">>, default_ip())),
+    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"proxy_ip">>, DefaultIP)),
 
-    {'ok', DefaultIP} = inet:parse_address(kz_term:to_list(default_ip(IsIPv6Enabled))),
-    {'ok', DefaultIPv4} = inet:parse_address(kz_term:to_list(default_ip('false'))),
-    {'ok', DefaultIPv6} = inet:parse_address(kz_term:to_list(default_ip('true'))),
+    {'ok', DefaultIPAddress} = inet:parse_address(kz_term:to_list(DefaultIP)),
 
     case inet:parse_ipv6strict_address(IP) of
         {'ok', IPv6} when IsIPv6Enabled -> IPv6;
-        {'ok', _} when IsIPv4Enabled ->
-            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ipv4 ~s"
-                         ,[IP, inet:ntoa(DefaultIPv4)]
+        {'ok', _} ->
+            lager:warning("address ~s is ipv6, but ipv6 is not supported by the system, enforcing default ip ~s"
+                         ,[IP, inet:ntoa(DefaultIPAddress)]
                          ),
-            DefaultIPv4;
+            DefaultIPAddress;
         {'error', 'einval'} ->
             case inet:parse_ipv4strict_address(IP) of
                 {'ok', IPv4} when IsIPv4Enabled -> IPv4;
                 {'ok', _} when IsIPv6Enabled->
-                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ipv6 ~s"
-                                 ,[IP, inet:ntoa(DefaultIPv6)]
+                    lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ip ~s"
+                                 ,[IP, inet:ntoa(DefaultIPAddress)]
                                  ),
-                    DefaultIPv6;
+                    DefaultIPAddress;
                 {'error', 'einval'} ->
                     lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
-                                 ,[IP, inet:ntoa(DefaultIP)]
+                                 ,[IP, inet:ntoa(DefaultIPAddress)]
                                  ),
-                    DefaultIP
+                    DefaultIPAddress
             end
-    end.
-
--spec default_ip() -> ne_binary().
-default_ip() ->
-    default_ip(is_ip_family_supported('inet')).
-
--spec default_ip(boolean()) -> ne_binary().
-default_ip('true') -> <<"::">>;
-default_ip('false') -> <<"0.0.0.0">>.
-
--spec is_ip_family_supported(inet:address_family()) -> boolean().
-is_ip_family_supported(Family) ->
-    case inet:getaddr("localhost", Family) of
-        {'ok', _} -> 'true';
-        {'error', _} -> 'false'
     end.
