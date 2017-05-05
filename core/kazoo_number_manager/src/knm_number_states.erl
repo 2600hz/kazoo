@@ -221,24 +221,9 @@ in_service_from_reserved_authorize(Number) ->
             Number
     end.
 
--spec in_service_from_in_service_authorize(kn()) -> kn();
-                                          (t()) -> t().
-in_service_from_in_service_authorize(T=#{todo := Ns, options := Options}) ->
-    AssignTo = knm_number_options:assign_to(Options),
-    AuthBy = knm_number_options:auth_by(Options),
-    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
-    case Sudo
-        orelse ?ACCT_HIERARCHY(AssignTo, AuthBy, 'true')
-        orelse ?ACCT_HIERARCHY(AuthBy, AssignTo, 'false')
-    of
-        false ->
-            Reason = knm_errors:to_json(unauthorized),
-            knm_numbers:ko(Ns, Reason, T);
-        true ->
-            Sudo
-                andalso lager:info("bypassing auth"),
-            knm_numbers:ok(Ns, T)
-    end.
+-spec in_service_from_in_service_authorize(t()) -> t().
+in_service_from_in_service_authorize(T) ->
+    knm_numbers:do_in_wrap(fun knm_phone_number:is_authorized/1, T).
 
 -spec not_assigning_to_self(kn()) -> kn();
                            (t()) -> t().

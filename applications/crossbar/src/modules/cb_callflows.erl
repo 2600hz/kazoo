@@ -361,7 +361,11 @@ add_pattern_conflict(Context, JObj) ->
 -spec validate_callflow_schema(api_binary(), cb_context:context()) -> cb_context:context().
 validate_callflow_schema(CallflowId, Context) ->
     OnSuccess = fun(C) ->
-                        validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C))
+                        C1 = validate_uniqueness(CallflowId, on_successful_validation(CallflowId, C)),
+
+                        Doc = cb_context:doc(C1),
+                        Nums = kz_json:get_list_value(<<"numbers">>, Doc, []),
+                        cb_modules_util:validate_number_ownership(Nums, C1)
                 end,
     cb_context:validate_request_data(<<"callflows">>, Context, OnSuccess).
 
@@ -428,7 +432,7 @@ track_assignment('post', Context) ->
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
-    Updates = cb_modules_util:apply_assignment_updates(Unassigned ++ Assigned),
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned ++ Assigned, Context),
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('put', Context) ->
     NewNums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
@@ -438,7 +442,7 @@ track_assignment('put', Context) ->
                     knm_converters:is_reconcilable(Num, AccountId)
                 ],
 
-    Updates = cb_modules_util:apply_assignment_updates(Assigned),
+    Updates = cb_modules_util:apply_assignment_updates(Assigned, Context),
     cb_modules_util:log_assignment_updates(Updates);
 track_assignment('delete', Context) ->
     Nums = kz_json:get_value(<<"numbers">>, cb_context:doc(Context), []),
@@ -447,7 +451,7 @@ track_assignment('delete', Context) ->
                    || Num <- Nums,
                       knm_converters:is_reconcilable(Num, AccountId)
                   ],
-    Updates = cb_modules_util:apply_assignment_updates(Unassigned),
+    Updates = cb_modules_util:apply_assignment_updates(Unassigned, Context),
     cb_modules_util:log_assignment_updates(Updates).
 
 -spec filter_callflow_list(api_binary(), kz_json:objects()) -> kz_json:objects().

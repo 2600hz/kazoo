@@ -28,7 +28,8 @@
 
         ,remove_plaintext_password/1
 
-        ,apply_assignment_updates/1
+        ,validate_number_ownership/2
+        ,apply_assignment_updates/2
         ,log_assignment_updates/1
         ]).
 
@@ -563,28 +564,126 @@ remove_plaintext_password(Context) ->
                              ),
     cb_context:set_doc(Context, Doc).
 
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec validate_number_ownership(ne_binaries(), cb_context:context()) ->
+                                       cb_context:context().
+validate_number_ownership(Numbers, Context) ->
+    Options = [{'auth_by', cb_context:auth_account_id(Context)}],
+    #{ko := KOs} = knm_numbers:get(Numbers, Options),
+    case maps:fold(fun validate_number_ownership_fold/3, [], KOs) of
+        [] -> Context;
+        Unauthorized ->
+            Prefix = <<"unauthorized to use ">>,
+            NumbersStr = kz_binary:join(Unauthorized, <<", ">>),
+            Message = <<Prefix/binary, NumbersStr/binary>>,
+            cb_context:add_system_error(403, 'forbidden', Message, Context)
+    end.
+
+-spec validate_number_ownership_fold(knm_numbers:num(), knm_numbers:ko(), ne_binaries()) ->
+                                            ne_binaries().
+validate_number_ownership_fold(_, Reason, Unauthorized) when is_atom(Reason) ->
+    %% Ignoring atom reasons, i.e. 'not_found' or 'not_reconcilable'
+    Unauthorized;
+validate_number_ownership_fold(Number, ReasonJObj, Unauthorized) ->
+    case knm_errors:error(ReasonJObj) of
+        <<"forbidden">> -> [Number|Unauthorized];
+        _ -> Unauthorized
+    end.
+
+-type assignment_to_apply() :: {ne_binary(), api_binary()}.
+-type assignments_to_apply() :: [assignment_to_apply()].
+-type port_req_assignment() :: {ne_binary(), api_binary(), kz_json:object()}.
+-type port_req_assignments() :: [port_req_assignment()].
 -type assignment_update() :: {ne_binary(), knm_number:knm_number_return()} |
                              {ne_binary(), {'ok', kz_json:object()}} |
                              {ne_binary(), {'error', any()}}.
 -type assignment_updates() :: [assignment_update()].
 
--spec apply_assignment_updates([{ne_binary(), api_binary()}]) ->
+-spec apply_assignment_updates(assignments_to_apply(), cb_context:context()) ->
                                       assignment_updates().
-apply_assignment_updates(Updates) ->
-    [maybe_assign_to_port_number(DID, Assign)
-     || {DID, Assign} <- Updates
-    ].
+apply_assignment_updates(Updates, Context) ->
+    AccountId = cb_context:account_id(Context),
+    {PRUpdates, NumUpdates} = lists:foldl(fun split_port_requests/2, {[], []}, Updates),
+    PortAssignResults = assign_to_port_number(PRUpdates),
+    AssignResults = maybe_assign_to_app(NumUpdates, AccountId),
+    PortAssignResults ++ AssignResults.
 
--spec maybe_assign_to_port_number(ne_binary(), api_binary()) ->
-                                         assignment_update().
-maybe_assign_to_port_number(DID, Assign) ->
+%%--------------------------------------------------------------------
+%% @private
+%% @doc
+%% Split a list of assignment updates into a 2-element tuple; element
+%% 1 is a list of port requests, element 2 is a list of numbers that
+%% are already active.
+%%
+%% @end
+%%--------------------------------------------------------------------
+-spec split_port_requests(assignment_to_apply(), {port_req_assignments(), assignments_to_apply()}) ->
+                                 {port_req_assignments(), assignments_to_apply()}.
+split_port_requests({DID, Assign}=ToApply, {PRUpdates, NumUpdates}) ->
     Num = knm_converters:normalize(DID),
     case knm_port_request:get(Num) of
-        {'error', _} ->
-            {DID, knm_number:assign_to_app(DID, Assign)};
         {'ok', JObj} ->
-            {DID, knm_port_request:assign_to_app(Num, Assign, JObj)}
+            {[{Num, Assign, JObj}|PRUpdates], NumUpdates};
+        {'error', _} ->
+            {PRUpdates, [ToApply|NumUpdates]}
     end.
+
+-spec assign_to_port_number(port_req_assignments()) ->
+                                   assignment_updates().
+assign_to_port_number(PRUpdates) ->
+    [{Num, knm_port_request:assign_to_app(Num, Assign, JObj)}
+     || {Num, Assign, JObj} <- PRUpdates
+    ].
+
+-spec maybe_assign_to_app(assignments_to_apply(), ne_binary()) ->
+                                 assignment_updates().
+maybe_assign_to_app(NumUpdates, AccountId) ->
+    Options = [{'auth_by', AccountId}],
+    Groups = group_by_assign_to(NumUpdates),
+    maps:fold(fun(Assign, Nums, Acc) ->
+                      Results = knm_numbers:assign_to_app(Nums, Assign, Options),
+                      format_assignment_results(Results) ++ Acc
+              end, [], Groups).
+
+-type assign_to_groups() :: #{api_binary() => ne_binaries()}.
+
+-spec group_by_assign_to(assignments_to_apply()) -> assign_to_groups().
+group_by_assign_to(NumUpdates) ->
+    group_by_assign_to(NumUpdates, #{}).
+
+group_by_assign_to([], Groups) -> Groups;
+group_by_assign_to([{DID, Assign}|NumUpdates], Groups) ->
+    DIDs = maps:get(Assign, Groups, []),
+    Groups1 = Groups#{Assign => [DID|DIDs]},
+    group_by_assign_to(NumUpdates, Groups1).
+
+-spec format_assignment_results(knm_numbers:ret()) -> assignment_updates().
+format_assignment_results(#{ok := OKs
+                           ,ko := KOs}) ->
+    format_assignment_oks(OKs) ++ format_assignment_kos(KOs).
+
+-spec format_assignment_oks(knm_number:knm_numbers()) -> assignment_updates().
+format_assignment_oks(Numbers) ->
+    [{knm_phone_number:number(PN), {'ok', Number}}
+     || Number <- Numbers,
+        PN <- [knm_number:phone_number(Number)]
+    ].
+
+-spec format_assignment_kos(knm_numbers:kos()) -> assignment_updates().
+format_assignment_kos(KOs) ->
+    maps:fold(fun format_assignment_kos_fold/3, [], KOs).
+
+-spec format_assignment_kos_fold(knm_numbers:num(), knm_numbers:ko(), assignment_updates()) ->
+                                        assignment_updates().
+format_assignment_kos_fold(Number, Reason, Updates) when is_atom(Reason) ->
+    [{Number, {'error', Reason}} | Updates];
+format_assignment_kos_fold(Number, ReasonJObj, Updates) ->
+    [{Number, {'error', ReasonJObj}} | Updates].
 
 -spec log_assignment_updates(assignment_updates()) -> 'ok'.
 log_assignment_updates(Updates) ->
