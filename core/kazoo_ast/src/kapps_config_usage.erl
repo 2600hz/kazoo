@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1
-        ,to_schema_docs/0, to_schema_docs/1
+        ,to_schema_docs/0
 
         ,expression_to_schema/2
         ]).
@@ -15,14 +15,11 @@
 -define(FIELD_PROPERTIES, <<"properties">>).
 -define(FIELD_TYPE, <<"type">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
+-define(UNKNOWN_DEFAULT, undefined).
 
 -spec to_schema_docs() -> 'ok'.
--spec to_schema_docs(kz_json:object()) -> 'ok'.
 to_schema_docs() ->
-    to_schema_docs(process_project()).
-
-to_schema_docs(Schemas) ->
-    kz_json:foreach(fun update_schema/1, Schemas).
+    kz_json:foreach(fun update_schema/1, process_project()).
 
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
@@ -34,7 +31,7 @@ update_schema({Name, AutoGenSchema}) ->
 -spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
 update_schema(ConfigType, Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
-    GeneratedJObj = filter_system(static_fields(ConfigType, Name, remove_source(AutoGenSchema))),
+    GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
     UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
@@ -68,18 +65,6 @@ remove_source(JObj) ->
     F = fun ({K, _}) -> not lists:member(?SOURCE, K) end,
     Filtered = kz_json:filter(F, kz_json:flatten(JObj)),
     kz_json:expand(Filtered).
-
-filter_system(JObj) ->
-    filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
-
-filter_system_fold({[], []}, JObj) -> JObj;
-filter_system_fold({['_system' | Vc], [ _| Kc]}, JObj) ->
-    filter_system_fold({Vc, Kc}, JObj);
-filter_system_fold({[V | Vc], [K | Kc]}, JObj) ->
-    case kz_json:is_json_object(V) of
-        'true' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, filter_system(V), JObj));
-        'false' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, V, JObj))
-    end.
 
 static_fields(ConfigType, Name, JObj) ->
     Id = <<ConfigType/binary, ".", Name/binary>>,
@@ -303,7 +288,7 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
-    '_system';
+    ?UNKNOWN_DEFAULT;
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) ->
     default_value(kz_privacy:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) ->
@@ -328,9 +313,9 @@ default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_global', [_Account, _Ca
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
-    '_system';
+    ?UNKNOWN_DEFAULT;
 default_value(?FUN_ARGS(_F, _Args)) ->
-    '_system'.
+    ?UNKNOWN_DEFAULT.
 
 default_values_from_list(KVs) ->
     lists:foldl(fun default_value_from_kv/2, kz_json:new(), KVs).
