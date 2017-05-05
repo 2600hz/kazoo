@@ -63,12 +63,8 @@ scheme(Account, Cluster, Zone) ->
     Hostname = binary:replace(Hostname0, <<$.>>, <<"::">>, [global]),
     kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
-print_metric(Scheme, Key, Value0) ->
-    Value = case is_integer(Value0) of
-                false -> Value0;
-                true -> integer_to_binary(Value0)
-            end,
-    io:format("~s.~s ~s ~B\n", [Scheme, Key, Value, get(timestamp)]).
+print_metric(Scheme, Key, Value) ->
+    io:format("~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).
 
 graphite(Scheme, memory_statistics, MemoryMetrics) ->
     [print_metric(Scheme, "memory_" ++ atom_to_list(Key), Value)
@@ -94,7 +90,7 @@ graphite(Scheme, ets_tables_sizes, Tabs) ->
         Size =/= 0
     ];
 graphite(Scheme, info, Props) ->
-    [print_metric(Scheme, <<"info__", Key/binary>>, maybe_boolean_to_integer(Value))
+    [print_metric(Scheme, <<"info__", Key/binary>>, bin_to_integer(Value))
      || {Key, Value} <- Props,
         nomatch =:= binary:match(Value, <<$,>>)
     ].
@@ -151,6 +147,6 @@ cleanse_with(Sep, Bin) ->
     ToCleanse = [<<$\s>>, <<$.>>, <<$:>>, <<$[>>, <<$]>>],
     binary:replace(Bin, ToCleanse, <<Sep>>, [global]).
 
-maybe_boolean_to_integer(<<"true">>) -> 1;
-maybe_boolean_to_integer(<<"false">>) -> 0;
-maybe_boolean_to_integer(Value) -> Value.
+bin_to_integer(<<"true">>) -> 1;
+bin_to_integer(<<"false">>) -> 0;
+bin_to_integer(Value=?NE_BINARY) -> binary_to_integer(Value).
