@@ -254,9 +254,9 @@ get_binding_ip() ->
                     DefaultIPAddress;
                 {'error', 'einval'} ->
                     lager:warning("address ~s is not a valid ipv6 or ipv4 address, enforcing default ip ~s"
-                                 ,[IP, inet:ntoa(DefaultIP)]
+                                 ,[IP, inet:ntoa(DefaultIPAddress)]
                                  ),
-                    DefaultIP
+                    DefaultIPAddress
             end
     end.
 

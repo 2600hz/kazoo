@@ -174,11 +174,11 @@ ip_family_to_ping_option('local') -> "-4".
 %%--------------------------------------------------------------------
 -spec default_binding_all_ip() -> ne_binary().
 default_binding_all_ip() ->
-    default_binding_all_ip(is_ip_family_supported('inet6')).
+    default_binding_all_ip(is_ip_family_supported('inet')).
 
 -spec default_binding_all_ip(boolean()) -> ne_binary().
-default_binding_all_ip('true') -> <<"::">>;
-default_binding_all_ip('false') -> <<"0.0.0.0">>.
+default_binding_all_ip('true') -> <<"0.0.0.0">>;
+default_binding_all_ip('false') -> <<"::">>.
 
 %%--------------------------------------------------------------------
 %% @public
