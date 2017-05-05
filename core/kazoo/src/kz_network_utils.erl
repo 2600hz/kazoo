@@ -130,41 +130,41 @@ is_ip(Address) ->
 %%--------------------------------------------------------------------
 -spec is_ip_family_supported(inet:address_family()) -> boolean().
 is_ip_family_supported(Family) ->
+    listen_to_ping(Family, ping_cmd_option(Family), 1).
+
+-spec listen_to_ping(inet:address_family(), string(), integer()) -> boolean().
+listen_to_ping(_Family, _Cmd, Try) when Try < 0 -> 'false';
+listen_to_ping(Family, Cmd, Try) ->
     Options = ['exit_status'
               ,'use_stdio'
               ,'stderr_to_stdout'
-              ,{'args', ["-c 1"
-                        ,ip_family_to_ping_option(Family)
-                        ,"localhost"
-                        ]
-               }
               ],
-    %%FIXME: on old systems which are not updated since 2015 ping doesn't supports "-6" option
-    case os:find_executable("ping") of
-        'false' ->
-            lager:error("os ping command is missing"),
-            'false';
-        Cmd ->
-            Port = erlang:open_port({spawn_executable, Cmd}, Options),
-            listen_to_ping(Port, [])
-    end.
+    Port = erlang:open_port({spawn, Cmd}, Options),
+    listen_to_ping(Family, Cmd, Port, Try, []).
 
--spec listen_to_ping(port(), list()) -> boolean().
-listen_to_ping(Port, Acc) ->
+-spec listen_to_ping(inet:address_family(), string(), port(), integer(), list()) -> boolean().
+listen_to_ping(Family, Cmd, Port, Try, Acc) ->
+    IsIPv6 = Family =:= 'inet6'
+                 andalso Cmd =:= ping_cmd_option(Family),
     receive
-        {Port, {'data', Msg}} -> listen_to_ping(Port, Acc ++ Msg);
+        {Port, {'data', Msg}} -> listen_to_ping(Family, Cmd, Port, Try, Acc ++ Msg);
         {Port, {'exit_status', 0}} ->
             case Acc of
                 "PING"++_ -> 'true';
                 _ -> 'false'
             end;
-        {Port, {'exit_status', _}} -> 'false'
+        {Port, {'exit_status', _}} ->
+            case Acc of
+                "ping: illegal"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1);
+                "ping: invalid"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1);
+                _ -> 'false'
+            end
     end.
 
--spec ip_family_to_ping_option(inet:address_family()) -> string().
-ip_family_to_ping_option('inet6') -> "-6";
-ip_family_to_ping_option('inet') -> "-4";
-ip_family_to_ping_option('local') -> "-4".
+-spec ping_cmd_option(inet:address_family() | 'ping6') -> string().
+ping_cmd_option('inet6') -> "ping -6 -c 1 localhost";
+ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
+ping_cmd_option(_) ->  "ping -c 1 localhost".
 
 %%--------------------------------------------------------------------
 %% @public
@@ -174,11 +174,22 @@ ip_family_to_ping_option('local') -> "-4".
 %%--------------------------------------------------------------------
 -spec default_binding_all_ip() -> ne_binary().
 default_binding_all_ip() ->
-    default_binding_all_ip(is_ip_family_supported('inet6')).
+    default_binding_all_ip(is_ip_family_supported('inet')
+                          ,is_ip_family_supported('inet6')
+                          ).
 
--spec default_binding_all_ip(boolean()) -> ne_binary().
-default_binding_all_ip('true') -> <<"::">>;
-default_binding_all_ip('false') -> <<"0.0.0.0">>.
+-spec default_binding_all_ip(boolean(), boolean()) -> ne_binary().
+default_binding_all_ip('true', 'true') -> prefered_inet('inet');
+default_binding_all_ip('true', 'false') -> prefered_inet('inet');
+default_binding_all_ip('false', 'true') -> prefered_inet('inet6');
+default_binding_all_ip('false', 'false') -> prefered_inet('system').
+
+-spec prefered_inet('inet' | 'inet6' | 'system') -> ne_binary().
+prefered_inet('inet') -> <<"0.0.0.0">>;
+prefered_inet('inet6') -> <<"::">>;
+prefered_inet('system') ->
+    %% expilicty convert to list to allow save the default value in human readable value
+    kz_term:to_list(kapps_config:get_binary(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, <<"0.0.0.0">>)).
 
 %%--------------------------------------------------------------------
 %% @public
