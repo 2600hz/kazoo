@@ -41,19 +41,21 @@ measure(io) -> erlang:statistics(io);
 measure(scheduler_reductions) -> erlang:statistics(reductions);
 measure(processes_in_run_queue_of_each_schedulers) -> erlang:statistics(run_queue);
 measure(ets_tables_sizes) ->
-    [{Tab, ets:info(Tab, size)} || Tab <- ets:all()].
+    [{Tab, ets:info(Tab, size)} || Tab <- ets:all()];
+measure(info) -> info_to_props(erlang:system_info(info)).
 
 collect() ->
     {Mega, Secs, _Micro} = os:timestamp(),
     put(timestamp, Mega * 1000000 + Secs),
-    Metrics = [memory_statistics
-              ,number_of_processes
-              ,context_switches
-              ,garbage_collection
-              ,io
-              ,scheduler_reductions
-              ,processes_in_run_queue_of_each_schedulers
+    Metrics = [context_switches
               ,ets_tables_sizes
+              ,garbage_collection
+              ,info
+              ,io
+              ,memory_statistics
+              ,number_of_processes
+              ,processes_in_run_queue_of_each_schedulers
+              ,scheduler_reductions
               ],
     Malt = [1, {processes, length(Metrics)}],
     plists:map(fun (Metric) -> {Metric, measure(Metric)} end, Metrics, Malt).
@@ -63,8 +65,12 @@ scheme(Account, Cluster, Zone) ->
     Hostname = binary:replace(Hostname0, <<$.>>, <<"::">>, [global]),
     kz_util:iolist_join($., [Account, Cluster, Zone, Hostname, Service]).
 
-print_metric(Scheme, Key, Value) ->
-    io:format("~s.~s ~B ~B\n", [Scheme, Key, Value, get(timestamp)]).
+print_metric(Scheme, Key, Value0) ->
+    Value = case is_integer(Value0) of
+                false -> Value0;
+                true -> integer_to_binary(Value0)
+            end,
+    io:format("~s.~s ~s ~B\n", [Scheme, Key, Value, get(timestamp)]).
 
 graphite(Scheme, memory_statistics, MemoryMetrics) ->
     [print_metric(Scheme, "memory_" ++ atom_to_list(Key), Value)
@@ -88,6 +94,11 @@ graphite(Scheme, ets_tables_sizes, Tabs) ->
     [print_metric(Scheme, "tab_" ++ kz_util:to_list(Tab), Size)
      || {Tab, Size} <- Tabs,
         Size =/= 0
+    ];
+graphite(Scheme, info, Props) ->
+    [print_metric(Scheme, <<"info__", Key/binary>>, maybe_boolean_to_integer(Value))
+     || {Key, Value} <- Props,
+        nomatch =:= binary:match(Value, <<$,>>)
     ].
 
 to_props(memory_statistics, MemoryMetrics) ->
@@ -118,4 +129,30 @@ to_props(ets_tables_sizes, Tabs) ->
     [{kz_util:to_binary(Tab), Size}
      || {Tab, Size} <- Tabs,
         Size =/= 0
+    ];
+to_props(info, Props) -> Props.
+
+info_to_props(Info) ->
+    [<<>>|Categories] = binary:split(Info, <<$=>>, [global]),
+    lists:flatten(
+      [split_by_category(Category)
+       || Category <- Categories
+      ]).
+
+split_by_category(Category) ->
+    [Name|Items] = binary:split(Category, <<$\n>>, [global]),
+    [{binary:replace(NewKey, <<"___">>, <<"__">>, [global])
+     ,cleanse_with($,, Value)
+     }
+     || Item <- Items,
+        [Key, Value] <- [binary:split(Item, <<": ">>)],
+        NewKey <- [<<(cleanse_with($_, Name))/binary, "__", (cleanse_with($_, Key))/binary>>]
     ].
+
+cleanse_with(Sep, Bin) ->
+    ToCleanse = [<<$\s>>, <<$.>>, <<$:>>, <<$[>>, <<$]>>],
+    binary:replace(Bin, ToCleanse, <<Sep>>, [global]).
+
+maybe_boolean_to_integer(<<"true">>) -> 1;
+maybe_boolean_to_integer(<<"false">>) -> 0;
+maybe_boolean_to_integer(Value) -> Value.
