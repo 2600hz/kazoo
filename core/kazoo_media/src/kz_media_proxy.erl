@@ -127,10 +127,9 @@ get_binding_ip() ->
 
     DefaultIP = kz_network_utils:default_binding_all_ip(),
 
-    %% expilicty convert to list to allow save the default value in human readable value
-    IP = kz_term:to_list(kapps_config:get_binary(?CONFIG_CAT, <<"proxy_ip">>, DefaultIP)),
+    IP = kapps_config:get_string(?CONFIG_CAT, <<"proxy_ip">>, DefaultIP),
 
-    {'ok', DefaultIPAddress} = inet:parse_address(kz_term:to_list(DefaultIP)),
+    {'ok', DefaultIPAddress} = inet:parse_address(DefaultIP),
 
     case inet:parse_ipv6strict_address(IP) of
         {'ok', IPv6} when IsIPv6Enabled -> IPv6;
@@ -142,8 +141,13 @@ get_binding_ip() ->
         {'error', 'einval'} ->
             case inet:parse_ipv4strict_address(IP) of
                 {'ok', IPv4} when IsIPv4Enabled -> IPv4;
-                {'ok', _} when IsIPv6Enabled->
+                {'ok', _} when IsIPv6Enabled ->
                     lager:warning("address ~s is ipv4, but ipv4 is not supported by the system, enforcing default ip ~s"
+                                 ,[IP, inet:ntoa(DefaultIPAddress)]
+                                 ),
+                    DefaultIPAddress;
+                {'ok', _} ->
+                    lager:warning("address ~s is ipv4, but system reports that ipv4 and ipv6 are not supported by the system, enforcing default ip ~s"
                                  ,[IP, inet:ntoa(DefaultIPAddress)]
                                  ),
                     DefaultIPAddress;
