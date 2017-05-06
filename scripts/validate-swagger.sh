@@ -2,7 +2,9 @@
 
 # Validate Swagger file using online validator
 
-branch=${1:-master}
+branch=${1:-$CIRCLE_BRANCH}
+[[ "$branch" == '' ]] && branch=master
+echo "Checking Swagger file in branch $branch"
 
 URL='http://online.swagger.io/validator/debug?url=https://raw.githubusercontent.com/2600hz/kazoo/'$branch'/applications/crossbar/priv/api/swagger.json'
 
