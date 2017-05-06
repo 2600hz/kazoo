@@ -5,7 +5,6 @@
     ],
     "definitions": {
         "access_lists": {
-            "additionalProperties": true,
             "description": "Access Control List entries for device or account",
             "properties": {
                 "cidrs": {
@@ -245,7 +244,6 @@
             "type": "object"
         },
         "account_rate_limits": {
-            "additionalProperties": true,
             "description": "describe limits for SIP requests",
             "properties": {
                 "account": {
@@ -404,7 +402,6 @@
             "type": "object"
         },
         "acls": {
-            "additionalProperties": false,
             "description": "Access Control List entries",
             "properties": {
                 "cidr": {
@@ -494,7 +491,6 @@
             "type": "object"
         },
         "api_auth": {
-            "additionalProperties": false,
             "description": "Provides an auth-token via an Account API key",
             "properties": {
                 "api_key": {
@@ -509,7 +505,6 @@
             "type": "object"
         },
         "app": {
-            "additionalProperties": false,
             "description": "Appstore applications",
             "properties": {
                 "api_url": {
@@ -690,7 +685,6 @@
             "type": "object"
         },
         "auth.app": {
-            "additionalProperties": true,
             "description": "app description for authentication providers",
             "properties": {
                 "client_id": {
@@ -718,7 +712,6 @@
             "type": "object"
         },
         "auth.callback": {
-            "additionalProperties": true,
             "description": "callback for authentication providers",
             "properties": {
                 "client_id": {
@@ -751,7 +744,6 @@
             "type": "object"
         },
         "auth.provider": {
-            "additionalProperties": true,
             "description": "provider settings for authentication",
             "properties": {
                 "id": {
@@ -764,7 +756,6 @@
             "type": "object"
         },
         "auth_provider": {
-            "additionalProperties": true,
             "description": "authentication providers",
             "properties": {
                 "enabled": {
@@ -2954,7 +2945,6 @@
             }
         },
         "cdrs": {
-            "additionalProperties": false,
             "description": "Call Detail Records",
             "properties": {
                 "app_name": {
@@ -3679,7 +3669,6 @@
             }
         },
         "device_rate_limits": {
-            "additionalProperties": true,
             "description": "describe limits for SIP requests",
             "properties": {
                 "per_minute": {
@@ -4231,27 +4220,6 @@
             "type": "object"
         },
         "dialplans": {
-            "additionalProperties": {
-                "properties": {
-                    "description": {
-                        "description": "Friendly name for this regex dialplan",
-                        "required": false,
-                        "type": "string"
-                    },
-                    "prefix": {
-                        "description": "Prefix the prepend to the capture group after applying the regex",
-                        "required": false,
-                        "type": "string"
-                    },
-                    "suffix": {
-                        "description": "Suffix the append to the capture group after applying the regex",
-                        "required": false,
-                        "type": "string"
-                    }
-                },
-                "required": false,
-                "type": "object"
-            },
             "description": "Permit local dialing by converting the dialed number to a routable form",
             "properties": {
                 "system": {
@@ -4317,7 +4285,6 @@
             "type": "object"
         },
         "domain_hosts": {
-            "additionalProperties": false,
             "description": "Domain host settings for white-labelling",
             "patternProperties": {
                 ".*[\\{]{2}domain[\\}]{2}.*": {
@@ -5503,7 +5470,6 @@
             "type": "object"
         },
         "metaflow.break": {
-            "additionalProperties": false,
             "description": "break metaflow schema",
             "properties": {},
             "type": "object"
@@ -7372,7 +7338,6 @@
             "type": "object"
         },
         "shared_auth": {
-            "additionalProperties": false,
             "description": "Provides a local auth-token via a shared auth-token",
             "properties": {
                 "shared_auth": {
@@ -7422,7 +7387,6 @@
             "type": "object"
         },
         "storage": {
-            "additionalProperties": false,
             "patternProperties": {
                 "^_": {
                     "description": "Ignores CouchDB fields prefixed by underscores",
@@ -7675,7 +7639,6 @@
             "type": "object"
         },
         "storage.plan": {
-            "additionalProperties": false,
             "description": "schema for storage plan",
             "properties": {
                 "account": {
@@ -7691,7 +7654,6 @@
             "type": "object"
         },
         "storage.plan.database": {
-            "additionalProperties": false,
             "definitions": {
                 "database": {
                     "properties": {
@@ -12590,7 +12552,6 @@
             "type": "object"
         },
         "tasks": {
-            "additionalProperties": true,
             "description": "Input data to go through as part of a background task",
             "properties": {
                 "file_name": {
