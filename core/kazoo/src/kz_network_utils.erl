@@ -162,8 +162,8 @@ listen_to_ping(Family, Cmd, Port, Try, Acc) ->
                 "ping: illegal"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1); %% BSD ping
                 "ping: invalid"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1); %% GNU ping
                 _ ->
-                lager:warning("either ping/ping6 command is missing or it returns error: ~p", [Acc]),
-                'false'
+                    lager:warning("either ping/ping6 command is missing or it returns error: ~p", [Acc]),
+                    'false'
             end
     end.
 
