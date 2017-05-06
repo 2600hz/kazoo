@@ -48,17 +48,33 @@ existing_schema(Name) ->
 -spec account_properties(kz_json:object()) -> kz_json:object().
 account_properties(AutoGenSchema) ->
     Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
-    KeepPaths = [lists:droplast(K)
-                 || {K, V} <- Flat,
-                    ?SOURCE =:= lists:last(K),
-                    V =:= kapps_account_config
-                ],
+    KeepPaths = lists:usort(
+                  lists:append(
+                    [path_and_sub_properties(lists:droplast(Path))
+                     || {Path, V} <- Flat,
+                        ?SOURCE =:= lists:last(Path),
+                        V =:= kapps_account_config
+                    ])),
     kz_json:expand(
       kz_json:from_list(
         [KV
-         || {K,_}=KV <- Flat,
-            lists:member(lists:droplast(K), KeepPaths)
+         || {Path,_}=KV <- Flat,
+            case lists:reverse(Path) of
+                [?FIELD_TYPE,?FIELD_PROPERTIES|_] -> lists:member(Path, KeepPaths);
+                _ -> lists:member(lists:droplast(Path), KeepPaths)
+            end
         ])).
+
+path_and_sub_properties(Path) ->
+    case lists:reverse(Path) of
+        [_,?FIELD_PROPERTIES] -> [[?FIELD_PROPERTIES, ?FIELD_TYPE]];
+        [?FIELD_PROPERTIES,_|Rest] -> path_and_sub_properties(Rest, [Path])
+    end.
+path_and_sub_properties([], Paths) -> Paths;
+path_and_sub_properties([?FIELD_PROPERTIES], Paths) -> Paths;
+path_and_sub_properties(SubProps=[?FIELD_PROPERTIES,_|Htap], Paths) ->
+    Path = lists:reverse([?FIELD_TYPE|SubProps]),
+    path_and_sub_properties(Htap, [Path|Paths]).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().
 remove_source(JObj) ->
@@ -152,7 +168,20 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
-    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
+    Path = [Document, ?FIELD_PROPERTIES | Key],
+    NewSchemas = kz_json:set_value(Path, Properties, Schemas),
+    add_missing_type_on_properties(lists:reverse(Path), NewSchemas).
+
+add_missing_type_on_properties([?FIELD_PROPERTIES,Key|Htap], Schemas) ->
+    TypePath = lists:reverse(Htap, [Key, ?FIELD_PROPERTIES, ?FIELD_TYPE]),
+    NewSchemas = case undefined =:= kz_json:get_value(TypePath, Schemas) of
+                     false -> Schemas;
+                     true -> kz_json:set_value(TypePath, <<"object">>, Schemas)
+                 end,
+    add_missing_type_on_properties(Htap, NewSchemas);
+add_missing_type_on_properties([], Schemas) -> Schemas;
+add_missing_type_on_properties(Htap, Schemas) ->
+    add_missing_type_on_properties(tl(Htap), Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
