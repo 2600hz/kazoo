@@ -48,7 +48,7 @@ existing_schema(Name) ->
 -spec account_properties(kz_json:object()) -> kz_json:object().
 account_properties(AutoGenSchema) ->
     Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
-    KeepPaths = lists:usort(
+    KeepPaths = sets:from_list(
                   lists:append(
                     [path_and_sub_properties(lists:droplast(Path))
                      || {Path, V} <- Flat,
@@ -60,8 +60,8 @@ account_properties(AutoGenSchema) ->
         [KV
          || {Path,_}=KV <- Flat,
             case lists:reverse(Path) of
-                [?FIELD_TYPE,?FIELD_PROPERTIES|_] -> lists:member(Path, KeepPaths);
-                _ -> lists:member(lists:droplast(Path), KeepPaths)
+                [?FIELD_TYPE,?FIELD_PROPERTIES|_] -> sets:is_element(Path, KeepPaths);
+                _ -> sets:is_element(lists:droplast(Path), KeepPaths)
             end
         ])).
 
