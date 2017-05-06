@@ -8,6 +8,7 @@
             "description": "ananke schedules",
             "type": "array"
         },
+        "type": "object",
         "voicemail": {
             "properties": {
                 "notify": {
@@ -34,11 +35,14 @@
                                         "description": "ananke timeout in seconds",
                                         "type": "string"
                                     }
-                                }
+                                },
+                                "type": "object"
                             }
-                        }
+                        },
+                        "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
         }
     },

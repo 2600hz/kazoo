@@ -12,7 +12,8 @@
             "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
             "description": "notify.fax tiff to pdf conversion command",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

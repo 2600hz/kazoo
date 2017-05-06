@@ -55,6 +55,7 @@
             "description": "notify search rep email",
             "type": "boolean"
         },
+        "type": "object",
         "use_federated_listener": {
             "default": false,
             "description": "notify use federated listener",

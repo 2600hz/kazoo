@@ -23,7 +23,8 @@
                         "description": "callflow.call_forward menu toggle option",
                         "type": "string"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "max_callfwd_number_length": {
@@ -35,7 +36,8 @@
             "default": 3,
             "description": "callflow.call_forward minimum callfwd number length",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

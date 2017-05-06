@@ -17,7 +17,8 @@
             "default": "",
             "description": "services http sync http url",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

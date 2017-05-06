@@ -12,7 +12,8 @@
             "default": 2000,
             "description": "sysconf acl request timeout in milliseconds",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

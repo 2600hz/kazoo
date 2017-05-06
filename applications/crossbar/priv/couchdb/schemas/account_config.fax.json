@@ -17,7 +17,8 @@
             "default": 10,
             "description": "fax max outbound",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

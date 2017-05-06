@@ -7,7 +7,8 @@
             "default": false,
             "description": "notify.low_balance default enabled",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

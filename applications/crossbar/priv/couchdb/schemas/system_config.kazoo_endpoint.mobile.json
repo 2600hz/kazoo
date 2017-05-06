@@ -56,7 +56,8 @@
                         "description": "kazoo_endpoint.mobile connections",
                         "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "sms_interface": {
@@ -68,7 +69,8 @@
             "default": "",
             "description": "kazoo_endpoint.mobile suffix",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

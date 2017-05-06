@@ -22,7 +22,8 @@
             "default": false,
             "description": "omnipresence subscriptions sync enabled",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

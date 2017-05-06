@@ -81,6 +81,7 @@
             "description": "kazoo_couch sleep between views",
             "type": "integer"
         },
+        "type": "object",
         "use_bigcouch_direct": {
             "default": true,
             "description": "kazoo_couch use bigcouch direct",

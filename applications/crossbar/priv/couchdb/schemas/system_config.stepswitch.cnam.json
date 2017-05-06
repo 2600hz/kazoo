@@ -57,7 +57,8 @@
             "default": "Kazoo Stepswitch CNAM",
             "description": "stepswitch.cnam http user agent header",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

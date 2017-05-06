@@ -17,7 +17,8 @@
             "default": false,
             "description": "Should log failed login attempts",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

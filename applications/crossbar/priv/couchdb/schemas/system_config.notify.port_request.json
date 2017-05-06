@@ -11,7 +11,8 @@
             "default": "",
             "description": "notify.port_request default to",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -11,7 +11,8 @@
                         "description": "media storage retry times",
                         "type": "integer"
                     }
-                }
+                },
+                "type": "object"
             }
         }
     },

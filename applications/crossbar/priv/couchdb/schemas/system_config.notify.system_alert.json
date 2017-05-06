@@ -26,7 +26,8 @@
             "default": "7BIT",
             "description": "notify.system_alert text content transfer encoding",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

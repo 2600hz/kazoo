@@ -17,7 +17,8 @@
             "default": 50,
             "description": "teletype render farm workers",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

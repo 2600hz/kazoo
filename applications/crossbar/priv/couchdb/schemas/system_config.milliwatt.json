@@ -27,7 +27,8 @@
             },
             "description": "milliwatt tone",
             "type": "object"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -12,7 +12,8 @@
             "default": [],
             "description": "modb routines",
             "type": "array"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

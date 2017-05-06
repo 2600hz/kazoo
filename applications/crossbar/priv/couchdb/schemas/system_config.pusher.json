@@ -20,7 +20,8 @@
             "default": [],
             "description": "pusher modules",
             "type": "array"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -15,7 +15,8 @@
         },
         "master_account_id": {
             "description": "accounts master account id"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

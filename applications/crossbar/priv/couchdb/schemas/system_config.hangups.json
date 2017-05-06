@@ -29,7 +29,8 @@
             ],
             "description": "hangups ignore hangup causes",
             "type": "array"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

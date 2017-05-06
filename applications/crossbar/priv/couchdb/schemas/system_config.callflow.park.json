@@ -22,7 +22,8 @@
             "default": "early",
             "description": "callflow.park parked presence type",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

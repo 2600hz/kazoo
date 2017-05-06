@@ -17,7 +17,8 @@
             "default": "7BIT",
             "description": "notify.deregister text content transfer encoding",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

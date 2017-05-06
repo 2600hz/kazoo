@@ -35,7 +35,8 @@
         },
         "performance": {
             "description": "datamgr performance"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

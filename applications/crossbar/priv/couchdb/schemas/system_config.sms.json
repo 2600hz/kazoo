@@ -14,9 +14,11 @@
                         "description": "sms options",
                         "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

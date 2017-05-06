@@ -23,9 +23,11 @@
                         "description": "konami default target timeout in milliseconds",
                         "type": "integer"
                     }
-                }
+                },
+                "type": "object"
             }
         },
+        "type": "object",
         "use_fast_rearm": {
             "default": false,
             "description": "konami use fast rearm",

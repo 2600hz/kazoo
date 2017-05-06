@@ -28,6 +28,7 @@
             "description": "callflow.dynamic_cid reject prompt",
             "type": "string"
         },
+        "type": "object",
         "whitelist_regex": {
             "default": "\\d+",
             "description": "callflow.dynamic_cid whitelist regex",

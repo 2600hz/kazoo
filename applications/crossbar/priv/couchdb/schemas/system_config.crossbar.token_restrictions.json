@@ -11,7 +11,8 @@
             "default": "admin",
             "description": "crossbar.token_restrictions default priv level",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

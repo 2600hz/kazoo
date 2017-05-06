@@ -14,7 +14,8 @@
         "system_key": {
             "description": "auth system key",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -12,7 +12,8 @@
             "default": false,
             "description": "Whether or not normalize voicemail audio file",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

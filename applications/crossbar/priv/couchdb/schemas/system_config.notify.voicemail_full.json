@@ -10,7 +10,8 @@
         },
         "default_to": {
             "description": "notify.voicemail_full default to"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

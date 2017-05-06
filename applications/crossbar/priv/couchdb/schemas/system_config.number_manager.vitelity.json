@@ -10,7 +10,8 @@
         },
         "routesip": {
             "description": "number_manager.vitelity routesip"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -72,7 +72,8 @@
                         "description": "conferences page",
                         "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "review_name": {
@@ -89,7 +90,8 @@
             "default": true,
             "description": "conferences support name announcement",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

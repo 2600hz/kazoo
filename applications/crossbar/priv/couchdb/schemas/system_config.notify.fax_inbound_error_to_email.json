@@ -18,7 +18,8 @@
             ],
             "description": "notify.fax_inbound_error_to_email filter error codes",
             "type": "array"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

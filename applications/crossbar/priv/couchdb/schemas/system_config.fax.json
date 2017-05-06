@@ -195,6 +195,7 @@
             "description": "fax smtp sessions",
             "type": "integer"
         },
+        "type": "object",
         "wait_for_fax_timeout_ms": {
             "default": 3600000,
             "description": "fax wait for fax timeout in milliseconds",

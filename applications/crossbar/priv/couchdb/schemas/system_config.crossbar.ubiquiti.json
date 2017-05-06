@@ -19,7 +19,8 @@
                         "description": "crossbar.ubiquiti sso url",
                         "type": "string"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "salt_length": {
@@ -44,14 +45,16 @@
                         "description": "crossbar.ubiquiti sso url",
                         "type": "string"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "tokens_per_request": {
             "default": 35,
             "description": "crossbar.ubiquiti tokens per request",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

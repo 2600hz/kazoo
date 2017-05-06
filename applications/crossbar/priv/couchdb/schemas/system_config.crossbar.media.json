@@ -12,7 +12,8 @@
             "default": false,
             "description": "crossbar.media normalize media",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

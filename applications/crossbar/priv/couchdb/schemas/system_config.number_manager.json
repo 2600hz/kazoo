@@ -78,9 +78,11 @@
             "properties": {
                 "allow": {
                     "properties": {
-                        "description": "Number features a number is allowed to enable or disable"
+                        "description": "Number features a number is allowed to enable or disable",
+                        "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "fetch_account_from_ports": {
@@ -161,6 +163,7 @@
             "description": "number_manager time between numbers in milliseconds",
             "type": "integer"
         },
+        "type": "object",
         "unauthorized_numbers_lookup": {
             "default": false,
             "description": "number_manager unauthorized numbers lookup",

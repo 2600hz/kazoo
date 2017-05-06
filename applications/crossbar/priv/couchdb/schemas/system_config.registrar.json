@@ -18,6 +18,7 @@
             "description": "registrar owner enabled default",
             "type": "boolean"
         },
+        "type": "object",
         "use_aggregate": {
             "default": true,
             "description": "registrar use aggregate",

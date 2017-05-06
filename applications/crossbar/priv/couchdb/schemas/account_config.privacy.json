@@ -12,7 +12,8 @@
             "default": "kazoo",
             "description": "Default privacy mode for anonymous calls",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

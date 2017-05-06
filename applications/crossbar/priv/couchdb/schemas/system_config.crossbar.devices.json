@@ -30,7 +30,8 @@
         "provisioning_url": {
             "description": "crossbar.devices provisioning url",
             "type": "string"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

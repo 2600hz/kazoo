@@ -7,7 +7,8 @@
             "default": true,
             "description": "alerts enabled",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

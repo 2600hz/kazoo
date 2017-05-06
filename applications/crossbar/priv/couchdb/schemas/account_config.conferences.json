@@ -37,7 +37,8 @@
             "default": true,
             "description": "conferences support name announcement",
             "type": "boolean"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

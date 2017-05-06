@@ -28,7 +28,8 @@
             "default": 1,
             "description": "cccp prompt delay",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

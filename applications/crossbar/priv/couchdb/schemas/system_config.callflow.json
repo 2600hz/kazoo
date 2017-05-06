@@ -11,7 +11,8 @@
                         "description": "callflow extension",
                         "type": "string"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "calls_consume_tokens": {
@@ -79,6 +80,7 @@
             "description": "callflow singular call hook url",
             "type": "string"
         },
+        "type": "object",
         "voicemail": {
             "properties": {
                 "delete_after_notify": {
@@ -172,6 +174,7 @@
                         "type": "boolean"
                     }
                 },
+                "type": "object",
                 "vm_message_foraward_type": {
                     "properties": {
                         "default": "only_forward",

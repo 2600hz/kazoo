@@ -17,7 +17,8 @@
             "default": 2682000,
             "description": "crossbar.cdrs maximum range",
             "type": "integer"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

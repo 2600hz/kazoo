@@ -31,7 +31,8 @@
             ],
             "description": "kapps_controller kapps",
             "type": "array"
-        }
+        },
+        "type": "object"
     },
     "type": "object"
 }

@@ -255,9 +255,11 @@
                                 "description": "ecallmgr delete on success",
                                 "type": "boolean"
                             }
-                        }
+                        },
+                        "type": "object"
                     }
-                }
+                },
+                "type": "object"
             }
         },
         "node_down_grace_period": {
@@ -352,6 +354,7 @@
             "description": "ecallmgr text routing bindings",
             "type": "array"
         },
+        "type": "object",
         "use_bypass_media_after_bridge": {
             "default": false,
             "description": "ecallmgr use bypass media after bridge",
