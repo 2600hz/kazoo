@@ -440,53 +440,6 @@
         },
         "allotments": {
             "description": "Create buckets of minutes per time-period",
-            "patternProperties": {
-                "^\\w+$": {
-                    "properties": {
-                        "amount": {
-                            "minimum": 0,
-                            "required": true,
-                            "type": "integer"
-                        },
-                        "cycle": {
-                            "enum": [
-                                "minutely",
-                                "hourly",
-                                "daily",
-                                "weekly",
-                                "monthly"
-                            ],
-                            "required": true,
-                            "type": "string"
-                        },
-                        "group_consume": {
-                            "items": {
-                                "type": "string"
-                            },
-                            "required": false,
-                            "type": "array"
-                        },
-                        "increment": {
-                            "minimum": 1,
-                            "required": false,
-                            "type": "integer"
-                        },
-                        "minimum": {
-                            "minimum": 0,
-                            "required": false,
-                            "type": "integer"
-                        },
-                        "no_consume_time": {
-                            "minimum": 0,
-                            "required": false,
-                            "type": "integer"
-                        }
-                    }
-                },
-                "description": "Allotment object",
-                "required": false,
-                "type": "object"
-            },
             "required": true,
             "type": "object"
         },
@@ -522,37 +475,6 @@
                 },
                 "i18n": {
                     "description": "Application source url",
-                    "patternProperties": {
-                        "[a-z]{2}\\-[A-Z]{2}": {
-                            "properties": {
-                                "description": {
-                                    "minLength": 3,
-                                    "required": true,
-                                    "type": "string"
-                                },
-                                "extended_description": {
-                                    "required": false,
-                                    "type": "string"
-                                },
-                                "features": {
-                                    "items": {
-                                        "required": false,
-                                        "type": "string"
-                                    },
-                                    "required": false,
-                                    "type": "array"
-                                },
-                                "label": {
-                                    "maxLength": 64,
-                                    "minLength": 3,
-                                    "required": true,
-                                    "type": "string"
-                                }
-                            },
-                            "required": true,
-                            "type": "object"
-                        }
-                    },
                     "required": true,
                     "type": "object"
                 },
@@ -625,27 +547,6 @@
             "properties": {
                 "audit": {
                     "description": "Contains the accounts involved in the billable event (initial account and resellers)",
-                    "patternProperties": {
-                        "^[0-9a-zA-Z]{32}$": {
-                            "description": "The account's quantity changes for the billing event",
-                            "properties": {
-                                "account_name": {
-                                    "description": "The name of the account (for historical purposes)",
-                                    "required": true,
-                                    "type": "string"
-                                },
-                                "account_quantities": {
-                                    "description": "The account's quantities as a result of the billing event",
-                                    "type": "object"
-                                },
-                                "cascade_quantities": {
-                                    "description": "The account's cascaded quantities as a result of the billing event",
-                                    "type": "object"
-                                }
-                            },
-                            "type": "object"
-                        }
-                    },
                     "required": true,
                     "type": "object"
                 },
@@ -1030,11 +931,6 @@
             "properties": {
                 "children": {
                     "description": "Children callflows",
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "callflows.action"
-                        }
-                    },
                     "type": "object"
                 },
                 "data": {
@@ -2117,7 +2013,6 @@
                     "type": "string"
                 },
                 "slots": {
-                    "default": null,
                     "description": "Statically define slots and their configuration",
                     "type": "object"
                 }
@@ -3468,54 +3363,6 @@
                     "items": {
                         "properties": {
                             "DIDs": {
-                                "patternProperties": {
-                                    "^\\+?\\d*$": {
-                                        "properties": {
-                                            "caller_id": {
-                                                "properties": {
-                                                    "cid_name": {
-                                                        "maxLength": 35,
-                                                        "minLength": 1,
-                                                        "required": true,
-                                                        "type": "string"
-                                                    },
-                                                    "cid_number": {
-                                                        "maxLength": 35,
-                                                        "minLength": 1,
-                                                        "required": true,
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "failover": {
-                                                "description": "Route inbound call to another destination if this server fails to handle the call",
-                                                "properties": {
-                                                    "e164": {
-                                                        "description": "An E.164 formatted DID to dial for failover",
-                                                        "type": "string"
-                                                    },
-                                                    "sip": {
-                                                        "description": "A SIP URI (sip:user@host) to call for failover",
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "force_outbound": {
-                                                "default": false,
-                                                "type": "boolean"
-                                            },
-                                            "options": {
-                                                "items": {
-                                                    "type": "string"
-                                                },
-                                                "type": "array"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                },
                                 "type": "object"
                             },
                             "auth": {
@@ -4051,35 +3898,6 @@
                     "properties": {
                         "feature_keys": {
                             "description": "Feature Keys",
-                            "patternProperties": {
-                                "^[0-9]+$": {
-                                    "properties": {
-                                        "type": {
-                                            "description": "Feature key type",
-                                            "enum": [
-                                                "presence",
-                                                "parking",
-                                                "personal_parking",
-                                                "speed_dial"
-                                            ],
-                                            "required": true,
-                                            "type": "string"
-                                        },
-                                        "value": {
-                                            "description": "Feature key value",
-                                            "maximum": 10,
-                                            "minimum": 1,
-                                            "required": true,
-                                            "type": [
-                                                "string",
-                                                "integer"
-                                            ]
-                                        }
-                                    },
-                                    "required": false,
-                                    "type": "object"
-                                }
-                            },
                             "required": false,
                             "type": "object"
                         }
@@ -4285,29 +4103,7 @@
             "type": "object"
         },
         "domain_hosts": {
-            "description": "Domain host settings for white-labelling",
-            "patternProperties": {
-                ".*[\\{]{2}domain[\\}]{2}.*": {
-                    "description": "White-label template for hostname",
-                    "properties": {
-                        "mapping": {
-                            "description": "List of hosts or IPs this host should resolve to",
-                            "items": {
-                                "type": "string"
-                            },
-                            "minItems": 1,
-                            "required": true,
-                            "type": "array"
-                        },
-                        "name": {
-                            "description": "Human-friendly name of the Host",
-                            "required": true,
-                            "type": "string"
-                        }
-                    },
-                    "type": "object"
-                }
-            }
+            "description": "Domain host settings for white-labelling"
         },
         "domains": {
             "description": "Domain settings for white-labelling",
@@ -5426,11 +5222,6 @@
             "properties": {
                 "children": {
                     "description": "Children metaflows",
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "metaflow"
-                        }
-                    },
                     "type": "object"
                 },
                 "data": {
@@ -5762,21 +5553,11 @@
                 "numbers": {
                     "additionalProperties": false,
                     "description": "A list of static numbers with their flows",
-                    "patternProperties": {
-                        "^[0-9]+$": {
-                            "$ref": "metaflow"
-                        }
-                    },
                     "type": "object"
                 },
                 "patterns": {
                     "additionalProperties": false,
                     "description": "A list of patterns with their flows",
-                    "patternProperties": {
-                        ".+": {
-                            "$ref": "metaflow"
-                        }
-                    },
                     "type": "object"
                 }
             },
@@ -6228,11 +6009,6 @@
                 "numbers": {
                     "description": "The numbers to port in",
                     "minProperties": 1,
-                    "patternProperties": {
-                        "\\+?[0-9]+": {
-                            "type": "object"
-                        }
-                    },
                     "required": true,
                     "type": "object"
                 },
@@ -7186,24 +6962,10 @@
             "type": "object"
         },
         "service_plan": {
-            "description": "Describes a service plan",
-            "patternProperties": {
-                ".+": {
-                    "$ref": "service_plan.category",
-                    "description": "Category name",
-                    "type": "object"
-                }
-            }
+            "description": "Describes a service plan"
         },
         "service_plan.category": {
             "description": "Describes a service plan category",
-            "patternProperties": {
-                ".+": {
-                    "$ref": "service_plan.item",
-                    "description": "Item name",
-                    "type": "object"
-                }
-            },
             "properties": {
                 "_all": {
                     "$ref": "service_plan.item",
@@ -7280,12 +7042,6 @@
                 },
                 "rates": {
                     "description": "Tiers of rates based on quantities",
-                    "patternProperties": {
-                        "^[0-9]+$": {
-                            "description": "The rate to charge when under the quantity indicated in the key",
-                            "type": "float"
-                        }
-                    },
                     "type": "object"
                 },
                 "single_discount": {
@@ -7324,12 +7080,6 @@
                 },
                 "plan": {
                     "description": "Outlines the service plan for various services",
-                    "patternProperties": {
-                        "^[0-9a-zA-Z_]+$": {
-                            "$ref": "service_plan",
-                            "type": "object"
-                        }
-                    },
                     "required": true,
                     "type": "object"
                 }
@@ -7387,25 +7137,6 @@
             "type": "object"
         },
         "storage": {
-            "patternProperties": {
-                "^_": {
-                    "description": "Ignores CouchDB fields prefixed by underscores",
-                    "type": [
-                        "string",
-                        "integer",
-                        "boolean",
-                        "object"
-                    ]
-                },
-                "^pvt_": {
-                    "description": "Ignores Kazoo private fields prefixed by pvt_",
-                    "type": [
-                        "string",
-                        "integer",
-                        "boolean"
-                    ]
-                }
-            },
             "properties": {
                 "attachments": {
                     "$ref": "storage.attachments",
@@ -7518,19 +7249,6 @@
         },
         "storage.attachments": {
             "description": "Keys are 32-character identifiers to be used in storage plans",
-            "patternProperties": {
-                "^[a-z,0-9]{32}$": {
-                    "description": "Configuration for the supported storage backends",
-                    "oneOf": [
-                        {
-                            "$ref": "storage.attachment.aws"
-                        },
-                        {
-                            "$ref": "storage.attachment.google_drive"
-                        }
-                    ]
-                }
-            },
             "type": "object"
         },
         "storage.connection.couchdb": {
@@ -7614,18 +7332,6 @@
             "type": "object"
         },
         "storage.connections": {
-            "patternProperties": {
-                "^([a-z,0-9]){32}$": {
-                    "oneOf": [
-                        {
-                            "$ref": "storage.connection.couchdb"
-                        }
-                    ]
-                },
-                "local": {
-                    "type": "object"
-                }
-            },
             "type": "object"
         },
         "storage.plan": {
@@ -12678,67 +12384,6 @@
             "description": "Schema for token restrictions",
             "properties": {
                 "restrictions": {
-                    "patternProperties": {
-                        "^\\w+$": {
-                            "description": "Name of athentication metod used when creating token. \"_\" for match any auth method",
-                            "patternProperties": {
-                                "^\\w+$": {
-                                    "description": "User privelege level. \"_\" for match any priv level",
-                                    "patternProperties": {
-                                        "^\\w+$": {
-                                            "items": {
-                                                "description": "Endpoint (first path token) to wich apply restrictions. \"_\" for match any endpoint",
-                                                "properties": {
-                                                    "allowed_accounts": {
-                                                        "description": "Account allowed to match this item",
-                                                        "items": {
-                                                            "required": false,
-                                                            "type": "string"
-                                                        },
-                                                        "required": false,
-                                                        "type": "array",
-                                                        "uniqueItems": true
-                                                    },
-                                                    "rules": {
-                                                        "description": "Rules applied to endpoint parameters",
-                                                        "patternProperties": {
-                                                            "^[\\w/#*]+$": {
-                                                                "description": "verbs",
-                                                                "items": {
-                                                                    "enum": [
-                                                                        "GET",
-                                                                        "PUT",
-                                                                        "POST",
-                                                                        "PATCH",
-                                                                        "DELETE",
-                                                                        "_"
-                                                                    ],
-                                                                    "type": "string"
-                                                                },
-                                                                "required": false,
-                                                                "type": "array",
-                                                                "uniqueItems": true
-                                                            }
-                                                        },
-                                                        "required": false,
-                                                        "type": "object"
-                                                    }
-                                                },
-                                                "required": false,
-                                                "type": "object"
-                                            },
-                                            "required": true,
-                                            "type": "array"
-                                        }
-                                    },
-                                    "required": true,
-                                    "type": "object"
-                                }
-                            },
-                            "required": true,
-                            "type": "object"
-                        }
-                    },
                     "type": "object"
                 }
             },
@@ -12842,54 +12487,6 @@
                     "items": {
                         "properties": {
                             "DIDs": {
-                                "patternProperties": {
-                                    "^\\+1(\\d{10})$": {
-                                        "properties": {
-                                            "caller_id": {
-                                                "properties": {
-                                                    "cid_name": {
-                                                        "maxLength": 35,
-                                                        "minLength": 1,
-                                                        "required": true,
-                                                        "type": "string"
-                                                    },
-                                                    "cid_number": {
-                                                        "maxLength": 35,
-                                                        "minLength": 1,
-                                                        "required": true,
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "failover": {
-                                                "description": "Route inbound call to another destination if this server fails to handle the call",
-                                                "properties": {
-                                                    "e164": {
-                                                        "description": "An E.164 formatted DID to dial for failover",
-                                                        "type": "string"
-                                                    },
-                                                    "sip": {
-                                                        "description": "A SIP URI (sip:user@host) to call for failover",
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "type": "object"
-                                            },
-                                            "force_outbound": {
-                                                "default": false,
-                                                "type": "boolean"
-                                            },
-                                            "options": {
-                                                "items": {
-                                                    "type": "string"
-                                                },
-                                                "type": "array"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                },
                                 "type": "object"
                             },
                             "auth": {
