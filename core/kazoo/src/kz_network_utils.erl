@@ -133,7 +133,9 @@ is_ip_family_supported(Family) ->
     listen_to_ping(Family, ping_cmd_option(Family), 1).
 
 -spec listen_to_ping(inet:address_family(), string(), integer()) -> boolean().
-listen_to_ping(_Family, _Cmd, Try) when Try < 0 -> 'false';
+listen_to_ping(_Family, _Cmd, Try) when Try < 0 ->
+    lager:warning("max reties to run ping command"),
+    'false';
 listen_to_ping(Family, Cmd, Try) ->
     Options = ['exit_status'
               ,'use_stdio'
@@ -151,20 +153,24 @@ listen_to_ping(Family, Cmd, Port, Try, Acc) ->
         {Port, {'exit_status', 0}} ->
             case Acc of
                 "PING"++_ -> 'true';
-                _ -> 'false'
+                _ ->
+                    lager:warning("ping command '~s' failed: ~p", [Cmd, Acc]),
+                    'false'
             end;
         {Port, {'exit_status', _}} ->
             case Acc of
-                "ping: illegal"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1);
-                "ping: invalid"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1);
-                _ -> 'false'
+                "ping: illegal"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1); %% BSD ping
+                "ping: invalid"++_ when IsIPv6 -> listen_to_ping(Family, ping_cmd_option(ping6), Try - 1); %% GNU ping
+                _ ->
+                lager:warning("either ping/ping6 command is missing or it returns error: ~p", [Acc]),
+                'false'
             end
     end.
 
 -spec ping_cmd_option(inet:address_family() | 'ping6') -> string().
 ping_cmd_option('inet6') -> "ping -6 -c 1 localhost";
 ping_cmd_option('ping6') -> "ping6 -c 1 localhost";
-ping_cmd_option(_) ->  "ping -c 1 localhost".
+ping_cmd_option(_) -> "ping -c 1 localhost".
 
 %%--------------------------------------------------------------------
 %% @public
@@ -172,24 +178,23 @@ ping_cmd_option(_) ->  "ping -c 1 localhost".
 %%      on supported IP family
 %% @end
 %%--------------------------------------------------------------------
--spec default_binding_all_ip() -> ne_binary().
+-spec default_binding_all_ip() -> string().
 default_binding_all_ip() ->
     default_binding_all_ip(is_ip_family_supported('inet')
                           ,is_ip_family_supported('inet6')
                           ).
 
--spec default_binding_all_ip(boolean(), boolean()) -> ne_binary().
+-spec default_binding_all_ip(boolean(), boolean()) -> string().
 default_binding_all_ip('true', 'true') -> prefered_inet('inet');
 default_binding_all_ip('true', 'false') -> prefered_inet('inet');
 default_binding_all_ip('false', 'true') -> prefered_inet('inet6');
 default_binding_all_ip('false', 'false') -> prefered_inet('system').
 
--spec prefered_inet('inet' | 'inet6' | 'system') -> ne_binary().
-prefered_inet('inet') -> <<"0.0.0.0">>;
-prefered_inet('inet6') -> <<"::">>;
+-spec prefered_inet('inet' | 'inet6' | 'system') -> string().
+prefered_inet('inet') -> "0.0.0.0";
+prefered_inet('inet6') -> "::";
 prefered_inet('system') ->
-    %% expilicty convert to list to allow save the default value in human readable value
-    kz_term:to_list(kapps_config:get_binary(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, <<"0.0.0.0">>)).
+    kapps_config:get_string(<<"kapps_controller">>, <<"default_apps_ip_address_to_bind">>, "0.0.0.0").
 
 %%--------------------------------------------------------------------
 %% @public
