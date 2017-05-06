@@ -7534,40 +7534,6 @@
             "type": "object"
         },
         "storage.connection.couchdb": {
-            "definitions": {
-                "credentials": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "password": {
-                            "type": "integer"
-                        },
-                        "username": {
-                            "type": "string"
-                        }
-                    },
-                    "required": [
-                        "username",
-                        "password"
-                    ],
-                    "type": "object"
-                },
-                "pool": {
-                    "additionalProperties": false,
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "size": {
-                            "type": "integer"
-                        }
-                    },
-                    "required": [
-                        "name",
-                        "size"
-                    ],
-                    "type": "object"
-                }
-            },
             "description": "schema for couchdb connection entry",
             "properties": {
                 "driver": {
@@ -7592,7 +7558,19 @@
                             "type": "integer"
                         },
                         "credentials": {
-                            "$ref": "#/definitions/credentials"
+                            "properties": {
+                                "password": {
+                                    "type": "integer"
+                                },
+                                "username": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "username",
+                                "password"
+                            ],
+                            "type": "object"
                         },
                         "ip": {
                             "type": "string"
@@ -7604,7 +7582,19 @@
                             "type": "integer"
                         },
                         "pool": {
-                            "$ref": "#/definitions/pool"
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "size": {
+                                    "type": "integer"
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "size"
+                            ],
+                            "type": "object"
                         },
                         "port": {
                             "type": "integer"
@@ -7654,16 +7644,6 @@
             "type": "object"
         },
         "storage.plan.database": {
-            "definitions": {
-                "database": {
-                    "properties": {
-                        "create_options": {
-                            "type": "object"
-                        }
-                    },
-                    "type": "object"
-                }
-            },
             "description": "schema for database storage plan",
             "properties": {
                 "attachments": {
@@ -7673,7 +7653,12 @@
                     "type": "string"
                 },
                 "database": {
-                    "$ref": "#/definitions/database"
+                    "properties": {
+                        "create_options": {
+                            "type": "object"
+                        }
+                    },
+                    "type": "object"
                 },
                 "types": {
                     "additionalProperties": false,

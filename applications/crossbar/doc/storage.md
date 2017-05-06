@@ -94,11 +94,15 @@ Key | Description | Type | Default | Required
 `settings.connect_options` |   | `object` |   | `false`
 `settings.connect_options.keepalive` |   | `boolean` |   | `false`
 `settings.connect_timeout` |   | `integer` |   | `false`
-`settings.credentials` |   | [#/definitions/#/definitions/credentials](##/definitions/credentials) |   | `false`
+`settings.credentials` |   | `object` |   | `false`
+`settings.credentials.password` |   | `integer` |   | `true`
+`settings.credentials.username` |   | `string` |   | `true`
 `settings.ip` |   | `string` |   | `true`
 `settings.max_pipeline_size` |   | `integer` |   | `false`
 `settings.max_sessions` |   | `integer` |   | `false`
-`settings.pool` |   | [#/definitions/#/definitions/pool](##/definitions/pool) |   | `false`
+`settings.pool` |   | `object` |   | `false`
+`settings.pool.name` |   | `string` |   | `true`
+`settings.pool.size` |   | `integer` |   | `true`
 `settings.port` |   | `integer` |   | `true`
 
 ##### storage.connections
@@ -124,7 +128,8 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false`
 `connection` |   | `string` |   | `false`
-`database` |   | [#/definitions/#/definitions/database](##/definitions/database) |   | `false`
+`database` |   | `object` |   | `false`
+`database.create_options` |   | `object` |   | `false`
 `types` |   | `object` |   | `false`
 `types.call_recording` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false`
 `types.fax` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false`
