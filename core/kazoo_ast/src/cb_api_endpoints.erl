@@ -213,7 +213,13 @@ process_schema(Filename, Definitions) ->
                    ,<<"$schema">>
                    ,<<"additionalProperties">>
                    ],
-    JObj = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
+    JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
+    JObj = kz_json:expand(
+             kz_json:from_list(
+               [KV
+                || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+                   not lists:member(<<"patternProperties">>, Path)
+               ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
