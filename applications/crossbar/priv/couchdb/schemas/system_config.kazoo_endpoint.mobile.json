@@ -42,22 +42,19 @@
         "sms": {
             "properties": {
                 "connections": {
-                    "properties": {
+                    "default": {
                         "default": {
-                            "default": {
-                                "exchange": "sms",
-                                "options": {
-                                    "passive": true
-                                },
-                                "route": "sprint",
-                                "type": "topic"
-                            }
-                        },
-                        "description": "kazoo_endpoint.mobile connections",
-                        "type": "object"
-                    }
-                },
-                "type": "object"
+                            "exchange": "sms",
+                            "options": {
+                                "passive": true
+                            },
+                            "route": "sprint",
+                            "type": "topic"
+                        }
+                    },
+                    "description": "kazoo_endpoint.mobile connections",
+                    "type": "object"
+                }
             }
         },
         "sms_interface": {

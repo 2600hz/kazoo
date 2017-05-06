@@ -4,8 +4,7 @@
     "description": "Schema for kazoo_couch system_config",
     "properties": {
         "admin_port": {
-            "description": "The CouchDB API port, typically 5986",
-            "type": "integer"
+            "description": "The CouchDB API port, typically 5986"
         },
         "allow_maintenance_db_delete": {
             "default": false,
@@ -17,17 +16,8 @@
             "description": "The CouchDB API port, typically 5984",
             "type": "integer"
         },
-        "autocompaction_check": {
-            "default": 60000,
-            "description": "kazoo_couch autocompaction check",
-            "type": "integer"
-        },
-        "bigcouch_cookie": {
-            "description": "The cookie value of all the BigCouch nodes",
-            "type": "string"
-        },
         "compact_automatically": {
-            "default": true,
+            "default": false,
             "description": "kazoo_couch compact automatically",
             "type": "boolean"
         },
@@ -66,19 +56,9 @@
             "description": "kazoo_couch minimum ratio",
             "type": "number"
         },
-        "sleep_between_compaction": {
-            "default": 60000,
-            "description": "kazoo_couch sleep between compaction",
-            "type": "integer"
-        },
         "sleep_between_poll": {
             "default": 3000,
             "description": "kazoo_couch sleep between poll",
-            "type": "integer"
-        },
-        "sleep_between_views": {
-            "default": 2000,
-            "description": "kazoo_couch sleep between views",
             "type": "integer"
         },
         "use_bigcouch_direct": {

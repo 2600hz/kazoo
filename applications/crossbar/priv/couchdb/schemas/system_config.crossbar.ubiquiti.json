@@ -14,13 +14,10 @@
         "production": {
             "properties": {
                 "sso_url": {
-                    "properties": {
-                        "default": "https://sso.ubnt.com/api/sso/v1/",
-                        "description": "crossbar.ubiquiti sso url",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
+                    "default": "https://sso.ubnt.com/api/sso/v1/",
+                    "description": "crossbar.ubiquiti sso url",
+                    "type": "string"
+                }
             }
         },
         "salt_length": {
@@ -40,13 +37,10 @@
         "staging": {
             "properties": {
                 "sso_url": {
-                    "properties": {
-                        "default": "https://sso-stage.ubnt.com/api/sso/v1/",
-                        "description": "crossbar.ubiquiti sso url",
-                        "type": "string"
-                    }
-                },
-                "type": "object"
+                    "default": "https://sso-stage.ubnt.com/api/sso/v1/",
+                    "description": "crossbar.ubiquiti sso url",
+                    "type": "string"
+                }
             }
         },
         "tokens_per_request": {

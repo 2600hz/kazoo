@@ -33,7 +33,7 @@ update_schema(ConfigType, Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
     GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
-    UpdatedSchema = kz_json:delete_keys([<<"id">>, [?FIELD_PROPERTIES,?FIELD_TYPE]], MergedJObj),
+    UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
@@ -49,32 +49,17 @@ existing_schema(Name) ->
 account_properties(AutoGenSchema) ->
     Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
     KeepPaths = sets:from_list(
-                  lists:append(
-                    [path_and_sub_properties(lists:droplast(Path))
-                     || {Path, V} <- Flat,
-                        ?SOURCE =:= lists:last(Path),
-                        V =:= kapps_account_config
-                    ])),
+                  [lists:droplast(Path)
+                   || {Path, V} <- Flat,
+                      ?SOURCE =:= lists:last(Path),
+                      V =:= kapps_account_config
+                  ]),
     kz_json:expand(
       kz_json:from_list(
         [KV
          || {Path,_}=KV <- Flat,
-            case lists:reverse(Path) of
-                [?FIELD_TYPE,?FIELD_PROPERTIES|_] -> sets:is_element(Path, KeepPaths);
-                _ -> sets:is_element(lists:droplast(Path), KeepPaths)
-            end
+            sets:is_element(lists:droplast(Path), KeepPaths)
         ])).
-
-path_and_sub_properties(Path) ->
-    case lists:reverse(Path) of
-        [_,?FIELD_PROPERTIES] -> [[?FIELD_PROPERTIES, ?FIELD_TYPE]];
-        [?FIELD_PROPERTIES,_|Rest] -> path_and_sub_properties(Rest, [Path])
-    end.
-path_and_sub_properties([], Paths) -> Paths;
-path_and_sub_properties([?FIELD_PROPERTIES], Paths) -> Paths;
-path_and_sub_properties(SubProps=[?FIELD_PROPERTIES,_|Htap], Paths) ->
-    Path = lists:reverse([?FIELD_TYPE|SubProps]),
-    path_and_sub_properties(Htap, [Path|Paths]).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().
 remove_source(JObj) ->
@@ -169,19 +154,7 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
     Path = [Document, ?FIELD_PROPERTIES | Key],
-    NewSchemas = kz_json:set_value(Path, Properties, Schemas),
-    add_missing_type_on_properties(lists:reverse(Path), NewSchemas).
-
-add_missing_type_on_properties([?FIELD_PROPERTIES,Key|Htap], Schemas) ->
-    TypePath = lists:reverse(Htap, [Key, ?FIELD_PROPERTIES, ?FIELD_TYPE]),
-    NewSchemas = case undefined =:= kz_json:get_value(TypePath, Schemas) of
-                     false -> Schemas;
-                     true -> kz_json:set_value(TypePath, <<"object">>, Schemas)
-                 end,
-    add_missing_type_on_properties(Htap, NewSchemas);
-add_missing_type_on_properties([], Schemas) -> Schemas;
-add_missing_type_on_properties(Htap, Schemas) ->
-    add_missing_type_on_properties(tl(Htap), Schemas).
+    kz_json:set_value(Path, Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
@@ -190,6 +163,8 @@ category_to_document(Cat) ->
 key_to_key_path(?ATOM(A)) -> [kz_term:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), ?EMPTY_LIST)) ->
+    [kz_ast_util:binary_match_to_binary(Field)];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
     [kz_ast_util:binary_match_to_binary(Field)
     ,?FIELD_PROPERTIES
@@ -206,6 +181,8 @@ key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
 
 key_to_key_path(?LIST(?VAR(_Name), _Tail)) ->
     'undefined';
+key_to_key_path(?LIST(Head, ?EMPTY_LIST)) ->
+    [kz_ast_util:binary_match_to_binary(Head)];
 key_to_key_path(?LIST(Head, Tail)) ->
     case key_to_key_path(Tail) of
         'undefined' -> 'undefined';
@@ -245,7 +222,7 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> <<"array(string)">>;
+guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> <<"array">>;
 guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>;
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;

@@ -250,16 +250,12 @@
                 "send_http": {
                     "properties": {
                         "delete_on_success": {
-                            "properties": {
-                                "default": false,
-                                "description": "ecallmgr delete on success",
-                                "type": "boolean"
-                            }
-                        },
-                        "type": "object"
+                            "default": false,
+                            "description": "ecallmgr delete on success",
+                            "type": "boolean"
+                        }
                     }
-                },
-                "type": "object"
+                }
             }
         },
         "node_down_grace_period": {

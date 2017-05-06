@@ -12,32 +12,6 @@
             "type": "object"
         },
         "feature_keys": {
-            "default": {
-                "cisco": {
-                    "_": {
-                        "parking": "",
-                        "personal_parking": "",
-                        "presence": "",
-                        "speed_dial": ""
-                    }
-                },
-                "polycom": {
-                    "_": {
-                        "parking": "automata",
-                        "personal_parking": "automata",
-                        "presence": "normal",
-                        "speed_dial": "normal"
-                    }
-                },
-                "yealink": {
-                    "_": {
-                        "parking": "10",
-                        "personal_parking": "10",
-                        "presence": "16",
-                        "speed_dial": "13"
-                    }
-                }
-            },
             "description": "provisioner feature keys",
             "type": "object"
         },

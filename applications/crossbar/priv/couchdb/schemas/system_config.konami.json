@@ -11,20 +11,15 @@
         "transfer": {
             "properties": {
                 "default_takeback_dtmf": {
-                    "properties": {
-                        "default": "*1",
-                        "description": "konami default takeback dtmf",
-                        "type": "string"
-                    }
+                    "default": "*1",
+                    "description": "konami default takeback dtmf",
+                    "type": "string"
                 },
                 "default_target_timeout_ms": {
-                    "properties": {
-                        "default": 20000,
-                        "description": "konami default target timeout in milliseconds",
-                        "type": "integer"
-                    }
-                },
-                "type": "object"
+                    "default": 20000,
+                    "description": "konami default target timeout in milliseconds",
+                    "type": "integer"
+                }
             }
         },
         "use_fast_rearm": {

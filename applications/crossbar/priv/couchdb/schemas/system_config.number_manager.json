@@ -77,12 +77,8 @@
         "features": {
             "properties": {
                 "allow": {
-                    "properties": {
-                        "description": "Number features a number is allowed to enable or disable",
-                        "type": "object"
-                    }
-                },
-                "type": "object"
+                    "description": "Number features a number is allowed to enable or disable"
+                }
             }
         },
         "fetch_account_from_ports": {

@@ -7,9 +7,6 @@
             "default": true,
             "description": "notify.fax_outbound_error_to_email default enabled",
             "type": "boolean"
-        },
-        "default_to": {
-            "description": "notify.fax_outbound_error_to_email default to"
         }
     },
     "type": "object"

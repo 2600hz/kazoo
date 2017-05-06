@@ -8,9 +8,6 @@
             "description": "notify.fax_inbound_error_to_email default enabled",
             "type": "boolean"
         },
-        "default_to": {
-            "description": "notify.fax_inbound_error_to_email default to"
-        },
         "filter_error_codes": {
             "default": [
                 "0",

@@ -16,6 +16,7 @@
                 "teletype_fax_outbound_to_email",
                 "teletype_first_occurrence",
                 "teletype_low_balance",
+                "teletype_missed_call",
                 "teletype_new_account",
                 "teletype_new_user",
                 "teletype_password_recovery",
