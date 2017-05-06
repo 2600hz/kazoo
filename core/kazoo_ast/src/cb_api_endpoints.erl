@@ -10,7 +10,6 @@
 
 -ifdef(TEST).
 -export([sort_methods/1]).
-
 -endif.
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -33,17 +32,11 @@
 -spec to_ref_doc() -> 'ok'.
 -spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc() ->
-    ensure_ref_dir(),
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
 to_ref_doc(CBModule) ->
-    ensure_ref_dir(),
     Path = code:which(CBModule),
     api_to_ref_doc(hd(process_module(Path, []))).
-
--spec ensure_ref_dir() -> 'ok'.
-ensure_ref_dir() ->
-    'ok' = filelib:ensure_dir(filename:join([?REF_PATH, ".placeholder"])).
 
 api_to_ref_doc([]) -> 'ok';
 api_to_ref_doc({Module, Paths}) ->

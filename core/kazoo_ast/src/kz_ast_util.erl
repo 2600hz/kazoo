@@ -273,8 +273,7 @@ local_required(Names, SchemaJObj) ->
 
 path_local_required([_Name]) -> [<<"required">>];
 path_local_required(Names) ->
-    ExceptLast = lists:reverse(tl(lists:reverse(Names))),
-    [<<"properties">> | ExceptLast] ++ [<<"required">>].
+    lists:flatten([[[<<"properties">>, Name] || Name <- lists:droplast(Names)], <<"required">>]).
 
 %% @private
 %% @doc
