@@ -20,7 +20,7 @@
 -define(LOOPBACK_KEY, <<"ignore_loopback_bowout">>).
 -define(IGNORE_LOOPBACK(AccountId),
         case AccountId of
-            'undefined' -> kapps_config:get(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
+            'undefined' -> kapps_config:get_is_true(?CONFIG_CAT, ?LOOPBACK_KEY, 'true');
             _ -> kapps_account_config:get_global(AccountId, ?CONFIG_CAT, ?LOOPBACK_KEY, 'true')
         end).
 
