@@ -575,6 +575,54 @@ Processes JSON files:
 -   Checks map functions in CouchDB views for 'Object.keys' usage
 
 
+## validate-schemas.sh
+
+Validate JSON schema files:
+
+```shell
+./scripts/validate-schemas.sh applications/crossbar/priv/couchdb/schemas/
+Traceback (most recent call last):
+  File "/usr/local/bin/jsonschema", line 11, in <module>
+    sys.exit(main())
+  File "/usr/local/lib/python2.7/dist-packages/jsonschema/cli.py", line 67, in main
+    sys.exit(run(arguments=parse_args(args=args)))
+  File "/usr/local/lib/python2.7/dist-packages/jsonschema/cli.py", line 74, in run
+    validator.check_schema(arguments["schema"])
+  File "/usr/local/lib/python2.7/dist-packages/jsonschema/validators.py", line 83, in check_schema
+    raise SchemaError.create_from(error)
+jsonschema.exceptions.SchemaError: u'true' is not of type u'boolean'
+
+Failed validating u'type' in schema[u'properties'][u'properties'][u'additionalProperties'][u'properties'][u'required']:
+    {u'default': False, u'type': u'boolean'}
+
+On instance[u'properties'][u'lists'][u'required']:
+    u'true'
+
+Bad schema: /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
+{
+    "$schema": "http://json-schema.org/draft-03/schema#",
+    "_id": "callflows.lookupcidname",
+    "description": "Validator for the Lookup callflow element",
+    "properties": {
+        "lists": {
+            "default": [],
+            "description": "Array of list ids",
+            "items": {
+                "type": "string"
+            },
+            "required": "true",
+            "type": "array"
+        }
+    },
+    "required": true,
+    "type": "object"
+}
+
+Run again with:
+./scripts/validate-schemas.sh /home/pete/wefwefwef/kazoo.git/applications/crossbar/priv/couchdb/schemas/callflows.lookupcidname.json
+```
+
+
 ## validate-swagger.sh
 
 Validate Swagger file using online validator
