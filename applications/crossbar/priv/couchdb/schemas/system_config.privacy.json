@@ -22,8 +22,7 @@
             "default": "0000000000",
             "description": "Default Caller ID Number should be shown for anonymous calls",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

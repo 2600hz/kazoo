@@ -32,8 +32,7 @@
             "default": 5000,
             "description": "call_command message timeout",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

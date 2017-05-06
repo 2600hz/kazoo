@@ -7,8 +7,7 @@
             "default": [],
             "description": "crossbar.contact_list default includes",
             "type": "array"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

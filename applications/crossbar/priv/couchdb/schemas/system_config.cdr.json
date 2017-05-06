@@ -35,7 +35,6 @@
             "description": "cdr store anonymous",
             "type": "boolean"
         },
-        "type": "object",
         "v3_migrate_num_months": {
             "default": 4,
             "description": "cdr v3 migrate num months",

@@ -12,8 +12,7 @@
             "default": 60000,
             "description": "webhooks attempt failure expiry in milliseconds",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

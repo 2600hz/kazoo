@@ -47,8 +47,7 @@
             "default": true,
             "description": "braintree should prorate",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

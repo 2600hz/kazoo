@@ -61,7 +61,6 @@
             "description": "doodle route win timeout",
             "type": "integer"
         },
-        "type": "object",
         "unavailable_message": {
             "default": {
                 "en-US": "sms service unavailable"

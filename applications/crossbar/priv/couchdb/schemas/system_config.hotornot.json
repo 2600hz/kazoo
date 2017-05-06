@@ -71,7 +71,6 @@
             "description": "Which trie module to use",
             "type": "string"
         },
-        "type": "object",
         "use_trie": {
             "default": false,
             "description": "whether to use the trie to store rates in the VM",

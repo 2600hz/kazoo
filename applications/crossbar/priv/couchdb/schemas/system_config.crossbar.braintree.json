@@ -7,8 +7,7 @@
             "default": 500.0,
             "description": "crossbar.braintree maximum account credit",
             "type": "number"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

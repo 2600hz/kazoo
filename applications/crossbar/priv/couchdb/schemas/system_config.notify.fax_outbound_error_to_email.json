@@ -10,8 +10,7 @@
         },
         "default_to": {
             "description": "notify.fax_outbound_error_to_email default to"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

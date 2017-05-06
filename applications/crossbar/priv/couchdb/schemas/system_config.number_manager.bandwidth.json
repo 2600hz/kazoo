@@ -35,8 +35,7 @@
             "default": true,
             "description": "number_manager.bandwidth sandbox provisioning",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

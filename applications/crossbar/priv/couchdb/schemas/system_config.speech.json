@@ -110,8 +110,7 @@
             "default": "male",
             "description": "speech tts voice",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

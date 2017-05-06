@@ -163,7 +163,6 @@
             "description": "number_manager time between numbers in milliseconds",
             "type": "integer"
         },
-        "type": "object",
         "unauthorized_numbers_lookup": {
             "default": false,
             "description": "number_manager unauthorized numbers lookup",

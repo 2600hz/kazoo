@@ -47,8 +47,7 @@
         "provisioning_url": {
             "description": "provisioner provisioning url",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

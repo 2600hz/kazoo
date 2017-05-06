@@ -131,7 +131,6 @@
             "description": "media support account overrides",
             "type": "boolean"
         },
-        "type": "object",
         "use_https": {
             "default": false,
             "description": "media use https",

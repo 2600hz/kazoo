@@ -7,8 +7,7 @@
             "default": false,
             "description": "topup enable",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

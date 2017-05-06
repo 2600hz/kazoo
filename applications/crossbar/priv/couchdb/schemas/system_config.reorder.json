@@ -17,7 +17,6 @@
             "description": "reorder known-error-message",
             "type": "string"
         },
-        "type": "object",
         "unknown-error-code": {
             "default": "604",
             "description": "reorder unknown-error-code",

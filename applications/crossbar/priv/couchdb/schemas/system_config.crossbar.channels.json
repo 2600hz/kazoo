@@ -7,8 +7,7 @@
             "default": false,
             "description": "crossbar.channels system wide channels list",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

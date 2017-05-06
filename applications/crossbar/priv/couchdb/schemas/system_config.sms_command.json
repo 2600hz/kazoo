@@ -17,8 +17,7 @@
             "default": 60000,
             "description": "sms_command message timeout",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

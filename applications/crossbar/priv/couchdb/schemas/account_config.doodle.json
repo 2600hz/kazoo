@@ -12,8 +12,7 @@
             "default": {},
             "description": "doodle reschedule",
             "type": "object"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

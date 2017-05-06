@@ -52,8 +52,7 @@
             "default": "",
             "description": "number_manager.bandwidth2 site id",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

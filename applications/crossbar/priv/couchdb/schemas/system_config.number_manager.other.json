@@ -13,8 +13,7 @@
         },
         "phonebook_url": {
             "description": "number_manager.other phonebook url"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

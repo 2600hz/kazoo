@@ -6,8 +6,7 @@
         "authoritative_crossbar": {
             "description": "crossbar.shared_auth authoritative crossbar",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

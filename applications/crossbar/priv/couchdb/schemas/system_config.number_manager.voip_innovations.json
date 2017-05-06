@@ -32,8 +32,7 @@
             "default": false,
             "description": "number_manager.voip_innovations sandbox provisioning",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

@@ -12,8 +12,7 @@
             "default": false,
             "description": "crossbar.sms api e164 convert to",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

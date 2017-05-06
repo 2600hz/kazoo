@@ -136,7 +136,6 @@
             "description": "crossbar trace path",
             "type": "string"
         },
-        "type": "object",
         "use_plaintext": {
             "default": true,
             "description": "crossbar use plaintext",

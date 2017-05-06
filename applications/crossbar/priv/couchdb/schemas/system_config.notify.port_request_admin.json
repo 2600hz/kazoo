@@ -5,8 +5,7 @@
     "properties": {
         "default_to": {
             "description": "notify.port_request_admin default to"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

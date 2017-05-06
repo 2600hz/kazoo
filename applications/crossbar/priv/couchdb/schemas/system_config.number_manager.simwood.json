@@ -22,8 +22,7 @@
             "default": "",
             "description": "number_manager.simwood simwood account id",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

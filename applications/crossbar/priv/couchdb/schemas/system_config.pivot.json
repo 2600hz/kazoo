@@ -7,8 +7,7 @@
             "default": 4000,
             "description": "pivot tts texts size",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

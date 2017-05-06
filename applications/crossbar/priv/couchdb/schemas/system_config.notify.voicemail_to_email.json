@@ -12,8 +12,7 @@
             "default": "7BIT",
             "description": "notify.voicemail_to_email text content transfer encoding",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

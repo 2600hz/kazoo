@@ -8,7 +8,6 @@
             "description": "ananke schedules",
             "type": "array"
         },
-        "type": "object",
         "voicemail": {
             "properties": {
                 "notify": {

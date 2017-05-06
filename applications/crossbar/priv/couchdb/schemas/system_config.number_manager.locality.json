@@ -3,7 +3,6 @@
     "_id": "system_config.number_manager.locality",
     "description": "Schema for number_manager.locality system_config",
     "properties": {
-        "type": "object",
         "url": {
             "description": "number_manager.locality url",
             "type": "string"

@@ -37,7 +37,6 @@
             "description": "number_manager.telnyx token",
             "type": "string"
         },
-        "type": "object",
         "upfront_cost": {
             "default": 1.0,
             "description": "number_manager.telnyx upfront cost",

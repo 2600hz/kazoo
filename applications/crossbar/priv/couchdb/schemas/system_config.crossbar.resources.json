@@ -12,8 +12,7 @@
             "default": 21600,
             "description": "crossbar.resources job recovery timeout in seconds",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

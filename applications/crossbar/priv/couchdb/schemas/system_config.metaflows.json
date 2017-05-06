@@ -46,8 +46,7 @@
             },
             "description": "metaflows patterns",
             "type": "object"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

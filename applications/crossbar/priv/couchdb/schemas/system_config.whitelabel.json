@@ -5,8 +5,7 @@
     "properties": {
         "domains": {
             "description": "whitelabel domains"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

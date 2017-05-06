@@ -36,8 +36,7 @@
             "default": 3,
             "description": "callflow.call_forward minimum callfwd number length",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

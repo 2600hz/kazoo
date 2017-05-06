@@ -7,8 +7,7 @@
             "default": true,
             "description": "kazoo_endpoint default can text self",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

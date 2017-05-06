@@ -7,8 +7,7 @@
             "default": "*98",
             "description": "prefix used when subsribing vm updates for dialog",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

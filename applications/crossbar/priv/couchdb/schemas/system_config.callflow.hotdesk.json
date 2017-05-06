@@ -17,8 +17,7 @@
             "default": 6,
             "description": "callflow.hotdesk maximum pin length",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

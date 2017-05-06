@@ -7,8 +7,7 @@
             "default": 1500,
             "description": "callflow.menu minimum greeting length",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

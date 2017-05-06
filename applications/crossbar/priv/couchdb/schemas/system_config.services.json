@@ -40,8 +40,7 @@
             "default": false,
             "description": "services sync services",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

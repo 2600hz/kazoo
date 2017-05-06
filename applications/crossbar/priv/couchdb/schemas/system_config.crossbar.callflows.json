@@ -7,8 +7,7 @@
             "default": false,
             "description": "crossbar.callflows default reconcile numbers",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

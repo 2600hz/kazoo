@@ -26,8 +26,7 @@
             "default": true,
             "description": "trunkstore ring ready offnet",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

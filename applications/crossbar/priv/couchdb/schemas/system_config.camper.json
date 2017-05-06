@@ -22,8 +22,7 @@
             "default": 3,
             "description": "camper try interval",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

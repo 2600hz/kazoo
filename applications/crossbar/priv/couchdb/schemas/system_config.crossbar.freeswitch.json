@@ -29,7 +29,6 @@
             "description": "crossbar.freeswitch templates to process",
             "type": "array"
         },
-        "type": "object",
         "work_dir": {
             "default": "/tmp/",
             "description": "crossbar.freeswitch work dir",

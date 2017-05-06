@@ -7,8 +7,7 @@
             "default": true,
             "description": "cdr ignore loopback bowout",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

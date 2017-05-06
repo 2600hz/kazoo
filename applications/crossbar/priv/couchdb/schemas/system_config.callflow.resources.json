@@ -7,8 +7,7 @@
             "default": false,
             "description": "callflow.resources default emit account id",
             "type": "boolean"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

@@ -36,7 +36,6 @@
         "tls": {
             "description": "smtp_client tls"
         },
-        "type": "object",
         "use_ssl": {
             "default": false,
             "description": "smtp_client use ssl",

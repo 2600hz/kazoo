@@ -11,8 +11,7 @@
         "phonebook_url": {
             "description": "crossbar.phone_numbers phonebook url",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

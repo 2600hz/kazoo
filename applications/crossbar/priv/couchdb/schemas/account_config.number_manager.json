@@ -3,7 +3,6 @@
     "_id": "account_config.number_manager",
     "description": "Schema for number_manager account_config",
     "properties": {
-        "type": "object",
         "unauthorized_numbers_lookup": {
             "default": false,
             "description": "number_manager unauthorized numbers lookup",

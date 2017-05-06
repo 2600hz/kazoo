@@ -53,8 +53,7 @@
             "default": 35,
             "description": "crossbar.ubiquiti tokens per request",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

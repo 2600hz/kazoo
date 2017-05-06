@@ -47,8 +47,7 @@
             "default": 1209600,
             "description": "crossbar.accounts trial time",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

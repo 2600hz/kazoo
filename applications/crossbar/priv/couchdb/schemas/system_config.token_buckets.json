@@ -29,8 +29,7 @@
             "default": "second",
             "description": "token_buckets tokens fill time",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

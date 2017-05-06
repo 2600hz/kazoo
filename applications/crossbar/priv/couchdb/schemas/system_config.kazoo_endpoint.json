@@ -36,8 +36,7 @@
         },
         "sip_transport": {
             "description": "kazoo_endpoint sip transport"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

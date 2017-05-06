@@ -18,8 +18,7 @@
             "default": "^\\+1\\d{10}$",
             "description": "jonny5 flat rate whitelist",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

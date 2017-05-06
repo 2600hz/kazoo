@@ -57,8 +57,7 @@
             "default": 5,
             "description": "acdc queue worker count",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

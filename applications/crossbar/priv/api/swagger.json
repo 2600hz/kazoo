@@ -41,8 +41,7 @@
                     "default": true,
                     "description": "cdr ignore loopback bowout",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -83,8 +82,7 @@
                     "default": true,
                     "description": "conferences support name announcement",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -100,8 +98,7 @@
                     "default": false,
                     "description": "crossbar.sms api e164 convert to",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -117,8 +114,7 @@
                     "default": {},
                     "description": "doodle reschedule",
                     "type": "object"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -139,8 +135,7 @@
                     "default": 10,
                     "description": "fax max outbound",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -151,8 +146,7 @@
                     "default": true,
                     "description": "kazoo_endpoint default can text self",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -177,7 +171,6 @@
         "account_config.number_manager": {
             "description": "Schema for number_manager account_config",
             "properties": {
-                "type": "object",
                 "unauthorized_numbers_lookup": {
                     "default": false,
                     "description": "number_manager unauthorized numbers lookup",
@@ -193,8 +186,7 @@
                     "default": "*98",
                     "description": "prefix used when subsribing vm updates for dialog",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -210,8 +202,7 @@
                     "default": "kazoo",
                     "description": "Default privacy mode for anonymous calls",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -238,8 +229,7 @@
                     "default": 60000,
                     "description": "webhooks attempt failure expiry in milliseconds",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7428,8 +7418,7 @@
                 },
                 "master_account_id": {
                     "description": "accounts master account id"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7490,8 +7479,7 @@
                     "default": 5,
                     "description": "acdc queue worker count",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7502,8 +7490,7 @@
                     "default": true,
                     "description": "alerts enabled",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7515,7 +7502,6 @@
                     "description": "ananke schedules",
                     "type": "array"
                 },
-                "type": "object",
                 "voicemail": {
                     "properties": {
                         "notify": {
@@ -7569,8 +7555,7 @@
                 "system_key": {
                     "description": "auth system key",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7612,8 +7597,7 @@
                     "default": 5555,
                     "description": "blackhole port",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7664,8 +7648,7 @@
                     "default": true,
                     "description": "braintree should prorate",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7701,8 +7684,7 @@
                     "default": 5000,
                     "description": "call_command message timeout",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7713,8 +7695,7 @@
                     "default": {},
                     "description": "parser specifications. Will be started on app startup",
                     "type": "object"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7798,7 +7779,6 @@
                     "description": "callflow singular call hook url",
                     "type": "string"
                 },
-                "type": "object",
                 "voicemail": {
                     "properties": {
                         "delete_after_notify": {
@@ -7941,8 +7921,7 @@
                     "default": 3,
                     "description": "callflow.call_forward minimum callfwd number length",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -7974,7 +7953,6 @@
                     "description": "callflow.dynamic_cid reject prompt",
                     "type": "string"
                 },
-                "type": "object",
                 "whitelist_regex": {
                     "default": "\\d+",
                     "description": "callflow.dynamic_cid whitelist regex",
@@ -8000,8 +7978,7 @@
                     "default": 6,
                     "description": "callflow.hotdesk maximum pin length",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8012,8 +7989,7 @@
                     "default": 1500,
                     "description": "callflow.menu minimum greeting length",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8039,8 +8015,7 @@
                     "default": "early",
                     "description": "callflow.park parked presence type",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8051,8 +8026,7 @@
                     "default": false,
                     "description": "callflow.resources default emit account id",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8078,8 +8052,7 @@
                     "default": 3,
                     "description": "camper try interval",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8123,8 +8096,7 @@
                     "default": 1,
                     "description": "cccp prompt delay",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8163,7 +8135,6 @@
                     "description": "cdr store anonymous",
                     "type": "boolean"
                 },
-                "type": "object",
                 "v3_migrate_num_months": {
                     "default": 4,
                     "description": "cdr v3 migrate num months",
@@ -8262,8 +8233,7 @@
                     "default": true,
                     "description": "conferences support name announcement",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8403,7 +8373,6 @@
                     "description": "crossbar trace path",
                     "type": "string"
                 },
-                "type": "object",
                 "use_plaintext": {
                     "default": true,
                     "description": "crossbar use plaintext",
@@ -8474,8 +8443,7 @@
                     "default": 1209600,
                     "description": "crossbar.accounts trial time",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8496,8 +8464,7 @@
                     "default": false,
                     "description": "Should log failed login attempts",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8508,8 +8475,7 @@
                     "default": 500.0,
                     "description": "crossbar.braintree maximum account credit",
                     "type": "number"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8520,8 +8486,7 @@
                     "default": false,
                     "description": "crossbar.callflows default reconcile numbers",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8542,8 +8507,7 @@
                     "default": 2682000,
                     "description": "crossbar.cdrs maximum range",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8554,8 +8518,7 @@
                     "default": false,
                     "description": "crossbar.channels system wide channels list",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8566,8 +8529,7 @@
                     "default": [],
                     "description": "crossbar.contact_list default includes",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8601,8 +8563,7 @@
                 "provisioning_url": {
                     "description": "crossbar.devices provisioning url",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8635,7 +8596,6 @@
                     "description": "crossbar.freeswitch templates to process",
                     "type": "array"
                 },
-                "type": "object",
                 "work_dir": {
                     "default": "/tmp/",
                     "description": "crossbar.freeswitch work dir",
@@ -8651,8 +8611,7 @@
                     "default": false,
                     "description": "crossbar.local_resources allow peers",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8668,8 +8627,7 @@
                     "default": false,
                     "description": "crossbar.media normalize media",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8685,8 +8643,7 @@
                     "default": 5000,
                     "description": "crossbar.notifications notification timeout in milliseconds",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8717,8 +8674,7 @@
                     "default": 3,
                     "description": "crossbar.onboard device username strength",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8733,8 +8689,7 @@
                 "phonebook_url": {
                     "description": "crossbar.phone_numbers phonebook url",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8797,8 +8752,7 @@
                     "default": 21600,
                     "description": "crossbar.resources job recovery timeout in seconds",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8819,8 +8773,7 @@
                 "authoritative_crossbar": {
                     "description": "crossbar.shared_auth authoritative crossbar",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8836,8 +8789,7 @@
                     "default": false,
                     "description": "crossbar.sms api e164 convert to",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8852,8 +8804,7 @@
                     "default": "admin",
                     "description": "crossbar.token_restrictions default priv level",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8910,8 +8861,7 @@
                     "default": 35,
                     "description": "crossbar.ubiquiti tokens per request",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8927,8 +8877,7 @@
                     "default": false,
                     "description": "Whether or not normalize voicemail audio file",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -8967,8 +8916,7 @@
                 },
                 "performance": {
                     "description": "datamgr performance"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9033,7 +8981,6 @@
                     "description": "doodle route win timeout",
                     "type": "integer"
                 },
-                "type": "object",
                 "unavailable_message": {
                     "default": {
                         "en-US": "sms service unavailable"
@@ -9398,7 +9345,6 @@
                     "description": "ecallmgr text routing bindings",
                     "type": "array"
                 },
-                "type": "object",
                 "use_bypass_media_after_bridge": {
                     "default": false,
                     "description": "ecallmgr use bypass media after bridge",
@@ -9622,7 +9568,6 @@
                     "description": "fax smtp sessions",
                     "type": "integer"
                 },
-                "type": "object",
                 "wait_for_fax_timeout_ms": {
                     "default": 3600000,
                     "description": "fax wait for fax timeout in milliseconds",
@@ -9673,8 +9618,7 @@
                     },
                     "description": "frontier rate limits",
                     "type": "object"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9707,8 +9651,7 @@
                     ],
                     "description": "hangups ignore hangup causes",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9783,7 +9726,6 @@
                     "description": "Which trie module to use",
                     "type": "string"
                 },
-                "type": "object",
                 "use_trie": {
                     "default": false,
                     "description": "whether to use the trie to store rates in the VM",
@@ -9810,8 +9752,7 @@
                     "default": "^\\+1\\d{10}$",
                     "description": "jonny5 flat rate whitelist",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9846,8 +9787,7 @@
                     ],
                     "description": "kapps_controller kapps",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9858,8 +9798,7 @@
                     "default": "3.22",
                     "description": "kapps_maintenance migrate current version",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9870,8 +9809,7 @@
                     "default": "/usr/bin/htmldoc --quiet --webpage -f $pdf$ $html$",
                     "description": "kazoo.pdf html2pdf",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -9956,7 +9894,6 @@
                     "description": "kazoo_couch sleep between views",
                     "type": "integer"
                 },
-                "type": "object",
                 "use_bigcouch_direct": {
                     "default": true,
                     "description": "kazoo_couch use bigcouch direct",
@@ -10001,8 +9938,7 @@
                 },
                 "sip_transport": {
                     "description": "kazoo_endpoint sip transport"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10075,8 +10011,7 @@
                     "default": "",
                     "description": "kazoo_endpoint.mobile suffix",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10107,7 +10042,6 @@
                         "type": "object"
                     }
                 },
-                "type": "object",
                 "use_fast_rearm": {
                     "default": false,
                     "description": "konami use fast rearm",
@@ -10128,8 +10062,7 @@
                     "default": 3600,
                     "description": "kzt_twiml_util maximum length",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10264,7 +10197,6 @@
                     "description": "media support account overrides",
                     "type": "boolean"
                 },
-                "type": "object",
                 "use_https": {
                     "default": false,
                     "description": "media use https",
@@ -10329,8 +10261,7 @@
                     },
                     "description": "metaflows patterns",
                     "type": "object"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10361,15 +10292,13 @@
                     },
                     "description": "milliwatt tone",
                     "type": "object"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
         "system_config.mobile_manager": {
             "description": "Schema for mobile_manager system_config",
             "properties": {
-                "type": "object",
                 "url": {
                     "description": "mobile_manager url",
                     "type": "string"
@@ -10389,8 +10318,7 @@
                     "default": [],
                     "description": "modb routines",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10449,7 +10377,6 @@
                     "description": "notify search rep email",
                     "type": "boolean"
                 },
-                "type": "object",
                 "use_federated_listener": {
                     "default": false,
                     "description": "notify use federated listener",
@@ -10492,8 +10419,7 @@
                     "default": "",
                     "description": "notify.cnam_request default to",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10514,8 +10440,7 @@
                     "default": "7BIT",
                     "description": "notify.deregister text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10531,8 +10456,7 @@
                     "default": "tiff2pdf -o ~s ~s &> /dev/null && echo -n \"success\"",
                     "description": "notify.fax tiff to pdf conversion command",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10554,8 +10478,7 @@
                     ],
                     "description": "notify.fax_inbound_error_to_email filter error codes",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10578,8 +10501,7 @@
                 },
                 "default_to": {
                     "description": "notify.fax_outbound_error_to_email default to"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10609,8 +10531,7 @@
                     "default": "7BIT",
                     "description": "notify.first_occurrence text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10621,8 +10542,7 @@
                     "default": false,
                     "description": "notify.low_balance default enabled",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10643,8 +10563,7 @@
                     "default": "7BIT",
                     "description": "notify.new_account text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10665,8 +10584,7 @@
                     "default": "7BIT",
                     "description": "notify.password_recovery text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10681,8 +10599,7 @@
                     "default": "",
                     "description": "notify.port_cancel default to",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10697,8 +10614,7 @@
                     "default": "",
                     "description": "notify.port_request default to",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10707,8 +10623,7 @@
             "properties": {
                 "default_to": {
                     "description": "notify.port_request_admin default to"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10724,8 +10639,7 @@
                     "default": true,
                     "description": "notify.ported send from admin email",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10755,8 +10669,7 @@
                     "default": "7BIT",
                     "description": "notify.system_alert text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10777,8 +10690,7 @@
                     "default": "7BIT",
                     "description": "notify.topup text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10799,8 +10711,7 @@
                     "default": "7BIT",
                     "description": "notify.transaction text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10814,8 +10725,7 @@
                 },
                 "default_to": {
                     "description": "notify.voicemail_full default to"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10831,8 +10741,7 @@
                     "default": "7BIT",
                     "description": "notify.voicemail_to_email text content transfer encoding",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -10999,7 +10908,6 @@
                     "description": "number_manager time between numbers in milliseconds",
                     "type": "integer"
                 },
-                "type": "object",
                 "unauthorized_numbers_lookup": {
                     "default": false,
                     "description": "number_manager unauthorized numbers lookup",
@@ -11043,8 +10951,7 @@
                     "default": true,
                     "description": "number_manager.bandwidth sandbox provisioning",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11100,8 +11007,7 @@
                     "default": "",
                     "description": "number_manager.bandwidth2 site id",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11127,15 +11033,13 @@
                     "default": "https://service.dashcs.com/dash-api/xml/emergencyprovisioning/v1",
                     "description": "number_manager.dash_e911 emergency provisioning url",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
         "system_config.number_manager.locality": {
             "description": "Schema for number_manager.locality system_config",
             "properties": {
-                "type": "object",
                 "url": {
                     "description": "number_manager.locality url",
                     "type": "string"
@@ -11156,8 +11060,7 @@
                 },
                 "phonebook_url": {
                     "description": "number_manager.other phonebook url"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11195,8 +11098,7 @@
                     "default": "",
                     "description": "number_manager.simwood simwood account id",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11237,7 +11139,6 @@
                     "description": "number_manager.telnyx token",
                     "type": "string"
                 },
-                "type": "object",
                 "upfront_cost": {
                     "default": 1.0,
                     "description": "number_manager.telnyx upfront cost",
@@ -11260,8 +11161,7 @@
                 },
                 "routesip": {
                     "description": "number_manager.vitelity routesip"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11297,8 +11197,7 @@
                     "default": false,
                     "description": "number_manager.voip_innovations sandbox provisioning",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11324,8 +11223,7 @@
                     "default": false,
                     "description": "omnipresence subscriptions sync enabled",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11336,8 +11234,7 @@
                     "default": 4000,
                     "description": "pivot tts texts size",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11363,8 +11260,7 @@
                     "default": "0000000000",
                     "description": "Default Caller ID Number should be shown for anonymous calls",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11415,8 +11311,7 @@
                 "provisioning_url": {
                     "description": "provisioner provisioning url",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11440,8 +11335,7 @@
                     "default": [],
                     "description": "pusher modules",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11463,7 +11357,6 @@
                     "description": "registrar owner enabled default",
                     "type": "boolean"
                 },
-                "type": "object",
                 "use_aggregate": {
                     "default": true,
                     "description": "registrar use aggregate",
@@ -11489,7 +11382,6 @@
                     "description": "reorder known-error-message",
                     "type": "string"
                 },
-                "type": "object",
                 "unknown-error-code": {
                     "default": "604",
                     "description": "reorder unknown-error-code",
@@ -11510,8 +11402,7 @@
                     "default": "UTC",
                     "description": "servers clock timezone",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11555,8 +11446,7 @@
                     "default": false,
                     "description": "services sync services",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11577,8 +11467,7 @@
                     "default": "",
                     "description": "services http sync http url",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11599,8 +11488,7 @@
                         },
                         "type": "object"
                     }
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11621,8 +11509,7 @@
                     "default": 60000,
                     "description": "sms_command message timeout",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11662,7 +11549,6 @@
                 "tls": {
                     "description": "smtp_client tls"
                 },
-                "type": "object",
                 "use_ssl": {
                     "default": false,
                     "description": "smtp_client use ssl",
@@ -11786,8 +11672,7 @@
                     "default": "male",
                     "description": "speech tts voice",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11903,8 +11788,7 @@
                     "default": "stepswitch_resources",
                     "description": "stepswitch route by",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11965,8 +11849,7 @@
                     "default": "Kazoo Stepswitch CNAM",
                     "description": "stepswitch.cnam http user agent header",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -11982,8 +11865,7 @@
                     "default": 2000,
                     "description": "sysconf acl request timeout in milliseconds",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12066,7 +11948,6 @@
                     "description": "tasks soft delete pause in milliseconds",
                     "type": "integer"
                 },
-                "type": "object",
                 "unfinished_port_request_lifetime_s": {
                     "default": 2592000,
                     "description": "tasks unfinished port request lifetime in seconds",
@@ -12092,8 +11973,7 @@
                     "default": "knm_local",
                     "description": "carrier module to use if none provided during numbers import",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12114,8 +11994,7 @@
                     "default": 50,
                     "description": "teletype render farm workers",
                     "type": "integer"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12148,8 +12027,7 @@
                     "default": "second",
                     "description": "token_buckets tokens fill time",
                     "type": "string"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12160,8 +12038,7 @@
                     "default": false,
                     "description": "topup enable",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12191,8 +12068,7 @@
                     "default": true,
                     "description": "trunkstore ring ready offnet",
                     "type": "boolean"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12227,8 +12103,7 @@
                 "object_types": {
                     "description": "webhooks object types",
                     "type": "array"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },
@@ -12237,8 +12112,7 @@
             "properties": {
                 "domains": {
                     "description": "whitelabel domains"
-                },
-                "type": "object"
+                }
             },
             "type": "object"
         },

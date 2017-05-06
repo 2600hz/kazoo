@@ -7,8 +7,7 @@
             "default": "3.22",
             "description": "kapps_maintenance migrate current version",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

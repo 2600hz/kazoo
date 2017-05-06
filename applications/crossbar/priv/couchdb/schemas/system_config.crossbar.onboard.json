@@ -27,8 +27,7 @@
             "default": 3,
             "description": "crossbar.onboard device username strength",
             "type": "integer"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

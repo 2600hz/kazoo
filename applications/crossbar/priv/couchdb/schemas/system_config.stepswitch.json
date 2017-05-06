@@ -112,8 +112,7 @@
             "default": "stepswitch_resources",
             "description": "stepswitch route by",
             "type": "string"
-        },
-        "type": "object"
+        }
     },
     "type": "object"
 }

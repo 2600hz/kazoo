@@ -33,7 +33,7 @@ update_schema(ConfigType, Name, AutoGenSchema) ->
     Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
     GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
     MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
-    UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
+    UpdatedSchema = kz_json:delete_keys([<<"id">>, [?FIELD_PROPERTIES,?FIELD_TYPE]], MergedJObj),
     'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
