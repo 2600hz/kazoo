@@ -4,7 +4,7 @@
     "description": "Validator for the Conference callflow element",
     "properties": {
         "config": {
-            "$schema": "conferences.json",
+            "$ref": "conferences.json",
             "description": "Build an ad-hoc conference using the conferences JSON schema",
             "type": "object"
         },
