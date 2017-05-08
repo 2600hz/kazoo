@@ -228,7 +228,7 @@ fs-headers:
 	@ERL_LIBS=deps/:core/:applications/ $(ROOT)/scripts/generate-fs-headers-hrl.escript
 
 validate-swagger:
-	$(ROOT)/scripts/validate-swagger.sh
+	@$(ROOT)/scripts/validate-swagger.sh
 
 validate-schemas:
-	$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
+	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
