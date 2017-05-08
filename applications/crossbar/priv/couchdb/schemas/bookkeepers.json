@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "bookkeepers",
     "description": "The bookkeeper modules provided by Kazoo",
     "properties": {
@@ -10,6 +10,5 @@
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

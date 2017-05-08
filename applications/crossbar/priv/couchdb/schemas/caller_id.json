@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "caller_id",
     "description": "Defines caller ID settings based on the type of call being made",
     "properties": {
@@ -9,17 +9,14 @@
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "external": {
@@ -28,17 +25,14 @@
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "internal": {
@@ -47,20 +41,16 @@
                 "name": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 },
                 "number": {
                     "description": "The caller id name for the object type",
                     "maxLength": 35,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         }
     },
-    "required": false,
     "type": "object"
 }

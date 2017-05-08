@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "audit_logs",
     "description": "Audit log of what caused a billing event to occur",
     "properties": {
@@ -11,7 +11,6 @@
                     "properties": {
                         "account_name": {
                             "description": "The name of the account (for historical purposes)",
-                            "required": true,
                             "type": "string"
                         },
                         "account_quantities": {
@@ -23,21 +22,21 @@
                             "type": "object"
                         }
                     },
+                    "required": [
+                        "account_name"
+                    ],
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "authenticating_user": {
             "description": "Information about the requestor who caused the billing event",
             "properties": {
                 "account_id": {
-                    "required": true,
                     "type": "string"
                 },
                 "account_name": {
-                    "required": true,
                     "type": "string"
                 },
                 "first_name": {
@@ -50,6 +49,10 @@
                     "type": "string"
                 }
             },
+            "required": [
+                "account_id",
+                "account_name"
+            ],
             "type": "object"
         },
         "tree": {
@@ -57,10 +60,12 @@
             "items": {
                 "type": "string"
             },
-            "required": true,
             "type": "array"
         }
     },
-    "required": false,
+    "required": [
+        "audit",
+        "tree"
+    ],
     "type": "object"
 }

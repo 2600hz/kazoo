@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.acdc_agent",
     "description": "Validator for the acdc_agent callflow's data object",
     "properties": {
@@ -34,6 +34,5 @@
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.acdc_queue",
     "description": "Validator for the acdc_queue callflow's data object",
     "properties": {
@@ -16,6 +16,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

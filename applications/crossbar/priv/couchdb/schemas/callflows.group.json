@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.group",
     "description": "Validator for the group callflow's data object",
     "properties": {
@@ -32,7 +32,6 @@
         },
         "ringback": {
             "description": "Ringback to use",
-            "required": false,
             "type": "string"
         },
         "ringtones": {
@@ -63,6 +62,5 @@
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

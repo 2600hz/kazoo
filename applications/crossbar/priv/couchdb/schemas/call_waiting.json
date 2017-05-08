@@ -1,14 +1,12 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "call_waiting",
     "description": "Parameters for server-side call waiting",
     "properties": {
         "enabled": {
             "description": "Determines if server side call waiting is enabled/disabled",
-            "required": false,
             "type": "boolean"
         }
     },
-    "required": false,
     "type": "object"
 }

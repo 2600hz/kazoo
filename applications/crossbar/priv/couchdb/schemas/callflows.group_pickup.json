@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.group_pickup",
     "description": "Validator for the group_pickup callflow's data object",
     "properties": {
@@ -28,6 +28,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

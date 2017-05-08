@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.branch_variable",
     "description": "Validator for the branch_variable callflow's data object",
     "properties": {
@@ -18,10 +18,11 @@
         "variable": {
             "default": "",
             "description": "specifies the name of variable/property that should be looked up",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "variable"
+    ],
     "type": "object"
 }
