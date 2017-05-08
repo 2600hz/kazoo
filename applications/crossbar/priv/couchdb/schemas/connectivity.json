@@ -51,7 +51,7 @@
         },
         "servers": {
             "default": [],
-            "desciption": "What servers will be allowed to make/receive calls via this account",
+            "description": "What servers will be allowed to make/receive calls via this account",
             "items": {
                 "properties": {
                     "DIDs": {

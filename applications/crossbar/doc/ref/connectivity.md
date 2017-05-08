@@ -18,7 +18,7 @@ Key | Description | Type | Default | Required
 `account.emergency_caller_id.cid_number` |   | `string(0..35)` |   | `false`
 `account.trunks` | The number of two-way trunks this account has purchased | `integer` |   | `false`
 `name` | Human-friendly name of the trunkstore account | `string` |   | `false`
-`servers` |   | `array(object)` | `[]` | `false`
+`servers` | What servers will be allowed to make/receive calls via this account | `array(object)` | `[]` | `false`
 `servers.[].DIDs` |   | `object` |   | `false`
 `servers.[].DIDs./^\+?\d*$/` |   | `object` |   | `false`
 `servers.[].DIDs./^\+?\d*$/.caller_id` |   | `object` |   | `false`
