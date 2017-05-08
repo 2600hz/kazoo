@@ -6098,24 +6098,20 @@
                 "brand": {
                     "default": "",
                     "description": "Brand of the phone",
-                    "required": true,
                     "type": "string"
                 },
                 "family": {
                     "default": "",
                     "description": "Family name of the phone",
-                    "required": true,
                     "type": "string"
                 },
                 "model": {
                     "default": "",
                     "description": "Model name of the phone",
-                    "required": true,
                     "type": "string"
                 },
                 "name": {
                     "description": "Name of the phone",
-                    "required": false,
                     "type": "string"
                 },
                 "settings": {
@@ -6130,16 +6126,13 @@
                                         "properties": {
                                             "primary_codec": {
                                                 "description": "Primary codec",
-                                                "required": false,
                                                 "type": "string"
                                             },
                                             "secondary_codec": {
                                                 "description": "Secondary codec",
-                                                "required": false,
                                                 "type": "string"
                                             }
                                         },
-                                        "required": false,
                                         "type": "object"
                                     }
                                 },
@@ -6155,37 +6148,30 @@
                                     "properties": {
                                         "timezone": {
                                             "description": "Phone's timezone",
-                                            "required": false,
                                             "type": "string"
                                         }
                                     },
-                                    "required": false,
                                     "type": "object"
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "lines": {
                             "description": "Phone lines",
-                            "minItems": 1,
-                            "properties": {
+                            "items": {
                                 "properties": {
                                     "advanced": {
                                         "description": "Advanced settings",
                                         "properties": {
                                             "expire": {
                                                 "default": 360,
-                                                "required": false,
                                                 "type": "integer"
                                             },
                                             "srtp": {
                                                 "default": false,
-                                                "required": false,
                                                 "type": "boolean"
                                             }
                                         },
-                                        "required": false,
                                         "type": "object"
                                     },
                                     "basic": {
@@ -6193,17 +6179,14 @@
                                         "properties": {
                                             "display_name": {
                                                 "description": "Friendly name for phone",
-                                                "required": false,
                                                 "type": "string"
                                             },
                                             "enabled": {
                                                 "default": true,
                                                 "description": "Enable line",
-                                                "required": false,
                                                 "type": "boolean"
                                             }
                                         },
-                                        "required": true,
                                         "type": "object"
                                     },
                                     "sip": {
@@ -6211,35 +6194,46 @@
                                         "properties": {
                                             "password": {
                                                 "description": "Line's password",
-                                                "required": true,
                                                 "type": "string"
                                             },
                                             "realm": {
                                                 "description": "Line's Sip realm",
-                                                "required": false,
                                                 "type": "string"
                                             },
                                             "username": {
                                                 "description": "Line's username",
-                                                "required": true,
                                                 "type": "string"
                                             }
                                         },
-                                        "required": true,
+                                        "required": [
+                                            "password",
+                                            "username"
+                                        ],
                                         "type": "object"
                                     }
                                 },
-                                "required": true,
+                                "required": [
+                                    "basic",
+                                    "sip"
+                                ],
                                 "type": "object"
                             },
+                            "minItems": 1,
+                            "required": [
+                                "properties"
+                            ],
                             "type": "object"
                         }
                     },
-                    "required": true,
                     "type": "object"
                 }
             },
-            "required": true,
+            "required": [
+                "brand",
+                "family",
+                "model",
+                "settings"
+            ],
             "type": "object"
         },
         "queue_update": {

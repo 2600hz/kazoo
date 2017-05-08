@@ -22,18 +22,12 @@
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
-    ensure_ref_dir(),
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
     'ok'.
 
 -spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
-    ensure_ref_dir(),
     to_schema_doc(M, process(M)).
-
--spec ensure_ref_dir() -> 'ok'.
-ensure_ref_dir() ->
-    'ok' = filelib:ensure_dir(filename:join([code:lib_dir('callflow'), "doc", "ref", ".placeholder"])).
 
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_term:to_binary(M),
