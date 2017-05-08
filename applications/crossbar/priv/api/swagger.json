@@ -2959,7 +2959,7 @@
                     "default": [],
                     "description": "Defines conference numbers that can be used by members or moderators",
                     "items": {
-                        "regex": "^\\d+$",
+                        "pattern": "^[0-9]+$",
                         "type": "string"
                     },
                     "type": "array",
@@ -2994,7 +2994,7 @@
                             "default": [],
                             "description": "Defines the conference (call in) number(s) for members",
                             "items": {
-                                "regex": "^\\d+$",
+                                "pattern": "^[0-9]+$",
                                 "type": "string"
                             },
                             "minItems": 0,
@@ -3005,7 +3005,7 @@
                             "default": [],
                             "description": "Defines the pin number(s) for members",
                             "items": {
-                                "regex": "^\\d+$",
+                                "pattern": "^[0-9]+$",
                                 "type": "string"
                             },
                             "type": "array"
@@ -3030,7 +3030,7 @@
                             "default": [],
                             "description": "Defines the conference (call in) number(s) for moderators",
                             "items": {
-                                "regex": "^\\d+$",
+                                "pattern": "^[0-9]+$",
                                 "type": "string"
                             },
                             "type": "array",
@@ -3040,7 +3040,7 @@
                             "default": [],
                             "description": "Defines the pin number(s) for moderators",
                             "items": {
-                                "regex": "^\\d+$",
+                                "pattern": "^[0-9]+$",
                                 "type": "string"
                             },
                             "type": "array"
