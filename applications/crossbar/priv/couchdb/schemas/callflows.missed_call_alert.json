@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.missed_call_alert",
     "description": "Validator for the missed_call_alert callflow's data object",
     "properties": {
@@ -32,6 +32,8 @@
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "recipients"
+    ],
     "type": "object"
 }

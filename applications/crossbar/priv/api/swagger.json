@@ -1700,11 +1700,12 @@
                     "items": {
                         "type": "string"
                     },
-                    "required": "true",
                     "type": "array"
                 }
             },
-            "required": true,
+            "required": [
+                "lists"
+            ],
             "type": "object"
         },
         "callflows.manual_presence": {
@@ -1777,7 +1778,9 @@
                     "type": "array"
                 }
             },
-            "required": true,
+            "required": [
+                "recipients"
+            ],
             "type": "object"
         },
         "callflows.move": {
