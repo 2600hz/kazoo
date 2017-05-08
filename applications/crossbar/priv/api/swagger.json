@@ -885,12 +885,10 @@
                 "data": {
                     "default": {},
                     "description": "The data/arguments of the callflow module",
-                    "kazoo-validation": true,
                     "type": "object"
                 },
                 "module": {
                     "description": "The name of the callflow module to excute at this node",
-                    "kazoo-validation": true,
                     "maxLength": 64,
                     "minLength": 1,
                     "type": "string"
@@ -4840,12 +4838,10 @@
                 },
                 "data": {
                     "description": "The data/arguments of the metaflow module",
-                    "kazoo-validation": true,
                     "type": "object"
                 },
                 "module": {
                     "description": "The name of the metaflow module to execute at this node",
-                    "kazoo-validation": true,
                     "maxLength": 64,
                     "minLength": 1,
                     "type": "string"
