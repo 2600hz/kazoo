@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "token_restrictions",
     "description": "Schema for token restrictions",
     "properties": {
@@ -18,10 +18,8 @@
                                             "allowed_accounts": {
                                                 "description": "Account allowed to match this item",
                                                 "items": {
-                                                    "required": false,
                                                     "type": "string"
                                                 },
-                                                "required": false,
                                                 "type": "array",
                                                 "uniqueItems": true
                                             },
@@ -41,33 +39,26 @@
                                                             ],
                                                             "type": "string"
                                                         },
-                                                        "required": false,
                                                         "type": "array",
                                                         "uniqueItems": true
                                                     }
                                                 },
-                                                "required": false,
                                                 "type": "object"
                                             }
                                         },
-                                        "required": false,
                                         "type": "object"
                                     },
-                                    "required": true,
                                     "type": "array"
                                 }
                             },
-                            "required": true,
                             "type": "object"
                         }
                     },
-                    "required": true,
                     "type": "object"
                 }
             },
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

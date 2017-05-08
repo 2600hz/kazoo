@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.set_variable",
     "description": "Validator for the set_variable callflow's data object",
     "properties": {
@@ -21,6 +21,5 @@
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

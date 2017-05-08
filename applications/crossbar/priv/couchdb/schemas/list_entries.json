@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "list_entries",
     "description": "Schema for a match list entries",
     "properties": {
@@ -7,52 +7,46 @@
             "description": "Display name",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "firstname": {
             "description": "A friendly firstname",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "lastname": {
             "description": "A friendly lastname",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "list_id": {
             "description": "List id",
-            "required": true,
             "type": "string"
         },
         "number": {
             "description": "Phone number",
-            "required": false,
             "type": "string"
         },
         "pattern": {
             "description": "Match pattern",
-            "required": false,
             "type": "string"
         },
         "profile": {
             "$ref": "profile",
             "default": {},
             "description": "Profile data",
-            "required": false,
             "type": "object"
         },
         "type": {
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "list_id"
+    ],
     "type": "object"
 }

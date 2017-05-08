@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "sms",
     "description": "sms document",
     "properties": {
@@ -7,25 +7,24 @@
             "description": "text message",
             "maxLength": 700,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "from": {
             "description": "caller-id-number, taken from user if absent",
-            "required": false,
             "type": "string"
         },
         "scheduled": {
             "description": "The timestamp to start delivering the message",
-            "required": false,
             "type": "integer"
         },
         "to": {
             "description": "callee-id-number",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "body",
+        "to"
+    ],
     "type": "object"
 }

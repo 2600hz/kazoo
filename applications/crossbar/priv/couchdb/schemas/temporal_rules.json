@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "temporal_rules",
     "description": "Schema for a temporal rules",
     "properties": {
@@ -12,7 +12,6 @@
                 "monthly",
                 "yearly"
             ],
-            "required": true,
             "type": "string"
         },
         "days": {
@@ -20,31 +19,26 @@
             "items": {
                 "maximum": 31,
                 "minimum": 1,
-                "required": false,
                 "type": "integer"
             },
-            "required": false,
             "type": "array"
         },
         "interval": {
             "default": 1,
             "description": "The recurrence interval for this rule",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "month": {
             "description": "The recurrence month for this rule",
             "maximum": 12,
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "name": {
             "description": "A friendly name for the temporal rule",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "ordinal": {
@@ -58,20 +52,17 @@
                 "fifth",
                 "last"
             ],
-            "required": false,
             "type": "string"
         },
         "start_date": {
             "default": 62586115200,
             "description": "The date that any recurrence should be calculated as starting on",
-            "required": false,
             "type": "integer"
         },
         "time_window_start": {
             "description": "Seconds from the start of a day to stop considering this rule valid",
             "maximum": 86400,
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "wdays": {
@@ -89,10 +80,12 @@
                 ],
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "cycle",
+        "name"
+    ],
     "type": "object"
 }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.ring_group_toggle",
     "description": "Validator for the ring_group_toggle callflow's data object",
     "properties": {
@@ -9,15 +9,16 @@
                 "login",
                 "logout"
             ],
-            "required": true,
             "type": "string"
         },
         "callflow_id": {
             "description": "The callflow containing the ring group to log in and out of",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "action",
+        "callflow_id"
+    ],
     "type": "object"
 }

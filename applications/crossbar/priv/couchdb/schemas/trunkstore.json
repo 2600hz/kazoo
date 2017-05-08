@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "trunkstore",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
     "properties": {
@@ -9,7 +9,6 @@
                 "auth_realm": {
                     "description": "The realm any device in the account will use to authenticate with",
                     "minLength": 1,
-                    "required": true,
                     "type": "string"
                 },
                 "caller_id": {
@@ -17,26 +16,29 @@
                         "cid_name": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         },
                         "cid_number": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "cid_name",
+                        "cid_number"
+                    ],
                     "type": "object"
                 },
                 "credits": {
                     "properties": {
                         "prepay": {
-                            "required": true,
                             "type": "number"
                         }
                     },
-                    "required": true,
+                    "required": [
+                        "prepay"
+                    ],
                     "type": "object"
                 },
                 "emergency_caller_id": {
@@ -44,26 +46,31 @@
                         "cid_name": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         },
                         "cid_number": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "cid_name",
+                        "cid_number"
+                    ],
                     "type": "object"
                 },
                 "trunks": {
                     "description": "The number of two-way trunks this account has purchased",
                     "minimum": 0,
-                    "required": true,
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "auth_realm",
+                "credits",
+                "trunks"
+            ],
             "type": "object"
         },
         "call_restriction": {
@@ -75,16 +82,13 @@
                             "inherit",
                             "deny"
                         ],
-                        "required": false,
                         "type": "string"
                     }
                 },
-                "required": false,
                 "type": "object"
             },
             "default": {},
             "description": "Trunk level call restrictions for each available number classification",
-            "required": false,
             "type": "object"
         },
         "name": {
@@ -105,16 +109,18 @@
                                             "cid_name": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             },
                                             "cid_number": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             }
                                         },
+                                        "required": [
+                                            "cid_name",
+                                            "cid_number"
+                                        ],
                                         "type": "object"
                                     },
                                     "failover": {
@@ -154,23 +160,24 @@
                                 "enum": [
                                     "password"
                                 ],
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_password": {
                                 "description": "Password of the user@auth_realm",
                                 "minLength": 1,
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_user": {
                                 "description": "Username for authentication",
                                 "minLength": 1,
-                                "required": true,
                                 "type": "string"
                             }
                         },
-                        "required": true,
+                        "required": [
+                            "auth_method",
+                            "auth_password",
+                            "auth_user"
+                        ],
                         "type": "object"
                     },
                     "name": {
@@ -184,16 +191,18 @@
                                 "cid_name": {
                                     "maxLength": 35,
                                     "minLength": 1,
-                                    "required": true,
                                     "type": "string"
                                 },
                                 "cid_number": {
                                     "maxLength": 35,
                                     "minLength": 1,
-                                    "required": true,
                                     "type": "string"
                                 }
                             },
+                            "required": [
+                                "cid_name",
+                                "cid_number"
+                            ],
                             "type": "object"
                         },
                         "delay": {
@@ -266,6 +275,9 @@
                         }
                     }
                 },
+                "required": [
+                    "auth"
+                ],
                 "type": "object"
             },
             "type": "array"
@@ -275,8 +287,11 @@
             "enum": [
                 "sys_info"
             ],
-            "required": true,
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "account",
+        "type"
+    ]
 }

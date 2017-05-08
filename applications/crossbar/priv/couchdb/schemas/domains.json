@@ -1,37 +1,31 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "domains",
     "description": "Domain settings for white-labelling",
     "properties": {
         "A": {
             "description": "A records",
-            "required": false,
             "type": "object"
         },
         "CNAME": {
             "$ref": "domain_hosts",
             "description": "CNAME records",
-            "required": false,
             "type": "object"
         },
         "MX": {
             "description": "MX records, typically for email servers",
-            "required": false,
             "type": "object"
         },
         "NAPTR": {
             "description": "NAPTR records",
-            "required": false,
             "type": "object"
         },
         "SRV": {
             "description": "SRV records",
-            "required": false,
             "type": "object"
         },
         "TXT": {
             "description": "TXT records",
-            "required": false,
             "type": "object"
         }
     }

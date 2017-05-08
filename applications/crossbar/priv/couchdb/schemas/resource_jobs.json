@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "resource_jobs",
     "description": "Schema for resource jobs (bulk number uploads)",
     "properties": {
@@ -7,7 +7,6 @@
             "description": "A friendly name for the job, if you like",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "numbers": {
@@ -17,15 +16,16 @@
                 "type": "string"
             },
             "minItems": 1,
-            "required": true,
             "type": "array"
         },
         "resource_id": {
             "description": "The Resource ID the numbers are coming from",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "numbers",
+        "resource_id"
+    ],
     "type": "object"
 }

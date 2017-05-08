@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "ledgers",
     "description": "ledgers document",
     "properties": {
@@ -8,32 +8,26 @@
             "properties": {
                 "id": {
                     "description": "Account ID",
-                    "required": false,
                     "type": "string"
                 },
                 "name": {
                     "description": "Account name",
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "amount": {
             "description": "Ledger amount",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "description": {
             "description": "Useful description for ledger",
-            "required": false,
             "type": "string"
         },
         "metadata": {
             "description": "Metadata for ledger document",
-            "required": false,
             "type": "object"
         },
         "period": {
@@ -41,16 +35,13 @@
             "properties": {
                 "end": {
                     "description": "Period end",
-                    "required": false,
                     "type": "integer"
                 },
                 "start": {
                     "description": "Period start",
-                    "required": false,
                     "type": "integer"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "source": {
@@ -58,16 +49,17 @@
             "properties": {
                 "id": {
                     "description": "Source ID",
-                    "required": true,
                     "type": "string"
                 },
                 "service": {
                     "description": "Source service",
-                    "required": true,
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "id",
+                "service"
+            ],
             "type": "object"
         },
         "usage": {
@@ -75,24 +67,28 @@
             "properties": {
                 "quantity": {
                     "description": "Usage quantity",
-                    "required": true,
                     "type": "integer"
                 },
                 "type": {
                     "description": "Usage type",
-                    "required": true,
                     "type": "string"
                 },
                 "unit": {
                     "description": "Usage unit",
-                    "required": true,
                     "type": "string"
                 }
             },
-            "required": true,
+            "required": [
+                "quantity",
+                "type",
+                "unit"
+            ],
             "type": "object"
         }
     },
-    "required": true,
+    "required": [
+        "source",
+        "usage"
+    ],
     "type": "object"
 }

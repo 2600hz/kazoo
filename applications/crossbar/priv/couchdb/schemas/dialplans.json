@@ -1,35 +1,29 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "dialplans",
     "additionalProperties": {
         "properties": {
             "description": {
                 "description": "Friendly name for this regex dialplan",
-                "required": false,
                 "type": "string"
             },
             "prefix": {
                 "description": "Prefix the prepend to the capture group after applying the regex",
-                "required": false,
                 "type": "string"
             },
             "suffix": {
                 "description": "Suffix the append to the capture group after applying the regex",
-                "required": false,
                 "type": "string"
             }
         },
-        "required": false,
         "type": "object"
     },
     "description": "Permit local dialing by converting the dialed number to a routable form",
     "properties": {
         "system": {
             "description": "List of system dial plans",
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
     "type": "object"
 }

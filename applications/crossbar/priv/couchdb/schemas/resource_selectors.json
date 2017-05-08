@@ -1,39 +1,37 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "resource_selectors",
     "description": "Schema for resource selector document",
     "properties": {
         "name": {
             "description": "Selector name",
-            "required": true,
             "type": "string"
         },
         "resource": {
             "description": "Resource ID",
-            "required": true,
             "type": "string"
         },
         "selector": {
             "description": "Selector data",
-            "required": true,
             "type": "string"
         },
         "start_time": {
             "description": "Start time (gregorian seconds)",
-            "required": false,
             "type": "integer"
         },
         "stop_time": {
             "description": "Stop time (gregorian seconds)",
-            "required": false,
             "type": "integer"
         },
         "value": {
             "description": "Extra selector data",
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "name",
+        "resource",
+        "selector"
+    ],
     "type": "object"
 }

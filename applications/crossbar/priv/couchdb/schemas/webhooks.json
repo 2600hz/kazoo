@@ -1,26 +1,22 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "webhooks",
     "description": "Web Hooks are subscriptions to allowed events that, when the event occurs, the event data is sent to the uri set in the Web Hook document.",
     "properties": {
         "custom_data": {
             "additionalProperties": {
-                "required": false,
                 "type": "string"
             },
             "description": "These properties will be added to the event and will overwrite existing values.",
-            "required": false,
             "type": "object"
         },
         "enabled": {
             "default": true,
             "description": "Is the webhook enabled and running",
-            "required": false,
             "type": "boolean"
         },
         "hook": {
             "description": "The trigger event for a request being made to 'callback_uri'.",
-            "required": true,
             "type": "string"
         },
         "http_verb": {
@@ -34,12 +30,10 @@
         },
         "include_subaccounts": {
             "description": "Should the webhook be fired for subaccount events.",
-            "required": false,
             "type": "boolean"
         },
         "name": {
             "description": "A friendly name for the webhook",
-            "required": true,
             "type": "string"
         },
         "retries": {
@@ -47,16 +41,18 @@
             "description": "Retry the request this many times (if it fails)",
             "maximum": 4,
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "uri": {
             "description": "The 3rd party URI to call out to an event",
             "format": "uri",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "hook",
+        "name",
+        "uri"
+    ],
     "type": "object"
 }

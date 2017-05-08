@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.resources",
     "description": "Validator for the resources callflow's data object",
     "properties": {
@@ -68,6 +68,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

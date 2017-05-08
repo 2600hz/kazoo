@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "device_rate_limits",
     "additionalProperties": true,
     "description": "describe limits for SIP requests",
@@ -10,21 +10,20 @@
             "properties": {
                 "invites": {
                     "description": "Count for the specified SIP method",
-                    "required": false,
                     "type": "integer"
                 },
                 "registrations": {
                     "description": "Count for the specified SIP method",
-                    "required": false,
                     "type": "integer"
                 },
                 "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "required": true,
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "total_packets"
+            ],
             "type": "object"
         },
         "per_second": {
@@ -33,24 +32,26 @@
             "properties": {
                 "invites": {
                     "description": "Count for the specified SIP method",
-                    "required": false,
                     "type": "integer"
                 },
                 "registrations": {
                     "description": "Count for the specified SIP method",
-                    "required": false,
                     "type": "integer"
                 },
                 "total_packets": {
                     "description": "Summary count for all of the SIP methods",
-                    "required": true,
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "total_packets"
+            ],
             "type": "object"
         }
     },
-    "required": true,
+    "required": [
+        "per_minute",
+        "per_second"
+    ],
     "type": "object"
 }

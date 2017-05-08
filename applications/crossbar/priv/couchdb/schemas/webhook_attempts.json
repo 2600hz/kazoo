@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "webhook_attempts",
     "description": "Log of an attempt to send a webhook to a third-party server",
     "properties": {
@@ -9,7 +9,6 @@
         },
         "hook_id": {
             "description": "Id of the hook attempted",
-            "required": true,
             "type": "string"
         },
         "reason": {
@@ -30,7 +29,6 @@
                 "success",
                 "failure"
             ],
-            "required": true,
             "type": "string"
         },
         "retries_left": {
@@ -38,6 +36,9 @@
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "hook_id",
+        "result"
+    ],
     "type": "object"
 }

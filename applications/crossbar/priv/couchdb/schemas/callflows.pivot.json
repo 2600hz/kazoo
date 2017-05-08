@@ -1,18 +1,16 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.pivot",
     "description": "Validator for the Pivot callflow element",
     "properties": {
         "cdr_url": {
             "description": "Optional URL to send the CDR to at the end of the call",
             "pattern": "^https?://",
-            "required": false,
             "type": "string"
         },
         "debug": {
             "default": false,
             "description": "Store debug logs related to processing this Pivot call",
-            "required": false,
             "type": "boolean"
         },
         "method": {
@@ -24,7 +22,6 @@
                 "GET",
                 "POST"
             ],
-            "required": false,
             "type": "string"
         },
         "req_format": {
@@ -34,16 +31,16 @@
                 "kazoo",
                 "twiml"
             ],
-            "required": false,
             "type": "string"
         },
         "voice_url": {
             "description": "What URL to request the initial Pivot callflow",
             "pattern": "^https?://",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "voice_url"
+    ],
     "type": "object"
 }

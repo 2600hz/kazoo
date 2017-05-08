@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "user_auth",
     "description": "Provides an auth-token via user credentials",
     "properties": {
@@ -7,7 +7,6 @@
             "description": "The account name of the user",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "account_realm": {
@@ -15,14 +14,12 @@
             "format": "uri",
             "maxLength": 64,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "credentials": {
             "description": "A hash of the uses credentials",
             "maxLength": 64,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "method": {
@@ -32,17 +29,17 @@
                 "md5",
                 "sha"
             ],
-            "required": false,
             "type": "string"
         },
         "phone_number": {
             "description": "A phone number assigned to the users account",
             "maxLength": 64,
             "minLength": 1,
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "credentials"
+    ],
     "type": "object"
 }

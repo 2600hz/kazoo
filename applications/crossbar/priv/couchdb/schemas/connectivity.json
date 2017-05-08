@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "connectivity",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
     "properties": {
@@ -63,16 +63,18 @@
                                             "cid_name": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             },
                                             "cid_number": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             }
                                         },
+                                        "required": [
+                                            "cid_name",
+                                            "cid_number"
+                                        ],
                                         "type": "object"
                                     },
                                     "failover": {
@@ -116,33 +118,30 @@
                                     "IP",
                                     "ip"
                                 ],
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_password": {
                                 "description": "Password of the user@auth_realm",
                                 "minLength": 1,
-                                "required": false,
                                 "type": "string"
                             },
                             "auth_user": {
                                 "description": "Username for authentication",
                                 "minLength": 1,
-                                "required": false,
                                 "type": "string"
                             },
                             "ip": {
                                 "description": "IP (sip) address for this device",
-                                "required": false,
                                 "type": "string"
                             },
                             "port": {
                                 "description": "Port to send SIP traffic for the remote device",
-                                "required": false,
                                 "type": "integer"
                             }
                         },
-                        "required": true,
+                        "required": [
+                            "auth_method"
+                        ],
                         "type": "object"
                     },
                     "name": {
@@ -156,16 +155,18 @@
                                 "cid_name": {
                                     "maxLength": 35,
                                     "minLength": 1,
-                                    "required": true,
                                     "type": "string"
                                 },
                                 "cid_number": {
                                     "maxLength": 35,
                                     "minLength": 1,
-                                    "required": true,
                                     "type": "string"
                                 }
                             },
+                            "required": [
+                                "cid_name",
+                                "cid_number"
+                            ],
                             "type": "object"
                         },
                         "delay": {
@@ -213,7 +214,6 @@
                         },
                         "ip": {
                             "description": "IP (sip) address for this device",
-                            "required": false,
                             "type": "string"
                         },
                         "media_handling": {
@@ -227,7 +227,6 @@
                         },
                         "port": {
                             "description": "Port to send SIP traffic for the remote device",
-                            "required": false,
                             "type": "integer"
                         },
                         "progress_timeout": {
@@ -249,6 +248,9 @@
                         "type": "object"
                     }
                 },
+                "required": [
+                    "auth"
+                ],
                 "type": "object"
             },
             "type": "array"
