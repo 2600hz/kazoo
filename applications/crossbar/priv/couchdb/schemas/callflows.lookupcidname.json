@@ -9,7 +9,6 @@
             "items": {
                 "type": "string"
             },
-            "required": "true",
             "type": "array"
         }
     },
