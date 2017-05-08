@@ -8,10 +8,10 @@ compile: headers
 headers: src/modules/kt_rates.hrl src/task_modules.hrl
 
 src/modules/kt_rates.hrl:
-	./schema_to_header.py $(ROOT)/applications/crossbar/priv/couchdb/schemas/rates.json src/modules/kt_rates.hrl
+	./priv/schema_to_header.py $(ROOT)/applications/crossbar/priv/couchdb/schemas/rates.json src/modules/kt_rates.hrl
 
 src/task_modules.hrl:
-	./list_task_modules.py
+	./priv/list_task_modules.py
 
 clean: clean-headers
 
