@@ -33,7 +33,7 @@
                 "#"
             ],
             "description": "What DTMF can terminate playback of the audio",
-            "type": "array(string)"
+            "type": "array"
         },
         "text": {
             "description": "The text to speak",
