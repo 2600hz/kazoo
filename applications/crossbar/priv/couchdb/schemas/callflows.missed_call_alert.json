@@ -32,5 +32,8 @@
             "type": "array"
         }
     },
+    "required": [
+        "recipients"
+    ],
     "type": "object"
 }

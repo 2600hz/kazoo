@@ -6,14 +6,14 @@
         "restrictions": {
             "patternProperties": {
                 "^\\w+$": {
-                    "description": "Name of athentication metod used when creating token. \"_\" for match any auth method",
+                    "description": "Name of authentication method used when creating token. '_' matches any auth method",
                     "patternProperties": {
                         "^\\w+$": {
-                            "description": "User privelege level. \"_\" for match any priv level",
+                            "description": "Level of user privilege. '_' matches any priv level",
                             "patternProperties": {
                                 "^\\w+$": {
                                     "items": {
-                                        "description": "Endpoint (first path token) to wich apply restrictions. \"_\" for match any endpoint",
+                                        "description": "Endpoint (first path token) to which to apply restrictions. '_' matches any endpoint",
                                         "properties": {
                                             "allowed_accounts": {
                                                 "description": "Account allowed to match this item",
@@ -48,15 +48,27 @@
                                         },
                                         "type": "object"
                                     },
+                                    "required": [
+                                        "properties"
+                                    ],
                                     "type": "array"
                                 }
                             },
+                            "required": [
+                                "^\\w+$"
+                            ],
                             "type": "object"
                         }
                     },
+                    "required": [
+                        "^\\w+$"
+                    ],
                     "type": "object"
                 }
             },
+            "required": [
+                "^\\w+$"
+            ],
             "type": "object"
         }
     },
