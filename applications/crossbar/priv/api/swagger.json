@@ -1924,7 +1924,6 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "callflows.pivot": {
