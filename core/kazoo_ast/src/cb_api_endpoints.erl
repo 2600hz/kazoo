@@ -259,9 +259,11 @@ to_swagger_path(Path, PathMeta, Acc) ->
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Parameters = make_parameters(Path, Method, SchemaParameter),
+    BaseResponse = kz_json:from_list_recursive([{<<"200">>, [{<<"description">>, <<"request succeeded">>}]}]),
     Vs = props:filter_empty(
            [{[Path, Method], MethodJObj}
            ,{[Path, Method, <<"parameters">>], Parameters}
+           ,{[Path, Method, <<"responses">>], BaseResponse}
            ]),
     kz_json:insert_values(Vs, Acc).
 
