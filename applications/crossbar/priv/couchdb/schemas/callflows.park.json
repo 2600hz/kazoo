@@ -35,7 +35,7 @@
             "type": "string"
         },
         "slots": {
-            "default": null,
+            "default": {},
             "description": "Statically define slots and their configuration",
             "type": "object"
         }

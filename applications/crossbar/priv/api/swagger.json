@@ -1920,6 +1920,7 @@
                     "type": "string"
                 },
                 "slots": {
+                    "default": {},
                     "description": "Statically define slots and their configuration",
                     "type": "object"
                 }
