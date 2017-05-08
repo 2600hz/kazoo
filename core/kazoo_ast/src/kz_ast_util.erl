@@ -266,7 +266,7 @@ maybe_add_ref(Refs, Settings) ->
         Ref -> lists:usort([Ref | Refs])
     end.
 
--spec is_row_required([ne_binary() | nonempty_string()], kz_json:object()) -> ne_binary().
+-spec is_row_required([ne_binary() | nonempty_string()], kz_json:object()) -> boolean().
 is_row_required(Names=[_|_], SchemaJObj) ->
     Path = lists:flatten(
              [case Key of
