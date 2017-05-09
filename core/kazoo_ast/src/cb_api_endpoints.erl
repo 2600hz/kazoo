@@ -700,11 +700,6 @@ to_swagger_parameters(Paths) ->
     kz_json:from_list(
       [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
       ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
-      ,{<<"id">>, kz_json:from_list([{<<"minLength">>, 32}
-                                    ,{<<"maxLength">>, 32}
-                                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-                                     | base_path_param(<<"id">>)
-                                    ])}
       ]
       ++ [{unbrace_param(Param), kz_json:from_list(def_path_param(Param))}
           || Param <- lists:usort(lists:flatten(Params))
@@ -721,9 +716,10 @@ parameter_auth_token(IsRequired) ->
       ]).
 
 generic_id_path_param(Name) ->
-    [{<<"$ref">>, <<"#/parameters/id">>}
-    ,{<<"name">>, Name}
-    ,{<<"type">>, <<"string">>}
+    [{<<"minLength">>, 32}
+    ,{<<"maxLength">>, 32}
+    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+     | base_path_param(Name)
     ].
 
 base_path_param(Param) ->

@@ -12611,23 +12611,39 @@
     },
     "parameters": {
         "account_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{ACCOUNT_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "address_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{ADDRESS_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "alert_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{ALERT_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "app_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{APP_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "app_screenshot_index": {
@@ -12656,8 +12672,12 @@
             "type": "string"
         },
         "auth_token": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{AUTH_TOKEN}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "auth_token_header": {
@@ -12677,13 +12697,21 @@
             "type": "string"
         },
         "blacklist_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{BLACKLIST_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "c2c_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{C2C_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "call_id": {
@@ -12693,18 +12721,30 @@
             "type": "string"
         },
         "callflow_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CALLFLOW_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "card_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CARD_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "cccp_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CCCP_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "cdr_id": {
@@ -12723,28 +12763,48 @@
             "type": "string"
         },
         "conference_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CONFERENCE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "config_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CONFIG_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "connectivity_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{CONNECTIVITY_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "device_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{DEVICE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "directory_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{DIRECTORY_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "extension": {
@@ -12754,8 +12814,12 @@
             "type": "string"
         },
         "fax_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{FAX_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "fax_job_id": {
@@ -12765,8 +12829,12 @@
             "type": "string"
         },
         "faxbox_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{FAXBOX_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "function": {
@@ -12777,15 +12845,10 @@
             "type": "string"
         },
         "group_id": {
-            "$ref": "#/parameters/id",
-            "name": "{GROUP_ID}",
-            "type": "string"
-        },
-        "id": {
             "in": "path",
             "maxLength": 32,
             "minLength": 32,
-            "name": "id",
+            "name": "{GROUP_ID}",
             "pattern": "^[0-9a-f]+$",
             "required": true,
             "type": "string"
@@ -12812,8 +12875,12 @@
             "type": "string"
         },
         "key_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{KEY_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "language": {
@@ -12829,33 +12896,57 @@
             "type": "string"
         },
         "ledger_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{LEDGER_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "link_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{LINK_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "list_entry_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{LIST_ENTRY_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "list_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{LIST_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "media_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{MEDIA_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "menu_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{MENU_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "module": {
@@ -12873,8 +12964,12 @@
             "type": "string"
         },
         "notification_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{NOTIFICATION_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "participant_id": {
@@ -12899,8 +12994,12 @@
             "type": "string"
         },
         "port_request_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{PORT_REQUEST_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "prompt_id": {
@@ -12916,13 +13015,21 @@
             "type": "string"
         },
         "queue_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{QUEUE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "rate_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{RATE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "recording_id": {
@@ -12935,13 +13042,21 @@
             "type": "string"
         },
         "resource_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{RESOURCE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "resource_template_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{RESOURCE_TEMPLATE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "schema_name": {
@@ -12958,8 +13073,12 @@
             "type": "string"
         },
         "sms_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{SMS_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "smtp_log_id": {
@@ -12975,8 +13094,12 @@
             "type": "string"
         },
         "storage_plan_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{STORAGE_PLAN_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "system_config_id": {
@@ -12995,8 +13118,12 @@
             "type": "string"
         },
         "template_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{TEMPLATE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "template_name": {
@@ -13006,13 +13133,21 @@
             "type": "string"
         },
         "temporal_rule_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{TEMPORAL_RULE_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "temporal_rule_set": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{TEMPORAL_RULE_SET}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "thing": {
@@ -13028,8 +13163,12 @@
             "type": "string"
         },
         "user_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{USER_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "username": {
@@ -13046,8 +13185,12 @@
             "type": "string"
         },
         "vm_box_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{VM_BOX_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "vm_msg_id": {
@@ -13057,8 +13200,12 @@
             "type": "string"
         },
         "webhook_id": {
-            "$ref": "#/parameters/id",
+            "in": "path",
+            "maxLength": 32,
+            "minLength": 32,
             "name": "{WEBHOOK_ID}",
+            "pattern": "^[0-9a-f]+$",
+            "required": true,
             "type": "string"
         },
         "whitelabel_domain": {
