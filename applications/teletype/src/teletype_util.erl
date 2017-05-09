@@ -863,16 +863,17 @@ build_date_called_data(DataJObj, Timezone) ->
     Timezone = kz_json:get_ne_binary_value(<<"timezone">>, DataJObj, Timezone),
     fix_timestamp(DateCalled, DataJObj, Timezone).
 
--spec find_date_called(gregorian_seconds() | api_object()) -> gregorian_seconds().
-find_date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
-find_date_called('undefined') -> kz_time:current_tstamp();
+-spec find_date_called(kz_json:object()) -> gregorian_seconds().
 find_date_called(DataJObj) ->
-    kz_json:get_first_defined([<<"voicemail_timestamp">>
-                              ,<<"fax_timestamp">>
-                              ,<<"timestamp">>
-                              ]
-                             ,DataJObj
-                             ).
+    kz_term:to_integer(
+      kz_json:get_first_defined([<<"voicemail_timestamp">>
+                                ,<<"fax_timestamp">>
+                                ,<<"timestamp">>
+                                ]
+                               ,DataJObj
+                               ,kz_time:current_tstamp()
+                               )
+     ).
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().
 build_from_data(DataJObj) ->
