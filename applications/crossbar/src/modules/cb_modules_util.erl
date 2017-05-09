@@ -31,6 +31,8 @@
         ,validate_number_ownership/2
         ,apply_assignment_updates/2
         ,log_assignment_updates/1
+
+        ,normalize_media_upload/5
         ]).
 
 -include("crossbar.hrl").
@@ -694,3 +696,42 @@ log_assignment_update({DID, {'ok', _Number}}) ->
     lager:debug("successfully updated ~s", [DID]);
 log_assignment_update({DID, {'error', E}}) ->
     lager:debug("failed to update ~s: ~p", [DID, E]).
+
+-spec normalize_media_upload(cb_context:context(), ne_binary(), ne_binary(), kz_json:object(), kz_media_util:normalization_options()) ->
+                                    {cb_context:context(), kz_json:object()}.
+normalize_media_upload(Context, FromExt, ToExt, FileJObj, NormalizeOptions) ->
+    NormalizedResult = kz_media_util:normalize_media(FromExt
+                                                    ,ToExt
+                                                    ,kz_json:get_binary_value(<<"contents">>, FileJObj)
+                                                    ,NormalizeOptions
+                                                    ),
+    handle_normalized_upload(Context, FileJObj, ToExt, NormalizedResult).
+
+-spec handle_normalized_upload(cb_context:context(), kz_json:object(), ne_binary(), kz_media_util:normalized_media()) ->
+                                      {cb_context:context(), kz_json:object()}.
+handle_normalized_upload(Context, FileJObj, ToExt, {'ok', Contents}) ->
+    lager:debug("successfully normalized to ~s", [ToExt]),
+    {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (ToExt)/binary>>),
+
+    NewFileJObj = kz_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
+                                     ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
+                                     ,{<<"contents">>, Contents}
+                                     ]
+                                    ,FileJObj
+                                    ),
+
+    UpdatedContext = cb_context:setters(Context
+                                       ,[{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
+                                                                          ,{<<"normalized_media">>, NewFileJObj}
+                                                                          ]
+                                         }
+                                        ,{fun cb_context:set_doc/2, kz_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
+                                        ]
+                                       ),
+    {UpdatedContext, NewFileJObj};
+handle_normalized_upload(Context, FileJObj, ToExt, {'error', _R}) ->
+    lager:warning("failed to convert to ~s: ~p", [ToExt, _R]),
+    Reason = <<"failed to communicate with conversion utility">>,
+    UpdatedDoc = kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context)),
+    UpdatedContext = cb_context:set_doc(Context, UpdatedDoc),
+    {UpdatedContext, FileJObj}.

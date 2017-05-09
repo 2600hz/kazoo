@@ -591,36 +591,9 @@ normalize_upload(Context, FileJObj, UploadContentType) ->
               ,[UploadContentType, FromExt, ToExt]
               ),
 
-    case kz_media_util:normalize_media(FromExt
-                                      ,ToExt
-                                      ,kz_json:get_value(<<"contents">>, FileJObj)
-                                      ,[{'to_args', <<"-r 16000">>}]
-                                      )
-    of
-        {'ok', Contents} ->
-            lager:debug("successfully converted to ~s", [ToExt]),
-            {Major, Minor, _} = cow_mimetypes:all(<<"foo.", (ToExt)/binary>>),
-
-            NewFileJObj = kz_json:set_values([{[<<"headers">>, <<"content_type">>], <<Major/binary, "/", Minor/binary>>}
-                                             ,{[<<"headers">>, <<"content_length">>], iolist_size(Contents)}
-                                             ,{<<"contents">>, Contents}
-                                             ], FileJObj),
-
-            cb_context:setters(Context
-                              ,[{fun cb_context:set_req_files/2, [{<<"original_media">>, FileJObj}
-                                                                 ,{<<"normalized_media">>, NewFileJObj}
-                                                                 ]
-                                }
-                               ,{fun cb_context:set_doc/2, kz_json:delete_key(<<"normalization_error">>, cb_context:doc(Context))}
-                               ]
-                              );
-        {'error', _R} ->
-            lager:warning("failed to convert to ~s: ~p", [ToExt, _R]),
-            Reason = <<"failed to communicate with conversion utility">>,
-            cb_context:set_doc(Context
-                              ,kz_json:set_value(<<"normalization_error">>, Reason, cb_context:doc(Context))
-                              )
-    end.
+    {UpdatedContext, _UpdatedFileJObj} =
+        cb_modules_util:normalize_media_upload(Context, FromExt, ToExt, FileJObj, [{'to_args', <<"-r 16000">>}]),
+    UpdatedContext.
 
 -spec normalization_format(cb_context:context()) -> ne_binary().
 normalization_format(Context) ->
