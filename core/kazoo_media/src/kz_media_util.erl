@@ -69,7 +69,7 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
         ok ->
             Result = normalize_media_file(FromFormat, ToFormat, FileName, Options),
             kz_util:delete_file(FileName),
-            {'ok', Result};
+            Result;
         {'error', _}=Error -> Error
     end.
 
