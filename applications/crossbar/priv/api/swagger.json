@@ -23548,14 +23548,16 @@
         },
         "/google_auth": {
             "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "google_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/google_auth"
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "google_auth",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/google_auth"
+                        }
                     }
-                },
+                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"
@@ -23565,14 +23567,16 @@
         },
         "/ip_auth": {
             "put": {
-                "parameters": {
-                    "in": "body",
-                    "name": "ip_auth",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/ip_auth"
+                "parameters": [
+                    {
+                        "in": "body",
+                        "name": "ip_auth",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/ip_auth"
+                        }
                     }
-                },
+                ],
                 "responses": {
                     "200": {
                         "description": "request succeeded"
