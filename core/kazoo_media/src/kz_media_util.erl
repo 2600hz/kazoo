@@ -29,6 +29,10 @@
         ]).
 -export([store_path_from_doc/1, store_path_from_doc/2]).
 
+-export_type([normalized_media/0
+             ,normalization_options/0
+             ]).
+
 -include("kazoo_media.hrl").
 
 -define(USE_HTTPS, kapps_config:get_is_true(?CONFIG_CAT, <<"use_https">>, 'false')).
@@ -54,22 +58,33 @@
 %%  normalized file only, pass the {'output', 'file'} as option.
 %% @end
 %%--------------------------------------------------------------------
--type normalized_media() :: {'ok', iodata()} | {'error', any()}.
+-type normalized_media() :: {'ok', binary()} |
+                            {'ok', file:filename_all()} |
+                            {'error', file:posix()}.
 
--spec normalize_media(ne_binary(), ne_binary(), binary()) -> normalized_media().
+-type normalization_option() :: {'extra_args', iodata()} |
+                                {'from_args', binary()} |
+                                {'out_file', file:filename_all()} |
+                                {'output', 'binary' | 'file'} |
+                                {'to_args', binary()}.
+-type normalization_options() :: [normalization_option()].
+
+-spec normalize_media(ne_binary(), ne_binary(), binary()) ->
+                             normalized_media().
+-spec normalize_media(ne_binary(), ne_binary(), binary(), normalization_options()) ->
+                             normalized_media().
 normalize_media(FromFormat, FromFormat, FileContents) ->
     {'ok', FileContents};
 normalize_media(FromFormat, ToFormat, FileContents) ->
-    normalize_media(FromFormat, ToFormat, FileContents, []).
+    normalize_media(FromFormat, ToFormat, FileContents, default_normalization_options(ToFormat)).
 
--spec normalize_media(ne_binary(), ne_binary(), binary(), kz_proplist()) -> normalized_media().
 normalize_media(FromFormat, ToFormat, FileContents, Options) ->
     FileName = tmp_file(FromFormat),
     case file:write_file(FileName, FileContents) of
-        ok ->
+        'ok' ->
             Result = normalize_media_file(FromFormat, ToFormat, FileName, Options),
             kz_util:delete_file(FileName),
-            {'ok', Result};
+            Result;
         {'error', _}=Error -> Error
     end.
 
@@ -82,13 +97,24 @@ normalize_media(FromFormat, ToFormat, FileContents, Options) ->
 %%  normalized file only, pass the {'output', 'file'} as option.
 %% @end
 %%--------------------------------------------------------------------
--spec normalize_media_file(ne_binary(), ne_binary(), binary()) -> normalized_media().
+-spec normalize_media_file(ne_binary(), ne_binary(), file:filename_all()) ->
+                                  normalized_media().
 normalize_media_file(FromFormat, FromFormat, FromFile) ->
     {'ok', FromFile};
 normalize_media_file(FromFormat, ToFormat, FromFile) ->
-    normalize_media_file(FromFormat, ToFormat, FromFile, []).
+    normalize_media_file(FromFormat, ToFormat, FromFile, default_normalization_options(ToFormat)).
 
--spec normalize_media_file(ne_binary(), ne_binary(), binary(), kz_proplist()) -> normalized_media().
+-spec default_normalization_options(ne_binary()) -> normalization_options().
+default_normalization_options(ToFormat) ->
+    [{'from_args', ?NORMALIZE_SOURCE_ARGS}
+    ,{'to_args', ?NORMALIZE_DEST_ARGS}
+    ,{'extra_args', ""}
+    ,{'out_file', tmp_file(ToFormat)}
+    ,{'output', 'binary'}
+    ].
+
+-spec normalize_media_file(ne_binary(), ne_binary(), file:filename_all(), normalization_options()) ->
+                                  normalized_media().
 normalize_media_file(FromFormat, ToFormat, FromFile, Options) ->
     FromArgs = props:get_value('from_args', Options, ?NORMALIZE_SOURCE_ARGS),
     ToArgs = props:get_value('to_args', Options, ?NORMALIZE_DEST_ARGS),
@@ -104,7 +130,8 @@ normalize_media_file(FromFormat, ToFormat, FromFile, Options) ->
     lager:debug("normalize media with command: ~p", [Command]),
     return_command_result(run_command(Command), ToFile, OutputType).
 
--spec return_command_result({'ok', any()} | {'error', any()}, ne_binary(), 'binary' | 'file') -> normalized_media().
+-spec return_command_result({'ok', any()} | {'error', any()}, file:filename_all(), 'binary' | 'file') ->
+                                   normalized_media().
 return_command_result({'ok', _}, FileName, 'binary') ->
     case file:read_file(FileName) of
         {'ok', _}=OK ->
@@ -332,9 +359,9 @@ detect_format_options(File) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec tmp_file(ne_binary()) -> ne_binary().
+-spec tmp_file(ne_binary()) -> file:filename_all().
 tmp_file(Ext) ->
-    <<"/tmp/", (kz_binary:rand_hex(16))/binary, ".", Ext/binary>>.
+    filename:join(["/tmp", list_to_binary([kz_binary:rand_hex(16), ".", Ext])]).
 
 -spec recording_url(ne_binary(), kz_json:object()) -> ne_binary().
 recording_url(CallId, Data) ->
