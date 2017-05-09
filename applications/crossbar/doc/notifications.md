@@ -44,7 +44,8 @@ Notifications templates
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bcc` | Bcc email field | `object` |   | `false`
-`bcc.email_addresses` | BCC Email Addresses | `array()` |   | `false`
+`bcc.email_addresses` | BCC Email Addresses | `array(string)` |   | `false`
+`bcc.email_addresses.[]` |   | `string` |   | `false`
 `bcc.type` |   | `string('original', 'specified', 'admins')` |   | `false`
 `category` | Category of the template, for grouping purposes | `string(1..)` |   | `false`
 `cc` | CC email field | `object` |   | `false`

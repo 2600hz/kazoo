@@ -36,7 +36,7 @@ Key | Description | Type | Default | Required
 `media.audio` | The audio media parameters | `object` | `{}` | `false`
 `media.audio.codecs` | A list of audio codecs the device supports | `array(string('OPUS', 'CELT@32000h', 'G7221@32000h', 'G7221@16000h', 'G722', 'speex@32000h', 'speex@16000h', 'PCMU', 'PCMA', 'G729', 'GSM', 'CELT@48000h', 'CELT@64000h', 'G722_16', 'G722_32', 'CELT_48', 'CELT_64', 'Speex', 'speex'))` | `["PCMU"]` | `false`
 `media.audio.codecs.[]` |   | `string` |   | `false`
-`media.bypass_media` | Default bypass media mode | `boolean, string('true', 'false', 'auto')` |   | `false`
+`media.bypass_media` | Default bypass media mode (The string type is deprecated, please use this as a boolean) | `boolean, string('true', 'false', 'auto')` |   | `false`
 `media.encryption` | Encryption Parameters | `object` | `{}` | `false`
 `media.encryption.enforce_security` | Is Encryption Enabled? | `boolean` | `false` | `false`
 `media.encryption.methods` | Supported Encryption Types | `array(string('zrtp', 'srtp'))` | `[]` | `false`

@@ -8,7 +8,7 @@
             "properties": {
                 "email_addresses": {
                     "description": "BCC Email Addresses",
-                    "itmes": {
+                    "items": {
                         "format": "email",
                         "type": "string"
                     },

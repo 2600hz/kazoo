@@ -3528,7 +3528,7 @@
                             "type": "object"
                         },
                         "bypass_media": {
-                            "description": "Default bypass media mode",
+                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
                             "enum": [
                                 true,
                                 false,
@@ -3537,8 +3537,7 @@
                             "type": [
                                 "boolean",
                                 "string"
-                            ],
-                            "warning": "The string type is deprecated, please use this as a boolean"
+                            ]
                         },
                         "encryption": {
                             "default": {},
@@ -5181,7 +5180,7 @@
                     "properties": {
                         "email_addresses": {
                             "description": "BCC Email Addresses",
-                            "itmes": {
+                            "items": {
                                 "format": "email",
                                 "type": "string"
                             },
@@ -12043,7 +12042,7 @@
                             "type": "object"
                         },
                         "bypass_media": {
-                            "description": "Default bypass media mode",
+                            "description": "Default bypass media mode (The string type is deprecated, please use this as a boolean)",
                             "enum": [
                                 true,
                                 false,
@@ -12052,8 +12051,7 @@
                             "type": [
                                 "boolean",
                                 "string"
-                            ],
-                            "warning": "The string type is deprecated, please use this as a boolean"
+                            ]
                         },
                         "encryption": {
                             "default": {},
