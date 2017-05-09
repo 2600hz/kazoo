@@ -244,12 +244,8 @@ to_swagger_paths(Paths, BasePaths) ->
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),
     SchemaParameter = swagger_params(PathMeta),
-    lists:foldl(fun(Method, Acc1) ->
-                        add_swagger_path(Method, Acc1, Path, SchemaParameter)
-                end
-               ,Acc
-               ,Methods
-               ).
+    F = fun(Method, Acc1) -> add_swagger_path(Method, Acc1, Path, SchemaParameter) end,
+    lists:foldl(F, Acc, Methods).
 
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
@@ -272,9 +268,7 @@ make_parameters(Path, Method, SchemaParameter) ->
                            ],
                       Parameter <- [F(Path, Method)],
                       not kz_term:is_empty(Parameter)
-                  ]
-                 )
-               ).
+                  ])).
 
 compare_parameters(Param1, Param2) ->
     Keys = [<<"name">>, <<"$ref">>],
@@ -330,23 +324,15 @@ format_as_path_centric(Data) ->
 
 format_pc_module({Module, Config}, Acc) ->
     ModuleName = path_name(Module),
-    lists:foldl(fun(ConfigData, Acc1) ->
-                        format_pc_config(ConfigData, Acc1, Module, ModuleName)
-                end
-               ,Acc
-               ,Config
-               );
+    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, Module, ModuleName) end,
+    lists:foldl(F, Acc, Config);
 format_pc_module(_MC, Acc) ->
     Acc.
 
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
-    lists:foldl(fun(Path, Acc1) ->
-                        format_pc_callback(Path, Acc1, Module, ModuleName, Callback)
-                end
-               ,Acc
-               ,Paths
-               ).
+    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, Module, ModuleName, Callback) end,
+    lists:foldl(F, Acc, Paths).
 
 format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
 format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
@@ -354,22 +340,17 @@ format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
     Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
-    kz_json:set_values(props:filter_undefined(
-                         [{[PathName, kz_term:to_binary(Callback)]
-                          ,[kz_term:to_lower_binary(V) || V <- Vs]
-                          }
-                         ,maybe_include_schema(PathName, Module)
-                         ]
-                        )
-                      ,Acc
-                      ).
+    Values = props:filter_undefined(
+               [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
+               ,maybe_include_schema(PathName, Module)
+               ]),
+    kz_json:set_values(Values, Acc).
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
     case filelib:is_file(kz_ast_util:schema_path(<<M/binary, ".json">>)) of
         'false' -> {'undefined', 'undefined'};
-        'true' ->
-            {[PathName, <<"schema">>], base_module_name(Module)}
+        'true' -> {[PathName, <<"schema">>], base_module_name(Module)}
     end.
 
 format_path_tokens(<<"/">>) -> [];
@@ -390,9 +371,8 @@ format_path_token(Token = <<Prefix:1/binary, _/binary>>)
             end
     end;
 format_path_token(BadToken) ->
-    io:format('standard_error'
-             ,"Please pick a good allowed_methods/N variable name: '~s' is too short.\n"
-             ,[BadToken]),
+    Fmt = "Please pick a good allowed_methods/N variable name: '~s' is too short.\n",
+    io:format(standard_error, Fmt, [BadToken]),
     halt(1).
 
 camel_to_snake(Bin) ->
@@ -407,8 +387,8 @@ brace_token(Token=?NE_BINARY) ->
 
 unbrace_param(Param) ->
     Size = byte_size(Param) - 2,
-    <<"{", Param0:Size/binary, "}">> = Param,
-    kz_term:to_lower_binary(Param0).
+    <<"{", Unbraced:Size/binary, "}">> = Param,
+    Unbraced.
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -444,8 +424,7 @@ path_name(Module) ->
         {'match', [<<"user_auth">>=Name]} -> Name;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
-        {'match', _M} ->
-            'undefined'
+        {'match', _M} -> 'undefined'
     end.
 
 %% API
@@ -723,7 +702,7 @@ generic_id_path_param(Name) ->
     ].
 
 base_path_param(Param) ->
-    [{<<"name">>, Param}
+    [{<<"name">>, unbrace_param(Param)}
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
     ,{<<"type">>, <<"string">>}
