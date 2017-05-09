@@ -356,7 +356,7 @@
     "jonny5.default_{Key}": "jonny5 default {Key}",
     "jonny5.flat_rate_blacklist": "jonny5 flat rate blacklist",
     "jonny5.flat_rate_whitelist": "jonny5 flat rate whitelist",
-    "kapps_controller.default_apps_ip_address_to_bind": "Default IP which Lazoo Applications can bind into",
+    "kapps_controller.default_apps_ip_address_to_bind": "Default IP which Kazoo Applications can bind into",
     "kapps_controller.kapps": "kapps_controller kapps",
     "kapps_maintenance.migrate_current_version": "kapps_maintenance migrate current version",
     "kazoo.pdf.html2pdf": "kazoo.pdf html2pdf",

@@ -5,7 +5,7 @@
     "properties": {
         "default_apps_ip_address_to_bind": {
             "default": "0.0.0.0",
-            "description": "Default IP which Lazoo Applications can bind into",
+            "description": "Default IP which Kazoo Applications can bind into",
             "type": "string"
         },
         "kapps": {
