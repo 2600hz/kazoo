@@ -7773,7 +7773,8 @@
                     "type": "string"
                 },
                 "master_account_id": {
-                    "description": "accounts master account id"
+                    "description": "accounts master account id",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -8432,10 +8433,12 @@
                     "type": "integer"
                 },
                 "cccp_cb_number": {
-                    "description": "cccp cccp cb number"
+                    "description": "cccp cccp cb number",
+                    "type": "string"
                 },
                 "cccp_cc_number": {
-                    "description": "cccp cccp cc number"
+                    "description": "cccp cccp cc number",
+                    "type": "string"
                 },
                 "last_number_redial_code": {
                     "default": "*0",
@@ -9161,7 +9164,8 @@
             "description": "Schema for crossbar.ubiquiti system_config",
             "properties": {
                 "api_secret": {
-                    "description": "crossbar.ubiquiti api secret"
+                    "description": "crossbar.ubiquiti api secret",
+                    "type": "string"
                 },
                 "api_token_expires_s": {
                     "default": 1800,
@@ -9262,7 +9266,8 @@
                     "type": "array"
                 },
                 "performance": {
-                    "description": "datamgr performance"
+                    "description": "datamgr performance",
+                    "type": "object"
                 }
             },
             "type": "object"
@@ -9276,7 +9281,8 @@
                     "type": "boolean"
                 },
                 "connections": {
-                    "description": "doodle connections"
+                    "description": "doodle connections",
+                    "type": "object"
                 },
                 "default_test_from_number": {
                     "default": "15552220001",
@@ -9480,7 +9486,8 @@
                     "type": "string"
                 },
                 "default_ringback": {
-                    "description": "ecallmgr default ringback"
+                    "description": "ecallmgr default ringback",
+                    "type": "object"
                 },
                 "event_stream_idle_alert": {
                     "default": 0,
@@ -10088,10 +10095,12 @@
             "description": "Schema for jonny5 system_config",
             "properties": {
                 "default_inbound_trunks": {
-                    "description": "jonny5 default inbound trunks"
+                    "description": "jonny5 default inbound trunks",
+                    "type": "integer"
                 },
                 "default_twoway_trunks": {
-                    "description": "jonny5 default twoway trunks"
+                    "description": "jonny5 default twoway trunks",
+                    "type": "integer"
                 },
                 "flat_rate_blacklist": {
                     "default": "^\\+1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|800|888|877|866|855|844)\\d{7}$",
@@ -10256,7 +10265,8 @@
             "description": "Schema for kazoo_endpoint system_config",
             "properties": {
                 "custom_sip_interface": {
-                    "description": "kazoo_endpoint custom sip interface"
+                    "description": "kazoo_endpoint custom sip interface",
+                    "type": "string"
                 },
                 "default_caller_id_name": {
                     "description": "kazoo_endpoint default caller id name",
@@ -10287,7 +10297,8 @@
                     "type": "boolean"
                 },
                 "sip_transport": {
-                    "description": "kazoo_endpoint sip transport"
+                    "description": "kazoo_endpoint sip transport",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -10446,7 +10457,8 @@
                     }
                 },
                 "default_language": {
-                    "description": "media default language"
+                    "description": "media default language",
+                    "type": "string"
                 },
                 "fix_media_names": {
                     "default": true,
@@ -11165,7 +11177,8 @@
                     "type": "boolean"
                 },
                 "e164_converters": {
-                    "description": "number_manager e164 converters"
+                    "description": "number_manager e164 converters",
+                    "type": "object"
                 },
                 "features": {
                     "properties": {
@@ -11405,7 +11418,8 @@
                     "description": "number_manager.other endpoints"
                 },
                 "phonebook_url": {
-                    "description": "number_manager.other phonebook url"
+                    "description": "number_manager.other phonebook url",
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -11892,7 +11906,8 @@
                     "type": "integer"
                 },
                 "tls": {
-                    "description": "smtp_client tls"
+                    "description": "smtp_client tls",
+                    "type": "string"
                 },
                 "use_ssl": {
                     "default": false,
@@ -12455,7 +12470,8 @@
             "description": "Schema for whitelabel system_config",
             "properties": {
                 "domains": {
-                    "description": "whitelabel domains"
+                    "description": "whitelabel domains",
+                    "type": "object"
                 }
             },
             "type": "object"

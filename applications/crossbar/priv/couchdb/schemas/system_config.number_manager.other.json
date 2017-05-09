@@ -12,7 +12,8 @@
             "description": "number_manager.other endpoints"
         },
         "phonebook_url": {
-            "description": "number_manager.other phonebook url"
+            "description": "number_manager.other phonebook url",
+            "type": "string"
         }
     },
     "type": "object"

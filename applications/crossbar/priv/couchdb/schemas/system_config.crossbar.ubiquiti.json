@@ -4,7 +4,8 @@
     "description": "Schema for crossbar.ubiquiti system_config",
     "properties": {
         "api_secret": {
-            "description": "crossbar.ubiquiti api secret"
+            "description": "crossbar.ubiquiti api secret",
+            "type": "string"
         },
         "api_token_expires_s": {
             "default": 1800,

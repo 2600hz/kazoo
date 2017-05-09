@@ -32,7 +32,8 @@
             }
         },
         "default_language": {
-            "description": "media default language"
+            "description": "media default language",
+            "type": "string"
         },
         "fix_media_names": {
             "default": true,
