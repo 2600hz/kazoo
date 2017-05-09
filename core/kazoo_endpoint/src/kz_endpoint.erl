@@ -43,16 +43,14 @@
 -define(DEFAULT_MOBILE_SMS_EXCHANGE, <<"sms">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_TYPE, <<"topic">>).
 -define(DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS
-       ,kz_json:from_list([{<<"passive">>, 'true'}])
-       ).
+       ,kz_json:from_list([{<<"passive">>, 'true'}])).
 -define(DEFAULT_MOBILE_SMS_ROUTE, <<"sprint">>).
 -define(DEFAULT_MOBILE_SMS_OPTIONS
        ,kz_json:from_list([{<<"Route-ID">>, ?DEFAULT_MOBILE_SMS_ROUTE}
                           ,{<<"System-ID">>, kz_util:node_name()}
                           ,{<<"Exchange-ID">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
                           ,{<<"Exchange-Type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
-                          ])
-       ).
+                          ])).
 -define(DEFAULT_MOBILE_AMQP_CONNECTION
        ,kz_json:from_list(
           [{<<"broker">>, ?DEFAULT_MOBILE_SMS_BROKER}
@@ -60,11 +58,9 @@
           ,{<<"exchange">>, ?DEFAULT_MOBILE_SMS_EXCHANGE}
           ,{<<"type">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_TYPE}
           ,{<<"options">>, ?DEFAULT_MOBILE_SMS_EXCHANGE_OPTIONS}
-          ])
-       ).
+          ])).
 -define(DEFAULT_MOBILE_AMQP_CONNECTIONS,
-        kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])
-       ).
+        kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])).
 
 -define(CONFIRM_FILE(Call), kz_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
 
@@ -1140,7 +1136,7 @@ build_push_failover(Endpoint, Clid, PushJObj, Call) ->
 get_sip_transport(SIPJObj) ->
     case validate_sip_transport(kz_json:get_value(<<"transport">>, SIPJObj)) of
         'undefined' ->
-            validate_sip_transport(kapps_config:get(?CONFIG_CAT, <<"sip_transport">>));
+            validate_sip_transport(kapps_config:get_ne_binary(?CONFIG_CAT, <<"sip_transport">>));
         Transport -> Transport
     end.
 
@@ -1156,11 +1152,11 @@ validate_sip_transport(_) -> 'undefined'.
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_custom_sip_interface(kz_json:object()) -> api_binary().
+-spec get_custom_sip_interface(kz_json:object()) -> api_ne_binary().
 get_custom_sip_interface(JObj) ->
     case kz_json:get_value(<<"custom_sip_interface">>, JObj) of
         'undefined' ->
-            kapps_config:get(?CONFIG_CAT, <<"custom_sip_interface">>);
+            kapps_config:get_ne_binary(?CONFIG_CAT, <<"custom_sip_interface">>);
         Else -> Else
     end.
 
@@ -1715,7 +1711,7 @@ maybe_build_mobile_sms_route(Endpoint) ->
                                     {ne_binary(), sms_routes()} |
                                     {'error', 'invalid_mdn'}.
 build_mobile_sms_route(MDN) ->
-    Type = kapps_config:get(?MOBILE_CONFIG_CAT, <<"sms_interface">>, ?DEFAULT_MOBILE_SMS_INTERFACE),
+    Type = kapps_config:get_ne_binary(?MOBILE_CONFIG_CAT, <<"sms_interface">>, ?DEFAULT_MOBILE_SMS_INTERFACE),
     build_mobile_sms_route(Type, MDN).
 
 -spec build_mobile_sms_route(ne_binary(), ne_binary()) ->
@@ -1724,7 +1720,7 @@ build_mobile_sms_route(MDN) ->
 build_mobile_sms_route(<<"sip">>, MDN) ->
     {<<"sip">>, [{build_mobile_route(MDN), 'undefined'}]};
 build_mobile_sms_route(<<"amqp">>, _MDN) ->
-    Connections = kapps_config:get(?MOBILE_CONFIG_CAT, [<<"sms">>, <<"connections">>], ?DEFAULT_MOBILE_AMQP_CONNECTIONS),
+    Connections = kapps_config:get_json(?MOBILE_CONFIG_CAT, [<<"sms">>, <<"connections">>], ?DEFAULT_MOBILE_AMQP_CONNECTIONS),
     {<<"amqp">>, kz_json:foldl(fun build_mobile_sms_amqp_route/3 , [], Connections)}.
 
 -spec build_mobile_sms_amqp_route(kz_json:path(), kz_json:json_term(), kz_proplist()) -> sms_routes().

@@ -26,7 +26,7 @@
 -include("acdc.hrl").
 -include_lib("kazoo_amqp/include/kapi_conf.hrl").
 
--define(DEFAULT_PAUSE ,kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).
+-define(DEFAULT_PAUSE, kapps_config:get_integer(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600)).
 
 -spec handle_status_update(kz_json:object(), kz_proplist()) -> 'ok'.
 handle_status_update(JObj, _Props) ->
@@ -45,9 +45,7 @@ handle_status_update(JObj, _Props) ->
             maybe_stop_agent(AccountId, AgentId, JObj);
         <<"pause">> ->
             'true' = kapi_acdc_agent:pause_v(JObj),
-
             Timeout = kz_json:get_integer_value(<<"Time-Limit">>, JObj, ?DEFAULT_PAUSE),
-
             maybe_pause_agent(AccountId, AgentId, Timeout, JObj);
         <<"resume">> ->
             'true' = kapi_acdc_agent:resume_v(JObj),

@@ -219,9 +219,7 @@ should_handle(JObj) ->
 
     Config = kz_account:get_inherited_value(Account
                                            ,fun kz_account:notification_preference/1
-                                           ,kapps_config:get(?NOTIFY_CONFIG_CAT
-                                                            ,<<"notification_app">>
-                                                            ,<<"teletype">>)
+                                           ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, <<"teletype">>)
                                            ),
 
     lager:debug("notification configuration is: ~p", [Config]),

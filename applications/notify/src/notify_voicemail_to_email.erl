@@ -274,7 +274,7 @@ get_extension(MediaJObj) ->
 attachment_to_extension(AttachmentsJObj) ->
     kz_json:get_value(<<"extension">>
                      ,kz_json:map(fun attachment_to_extension/2, AttachmentsJObj)
-                     ,kapps_config:get(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
+                     ,kapps_config:get_ne_binary(<<"callflow">>, [<<"voicemail">>, <<"extension">>], <<"mp3">>)
                      ).
 
 -spec attachment_to_extension(ne_binary(), kz_json:object()) -> {ne_binary(), ne_binary()}.

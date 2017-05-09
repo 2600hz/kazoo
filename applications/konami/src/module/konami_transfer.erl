@@ -74,12 +74,12 @@
 -type state() :: #state{}.
 
 -define(DEFAULT_TAKEBACK_DTMF,
-        kapps_config:get(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)).
+        kapps_config:get_ne_binary(?CONFIG_CAT, [<<"transfer">>, <<"default_takeback_dtmf">>], <<"*1">>)).
 
 -define(DEFAULT_TARGET_TIMEOUT,
         kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_RINGBACK, kapps_config:get(<<"ecallmgr">>, <<"default_ringback">>)).
+-define(DEFAULT_RINGBACK, kapps_config:get_json(<<"ecallmgr">>, <<"default_ringback">>)).
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                                 ,<<"DTMF">>

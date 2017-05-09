@@ -36,7 +36,10 @@
 
 -spec api_uri() -> ne_binary().
 api_uri() ->
-    ?VITELITY_URI.
+    kapps_config:get_ne_binary(?KNM_VITELITY_CONFIG_CAT
+                              ,<<"api_uri">>
+                              ,<<"http://api.vitelity.net/api.php">>
+                              ).
 
 -spec config_cat() -> ne_binary().
 config_cat() ->

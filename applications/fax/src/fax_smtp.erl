@@ -278,7 +278,7 @@ handle_message(#state{filename=Filename
 
 -spec maybe_system_report(state()) -> 'ok'.
 maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
-    case kapps_config:get(?CONFIG_CAT, <<"report_anonymous_system_errors">>, 'false') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"report_anonymous_system_errors">>, 'false') of
         'true' -> system_report(State);
         'false' -> 'ok'
     end;
@@ -290,7 +290,7 @@ maybe_system_report(#state{has_smtp_errors='true'
         'false' -> 'ok'
     end;
 maybe_system_report(State) ->
-    case kapps_config:get(?CONFIG_CAT, <<"report_faxbox_system_errors">>, 'true') of
+    case kapps_config:get_is_true(?CONFIG_CAT, <<"report_faxbox_system_errors">>, 'true') of
         'true' -> system_report(State);
         'false' -> 'ok'
     end.

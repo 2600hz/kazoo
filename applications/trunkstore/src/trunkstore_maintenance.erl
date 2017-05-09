@@ -141,7 +141,7 @@ create_account(Realm) ->
 
 create_account_doc(Realm, AcctID, AcctDB) ->
     lager:info("creating the account doc in ~s and ~s", [AcctDB, ?KZ_ACCOUNTS_DB]),
-    Default = kapps_config:get(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
+    Default = kapps_config:get_binary(<<"crossbar.accounts">>, <<"default_parent">>, <<>>),
     Doc = kz_json:from_list([{<<"realm">>, Realm}
                             ,{<<"name">>, Realm}
                             ,{<<"pvt_account_id">>, AcctID}

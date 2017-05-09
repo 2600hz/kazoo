@@ -35,20 +35,17 @@
 -define(ACCOUNT_RATES
        ,kz_json:from_list([{?MINUTE, kz_json:from_list(?ACCOUNT_RATES_MIN)}
                           ,{?SECOND, kz_json:from_list(?ACCOUNT_RATES_SEC)}
-                          ])
-       ).
+                          ])).
 
 -define(DEVICE_RATES
        ,kz_json:from_list([{?MINUTE, kz_json:from_list(?DEVICE_RATES_MIN)}
                           ,{?SECOND, kz_json:from_list(?DEVICE_RATES_SEC)}
-                          ])
-       ).
+                          ])).
 
 -define(DEFAULT_RATES
        ,kz_json:from_list([{<<"account">>, ?ACCOUNT_RATES}
                           ,{<<"device">>, ?DEVICE_RATES}
-                          ])
-       ).
+                          ])).
 
 -spec start_link() -> 'ignore'.
 start_link() ->
@@ -57,4 +54,4 @@ start_link() ->
 
 -spec default_rate_limits() -> kz_json:object().
 default_rate_limits() ->
-    kapps_config:get(?APP_NAME, <<"rate_limits">>, ?DEFAULT_RATES).
+    kapps_config:get_json(?APP_NAME, <<"rate_limits">>, ?DEFAULT_RATES).

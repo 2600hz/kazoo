@@ -37,7 +37,7 @@
 -spec numbers() -> kz_json:object().
 -spec numbers(ne_binary()) -> kz_json:object().
 numbers() ->
-    kapps_config:get(<<"metaflows">>, <<"numbers">>, ?DEFAULT_NUMBERS).
+    kapps_config:get_json(<<"metaflows">>, <<"numbers">>, ?DEFAULT_NUMBERS).
 
 numbers(Account) ->
     case konami_doc(Account) of
@@ -49,7 +49,7 @@ numbers(Account) ->
 -spec patterns() -> kz_json:object().
 -spec patterns(ne_binary()) -> kz_json:object().
 patterns() ->
-    kapps_config:get(<<"metaflows">>, <<"patterns">>, ?DEFAULT_PATTERNS).
+    kapps_config:get_json(<<"metaflows">>, <<"patterns">>, ?DEFAULT_PATTERNS).
 
 patterns(Account) ->
     case konami_doc(Account) of
@@ -61,7 +61,7 @@ patterns(Account) ->
 -spec binding_digit() -> <<_:8>>.
 -spec binding_digit(ne_binary()) -> <<_:8>>.
 binding_digit() ->
-    BindingDigit = kapps_config:get(<<"metaflows">>, <<"binding_digit">>, ?DEFAULT_BINDING_DIGIT),
+    BindingDigit = kapps_config:get_ne_binary(<<"metaflows">>, <<"binding_digit">>, ?DEFAULT_BINDING_DIGIT),
     constrain_binding_digit(BindingDigit).
 
 binding_digit(Account) ->
@@ -93,7 +93,7 @@ timeout(Account) ->
 -spec listen_on() -> 'a' | 'b' | 'ab'.
 -spec listen_on(ne_binary()) -> 'a' | 'b' | 'ab'.
 listen_on() ->
-    constrain_listen_on(kapps_config:get(<<"metaflows">>, <<"listen_on">>, ?DEFAULT_LISTEN_ON)).
+    constrain_listen_on(kapps_config:get_ne_binary(<<"metaflows">>, <<"listen_on">>, ?DEFAULT_LISTEN_ON)).
 listen_on(Account) ->
     case konami_doc(Account) of
         'undefined' -> listen_on();

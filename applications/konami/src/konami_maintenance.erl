@@ -30,7 +30,7 @@ is_running() ->
 
 -spec add_default_metaflow() -> 'ok'.
 add_default_metaflow() ->
-    Default = kapps_config:get(<<"metaflows">>, <<"default_metaflow">>, kz_json:new()),
+    Default = kapps_config:get_json(<<"metaflows">>, <<"default_metaflow">>, kz_json:new()),
     io:format("Welcome to the Default System Metaflow builder~n"),
     intro_builder(Default, fun(JObj) ->
                                    kapps_config:set_default(<<"metaflows">>, <<"default_metaflow">>, JObj)

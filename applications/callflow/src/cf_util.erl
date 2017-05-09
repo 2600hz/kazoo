@@ -53,7 +53,7 @@
 -define(SIP_ENDPOINT_ID_KEY(Db, User), {?MODULE, 'sip_endpoint_id', Db, User}).
 -define(PARKING_PRESENCE_KEY(Db, Request), {?MODULE, 'parking_callflow', Db, Request}).
 -define(MANUAL_PRESENCE_KEY(Db), {?MODULE, 'manual_presence', Db}).
--define(OPERATOR_KEY, kapps_config:get(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
+-define(OPERATOR_KEY, kapps_config:get_ne_binary(?CF_CONFIG_CAT, <<"operator_key">>, <<"0">>)).
 -define(MWI_SEND_UNSOLICITATED_UPDATES, <<"mwi_send_unsoliciated_updates">>).
 -define(VM_CACHE_KEY(Db, Id), {?MODULE, 'vmbox', Db, Id}).
 

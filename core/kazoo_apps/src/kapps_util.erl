@@ -156,7 +156,7 @@ replicate_from_account(AccountDb, TargetDb, FilterDoc) ->
 -spec get_master_account_id() -> {'ok', ne_binary()} |
                                  {'error', atom()}.
 get_master_account_id() ->
-    case kapps_config:get(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
+    case kapps_config:get_ne_binary(?KZ_SYSTEM_CONFIG_ACCOUNT, <<"master_account_id">>) of
         'undefined' ->
             R = kz_datamgr:get_results(?KZ_ACCOUNTS_DB, <<"accounts/listing_by_id">>, ['include_docs']),
             find_master_account_id(R);

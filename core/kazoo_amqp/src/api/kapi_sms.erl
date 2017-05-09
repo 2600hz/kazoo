@@ -202,7 +202,7 @@
                                                         ,{<<"mandatory">>, 'true'}
                                                         ])).
 -define(SMS_OUTBOUND_OPTIONS_KEY, [<<"outbound">>, <<"options">>]).
--define(SMS_OUTBOUND_OPTIONS, kapps_config:get(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
+-define(SMS_OUTBOUND_OPTIONS, kapps_config:get_json(<<"sms">>, ?SMS_OUTBOUND_OPTIONS_KEY, ?SMS_DEFAULT_OUTBOUND_OPTIONS)).
 
 -spec message(api_terms()) -> api_formatter_return().
 message(Prop) when is_list(Prop) ->

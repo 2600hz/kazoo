@@ -158,7 +158,7 @@ pause_agent(Call, AgentId, Data, Timeout) when is_integer(Timeout) ->
 pause_agent(Call, AgentId, Data) ->
     Timeout = kz_json:get_integer_value(<<"timeout">>
                                        ,Data
-                                       ,kapps_config:get(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
+                                       ,kapps_config:get_integer(<<"acdc">>, <<"default_agent_pause_timeout">>, 600)
                                        ),
     lager:info("agent ~s is pausing work for ~b s", [AgentId, Timeout]),
     pause_agent(Call, AgentId, Data, Timeout).

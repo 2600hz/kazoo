@@ -116,7 +116,7 @@ handle_cast({'add_request', JObj}, GlobalState) ->
     Targets = kz_json:get_value(<<"Targets">>, JObj, []),
     Timeout = timer:minutes(kz_json:get_value(<<"Timeout">>
                                              ,JObj
-                                             ,kapps_config:get(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
+                                             ,kapps_config:get_integer(?APP_NAME, ?TIMEOUT, ?DEFAULT_TIMEOUT)
                                              )),
     kz_hooks:register(AccountId, <<"CHANNEL_DESTROY">>),
     NewGlobal = with_state(AccountId

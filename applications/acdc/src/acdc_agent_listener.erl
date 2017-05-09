@@ -1244,7 +1244,7 @@ maybe_start_recording(Call, 'true', Url) ->
     end.
 
 recording_format() ->
-    kapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
+    kapps_config:get_ne_binary(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->

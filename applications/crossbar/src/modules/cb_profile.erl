@@ -17,7 +17,7 @@
 
 -include("crossbar.hrl").
 
--define(TRACE_PATH, kapps_config:get(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
+-define(TRACE_PATH, kapps_config:get_ne_binary(?CONFIG_CAT, <<"trace_path">>, <<"/tmp">>)).
 
 %%%===================================================================
 %%% API

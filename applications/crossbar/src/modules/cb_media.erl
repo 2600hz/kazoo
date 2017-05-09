@@ -47,11 +47,10 @@
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".media">>).
 
 -define(DEFAULT_VOICE
-       ,list_to_binary([kazoo_tts:default_voice(), "/", kazoo_tts:default_language()])
-       ).
--define(NORMALIZATION_FORMAT
-       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)
-       ).
+       ,list_to_binary([kazoo_tts:default_voice(), $/, kazoo_tts:default_language()])).
+
+-define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
+
 
 %%%===================================================================
 %%% API

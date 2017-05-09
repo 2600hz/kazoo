@@ -495,7 +495,7 @@ db_delete(DbName, Options) ->
 -spec db_archive(ne_binary()) -> 'ok' | data_error().
 -spec db_archive(ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(DbName) ->
-    Folder = kapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
+    Folder = kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
     db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
 
 db_archive(DbName, Filename) when ?VALID_DBNAME(DbName) ->

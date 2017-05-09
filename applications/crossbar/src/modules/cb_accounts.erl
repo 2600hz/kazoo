@@ -36,8 +36,7 @@
 
 -define(ACCOUNTS_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".accounts">>).
 -define(DEFAULT_TIMEZONE
-       ,kapps_config:get(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)
-       ).
+       ,kapps_config:get_ne_binary(<<"accounts">>, <<"default_timezone">>, <<"America/Los_Angeles">>)).
 
 -define(AGG_VIEW_FILE, <<"views/accounts.json">>).
 -define(AGG_VIEW_SUMMARY, <<"accounts/listing_by_id">>).
@@ -236,7 +235,7 @@ validate_account_path(Context, AccountId, ?MOVE, ?HTTP_POST) ->
                                            ,Context
                                            );
         ToAccount ->
-            case validate_move(kapps_config:get(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
+            case validate_move(kapps_config:get_ne_binary(?ACCOUNTS_CONFIG_CAT, <<"allow_move">>, <<"superduper_admin">>)
                               ,Context
                               ,AccountId
                               ,ToAccount

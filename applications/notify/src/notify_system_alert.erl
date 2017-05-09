@@ -48,7 +48,7 @@ handle_req(JObj, _Props) ->
     kz_util:put_callid(JObj),
     lager:debug("creating system alert notice"),
     UseEmail = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),
-    SUBUrl = kapps_config:get(?MOD_CONFIG_CAT, <<"subscriber_url">>),
+    SUBUrl = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"subscriber_url">>),
     case kz_json:get_value([<<"Details">>,<<"Format">>], JObj) of
         'undefined' ->
             alert_using_email('true', JObj);

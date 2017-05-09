@@ -90,7 +90,7 @@ get_number(Call, 0) ->
     kapps_call_command:prompt(<<"hotdesk-invalid_entry">>, Call),
     kapps_call_command:queued_hangup(Call);
 get_number(Call, Retries) ->
-    RedialCode = kapps_config:get(?CCCP_CONFIG_CAT, <<"last_number_redial_code">>, <<"*0">>),
+    RedialCode = kapps_config:get_ne_binary(?CCCP_CONFIG_CAT, <<"last_number_redial_code">>, <<"*0">>),
     case kapps_call_command:b_prompt_and_collect_digits(2, 17, <<"cf-enter_number">>, 3, Call) of
         {'ok', RedialCode} ->
             get_last_dialed_number(Call);

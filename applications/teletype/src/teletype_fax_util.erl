@@ -23,30 +23,25 @@
 -spec add_data(kz_json:object()) -> kz_json:object().
 add_data(DataJObj) ->
     FaxBoxJObj = get_faxbox_doc(DataJObj),
-
-    kz_json:set_values(
-      props:filter_empty(
-        [{<<"error">>, error_data(DataJObj)}
-        ,{<<"faxbox">>, FaxBoxJObj}
-        ,{<<"owner">>, get_owner_doc(DataJObj, FaxBoxJObj)}
-        ,{<<"fax">>, kz_doc:public_fields(maybe_get_fax_doc(DataJObj))}
-        ]
-       )
-                      ,DataJObj
-     ).
+    Values =
+        props:filter_empty(
+          [{<<"error">>, error_data(DataJObj)}
+          ,{<<"faxbox">>, FaxBoxJObj}
+          ,{<<"owner">>, get_owner_doc(DataJObj, FaxBoxJObj)}
+          ,{<<"fax">>, kz_doc:public_fields(maybe_get_fax_doc(DataJObj))}
+          ]),
+    kz_json:set_values(Values, DataJObj).
 
 -spec maybe_add_document_data(kz_proplist(), attachments()) -> kz_proplist().
 maybe_add_document_data(Macros, []) -> Macros;
 maybe_add_document_data(Macros, [{ContentType, Filename, Bin}]) ->
-    Fax = props:set_values(
-            props:filter_undefined(
-              [{<<"media">>, Filename}
-              ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
-              ,{<<"document_size">>, erlang:size(Bin)}
-              ]
-             )
-                          ,props:get_value(<<"fax">>, Macros, [])
-           ),
+    Values =
+        props:filter_undefined(
+          [{<<"media">>, Filename}
+          ,{<<"document_type">>, kz_mime:to_extension(ContentType)}
+          ,{<<"document_size">>, erlang:size(Bin)}
+          ]),
+    Fax = props:set_values(Values, props:get_value(<<"fax">>, Macros, [])),
     props:set_value(<<"fax">>, Fax, Macros).
 
 
@@ -134,7 +129,7 @@ maybe_get_attachments(DataJObj, Macros, 'false') ->
 
 -spec maybe_convert_attachment(kz_proplist(), ne_binary(), binary()) -> attachments().
 maybe_convert_attachment(Macros, ContentType, Bin) ->
-    ToFormat = kapps_config:get(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
+    ToFormat = kapps_config:get_ne_binary(?FAX_CONFIG_CAT, <<"attachment_format">>, <<"pdf">>),
     FromFormat = from_format_from_content_type(ContentType),
 
     case convert(FromFormat, ToFormat, Bin) of

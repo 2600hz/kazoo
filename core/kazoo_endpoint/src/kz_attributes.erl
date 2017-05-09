@@ -567,18 +567,18 @@ owned_by_query(ViewOptions, Call, ViewKey) ->
 %%-----------------------------------------------------------------------------
 -spec default_cid_number(ne_binary()) -> ne_binary().
 default_cid_number(AccountId) ->
-    kapps_config:get(?CONFIG_CAT
-                    ,<<"default_caller_id_number">>
-                    ,kz_privacy:anonymous_caller_id_number(AccountId)
-                    ).
+    kapps_config:get_ne_binary(?CONFIG_CAT
+                              ,<<"default_caller_id_number">>
+                              ,kz_privacy:anonymous_caller_id_number(AccountId)
+                              ).
 
 -spec default_cid_name(kz_json:object(), kapps_call:call()) -> ne_binary().
 default_cid_name('undefined', Call) ->
     AccountId = kapps_call:account_id(Call),
-    kapps_config:get(?CONFIG_CAT
-                    ,<<"default_caller_id_name">>
-                    ,kz_privacy:anonymous_caller_id_name(AccountId)
-                    );
+    kapps_config:get_ne_binary(?CONFIG_CAT
+                              ,<<"default_caller_id_name">>
+                              ,kz_privacy:anonymous_caller_id_name(AccountId)
+                              );
 default_cid_name(<<_/binary>> = Name, _Call) -> Name;
 default_cid_name(Endpoint, Call) ->
     default_cid_name(kz_json:get_ne_value(<<"name">>, Endpoint), Call).

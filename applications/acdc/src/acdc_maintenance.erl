@@ -461,7 +461,7 @@ agent_logout(AcctId, AgentId) ->
 -spec agent_pause(ne_binary(), ne_binary()) -> 'ok'.
 -spec agent_pause(ne_binary(), ne_binary(), pos_integer()) -> 'ok'.
 agent_pause(AcctId, AgentId) ->
-    Timeout = kapps_config:get(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600),
+    Timeout = kapps_config:get_integer(?CONFIG_CAT, <<"default_agent_pause_timeout">>, 600),
     agent_pause(AcctId, AgentId, Timeout).
 agent_pause(AcctId, AgentId, Timeout) ->
     kz_util:put_callid(?MODULE),

@@ -69,8 +69,8 @@
 
 -export([flush/0, cache/1, cache/2, retrieve/1]).
 
--define(BRIDGE_USER, kapps_config:get(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
--define(BRIDGE_PWD, kapps_config:get(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
+-define(BRIDGE_USER, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_username">>, kz_binary:rand_hex(12))).
+-define(BRIDGE_PWD, kapps_config:get_ne_binary(<<"conferences">>, <<"bridge_password">>, kz_binary:rand_hex(12))).
 
 
 %%%% conference record %%%%%%%%
