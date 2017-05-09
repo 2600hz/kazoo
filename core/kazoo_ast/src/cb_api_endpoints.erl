@@ -723,6 +723,7 @@ parameter_auth_token(IsRequired) ->
 generic_id_path_param(Name) ->
     [{<<"$ref">>, <<"#/parameters/id">>}
     ,{<<"name">>, Name}
+    ,{<<"type">>, <<"string">>}
     ].
 
 base_path_param(Param) ->
@@ -869,7 +870,5 @@ def_path_param(<<"{UUID}">>=P) ->
     ];
 
 def_path_param(_Param) ->
-    io:format(standard_error
-             ,"No Swagger definition of path parameter '~s'.\n"
-             ,[_Param]),
+    io:format(standard_error, "No Swagger definition of path parameter '~s'.\n", [_Param]),
     halt(1).

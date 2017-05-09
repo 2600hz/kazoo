@@ -12612,19 +12612,23 @@
     "parameters": {
         "account_id": {
             "$ref": "#/parameters/id",
-            "name": "{ACCOUNT_ID}"
+            "name": "{ACCOUNT_ID}",
+            "type": "string"
         },
         "address_id": {
             "$ref": "#/parameters/id",
-            "name": "{ADDRESS_ID}"
+            "name": "{ADDRESS_ID}",
+            "type": "string"
         },
         "alert_id": {
             "$ref": "#/parameters/id",
-            "name": "{ALERT_ID}"
+            "name": "{ALERT_ID}",
+            "type": "string"
         },
         "app_id": {
             "$ref": "#/parameters/id",
-            "name": "{APP_ID}"
+            "name": "{APP_ID}",
+            "type": "string"
         },
         "app_screenshot_index": {
             "in": "path",
@@ -12653,7 +12657,8 @@
         },
         "auth_token": {
             "$ref": "#/parameters/id",
-            "name": "{AUTH_TOKEN}"
+            "name": "{AUTH_TOKEN}",
+            "type": "string"
         },
         "auth_token_header": {
             "description": "request authentication token",
@@ -12673,11 +12678,13 @@
         },
         "blacklist_id": {
             "$ref": "#/parameters/id",
-            "name": "{BLACKLIST_ID}"
+            "name": "{BLACKLIST_ID}",
+            "type": "string"
         },
         "c2c_id": {
             "$ref": "#/parameters/id",
-            "name": "{C2C_ID}"
+            "name": "{C2C_ID}",
+            "type": "string"
         },
         "call_id": {
             "in": "path",
@@ -12687,15 +12694,18 @@
         },
         "callflow_id": {
             "$ref": "#/parameters/id",
-            "name": "{CALLFLOW_ID}"
+            "name": "{CALLFLOW_ID}",
+            "type": "string"
         },
         "card_id": {
             "$ref": "#/parameters/id",
-            "name": "{CARD_ID}"
+            "name": "{CARD_ID}",
+            "type": "string"
         },
         "cccp_id": {
             "$ref": "#/parameters/id",
-            "name": "{CCCP_ID}"
+            "name": "{CCCP_ID}",
+            "type": "string"
         },
         "cdr_id": {
             "in": "path",
@@ -12714,23 +12724,28 @@
         },
         "conference_id": {
             "$ref": "#/parameters/id",
-            "name": "{CONFERENCE_ID}"
+            "name": "{CONFERENCE_ID}",
+            "type": "string"
         },
         "config_id": {
             "$ref": "#/parameters/id",
-            "name": "{CONFIG_ID}"
+            "name": "{CONFIG_ID}",
+            "type": "string"
         },
         "connectivity_id": {
             "$ref": "#/parameters/id",
-            "name": "{CONNECTIVITY_ID}"
+            "name": "{CONNECTIVITY_ID}",
+            "type": "string"
         },
         "device_id": {
             "$ref": "#/parameters/id",
-            "name": "{DEVICE_ID}"
+            "name": "{DEVICE_ID}",
+            "type": "string"
         },
         "directory_id": {
             "$ref": "#/parameters/id",
-            "name": "{DIRECTORY_ID}"
+            "name": "{DIRECTORY_ID}",
+            "type": "string"
         },
         "extension": {
             "in": "path",
@@ -12740,7 +12755,8 @@
         },
         "fax_id": {
             "$ref": "#/parameters/id",
-            "name": "{FAX_ID}"
+            "name": "{FAX_ID}",
+            "type": "string"
         },
         "fax_job_id": {
             "in": "path",
@@ -12750,7 +12766,8 @@
         },
         "faxbox_id": {
             "$ref": "#/parameters/id",
-            "name": "{FAXBOX_ID}"
+            "name": "{FAXBOX_ID}",
+            "type": "string"
         },
         "function": {
             "in": "path",
@@ -12761,7 +12778,8 @@
         },
         "group_id": {
             "$ref": "#/parameters/id",
-            "name": "{GROUP_ID}"
+            "name": "{GROUP_ID}",
+            "type": "string"
         },
         "id": {
             "in": "path",
@@ -12795,7 +12813,8 @@
         },
         "key_id": {
             "$ref": "#/parameters/id",
-            "name": "{KEY_ID}"
+            "name": "{KEY_ID}",
+            "type": "string"
         },
         "language": {
             "in": "path",
@@ -12811,27 +12830,33 @@
         },
         "ledger_id": {
             "$ref": "#/parameters/id",
-            "name": "{LEDGER_ID}"
+            "name": "{LEDGER_ID}",
+            "type": "string"
         },
         "link_id": {
             "$ref": "#/parameters/id",
-            "name": "{LINK_ID}"
+            "name": "{LINK_ID}",
+            "type": "string"
         },
         "list_entry_id": {
             "$ref": "#/parameters/id",
-            "name": "{LIST_ENTRY_ID}"
+            "name": "{LIST_ENTRY_ID}",
+            "type": "string"
         },
         "list_id": {
             "$ref": "#/parameters/id",
-            "name": "{LIST_ID}"
+            "name": "{LIST_ID}",
+            "type": "string"
         },
         "media_id": {
             "$ref": "#/parameters/id",
-            "name": "{MEDIA_ID}"
+            "name": "{MEDIA_ID}",
+            "type": "string"
         },
         "menu_id": {
             "$ref": "#/parameters/id",
-            "name": "{MENU_ID}"
+            "name": "{MENU_ID}",
+            "type": "string"
         },
         "module": {
             "in": "path",
@@ -12849,7 +12874,8 @@
         },
         "notification_id": {
             "$ref": "#/parameters/id",
-            "name": "{NOTIFICATION_ID}"
+            "name": "{NOTIFICATION_ID}",
+            "type": "string"
         },
         "participant_id": {
             "in": "path",
@@ -12874,7 +12900,8 @@
         },
         "port_request_id": {
             "$ref": "#/parameters/id",
-            "name": "{PORT_REQUEST_ID}"
+            "name": "{PORT_REQUEST_ID}",
+            "type": "string"
         },
         "prompt_id": {
             "in": "path",
@@ -12890,11 +12917,13 @@
         },
         "queue_id": {
             "$ref": "#/parameters/id",
-            "name": "{QUEUE_ID}"
+            "name": "{QUEUE_ID}",
+            "type": "string"
         },
         "rate_id": {
             "$ref": "#/parameters/id",
-            "name": "{RATE_ID}"
+            "name": "{RATE_ID}",
+            "type": "string"
         },
         "recording_id": {
             "in": "path",
@@ -12907,11 +12936,13 @@
         },
         "resource_id": {
             "$ref": "#/parameters/id",
-            "name": "{RESOURCE_ID}"
+            "name": "{RESOURCE_ID}",
+            "type": "string"
         },
         "resource_template_id": {
             "$ref": "#/parameters/id",
-            "name": "{RESOURCE_TEMPLATE_ID}"
+            "name": "{RESOURCE_TEMPLATE_ID}",
+            "type": "string"
         },
         "schema_name": {
             "in": "path",
@@ -12928,7 +12959,8 @@
         },
         "sms_id": {
             "$ref": "#/parameters/id",
-            "name": "{SMS_ID}"
+            "name": "{SMS_ID}",
+            "type": "string"
         },
         "smtp_log_id": {
             "in": "path",
@@ -12944,7 +12976,8 @@
         },
         "storage_plan_id": {
             "$ref": "#/parameters/id",
-            "name": "{STORAGE_PLAN_ID}"
+            "name": "{STORAGE_PLAN_ID}",
+            "type": "string"
         },
         "system_config_id": {
             "in": "path",
@@ -12963,7 +12996,8 @@
         },
         "template_id": {
             "$ref": "#/parameters/id",
-            "name": "{TEMPLATE_ID}"
+            "name": "{TEMPLATE_ID}",
+            "type": "string"
         },
         "template_name": {
             "in": "path",
@@ -12973,11 +13007,13 @@
         },
         "temporal_rule_id": {
             "$ref": "#/parameters/id",
-            "name": "{TEMPORAL_RULE_ID}"
+            "name": "{TEMPORAL_RULE_ID}",
+            "type": "string"
         },
         "temporal_rule_set": {
             "$ref": "#/parameters/id",
-            "name": "{TEMPORAL_RULE_SET}"
+            "name": "{TEMPORAL_RULE_SET}",
+            "type": "string"
         },
         "thing": {
             "in": "path",
@@ -12993,7 +13029,8 @@
         },
         "user_id": {
             "$ref": "#/parameters/id",
-            "name": "{USER_ID}"
+            "name": "{USER_ID}",
+            "type": "string"
         },
         "username": {
             "in": "path",
@@ -13010,7 +13047,8 @@
         },
         "vm_box_id": {
             "$ref": "#/parameters/id",
-            "name": "{VM_BOX_ID}"
+            "name": "{VM_BOX_ID}",
+            "type": "string"
         },
         "vm_msg_id": {
             "in": "path",
@@ -13020,7 +13058,8 @@
         },
         "webhook_id": {
             "$ref": "#/parameters/id",
-            "name": "{WEBHOOK_ID}"
+            "name": "{WEBHOOK_ID}",
+            "type": "string"
         },
         "whitelabel_domain": {
             "in": "path",
