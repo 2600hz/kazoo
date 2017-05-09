@@ -1762,6 +1762,9 @@
                 },
                 "dynamic_flags": {
                     "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "emit_account_id": {
@@ -1788,6 +1791,9 @@
                 "outbound_flags": {
                     "default": [],
                     "description": "List of flags to use when matching resources to route the call",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "ringback": {
@@ -2179,6 +2185,9 @@
                 },
                 "dynamic_flags": {
                     "description": "List of function names (or 'zone') that are called on the Call record to populate the 'flags' array sent to the resource(s) for matching",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "emit_account_id": {
@@ -2205,6 +2214,9 @@
                 "outbound_flags": {
                     "default": [],
                     "description": "List of flags to use when matching resources to route the call",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "ringback": {
