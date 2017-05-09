@@ -28,6 +28,7 @@
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
 
 -define(X_AUTH_TOKEN, "auth_token_header").
+-define(X_AUTH_TOKEN_NOT_REQUIRED, "auth_token_header_or_none").
 
 -spec to_ref_doc() -> 'ok'.
 -spec to_ref_doc(atom()) -> 'ok'.
@@ -44,10 +45,8 @@ api_to_ref_doc({Module, Paths}) ->
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     BaseName = base_module_name(Module),
-    Sections = lists:foldl(fun(K, Acc) -> api_path_to_section(Module, K, Acc) end
-                          ,ref_doc_header(BaseName)
-                          ,Paths
-                          ),
+    PathToSection = fun(K, Acc) -> api_path_to_section(Module, K, Acc) end,
+    Sections = lists:foldl(PathToSection, ref_doc_header(BaseName), Paths),
     Doc = lists:reverse(Sections),
     DocPath = ?REF_PATH(BaseName),
     'ok' = file:write_file(DocPath, Doc);
@@ -56,12 +55,8 @@ api_to_ref_doc(_Module, _Paths, _Version) ->
 
 api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     ModuleName = path_name(Module),
-    lists:foldl(fun(Path, Acc1) ->
-                        methods_to_section(ModuleName, Path, Acc1)
-                end
-               ,Acc
-               ,Paths
-               );
+    F = fun(Path, Acc1) -> methods_to_section(ModuleName, Path, Acc1) end,
+    lists:foldl(F, Acc, Paths);
 api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
 %% #### Fetch/Create/Change
@@ -306,11 +301,8 @@ swagger_params(PathMeta) ->
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        Required ->
-            kz_json:from_list(
-              [{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}
-              ,{<<"required">>, Required}
-              ])
+        true -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
+        false -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
     end.
 
 -spec is_authtoken_required(ne_binary()) -> api_boolean().
@@ -706,12 +698,8 @@ to_swagger_parameters(Paths) ->
                        Param = <<"{",_/binary>> <- split_url(Path)
              ],
     kz_json:from_list(
-      [{<<?X_AUTH_TOKEN>>, kz_json:from_list(
-                             [{<<"name">>, <<"X-Auth-Token">>}
-                             ,{<<"in">>, <<"header">>}
-                             ,{<<"type">>, <<"string">>}
-                             ,{<<"minLength">>, 32}
-                             ])}
+      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
+      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
       ,{<<"id">>, kz_json:from_list([{<<"minLength">>, 32}
                                     ,{<<"maxLength">>, 32}
                                     ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
@@ -721,6 +709,16 @@ to_swagger_parameters(Paths) ->
       ++ [{unbrace_param(Param), kz_json:from_list(def_path_param(Param))}
           || Param <- lists:usort(lists:flatten(Params))
          ]).
+
+parameter_auth_token(IsRequired) ->
+    kz_json:from_list(
+      [{<<"name">>, <<"X-Auth-Token">>}
+      ,{<<"in">>, <<"header">>}
+      ,{<<"type">>, <<"string">>}
+      ,{<<"minLength">>, 32}
+      ,{<<"required">>, IsRequired}
+      ,{<<"description">>, <<"request authentication token">>}
+      ]).
 
 generic_id_path_param(Name) ->
     [{<<"$ref">>, <<"#/parameters/id">>}
