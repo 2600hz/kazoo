@@ -38,8 +38,8 @@
 -record(state, {options = [] :: kz_proplist()
                ,from :: api_ne_binary()
                ,to :: api_ne_binary()
-               ,doc :: kz_json:object()
-               ,filename :: api_ne_binary()
+               ,doc :: api_object()
+               ,filename :: file:filename_all() | 'undefined'
                ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
@@ -212,7 +212,7 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), state()) ->
-                          {iolist() | 'noreply', state()}.
+                          {iodata() | 'noreply', state()}.
 handle_other(<<"PROXY">>, Args, State) ->
     {'noreply', State#state{proxy=Args}};
 handle_other(Verb, Args, State) ->
@@ -385,7 +385,7 @@ reset(State) ->
                ,original_number = 'undefined'
                ,number = 'undefined'
                ,account_id = 'undefined'
-               ,doc='undefined'
+               ,doc = 'undefined'
                }.
 
 -spec check_faxbox(state()) ->
@@ -902,13 +902,18 @@ write_tmp_file(Filename, Extension, Body) ->
             Error
     end.
 
-send_outbound_smtp_fax_error(State) ->
+-spec send_outbound_smtp_fax_error(state()) -> 'ok'.
+send_outbound_smtp_fax_error(#state{account_id=AccountId
+                                   ,from=From
+                                   ,to=To
+                                   ,errors=Errors
+                                   }) ->
     Message = props:filter_empty(
-                [{<<"Account-ID">>, State#state.account_id}
-                ,{<<"Fax-From-Email">>, State#state.from}
-                ,{<<"Fax-To-Email">>, State#state.to}
-                ,{<<"Errors">>, State#state.errors}
+                [{<<"Account-ID">>, AccountId}
+                ,{<<"Fax-From-Email">>, From}
+                ,{<<"Fax-To-Email">>, To}
+                ,{<<"Errors">>, Errors}
                  | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                 ]),
     %% Do not crash if fields were undefined
-    catch kapi_notifications:publish_fax_outbound_smtp_error(Message).
+    kz_amqp_worker:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).

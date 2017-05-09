@@ -106,8 +106,8 @@
 
 -type federator_listener() :: {ne_binary(), pid()}.
 -type federator_listeners() :: [federator_listener()].
--record(state, {
-          queue :: api_binary()
+
+-record(state, {queue :: api_binary()
                ,is_consuming = 'false' :: boolean()
                ,responders = [] :: listener_utils:responders() %% { {EvtCat, EvtName}, Module }
                ,bindings = [] :: bindings() %% {authentication, [{key, value},...]}
@@ -120,10 +120,8 @@
                ,self = self() :: pid()
                ,consumer_key = kz_amqp_channel:consumer_pid()
                ,consumer_tags = [] :: binaries()
-         }).
-
+               }).
 -type state() :: #state{}.
-
 
 -type callback_datum() :: {'server', pid()} |
                           {'queue', api_binary()} |

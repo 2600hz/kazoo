@@ -41,14 +41,14 @@
 
 -type xmpp_client() :: #client{}. %% escalus
 
--record(state, {faxbox_id :: ne_binary()
-               ,printer_id :: ne_binary()
-               ,oauth_app_id :: ne_binary()
-               ,refresh_token :: oauth_refresh_token()
+-record(state, {faxbox_id :: api_ne_binary()
+               ,printer_id :: api_ne_binary()
+               ,oauth_app_id :: api_ne_binary()
+               ,refresh_token :: oauth_refresh_token() | 'undefined'
                ,connected = 'false' :: boolean()
-               ,session :: xmpp_client()
-               ,jid :: ne_binary()
-               ,monitor :: reference()
+               ,session :: xmpp_client() | 'undefined'
+               ,jid :: api_ne_binary()
+               ,monitor :: api_reference()
                }).
 -type state() :: #state{}.
 

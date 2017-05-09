@@ -11,7 +11,7 @@
         ,handle_fax_outbound_smtp_error/1
         ]).
 
--include("../teletype.hrl").
+-include("teletype.hrl").
 
 -define(TEMPLATE_ID, <<"fax_outbound_smtp_error_to_email">>).
 -define(MOD_CONFIG_CAT, <<(?NOTIFY_CONFIG_CAT)/binary, ".", (?TEMPLATE_ID)/binary>>).
@@ -19,8 +19,6 @@
 
 -define(TEMPLATE_MACROS, kz_json:from_list([])).
 
--define(TEMPLATE_TEXT, <<"Error sending fax to faxbox: {{error}}">>).
--define(TEMPLATE_HTML, <<"<html><body>Error sending fax to faxbox: {{error}}</body></html>">>).
 -define(TEMPLATE_SUBJECT, <<"Error Sending Fax">>).
 -define(TEMPLATE_CATEGORY, <<"fax">>).
 -define(TEMPLATE_NAME, <<"Outbound Fax SMTP Error to Email">>).
@@ -34,8 +32,6 @@
 init() ->
     kz_util:put_callid(?MODULE),
     teletype_templates:init(?TEMPLATE_ID, [{'macros', ?TEMPLATE_MACROS}
-                                          ,{'text', ?TEMPLATE_TEXT}
-                                          ,{'html', ?TEMPLATE_HTML}
                                           ,{'subject', ?TEMPLATE_SUBJECT}
                                           ,{'category', ?TEMPLATE_CATEGORY}
                                           ,{'friendly_name', ?TEMPLATE_NAME}
@@ -64,28 +60,28 @@ handle_fax_outbound_smtp_error(JObj) ->
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    Errors=[Error | _] = kz_json:get_value(<<"errors">>, DataJObj),
+    [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
+
     Macros = [{<<"errors">>, Errors}
              ,{<<"error">>, Error}
-             ,{<<"to_email">>, kz_json:get_value(<<"fax_to_email">>, DataJObj)}
-             ,{<<"from_email">>, kz_json:get_value(<<"fax_from_email">>, DataJObj)}
-             ,{<<"account_id">>, kz_json:get_value(<<"account_id">>, DataJObj)}
+             ,{<<"to_email">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)}
+             ,{<<"from_email">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)}
+             ,{<<"account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, DataJObj)}
              ],
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
     {'ok', TemplateMetaJObj} = teletype_templates:fetch_notification(?TEMPLATE_ID, teletype_util:find_account_id(DataJObj)),
 
-    Subject = teletype_util:render_subject(
-                kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
+    Subject = teletype_util:render_subject(kz_json:find(<<"subject">>, [DataJObj, TemplateMetaJObj], ?TEMPLATE_SUBJECT)
                                           ,Macros
-               ),
+                                          ),
 
     EmailsJObj =
         case teletype_util:is_preview(DataJObj) of
             'true' -> DataJObj;
             'false' ->
-                kz_json:set_value(<<"to">>, [kz_json:get_value(<<"fax_from_email">>, DataJObj)], DataJObj)
+                kz_json:set_value(<<"to">>, [kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)], DataJObj)
         end,
 
     Emails = teletype_util:find_addresses(EmailsJObj

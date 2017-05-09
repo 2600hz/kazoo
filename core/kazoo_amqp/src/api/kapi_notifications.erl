@@ -236,13 +236,15 @@
                                          ,<<"Errors">>
                                          ,<<"Account-ID">>
                                          ]).
--define(OPTIONAL_FAX_OUTBOUND_SMTP_ERROR_HEADERS, [<<"Fax-To-Email">>
-                                                       | ?DEFAULT_OPTIONAL_HEADERS
-                                                  ]).
+-define(OPTIONAL_FAX_OUTBOUND_SMTP_ERROR_HEADERS, [<<"Fax-To-Email">> | ?DEFAULT_OPTIONAL_HEADERS]).
 -define(FAX_OUTBOUND_SMTP_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
                                         ,{<<"Event-Name">>, <<"outbound_smtp_fax_error">>}
                                         ]).
--define(FAX_OUTBOUND_SMTP_ERROR_TYPES, []).
+-define(FAX_OUTBOUND_SMTP_ERROR_TYPES, [{<<"Errors">>, fun(L) when is_list(L) -> kz_term:is_not_empty(L);
+                                                          (_) -> 'false'
+                                                       end
+                                        }
+                                       ]).
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
