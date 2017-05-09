@@ -145,7 +145,7 @@ get_balance(DataJObj) ->
     end.
 
 %% amount is expected to be in dollars
--spec get_topup_amount(kz_json:object()) -> ne_binary().
+-spec get_topup_amount(kz_json:object()) -> float().
 get_topup_amount(DataJObj) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     case kz_json:get_float_value(<<"amount">>, DataJObj) of

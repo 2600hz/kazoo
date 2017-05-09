@@ -60,14 +60,7 @@ handle_fax_outbound_smtp_error(JObj) ->
 
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
-    [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
-
-    Macros = [{<<"errors">>, Errors}
-             ,{<<"error">>, Error}
-             ,{<<"to_email">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)}
-             ,{<<"from_email">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)}
-             ,{<<"account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, DataJObj)}
-             ],
+    Macros = build_macros(DataJObj),
 
     RenderedTemplates = teletype_templates:render(?TEMPLATE_ID, Macros, DataJObj),
 
@@ -93,3 +86,14 @@ process_req(DataJObj) ->
         'ok' -> teletype_util:send_update(DataJObj, <<"completed">>);
         {'error', Reason} -> teletype_util:send_update(DataJObj, <<"failed">>, Reason)
     end.
+
+-spec build_macros(kz_json:object()) -> kz_proplist().
+build_macros(DataJObj) ->
+    [Error | _]=Errors = kz_json:get_list_value(<<"errors">>, DataJObj),
+
+    [{<<"errors">>, Errors}
+    ,{<<"error">>, Error}
+    ,{<<"to_email">>, kz_json:get_ne_binary_value(<<"fax_to_email">>, DataJObj)}
+    ,{<<"from_email">>, kz_json:get_ne_binary_value(<<"fax_from_email">>, DataJObj)}
+    ,{<<"account_id">>, kz_json:get_ne_binary_value(<<"account_id">>, DataJObj)}
+    ].
