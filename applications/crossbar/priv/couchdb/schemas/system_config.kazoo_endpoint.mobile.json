@@ -8,6 +8,9 @@
                 "PCMU"
             ],
             "description": "kazoo_endpoint.mobile codecs",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "create_sip_endpoint": {

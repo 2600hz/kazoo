@@ -6937,6 +6937,9 @@
                         "email"
                     ],
                     "description": "acdc agent info fields",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "archive_period_ms": {
@@ -7073,6 +7076,9 @@
                         "bh_authz_subscribe"
                     ],
                     "description": "blackhole autoload modules",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "port": {
@@ -7541,6 +7547,9 @@
                         "milliwatt"
                     ],
                     "description": "cdr ignore apps",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "ignore_loopback_bowout": {
@@ -7712,6 +7721,9 @@
                         "/:version/accounts/:account_id/presence/:reportid"
                     ],
                     "description": "crossbar magic path patterns",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "max_upload_size": {
@@ -8004,6 +8016,9 @@
                         "freeswitch_chatplan"
                     ],
                     "description": "crossbar.freeswitch files to include",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "offline_configuration_key": {
@@ -8015,6 +8030,9 @@
                         "freeswitch_directory_realm"
                     ],
                     "description": "crossbar.freeswitch realm templates to process",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "templates_to_process": {
@@ -8022,6 +8040,9 @@
                         "freeswitch_directory"
                     ],
                     "description": "crossbar.freeswitch templates to process",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "work_dir": {
@@ -8276,6 +8297,9 @@
                         "mailbox_message"
                     ],
                     "description": "datamgr no caching doc types",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "performance": {
@@ -8408,6 +8432,9 @@
                         "context_2"
                     ],
                     "description": "ecallmgr call routing bindings",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "capabilities": {
@@ -8474,6 +8501,9 @@
                         }
                     ],
                     "description": "ecallmgr capabilities",
+                    "items": {
+                        "type": "object"
+                    },
                     "type": "array"
                 },
                 "debug_channel": {
@@ -8545,6 +8575,9 @@
                         }
                     ],
                     "description": "ecallmgr fs cmds",
+                    "items": {
+                        "type": "object"
+                    },
                     "type": "array"
                 },
                 "fs_cmds_wait_ms": {
@@ -8649,6 +8682,9 @@
                         "undeaf-member"
                     ],
                     "description": "ecallmgr publish conference event",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "record_sample_rate": {
@@ -8703,6 +8739,9 @@
                         "context_2"
                     ],
                     "description": "ecallmgr text routing bindings",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "use_bypass_media_after_bridge": {
@@ -8759,6 +8798,9 @@
                         "application/vnd.ms-powerpoint"
                     ],
                     "description": "fax allowed content types",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "cloud_registration_pool_interval": {
@@ -8823,6 +8865,9 @@
                         }
                     ],
                     "description": "fax denied content types",
+                    "items": {
+                        "type": "object"
+                    },
                     "type": "array"
                 },
                 "endpoint_timeout": {
@@ -8995,6 +9040,9 @@
                         "WRONG_CALL_STATE"
                     ],
                     "description": "hangups hangups to monitor",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "ignore_hangup_causes": {
@@ -9010,6 +9058,9 @@
                         "PICKED_OFF"
                     ],
                     "description": "hangups ignore hangup causes",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },
@@ -9060,6 +9111,9 @@
                         "routes"
                     ],
                     "description": "List of filters for rates",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "rate_version": {
@@ -9146,6 +9200,9 @@
                         "webhooks"
                     ],
                     "description": "kapps_controller kapps",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },
@@ -9290,6 +9347,9 @@
                         "PCMU"
                     ],
                     "description": "kazoo_endpoint.mobile codecs",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "create_sip_endpoint": {
@@ -9480,6 +9540,9 @@
                         "127.0.0.0/24"
                     ],
                     "description": "media proxy store acls",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "proxy_store_authenticate": {
@@ -9688,6 +9751,9 @@
                         "teletype_webhook_disabled"
                     ],
                     "description": "teletype modules to start when teletype is started",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "backoff_fudge_ms": {
@@ -9775,6 +9841,9 @@
                         "49"
                     ],
                     "description": "notify.fax_inbound_error_to_email filter error codes",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },
@@ -10040,6 +10109,9 @@
                         "knm_local"
                     ],
                     "description": "number_manager carrier modules",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "classifiers": {
@@ -10086,6 +10158,9 @@
                         "regex"
                     ],
                     "description": "number_manager converters",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "default_force_outbound": {
@@ -10808,6 +10883,9 @@
                         "application/wav"
                     ],
                     "description": "speech asr content types",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "asr_locale": {
@@ -11320,6 +11398,9 @@
                 },
                 "object_types": {
                     "description": "webhooks object types",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },

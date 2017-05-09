@@ -30,6 +30,9 @@
                 "webhooks"
             ],
             "description": "kapps_controller kapps",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         }
     },

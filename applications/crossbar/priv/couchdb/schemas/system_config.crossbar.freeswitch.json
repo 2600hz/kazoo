@@ -9,6 +9,9 @@
                 "freeswitch_chatplan"
             ],
             "description": "crossbar.freeswitch files to include",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "offline_configuration_key": {
@@ -20,6 +23,9 @@
                 "freeswitch_directory_realm"
             ],
             "description": "crossbar.freeswitch realm templates to process",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "templates_to_process": {
@@ -27,6 +33,9 @@
                 "freeswitch_directory"
             ],
             "description": "crossbar.freeswitch templates to process",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "work_dir": {

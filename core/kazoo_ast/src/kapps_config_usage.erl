@@ -222,8 +222,8 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> <<"array">>;
-guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>;
+guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> [<<"string">>];
+guess_type_by_default(?LIST(Head, _Tail)) -> [guess_type_by_default(Head)];
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
 guess_type_by_default(?FLOAT(_F)) -> <<"number">>;
@@ -233,12 +233,15 @@ guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key])) ->
     guess_type(F, 'undefined');
 guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key, Default |_])) ->
     guess_type(F, Default);
+guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', F, [_Key, Default])) ->
+    guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_account', 'type', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
@@ -253,10 +256,10 @@ guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     end,
     kz_json:from_list(
       props:filter_undefined(
-        [{?FIELD_TYPE, Type}
-        ,{?SOURCE, SourceModule}
+        [{?SOURCE, SourceModule}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
+         | type(Type)
         ]));
 
 guess_properties(Document, Source, [Key], Type, Default)
@@ -266,6 +269,15 @@ guess_properties(Document, Source, [Key, ?FIELD_PROPERTIES], Type, Default) ->
     guess_properties(Document, Source, Key, Type, Default);
 guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
     guess_properties(Document, Source, Rest, Type, Default).
+
+type([undefined]) ->
+    [{?FIELD_TYPE, <<"array">>}];
+type([Type]) ->
+    [{?FIELD_TYPE, <<"array">>}
+    ,{<<"items">>, kz_json:from_list([{?FIELD_TYPE, Type}])}
+    ];
+type(Type) ->
+    [{?FIELD_TYPE, Type}].
 
 description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
 fetch_description(DescriptionKey) ->

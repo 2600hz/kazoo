@@ -18,6 +18,9 @@
                 "knm_local"
             ],
             "description": "number_manager carrier modules",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "classifiers": {
@@ -64,6 +67,9 @@
                 "regex"
             ],
             "description": "number_manager converters",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "default_force_outbound": {

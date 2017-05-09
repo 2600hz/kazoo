@@ -39,6 +39,9 @@
                 "teletype_webhook_disabled"
             ],
             "description": "teletype modules to start when teletype is started",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "backoff_fudge_ms": {

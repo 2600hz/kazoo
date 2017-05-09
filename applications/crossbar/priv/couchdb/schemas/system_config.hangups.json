@@ -13,6 +13,9 @@
                 "WRONG_CALL_STATE"
             ],
             "description": "hangups hangups to monitor",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "ignore_hangup_causes": {
@@ -28,6 +31,9 @@
                 "PICKED_OFF"
             ],
             "description": "hangups ignore hangup causes",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         }
     },

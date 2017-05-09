@@ -82,6 +82,9 @@
                 "127.0.0.0/24"
             ],
             "description": "media proxy store acls",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "proxy_store_authenticate": {

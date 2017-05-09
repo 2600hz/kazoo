@@ -45,6 +45,9 @@
                 "routes"
             ],
             "description": "List of filters for rates",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "rate_version": {
