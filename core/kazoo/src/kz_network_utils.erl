@@ -17,7 +17,7 @@
 -export([to_cidr/1
         ,to_cidr/2
         ,verify_cidr/2
-%%        ,expand_cidr/1
+         %%        ,expand_cidr/1
         ]).
 -export([find_nameservers/1
         ,find_nameservers/2
@@ -152,7 +152,10 @@ verify_cidr(IP, CIDR) when is_binary(CIDR) ->
     verify_cidr(IP, kz_util:to_list(CIDR));
 verify_cidr(IP, CIDR) ->
     Block = inet_cidr:parse(CIDR),
-    inet_cidr:contains(Block, inet:parse_address(IP)).
+    case inet:parse_address(IP) of
+        {'ok', IPTuple} -> inet_cidr:contains(Block, IPTuple);
+        {'error', _} -> 'false'
+    end.
 
 %%     %% As per the docs... "This operation should only be used for test purposes"
 %%     %% so, ummm ya, but probably cheaper then my expand bellow followed by a list
