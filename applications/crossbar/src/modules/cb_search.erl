@@ -410,7 +410,7 @@ get_end_key(Context, Type, Value) ->
 %%--------------------------------------------------------------------
 -spec next_binary_key(binary()) -> ne_binary().
 next_binary_key(<<>>) ->
-    <<0>>;
+    <<"\ufff0">>;
 next_binary_key(Bin) ->
     <<Bin/binary, "\ufff0">>.
 
