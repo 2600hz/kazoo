@@ -327,6 +327,7 @@
     "fax.port": "fax port",
     "fax.report_anonymous_system_errors": "fax report anonymous system errors",
     "fax.report_faxbox_system_errors": "fax report faxbox system errors",
+    "fax.report_smtp_errors": "Report SMTP-related errors via notifications",
     "fax.reschedule": "fax reschedule",
     "fax.smtp_max_msg_size": "fax smtp maximum msg size",
     "fax.smtp_port": "fax smtp port",
