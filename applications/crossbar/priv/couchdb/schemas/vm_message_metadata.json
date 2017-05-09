@@ -5,19 +5,16 @@
     "properties": {
         "call_id": {
             "description": "The SIP call-id",
-            "name": "Call ID",
             "type": "string"
         },
         "caller_id_name": {
             "description": "The caller id name",
             "maxLength": 35,
-            "name": "Caller ID Name",
             "type": "string"
         },
         "caller_id_number": {
             "description": "The caller id number",
             "maxLength": 35,
-            "name": "Caller ID Number",
             "type": "string"
         },
         "folder": {
@@ -27,26 +24,21 @@
                 "saved",
                 "new"
             ],
-            "name": "Folder",
             "type": "string"
         },
         "from": {
             "description": "The SIP from header",
-            "name": "From",
             "type": "string"
         },
         "length": {
-            "name": "Length",
             "type": "integer"
         },
         "timestamp": {
             "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
-            "name": "Timestamp",
             "type": "integer"
         },
         "to": {
             "description": "The SIP to header",
-            "name": "To",
             "type": "string"
         }
     },
