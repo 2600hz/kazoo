@@ -42,6 +42,7 @@
         ,<<"Event-Date-Timestamp">>
         ,<<"Event-Name">>
         ,<<"Event-Subclass">>
+        ,<<"Force-Publish-Event-State">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
         ,<<"Hunt-Context">>
@@ -57,6 +58,7 @@
         ,<<"Other-Leg-Direction">>
         ,<<"Other-Leg-RDNIS">>
         ,<<"Other-Leg-Unique-ID">>
+        ,<<"Presence-Call-Direction">>
         ,<<"Publish-Channel-State">>
         ,<<"Record-File-Path">>
         ,<<"Resigning-UUID">>
@@ -73,6 +75,7 @@
         ,<<"context">>
         ,<<"domain">>
         ,<<"expires">>
+        ,<<"from">>
         ,<<"from_user">>
         ,<<"intercepted_by">>
         ,<<"ip">>
@@ -83,6 +86,7 @@
         ,<<"old_node_channel_uuid">>
         ,<<"port">>
         ,<<"profile_name">>
+        ,<<"proto">>
         ,<<"sip_auth_method">>
         ,<<"sip_auth_nonce">>
         ,<<"sip_auth_realm">>
@@ -92,6 +96,7 @@
         ,<<"sip_request_host">>
         ,<<"sip_to_host">>
         ,<<"sip_user_agent">>
+        ,<<"status">>
         ,<<"technology">>
         ,<<"to_user">>
         ,<<"user">>
