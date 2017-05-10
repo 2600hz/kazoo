@@ -10667,6 +10667,7 @@
                         "teletype_fax_inbound_error_to_email",
                         "teletype_fax_inbound_to_email",
                         "teletype_fax_outbound_error_to_email",
+                        "teletype_fax_outbound_smtp_error_to_email",
                         "teletype_fax_outbound_to_email",
                         "teletype_first_occurrence",
                         "teletype_low_balance",
