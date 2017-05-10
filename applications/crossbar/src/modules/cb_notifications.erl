@@ -732,9 +732,19 @@ read(Context, Id, LoadFrom) ->
 
 -spec read_system(cb_context:context(), ne_binary()) -> cb_context:context().
 read_system(Context, Id) ->
-    crossbar_doc:load(Id
-                     ,cb_context:set_account_db(Context, ?KZ_CONFIG_DB)
-                     ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())).
+    Context1 = crossbar_doc:load(Id
+                                ,cb_context:set_account_db(Context, ?KZ_CONFIG_DB)
+                                ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
+                                ),
+    case {cb_context:resp_error_code(Context1)
+         ,cb_context:resp_status(Context1)
+         }
+    of
+        {404, 'error'} -> Context1;
+        {_Code, 'success'} ->
+            cb_context:store(Context1, 'attachments_db', ?KZ_CONFIG_DB);
+        {_Code, _status} -> Context1
+    end.
 
 -spec read_account(cb_context:context(), ne_binary(), load_from()) -> cb_context:context().
 read_account(Context, Id, LoadFrom) ->
@@ -844,9 +854,11 @@ maybe_hard_delete(Context, Id) ->
 -spec maybe_merge_ancestor_attachments(cb_context:context(), ne_binary()) ->
                                               cb_context:context().
 maybe_merge_ancestor_attachments(Context, Id) ->
-    case kz_doc:attachments(cb_context:doc(Context)) of
+    Doc = cb_context:doc(Context),
+    AttachmentsDb = kz_doc:account_db(Doc),
+    case kz_doc:attachments(Doc) of
         'undefined' -> merge_ancestor_attachments(Context, Id);
-        _ -> Context
+        _ -> cb_context:store(Context, 'attachments_db', AttachmentsDb)
     end.
 
 -spec merge_ancestor_attachments(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -854,7 +866,7 @@ maybe_merge_ancestor_attachments(Context, Id) ->
                                         cb_context:context().
 merge_ancestor_attachments(Context, Id) ->
     AccountId = cb_context:account_id(Context),
-    ResellerId = kz_services:find_reseller_id(AccountId),
+    ResellerId = cb_context:reseller_id(Context),
     merge_ancestor_attachments(Context, Id, AccountId, ResellerId).
 
 %% Last attempt was reseller, now try ?KZ_CONFIG_DB
@@ -994,14 +1006,20 @@ maybe_read_template(Context, Id, Accept) ->
 read_template(Context, Id, Accept) ->
     Doc = cb_context:fetch(Context, 'db_doc'),
     AttachmentName = attachment_name_by_media_type(Accept),
-    case kz_doc:attachment(Doc, AttachmentName) of
-        'undefined' ->
+    case {kz_doc:attachment(Doc, AttachmentName)
+         ,cb_context:fetch(Context, 'attachments_db')
+         }
+    of
+        {'undefined', _} ->
             lager:debug("failed to find attachment ~s in ~s", [AttachmentName, Id]),
             crossbar_util:response_faulty_request(Context);
-        _Meta ->
-            lager:debug("found attachment ~s in ~s", [AttachmentName, Id]),
+        {_Attachment, 'undefined'} ->
+            lager:debug("failed to load attachment, attachments_db for ~s in ~s is not set", [AttachmentName, Id]),
+            crossbar_util:response_faulty_request(Context);
+        {_Attachment, AttachmentsDb} ->
+            lager:debug("found attachment ~s in document ~s at ~s", [AttachmentName, Id, AttachmentsDb]),
             cb_context:add_resp_headers(
-              read_account_attachment(Context, Id, AttachmentName)
+              read_account_attachment(Context, AttachmentsDb, Id, AttachmentName)
                                        ,[{<<"Content-Disposition">>, attachment_filename(Id, Accept)}
                                         ,{<<"Content-Type">>, kz_doc:attachment_content_type(Doc, AttachmentName)}
                                         ,{<<"Content-Length">>, kz_doc:attachment_length(Doc, AttachmentName)}
@@ -1015,35 +1033,26 @@ attachment_filename(Id, Accept) ->
     ,$., kz_mime:to_extension(Accept)
     ].
 
--spec read_account_attachment(cb_context:context(), ne_binary(), ne_binary()) -> cb_context:context().
-read_account_attachment(Context, DocId, Name) ->
-    Context1 = crossbar_doc:load_attachment(DocId, Name, ?TYPE_CHECK_OPTION(kz_notification:pvt_type()), Context),
+-spec read_account_attachment(cb_context:context(), ne_binary(), ne_binary(), ne_binary()) -> cb_context:context().
+read_account_attachment(Context, AttachmentsDb, DocId, Name) ->
+    Context1 = crossbar_doc:load_attachment(DocId
+                                           ,Name
+                                           ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
+                                           ,cb_context:set_account_db(Context, AttachmentsDb)
+                                           ),
     case {cb_context:resp_error_code(Context1)
          ,cb_context:resp_status(Context1)
          }
     of
         {404, 'error'} ->
-            lager:debug("~s not found in account, checking for ancestor attachments", [DocId]),
-            maybe_read_other_account_attachment(Context, DocId, Name);
+            lager:debug("template ~s attachment ~s not found in ~s", [DocId, Name, AttachmentsDb]),
+            Context1;
         {_Code, 'success'} ->
             lager:debug("loaded ~s from account database", [DocId]),
             Context1;
         {_Code, _Status} ->
             lager:debug("failed to load ~s: ~p", [DocId, _Code]),
             Context1
-    end.
-
--spec maybe_read_other_account_attachment(cb_context:context(), ne_binary(), ne_binary()) ->
-                                                 cb_context:context().
-maybe_read_other_account_attachment(Context, DocId, Name) ->
-    case cb_context:fetch(Context, 'attachments_db') of
-        'undefined' -> Context;
-        AttachmentsDb ->
-            lager:debug("attachments_db ~s is specified, load from it", [AttachmentsDb]),
-            crossbar_doc:load_attachment(DocId
-                                        ,Name
-                                        ,?TYPE_CHECK_OPTION(kz_notification:pvt_type())
-                                        ,cb_context:set_account_db(Context, AttachmentsDb))
     end.
 
 %%--------------------------------------------------------------------
