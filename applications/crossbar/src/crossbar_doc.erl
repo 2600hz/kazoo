@@ -769,7 +769,7 @@ soft_delete(Context, Rev) ->
 
 -type delete_fun() :: fun((ne_binary(), kz_json:object() | ne_binary()) ->
                                  {'ok', kz_json:object() | kz_json:objects()} |
-                                 kz_data:data_error()).
+                                 kz_datamgr:data_error()).
 
 -spec do_delete(cb_context:context(), kz_json:object(), delete_fun()) ->
                        cb_context:context().
@@ -1140,7 +1140,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_datamgr_errors(kazoo_data:data_errors(), api_ne_binary() | api_ne_binaries(), cb_context:context()) ->
+-spec handle_datamgr_errors(kz_datamgr:data_errors(), api_ne_binary() | api_ne_binaries(), cb_context:context()) ->
                                    cb_context:context().
 handle_datamgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),

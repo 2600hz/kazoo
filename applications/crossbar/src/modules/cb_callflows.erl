@@ -539,7 +539,7 @@ create_metadata(Db, Id, Metadata) ->
 
 -spec fetch_id_from_db(ne_binary(), ne_binary()) ->
                               {'ok', kz_json:object()} |
-                              kazoo_data:data_error().
+                              kz_datamgr:data_error().
 -ifdef(TEST).
 fetch_id_from_db(_Db, <<"{USER_ID}">>) ->
     {'ok', ?TEST_USER};

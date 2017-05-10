@@ -86,7 +86,7 @@
 
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
-             ,data_error/0
+             ,data_error/0, data_errors/0
              ]).
 
 -include("kz_data.hrl").
@@ -110,7 +110,7 @@
 %%--------------------------------------------------------------------
 -spec update_doc_from_file(ne_binary(), atom(), nonempty_string() | ne_binary()) ->
                                   {'ok', kz_json:object()} |
-                                  kazoo_data:data_error().
+                                  data_error().
 update_doc_from_file(DbName, App, File) when ?VALID_DBNAME(DbName) ->
     Path = list_to_binary([code:priv_dir(App), "/couchdb/", File]),
     lager:debug("update db ~s from CouchDB file: ~s", [DbName, Path]),
@@ -141,7 +141,7 @@ update_doc_from_file(DbName, App, File) ->
 %%--------------------------------------------------------------------
 -spec revise_doc_from_file(ne_binary(), atom(), ne_binary() | nonempty_string()) ->
                                   {'ok', kz_json:object()} |
-                                  kazoo_data:data_error().
+                                  data_error().
 revise_doc_from_file(DbName, App, File) ->
     case update_doc_from_file(DbName, App, File) of
         {'error', _E}=R ->
@@ -317,7 +317,7 @@ db_exists_all(DbName) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info() -> {'ok', ne_binaries()} |
-                   kazoo_data:data_error().
+                   data_error().
 db_info() ->
     kzs_db:db_info(kzs_plan:plan()).
 
@@ -328,7 +328,7 @@ db_info() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec db_info(text()) -> {'ok', kz_json:object()} |
-                         kazoo_data:data_error().
+                         data_error().
 db_info(DbName) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_info(kzs_plan:plan(DbName), DbName);
 db_info(DbName) ->
@@ -345,7 +345,7 @@ db_info(DbName) ->
 %%--------------------------------------------------------------------
 -spec design_info(text(), ne_binary()) ->
                          {'ok', kz_json:object()} |
-                         kazoo_data:data_error().
+                         data_error().
 
 design_info(DbName, DesignName) when ?VALID_DBNAME(DbName) ->
     kzs_view:design_info(kzs_plan:plan(DbName, DesignName), DbName, DesignName);
@@ -425,7 +425,7 @@ db_view_update(DbName, Views, Remove) ->
 %%--------------------------------------------------------------------
 -spec db_replicate(kz_proplist() | kz_json:object()) ->
                           {'ok', kz_json:object()} |
-                          kazoo_data:data_error().
+                          data_error().
 db_replicate(Prop) when is_list(Prop) ->
     db_replicate(kz_json:from_list(Prop));
 db_replicate(JObj) ->
@@ -473,11 +473,11 @@ db_compact(DbName) ->
 %% Delete a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
--spec db_delete(text()) -> 'ok' | kazoo_data:data_error().
+-spec db_delete(text()) -> 'ok' | data_error().
 db_delete(DbName) ->
     db_delete(DbName, []).
 
--spec db_delete(text(), db_delete_options()) -> 'ok' | kazoo_data:data_error().
+-spec db_delete(text(), db_delete_options()) -> 'ok' | data_error().
 db_delete(DbName, Options) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_delete(kzs_plan:plan(DbName), DbName, Options);
 db_delete(DbName, Options) ->
@@ -492,8 +492,8 @@ db_delete(DbName, Options) ->
 %% Archive a database (takes an 'encoded' DbName)
 %% @end
 %%--------------------------------------------------------------------
--spec db_archive(ne_binary()) -> 'ok' | kazoo_data:data_error().
--spec db_archive(ne_binary(), ne_binary()) -> 'ok' | kazoo_data:data_error().
+-spec db_archive(ne_binary()) -> 'ok' | data_error().
+-spec db_archive(ne_binary(), ne_binary()) -> 'ok' | data_error().
 db_archive(DbName) ->
     Folder = kapps_config:get(?CONFIG_CAT, <<"default_archive_folder">>, <<"/tmp">>),
     db_archive(DbName, filename:join([<<Folder/binary, "/", DbName/binary, ".json">>])).
@@ -506,7 +506,7 @@ db_archive(DbName, Filename) ->
         {'error', _}=E -> E
     end.
 
--spec db_import(ne_binary(), file:filename_all()) -> 'ok' | kazoo_data:data_error().
+-spec db_import(ne_binary(), file:filename_all()) -> 'ok' | data_error().
 db_import(DbName, ArchiveFile) when ?VALID_DBNAME(DbName) ->
     kzs_db:db_import(kzs_plan:plan(DbName), DbName, ArchiveFile);
 db_import(DbName, ArchiveFile) ->
@@ -527,10 +527,10 @@ db_import(DbName, ArchiveFile) ->
 %%--------------------------------------------------------------------
 -spec open_cache_doc(text(), docid()) ->
                             {'ok', kz_json:object()} |
-                            kazoo_data:data_error().
+                            data_error().
 -spec open_cache_doc(text(), docid(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
-                            kazoo_data:data_error().
+                            data_error().
 open_cache_doc(DbName, {DocType, DocId}) ->
     open_cache_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_cache_doc(DbName, DocId) ->
@@ -548,7 +548,7 @@ open_cache_doc(DbName, DocId, Options) ->
 
 -spec add_to_doc_cache(text(), ne_binary(), kz_json:object()) ->
                               {'ok', kz_json:objects()} |
-                              kazoo_data:data_error().
+                              data_error().
 add_to_doc_cache(DbName, DocId, Doc) when ?VALID_DBNAME(DbName) ->
     kzs_cache:add_to_doc_cache(DbName, DocId, Doc);
 add_to_doc_cache(DbName, DocId, Doc) ->
@@ -559,7 +559,7 @@ add_to_doc_cache(DbName, DocId, Doc) ->
 
 -spec update_cache_doc(text(), ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
                               {'ok', kz_json:object()} |
-                              kazoo_data:data_error().
+                              data_error().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->
@@ -572,7 +572,7 @@ update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
 
 -spec maybe_save_doc(text(), kz_json:object() | 'skip', kz_json:object()) ->
                             {'ok', kz_json:object() | kz_json:objects()} |
-                            kazoo_data:data_error().
+                            data_error().
 maybe_save_doc(_DbName, 'skip', Jobj) ->
     {'ok', Jobj};
 maybe_save_doc(DbName, JObj, _OldJobj) ->
@@ -612,11 +612,11 @@ flush_cache_docs(DbName) ->
 %%--------------------------------------------------------------------
 -spec open_doc(text(), docid()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error() |
+                      data_error() |
                       {'error', 'not_found'}.
 -spec open_doc(text(), docid(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error() |
+                      data_error() |
                       {'error', 'not_found'}.
 
 open_doc(DbName, {DocType, DocId}) ->
@@ -644,11 +644,11 @@ open_doc(DbName, DocId, Options) ->
 %%--------------------------------------------------------------------
 -spec open_docs(text(), docids()) ->
                        {'ok', kz_json:objects()} |
-                       kazoo_data:data_error() |
+                       data_error() |
                        {'error', 'not_found'}.
 -spec open_docs(text(), docids(), kz_proplist()) ->
                        {'ok', kz_json:objects()} |
-                       kazoo_data:data_error() |
+                       data_error() |
                        {'error', 'not_found'}.
 
 open_docs(DbName, DocIds) ->
@@ -670,11 +670,11 @@ open_docs(DbName, DocIds, Options) ->
 %%--------------------------------------------------------------------
 -spec open_cache_docs(text(), docids()) ->
                              {'ok', kz_json:objects()} |
-                             kazoo_data:data_error() |
+                             data_error() |
                              {'error', 'not_found'}.
 -spec open_cache_docs(text(), docids(), kz_proplist()) ->
                              {'ok', kz_json:objects()} |
-                             kazoo_data:data_error() |
+                             data_error() |
                              {'error', 'not_found'}.
 
 open_cache_docs(DbName, DocIds) ->
@@ -691,10 +691,10 @@ open_cache_docs(DbName, DocIds, Options) ->
 
 -spec all_docs(text()) ->
                       {'ok', kz_json:objects()} |
-                      kazoo_data:data_error().
+                      data_error().
 -spec all_docs(text(), kz_proplist()) ->
                       {'ok', kz_json:objects()} |
-                      kazoo_data:data_error().
+                      data_error().
 
 all_docs(DbName) ->
     all_docs(DbName, []).
@@ -707,8 +707,8 @@ all_docs(DbName, Options) ->
         {'error', _}=E -> E
     end.
 
--spec db_list() -> {'ok', ne_binaries()} | kazoo_data:data_error().
--spec db_list(kz_proplist()) -> {'ok', ne_binaries()} | kazoo_data:data_error().
+-spec db_list() -> {'ok', ne_binaries()} | data_error().
+-spec db_list(kz_proplist()) -> {'ok', ne_binaries()} | data_error().
 
 db_list() ->
     db_list([]).
@@ -717,9 +717,9 @@ db_list(Options) ->
     kzs_db:db_list(kzs_plan:plan(), Options).
 
 -spec all_design_docs(text()) -> {'ok', kz_json:objects()} |
-                                 kazoo_data:data_error().
+                                 data_error().
 -spec all_design_docs(text(), kz_proplist()) -> {'ok', kz_json:objects()} |
-                                                kazoo_data:data_error().
+                                                data_error().
 
 all_design_docs(DbName) ->
     all_design_docs(DbName, []).
@@ -740,14 +740,14 @@ all_design_docs(DbName, Options) ->
 %%--------------------------------------------------------------------
 -spec lookup_doc_rev(text(), docid()) ->
                             {'ok', ne_binary()} |
-                            kazoo_data:data_error().
+                            data_error().
 lookup_doc_rev(DbName, {DocType, DocId}) ->
     lookup_doc_rev(DbName, DocId, [{'doc_type', DocType}]);
 lookup_doc_rev(DbName, DocId) ->
     lookup_doc_rev(DbName, DocId, []).
 
 -spec lookup_doc_rev(text(), docid(), kz_proplist()) ->
-                            {'ok', ne_binary()} | kazoo_data:data_error().
+                            {'ok', ne_binary()} | data_error().
 lookup_doc_rev(DbName, {DocType, DocId}, Options) ->
     lookup_doc_rev(DbName, DocId, maybe_add_doc_type(DocType, Options));
 lookup_doc_rev(DbName, DocId, Options) when ?VALID_DBNAME(DbName) ->
@@ -766,7 +766,7 @@ lookup_doc_rev(DbName, DocId, Options) ->
 %%--------------------------------------------------------------------
 -spec save_doc(text(), kz_json:object() | kz_json:objects()) ->
                       {'ok', kz_json:object() | kz_json:objects()} |
-                      kazoo_data:data_error().
+                      data_error().
 save_doc(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []);
 save_doc(DbName, Doc) ->
@@ -781,10 +781,10 @@ save_doc(DbName, Doc) ->
 %%--------------------------------------------------------------------
 -spec ensure_saved(text(), kz_json:object()) ->
                           {'ok', kz_json:object()} |
-                          kazoo_data:data_error().
+                          data_error().
 -spec ensure_saved(text(), kz_json:object(), kz_proplist()) ->
                           {'ok', kz_json:object()} |
-                          kazoo_data:data_error().
+                          data_error().
 
 ensure_saved(DbName, Doc) ->
     ensure_saved(DbName, Doc, []).
@@ -799,7 +799,7 @@ ensure_saved(DbName, Doc, Options) ->
 
 -spec save_doc(text(), kz_json:object(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error().
+                      data_error().
 save_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
     OldSetting = maybe_toggle_publish(Options),
     Result = kzs_doc:save_doc(kzs_plan:plan(DbName, Doc), DbName, Doc, Options),
@@ -829,10 +829,10 @@ maybe_revert_publish('false') ->
 
 -spec save_docs(text(), kz_json:objects()) ->
                        {'ok', kz_json:objects()} |
-                       kazoo_data:data_error().
+                       data_error().
 -spec save_docs(text(), kz_json:objects(), kz_proplist()) ->
                        {'ok', kz_json:objects()} |
-                       kazoo_data:data_error().
+                       data_error().
 
 save_docs(DbName, Docs) when is_list(Docs) ->
     save_docs(DbName, Docs, []).
@@ -860,10 +860,10 @@ save_docs(DbName, Docs, Options) when is_list(Docs) ->
 %%--------------------------------------------------------------------
 -spec update_doc(ne_binary(), docid(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
-                        kazoo_data:data_error().
+                        data_error().
 -spec update_doc(ne_binary(), docid(), kz_proplist(), kz_proplist()) ->
                         {'ok', kz_json:object()} |
-                        kazoo_data:data_error().
+                        data_error().
 
 update_doc(DbName, Id, UpdateProps) ->
     update_doc(DbName, Id, UpdateProps, []).
@@ -890,13 +890,13 @@ update_doc(DbName, Id, UpdateProps, CreateProps) when is_list(UpdateProps),
 %%--------------------------------------------------------------------
 -spec del_doc(text(), kz_json:object() | kz_json:objects() | ne_binary()) ->
                      {'ok', kz_json:objects()} |
-                     kazoo_data:data_error().
+                     data_error().
 del_doc(DbName, Doc) ->
     del_doc(DbName, Doc, []).
 
 -spec del_doc(text(), kz_json:object() | kz_json:objects() | ne_binary(), kz_proplist()) ->
                      {'ok', kz_json:objects()} |
-                     kazoo_data:data_error().
+                     data_error().
 del_doc(DbName, Doc, Options) when is_list(Doc) ->
     del_docs(DbName, Doc, Options);
 del_doc(DbName, Doc, Options) when ?VALID_DBNAME(DbName) ->
@@ -915,13 +915,13 @@ del_doc(DbName, Doc, Options) ->
 %%--------------------------------------------------------------------
 -spec del_docs(text(), kz_json:objects() | ne_binaries()) ->
                       {'ok', kz_json:objects()} |
-                      kazoo_data:data_error().
+                      data_error().
 del_docs(DbName, Docs) ->
     del_docs(DbName, Docs, []).
 
 -spec del_docs(text(), kz_json:objects() | ne_binaries(), kz_proplist()) ->
                       {'ok', kz_json:objects()} |
-                      kazoo_data:data_error().
+                      data_error().
 del_docs(DbName, Docs, Options)
   when is_list(Docs), ?VALID_DBNAME(DbName) ->
     kzs_doc:del_docs(kzs_plan:plan(DbName), DbName, Docs, Options);
@@ -937,11 +937,11 @@ del_docs(DbName, Docs, Options) when is_list(Docs) ->
 
 -spec fetch_attachment(text(), docid(), ne_binary()) ->
                               {'ok', binary()} |
-                              kazoo_data:data_error().
+                              data_error().
 
 -spec fetch_attachment(text(), docid(), ne_binary(), kz_proplist()) ->
                               {'ok', binary()} |
-                              kazoo_data:data_error().
+                              data_error().
 fetch_attachment(DbName, {DocType, DocId}, AName) ->
     fetch_attachment(DbName, DocId, AName, [{'doc_type', DocType}]);
 fetch_attachment(DbName, DocId, AName) ->
@@ -984,11 +984,11 @@ stream_attachment(DbName, DocId, AName, Options, Pid) ->
 
 -spec put_attachment(text(), docid(), ne_binary(), ne_binary()) ->
                             {'ok', kz_json:object()} |
-                            kazoo_data:data_error().
+                            data_error().
 %% Options = [ {'content_type', Type}, {'content_length', Len}, {'rev', Rev}] <- note atoms as keys in proplist
 -spec put_attachment(text(), docid(), ne_binary(), ne_binary(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
-                            kazoo_data:data_error().
+                            data_error().
 put_attachment(DbName, DocId, AName, Contents) ->
     put_attachment(DbName, DocId, AName, Contents, []).
 
@@ -1013,10 +1013,10 @@ put_attachment(DbName, DocId, AName, Contents, Options) ->
 
 -spec delete_attachment(text(), ne_binary(), ne_binary()) ->
                                {'ok', kz_json:object()} |
-                               kazoo_data:data_error().
+                               data_error().
 -spec delete_attachment(text(), ne_binary(), ne_binary(), kz_proplist()) ->
                                {'ok', kz_json:object()} |
-                               kazoo_data:data_error().
+                               data_error().
 delete_attachment(DbName, DocId, AName) ->
     delete_attachment(DbName, DocId, AName, []).
 
@@ -1132,7 +1132,7 @@ add_required_option({Key, Fun}, {JObj, Options}=Acc) ->
 -spec get_results(ne_binary(), ne_binary(), view_options()) -> get_results_return().
 -spec get_results_count(ne_binary(), ne_binary(), view_options()) ->
                                {'ok', integer()} |
-                               kazoo_data:data_error().
+                               data_error().
 get_all_results(DbName, DesignDoc) ->
     get_results(DbName, DesignDoc, []).
 
@@ -1173,9 +1173,9 @@ maybe_create_view(DbName, Plan, DesignDoc, Options) ->
     end.
 
 -spec get_result_keys(ne_binary(), ne_binary()) ->
-                             {'ok', ne_binaries() | [ne_binaries()]} | kazoo_data:data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 -spec get_result_keys(ne_binary(), ne_binary(), view_options()) ->
-                             {'ok', ne_binaries() | [ne_binaries()]} | kazoo_data:data_error().
+                             {'ok', ne_binaries() | [ne_binaries()]} | data_error().
 get_result_keys(DbName, DesignDoc) ->
     get_result_keys(DbName, DesignDoc, []).
 get_result_keys(DbName, DesignDoc, Options) ->
@@ -1192,9 +1192,9 @@ get_result_keys(JObjs) ->
     ].
 
 -spec get_result_ids(ne_binary(), ne_binary()) ->
-                            {'ok', ne_binaries()} | kazoo_data:data_error().
+                            {'ok', ne_binaries()} | data_error().
 -spec get_result_ids(ne_binary(), ne_binary(), view_options()) ->
-                            {'ok', ne_binaries()} | kazoo_data:data_error().
+                            {'ok', ne_binaries()} | data_error().
 get_result_ids(DbName, DesignDoc) ->
     get_result_ids(DbName, DesignDoc, []).
 get_result_ids(DbName, DesignDoc, Options) ->
@@ -1222,7 +1222,7 @@ get_result_ids(JObjs) ->
 -spec get_single_result(ne_binary(), ne_binary(), view_options()) ->
                                {'ok', kz_json:object()} |
                                {'error', 'multiple_results'} |
-                               kazoo_data:data_error().
+                               data_error().
 get_single_result(DbName, DesignDoc, Options) ->
     case get_results(DbName, DesignDoc, Options) of
         {'ok', [Result]} -> {'ok', Result};
@@ -1288,10 +1288,10 @@ maybe_convert_dbname(DbName) ->
 
 -spec copy_doc(ne_binary(), docid(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error().
+                      data_error().
 -spec copy_doc(ne_binary(), docid(), ne_binary(), docid(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error().
+                      data_error().
 copy_doc(FromDB, FromId, ToDB, Options) ->
     copy_doc(FromDB, FromId, ToDB, FromId, Options).
 
@@ -1311,10 +1311,10 @@ copy_doc(FromDB, FromId, ToDB, ToId, Options) ->
 
 -spec move_doc(ne_binary(), docid(), ne_binary(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error().
+                      data_error().
 -spec move_doc(ne_binary(), docid(), ne_binary(), docid(), kz_proplist()) ->
                       {'ok', kz_json:object()} |
-                      kazoo_data:data_error().
+                      data_error().
 move_doc(FromDB, FromId, ToDB, Options) ->
     move_doc(FromDB, FromId, ToDB, FromId, Options).
 
