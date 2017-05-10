@@ -86,7 +86,7 @@
 
 -export_type([view_option/0, view_options/0
              ,view_listing/0, views_listing/0
-             ,data_error/0
+             ,data_error/0, data_errors/0
              ]).
 
 -include("kz_data.hrl").
@@ -527,13 +527,10 @@ db_import(DbName, ArchiveFile) ->
 %%--------------------------------------------------------------------
 -spec open_cache_doc(text(), docid()) ->
                             {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
+                            data_error().
 -spec open_cache_doc(text(), docid(), kz_proplist()) ->
                             {'ok', kz_json:object()} |
-                            data_error() |
-                            {'error', 'not_found'}.
-
+                            data_error().
 open_cache_doc(DbName, {DocType, DocId}) ->
     open_cache_doc(DbName, DocId, [{'doc_type', DocType}]);
 open_cache_doc(DbName, DocId) ->
@@ -561,8 +558,8 @@ add_to_doc_cache(DbName, DocId, Doc) ->
     end.
 
 -spec update_cache_doc(text(), ne_binary(), fun((kz_json:object()) -> kz_json:object() | 'skip')) ->
-                              {'ok', kz_json:object()}
-                                  | data_error().
+                              {'ok', kz_json:object()} |
+                              data_error().
 update_cache_doc(DbName, DocId, Fun) when is_function(Fun, 1) ->
     case open_cache_doc(DbName, DocId) of
         {'ok', JObj} ->

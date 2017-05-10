@@ -174,7 +174,8 @@ load([_|_]=IDs, Context, Options, _RespStatus) ->
     end.
 
 -spec maybe_open_cache_doc(ne_binary(), kazoo_data:docid(), kz_proplist()) ->
-                                  {ok, kz_json:object()} | kz_datamgr:error().
+                                  {'ok', kz_json:object()} |
+                                  kz_datamgr:data_error().
 maybe_open_cache_doc(DbName, DocId, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
         true -> kz_datamgr:open_cache_doc(DbName, DocId, Options);
@@ -182,7 +183,8 @@ maybe_open_cache_doc(DbName, DocId, Options) ->
     end.
 
 -spec maybe_open_cache_docs(ne_binary(), kazoo_data:docids(), kz_proplist()) ->
-                                   {ok, kz_json:objects()} | kz_datamgr:error().
+                                   {'ok', kz_json:objects()} |
+                                   kz_datamgr:data_error().
 maybe_open_cache_docs(DbName, DocIds, Options) ->
     case props:get_is_true('use_cache', Options, 'true') of
         true -> kz_datamgr:open_cache_docs(DbName, DocIds, Options);
@@ -769,7 +771,7 @@ soft_delete(Context, Rev) ->
 
 -type delete_fun() :: fun((ne_binary(), kz_json:object() | ne_binary()) ->
                                  {'ok', kz_json:object() | kz_json:objects()} |
-                                 kz_data:data_error()).
+                                 kz_datamgr:data_error()).
 
 -spec do_delete(cb_context:context(), kz_json:object(), delete_fun()) ->
                        cb_context:context().
@@ -1140,7 +1142,7 @@ version_specific_success(JObjs, Context, _Version) ->
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec handle_datamgr_errors(kazoo_data:data_errors(), api_ne_binary() | api_ne_binaries(), cb_context:context()) ->
+-spec handle_datamgr_errors(kz_datamgr:data_errors(), api_ne_binary() | api_ne_binaries(), cb_context:context()) ->
                                    cb_context:context().
 handle_datamgr_errors('invalid_db_name', _, Context) ->
     lager:debug("datastore ~s not_found", [cb_context:account_db(Context)]),
