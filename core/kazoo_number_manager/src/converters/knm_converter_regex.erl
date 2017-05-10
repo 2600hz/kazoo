@@ -14,12 +14,15 @@
         ,to_npan/1
         ,to_1npan/1
         ]).
+-export([get_e164_converters/0
+        ,get_e164_converters/1
+        ]).
 
 -define(DEFAULT_E164_CONVERTERS
        ,kz_json:from_list_recursive(
-          [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{<<"prefix">>, <<"+1">>}]}
+          [{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
           ,{<<"^011(\\d*)$|^00(\\d*)\$">>, [{<<"prefix">>, <<"+">>}]}
-          ,{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
+          ,{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{<<"prefix">>, <<"+1">>}]}
           ])).
 
 -define(KEY_E164_CONVERTERS, <<"e164_converters">>).

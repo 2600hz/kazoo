@@ -21,7 +21,7 @@
 -export([check_numbers/1]).
 
 -ifdef(TEST).
-- export([soap_request/2]).  %% Only to pass compilation
+-export([soap_request/2]).  %% Only to pass compilation
 -endif.
 
 -include("knm.hrl").
