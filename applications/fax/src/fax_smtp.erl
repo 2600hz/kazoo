@@ -285,7 +285,7 @@ maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
 maybe_system_report(#state{has_smtp_errors='true'
                           ,errors=[_|_]
                           }=State) ->
-    case kapps_config:get(?CONFIG_CAT, <<"report_smtp_errors">>, 'false') of
+    case kapps_config:get(?CONFIG_CAT, <<"report_smtp_errors">>, 'true') of
         'true' -> send_outbound_smtp_fax_error(State);
         'false' -> 'ok'
     end;
