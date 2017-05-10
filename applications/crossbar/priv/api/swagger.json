@@ -9883,6 +9883,11 @@
                     "description": "fax report faxbox system errors",
                     "type": "boolean"
                 },
+                "report_smtp_errors": {
+                    "default": true,
+                    "description": "Report SMTP-related errors via notifications",
+                    "type": "boolean"
+                },
                 "reschedule": {
                     "default": {},
                     "description": "fax reschedule",
@@ -10667,6 +10672,7 @@
                         "teletype_fax_inbound_error_to_email",
                         "teletype_fax_inbound_to_email",
                         "teletype_fax_outbound_error_to_email",
+                        "teletype_fax_outbound_smtp_error_to_email",
                         "teletype_fax_outbound_to_email",
                         "teletype_first_occurrence",
                         "teletype_low_balance",

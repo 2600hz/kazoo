@@ -29,8 +29,6 @@
 -type email_map() :: [{ne_binary(), ne_binaries()}].
 
 -type init_param() :: {'macros', kz_json:object()} |
-                      {'text', ne_binary()} |
-                      {'html', ne_binary()} |
                       {'subject', ne_binary()} |
                       {'category', ne_binary()} |
                       {'friendly_name', ne_binary()} |

@@ -799,16 +799,16 @@ is_preview(DataJObj) ->
 
 %% make timestamp ready to proccess by "date" filter in ErlyDTL
 %% returns a prop list with local, utc time and timezone
--spec fix_timestamp(integer() | api_ne_binary()) -> kz_proplist().
+-spec fix_timestamp(gregorian_seconds() | api_ne_binary()) -> kz_proplist().
 fix_timestamp(Timestamp) ->
     fix_timestamp(Timestamp, <<"GMT">>).
 
--spec fix_timestamp(integer() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+-spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object()) -> kz_proplist().
 fix_timestamp('undefined', Thing) ->
     fix_timestamp(kz_time:current_tstamp(), Thing);
 fix_timestamp(?NE_BINARY=Timestamp, TZ) ->
     fix_timestamp(kz_term:to_integer(Timestamp), TZ);
-fix_timestamp(Timestamp, ?NE_BINARY=TZ) ->
+fix_timestamp(Timestamp, ?NE_BINARY=TZ) when is_integer(Timestamp) ->
     DateTime = calendar:gregorian_seconds_to_datetime(Timestamp),
     ClockTimezone = kapps_config:get_string(<<"servers">>, <<"clock_timezone">>, <<"UTC">>),
 
@@ -826,7 +826,7 @@ fix_timestamp(Timestamp, DataJObj) ->
     TZ = props:get_value(<<"timezone">>, Params),
     fix_timestamp(Timestamp, TZ).
 
--spec fix_timestamp(integer() | api_ne_binary(), api_binary(), api_binary() | kz_json:object()) -> kz_proplist().
+-spec fix_timestamp(gregorian_seconds() | api_ne_binary(), api_binary() | kz_json:object(), api_binary() | kz_json:object()) -> kz_proplist().
 fix_timestamp(Timestamp, 'undefined', Thing) ->
     fix_timestamp(Timestamp, Thing);
 fix_timestamp(Timestamp, TZ, _Thing) ->
@@ -860,19 +860,19 @@ build_callee_id_data(DataJObj) ->
 -spec build_date_called_data(kz_json:object(), api_ne_binary()) -> kz_proplist().
 build_date_called_data(DataJObj, Timezone) ->
     DateCalled = find_date_called(DataJObj),
-    Timezone = kz_json:get_value(<<"timezone">>, DataJObj, Timezone),
+    Timezone = kz_json:get_ne_binary_value(<<"timezone">>, DataJObj, Timezone),
     fix_timestamp(DateCalled, DataJObj, Timezone).
 
--spec find_date_called(kz_json:object()) -> api_ne_binary().
-find_date_called(Timestamp) when is_integer(Timestamp) -> Timestamp;
-find_date_called('undefined') -> kz_time:current_tstamp();
+-spec find_date_called(kz_json:object()) -> gregorian_seconds().
 find_date_called(DataJObj) ->
-    kz_json:get_first_defined(
-      [<<"voicemail_timestamp">>
-      ,<<"fax_timestamp">>
-      ,<<"timestamp">>
-      ]
-                             ,DataJObj
+    kz_term:to_integer(
+      kz_json:get_first_defined([<<"voicemail_timestamp">>
+                                ,<<"fax_timestamp">>
+                                ,<<"timestamp">>
+                                ]
+                               ,DataJObj
+                               ,kz_time:current_tstamp()
+                               )
      ).
 
 -spec build_from_data(kz_json:object()) -> kz_proplist().

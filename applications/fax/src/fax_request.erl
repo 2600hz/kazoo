@@ -32,24 +32,23 @@
 
 -define(POLL_INTERVAL, 5000).
 
--record(state, {
-          call :: kapps_call:call()
+-record(state, {call :: kapps_call:call() | 'undefined'
                ,action = 'receive' :: 'receive' | 'transmit'
-               ,owner_id :: api_binary()
-               ,faxbox_id :: api_binary()
+               ,owner_id :: api_ne_binary()
+               ,faxbox_id :: api_ne_binary()
                ,fax_doc :: api_object()
                ,storage :: fax_storage()
-               ,fax_option :: api_binary()
+               ,fax_option :: api_ne_binary()
                ,fax_result :: api_object()
                ,fax_notify = 'undefined' :: api_object()
                ,fax_store_count = 0 :: integer()
-               ,fax_id = 'undefined' :: api_binary()
-               ,account_id = 'undefined' :: api_binary()
+               ,fax_id = 'undefined' :: api_ne_binary()
+               ,account_id = 'undefined' :: api_ne_binary()
                ,fax_status :: api_object()
                ,page = 0  ::integer()
-               ,status :: binary()
-               ,monitor :: pid_ref()
-         }).
+               ,status :: api_ne_binary()
+               ,monitor :: pid_ref() | 'undefined'
+               }).
 -type state() :: #state{}.
 
 -type handle_cast_return() :: {'noreply', state()} |
@@ -121,9 +120,9 @@ init([Call, JObj, Storage]) ->
     gen_listener:cast(self(), 'start_action'),
     {'ok', #state{call = Call
                  ,action = get_action(JObj)
-                 ,owner_id = kz_json:get_value(<<"Owner-ID">>, JObj)
-                 ,faxbox_id = kz_json:get_value(<<"FaxBox-ID">>, JObj)
-                 ,fax_option = kz_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
+                 ,owner_id = kz_json:get_ne_binary_value(<<"Owner-ID">>, JObj)
+                 ,faxbox_id = kz_json:get_ne_binary_value(<<"FaxBox-ID">>, JObj)
+                 ,fax_option = kz_json:get_ne_binary_value(<<"Fax-T38-Option">>, JObj, 'false')
                  ,account_id = kapps_call:account_id(Call)
                  ,fax_id=Storage#fax_storage.id
                  ,storage=Storage
@@ -203,11 +202,11 @@ handle_cast({'gen_listener',{'is_consuming',_}}, State) ->
     start_receive_fax(State);
 
 handle_cast('store_document', State) ->
-    {'noreply', State#state{status= <<"storing document">>}, ?POLL_INTERVAL};
+    {'noreply', State#state{status = <<"storing document">>}, ?POLL_INTERVAL};
 handle_cast({'store_attachment', FaxDoc}, #state{monitor={_, Ref}}=State) ->
     erlang:demonitor(Ref),
     {'noreply', State#state{fax_doc=FaxDoc
-                           ,status= <<"storing document">>
+                           ,status = <<"storing document">>
                            }, ?POLL_INTERVAL};
 handle_cast('success', State) ->
     notify_success(State),

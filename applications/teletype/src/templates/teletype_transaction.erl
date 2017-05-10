@@ -164,7 +164,7 @@ transaction_data(DataJObj, 'false') ->
      ).
 
 %% amount is expected to be in dollars
--spec get_transaction_amount(kz_json:object()) -> ne_binary().
+-spec get_transaction_amount(kz_json:object()) -> float().
 get_transaction_amount(DataJObj) ->
     IsPreview = teletype_util:is_preview(DataJObj),
     case kz_json:get_float_value(<<"amount">>, DataJObj) of
@@ -191,9 +191,3 @@ calculate_total(JObjs) when is_list(JObjs) ->
       ]
      );
 calculate_total(_) -> 0.
-
-%% maybe_prettify(K, V, Acc) ->
-%%     case kz_json:is_json_object(V) of
-%%         'false' -> props:filter_empty([{K, try kz_term:to_binary(V) catch _:_ -> 'undefined' end} | Acc]);
-%%         'true' -> [{K, kz_json:encode(V, ['pretty'])} | Acc]
-%%     end.

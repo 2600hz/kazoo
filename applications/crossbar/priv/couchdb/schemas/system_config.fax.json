@@ -175,6 +175,11 @@
             "description": "fax report faxbox system errors",
             "type": "boolean"
         },
+        "report_smtp_errors": {
+            "default": true,
+            "description": "Report SMTP-related errors via notifications",
+            "type": "boolean"
+        },
         "reschedule": {
             "default": {},
             "description": "fax reschedule",

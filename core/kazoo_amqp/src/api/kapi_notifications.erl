@@ -19,6 +19,7 @@
         ,fax_inbound_error/1, fax_inbound_error_v/1
         ,fax_outbound/1, fax_outbound_v/1
         ,fax_outbound_error/1, fax_outbound_error_v/1
+        ,fax_outbound_smtp_error/1, fax_outbound_smtp_error_v/1
         ,register/1, register_v/1
         ,deregister/1, deregister_v/1
         ,first_occurrence/1, first_occurrence_v/1
@@ -59,6 +60,7 @@
         ,publish_fax_outbound/1, publish_fax_outbound/2
         ,publish_fax_inbound_error/1, publish_fax_inbound_error/2
         ,publish_fax_outbound_error/1, publish_fax_outbound_error/2
+        ,publish_fax_outbound_smtp_error/1, publish_fax_outbound_smtp_error/2
         ,publish_register/1, publish_register/2
         ,publish_deregister/1, publish_deregister/2
         ,publish_first_occurrence/1, publish_first_occurrence/2
@@ -106,6 +108,7 @@
 -define(NOTIFY_FAX_OUTBOUND, <<"notifications.fax.outbound">>).
 -define(NOTIFY_FAX_INBOUND_ERROR, <<"notifications.fax.inbound_error">>).
 -define(NOTIFY_FAX_OUTBOUND_ERROR, <<"notifications.fax.outbound_error">>).
+-define(NOTIFY_FAX_OUTBOUND_SMTP_ERROR, <<"notifications.fax.outbound_smtp_error">>).
 -define(NOTIFY_DEREGISTER, <<"notifications.sip.deregister">>).
 -define(NOTIFY_FIRST_OCCURRENCE, <<"notifications.sip.first_occurrence">>).
 %%-define(NOTIFY_REGISTER_OVERWRITE, <<"notifications.sip.register_overwrite">>).
@@ -228,6 +231,20 @@
                                    ,{<<"Event-Name">>, <<"outbound_fax_error">>}
                                    ]).
 -define(FAX_OUTBOUND_ERROR_TYPES, []).
+
+-define(FAX_OUTBOUND_SMTP_ERROR_HEADERS, [<<"Fax-From-Email">>
+                                         ,<<"Errors">>
+                                         ,<<"Account-ID">>
+                                         ]).
+-define(OPTIONAL_FAX_OUTBOUND_SMTP_ERROR_HEADERS, [<<"Fax-To-Email">> | ?DEFAULT_OPTIONAL_HEADERS]).
+-define(FAX_OUTBOUND_SMTP_ERROR_VALUES, [{<<"Event-Category">>, <<"notification">>}
+                                        ,{<<"Event-Name">>, <<"outbound_smtp_fax_error">>}
+                                        ]).
+-define(FAX_OUTBOUND_SMTP_ERROR_TYPES, [{<<"Errors">>, fun(L) when is_list(L) -> kz_term:is_not_empty(L);
+                                                          (_) -> 'false'
+                                                       end
+                                        }
+                                       ]).
 
 %% Notify Deregister
 -define(DEREGISTER_HEADERS, [<<"Username">>, <<"Realm">>, <<"Account-ID">>]).
@@ -583,6 +600,8 @@ headers(<<"fax_outbound_to_email">>) ->
     ?FAX_OUTBOUND_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_HEADERS;
 headers(<<"fax_outbound_error_to_email">>) ->
     ?FAX_OUTBOUND_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_ERROR_HEADERS;
+headers(<<"fax_outbound_smtp_error">>) ->
+    ?FAX_OUTBOUND_SMTP_ERROR_HEADERS ++ ?OPTIONAL_FAX_OUTBOUND_SMTP_ERROR_HEADERS;
 headers(<<"low_balance">>) ->
     ?LOW_BALANCE_HEADERS ++ ?OPTIONAL_LOW_BALANCE_HEADERS;
 headers(<<"new_account">>) ->
@@ -762,6 +781,24 @@ fax_outbound_error(JObj) -> fax_outbound_error(kz_json:to_proplist(JObj)).
 fax_outbound_error_v(Prop) when is_list(Prop) ->
     kz_api:validate(Prop, ?FAX_OUTBOUND_ERROR_HEADERS, ?FAX_OUTBOUND_ERROR_VALUES, ?FAX_OUTBOUND_ERROR_TYPES);
 fax_outbound_error_v(JObj) -> fax_outbound_error_v(kz_json:to_proplist(JObj)).
+
+%%--------------------------------------------------------------------
+%% @doc
+%% Takes proplist, creates JSON string or error
+%% @end
+%%--------------------------------------------------------------------
+-spec fax_outbound_smtp_error(api_terms()) -> api_formatter_return().
+fax_outbound_smtp_error(Prop) when is_list(Prop) ->
+    case fax_outbound_smtp_error_v(Prop) of
+        'true' -> kz_api:build_message(Prop, ?FAX_OUTBOUND_SMTP_ERROR_HEADERS, ?OPTIONAL_FAX_OUTBOUND_SMTP_ERROR_HEADERS);
+        'false' -> {'error', "Proplist failed validation for outbound_smtp_fax_error"}
+    end;
+fax_outbound_smtp_error(JObj) -> fax_outbound_smtp_error(kz_json:to_proplist(JObj)).
+
+-spec fax_outbound_smtp_error_v(api_terms()) -> boolean().
+fax_outbound_smtp_error_v(Prop) when is_list(Prop) ->
+    kz_api:validate(Prop, ?FAX_OUTBOUND_SMTP_ERROR_HEADERS, ?FAX_OUTBOUND_SMTP_ERROR_VALUES, ?FAX_OUTBOUND_SMTP_ERROR_TYPES);
+fax_outbound_smtp_error_v(JObj) -> fax_outbound_smtp_error_v(kz_json:to_proplist(JObj)).
 
 %%--------------------------------------------------------------------
 %% @doc Register (unregister is a key word) - see wiki
@@ -1271,6 +1308,7 @@ skel_v(JObj) -> skel_v(kz_json:to_proplist(JObj)).
                        'new_fax' |
                        'inbound_fax_error' |
                        'outbound_fax_error' |
+                       'outbound_smtp_fax_error' |
                        'fax_error' |
                        'register' |
                        'deregister' |
@@ -1333,6 +1371,9 @@ bind_to_q(Q, ['inbound_fax_error'|T]) ->
     bind_to_q(Q, T);
 bind_to_q(Q, ['outbound_fax_error'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_ERROR),
+    bind_to_q(Q, T);
+bind_to_q(Q, ['outbound_smtp_fax_error'|T]) ->
+    'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_OUTBOUND_SMTP_ERROR),
     bind_to_q(Q, T);
 bind_to_q(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:bind_q_to_notifications(Q, ?NOTIFY_FAX_INBOUND_ERROR),
@@ -1450,6 +1491,9 @@ unbind_q_from(Q, ['inbound_fax_error'|T]) ->
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['outbound_fax_error'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
+    unbind_q_from(Q, T);
+unbind_q_from(Q, ['outbound_smtp_fax_error'|T]) ->
+    'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_SMTP_ERROR),
     unbind_q_from(Q, T);
 unbind_q_from(Q, ['fax_error'|T]) ->
     'ok' = amqp_util:unbind_q_from_notifications(Q,?NOTIFY_FAX_OUTBOUND_ERROR),
@@ -1596,6 +1640,13 @@ publish_fax_outbound_error(JObj) -> publish_fax_outbound_error(JObj, ?DEFAULT_CO
 publish_fax_outbound_error(Fax, ContentType) ->
     {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_ERROR_VALUES, fun fax_outbound_error/1),
     amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_ERROR, Payload, ContentType).
+
+-spec publish_fax_outbound_smtp_error(api_terms()) -> 'ok'.
+-spec publish_fax_outbound_smtp_error(api_terms(), ne_binary()) -> 'ok'.
+publish_fax_outbound_smtp_error(JObj) -> publish_fax_outbound_smtp_error(JObj, ?DEFAULT_CONTENT_TYPE).
+publish_fax_outbound_smtp_error(Fax, ContentType) ->
+    {'ok', Payload} = kz_api:prepare_api_payload(Fax, ?FAX_OUTBOUND_SMTP_ERROR_VALUES, fun fax_outbound_smtp_error/1),
+    amqp_util:notifications_publish(?NOTIFY_FAX_OUTBOUND_SMTP_ERROR, Payload, ContentType).
 
 -spec publish_register(api_terms()) -> 'ok'.
 -spec publish_register(api_terms(), ne_binary()) -> 'ok'.

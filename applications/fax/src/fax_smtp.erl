@@ -38,14 +38,15 @@
 -record(state, {options = [] :: kz_proplist()
                ,from :: api_ne_binary()
                ,to :: api_ne_binary()
-               ,doc :: kz_json:object()
-               ,filename :: api_ne_binary()
+               ,doc :: api_object()
+               ,filename :: file:filename_all() | 'undefined'
                ,content_type :: api_ne_binary()
                ,peer_ip :: peer()
                ,owner_id :: api_binary()
                ,owner_email :: api_binary()
                ,faxbox_email :: api_binary()
                ,faxbox :: api_object()
+               ,has_smtp_errors = 'false' :: boolean()
                ,errors = [] :: ne_binaries()
                ,original_number :: api_binary()
                ,number :: api_binary()
@@ -147,7 +148,7 @@ handle_RCPT_extension(Extension, _State) ->
                          {'ok', string(), state()} |
                          {'error', string(), state()}.
 handle_DATA(From, To, <<>>, State) ->
-    lager:debug("552 Message too small. From ~p to ~p", [From,To]),
+    lager:debug("552 Message too small. From ~p to ~p", [From, To]),
     {'error', "552 Message too small", State};
 handle_DATA(From, To, Data, #state{from='undefined'}=State) ->
     handle_DATA(From, To, Data, State#state{from=From});
@@ -183,7 +184,9 @@ handle_DATA(From, To, Data, #state{options=Options}=State) ->
         _What:_Why ->
             lager:debug("Message decode FAILED with ~p:~p", [_What, _Why]),
             handle_DATA_exception(Options, Reference, Data),
-            {'error', "554 Message decode failed", State#state{errors=[<<"Message decode failed">>]}}
+            {'error', "554 Message decode failed", State#state{errors=[<<"Message decode failed">>]
+                                                              ,has_smtp_errors='true'
+                                                              }}
     end.
 
 -spec handle_DATA_exception(kz_proplist(), list(), binary()) -> 'ok'.
@@ -212,7 +215,7 @@ handle_VRFY(_Address, State) ->
     {'error', "252 VRFY disabled by policy, just send some mail", State}.
 
 -spec handle_other(binary(), binary(), state()) ->
-                          {iolist() | 'noreply', state()}.
+                          {iodata() | 'noreply', state()}.
 handle_other(<<"PROXY">>, Args, State) ->
     {'noreply', State#state{proxy=Args}};
 handle_other(Verb, Args, State) ->
@@ -277,6 +280,13 @@ handle_message(#state{filename=Filename
 maybe_system_report(#state{faxbox='undefined', account_id='undefined'}=State) ->
     case kapps_config:get(?CONFIG_CAT, <<"report_anonymous_system_errors">>, 'false') of
         'true' -> system_report(State);
+        'false' -> 'ok'
+    end;
+maybe_system_report(#state{has_smtp_errors='true'
+                          ,errors=[_|_]
+                          }=State) ->
+    case kapps_config:get(?CONFIG_CAT, <<"report_smtp_errors">>, 'true') of
+        'true' -> send_outbound_smtp_fax_error(State);
         'false' -> 'ok'
     end;
 maybe_system_report(State) ->
@@ -384,7 +394,7 @@ reset(State) ->
                ,original_number = 'undefined'
                ,number = 'undefined'
                ,account_id = 'undefined'
-               ,doc='undefined'
+               ,doc = 'undefined'
                }.
 
 -spec check_faxbox(state()) ->
@@ -403,7 +413,9 @@ check_faxbox(#state{to=To}=State) ->
              );
         _ ->
             lager:debug("invalid address"),
-            {'error', "554 Not Found", State#state{errors=[<<"invalid address">>]}}
+            {'error', "554 Not Found", State#state{errors=[<<"invalid address">>]
+                                                  ,has_smtp_errors='true'
+                                                  }}
     end.
 
 -spec check_number(state()) ->
@@ -710,7 +722,9 @@ process_message(<<"multipart">>, Multipart, _Headers, _Parameters, Body, #state{
             process_parts(Parts, State);
         A ->
             lager:debug("missed processing ~p", [A]),
-            {'ok', State#state{errors=[<<"invalid body">> | Errors]}}
+            {'ok', State#state{errors=[<<"invalid body">> | Errors]
+                              ,has_smtp_errors='true'
+                              }}
     end;
 process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
     lager:debug("skipping ~s/~s",[_Type, _SubType]),
@@ -720,7 +734,9 @@ process_message(_Type, _SubType, _Headers, _Parameters, _Body, State) ->
 process_parts([], #state{filename='undefined'
                         ,errors=Errors
                         }=State) ->
-    {'ok', State#state{errors=[?ERROR_NO_VALID_ATTACHMENT | Errors]}};
+    {'ok', State#state{errors=[?ERROR_NO_VALID_ATTACHMENT | Errors]
+                      ,has_smtp_errors='true'
+                      }};
 process_parts([], State) ->
     {'ok', State};
 process_parts([{Type, SubType, _Headers, Parameters, BodyPart}
@@ -797,9 +813,12 @@ process_part(CT, Body, State) ->
 -spec maybe_ignore_no_valid_attachment(state()) -> state().
 maybe_ignore_no_valid_attachment(#state{filename='undefined'}=State) -> State;
 maybe_ignore_no_valid_attachment(#state{errors=Errors}=State) ->
-    NewErrors = [Error || Error <- Errors
-                              ,Error =/= ?ERROR_NO_VALID_ATTACHMENT],
-    State#state{errors=NewErrors}.
+    NewErrors = [Error || Error <- Errors,
+                          Error =/= ?ERROR_NO_VALID_ATTACHMENT
+                ],
+    State#state{errors=NewErrors
+               ,has_smtp_errors='true'
+               }.
 
 -spec is_allowed_content_type(ne_binary()) -> boolean().
 is_allowed_content_type(CT) ->
@@ -900,3 +919,19 @@ write_tmp_file(Filename, Extension, Body) ->
             lager:debug("error writing file ~s : ~p", [Filename, Error]),
             Error
     end.
+
+-spec send_outbound_smtp_fax_error(state()) -> 'ok'.
+send_outbound_smtp_fax_error(#state{account_id=AccountId
+                                   ,from=From
+                                   ,to=To
+                                   ,errors=Errors
+                                   }) ->
+    Message = props:filter_empty(
+                [{<<"Account-ID">>, AccountId}
+                ,{<<"Fax-From-Email">>, From}
+                ,{<<"Fax-To-Email">>, To}
+                ,{<<"Errors">>, Errors}
+                 | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
+                ]),
+    %% Do not crash if fields were undefined
+    kz_amqp_worker:cast(Message, fun kapi_notifications:publish_fax_outbound_smtp_error/1).
