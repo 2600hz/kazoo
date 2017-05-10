@@ -7,7 +7,6 @@
 %%%   OnNet (Kirill Sysoev github.com/onnet)
 %%%-------------------------------------------------------------------
 -module(cccp_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).

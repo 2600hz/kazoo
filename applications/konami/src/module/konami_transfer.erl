@@ -55,21 +55,21 @@
 -define(WSD_STOP(), ?WSD_ENABLED
         andalso webseq:stop(?WSD_ID)).
 
--record(state, {transferor :: ne_binary()
-               ,transferee :: ne_binary()
-               ,target :: ne_binary() %% this is the real b-leg, if any
-               ,target_a_leg :: api_binary() %% loopback-a
-               ,target_b_leg :: api_binary() %% loopback-b
+-record(state, {transferor :: api_ne_binary()
+               ,transferee :: api_ne_binary()
+               ,target :: api_ne_binary() %% this is the real b-leg, if any
+               ,target_a_leg :: api_ne_binary() %% loopback-a
+               ,target_b_leg :: api_ne_binary() %% loopback-b
                ,target_legs = [] :: ne_binaries()
                ,call :: kapps_call:call()
                ,target_call = kapps_call:new() :: kapps_call:call()
-               ,takeback_dtmf :: ne_binary()
+               ,takeback_dtmf :: api_ne_binary()
                ,transferor_dtmf = <<>> :: binary()
                ,ringback :: api_binary()
                ,moh :: api_binary()
                ,extension :: api_binary()
                ,purgatory_ref :: api_reference()
-               ,event_node :: ne_binary()
+               ,event_node :: api_ne_binary()
                }).
 -type state() :: #state{}.
 
