@@ -679,7 +679,6 @@ open_docs_chunked(DbName, DocIds, Options) ->
 read_chunked(Opener, DbName, DocIds, Options) ->
     read_chunked(Opener, DbName, DocIds, Options, []).
 read_chunked(Opener, DbName, DocIds, Options, Acc) ->
-    %% try lists:split(max_bulk_read(), DocIds) of
     try lists:split(max_bulk_read(), DocIds) of
         {NewDocIds, DocIdsLeft} ->
             NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
