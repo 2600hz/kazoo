@@ -96,6 +96,21 @@ test.%: compile-test
 eunit:
 	ERL_LIBS=$(ELIBS) erl -noshell $(TEST_PA) -eval "_ = cover:start(), cover:compile_beam_directory(\"ebin\"), case eunit:test([`echo ebin/*.beam | sed 's%\.beam ebin/%, %g;s%ebin/%%;s/\.beam//'`], [verbose]) of ok -> cover:export(\"$(PROJECT).coverdata\"), init:stop(); _ -> init:stop(1) end."
 
+COVERDATA=$(PROJECT).coverdata
+COVER_REPORT_DIR="cover"
+
+cover: $(ROOT)/make/cover.mk
+	COVER=1 $(MAKE) eunit
+
+cover-report: $(ROOT)/make/core.mk $(ROOT)/make/cover.mk eunit
+	COVER=1 $(MAKE) -f $(ROOT)/make/core.mk -f $(ROOT)/make/cover.mk cover-report
+
+$(ROOT)/make/cover.mk: $(ROOT)/make/core.mk
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/plugins/cover.mk' -O $(ROOT)/make/cover.mk
+
+$(ROOT)/make/core.mk:
+	wget 'https://raw.githubusercontent.com/ninenines/erlang.mk/master/core/core.mk' -O $(ROOT)/make/core.mk
+
 proper: ERLC_OPTS += -DPROPER
 proper: compile-test test
 
