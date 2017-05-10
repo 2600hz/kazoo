@@ -176,7 +176,7 @@
             "type": "boolean"
         },
         "report_smtp_errors": {
-            "default": false,
+            "default": true,
             "description": "Report SMTP-related errors via notifications",
             "type": "boolean"
         },
