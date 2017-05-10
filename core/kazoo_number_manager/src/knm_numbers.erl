@@ -509,8 +509,9 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
         {'error', 'not_found'=_R} ->
             lager:error("error listing numbers for ~s: ~p", [AccountDb, _R]),
             [];
-        {'error', _R} ->
-            lager:error("error listing numbers for ~s: ~p", [AccountDb, _R])
+        {'error', R} ->
+            lager:error("error listing numbers for ~s: ~p", [AccountDb, R]),
+            throw(R)
     end.
 
 
