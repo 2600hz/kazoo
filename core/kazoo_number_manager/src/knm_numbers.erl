@@ -506,8 +506,11 @@ account_listing(AccountDb=?MATCH_ACCOUNT_ENCODED(_,_,_)) ->
             [{kz_doc:id(JObj), kz_json:get_value(<<"value">>, JObj)}
              || JObj <- JObjs
             ];
+        {'error', 'not_found'=_R} ->
+            lager:error("error listing numbers for ~s: ~p", [AccountDb, _R]),
+            [];
         {'error', _R} ->
-            lager:debug("error listing numbers for ~s: ~p", [AccountDb, _R])
+            lager:error("error listing numbers for ~s: ~p", [AccountDb, _R])
     end.
 
 
