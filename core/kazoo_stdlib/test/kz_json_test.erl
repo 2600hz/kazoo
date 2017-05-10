@@ -125,6 +125,13 @@ prop_merge_left() ->
             end
            ).
 
+prop_to_map() ->
+    ?FORALL(JObj, test_object()
+           ,?WHENFAIL(?debugFmt("failed json->map->json on ~p~n", [JObj])
+                     ,kz_json:are_equal(JObj, kz_json:from_map(kz_json:to_map(JObj)))
+                     )
+           ).
+
 test_object() ->
     ?LET(JObj, object(), remove_duplicate_keys(JObj)).
 
@@ -585,9 +592,10 @@ get_ne_json_object_test_() ->
 
 to_map_test_() ->
     [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
-    ,?_assertEqual(?MAP_JSON, kz_json:from_map(?JSON_MAP))
+    ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(?JSON_MAP)))
+
     ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
-    ,?_assertEqual(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON)))
+    ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON))))
     ].
 
 are_equal_test_() ->
