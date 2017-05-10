@@ -233,7 +233,7 @@ get_non_empty(Category, Key, Default, Node) ->
         'false' -> Value
     end.
 
--spec get_ne_binary(config_category(), config_key()) -> api_binary().
+-spec get_ne_binary(config_category(), config_key()) -> api_ne_binary().
 -spec get_ne_binary(config_category(), config_key(), Default) -> ne_binary() | Default.
 -spec get_ne_binary(config_category(), config_key(), Default, ne_binary()) -> ne_binary() | Default.
 

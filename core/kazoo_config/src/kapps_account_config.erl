@@ -12,6 +12,7 @@
 -include("kazoo_config.hrl").
 
 -export([get/2, get/3, get/4
+        ,get_ne_binary/3, get_ne_binary/4
         ,get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
         ,set/4
@@ -106,16 +107,6 @@ get_global_from_doc(Category, Key, Default, JObj) ->
         V -> V
     end.
 
--spec get(account(), ne_binary()) -> kz_json:object().
-get(Account, Config) ->
-    AccountId = account_id(Account),
-    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
-    DocId = config_doc_id(Config),
-    case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
-        {'error', _} -> kz_doc:set_id(kz_json:new(), DocId);
-        {'ok', JObj} -> JObj
-    end.
-
 -spec flush(account()) -> 'ok'.
 -spec flush(account(), ne_binary()) -> 'ok'.
 flush(Account) ->
@@ -126,9 +117,10 @@ flush(Account, Config) ->
     AccountDb = kz_util:format_account_id(Account, 'encoded'),
     kz_datamgr:flush_cache_doc(AccountDb, config_doc_id(Config)).
 
+-spec get(account(), ne_binary()) -> kz_json:object().
 -spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
--spec get(account(), ne_binary(), kz_json:path(), Default) ->
-                 kz_json:json_term() | Default.
+-spec get(account(), ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
+
 -ifdef(TEST).
 get(_, _, _) -> 'undefined'.
 get(_, _, _, Default) -> Default.
@@ -139,16 +131,33 @@ get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
 -endif.
 
--spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) ->
-                 kz_json:object().
+get(Account, Config) ->
+    AccountId = account_id(Account),
+    AccountDb = kz_util:format_account_id(AccountId, 'encoded'),
+    DocId = config_doc_id(Config),
+    case kz_datamgr:open_cache_doc(AccountDb, DocId, [{'cache_failures', ['not_found']}]) of
+        {'error', _} -> kz_doc:set_id(kz_json:new(), DocId);
+        {'ok', JObj} -> JObj
+    end.
+
+-spec get_ne_binary(account(), ne_binary(), kz_json:path()) -> api_ne_binary().
+-spec get_ne_binary(account(), ne_binary(), kz_json:path(), Default) -> ne_binary() | Default.
+get_ne_binary(Account, Config, Path) ->
+    get_ne_binary(Account, Config, Path, undefined).
+get_ne_binary(Account, Config, Path, Default) ->
+    Value = get(Account, Config, Path, Default),
+    case kz_term:is_empty(Value) of
+        true -> Default;
+        false -> kz_term:to_binary(Value)
+    end.
+
+-spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().
 set(Account, Config, Key, Value) ->
     JObj = kz_json:set_value(Key, Value, get(Account, Config)),
-
     AccountDb = account_db(Account),
-    {'ok', JObj1} = kz_datamgr:ensure_saved(AccountDb
-                                           ,update_config_for_saving(AccountDb, JObj)
-                                           ),
-    JObj1.
+    JObj1 = update_config_for_saving(AccountDb, JObj),
+    {'ok', JObj2} = kz_datamgr:ensure_saved(AccountDb, JObj1),
+    JObj2.
 
 -spec update_config_for_saving(ne_binary(), kz_json:object()) -> kz_json:object().
 update_config_for_saving(AccountDb, JObj) ->
