@@ -23,8 +23,6 @@
         ,<<"Caller-Destination-Number">>
         ,<<"Caller-Dialplan">>
         ,<<"Caller-Logical-Direction">>
-        ,<<"Caller-Orig-Caller-ID-Name">>
-        ,<<"Caller-Orig-Caller-ID-Number">>
         ,<<"Caller-Unique-ID">>
         ,<<"Channel-Call-State">>
         ,<<"Channel-Call-UUID">>
@@ -47,10 +45,10 @@
         ,<<"Force-Publish-Event-State">>
         ,<<"FreeSWITCH-Hostname">>
         ,<<"Hangup-Cause">>
-        ,<<"Hunt-Callee-ID-Number">>
         ,<<"Hunt-Context">>
         ,<<"Hunt-Destination-Number">>
         ,<<"Join-Time">>
+        ,<<"Other-Leg-ANI">>
         ,<<"Other-Leg-Call-ID">>
         ,<<"Other-Leg-Callee-ID-Number">>
         ,<<"Other-Leg-Caller-ID-Name">>
@@ -58,6 +56,7 @@
         ,<<"Other-Leg-Channel-Name">>
         ,<<"Other-Leg-Destination-Number">>
         ,<<"Other-Leg-Direction">>
+        ,<<"Other-Leg-RDNIS">>
         ,<<"Other-Leg-Unique-ID">>
         ,<<"Presence-Call-Direction">>
         ,<<"Publish-Channel-State">>
@@ -71,6 +70,7 @@
         ,<<"Unique-ID">>
         ,<<"X-AUTH-IP">>
         ,<<"X-AUTH-PORT">>
+        ,<<"action">>
         ,<<"att_xfer_replaced_by">>
         ,<<"context">>
         ,<<"domain">>
@@ -86,18 +86,15 @@
         ,<<"old_node_channel_uuid">>
         ,<<"port">>
         ,<<"profile_name">>
+        ,<<"sip_auth_method">>
         ,<<"proto">>
         ,<<"sip_auth_nonce">>
         ,<<"sip_auth_realm">>
         ,<<"sip_auth_response">>
         ,<<"sip_auth_uri">>
         ,<<"sip_call_id">>
-        ,<<"sip_loopback_req_uri">>
-        ,<<"sip_req_host">>
-        ,<<"sip_req_uri">>
         ,<<"sip_request_host">>
         ,<<"sip_to_host">>
-        ,<<"sip_to_user">>
         ,<<"sip_user_agent">>
         ,<<"status">>
         ,<<"technology">>
@@ -172,11 +169,9 @@
         ,<<"variable_silence_hits_exhausted">>
         ,<<"variable_sip_auth_realm">>
         ,<<"variable_sip_call_id">>
-        ,<<"variable_sip_contact_user">>
         ,<<"variable_sip_from_tag">>
         ,<<"variable_sip_from_uri">>
         ,<<"variable_sip_from_user">>
-        ,<<"variable_sip_invite_domain">>
         ,<<"variable_sip_loopback_req_uri">>
         ,<<"variable_sip_received_ip">>
         ,<<"variable_sip_received_port">>
