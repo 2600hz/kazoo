@@ -38,7 +38,7 @@
                ,faxbox_id :: api_ne_binary()
                ,fax_doc :: api_object()
                ,storage :: fax_storage()
-               ,fax_option :: api_binary()
+               ,fax_option :: api_ne_binary()
                ,fax_result :: api_object()
                ,fax_notify = 'undefined' :: api_object()
                ,fax_store_count = 0 :: integer()
@@ -46,7 +46,7 @@
                ,account_id = 'undefined' :: api_ne_binary()
                ,fax_status :: api_object()
                ,page = 0  ::integer()
-               ,status :: binary()
+               ,status :: api_ne_binary()
                ,monitor :: pid_ref() | 'undefined'
                }).
 -type state() :: #state{}.
@@ -120,9 +120,9 @@ init([Call, JObj, Storage]) ->
     gen_listener:cast(self(), 'start_action'),
     {'ok', #state{call = Call
                  ,action = get_action(JObj)
-                 ,owner_id = kz_json:get_value(<<"Owner-ID">>, JObj)
-                 ,faxbox_id = kz_json:get_value(<<"FaxBox-ID">>, JObj)
-                 ,fax_option = kz_json:get_value(<<"Fax-T38-Option">>, JObj, 'false')
+                 ,owner_id = kz_json:get_ne_binary_value(<<"Owner-ID">>, JObj)
+                 ,faxbox_id = kz_json:get_ne_binary_value(<<"FaxBox-ID">>, JObj)
+                 ,fax_option = kz_json:get_ne_binary_value(<<"Fax-T38-Option">>, JObj, 'false')
                  ,account_id = kapps_call:account_id(Call)
                  ,fax_id=Storage#fax_storage.id
                  ,storage=Storage
