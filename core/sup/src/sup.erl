@@ -155,7 +155,7 @@ get_host() ->
             print_unresolvable_host(Host)
     end.
 
--spec my_name() -> ne_binary().
+-spec my_name() -> node().
 my_name() ->
     Name = iolist_to_binary(["sup_", kz_binary:rand_hex(2), $@, localhost()]),
     kz_term:to_atom(Name, true).
