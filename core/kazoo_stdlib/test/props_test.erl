@@ -105,29 +105,24 @@ run_proper_test_() ->
     }.
 
 prop_set_value() ->
-    ?FORALL({KV, Props}
-           ,{kz_proplist_property(), kz_proplist()}
-           ,?WHENFAIL(io:format("failed to set value ~p in ~p~n", [KV, Props])
-                     ,is_defined(KV, props:set_value(KV, Props))
+    ?FORALL({KV, Before, After}
+           ,{kz_proplist_property(), kz_proplist(), kz_proplist()}
+           ,?WHENFAIL(?debugFmt("failed: props:is_defined(~p, ~p ++ props:set_value(~p, ~p)).~n", [KV, Before, KV, After])
+                     ,props:is_defined(KV, Before ++ props:set_value(KV, After))
                      )
            ).
 
 prop_set_values() ->
-    ?FORALL({KVs, Props}
-           ,{[kz_proplist_property()], kz_proplist()}
-           ,?WHENFAIL(io:format("failed to set values ~p in ~p~n", [KVs, Props])
+    ?FORALL({KVs, Before, After}
+           ,{list(kz_proplist_property()), kz_proplist(), kz_proplist()}
+           ,?WHENFAIL(?debugFmt("failed to set values ~p ++ ~p ++ ~p~n", [Before, KVs, After])
                      ,begin
-                          NewProps = props:set_values(KVs, Props),
-                          lists:all(fun(KV) -> is_defined(KV, NewProps) end
+                          Props = Before ++ props:set_values(KVs, After),
+                          lists:all(fun(KV) -> props:is_defined(KV, Props) end
                                    ,KVs
                                    )
                       end
                      )
            ).
-
-is_defined({K, _V}, Props) ->
-    'false' =/= lists:keyfind(K, 1, Props);
-is_defined(K, Props) ->
-    'false' =/= lists:keyfind(K, 1, Props).
 
 -endif.
