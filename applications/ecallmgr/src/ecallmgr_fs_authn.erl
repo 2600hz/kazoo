@@ -178,24 +178,26 @@ code_change(_OldVsn, State, _Extra) ->
                                                                      fs_handlecall_ret().
 handle_directory_lookup(Id, Props, Node) ->
     kz_util:put_callid(Id),
-    case props:get_value(<<"sip_auth_method">>, Props) of
-        <<"REGISTER">> ->
-            lager:debug("received fetch request (~s) for sip registration creds from ~s", [Id, Node]);
-        Else ->
-            lager:debug("received fetch request for ~s (~s) user creds from ~s", [Else, Id, Node])
-    end,
-    kazoo_stats:increment_counter("register-attempt"),
-    case {props:get_value(<<"Event-Name">>, Props), props:get_value(<<"action">>, Props, <<"sip_auth">>)} of
-        {<<"REQUEST_PARAMS">>, <<"sip_auth">>} ->
-            Method = props:get_value(<<"sip_auth_method">>, Props, <<"password">>),
-            lookup_user(Node, Id, Method, Props);
-        {<<"REQUEST_PARAMS">>, <<"reverse-auth-lookup">>} ->
-            lookup_user(Node, Id, <<"reverse-lookup">>, Props);
-        _Other ->
-            {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
-            _ = freeswitch:fetch_reply(Node, Id, 'directory', Resp),
-            lager:debug("ignoring authn request from ~s for ~p", [Node, _Other])
+    lager:debug("received fetch request (~s) user creds from ~s", [Id, Node]),
+    case props:get_value(<<"action">>, Props, <<"sip_auth">>) of
+        <<"reverse-auth-lookup">> -> lookup_user(Node, Id, <<"reverse-lookup">>, Props);
+        <<"sip_auth">> -> maybe_lookup_user(Node, Id, Props);
+        _Other -> directory_not_found(Node, Id)
     end.
+
+-spec maybe_lookup_user(atom(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
+maybe_lookup_user(Node, Id, Props) ->
+    case kzd_freeswitch:authorizing_id(Props) /= 'undefined'
+        andalso kzd_freeswitch:authorizing_type(Props) /= 'undefined'
+    of
+        'true' -> lookup_user(Node, Id, <<"password">>, Props);
+        'false' -> directory_not_found(Node, Id)
+    end.
+
+-spec directory_not_found(atom(), ne_binary()) -> fs_handlecall_ret().
+directory_not_found(Node, Id) ->
+    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
+    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Resp)).
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
