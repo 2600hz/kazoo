@@ -82,7 +82,6 @@
         ,<<"old_node_channel_uuid">>
         ,<<"port">>
         ,<<"profile_name">>
-        ,<<"sip_auth_method">>
         ,<<"sip_auth_nonce">>
         ,<<"sip_auth_realm">>
         ,<<"sip_auth_response">>
