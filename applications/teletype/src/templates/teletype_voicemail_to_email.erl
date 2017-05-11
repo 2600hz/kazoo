@@ -60,7 +60,6 @@ init() ->
 handle_new_voicemail(JObj) ->
     'true' = kapi_notifications:voicemail_v(JObj),
     kz_util:put_callid(JObj),
-
     %% Gather data for template
     DataJObj = kz_json:normalize(JObj),
 
@@ -115,6 +114,7 @@ get_owner(VMBox, DataJObj) ->
 -spec process_req(kz_json:object()) -> 'ok'.
 process_req(DataJObj) ->
     teletype_util:send_update(DataJObj, <<"pending">>),
+    timer:sleep(4000),
 
     TemplateData = [{<<"system">>, teletype_util:system_params()}
                     | build_template_data(DataJObj)

@@ -52,6 +52,7 @@ db_classification(?KZ_OAUTH_DB) -> 'system';
 db_classification(?KZ_AUTH_DB) -> 'system';
 db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(?KZ_TASKS_DB) -> 'system';
+db_classification(<<"pending_notifications">>) -> 'system';
 db_classification(?KZ_PROVISIONER_DB) -> 'system'; %% Soon to be deprecated
 db_classification(?KZ_ACCOUNTS_DB) -> 'aggregate';
 db_classification(?KZ_TOKEN_DB) -> 'aggregate';
