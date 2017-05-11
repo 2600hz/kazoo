@@ -778,7 +778,7 @@ maybe_defer_reassign(#kz_amqp_assignment{timestamp=Timestamp
     ets:update_element(?TAB, Timestamp, Props),
     gen_server:cast(?SERVER, {'maybe_reassign', Consumer}).
 
--spec reassign_props(atom()) -> kz_proplist().
+-spec reassign_props(kz_amqp_type()) -> [{integer(), 'undefined' | 'true'}].
 reassign_props('float') ->
     [{#kz_amqp_assignment.channel, 'undefined'}
     ,{#kz_amqp_assignment.channel_ref, 'undefined'}

@@ -25,7 +25,7 @@
 
 -spec authenticate() -> state().
 authenticate() ->
-    URL = ?API_BASE "/api_auth",
+    URL = ?API_BASE ++ "/api_auth",
     Data = kz_json:from_list([{<<"api_key">>, ?API_KEY}]),
     Envelope = create_envelope(Data),
     Resp = make_request([201]
@@ -69,8 +69,8 @@ default_request_headers() ->
 -type response() :: binary() |
                     {'error', binary()}.
 
--spec make_request(expected_codes(), fun(), iolist(), kz_proplist()) -> response().
--spec make_request(expected_codes(), fun(), iolist(), kz_proplist(), binary()) -> response().
+-spec make_request(expected_codes(), fun(), string(), kz_proplist()) -> response().
+-spec make_request(expected_codes(), fun(), string(), kz_proplist(), binary()) -> response().
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders) ->
     handle_response(ExpectedCodes, HTTP(URL, RequestHeaders)).
 make_request(ExpectedCodes, HTTP, URL, RequestHeaders, RequestBody) ->
