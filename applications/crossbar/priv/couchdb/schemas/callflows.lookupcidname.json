@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.lookupcidname",
     "description": "Validator for the Lookup callflow element",
     "properties": {
@@ -9,10 +9,11 @@
             "items": {
                 "type": "string"
             },
-            "required": "true",
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "lists"
+    ],
     "type": "object"
 }

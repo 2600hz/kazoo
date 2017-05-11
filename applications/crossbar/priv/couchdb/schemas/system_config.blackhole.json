@@ -19,6 +19,9 @@
                 "bh_authz_subscribe"
             ],
             "description": "blackhole autoload modules",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "port": {

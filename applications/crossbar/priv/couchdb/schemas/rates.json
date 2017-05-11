@@ -1,21 +1,18 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "rates",
     "description": "Defines a rate for a given prefix",
     "properties": {
         "account_id": {
             "description": "Reseller's account ID",
-            "required": false,
             "type": "string"
         },
         "carrier": {
             "description": "Friendly name for the carrier providing this rate",
-            "required": false,
             "type": "string"
         },
         "description": {
             "description": "Friendly description of the rate",
-            "required": false,
             "type": "string"
         },
         "direction": {
@@ -27,96 +24,82 @@
                 ],
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "internal_rate_cost": {
             "description": "The per-min rate charged by the upstream provider",
             "minimum": 0,
-            "required": false,
             "type": "number"
         },
         "iso_country_code": {
             "description": "Country code this rate applies to",
-            "required": false,
             "type": "string"
         },
         "options": {
             "description": "List of options this rate is good for, to be matched against a customer's options",
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "prefix": {
             "description": "E.164 prefix (ignoring the +)",
-            "required": true,
             "type": "integer"
         },
         "rate_cost": {
             "description": "The per-min rate charged to the downstream customer",
             "minimum": 0,
-            "required": true,
             "type": "number"
         },
         "rate_increment": {
             "description": "The time slice, in seconds, to bill in.",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "rate_minimum": {
             "description": "The minimum time slice, in seconds to bill a call",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "rate_name": {
             "description": "Friendly name of the rate",
-            "required": false,
             "type": "string"
         },
         "rate_nocharge_time": {
             "description": "If the call duration is shorter than this threshold (seconds), the call is not billed",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "rate_surcharge": {
             "description": "The upfront cost of connecting the call",
             "minimum": 0,
-            "required": false,
             "type": "number"
         },
         "rate_version": {
             "description": "Rate version",
-            "required": false,
             "type": "string"
         },
         "ratedeck_id": {
             "description": "ID of the ratedeck this rate belongs to",
-            "required": false,
             "type": "string"
         },
         "routes": {
             "description": "List of regexs that match valid DIDs for this rate",
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "weight": {
             "description": "Ordering against other rates, 1 being most preferred, 100 being least preferred",
             "maximum": 100,
             "minimum": 1,
-            "required": false,
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "prefix",
+        "rate_cost"
+    ],
     "type": "object"
 }

@@ -53,6 +53,9 @@
                 "context_2"
             ],
             "description": "ecallmgr call routing bindings",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "capabilities": {
@@ -119,6 +122,9 @@
                 }
             ],
             "description": "ecallmgr capabilities",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         },
         "debug_channel": {
@@ -191,6 +197,9 @@
                 }
             ],
             "description": "ecallmgr fs cmds",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         },
         "fs_cmds_wait_ms": {
@@ -251,11 +260,9 @@
                 "send_http": {
                     "properties": {
                         "delete_on_success": {
-                            "properties": {
-                                "default": false,
-                                "description": "ecallmgr delete on success",
-                                "type": "boolean"
-                            }
+                            "default": false,
+                            "description": "ecallmgr delete on success",
+                            "type": "boolean"
                         }
                     }
                 }
@@ -297,6 +304,9 @@
                 "undeaf-member"
             ],
             "description": "ecallmgr publish conference event",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "record_sample_rate": {
@@ -351,6 +361,9 @@
                 "context_2"
             ],
             "description": "ecallmgr text routing bindings",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "use_bypass_media_after_bridge": {

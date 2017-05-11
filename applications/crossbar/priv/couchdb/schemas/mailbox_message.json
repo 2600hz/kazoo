@@ -1,23 +1,20 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "mailbox_message",
     "description": "Schema for mailbox message",
     "properties": {
         "call_id": {
             "description": "The SIP call-id",
-            "required": false,
             "type": "string"
         },
         "caller_id_name": {
             "description": "The reported caller id name",
             "maxLength": 35,
-            "required": false,
             "type": "string"
         },
         "caller_id_number": {
             "description": "The reported caller id number",
             "maxLength": 35,
-            "required": false,
             "type": "string"
         },
         "folder": {
@@ -27,36 +24,32 @@
                 "saved",
                 "new"
             ],
-            "required": false,
             "type": "string"
         },
         "from": {
             "description": "The SIP from header",
-            "required": false,
             "type": "string"
         },
         "length": {
-            "required": false,
             "type": "integer"
         },
         "media_id": {
             "description": "The ID of the message media object",
             "maxLength": 39,
             "minLength": 39,
-            "required": true,
             "type": "string"
         },
         "timestamp": {
             "description": "The UTC timestamp, in gregorian seconds, that the message was left on",
-            "required": false,
             "type": "integer"
         },
         "to": {
             "description": "The SIP to header",
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "media_id"
+    ],
     "type": "object"
 }

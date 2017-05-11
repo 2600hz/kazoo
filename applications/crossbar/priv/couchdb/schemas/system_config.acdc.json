@@ -11,6 +11,9 @@
                 "email"
             ],
             "description": "acdc agent info fields",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "archive_period_ms": {

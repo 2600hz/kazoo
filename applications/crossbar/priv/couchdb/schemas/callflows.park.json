@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.park",
     "description": "Validator for the park callflow's data object",
     "properties": {
@@ -35,11 +35,10 @@
             "type": "string"
         },
         "slots": {
-            "default": null,
+            "default": {},
             "description": "Statically define slots and their configuration",
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

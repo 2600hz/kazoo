@@ -1,32 +1,28 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "directories",
     "description": "Allow a caller to search for a user/device by name instead of extension/DID",
     "properties": {
         "confirm_match": {
             "default": true,
             "description": "When one match is found, require caller to confirm the match before connecting",
-            "required": false,
             "type": "boolean"
         },
         "max_dtmf": {
             "default": 0,
             "description": "Cap the number of DTMF characters collected from a caller, 0 for unlimited",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "min_dtmf": {
             "default": 3,
             "description": "How many DTMF characters to collect from a caller before processing the directory",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "name": {
             "description": "The name of the directory",
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "sort_by": {
@@ -36,7 +32,6 @@
                 "first_name",
                 "last_name"
             ],
-            "required": false,
             "type": "string"
         },
         "users": {
@@ -46,10 +41,11 @@
                 "description": "UserId to include in the directory",
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "name"
+    ],
     "type": "object"
 }

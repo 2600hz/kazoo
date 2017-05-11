@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "user_auth_recovery",
     "description": "Send a reset-your-password email via user credentials",
     "properties": {
@@ -7,38 +7,36 @@
             "description": "The account name of the user",
             "maxLength": 64,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "account_realm": {
             "description": "The account realm of the user",
             "maxLength": 64,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "phone_number": {
             "description": "A phone number assigned to the user's account",
             "maxLength": 64,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "ui_url": {
             "description": "The UI's root URL",
             "maxLength": 2000,
             "minLength": 14,
-            "required": true,
             "type": "string"
         },
         "username": {
             "description": "The user's username",
             "maxLength": 254,
             "minLength": 1,
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "ui_url",
+        "username"
+    ],
     "type": "object"
 }

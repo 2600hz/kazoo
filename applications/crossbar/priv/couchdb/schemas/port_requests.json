@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "port_requests",
     "description": "Schema for a port request",
     "properties": {
@@ -8,52 +8,42 @@
             "properties": {
                 "extended_address": {
                     "description": "The suite/floor/apt of the billing address the losing carrier has on record",
-                    "required": false,
                     "type": "string"
                 },
                 "locality": {
                     "description": "The locality (city) of the billing address the losing carrier has on record",
-                    "required": false,
                     "type": "string"
                 },
                 "name": {
                     "description": "The losing carrier billing/account name",
-                    "required": false,
                     "type": "string"
                 },
                 "postal_code": {
                     "description": "The zip/postal code of the billing address the losing carrier has on record",
-                    "required": false,
                     "type": "string"
                 },
                 "region": {
                     "description": "The region (state) of the billing address the losing carrier has on record",
-                    "required": false,
                     "type": "string"
                 },
                 "street_address": {
                     "description": "The address of the billing address the losing carrier has on record",
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "comments": {
             "description": "The history of comments made on a port request",
             "items": {
-                "required": false,
                 "type": "object"
             },
-            "required": false,
             "type": "array"
         },
         "name": {
             "description": "A friendly name for the port request",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "notifications": {
@@ -67,21 +57,17 @@
                             "format": "email",
                             "items": {
                                 "format": "email",
-                                "required": false,
                                 "type": "string"
                             },
-                            "required": false,
                             "type": [
                                 "string",
                                 "array"
                             ]
                         }
                     },
-                    "required": false,
                     "type": "object"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "numbers": {
@@ -92,7 +78,6 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "port_state": {
@@ -107,20 +92,20 @@
                 "rejected",
                 "canceled"
             ],
-            "required": false,
             "type": "string"
         },
         "scheduled_date": {
             "description": "Requested scheduled date in gregorain timestamp",
-            "required": false,
             "type": "integer"
         },
         "transfer_date": {
             "description": "Requested transfer date in gregorain timestamp",
-            "required": false,
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "name",
+        "numbers"
+    ],
     "type": "object"
 }

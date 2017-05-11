@@ -1,24 +1,21 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.collect_dtmf",
     "description": "Validator for the Collect DTMF callflow element",
     "properties": {
         "collection_name": {
             "description": "Store collected DTMF in a named key",
-            "required": false,
             "type": "string"
         },
         "interdigit_timeout": {
             "description": "How long, in milliseconds, to wait for the next DTMF",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "max_digits": {
             "default": 1,
             "description": "How many DTMFs to collect from the caller",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "terminator": {
@@ -38,7 +35,6 @@
                 "#",
                 "*"
             ],
-            "required": false,
             "type": "string"
         },
         "terminators": {
@@ -60,7 +56,6 @@
                 ],
                 "type": "string"
             },
-            "required": false,
             "type": "array",
             "uniqueItems": true
         },
@@ -68,10 +63,8 @@
             "default": 5000,
             "description": "How long, in milliseconds, to wait for the first DTMF",
             "minimum": 1,
-            "required": false,
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

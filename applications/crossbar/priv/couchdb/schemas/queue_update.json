@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "queue_update",
     "description": "Schema for queue update request",
     "properties": {
@@ -9,17 +9,18 @@
                 "login",
                 "logout"
             ],
-            "required": true,
             "type": "string"
         },
         "queue_id": {
             "description": "Queue Identifier",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "action",
+        "queue_id"
+    ],
     "type": "object"
 }

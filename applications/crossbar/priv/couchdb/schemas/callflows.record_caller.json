@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.record_caller",
     "description": "Record the caller's audio stream",
     "properties": {
@@ -25,16 +25,13 @@
             "description": "Time limit, in seconds, for the recording",
             "maximum": 3600,
             "minimum": 5,
-            "required": false,
             "type": "integer"
         },
         "url": {
             "description": "The URL to use when sending the recording for storage",
             "format": "uri",
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

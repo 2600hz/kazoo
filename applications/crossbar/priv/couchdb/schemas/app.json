@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "app",
     "additionalProperties": false,
     "description": "Appstore applications",
@@ -7,14 +7,12 @@
         "api_url": {
             "description": "Application api url",
             "format": "uri",
-            "required": true,
             "type": "string"
         },
         "author": {
             "description": "Application author",
             "maxLength": 64,
             "minLength": 2,
-            "required": true,
             "type": "string"
         },
         "i18n": {
@@ -24,96 +22,90 @@
                     "properties": {
                         "description": {
                             "minLength": 3,
-                            "required": true,
                             "type": "string"
                         },
                         "extended_description": {
-                            "required": false,
                             "type": "string"
                         },
                         "features": {
                             "items": {
-                                "required": false,
                                 "type": "string"
                             },
-                            "required": false,
                             "type": "array"
                         },
                         "label": {
                             "maxLength": 64,
                             "minLength": 3,
-                            "required": true,
                             "type": "string"
                         }
                     },
-                    "required": true,
+                    "required": [
+                        "description",
+                        "label"
+                    ],
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         },
         "icon": {
             "description": "Application icon",
-            "required": true,
             "type": "string"
         },
         "license": {
             "description": "Application license",
-            "required": true,
             "type": "string"
         },
         "masqueradable": {
             "default": true,
             "description": "Whether an application is masqueradable or not",
-            "required": false,
             "type": "boolean"
         },
         "name": {
             "description": "Application name",
             "maxLength": 64,
             "minLength": 3,
-            "required": true,
             "type": "string"
         },
         "price": {
             "description": "Application price",
             "minimum": 0,
-            "required": true,
             "type": "integer"
         },
         "screenshots": {
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "source_url": {
             "description": "Application source url",
             "format": "uri",
-            "required": false,
             "type": "string"
         },
         "tags": {
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "urls": {
-            "required": false,
             "type": "object"
         },
         "version": {
             "description": "Application version",
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "api_url",
+        "author",
+        "i18n",
+        "icon",
+        "license",
+        "name",
+        "price",
+        "version"
+    ],
     "type": "object"
 }

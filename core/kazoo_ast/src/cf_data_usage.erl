@@ -22,18 +22,12 @@
 
 -spec to_schema_docs() -> 'ok'.
 to_schema_docs() ->
-    ensure_ref_dir(),
     _ = [to_schema_doc(M, Usage) || {M, Usage} <- process()],
     'ok'.
 
 -spec to_schema_doc(module()) -> 'ok'.
 to_schema_doc(M) ->
-    ensure_ref_dir(),
     to_schema_doc(M, process(M)).
-
--spec ensure_ref_dir() -> 'ok'.
-ensure_ref_dir() ->
-    'ok' = filelib:ensure_dir(filename:join([code:lib_dir('callflow'), "doc", "ref", ".placeholder"])).
 
 to_schema_doc(M, Usage) ->
     <<"cf_", Base/binary>> = kz_term:to_binary(M),
@@ -141,7 +135,7 @@ guess_type('get_value', ?EMPTY_JSON_OBJECT) ->
 guess_type('get_value', I) when is_integer(I) ->
     <<"integer">>;
 guess_type('get_value', F) when is_float(F) ->
-    <<"float">>;
+    <<"number">>;
 guess_type('get_value', 'undefined') ->
     'undefined';
 guess_type('get_value', A) when is_atom(A) ->
@@ -165,11 +159,11 @@ guess_type('is_false', _) ->
 guess_type('get_integer_value', _) ->
     <<"integer">>;
 guess_type('get_float_value', _) ->
-    <<"float">>;
+    <<"number">>;
 guess_type('get_json_value', _) ->
     <<"object">>;
 guess_type('get_list_value', [<<_/binary>>|_]) ->
-    <<"array(string)">>;
+    <<"array">>;
 guess_type('get_list_value', _L) ->
     <<"array">>;
 guess_type('find', _) ->

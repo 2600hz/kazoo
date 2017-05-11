@@ -8,6 +8,9 @@
                 "PCMU"
             ],
             "description": "kazoo_endpoint.mobile codecs",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "create_sip_endpoint": {
@@ -42,20 +45,18 @@
         "sms": {
             "properties": {
                 "connections": {
-                    "properties": {
+                    "default": {
                         "default": {
-                            "default": {
-                                "exchange": "sms",
-                                "options": {
-                                    "passive": true
-                                },
-                                "route": "sprint",
-                                "type": "topic"
-                            }
-                        },
-                        "description": "kazoo_endpoint.mobile connections",
-                        "type": "object"
-                    }
+                            "exchange": "sms",
+                            "options": {
+                                "passive": true
+                            },
+                            "route": "sprint",
+                            "type": "topic"
+                        }
+                    },
+                    "description": "kazoo_endpoint.mobile connections",
+                    "type": "object"
                 }
             }
         },

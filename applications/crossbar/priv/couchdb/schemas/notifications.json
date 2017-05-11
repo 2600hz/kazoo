@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "notifications",
     "description": "Notifications templates",
     "properties": {
@@ -8,12 +8,10 @@
             "properties": {
                 "email_addresses": {
                     "description": "BCC Email Addresses",
-                    "itmes": {
+                    "items": {
                         "format": "email",
-                        "required": false,
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array"
                 },
                 "type": {
@@ -24,17 +22,14 @@
                     ],
                     "maxLength": 253,
                     "minLength": 2,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "category": {
             "description": "Category of the template, for grouping purposes",
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "cc": {
@@ -44,10 +39,8 @@
                     "description": "CC Email Addresses",
                     "items": {
                         "format": "email",
-                        "required": false,
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array"
                 },
                 "type": {
@@ -56,54 +49,45 @@
                         "specified",
                         "admins"
                     ],
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "enabled": {
             "default": true,
             "description": "Enable notification",
-            "required": false,
             "type": "boolean"
         },
         "friendly_name": {
             "description": "Friendly name of the template",
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "from": {
             "description": "From: email address",
             "format": "email",
-            "required": true,
             "type": "string"
         },
         "macros": {
             "default": {},
             "properties": {},
-            "required": false,
             "type": "object"
         },
         "reply_to": {
             "description": "Reply-To: email address",
             "format": "email",
-            "required": false,
             "type": "string"
         },
         "subject": {
             "description": "Email subject",
             "maxLength": 200,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "template_charset": {
             "default": "utf-8",
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "to": {
@@ -112,10 +96,8 @@
                 "email_addresses": {
                     "items": {
                         "format": "email",
-                        "required": false,
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array"
                 },
                 "type": {
@@ -126,14 +108,16 @@
                     ],
                     "maxLength": 253,
                     "minLength": 2,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": true,
             "type": "object"
         }
     },
-    "required": true,
+    "required": [
+        "from",
+        "subject",
+        "to"
+    ],
     "type": "object"
 }

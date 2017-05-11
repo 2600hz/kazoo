@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "trunkstore",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
     "properties": {
@@ -9,7 +9,6 @@
                 "auth_realm": {
                     "description": "The realm any device in the account will use to authenticate with",
                     "minLength": 1,
-                    "required": true,
                     "type": "string"
                 },
                 "caller_id": {
@@ -17,26 +16,29 @@
                         "cid_name": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         },
                         "cid_number": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "cid_name",
+                        "cid_number"
+                    ],
                     "type": "object"
                 },
                 "credits": {
                     "properties": {
                         "prepay": {
-                            "required": true,
                             "type": "number"
                         }
                     },
-                    "required": true,
+                    "required": [
+                        "prepay"
+                    ],
                     "type": "object"
                 },
                 "emergency_caller_id": {
@@ -44,26 +46,31 @@
                         "cid_name": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         },
                         "cid_number": {
                             "maxLength": 35,
                             "minLength": 1,
-                            "required": true,
                             "type": "string"
                         }
                     },
+                    "required": [
+                        "cid_name",
+                        "cid_number"
+                    ],
                     "type": "object"
                 },
                 "trunks": {
                     "description": "The number of two-way trunks this account has purchased",
                     "minimum": 0,
-                    "required": true,
                     "type": "integer"
                 }
             },
-            "required": true,
+            "required": [
+                "auth_realm",
+                "credits",
+                "trunks"
+            ],
             "type": "object"
         },
         "call_restriction": {
@@ -75,16 +82,13 @@
                             "inherit",
                             "deny"
                         ],
-                        "required": false,
                         "type": "string"
                     }
                 },
-                "required": false,
                 "type": "object"
             },
             "default": {},
             "description": "Trunk level call restrictions for each available number classification",
-            "required": false,
             "type": "object"
         },
         "name": {
@@ -93,7 +97,7 @@
         },
         "servers": {
             "default": [],
-            "desciption": "What servers will be allowed to make/receive calls via this account",
+            "description": "What servers will be allowed to make/receive calls via this account",
             "items": {
                 "properties": {
                     "DIDs": {
@@ -105,16 +109,18 @@
                                             "cid_name": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             },
                                             "cid_number": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             }
                                         },
+                                        "required": [
+                                            "cid_name",
+                                            "cid_number"
+                                        ],
                                         "type": "object"
                                     },
                                     "failover": {
@@ -154,23 +160,24 @@
                                 "enum": [
                                     "password"
                                 ],
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_password": {
                                 "description": "Password of the user@auth_realm",
                                 "minLength": 1,
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_user": {
                                 "description": "Username for authentication",
                                 "minLength": 1,
-                                "required": true,
                                 "type": "string"
                             }
                         },
-                        "required": true,
+                        "required": [
+                            "auth_method",
+                            "auth_password",
+                            "auth_user"
+                        ],
                         "type": "object"
                     },
                     "name": {
@@ -179,93 +186,101 @@
                         "type": "string"
                     },
                     "options": {
-                        "caller_id": {
-                            "properties": {
-                                "cid_name": {
-                                    "maxLength": 35,
-                                    "minLength": 1,
-                                    "required": true,
-                                    "type": "string"
+                        "properties": {
+                            "caller_id": {
+                                "properties": {
+                                    "cid_name": {
+                                        "maxLength": 35,
+                                        "minLength": 1,
+                                        "type": "string"
+                                    },
+                                    "cid_number": {
+                                        "maxLength": 35,
+                                        "minLength": 1,
+                                        "type": "string"
+                                    }
                                 },
-                                "cid_number": {
-                                    "maxLength": 35,
-                                    "minLength": 1,
-                                    "required": true,
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "delay": {
-                            "default": 0,
-                            "description": "The time, in seconds, to wait before attempting to call the server",
-                            "type": "integer"
-                        },
-                        "enabled": {
-                            "default": true,
-                            "description": "Is the server ready for sending and receiving calls",
-                            "type": "boolean"
-                        },
-                        "failover": {
-                            "description": "Route inbound call to another destination if this server fails to handle the call",
-                            "properties": {
-                                "e164": {
-                                    "description": "An E.164 formatted DID to dial for failover",
-                                    "type": "string"
-                                },
-                                "sip": {
-                                    "description": "A SIP URI (sip:user@host) to call for failover",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "force_outbound": {
-                            "default": false,
-                            "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "type": "boolean"
-                        },
-                        "inbound_format": {
-                            "default": "npan",
-                            "description": "Determines how the INVITE is sent to the server",
-                            "enum": [
-                                "e164",
-                                "npan",
-                                "1npan",
-                                "username"
-                            ],
-                            "type": "string"
-                        },
-                        "media_handling": {
-                            "default": "bypass",
-                            "description": "Determine whether the switch should be in the media path or not",
-                            "enum": [
-                                "process",
-                                "bypass"
-                            ],
-                            "type": "string"
-                        },
-                        "progress_timeout": {
-                            "description": "The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call",
-                            "minimum": 1,
-                            "type": "integer"
-                        },
-                        "sip_headers": {
-                            "description": "List of arbitrary SIP headers to add to the INVITE",
-                            "items": {
+                                "required": [
+                                    "cid_name",
+                                    "cid_number"
+                                ],
                                 "type": "object"
                             },
-                            "type": "array"
+                            "delay": {
+                                "default": 0,
+                                "description": "The time, in seconds, to wait before attempting to call the server",
+                                "type": "integer"
+                            },
+                            "enabled": {
+                                "default": true,
+                                "description": "Is the server ready for sending and receiving calls",
+                                "type": "boolean"
+                            },
+                            "failover": {
+                                "description": "Route inbound call to another destination if this server fails to handle the call",
+                                "properties": {
+                                    "e164": {
+                                        "description": "An E.164 formatted DID to dial for failover",
+                                        "type": "string"
+                                    },
+                                    "sip": {
+                                        "description": "A SIP URI (sip:user@host) to call for failover",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "force_outbound": {
+                                "default": false,
+                                "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
+                                "type": "boolean"
+                            },
+                            "ignore_early_media": {
+                                "type": "boolean"
+                            },
+                            "inbound_format": {
+                                "default": "npan",
+                                "description": "Determines how the INVITE is sent to the server",
+                                "enum": [
+                                    "e164",
+                                    "npan",
+                                    "1npan",
+                                    "username"
+                                ],
+                                "type": "string"
+                            },
+                            "media_handling": {
+                                "default": "bypass",
+                                "description": "Determine whether the switch should be in the media path or not",
+                                "enum": [
+                                    "process",
+                                    "bypass"
+                                ],
+                                "type": "string"
+                            },
+                            "progress_timeout": {
+                                "description": "The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call",
+                                "minimum": 1,
+                                "type": "integer"
+                            },
+                            "sip_headers": {
+                                "description": "List of arbitrary SIP headers to add to the INVITE",
+                                "items": {
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "timeout": {
+                                "description": "The time, in seconds, to wait for an answer from the server",
+                                "type": "integer"
+                            }
                         },
-                        "timeout": {
-                            "description": "The time, in seconds, to wait for an answer from the server",
-                            "type": "integer"
-                        }
+                        "type": "object"
                     }
                 },
+                "required": [
+                    "auth"
+                ],
                 "type": "object"
             },
             "type": "array"
@@ -275,8 +290,11 @@
             "enum": [
                 "sys_info"
             ],
-            "required": true,
             "type": "string"
         }
-    }
+    },
+    "required": [
+        "account",
+        "type"
+    ]
 }

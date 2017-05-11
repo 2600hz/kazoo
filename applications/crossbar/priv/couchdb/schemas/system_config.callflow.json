@@ -6,11 +6,9 @@
         "call_recording": {
             "properties": {
                 "extension": {
-                    "properties": {
-                        "default": "mp3",
-                        "description": "callflow extension",
-                        "type": "string"
-                    }
+                    "default": "mp3",
+                    "description": "Default media file format for Callflow modules",
+                    "type": "string"
                 }
             }
         },
@@ -82,102 +80,74 @@
         "voicemail": {
             "properties": {
                 "delete_after_notify": {
-                    "properties": {
-                        "default": false,
-                        "description": "callflow delete after notify",
-                        "type": "boolean"
-                    }
+                    "default": false,
+                    "description": "callflow delete after notify",
+                    "type": "boolean"
                 },
                 "extension": {
-                    "properties": {
-                        "default": "mp3",
-                        "description": "callflow extension",
-                        "type": "string"
-                    }
+                    "default": "mp3",
+                    "description": "Default media file format for Callflow modules",
+                    "type": "string"
                 },
                 "max_box_number_length": {
-                    "properties": {
-                        "default": 15,
-                        "description": "callflow maximum box number length",
-                        "type": "integer"
-                    }
+                    "default": 15,
+                    "description": "callflow maximum box number length",
+                    "type": "integer"
                 },
                 "max_login_attempts": {
-                    "properties": {
-                        "default": 3,
-                        "description": "callflow max login attempts",
-                        "type": "integer"
-                    }
+                    "default": 3,
+                    "description": "callflow max login attempts",
+                    "type": "integer"
                 },
                 "max_message_count": {
-                    "properties": {
-                        "default": 100,
-                        "description": "callflow maximum message count",
-                        "type": "integer"
-                    }
+                    "default": 100,
+                    "description": "callflow maximum message count",
+                    "type": "integer"
                 },
                 "max_message_length": {
-                    "properties": {
-                        "default": 500,
-                        "description": "callflow maximum message length",
-                        "type": "integer"
-                    }
+                    "default": 500,
+                    "description": "callflow maximum message length",
+                    "type": "integer"
                 },
                 "max_pin_length": {
-                    "properties": {
-                        "default": 6,
-                        "description": "callflow maximum pin length",
-                        "type": "integer"
-                    }
+                    "default": 6,
+                    "description": "callflow maximum pin length",
+                    "type": "integer"
                 },
                 "message_retention_duration": {
-                    "properties": {
-                        "default": 93,
-                        "description": "callflow message retention duration",
-                        "type": "integer"
-                    }
+                    "default": 93,
+                    "description": "callflow message retention duration",
+                    "type": "integer"
                 },
                 "migrate_interaccount_delay_ms": {
-                    "properties": {
-                        "default": 2000,
-                        "description": "callflow migrate interaccount delay in milliseconds",
-                        "type": "integer"
-                    }
+                    "default": 2000,
+                    "description": "callflow migrate interaccount delay in milliseconds",
+                    "type": "integer"
                 },
                 "migrate_max_bulk_insert": {
-                    "properties": {
-                        "default": 2000,
-                        "description": "callflow migrate maximum bulk insert",
-                        "type": "integer"
-                    }
+                    "default": 2000,
+                    "description": "callflow migrate maximum bulk insert",
+                    "type": "integer"
                 },
                 "migrate_max_worker": {
-                    "properties": {
-                        "default": 10,
-                        "description": "callflow migrate max worker",
-                        "type": "integer"
-                    }
+                    "default": 10,
+                    "description": "callflow migrate max worker",
+                    "type": "integer"
                 },
                 "min_message_size": {
-                    "properties": {
-                        "default": 500,
-                        "description": "callflow minimum message size",
-                        "type": "integer"
-                    }
+                    "default": 500,
+                    "description": "callflow minimum message size",
+                    "type": "integer"
                 },
                 "save_after_notify": {
-                    "properties": {
-                        "default": false,
-                        "description": "callflow save after notify",
-                        "type": "boolean"
-                    }
+                    "default": false,
+                    "description": "callflow save after notify",
+                    "type": "boolean"
                 },
                 "vm_message_foraward_type": {
-                    "properties": {
-                        "default": "only_forward",
-                        "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
-                        "type": "string"
-                    }
+                    "default": "only_forward",
+                    "description": "Enable or disable the ability to prepend a message when forwarding a voicemail message",
+                    "type": "string"
                 }
             }
         }

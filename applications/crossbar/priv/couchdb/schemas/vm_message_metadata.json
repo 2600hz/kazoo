@@ -1,26 +1,20 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "vm_message_metadata",
     "description": "Schema for a voicemail message metadata",
     "properties": {
         "call_id": {
             "description": "The SIP call-id",
-            "name": "Call ID",
-            "required": false,
             "type": "string"
         },
         "caller_id_name": {
             "description": "The caller id name",
             "maxLength": 35,
-            "name": "Caller ID Name",
-            "required": false,
             "type": "string"
         },
         "caller_id_number": {
             "description": "The caller id number",
             "maxLength": 35,
-            "name": "Caller ID Number",
-            "required": false,
             "type": "string"
         },
         "folder": {
@@ -30,34 +24,23 @@
                 "saved",
                 "new"
             ],
-            "name": "Folder",
-            "required": false,
             "type": "string"
         },
         "from": {
             "description": "The SIP from header",
-            "name": "From",
-            "required": false,
             "type": "string"
         },
         "length": {
-            "name": "Length",
-            "required": false,
             "type": "integer"
         },
         "timestamp": {
             "description": "The UTC timestamp, in gregorian seconds, that the voicemail was left on",
-            "name": "Timestamp",
-            "required": false,
             "type": "integer"
         },
         "to": {
             "description": "The SIP to header",
-            "name": "To",
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
     "type": "object"
 }

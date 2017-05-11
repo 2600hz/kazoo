@@ -1,51 +1,43 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "limits",
     "description": "Limit an account's ability to place concurrent calls using flat rate trunks",
     "properties": {
         "allow_prepay": {
             "default": true,
             "description": "Determines if the account would like to allow per-minute calls if they have no available credit",
-            "required": false,
             "type": "boolean"
         },
         "burst_trunks": {
             "description": "The number of two-way, flat-rate trunks used only if no other trunks are available",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "calls": {
             "description": "A hard limit for the total number calls",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "inbound_trunks": {
             "description": "The number of inbound, flat-rate trunks",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "outbound_trunks": {
             "description": "The number of outbound, flat-rate trunks",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "resource_consuming_calls": {
             "description": "A hard limit for the number of resource consuming calls",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "twoway_trunks": {
             "description": "The number of two-way, flat-rate trunks",
             "minimum": 0,
-            "required": false,
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

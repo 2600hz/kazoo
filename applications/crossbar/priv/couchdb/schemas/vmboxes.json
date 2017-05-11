@@ -1,32 +1,27 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "vmboxes",
     "description": "Schema for a voicemail box",
     "properties": {
         "check_if_owner": {
             "default": true,
             "description": "Determines if when the user calls their own voicemail they should be prompted to sign in",
-            "required": false,
             "type": "boolean"
         },
         "delete_after_notify": {
             "default": false,
-            "description": "Delete the voicemail after the notification has been sent",
-            "required": false,
-            "type": "boolean",
-            "warning": "Voicemail is not stored in the database if this option is selected"
+            "description": "Delete the voicemail after the notification has been sent (Voicemail is not stored in the database if this option is selected)",
+            "type": "boolean"
         },
         "is_setup": {
             "default": false,
             "description": "Determines if the user has completed the initial configuration",
-            "required": false,
             "type": "boolean"
         },
         "mailbox": {
             "description": "The voicemail box number",
             "maxLength": 30,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "media": {
@@ -37,11 +32,9 @@
                     "description": "The ID of a media object that should be used as the unavailable greeting",
                     "maxLength": 32,
                     "minLength": 32,
-                    "required": false,
                     "type": "string"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "media_extension": {
@@ -58,13 +51,11 @@
             "description": "A friendly name for the voicemail box",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "not_configurable": {
             "default": false,
             "description": "Determines if the user can configure this voicemail.",
-            "required": false,
             "type": "boolean"
         },
         "notify": {
@@ -73,7 +64,6 @@
                     "$ref": "notify.callback"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "notify_email_addresses": {
@@ -83,56 +73,50 @@
                 "format": "email",
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "owner_id": {
             "description": "The ID of the user object that 'owns' the voicemail box",
             "maxLength": 32,
             "minLength": 32,
-            "required": false,
             "type": "string"
         },
         "pin": {
             "description": "The pin number for the voicemail box",
             "maxLength": 15,
             "minLength": 4,
-            "required": false,
             "type": "string"
         },
         "require_pin": {
             "default": false,
             "description": "Determines if a pin is required to check the voicemail from the users devices",
-            "required": false,
             "type": "boolean"
         },
         "save_after_notify": {
             "default": false,
-            "description": "Save the voicemail after the notification has been sent",
-            "required": false,
-            "type": "boolean",
-            "warning": "This setting will override delete_after_notify"
+            "description": "Save the voicemail after the notification has been sent (This setting will override delete_after_notify)",
+            "type": "boolean"
         },
         "skip_greeting": {
             "default": false,
             "description": "Determines if the greeting should be skipped",
-            "required": false,
             "type": "boolean"
         },
         "skip_instructions": {
             "default": false,
             "description": "Determines if the instructions after the greeting and prior to composing a message should be played",
-            "required": false,
             "type": "boolean"
         },
         "timezone": {
             "description": "The default timezone",
             "maxLength": 32,
             "minLength": 5,
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "mailbox",
+        "name"
+    ],
     "type": "object"
 }

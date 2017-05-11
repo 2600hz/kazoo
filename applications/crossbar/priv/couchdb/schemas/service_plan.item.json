@@ -1,11 +1,11 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "service_plan.item",
     "description": "Describes a service plan item",
     "properties": {
         "activation_charge": {
             "description": "What to charge when activating an Item",
-            "type": "float"
+            "type": "number"
         },
         "as": {
             "description": "Count Item as if it was another Item",
@@ -21,7 +21,7 @@
         },
         "cumulative_discount_rate": {
             "description": "How much of a discount to apply",
-            "type": "float"
+            "type": "number"
         },
         "discounts": {
             "properties": {
@@ -33,7 +33,7 @@
                         },
                         "rate": {
                             "description": "The discount to apply, up to maximum Items (if applicable)",
-                            "type": "float"
+                            "type": "number"
                         }
                     },
                     "type": "object"
@@ -55,14 +55,14 @@
         },
         "rate": {
             "description": "How much is the item billed, per-item",
-            "type": "float"
+            "type": "number"
         },
         "rates": {
             "description": "Tiers of rates based on quantities",
             "patternProperties": {
                 "^[0-9]+$": {
                     "description": "The rate to charge when under the quantity indicated in the key",
-                    "type": "float"
+                    "type": "number"
                 }
             },
             "type": "object"
@@ -73,7 +73,7 @@
         },
         "single_discount_rate": {
             "description": "How much of a discount to apply, per-item",
-            "type": "float"
+            "type": "number"
         }
     },
     "type": "object"

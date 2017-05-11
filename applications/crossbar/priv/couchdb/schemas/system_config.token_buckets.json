@@ -6,11 +6,9 @@
         "default": {
             "properties": {
                 "max_bucket_tokens": {
-                    "properties": {
-                        "default": 100,
-                        "description": "token_buckets maximum bucket tokens",
-                        "type": "integer"
-                    }
+                    "default": 100,
+                    "description": "token_buckets maximum bucket tokens",
+                    "type": "integer"
                 }
             }
         },

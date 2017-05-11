@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "connectivity",
     "description": "Trunkstore configuration document - this is old stuff; do not recommend building off this if possible",
     "properties": {
@@ -51,7 +51,7 @@
         },
         "servers": {
             "default": [],
-            "desciption": "What servers will be allowed to make/receive calls via this account",
+            "description": "What servers will be allowed to make/receive calls via this account",
             "items": {
                 "properties": {
                     "DIDs": {
@@ -63,16 +63,18 @@
                                             "cid_name": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             },
                                             "cid_number": {
                                                 "maxLength": 35,
                                                 "minLength": 1,
-                                                "required": true,
                                                 "type": "string"
                                             }
                                         },
+                                        "required": [
+                                            "cid_name",
+                                            "cid_number"
+                                        ],
                                         "type": "object"
                                     },
                                     "failover": {
@@ -116,33 +118,30 @@
                                     "IP",
                                     "ip"
                                 ],
-                                "required": true,
                                 "type": "string"
                             },
                             "auth_password": {
                                 "description": "Password of the user@auth_realm",
                                 "minLength": 1,
-                                "required": false,
                                 "type": "string"
                             },
                             "auth_user": {
                                 "description": "Username for authentication",
                                 "minLength": 1,
-                                "required": false,
                                 "type": "string"
                             },
                             "ip": {
                                 "description": "IP (sip) address for this device",
-                                "required": false,
                                 "type": "string"
                             },
                             "port": {
                                 "description": "Port to send SIP traffic for the remote device",
-                                "required": false,
                                 "type": "integer"
                             }
                         },
-                        "required": true,
+                        "required": [
+                            "auth_method"
+                        ],
                         "type": "object"
                     },
                     "name": {
@@ -151,104 +150,109 @@
                         "type": "string"
                     },
                     "options": {
-                        "caller_id": {
-                            "properties": {
-                                "cid_name": {
-                                    "maxLength": 35,
-                                    "minLength": 1,
-                                    "required": true,
-                                    "type": "string"
+                        "properties": {
+                            "caller_id": {
+                                "properties": {
+                                    "cid_name": {
+                                        "maxLength": 35,
+                                        "minLength": 1,
+                                        "type": "string"
+                                    },
+                                    "cid_number": {
+                                        "maxLength": 35,
+                                        "minLength": 1,
+                                        "type": "string"
+                                    }
                                 },
-                                "cid_number": {
-                                    "maxLength": 35,
-                                    "minLength": 1,
-                                    "required": true,
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "delay": {
-                            "default": 0,
-                            "description": "The time, in seconds, to wait before attempting to call the server",
-                            "type": "integer"
-                        },
-                        "enabled": {
-                            "default": true,
-                            "description": "Is the server ready for sending and receiving calls",
-                            "type": "boolean"
-                        },
-                        "failover": {
-                            "description": "Route inbound call to another destination if this server fails to handle the call",
-                            "properties": {
-                                "e164": {
-                                    "description": "An E.164 formatted DID to dial for failover",
-                                    "type": "string"
-                                },
-                                "sip": {
-                                    "description": "A SIP URI (sip:user@host) to call for failover",
-                                    "type": "string"
-                                }
-                            },
-                            "type": "object"
-                        },
-                        "force_outbound": {
-                            "default": false,
-                            "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
-                            "type": "boolean"
-                        },
-                        "ignore_early_media": {
-                            "type": "boolean"
-                        },
-                        "inbound_format": {
-                            "default": "npan",
-                            "description": "Determines how the INVITE is sent to the server",
-                            "enum": [
-                                "e164",
-                                "npan",
-                                "1npan",
-                                "username"
-                            ],
-                            "type": "string"
-                        },
-                        "ip": {
-                            "description": "IP (sip) address for this device",
-                            "required": false,
-                            "type": "string"
-                        },
-                        "media_handling": {
-                            "default": "bypass",
-                            "description": "Determine whether the switch should be in the media path or not",
-                            "enum": [
-                                "process",
-                                "bypass"
-                            ],
-                            "type": "string"
-                        },
-                        "port": {
-                            "description": "Port to send SIP traffic for the remote device",
-                            "required": false,
-                            "type": "integer"
-                        },
-                        "progress_timeout": {
-                            "description": "The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call",
-                            "minimum": 1,
-                            "type": "integer"
-                        },
-                        "sip_headers": {
-                            "description": "List of arbitrary SIP headers to add to the INVITE",
-                            "items": {
+                                "required": [
+                                    "cid_name",
+                                    "cid_number"
+                                ],
                                 "type": "object"
                             },
-                            "type": "array"
-                        },
-                        "timeout": {
-                            "description": "The time, in seconds, to wait for an answer from the server",
-                            "type": "integer"
+                            "delay": {
+                                "default": 0,
+                                "description": "The time, in seconds, to wait before attempting to call the server",
+                                "type": "integer"
+                            },
+                            "enabled": {
+                                "default": true,
+                                "description": "Is the server ready for sending and receiving calls",
+                                "type": "boolean"
+                            },
+                            "failover": {
+                                "description": "Route inbound call to another destination if this server fails to handle the call",
+                                "properties": {
+                                    "e164": {
+                                        "description": "An E.164 formatted DID to dial for failover",
+                                        "type": "string"
+                                    },
+                                    "sip": {
+                                        "description": "A SIP URI (sip:user@host) to call for failover",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            },
+                            "force_outbound": {
+                                "default": false,
+                                "description": "If true, will send the call over configured carriers instead of to the server (as opposed to the 'enabled' flag, which will reject the calls)",
+                                "type": "boolean"
+                            },
+                            "ignore_early_media": {
+                                "type": "boolean"
+                            },
+                            "inbound_format": {
+                                "default": "npan",
+                                "description": "Determines how the INVITE is sent to the server",
+                                "enum": [
+                                    "e164",
+                                    "npan",
+                                    "1npan",
+                                    "username"
+                                ],
+                                "type": "string"
+                            },
+                            "ip": {
+                                "description": "IP (sip) address for this device",
+                                "type": "string"
+                            },
+                            "media_handling": {
+                                "default": "bypass",
+                                "description": "Determine whether the switch should be in the media path or not",
+                                "enum": [
+                                    "process",
+                                    "bypass"
+                                ],
+                                "type": "string"
+                            },
+                            "port": {
+                                "description": "Port to send SIP traffic for the remote device",
+                                "type": "integer"
+                            },
+                            "progress_timeout": {
+                                "description": "The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call",
+                                "minimum": 1,
+                                "type": "integer"
+                            },
+                            "sip_headers": {
+                                "description": "List of arbitrary SIP headers to add to the INVITE",
+                                "items": {
+                                    "type": "object"
+                                },
+                                "type": "array"
+                            },
+                            "timeout": {
+                                "description": "The time, in seconds, to wait for an answer from the server",
+                                "type": "integer"
+                            }
                         },
                         "type": "object"
                     }
                 },
+                "required": [
+                    "auth"
+                ],
                 "type": "object"
             },
             "type": "array"

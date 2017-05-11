@@ -1,27 +1,25 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "token_restrictions",
     "description": "Schema for token restrictions",
     "properties": {
         "restrictions": {
             "patternProperties": {
                 "^\\w+$": {
-                    "description": "Name of athentication metod used when creating token. \"_\" for match any auth method",
+                    "description": "Name of authentication method used when creating token. '_' matches any auth method",
                     "patternProperties": {
                         "^\\w+$": {
-                            "description": "User privelege level. \"_\" for match any priv level",
+                            "description": "Level of user privilege. '_' matches any priv level",
                             "patternProperties": {
                                 "^\\w+$": {
                                     "items": {
-                                        "description": "Endpoint (first path token) to wich apply restrictions. \"_\" for match any endpoint",
+                                        "description": "Endpoint (first path token) to which to apply restrictions. '_' matches any endpoint",
                                         "properties": {
                                             "allowed_accounts": {
                                                 "description": "Account allowed to match this item",
                                                 "items": {
-                                                    "required": false,
                                                     "type": "string"
                                                 },
-                                                "required": false,
                                                 "type": "array",
                                                 "uniqueItems": true
                                             },
@@ -41,33 +39,38 @@
                                                             ],
                                                             "type": "string"
                                                         },
-                                                        "required": false,
                                                         "type": "array",
                                                         "uniqueItems": true
                                                     }
                                                 },
-                                                "required": false,
                                                 "type": "object"
                                             }
                                         },
-                                        "required": false,
                                         "type": "object"
                                     },
-                                    "required": true,
+                                    "required": [
+                                        "properties"
+                                    ],
                                     "type": "array"
                                 }
                             },
-                            "required": true,
+                            "required": [
+                                "^\\w+$"
+                            ],
                             "type": "object"
                         }
                     },
-                    "required": true,
+                    "required": [
+                        "^\\w+$"
+                    ],
                     "type": "object"
                 }
             },
+            "required": [
+                "^\\w+$"
+            ],
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

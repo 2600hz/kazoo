@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.after_bridge",
     "description": "Validator for the after_bridge callflow's data object",
     "properties": {
@@ -20,6 +20,5 @@
             ]
         }
     },
-    "required": true,
     "type": "object"
 }

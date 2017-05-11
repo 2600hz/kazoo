@@ -1,40 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.connection.couchdb",
-    "definitions": {
-        "credentials": {
-            "additionalProperties": false,
-            "properties": {
-                "password": {
-                    "type": "integer"
-                },
-                "username": {
-                    "type": "string"
-                }
-            },
-            "required": [
-                "username",
-                "password"
-            ],
-            "type": "object"
-        },
-        "pool": {
-            "additionalProperties": false,
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "size": {
-                    "type": "integer"
-                }
-            },
-            "required": [
-                "name",
-                "size"
-            ],
-            "type": "object"
-        }
-    },
     "description": "schema for couchdb connection entry",
     "properties": {
         "driver": {
@@ -59,7 +25,19 @@
                     "type": "integer"
                 },
                 "credentials": {
-                    "$ref": "#/definitions/credentials"
+                    "properties": {
+                        "password": {
+                            "type": "integer"
+                        },
+                        "username": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "username",
+                        "password"
+                    ],
+                    "type": "object"
                 },
                 "ip": {
                     "type": "string"
@@ -71,7 +49,19 @@
                     "type": "integer"
                 },
                 "pool": {
-                    "$ref": "#/definitions/pool"
+                    "properties": {
+                        "name": {
+                            "type": "string"
+                        },
+                        "size": {
+                            "type": "integer"
+                        }
+                    },
+                    "required": [
+                        "name",
+                        "size"
+                    ],
+                    "type": "object"
                 },
                 "port": {
                     "type": "integer"

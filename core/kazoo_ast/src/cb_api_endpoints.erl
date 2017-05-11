@@ -10,7 +10,6 @@
 
 -ifdef(TEST).
 -export([sort_methods/1]).
-
 -endif.
 
 -include_lib("kazoo_ast/include/kz_ast.hrl").
@@ -29,21 +28,16 @@
 -define(ACCOUNTS_PREFIX, "accounts/{ACCOUNT_ID}").
 
 -define(X_AUTH_TOKEN, "auth_token_header").
+-define(X_AUTH_TOKEN_NOT_REQUIRED, "auth_token_header_or_none").
 
 -spec to_ref_doc() -> 'ok'.
 -spec to_ref_doc(atom()) -> 'ok'.
 to_ref_doc() ->
-    ensure_ref_dir(),
     lists:foreach(fun api_to_ref_doc/1, ?MODULE:get()).
 
 to_ref_doc(CBModule) ->
-    ensure_ref_dir(),
     Path = code:which(CBModule),
     api_to_ref_doc(hd(process_module(Path, []))).
-
--spec ensure_ref_dir() -> 'ok'.
-ensure_ref_dir() ->
-    'ok' = filelib:ensure_dir(filename:join([?REF_PATH, ".placeholder"])).
 
 api_to_ref_doc([]) -> 'ok';
 api_to_ref_doc({Module, Paths}) ->
@@ -51,10 +45,8 @@ api_to_ref_doc({Module, Paths}) ->
 
 api_to_ref_doc(Module, Paths, ?CURRENT_VERSION) ->
     BaseName = base_module_name(Module),
-    Sections = lists:foldl(fun(K, Acc) -> api_path_to_section(Module, K, Acc) end
-                          ,ref_doc_header(BaseName)
-                          ,Paths
-                          ),
+    PathToSection = fun(K, Acc) -> api_path_to_section(Module, K, Acc) end,
+    Sections = lists:foldl(PathToSection, ref_doc_header(BaseName), Paths),
     Doc = lists:reverse(Sections),
     DocPath = ?REF_PATH(BaseName),
     'ok' = file:write_file(DocPath, Doc);
@@ -63,12 +55,8 @@ api_to_ref_doc(_Module, _Paths, _Version) ->
 
 api_path_to_section(Module, {'allowed_methods', Paths}, Acc) ->
     ModuleName = path_name(Module),
-    lists:foldl(fun(Path, Acc1) ->
-                        methods_to_section(ModuleName, Path, Acc1)
-                end
-               ,Acc
-               ,Paths
-               );
+    F = fun(Path, Acc1) -> methods_to_section(ModuleName, Path, Acc1) end,
+    lists:foldl(F, Acc, Paths);
 api_path_to_section(_MOdule, _Paths, Acc) -> Acc.
 
 %% #### Fetch/Create/Change
@@ -216,7 +204,18 @@ to_swagger_definitions() ->
 -spec process_schema(ne_binary(), kz_json:object()) -> kz_json:object().
 process_schema(Filename, Definitions) ->
     {'ok', Bin} = file:read_file(Filename),
-    JObj = kz_json:delete_keys([<<"_id">>, <<"$schema">>], kz_json:decode(Bin)),
+    KeysToDelete = [<<"_id">>
+                   ,<<"$schema">>
+                   ,<<"additionalProperties">>
+                   ],
+    JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
+    JObj = kz_json:expand(
+             kz_json:from_list(
+               [KV
+                || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+                   not lists:member(<<"patternProperties">>, Path),
+                   not lists:member(<<"kazoo-validation">>, Path)
+               ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
@@ -245,19 +244,17 @@ to_swagger_paths(Paths, BasePaths) ->
 to_swagger_path(Path, PathMeta, Acc) ->
     Methods = kz_json:get_value(<<"allowed_methods">>, PathMeta, []),
     SchemaParameter = swagger_params(PathMeta),
-    lists:foldl(fun(Method, Acc1) ->
-                        add_swagger_path(Method, Acc1, Path, SchemaParameter)
-                end
-               ,Acc
-               ,Methods
-               ).
+    F = fun(Method, Acc1) -> add_swagger_path(Method, Acc1, Path, SchemaParameter) end,
+    lists:foldl(F, Acc, Methods).
 
 add_swagger_path(Method, Acc, Path, SchemaParameter) ->
     MethodJObj = kz_json:get_value([Path, Method], Acc, kz_json:new()),
     Parameters = make_parameters(Path, Method, SchemaParameter),
+    BaseResponse = kz_json:from_list_recursive([{<<"200">>, [{<<"description">>, <<"request succeeded">>}]}]),
     Vs = props:filter_empty(
            [{[Path, Method], MethodJObj}
            ,{[Path, Method, <<"parameters">>], Parameters}
+           ,{[Path, Method, <<"responses">>], BaseResponse}
            ]),
     kz_json:insert_values(Vs, Acc).
 
@@ -271,9 +268,7 @@ make_parameters(Path, Method, SchemaParameter) ->
                            ],
                       Parameter <- [F(Path, Method)],
                       not kz_term:is_empty(Parameter)
-                  ]
-                 )
-               ).
+                  ])).
 
 compare_parameters(Param1, Param2) ->
     Keys = [<<"name">>, <<"$ref">>],
@@ -300,11 +295,8 @@ swagger_params(PathMeta) ->
 auth_token_param(Path, _Method) ->
     case is_authtoken_required(Path) of
         'undefined' -> 'undefined';
-        Required ->
-            kz_json:from_list(
-              [{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}
-              ,{<<"required">>, Required}
-              ])
+        true -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN>>}]);
+        false -> kz_json:from_list([{<<"$ref">>, <<"#/parameters/"?X_AUTH_TOKEN_NOT_REQUIRED>>}])
     end.
 
 -spec is_authtoken_required(ne_binary()) -> api_boolean().
@@ -332,23 +324,15 @@ format_as_path_centric(Data) ->
 
 format_pc_module({Module, Config}, Acc) ->
     ModuleName = path_name(Module),
-    lists:foldl(fun(ConfigData, Acc1) ->
-                        format_pc_config(ConfigData, Acc1, Module, ModuleName)
-                end
-               ,Acc
-               ,Config
-               );
+    F = fun(ConfigData, Acc1) -> format_pc_config(ConfigData, Acc1, Module, ModuleName) end,
+    lists:foldl(F, Acc, Config);
 format_pc_module(_MC, Acc) ->
     Acc.
 
 format_pc_config(_ConfigData, Acc, _Module, 'undefined') -> Acc;
 format_pc_config({Callback, Paths}, Acc, Module, ModuleName) ->
-    lists:foldl(fun(Path, Acc1) ->
-                        format_pc_callback(Path, Acc1, Module, ModuleName, Callback)
-                end
-               ,Acc
-               ,Paths
-               ).
+    F = fun(Path, Acc1) -> format_pc_callback(Path, Acc1, Module, ModuleName, Callback) end,
+    lists:foldl(F, Acc, Paths).
 
 format_pc_callback({[], []}, Acc, _Module, _ModuleName, _Callback) -> Acc;
 format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
@@ -356,22 +340,17 @@ format_pc_callback({_Path, []}, Acc, _Module, _ModuleName, _Callback) ->
     Acc;
 format_pc_callback({Path, Vs}, Acc, Module, ModuleName, Callback) ->
     PathName = swagger_api_path(Path, ModuleName),
-    kz_json:set_values(props:filter_undefined(
-                         [{[PathName, kz_term:to_binary(Callback)]
-                          ,[kz_term:to_lower_binary(V) || V <- Vs]
-                          }
-                         ,maybe_include_schema(PathName, Module)
-                         ]
-                        )
-                      ,Acc
-                      ).
+    Values = props:filter_undefined(
+               [{[PathName, kz_term:to_binary(Callback)], [kz_term:to_lower_binary(V) || V <- Vs]}
+               ,maybe_include_schema(PathName, Module)
+               ]),
+    kz_json:set_values(Values, Acc).
 
 maybe_include_schema(PathName, Module) ->
     M = base_module_name(Module),
     case filelib:is_file(kz_ast_util:schema_path(<<M/binary, ".json">>)) of
         'false' -> {'undefined', 'undefined'};
-        'true' ->
-            {[PathName, <<"schema">>], base_module_name(Module)}
+        'true' -> {[PathName, <<"schema">>], base_module_name(Module)}
     end.
 
 format_path_tokens(<<"/">>) -> [];
@@ -392,9 +371,8 @@ format_path_token(Token = <<Prefix:1/binary, _/binary>>)
             end
     end;
 format_path_token(BadToken) ->
-    io:format('standard_error'
-             ,"Please pick a good allowed_methods/N variable name: '~s' is too short.\n"
-             ,[BadToken]),
+    Fmt = "Please pick a good allowed_methods/N variable name: '~s' is too short.\n",
+    io:format(standard_error, Fmt, [BadToken]),
     halt(1).
 
 camel_to_snake(Bin) ->
@@ -409,8 +387,8 @@ brace_token(Token=?NE_BINARY) ->
 
 unbrace_param(Param) ->
     Size = byte_size(Param) - 2,
-    <<"{", Param0:Size/binary, "}">> = Param,
-    kz_term:to_lower_binary(Param0).
+    <<"{", Unbraced:Size/binary, "}">> = Param,
+    Unbraced.
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -446,8 +424,7 @@ path_name(Module) ->
         {'match', [<<"user_auth">>=Name]} -> Name;
         {'match', [Name]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
         {'match', [Name, ?CURRENT_VERSION]} -> <<?ACCOUNTS_PREFIX"/", Name/binary>>;
-        {'match', _M} ->
-            'undefined'
+        {'match', _M} -> 'undefined'
     end.
 
 %% API
@@ -700,29 +677,32 @@ to_swagger_parameters(Paths) ->
                        Param = <<"{",_/binary>> <- split_url(Path)
              ],
     kz_json:from_list(
-      [{<<?X_AUTH_TOKEN>>, kz_json:from_list(
-                             [{<<"name">>, <<"X-Auth-Token">>}
-                             ,{<<"in">>, <<"header">>}
-                             ,{<<"type">>, <<"string">>}
-                             ,{<<"minLength">>, 32}
-                             ])}
-      ,{<<"id">>, kz_json:from_list([{<<"minLength">>, 32}
-                                    ,{<<"maxLength">>, 32}
-                                    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
-                                     | base_path_param(<<"id">>)
-                                    ])}
+      [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
+      ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
       ]
       ++ [{unbrace_param(Param), kz_json:from_list(def_path_param(Param))}
           || Param <- lists:usort(lists:flatten(Params))
          ]).
 
+parameter_auth_token(IsRequired) ->
+    kz_json:from_list(
+      [{<<"name">>, <<"X-Auth-Token">>}
+      ,{<<"in">>, <<"header">>}
+      ,{<<"type">>, <<"string">>}
+      ,{<<"minLength">>, 32}
+      ,{<<"required">>, IsRequired}
+      ,{<<"description">>, <<"request authentication token">>}
+      ]).
+
 generic_id_path_param(Name) ->
-    [{<<"$ref">>, <<"#/parameters/id">>}
-    ,{<<"name">>, Name}
+    [{<<"minLength">>, 32}
+    ,{<<"maxLength">>, 32}
+    ,{<<"pattern">>, <<"^[0-9a-f]+\$">>}
+     | base_path_param(Name)
     ].
 
 base_path_param(Param) ->
-    [{<<"name">>, Param}
+    [{<<"name">>, unbrace_param(Param)}
     ,{<<"in">>, <<"path">>}
     ,{<<"required">>, true}
     ,{<<"type">>, <<"string">>}
@@ -865,7 +845,5 @@ def_path_param(<<"{UUID}">>=P) ->
     ];
 
 def_path_param(_Param) ->
-    io:format(standard_error
-             ,"No Swagger definition of path parameter '~s'.\n"
-             ,[_Param]),
+    io:format(standard_error, "No Swagger definition of path parameter '~s'.\n", [_Param]),
     halt(1).

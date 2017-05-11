@@ -11,18 +11,14 @@
         "keys": {
             "properties": {
                 "menu_change_number": {
-                    "properties": {
-                        "default": "2",
-                        "description": "callflow.call_forward menu change number",
-                        "type": "string"
-                    }
+                    "default": "2",
+                    "description": "callflow.call_forward menu change number",
+                    "type": "string"
                 },
                 "menu_toggle_option": {
-                    "properties": {
-                        "default": "1",
-                        "description": "callflow.call_forward menu toggle option",
-                        "type": "string"
-                    }
+                    "default": "1",
+                    "description": "callflow.call_forward menu toggle option",
+                    "type": "string"
                 }
             }
         },

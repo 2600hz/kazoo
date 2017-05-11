@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "ips",
     "description": "IP addresses assigned to the account",
     "properties": {
@@ -10,7 +10,6 @@
                 "type": "string"
             },
             "minItems": 1,
-            "required": false,
             "type": "array"
         }
     }

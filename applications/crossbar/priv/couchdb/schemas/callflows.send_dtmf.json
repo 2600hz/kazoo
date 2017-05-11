@@ -1,22 +1,22 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.send_dtmf",
     "description": "Validator for the Send DTMF callflow action",
     "properties": {
         "digits": {
             "description": "String of DTMF tones to send",
-            "required": true,
             "type": "string"
         },
         "duration_ms": {
             "description": "How long, in milliseconds, to send each DTMF",
-            "required": false,
             "type": [
                 "string",
                 "integer"
             ]
         }
     },
-    "required": true,
+    "required": [
+        "digits"
+    ],
     "type": "object"
 }

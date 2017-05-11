@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "service_plans",
     "description": "Describes services offered to sub-accounts",
     "properties": {
@@ -13,14 +13,12 @@
         },
         "description": {
             "description": "Describes the service plan offering",
-            "required": false,
             "type": "string"
         },
         "name": {
             "description": "A friendly name for the service plan",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "plan": {
@@ -31,10 +29,12 @@
                     "type": "object"
                 }
             },
-            "required": true,
             "type": "object"
         }
     },
-    "required": false,
+    "required": [
+        "name",
+        "plan"
+    ],
     "type": "object"
 }

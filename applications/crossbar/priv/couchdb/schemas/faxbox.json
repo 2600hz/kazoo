@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "faxbox",
     "description": "FaxBoxes allow configuration of individual fax virtual machines",
     "properties": {
@@ -8,39 +8,32 @@
             "description": "The number of attempts made, this will be set by the system and reset automaticly on put/post",
             "maximum": 4,
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "caller_id": {
             "description": "The Caller-ID-Number",
-            "required": false,
             "type": "string"
         },
         "caller_name": {
             "default": "Kazoo Fax Printer",
             "description": "The Caller-ID-Name",
-            "required": false,
             "type": "string"
         },
         "custom_smtp_email_address": {
             "description": "custom smtp address",
-            "required": false,
             "type": "string"
         },
         "fax_header": {
             "default": "Kazoo Fax Printer",
             "description": "The name printed at the top of the fax",
-            "required": false,
             "type": "string"
         },
         "fax_identity": {
             "description": "The number printed at the top of the fax",
-            "required": false,
             "type": "string"
         },
         "fax_timezone": {
             "description": "The timezone announced",
-            "required": false,
             "type": "string"
         },
         "media": {
@@ -49,18 +42,15 @@
             "properties": {
                 "fax_option": {
                     "description": "Is T.38 Supported?",
-                    "required": false,
                     "type": "boolean"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "name": {
             "description": "A friendly name for the faxbox",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "notifications": {
@@ -78,7 +68,6 @@
                                         "post",
                                         "put"
                                     ],
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "type": {
@@ -87,17 +76,14 @@
                                         "json",
                                         "www-url-form-encoded"
                                     ],
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
                                     "pattern": "^https?://",
-                                    "required": false,
                                     "type": "string"
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "email": {
@@ -108,17 +94,14 @@
                                     "format": "email",
                                     "items": {
                                         "format": "email",
-                                        "required": false,
                                         "type": "string"
                                     },
-                                    "required": false,
                                     "type": [
                                         "string",
                                         "array"
                                     ]
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "sms": {
@@ -127,21 +110,17 @@
                                 "send_to": {
                                     "description": "A list or string of sms recipent(s)",
                                     "items": {
-                                        "required": false,
                                         "type": "string"
                                     },
-                                    "required": false,
                                     "type": [
                                         "string",
                                         "array"
                                     ]
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "outbound": {
@@ -156,7 +135,6 @@
                                         "post",
                                         "put"
                                     ],
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "type": {
@@ -165,17 +143,14 @@
                                         "json",
                                         "www-url-form-encoded"
                                     ],
-                                    "required": false,
                                     "type": "string"
                                 },
                                 "url": {
                                     "description": "The URL to call back with the results",
                                     "pattern": "^https?://",
-                                    "required": false,
                                     "type": "string"
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "email": {
@@ -186,17 +161,14 @@
                                     "format": "email",
                                     "items": {
                                         "format": "email",
-                                        "required": false,
                                         "type": "string"
                                     },
-                                    "required": false,
                                     "type": [
                                         "string",
                                         "array"
                                     ]
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         },
                         "sms": {
@@ -205,25 +177,20 @@
                                 "send_to": {
                                     "description": "A list or string of sms recipent(s)",
                                     "items": {
-                                        "required": false,
                                         "type": "string"
                                     },
-                                    "required": false,
                                     "type": [
                                         "string",
                                         "array"
                                     ]
                                 }
                             },
-                            "required": false,
                             "type": "object"
                         }
                     },
-                    "required": false,
                     "type": "object"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "retries": {
@@ -231,20 +198,19 @@
             "description": "The number of times to retry",
             "maximum": 4,
             "minimum": 0,
-            "required": false,
             "type": "integer"
         },
         "smtp_permission_list": {
             "default": [],
             "description": "smtp permission list. accepts regular expressions",
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "name"
+    ],
     "type": "object"
 }

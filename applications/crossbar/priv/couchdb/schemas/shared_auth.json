@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "shared_auth",
     "additionalProperties": false,
     "description": "Provides a local auth-token via a shared auth-token",
@@ -8,10 +8,11 @@
             "description": "The shared token",
             "maxLength": 64,
             "minLength": 64,
-            "required": true,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "shared_auth"
+    ],
     "type": "object"
 }

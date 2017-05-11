@@ -1,8 +1,7 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "skel",
     "description": "Skeleton JSON schema",
     "properties": {},
-    "required": true,
     "type": "object"
 }

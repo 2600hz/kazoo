@@ -1,38 +1,32 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "resources",
     "description": "Schema for resources",
     "properties": {
         "emergency": {
             "default": false,
             "description": "Determines if the resource represents emergency services",
-            "required": false,
             "type": "boolean"
         },
         "enabled": {
             "default": true,
             "description": "Determines if the resource is currently enabled",
-            "required": false,
             "type": "boolean"
         },
         "flags": {
             "default": [],
             "description": "A list of flags that can be provided on the request and must match for the resource to be eligible",
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "format_from_uri": {
             "description": "When set to true requests to this resource will have a re-formated SIP From Header",
-            "required": false,
             "type": "boolean"
         },
         "from_uri_realm": {
             "description": "When formating SIP From on outbound requests this can be used to override the realm",
-            "required": false,
             "type": "string"
         },
         "gateways": {
@@ -42,7 +36,6 @@
                 "properties": {
                     "bypass_media": {
                         "description": "The resource gateway bypass media mode",
-                        "required": false,
                         "type": "boolean"
                     },
                     "caller_id_type": {
@@ -52,7 +45,6 @@
                             "external",
                             "emergency"
                         ],
-                        "required": false,
                         "type": "string"
                     },
                     "channel_selection": {
@@ -62,7 +54,6 @@
                             "ascending",
                             "descending"
                         ],
-                        "required": false,
                         "type": "string"
                     },
                     "codecs": {
@@ -86,24 +77,20 @@
                             ],
                             "type": "string"
                         },
-                        "required": false,
                         "type": "array",
                         "uniqueItems": true
                     },
                     "custom_sip_headers": {
                         "default": {},
-                        "required": false,
                         "type": "object"
                     },
                     "custom_sip_interface": {
                         "description": "The name of a custom SIP interface",
-                        "required": false,
                         "type": "string"
                     },
                     "enabled": {
                         "default": true,
                         "description": "Determines if the resource gateway is currently enabled",
-                        "required": false,
                         "type": "boolean"
                     },
                     "endpoint_type": {
@@ -115,23 +102,19 @@
                             "skype",
                             "amqp"
                         ],
-                        "required": false,
                         "type": "string"
                     },
                     "force_port": {
                         "default": false,
                         "description": "Allow request only from this port",
-                        "required": false,
                         "type": "boolean"
                     },
                     "format_from_uri": {
                         "description": "When set to true requests to this resource gateway will have a re-formated SIP From Header",
-                        "required": false,
                         "type": "boolean"
                     },
                     "from_uri_realm": {
                         "description": "When formating SIP From on outbound requests this can be used to override the realm",
-                        "required": false,
                         "type": "string"
                     },
                     "invite_format": {
@@ -144,7 +127,6 @@
                             "npan",
                             "1npan"
                         ],
-                        "required": false,
                         "type": "string"
                     },
                     "media": {
@@ -152,87 +134,74 @@
                         "properties": {
                             "fax_option": {
                                 "description": "Is T.38 Supported?",
-                                "required": false,
                                 "type": "boolean"
                             }
                         },
-                        "required": false,
                         "type": "object"
                     },
                     "password": {
                         "description": "SIP authentication password",
                         "maxLength": 32,
-                        "required": false,
                         "type": "string"
                     },
                     "port": {
                         "default": 5060,
                         "description": "This resource gateway port",
-                        "required": false,
                         "type": "integer"
                     },
                     "prefix": {
                         "description": "A string to prepend to the dialed number or capture group of the matching rule",
                         "maxLength": 64,
-                        "required": false,
                         "type": "string"
                     },
                     "progress_timeout": {
                         "description": "The progress timeout to apply to the resource gateway",
-                        "required": false,
                         "type": "integer"
                     },
                     "realm": {
                         "description": "This resource gateway authentication realm",
                         "maxLength": 64,
-                        "required": false,
                         "type": "string"
                     },
                     "route": {
                         "description": "A staticly configured SIP URI to route all call to",
-                        "required": false,
                         "type": "string"
                     },
                     "server": {
                         "description": "This resource gateway server",
                         "maxLength": 128,
                         "minLength": 1,
-                        "required": true,
                         "type": "string"
                     },
                     "skype_interface": {
                         "description": "The name of the Skype interface to route the call over",
-                        "required": false,
                         "type": "string"
                     },
                     "skype_rr": {
                         "default": true,
                         "description": "Determines whether to round-robin calls amongst all interfaces (overrides \"skype_interface\" setting)",
-                        "required": false,
                         "type": "boolean"
                     },
                     "span": {
                         "description": "The identity of the hardware on the media server",
-                        "required": false,
                         "type": "string"
                     },
                     "suffix": {
                         "description": "A string to append to the dialed number or capture group of the matching rule",
                         "maxLength": 64,
-                        "required": false,
                         "type": "string"
                     },
                     "username": {
                         "description": "SIP authentication username",
                         "maxLength": 32,
-                        "required": false,
                         "type": "string"
                     }
                 },
-                "required": false,
+                "required": [
+                    "server"
+                ],
                 "type": "object"
             },
-            "required": true,
             "type": "array"
         },
         "grace_period": {
@@ -240,7 +209,6 @@
             "description": "The amount of time, in seconds, to wait before starting another resource",
             "maximum": 20,
             "minimum": 1,
-            "required": false,
             "type": "integer"
         },
         "media": {
@@ -280,22 +248,18 @@
                                 ],
                                 "type": "string"
                             },
-                            "required": false,
                             "type": "array",
                             "uniqueItems": true
                         }
                     },
-                    "required": false,
                     "type": "object"
                 },
                 "bypass_media": {
                     "description": "Default bypass media mode",
-                    "required": false,
                     "type": "boolean"
                 },
                 "fax_option": {
                     "description": "Is T.38 Supported?",
-                    "required": false,
                     "type": "boolean"
                 },
                 "video": {
@@ -314,38 +278,31 @@
                                 ],
                                 "type": "string"
                             },
-                            "required": false,
                             "type": "array",
                             "uniqueItems": true
                         }
                     },
-                    "required": false,
                     "type": "object"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "name": {
             "description": "A friendly name for the resource",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "require_flags": {
             "description": "When set to true this resource is ignored if the request does not specify outbound flags",
-            "required": false,
             "type": "boolean"
         },
         "rules": {
             "default": [],
             "description": "A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups",
             "items": {
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "weight_cost": {
@@ -353,10 +310,12 @@
             "description": "A value between 0 and 100 that determines the order of resources when multiple can be used",
             "maximum": 100,
             "minimum": 0,
-            "required": false,
             "type": "integer"
         }
     },
-    "required": true,
+    "required": [
+        "gateways",
+        "name"
+    ],
     "type": "object"
 }

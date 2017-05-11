@@ -6,11 +6,9 @@
         "call_recording": {
             "properties": {
                 "storage_retry_times": {
-                    "properties": {
-                        "default": 5,
-                        "description": "media storage retry times",
-                        "type": "integer"
-                    }
+                    "default": 5,
+                    "description": "media storage retry times",
+                    "type": "integer"
                 }
             }
         }

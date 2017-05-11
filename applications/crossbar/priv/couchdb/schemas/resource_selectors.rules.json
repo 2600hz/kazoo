@@ -1,8 +1,7 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "resource_selectors.rules",
     "default": {},
     "description": "Schema for resource selector rules",
-    "required": true,
     "type": "object"
 }

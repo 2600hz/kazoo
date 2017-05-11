@@ -50,23 +50,23 @@ Describes a service plan item
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-`activation_charge` | What to charge when activating an Item | `float` |   | `false`
+`activation_charge` | What to charge when activating an Item | `number` |   | `false`
 `as` | Count Item as if it was another Item | `string` |   | `false`
 `cascade` | Whether to count quantities among all sub-accounts or just the account | `boolean` |   | `false`
 `cumulative_discount` | Whether to give a discount based on quatities of the account and all sub-accounts | `boolean` |   | `false`
-`cumulative_discount_rate` | How much of a discount to apply | `float` |   | `false`
+`cumulative_discount_rate` | How much of a discount to apply | `number` |   | `false`
 `discounts` |   | `object` |   | `false`
 `discounts.cumulative` |   | `object` |   | `false`
 `discounts.cumulative.maximum` | The most number of Items to apply discount to | `integer` |   | `false`
-`discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `float` |   | `false`
+`discounts.cumulative.rate` | The discount to apply, up to maximum Items (if applicable) | `number` |   | `false`
 `minimum` | The minimum quantity to charge for, if 'quantity' is less than 'minimum' | `integer` |   | `false`
 `name` | Friendly name for this Item | `string` |   | `false`
 `quantity` | How many of the item are allowed | `integer` |   | `false`
-`rate` | How much is the item billed, per-item | `float` |   | `false`
+`rate` | How much is the item billed, per-item | `number` |   | `false`
 `rates` | Tiers of rates based on quantities | `object` |   | `false`
-`rates./^[0-9]+$/` | The rate to charge when under the quantity indicated in the key | `float` |   | `false`
+`rates./^[0-9]+$/` | The rate to charge when under the quantity indicated in the key | `number` |   | `false`
 `single_discount` | Whether to give a discount to the account | `boolean` |   | `false`
-`single_discount_rate` | How much of a discount to apply, per-item | `float` |   | `false`
+`single_discount_rate` | How much of a discount to apply, per-item | `number` |   | `false`
 
 
 

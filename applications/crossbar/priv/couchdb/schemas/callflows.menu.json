@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.menu",
     "description": "Validator for the menu callflow's data object",
     "properties": {
@@ -12,6 +12,5 @@
             "type": "integer"
         }
     },
-    "required": true,
     "type": "object"
 }

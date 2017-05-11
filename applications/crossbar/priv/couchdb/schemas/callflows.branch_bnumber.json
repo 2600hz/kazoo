@@ -1,8 +1,7 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.branch_bnumber",
     "description": "Validator for the branch_bnumber callflow's data object",
     "properties": {},
-    "required": true,
     "type": "object"
 }

@@ -243,8 +243,6 @@ one_of_to_row(Option, Refs) ->
 property_to_row(SchemaJObj, Name=?NE_BINARY, Settings, {_, _}=Acc) ->
     property_to_row(SchemaJObj, [Name], Settings, Acc);
 property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
-    RequiredV4 = local_required(Names, SchemaJObj),
-
     maybe_sub_properties_to_row(SchemaJObj
                                ,kz_json:get_value(<<"type">>, Settings)
                                ,Names
@@ -253,7 +251,7 @@ property_to_row(SchemaJObj, Names, Settings, {Table, Refs}) ->
                                             ,kz_json:get_value(<<"description">>, Settings, <<" ">>)
                                             ,schema_type(Settings)
                                             ,cell_wrap(kz_json:get_value(<<"default">>, Settings))
-                                            ,cell_wrap(is_row_required(Names, RequiredV4, kz_json:is_true(<<"required">>, Settings)))
+                                            ,cell_wrap(is_row_required(Names, SchemaJObj))
                                             )
                                   | Table
                                  ]
@@ -268,26 +266,32 @@ maybe_add_ref(Refs, Settings) ->
         Ref -> lists:usort([Ref | Refs])
     end.
 
-local_required(Names, SchemaJObj) ->
-    kz_json:get_value(path_local_required(Names), SchemaJObj).
-
-path_local_required([_Name]) -> [<<"required">>];
-path_local_required(Names) ->
-    ExceptLast = lists:reverse(tl(lists:reverse(Names))),
-    [<<"properties">> | ExceptLast] ++ [<<"required">>].
-
-%% @private
-%% @doc
-%% JSON schema draft v3 wants local/nested boolean "required" fields.
-%% Draft v4 wants non-empty string array "required" fields.
-%% @end
--spec is_row_required(ne_binaries() | ne_binary(), ne_binaries(), api_boolean()) -> ne_binary().
-is_row_required(Names=[_|_], V4, V3) ->
-    is_row_required(lists:last(Names), V4, V3);
-is_row_required(Name=?NE_BINARY, Required=[_|_], _) ->
-    lists:member(Name, Required);
-is_row_required(_, _, 'true') -> <<"true">>;
-is_row_required(_, _, 'false') -> <<"false">>.
+-spec is_row_required([ne_binary() | nonempty_string()], kz_json:object()) -> boolean().
+is_row_required(Names=[_|_], SchemaJObj) ->
+    Path = lists:flatten(
+             [case Key of
+                  "[]" -> [<<"items">>];
+                  _ ->
+                      NewSize = byte_size(Key) - 2,
+                      case Key of
+                          <<"/", Regex:NewSize/binary, "/">> -> [<<"patternProperties">>, Regex];
+                          _ -> [<<"properties">>, Key]
+                      end
+              end
+              || Key <- lists:droplast(Names)
+             ] ++ [<<"required">>]
+            ),
+    case lists:last(Names) of
+        "[]" -> false;
+        Name ->
+            ARegexSize = byte_size(Name) - 2,
+            lists:member(case Name of
+                             <<"/", ARegex:ARegexSize/binary, "/">> -> ARegex;
+                             _ -> Name
+                         end
+                        ,kz_json:get_list_value(Path, SchemaJObj, [])
+                        )
+    end.
 
 schema_type(Settings) ->
     case schema_type(Settings, kz_json:get_value(<<"type">>, Settings)) of
@@ -371,12 +375,11 @@ maybe_sub_properties_to_row(SchemaJObj, <<"array">>, Names, Settings, {Table, Re
                                        ,{Table, Refs}
                                        );
         <<"string">> = Type ->
-            RequiredV4 = local_required(Names, SchemaJObj),
             {[?TABLE_ROW(cell_wrap(kz_binary:join(Names ++ ["[]"], <<".">>))
                         ,<<" ">>
                         ,cell_wrap(Type)
                         ,<<" ">>
-                        ,cell_wrap(is_row_required(Names, RequiredV4, kz_json:is_true(<<"required">>, Settings)))
+                        ,cell_wrap(is_row_required(Names, SchemaJObj))
                         )
               | Table
              ]

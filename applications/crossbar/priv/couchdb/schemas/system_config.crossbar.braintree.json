@@ -4,7 +4,7 @@
     "description": "Schema for crossbar.braintree system_config",
     "properties": {
         "max_account_credit": {
-            "default": 500.0,
+            "default": 500,
             "description": "crossbar.braintree maximum account credit",
             "type": "number"
         }

@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.intercom",
     "description": "Validator for the intercom callflow's data object",
     "properties": {
@@ -8,6 +8,5 @@
             "type": "boolean"
         }
     },
-    "required": true,
     "type": "object"
 }

@@ -30,6 +30,9 @@
         },
         "object_types": {
             "description": "webhooks object types",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         }
     },

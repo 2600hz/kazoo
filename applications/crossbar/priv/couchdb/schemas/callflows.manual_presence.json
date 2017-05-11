@@ -1,11 +1,10 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.manual_presence",
     "description": "Validator for the Manual Presence callflow action",
     "properties": {
         "presence_id": {
             "description": "The Presence ID to send a presence notification about",
-            "required": true,
             "type": "string"
         },
         "status": {
@@ -16,10 +15,11 @@
                 "ringing",
                 "busy"
             ],
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "presence_id"
+    ],
     "type": "object"
 }

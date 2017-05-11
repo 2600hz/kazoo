@@ -47,6 +47,9 @@
                 "/:version/accounts/:account_id/presence/:reportid"
             ],
             "description": "crossbar magic path patterns",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "max_upload_size": {

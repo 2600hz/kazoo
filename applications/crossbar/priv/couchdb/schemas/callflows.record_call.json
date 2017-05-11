@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.record_call",
     "description": "Validator for the Record Call callflow action",
     "properties": {
@@ -10,7 +10,6 @@
                 "start",
                 "stop"
             ],
-            "required": true,
             "type": "string"
         },
         "format": {
@@ -23,45 +22,40 @@
         },
         "media_name": {
             "description": "the name of media",
-            "required": false,
             "type": "string"
         },
         "record_min_sec": {
             "description": "The minimum length, in seconds, the recording must be to be considered successful. Otherwise it is deleted",
-            "required": false,
             "type": "integer"
         },
         "record_on_answer": {
             "default": false,
             "description": "Whether to delay the recording until the channel is answered",
-            "required": false,
             "type": "boolean"
         },
         "record_on_bridge": {
             "default": false,
             "description": "Whether to delay the recording until the channel is bridged",
-            "required": false,
             "type": "boolean"
         },
         "record_sample_rate": {
             "description": "What sampling rate to use on the recording",
-            "required": false,
             "type": "integer"
         },
         "time_limit": {
             "description": "Time limit, in seconds, for the recording",
             "maximum": 10800,
             "minimum": 5,
-            "required": false,
             "type": "integer"
         },
         "url": {
             "description": "The URL to use when sending the recording for storage",
             "format": "uri",
-            "required": false,
             "type": "string"
         }
     },
-    "required": true,
+    "required": [
+        "action"
+    ],
     "type": "object"
 }

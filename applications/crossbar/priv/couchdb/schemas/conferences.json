@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "conferences",
     "description": "Schema for conferences",
     "properties": {
@@ -19,17 +19,14 @@
             "default": [],
             "description": "Defines conference numbers that can be used by members or moderators",
             "items": {
-                "regex": "^\\d+$",
-                "required": false,
+                "pattern": "^[0-9]+$",
                 "type": "string"
             },
-            "required": false,
             "type": "array",
             "uniqueItems": true
         },
         "focus": {
             "description": "This is a read-only property indicating the media server hosting the conference",
-            "required": false,
             "type": "string"
         },
         "max_members_media": {
@@ -46,25 +43,21 @@
                 "join_deaf": {
                     "default": false,
                     "description": "Determines if a member will join deaf",
-                    "required": false,
                     "type": "boolean"
                 },
                 "join_muted": {
                     "default": true,
                     "description": "Determines if a member will join muted",
-                    "required": false,
                     "type": "boolean"
                 },
                 "numbers": {
                     "default": [],
                     "description": "Defines the conference (call in) number(s) for members",
                     "items": {
-                        "regex": "^\\d+$",
-                        "required": false,
+                        "pattern": "^[0-9]+$",
                         "type": "string"
                     },
                     "minItems": 0,
-                    "required": false,
                     "type": "array",
                     "uniqueItems": true
                 },
@@ -72,15 +65,12 @@
                     "default": [],
                     "description": "Defines the pin number(s) for members",
                     "items": {
-                        "regex": "^\\d+$",
-                        "required": false,
+                        "pattern": "^[0-9]+$",
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "moderator": {
@@ -89,24 +79,20 @@
                 "join_deaf": {
                     "default": false,
                     "description": "Determines if a moderator will join deaf",
-                    "required": false,
                     "type": "boolean"
                 },
                 "join_muted": {
                     "default": false,
                     "description": "Determines if a moderator will join muted",
-                    "required": false,
                     "type": "boolean"
                 },
                 "numbers": {
                     "default": [],
                     "description": "Defines the conference (call in) number(s) for moderators",
                     "items": {
-                        "regex": "^\\d+$",
-                        "required": false,
+                        "pattern": "^[0-9]+$",
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array",
                     "uniqueItems": true
                 },
@@ -114,15 +100,12 @@
                     "default": [],
                     "description": "Defines the pin number(s) for moderators",
                     "items": {
-                        "regex": "^\\d+$",
-                        "required": false,
+                        "pattern": "^[0-9]+$",
                         "type": "string"
                     },
-                    "required": false,
                     "type": "array"
                 }
             },
-            "required": false,
             "type": "object"
         },
         "moderator_controls": {
@@ -133,14 +116,12 @@
             "description": "A friendly name for the conference",
             "maxLength": 128,
             "minLength": 1,
-            "required": false,
             "type": "string"
         },
         "owner_id": {
             "description": "The user ID who manages this conference",
             "maxLength": 32,
             "minLength": 32,
-            "required": false,
             "type": "string"
         },
         "play_entry_tone": {
@@ -160,7 +141,6 @@
         "play_name": {
             "default": false,
             "description": "Do we need to announce new conference members?",
-            "required": false,
             "type": "boolean"
         },
         "play_welcome": {
@@ -169,7 +149,6 @@
         },
         "profile": {
             "description": "The XML profile name used to configure the conference",
-            "required": false,
             "type": "string"
         },
         "require_moderator": {
@@ -181,6 +160,5 @@
             "type": "boolean"
         }
     },
-    "required": false,
     "type": "object"
 }

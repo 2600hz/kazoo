@@ -1,31 +1,27 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "callflows.conference",
     "description": "Validator for the Conference callflow element",
     "properties": {
         "config": {
-            "$schema": "conferences.json",
+            "$ref": "conferences.json",
             "description": "Build an ad-hoc conference using the conferences JSON schema",
-            "required": false,
             "type": "object"
         },
         "id": {
             "description": "Kazoo ID of the conference",
             "maxLength": 32,
             "minLength": 32,
-            "required": false,
             "type": "string"
         },
         "moderator": {
             "default": false,
             "description": "Is the caller entering the conference as a moderator",
-            "required": false,
             "type": "boolean"
         },
         "play_entry_tone": {
             "default": true,
             "description": "Should the Entry Tone be played",
-            "required": false,
             "type": [
                 "boolean",
                 "string"
@@ -34,7 +30,6 @@
         "play_exit_tone": {
             "default": true,
             "description": "Should the Exit Tone be played",
-            "required": false,
             "type": [
                 "boolean",
                 "string"
@@ -45,20 +40,16 @@
             "properties": {
                 "media_id": {
                     "description": "Media to play, either Kazoo media ID or URL",
-                    "required": false,
                     "type": "string"
                 },
                 "play": {
                     "default": true,
                     "description": "Should the Welcome Prompt be played",
-                    "required": false,
                     "type": "boolean"
                 }
             },
-            "required": false,
             "type": "object"
         }
     },
-    "required": true,
     "type": "object"
 }

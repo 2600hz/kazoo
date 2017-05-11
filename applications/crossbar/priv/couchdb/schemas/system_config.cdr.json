@@ -8,6 +8,9 @@
                 "milliwatt"
             ],
             "description": "cdr ignore apps",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "ignore_loopback_bowout": {

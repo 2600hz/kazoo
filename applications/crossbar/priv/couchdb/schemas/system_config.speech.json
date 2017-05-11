@@ -14,12 +14,10 @@
                 "application/wav"
             ],
             "description": "speech asr content types",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
-        },
-        "asr_freeform_url": {
-            "default": "http://api.ispeech.org/api/rest",
-            "description": "speech asr freeform url",
-            "type": "string"
         },
         "asr_locale": {
             "default": "en-us",
@@ -66,18 +64,13 @@
             "description": "How long, in milliseconds, to cache TTS media files",
             "type": "integer"
         },
-        "tts_default_voice": {
-            "default": "female/en-US",
-            "description": "speech tts default voice",
-            "type": "string"
-        },
         "tts_end_padding": {
             "default": 0,
             "description": "speech tts end padding",
             "type": "integer"
         },
         "tts_language": {
-            "default": "en-US",
+            "default": "en-us",
             "description": "speech tts language",
             "type": "string"
         },

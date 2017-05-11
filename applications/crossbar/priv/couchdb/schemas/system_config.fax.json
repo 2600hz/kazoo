@@ -26,6 +26,9 @@
                 "application/vnd.ms-powerpoint"
             ],
             "description": "fax allowed content types",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "cloud_registration_pool_interval": {
@@ -90,6 +93,9 @@
                 }
             ],
             "description": "fax denied content types",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         },
         "endpoint_timeout": {

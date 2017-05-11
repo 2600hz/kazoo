@@ -1,5 +1,5 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "profile",
     "description": "Defines user extended properties",
     "properties": {
@@ -9,7 +9,6 @@
                 "properties": {
                     "address": {
                         "description": "To specify the address",
-                        "required": false,
                         "type": "string"
                     },
                     "types": {
@@ -25,23 +24,19 @@
                                 "pref"
                             ]
                         },
-                        "required": false,
                         "type": "array"
                     }
                 },
                 "type": "object"
             },
-            "required": false,
             "type": "array"
         },
         "assistant": {
             "description": "To specify the user's assistant",
-            "required": false,
             "type": "string"
         },
         "birthday": {
             "description": "To specify the birth date of the user",
-            "required": false,
             "type": "string"
         },
         "nicknames": {
@@ -49,30 +44,24 @@
             "items": {
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         },
         "note": {
             "description": "To specify supplemental information or a comment that is associated with the user",
-            "required": false,
             "type": "string"
         },
         "role": {
             "description": "To specify the function or part played in a particular situation by the user",
-            "required": false,
             "type": "string"
         },
         "sort-string": {
             "description": "To specify the family name or given name text to be used for national-language-specific sorting of the FN and N types",
-            "required": false,
             "type": "string"
         },
         "title": {
             "description": "To specify the position or job of the user",
-            "required": false,
             "type": "string"
         }
     },
-    "required": false,
     "type": "object"
 }

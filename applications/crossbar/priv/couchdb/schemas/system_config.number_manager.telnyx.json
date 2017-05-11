@@ -14,7 +14,7 @@
             "type": "boolean"
         },
         "monthly_recurring_cost": {
-            "default": 1.0,
+            "default": 1,
             "description": "number_manager.telnyx monthly recurring cost",
             "type": "number"
         },
@@ -38,7 +38,7 @@
             "type": "string"
         },
         "upfront_cost": {
-            "default": 1.0,
+            "default": 1,
             "description": "number_manager.telnyx upfront cost",
             "type": "number"
         },

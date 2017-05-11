@@ -2,16 +2,6 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "storage.plan.database",
     "additionalProperties": false,
-    "definitions": {
-        "database": {
-            "properties": {
-                "create_options": {
-                    "type": "object"
-                }
-            },
-            "type": "object"
-        }
-    },
     "description": "schema for database storage plan",
     "properties": {
         "attachments": {
@@ -21,7 +11,12 @@
             "type": "string"
         },
         "database": {
-            "$ref": "#/definitions/database"
+            "properties": {
+                "create_options": {
+                    "type": "object"
+                }
+            },
+            "type": "object"
         },
         "types": {
             "additionalProperties": false,

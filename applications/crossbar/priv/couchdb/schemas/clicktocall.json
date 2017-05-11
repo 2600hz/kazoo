@@ -1,17 +1,15 @@
 {
-    "$schema": "http://json-schema.org/draft-03/schema#",
+    "$schema": "http://json-schema.org/draft-04/schema#",
     "_id": "clicktocall",
     "description": "Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.",
     "properties": {
         "auth_required": {
             "default": true,
             "description": "Determines if this click to call requires valid auth-tokens when invoked",
-            "required": false,
             "type": "boolean"
         },
         "caller_id_number": {
             "description": "Explicitly set caller id number",
-            "required": false,
             "type": "string"
         },
         "dial_first": {
@@ -20,47 +18,42 @@
                 "extension",
                 "contact"
             ],
-            "required": false,
             "type": "string"
         },
         "extension": {
             "description": "The extension to connect to when the click to call is invoked",
-            "required": true,
             "type": "string"
         },
         "name": {
             "description": "A friendly name for the click to call",
             "maxLength": 128,
             "minLength": 1,
-            "required": true,
             "type": "string"
         },
         "outbound_callee_id_name": {
             "description": "Callee ID Name of the device calling out to the contact number",
-            "required": false,
             "type": "string"
         },
         "outbound_callee_id_number": {
             "description": "Callee ID Number of the device calling out to the contact number",
-            "required": false,
             "type": "string"
         },
         "throttle": {
             "description": "The rate that this click to call can be invoked",
-            "required": false,
             "type": "integer"
         },
         "whitelist": {
             "description": "A list of regular expressions that the click to call can dial to",
             "items": {
                 "minLength": 1,
-                "required": false,
                 "type": "string"
             },
-            "required": false,
             "type": "array"
         }
     },
-    "required": true,
+    "required": [
+        "extension",
+        "name"
+    ],
     "type": "object"
 }

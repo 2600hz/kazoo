@@ -4,7 +4,7 @@
     "description": "Schema for hotornot system_config",
     "properties": {
         "default_rate_cost": {
-            "default": 0.0,
+            "default": 0,
             "description": "default cost per minute for rate",
             "type": "number"
         },
@@ -14,7 +14,7 @@
             "type": "integer"
         },
         "default_rate_internal_cost": {
-            "default": 0.0,
+            "default": 0,
             "description": "default internal cost per minute for rate",
             "type": "number"
         },
@@ -29,7 +29,7 @@
             "type": "integer"
         },
         "default_rate_surcharge": {
-            "default": 0.0,
+            "default": 0,
             "description": "default surcharge amount for rate",
             "type": "number"
         },
@@ -45,6 +45,9 @@
                 "routes"
             ],
             "description": "List of filters for rates",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "rate_version": {

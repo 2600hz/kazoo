@@ -1,7 +1,7 @@
 -module(kapps_config_usage).
 
 -export([process_project/0, process_app/1
-        ,to_schema_docs/0, to_schema_docs/1
+        ,to_schema_docs/0
 
         ,expression_to_schema/2
         ]).
@@ -13,126 +13,85 @@
 -define(SOURCE, <<"config_usage_source">>).
 -define(FIELD_DEFAULT, <<"default">>).
 -define(FIELD_PROPERTIES, <<"properties">>).
+-define(FIELD_TYPE, <<"type">>).
 -define(SYSTEM_CONFIG_DESCRIPTIONS, kz_ast_util:api_path(<<"descriptions.system_config.json">>)).
+-define(UNKNOWN_DEFAULT, undefined).
 
 -spec to_schema_docs() -> 'ok'.
--spec to_schema_docs(kz_json:object()) -> 'ok'.
 to_schema_docs() ->
-    to_schema_docs(process_project()).
-
-to_schema_docs(Schemas) ->
-    kz_json:foreach(fun update_schema/1, Schemas).
+    kz_json:foreach(fun update_schema/1, process_project()).
 
 -spec update_schema({kz_json:key(), kz_json:json_term()}) -> 'ok'.
 update_schema({Name, AutoGenSchema}) ->
-    maybe_update_account_schema(Name, AutoGenSchema),
-    SchemaPath = kz_ast_util:schema_path(<<"system_config.", Name/binary, ".json">>),
+    AccountSchema = account_properties(AutoGenSchema),
+    _ = kz_json:new() =/= AccountSchema
+        andalso update_schema(<<"account_config">>, Name, AccountSchema),
+    update_schema(<<"system_config">>, Name, AutoGenSchema).
 
-    GeneratedJObj = filter_system(static_fields(Name, remove_source(AutoGenSchema))),
-    ExistingJObj = existing_schema(SchemaPath),
-    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
-    'ok' = file:write_file(SchemaPath, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj))).
+-spec update_schema(ne_binary(), kz_json:key(), kz_json:object()) -> ok.
+update_schema(ConfigType, Name, AutoGenSchema) ->
+    Path = kz_ast_util:schema_path(<<ConfigType/binary, ".", Name/binary, ".json">>),
+    GeneratedJObj = static_fields(ConfigType, Name, remove_source(AutoGenSchema)),
+    MergedJObj = kz_json:merge(fun kz_json:merge_left/2, existing_schema(Path), GeneratedJObj),
+    UpdatedSchema = kz_json:delete_key(<<"id">>, MergedJObj),
+    'ok' = file:write_file(Path, kz_json:encode(UpdatedSchema)).
 
 -spec existing_schema(file:filename_all()) -> kz_json:object().
 existing_schema(Name) ->
     case kz_json_schema:fload(Name) of
         {'ok', JObj} -> JObj;
-        {'error', _E} -> io:format("failed to find ~s: ~p~n", [Name, _E]), kz_json:new()
-    end.
-
-maybe_update_account_schema(Name, AutoGenSchema) ->
-    Path = kz_ast_util:schema_path(<<"account_config.", Name/binary, ".json">>),
-    case account_properties(AutoGenSchema) of
-        ?EMPTY_JSON_OBJECT -> 'ok';
-        Properties ->
-            GeneratedJObj = filter_system(static_account_fields(Name, remove_source(Properties))),
-            ExistingJObj = existing_schema(Path),
-            MergedJObj = kz_json:merge(fun kz_json:merge_left/2, ExistingJObj, GeneratedJObj),
-            'ok' = file:write_file(Path, kz_json:encode(kz_json:delete_key(<<"id">>, MergedJObj)))
+        {'error', _E} ->
+            io:format("failed to find ~s: ~p~n", [Name, _E]),
+            kz_json:new()
     end.
 
 -spec account_properties(kz_json:object()) -> kz_json:object().
-account_properties(JObj0) ->
-    Flat = kz_json:to_proplist(kz_json:flatten(JObj0)),
-    Keep = [lists:droplast(K)
-            || {K, V} <- Flat,
-               V =:= <<"kapps_account_config">>
-           ],
+account_properties(AutoGenSchema) ->
+    Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
+    KeepPaths = sets:from_list(
+                  [lists:droplast(Path)
+                   || {Path, V} <- Flat,
+                      ?SOURCE =:= lists:last(Path),
+                      V =:= kapps_account_config
+                  ]),
     kz_json:expand(
       kz_json:from_list(
         [KV
-         || {K,_V}=KV <- Flat,
-            lists:member(lists:droplast(K), Keep)
-        ]
-       )
-     ).
+         || {Path,_}=KV <- Flat,
+            sets:is_element(lists:droplast(Path), KeepPaths)
+        ])).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().
 remove_source(JObj) ->
-    Filtered = kz_json:filter(fun filter_no_source/1
-                             ,kz_json:flatten(JObj)
-                             ),
+    F = fun ({K, _}) -> not lists:member(?SOURCE, K) end,
+    Filtered = kz_json:filter(F, kz_json:flatten(JObj)),
     kz_json:expand(Filtered).
 
--spec filter_no_source({kz_json:path(), any()}) -> boolean().
-filter_no_source({K, _}) -> not lists:member(?SOURCE, K).
-
-filter_system(JObj) ->
-    filter_system_fold(kz_json:get_values(JObj), kz_json:new()).
-
-filter_system_fold({[], []}, JObj) -> JObj;
-filter_system_fold({['_system' | Vc], [ _| Kc]}, JObj) ->
-    filter_system_fold({Vc, Kc}, JObj);
-filter_system_fold({[V | Vc], [K | Kc]}, JObj) ->
-    case kz_json:is_json_object(V) of
-        'true' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, filter_system(V), JObj));
-        'false' -> filter_system_fold({Vc, Kc}, kz_json:set_value(K, V, JObj))
-    end.
-
-static_fields(Name, JObj) ->
-    Id = <<"system_config.", Name/binary>>,
-    Description = <<"Schema for ", Name/binary, " system_config">>,
-
-    Values = [{<<"description">>, Description}
+static_fields(ConfigType, Name, JObj) ->
+    Id = <<ConfigType/binary, ".", Name/binary>>,
+    Values = [{<<"description">>, <<"Schema for ", Name/binary, " ", ConfigType/binary>>}
              ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
-             ,{<<"type">>, <<"object">>}
-             ],
-    kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
-
-static_account_fields(Name, JObj) ->
-    Id = <<"account_config.", Name/binary>>,
-    Description = <<"Schema for ", Name/binary, " account_config">>,
-
-    Values = [{<<"description">>, Description}
-             ,{<<"$schema">>, <<"http://json-schema.org/draft-04/schema#">>}
-             ,{<<"type">>, <<"object">>}
+             ,{?FIELD_TYPE, <<"object">>}
              ],
     kz_json:set_values(Values, kz_doc:set_id(JObj, Id)).
 
 -spec process_project() -> kz_json:object().
 process_project() ->
     io:format("processing kapps_config/kapps_account_config usage: "),
-
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
               ,{'accumulator', kz_json:new()}
               ],
-
     Usage = kazoo_ast:walk_project(Options),
     io:format(" done~n"),
     Usage.
 
 -spec process_app(atom()) -> kz_json:object().
--spec process_app(atom(), kz_json:object()) -> kz_json:object().
 process_app(App) ->
-    process_app(App, kz_json:new()).
-
-process_app(App, Schemas) ->
     Options = [{'expression', fun expression_to_schema/2}
               ,{'module', fun print_dot/2}
-              ,{'accumulator', Schemas}
+              ,{'accumulator', kz_json:new()}
               ],
-
     kazoo_ast:walk_app(App, Options).
 
 print_dot(_Module, Acc) ->
@@ -194,7 +153,8 @@ config_key_to_schema(_Source, _F, 'undefined', _Key, _Default, Schemas) ->
     Schemas;
 config_key_to_schema(Source, F, Document, Key, Default, Schemas) ->
     Properties = guess_properties(Document, Source, Key, guess_type(F, Default), Default),
-    kz_json:set_value([Document, ?FIELD_PROPERTIES | Key], Properties, Schemas).
+    Path = [Document, ?FIELD_PROPERTIES | Key],
+    kz_json:set_value(Path, Properties, Schemas).
 
 category_to_document(?VAR(_)) -> 'undefined';
 category_to_document(Cat) ->
@@ -203,6 +163,8 @@ category_to_document(Cat) ->
 key_to_key_path(?ATOM(A)) -> [kz_term:to_binary(A)];
 key_to_key_path(?VAR(_)) -> 'undefined';
 key_to_key_path(?EMPTY_LIST) -> [];
+key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), ?EMPTY_LIST)) ->
+    [kz_ast_util:binary_match_to_binary(Field)];
 key_to_key_path(?LIST(?MOD_FUN_ARGS('kapps_config', _F, [_Doc, Field | _]), Tail)) ->
     [kz_ast_util:binary_match_to_binary(Field)
     ,?FIELD_PROPERTIES
@@ -219,6 +181,8 @@ key_to_key_path(?GEN_FUN_ARGS(_F, _Args)) ->
 
 key_to_key_path(?LIST(?VAR(_Name), _Tail)) ->
     'undefined';
+key_to_key_path(?LIST(Head, ?EMPTY_LIST)) ->
+    [kz_ast_util:binary_match_to_binary(Head)];
 key_to_key_path(?LIST(Head, Tail)) ->
     case key_to_key_path(Tail) of
         'undefined' -> 'undefined';
@@ -258,8 +222,8 @@ guess_type_by_default(?ATOM('false')) -> <<"boolean">>;
 guess_type_by_default(?ATOM(_)) -> <<"string">>;
 guess_type_by_default(?VAR(_V)) -> 'undefined';
 guess_type_by_default(?EMPTY_LIST) -> <<"array">>;
-guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> <<"array(string)">>;
-guess_type_by_default(?LIST(_Head, _Tail)) -> <<"array">>;
+guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> [<<"string">>];
+guess_type_by_default(?LIST(Head, _Tail)) -> [guess_type_by_default(Head)];
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
 guess_type_by_default(?FLOAT(_F)) -> <<"number">>;
@@ -273,6 +237,8 @@ guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key, Default |_]))
   when M =:= kapps_config;
        M =:= kapps_account_config ->
     guess_type(F, Default);
+guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', F, [_Key, Default])) ->
+    guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list_recursive', _Args)) -> <<"object">>;
@@ -280,28 +246,27 @@ guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) -> <<"string">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_account', 'type', [])) -> <<"string">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_term', 'to_integer', _Args)) -> <<"integer">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_binary', 'rand_hex', _Args)) -> <<"string">>.
 
-guess_properties(Document, Source, Key, Type, Default)
-  when is_binary(Key) ->
+guess_properties(Document, SourceModule, Key=?NE_BINARY, Type, Default) ->
     DescriptionKey = description_key(Document, Key),
     Description = fetch_description(DescriptionKey),
-    case Description of
-        'undefined' ->
+    case undefined =:= Description of
+        false -> ok;
+        true ->
             io:format("\nYou need to add the key \"~s\" in ~s\n", [DescriptionKey, ?SYSTEM_CONFIG_DESCRIPTIONS]),
-            halt(1);
-        _ -> 'ok'
+            halt(1)
     end,
     kz_json:from_list(
       props:filter_undefined(
-        [{<<"type">>, Type}
-        ,{?SOURCE, erlang:atom_to_binary(Source, utf8)}
+        [{?SOURCE, SourceModule}
         ,{<<"description">>, Description}
         ,{?FIELD_DEFAULT, try default_value(Default) catch _:_ -> 'undefined' end}
-        ]
-       )
-     );
+         | type(Type)
+        ]));
+
 guess_properties(Document, Source, [Key], Type, Default)
   when is_binary(Key) ->
     guess_properties(Document, Source, Key, Type, Default);
@@ -309,6 +274,15 @@ guess_properties(Document, Source, [Key, ?FIELD_PROPERTIES], Type, Default) ->
     guess_properties(Document, Source, Key, Type, Default);
 guess_properties(Document, Source, [_Key, ?FIELD_PROPERTIES | Rest], Type, Default) ->
     guess_properties(Document, Source, Rest, Type, Default).
+
+type([undefined]) ->
+    [{?FIELD_TYPE, <<"array">>}];
+type([Type]) ->
+    [{?FIELD_TYPE, <<"array">>}
+    ,{<<"items">>, kz_json:from_list([{?FIELD_TYPE, Type}])}
+    ];
+type(Type) ->
+    [{?FIELD_TYPE, Type}].
 
 description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
 fetch_description(DescriptionKey) ->
@@ -337,7 +311,7 @@ default_value(?MOD_FUN_ARGS('kz_json', 'from_list', L)) ->
 default_value(?MOD_FUN_ARGS('kz_json', 'new', [])) ->
     kz_json:new();
 default_value(?MOD_FUN_ARGS('kz_util', 'rand_hex_binary', [_Arg])) ->
-    '_system';
+    ?UNKNOWN_DEFAULT;
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) ->
     default_value(kz_privacy:anonymous_caller_id_number());
 default_value(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_name', _Args)) ->
@@ -366,9 +340,9 @@ default_value(?MOD_FUN_ARGS('kapps_account_config', 'get', [_Account, _Category,
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_ne_binary', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
-    '_system';
+    ?UNKNOWN_DEFAULT;
 default_value(?FUN_ARGS(_F, _Args)) ->
-    '_system'.
+    ?UNKNOWN_DEFAULT.
 
 default_values_from_list(KVs) ->
     lists:foldl(fun default_value_from_kv/2, kz_json:new(), KVs).
