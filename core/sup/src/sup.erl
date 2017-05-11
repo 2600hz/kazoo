@@ -11,7 +11,7 @@
 -module(sup).
 
 -export([main/1]).
--export([in_kazoo/3]).
+-export([in_kazoo/4]).
 
 -include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
@@ -28,7 +28,8 @@ main(CommandLineArgs) ->
 main(CommandLineArgs, Loops) ->
     _ = os:cmd("epmd -daemon"),
     _ = net_kernel:stop(),
-    case net_kernel:start([my_name(), long_or_short_name()]) of
+    SUPName = my_name(),
+    case net_kernel:start([SUPName, long_or_short_name()]) of
         {'error', _} when Loops < 3 ->
             stderr("Unable to start command bridge network kernel, try again", []),
             halt(1);
@@ -45,6 +46,7 @@ main(CommandLineArgs, Loops) ->
                     'undefined' -> print_invalid_cli_args();
                     M -> list_to_atom(M)
                 end,
+            IsMaintenanceCommand = lists:suffix("_maintenance", props:get_value('module', Options)),
             Function =
                 case props:get_value('function', Options) of
                     'undefined' -> print_invalid_cli_args();
@@ -55,38 +57,59 @@ main(CommandLineArgs, Loops) ->
             IsVerbose
                 andalso stdout("Running ~s:~s(~s)", [Module, Function, string:join(Args, ", ")]),
 
-            case rpc:call(Target, ?MODULE, in_kazoo, [Module, Function, Arguments], Timeout) of
+            case rpc:call(Target, ?MODULE, in_kazoo, [SUPName, Module, Function, Arguments], Timeout) of
                 {'badrpc', {'EXIT',{'undef', _}}} ->
                     print_invalid_cli_args();
                 {badrpc, {'EXIT', {timeout_value,[{Module,Function,_,_}|_]}}} ->
                     stderr("Command failed: timeout", []),
-                    halt(1);
+                    halt(4);
                 {'badrpc', Reason} ->
                     String = io_lib:print(Reason, 1, ?MAX_CHARS, -1),
                     stderr("Command failed: ~s", [String]),
-                    halt(1);
+                    halt(3);
+                no_return when IsMaintenanceCommand ->
+                    halt(0);
+                Result when IsMaintenanceCommand ->
+                    print_result(Result, IsVerbose),
+                    Code = case ok =:= Result of
+                               true -> 0;
+                               false -> 2
+                           end,
+                    halt(Code);
                 'no_return' ->
                     halt(0);
                 Result when IsVerbose ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    stdout("Result: ~s", [String]),
+                    print_result(Result, IsVerbose),
                     halt(0);
                 Result ->
-                    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
-                    stdout("~s", [String]),
+                    print_result(Result, IsVerbose),
                     halt(0)
             end
     end.
 
--spec in_kazoo(module(), atom(), binaries()) -> no_return().
-in_kazoo(M, F, As) ->
-    kz_util:put_callid(<<"sup_", (kz_binary:rand_hex(8))/binary>>),
+%%% Internals
+
+-spec in_kazoo(atom(), module(), atom(), binaries()) -> no_return().
+in_kazoo(SUPName, M, F, As) ->
+    kz_util:put_callid(SUPName),
     lager:notice("~s: ~s ~s ~s", [?MODULE, M, F, kz_util:iolist_join($,, As)]),
     R = apply(M, F, As),
     lager:notice("~s result: ~p", [?MODULE, R]),
     R.
 
-%%% Internals
+-spec print_result(any(), boolean()) -> ok.
+print_result(Result, true) ->
+    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+    try stdout("Result: ~s", [String])
+    catch
+        erro:badarg -> stdout("Result: ~p", [String])
+    end;
+print_result(Result, false) ->
+    String = io_lib:print(Result, 1, ?MAX_CHARS, -1),
+    try stdout("~s", [String])
+    catch
+        erro:badarg -> stdout("~p", [String])
+    end.
 
 -spec get_target(kz_proplist(), boolean()) -> atom().
 get_target(Options, Verbose) ->
@@ -132,9 +155,10 @@ get_host() ->
             print_unresolvable_host(Host)
     end.
 
--spec my_name() -> atom().
+-spec my_name() -> node().
 my_name() ->
-    list_to_atom("sup_" ++ os:getpid() ++ "@" ++ localhost()).
+    Name = iolist_to_binary(["sup_", kz_binary:rand_hex(2), $@, localhost()]),
+    kz_term:to_atom(Name, true).
 
 -spec localhost() -> nonempty_string().
 localhost() ->
