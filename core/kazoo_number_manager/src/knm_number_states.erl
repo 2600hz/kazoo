@@ -107,7 +107,7 @@ to_reserved(Number) ->
 
 to_reserved(Number, ?NUMBER_STATE_RESERVED) ->
     Routines = [fun not_assigning_to_self/1
-               ,fun is_auth_by_authorized/1
+               ,fun authorize/1
                ,fun update_reserve_history/1
                ,fun move_to_reserved_state/1
                ,fun knm_services:activate_phone_number/1
@@ -149,7 +149,7 @@ to_in_service(Number, ?NUMBER_STATE_IN_SERVICE) ->
     case knm_phone_number:assigned_to(PhoneNumber) of
         AssignTo -> Number;
         _AssignedTo ->
-            Routines = [fun in_service_from_in_service_authorize/1
+            Routines = [fun authorize/1
                        ,fun move_to_in_service_state/1
                        ],
             apply_transitions(Number, Routines)
@@ -178,7 +178,7 @@ to_in_service(Number, ?NUMBER_STATE_AVAILABLE) ->
     apply_transitions(Number, Routines);
 to_in_service(Number, ?NUMBER_STATE_RESERVED) ->
     Routines = [fun (N) -> fail_if_mdn(N, ?NUMBER_STATE_IN_SERVICE, ?NUMBER_STATE_RESERVED) end
-               ,fun in_service_from_reserved_authorize/1
+               ,fun authorize/1
                ,fun move_to_in_service_state/1
                ],
     apply_transitions(Number, Routines);
@@ -192,55 +192,6 @@ authorize(N) ->
         false -> knm_errors:unauthorized()
     end.
 
--ifdef(TEST).
--define(ACCT_HIERARCHY(AuthBy, AssignTo, _)
-       ,AuthBy =:= ?MASTER_ACCOUNT_ID
-        andalso AssignTo =:= ?RESELLER_ACCOUNT_ID
-       ).
--else.
--define(ACCT_HIERARCHY(AuthBy, AssignTo, Bool)
-       ,kz_util:is_in_account_hierarchy(AuthBy, AssignTo, Bool)
-       ).
--endif.
-
--spec in_service_from_reserved_authorize(kn()) -> kn().
-in_service_from_reserved_authorize(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AssignTo = knm_phone_number:assign_to(PhoneNumber),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
-    case ?ACCT_HIERARCHY(AssignedTo, AssignTo, 'true')
-        andalso (
-          Sudo
-          orelse ?ACCT_HIERARCHY(AssignedTo, AuthBy, 'true')
-          orelse ?ACCT_HIERARCHY(AuthBy, AssignedTo, 'false')
-         )
-    of
-        'false' -> knm_errors:unauthorized();
-        'true' ->
-            Sudo
-                andalso lager:info("bypassing auth"),
-            Number
-    end.
-
--spec in_service_from_in_service_authorize(kn()) -> kn().
-in_service_from_in_service_authorize(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AssignTo = knm_phone_number:assign_to(PhoneNumber),
-    AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
-    case Sudo
-        orelse ?ACCT_HIERARCHY(AssignTo, AuthBy, 'true')
-        orelse ?ACCT_HIERARCHY(AuthBy, AssignTo, 'false')
-    of
-        'false' -> knm_errors:unauthorized();
-        'true' ->
-            Sudo
-                andalso lager:info("bypassing auth"),
-            Number
-    end.
-
 -spec not_assigning_to_self(kn()) -> kn().
 not_assigning_to_self(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -251,24 +202,6 @@ not_assigning_to_self(Number) ->
         _AssignTo -> Number
     end.
 
--spec is_auth_by_authorized(kn()) -> kn().
-is_auth_by_authorized(Number) ->
-    PhoneNumber = knm_number:phone_number(Number),
-    AssignedTo = knm_phone_number:assigned_to(PhoneNumber),
-    AuthBy = knm_phone_number:auth_by(PhoneNumber),
-    Sudo = ?KNM_DEFAULT_AUTH_BY =:= AuthBy,
-    case Sudo
-        orelse 'undefined' =:= AssignedTo
-        orelse is_authorized_operation(AssignedTo, AuthBy)
-        orelse is_authorized_operation(AuthBy, AssignedTo)
-    of
-        'true' ->
-            Sudo
-                andalso lager:info("bypassing auth"),
-            Number;
-        'false' -> knm_errors:unauthorized()
-    end.
-
 -spec update_reserve_history(kn()) -> kn().
 update_reserve_history(Number) ->
     PhoneNumber = knm_number:phone_number(Number),
@@ -276,23 +209,14 @@ update_reserve_history(Number) ->
     PN = knm_phone_number:add_reserve_history(AssignTo, PhoneNumber),
     knm_number:set_phone_number(Number, PN).
 
--spec move_to_port_in_state(kn()) -> kn().
 move_to_port_in_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_PORT_IN).
-
--spec move_to_aging_state(kn()) -> kn().
 move_to_aging_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_AGING).
-
--spec move_to_available_state(kn()) -> kn().
 move_to_available_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_AVAILABLE).
-
--spec move_to_reserved_state(kn()) -> kn().
 move_to_reserved_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_RESERVED).
-
--spec move_to_in_service_state(kn()) -> kn().
 move_to_in_service_state(Number) ->
     move_number_to_state(Number, ?NUMBER_STATE_IN_SERVICE).
 
@@ -338,10 +262,6 @@ move_phone_number_to_state(PhoneNumber, ToState, AssignedTo, AssignTo) ->
 -spec apply_transitions(kn(), transitions()) -> kn().
 apply_transitions(Number, Routines) ->
     lists:foldl(fun(F, N) -> F(N) end, Number, Routines).
-
--spec is_authorized_operation(ne_binary(), ne_binary()) -> boolean().
-is_authorized_operation(CheckFor, InAccount) ->
-    kz_util:is_in_account_hierarchy(CheckFor, InAccount).
 
 -spec number_state(kn()) -> ne_binary().
 number_state(Number) ->
