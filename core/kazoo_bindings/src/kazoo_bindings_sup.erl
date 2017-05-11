@@ -20,8 +20,7 @@
 -define(ID, 'kazoo_bindings').
 
 %% Helper macro for declaring children of supervisor
--define(CHILDREN, [?WORKER(?ID)
-                  ,?WORKER_ARGS('kazoo_etsmgr_srv'
+-define(CHILDREN, [?WORKER_ARGS('kazoo_etsmgr_srv'
                                ,[
                                  [{'table_id', kazoo_bindings:table_id()}
                                  ,{'table_options', kazoo_bindings:table_options()}
@@ -29,6 +28,7 @@
                                  ,{'gift_data', kazoo_bindings:gift_data()}
                                  ]
                                 ])
+                  ,?WORKER(?ID)
                   ]).
 
 %% ===================================================================

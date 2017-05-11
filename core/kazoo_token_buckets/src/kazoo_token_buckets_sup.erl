@@ -20,7 +20,6 @@
 
 %% Helper macro for declaring children of supervisor
 -define(CHILDREN, [?SUPER('kz_buckets_sup')
-                  ,?WORKER('kz_buckets')
                   ,?WORKER_ARGS('kazoo_etsmgr_srv'
                                ,[
                                  [{'table_id', kz_buckets:table_id()}
@@ -29,6 +28,7 @@
                                  ,{'gift_data', kz_buckets:gift_data()}
                                  ]
                                 ])
+                  ,?WORKER('kz_buckets')
                   ]).
 
 %% ===================================================================
