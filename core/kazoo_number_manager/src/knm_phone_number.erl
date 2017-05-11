@@ -394,7 +394,7 @@ authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     authorized_release(PN);
 authorize_release(PN, AuthBy) ->
-    case kz_util:is_in_account_hierarchy(AuthBy, assigned_to(PN), true) of
+    case is_admin_or_is_in_account_hierarchy(AuthBy, assigned_to(PN)) of
         false -> knm_errors:unauthorized();
         true -> authorized_release(PN)
     end.
@@ -1466,30 +1466,36 @@ is_authorized(#knm_phone_number{assigned_to = undefined
                                ,assign_to = AssignTo
                                ,auth_by = AuthBy
                                }) ->
-    is_in_account_hierarchy(AuthBy, AssignTo);
+    is_admin_or_is_in_account_hierarchy(AuthBy, AssignTo);
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
-    is_in_account_hierarchy(AuthBy, AssignedTo).
+    is_admin_or_is_in_account_hierarchy(AuthBy, AssignedTo).
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
--spec is_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
+-spec is_admin_or_in_account_hierarchy(ne_binary(), ne_binary()) -> boolean().
+is_admin_or_in_account_hierarchy(AuthBy, AccountId) ->
+    case is_admin(AuthBy) of
+        true ->
+            ?LOG_DEBUG("auth is admin"),
+            true;
+        false ->
+            ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
+            is_in_account_hierarchy(AuthBy, AccountId, true)
+    end.
+
+-spec is_in_account_hierarchy(ne_binary(), ne_binary(), boolean()) -> boolean().
 -ifdef(TEST).
-is_in_account_hierarchy(AuthBy, AccountId) ->
-    ?LOG_DEBUG("is authz ~s ~s", [AuthBy, AccountId]),
-    (AccountId =:= ?RESELLER_ACCOUNT_ID
-     orelse AccountId =:= ?MASTER_ACCOUNT_ID
-    )
-        andalso (AuthBy =:= ?RESELLER_ACCOUNT_ID
-                 orelse AuthBy =:= ?MASTER_ACCOUNT_ID
-                ).
+is_in_account_hierarchy(AccountId, AccountId, true) -> true;
+is_in_account_hierarchy(?MASTER_ACCOUNT_ID, ?RESELLER_ACCOUNT_ID, _) -> true;
+is_in_account_hierarchy(?RESELLER_ACCOUNT_ID, ?CHILD_ACCOUNT_ID, _) -> true;
+is_in_account_hierarchy(_, _, _) -> false.
 -else.
-is_in_account_hierarchy(AuthBy, AccountId) ->
-    lager:debug("is authz ~s ~s", [AuthBy, AccountId]),
-    kz_util:is_in_account_hierarchy(AuthBy, AccountId, true).
+is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf) ->
+    kz_util:is_in_account_hierarchy(AuthBy, AccountId, ShouldIncludeSelf).
 -endif.
 
 %%--------------------------------------------------------------------
