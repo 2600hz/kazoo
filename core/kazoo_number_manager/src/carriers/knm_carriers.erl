@@ -16,7 +16,7 @@
 
 -export([find/1, find/2
         ,check/1, check/2
-        ,available_carriers/1, info/2
+        ,available_carriers/1, all_modules/0, info/3
         ,default_carriers/0, default_carrier/0
         ,acquire/1
         ,disconnect/1
@@ -295,18 +295,46 @@ default_carrier() ->
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
+%% List all carrier modules.
+%% @end
+%%--------------------------------------------------------------------
+-spec all_modules() -> ne_binaries().
+all_modules() ->
+    [<<"knm_bandwidth2">>
+    ,<<"knm_bandwidth">>
+    ,<<"knm_inum">>
+    ,<<"knm_local">>
+    ,<<"knm_inventory">>
+    ,<<"knm_managed">>
+    ,<<"knm_mdn">>
+    ,<<"knm_other">>
+    ,<<"knm_reserved">>
+    ,<<"knm_reserved_reseller">>
+    ,<<"knm_simwood">>
+    ,<<"knm_telnyx">>
+    ,<<"knm_vitelity">>
+    ,<<"knm_voip_innovations">>
+    ].
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
 %% Get information on the available carriers
 %% @end
 %%--------------------------------------------------------------------
--spec info(api_ne_binary(), api_ne_binary()) -> kz_json:object().
-info(AccountId, ResellerId) ->
-    Options = [{account_id, AccountId}
-              ,{reseller_id, ResellerId}
-              ],
+-spec info(api_ne_binary(), api_ne_binary(), api_ne_binary()) -> kz_json:object().
+info(AuthAccountId, AccountId, ResellerId) ->
+    AvailableCarriers = available_carriers([{account_id, AccountId}
+                                           ,{reseller_id, ResellerId}
+                                           ]),
     Acc0 = #{?CARRIER_INFO_MAX_PREFIX => 15
             },
-    JObj = lists:foldl(fun info_fold/2, Acc0, available_carriers(Options)),
-    kz_json:from_map(JObj).
+    Map = lists:foldl(fun info_fold/2, Acc0, AvailableCarriers),
+    kz_json:from_map(
+      Map#{?CARRIER_INFO_USABLE_CARRIERS => usable_carriers()
+          ,?CARRIER_INFO_USABLE_CREATION_STATES => knm_number:allowed_creation_states(AuthAccountId)
+          }
+     ).
 
 info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
     try apply(Module, info, []) of
@@ -320,6 +348,12 @@ info_fold(Module, Info=#{?CARRIER_INFO_MAX_PREFIX := MaxPrefix}) ->
             kz_util:log_stacktrace(),
             Info
     end.
+
+usable_carriers() ->
+    Modules = all_modules() -- [?CARRIER_RESERVED
+                               ,?CARRIER_RESERVED_RESELLER
+                               ],
+    [CarrierName || <<"knm_",CarrierName/binary>> <- Modules].
 
 %%--------------------------------------------------------------------
 %% @public

@@ -21,6 +21,21 @@
             },
             "type": "object"
         },
+        "create_with_state": {
+            "description": "The state to create numbers in",
+            "enum": [
+                "aging",
+                "available",
+                "deleted",
+                "discovery",
+                "in_service",
+                "port_in",
+                "port_out",
+                "released",
+                "reserved"
+            ],
+            "type": "string"
+        },
         "e911": {
             "properties": {
                 "activated_time": {
