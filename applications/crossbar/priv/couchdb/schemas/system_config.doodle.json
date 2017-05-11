@@ -9,7 +9,8 @@
             "type": "boolean"
         },
         "connections": {
-            "description": "doodle connections"
+            "description": "doodle connections",
+            "type": "object"
         },
         "default_test_from_number": {
             "default": "15552220001",

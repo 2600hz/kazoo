@@ -13,12 +13,6 @@
 -define(TOLLFREE_SEARCH_RESP, list_to_binary(knm_util:fixture("vitelity_listtollfree.xml"))).
 -endif.
 
--define(VITELITY_URI,
-        kapps_config:get(?KNM_VITELITY_CONFIG_CAT
-                        ,<<"api_uri">>
-                        ,<<"http://api.vitelity.net/api.php">>
-                        )).
-
 %% <<"yes">> or <<"no">>
 -type yes_or_no() :: <<_:16>> | <<_:24>>.
 -type state_two_letters() :: <<_:16>>.

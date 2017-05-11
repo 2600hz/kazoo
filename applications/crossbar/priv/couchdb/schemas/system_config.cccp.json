@@ -14,10 +14,12 @@
             "type": "integer"
         },
         "cccp_cb_number": {
-            "description": "cccp cccp cb number"
+            "description": "cccp cccp cb number",
+            "type": "string"
         },
         "cccp_cc_number": {
-            "description": "cccp cccp cc number"
+            "description": "cccp cccp cc number",
+            "type": "string"
         },
         "last_number_redial_code": {
             "default": "*0",

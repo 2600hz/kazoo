@@ -24,15 +24,10 @@
 -define(DEFAULT_CONVERTER_B, <<"regex">>).
 -define(DEFAULT_CONVERTERS, [?DEFAULT_CONVERTER_B]).
 
--ifdef(TEST).
--define(DEFAULT_CONVERTER, ?DEFAULT_CONVERTER_B).
--define(RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX).
--else.
 -define(DEFAULT_CONVERTER,
-        kapps_config:get(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
 -define(RECONCILE_REGEX,
-        kapps_config:get_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
--endif.
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
 
 -define(ACCOUNT_RECONCILE_REGEX,
         kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
@@ -91,7 +86,7 @@
                           ,{<<"international">>, ?CLASSIFIER_INTERNATIONAL}
                           ,{<<"unknown">>, ?CLASSIFIER_UNKNOWN}
                           ])).
--define(CLASSIFIERS, kapps_config:get(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)).
+-define(CLASSIFIERS, kapps_config:get_json(?KNM_CONFIG_CAT, <<"classifiers">>, ?DEFAULT_CLASSIFIERS)).
 
 %%--------------------------------------------------------------------
 %% @public

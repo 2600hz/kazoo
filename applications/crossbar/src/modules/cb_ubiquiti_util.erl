@@ -24,7 +24,7 @@
 
 -define(VERSION, <<"1">>).
 -define(EXPIRES, kapps_config:get_integer(?U_CONFIG_CAT, <<"api_token_expires_s">>, 1800)).
--define(SECRET, kapps_config:get(?U_CONFIG_CAT, <<"api_secret">>)).
+-define(SECRET, kapps_config:get_ne_binary(?U_CONFIG_CAT, <<"api_secret">>)).
 -define(SALT_LENGTH, kapps_config:get_integer(?U_CONFIG_CAT, <<"salt_length">>, 20)).
 
 -spec create_api_token(ne_binary()) -> ne_binary().

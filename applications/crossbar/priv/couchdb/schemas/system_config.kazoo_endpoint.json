@@ -4,7 +4,8 @@
     "description": "Schema for kazoo_endpoint system_config",
     "properties": {
         "custom_sip_interface": {
-            "description": "kazoo_endpoint custom sip interface"
+            "description": "kazoo_endpoint custom sip interface",
+            "type": "string"
         },
         "default_caller_id_name": {
             "description": "kazoo_endpoint default caller id name",
@@ -35,7 +36,8 @@
             "type": "boolean"
         },
         "sip_transport": {
-            "description": "kazoo_endpoint sip transport"
+            "description": "kazoo_endpoint sip transport",
+            "type": "string"
         }
     },
     "type": "object"

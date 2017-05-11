@@ -45,7 +45,7 @@
 -define(NORMALIZE_SOURCE_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_source_args">>, <<>>)).
 -define(NORMALIZE_DEST_ARGS, kapps_config:get_binary(?CONFIG_CAT, <<"normalize_destination_args">>, <<"-r 8000">>)).
 
--define(NORMALIZATION_FORMAT, kapps_config:get(<<"crossbar.media">>, <<"normalization_format">>, <<"mp3">>)).
+-define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(<<"crossbar.media">>, <<"normalization_format">>, <<"mp3">>)).
 
 -define(USE_ACCOUNT_OVERRIDES, kapps_config:get_is_true(?CONFIG_CAT, <<"support_account_overrides">>, 'true')).
 
@@ -661,7 +661,7 @@ default_prompt_language() ->
     default_prompt_language(<<"en-us">>).
 default_prompt_language(Default) ->
     kz_term:to_lower_binary(
-      kapps_config:get(?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
+      kapps_config:get_ne_binary(?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, Default)
      ).
 
 -spec prompt_language(api_binary()) -> ne_binary().
@@ -679,7 +679,7 @@ prompt_language(<<_/binary>> = AccountId, Default) ->
         'false' -> default_prompt_language();
         'true' ->
             kz_term:to_lower_binary(
-              kapps_account_config:get(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_term:to_lower_binary(Default))
+              kapps_account_config:get_ne_binary(AccountId, ?CONFIG_CAT, ?PROMPT_LANGUAGE_KEY, kz_term:to_lower_binary(Default))
              )
     end.
 

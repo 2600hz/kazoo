@@ -14,7 +14,8 @@
             "type": "string"
         },
         "master_account_id": {
-            "description": "accounts master account id"
+            "description": "accounts master account id",
+            "type": "string"
         }
     },
     "type": "object"

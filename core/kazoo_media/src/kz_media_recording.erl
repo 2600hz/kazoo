@@ -425,7 +425,7 @@ get_timelimit(Data) ->
     get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
 
 -spec get_format(api_binary()) -> ne_binary().
-get_format('undefined') -> kapps_config:get(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+get_format('undefined') -> kapps_config:get_ne_binary(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"mp4">> = MP4) -> MP4;
 get_format(<<"wav">> = WAV) -> WAV;

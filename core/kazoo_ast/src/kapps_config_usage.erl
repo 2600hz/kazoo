@@ -265,12 +265,17 @@ guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
 guess_type_by_default(?FLOAT(_F)) -> <<"number">>;
 guess_type_by_default(?BINARY_OP(_Op, Arg1, _Arg2)) ->
     guess_type_by_default(Arg1);
-guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key])) ->
+guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key]))
+  when M =:= kapps_config;
+       M =:= kapps_account_config ->
     guess_type(F, 'undefined');
-guess_type_by_default(?MOD_FUN_ARGS('kapps_config', F, [_Cat, _Key, Default |_])) ->
+guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key, Default |_]))
+  when M =:= kapps_config;
+       M =:= kapps_account_config ->
     guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list', _Args)) -> <<"object">>;
+guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'from_list_recursive', _Args)) -> <<"object">>;
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'set_value', [_K, V, _J])) ->
     guess_type_by_default(V);
 guess_type_by_default(?MOD_FUN_ARGS('kz_privacy', 'anonymous_caller_id_number', _Args)) -> <<"string">>;
@@ -352,9 +357,13 @@ default_value(?MOD_FUN_ARGS('kapps_config', 'get_integer', [_Category, _Key, Def
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Default])) ->
     default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_ne_binary', [_Category, _Key, Default])) ->
+    default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_global', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get', [_Account, _Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_ne_binary', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     '_system';

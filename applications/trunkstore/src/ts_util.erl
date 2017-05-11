@@ -374,7 +374,7 @@ honor_diversion(CIDNum, FromUser, AccountId, CustomSIPHeaders) ->
             case knm_number:lookup_account(CallerIdNumber) of
                 {'ok', AccountId, _} -> CIDNum;
                 _ ->
-                    DefaultCID = kapps_config:get(<<"trunkstore">>, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
+                    DefaultCID = kapps_config:get_ne_binary(<<"trunkstore">>, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
                     lager:info("wrong diversions cid detected! Will use default trunkstore caller id: ~s", [DefaultCID]),
                     DefaultCID
             end;
@@ -398,7 +398,7 @@ validate_from_user(FromUser, AccountId) ->
             lager:info("CID Number derived from CID Name, normalized and set to: ~s", [NormalizedFromUser]),
             NormalizedFromUser;
         _NothingLeft ->
-            DefaultCID = kapps_config:get(?CONFIG_CAT, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
+            DefaultCID = kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_caller_id_number">>, kz_privacy:anonymous_caller_id_number(AccountId)),
             lager:info("no valid caller id identified! Will use default trunkstore caller id: ~s", [DefaultCID]),
             DefaultCID
     end.

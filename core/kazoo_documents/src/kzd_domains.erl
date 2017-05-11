@@ -225,20 +225,18 @@ save(Domains, PvtFields) ->
             {'error', Errors}
     end.
 
--spec try_save(doc(), api_object()) ->
-                      {'ok', doc()} |
-                      {'error', any()}.
+-spec try_save(doc(), api_object()) -> {'ok', doc()} |
+                                       {'error', any()}.
 try_save(Domains, PvtFields) ->
-    case kapps_config:update_default(
-           <<"whitelabel">>
+    case kapps_config:update_default(<<"whitelabel">>
                                     ,<<"domains">>
                                     ,Domains
                                     ,[{'pvt_fields', PvtFields}]
-          )
+                                    )
     of
         {'error', _E}=E -> E;
         _ ->
-            {'ok', kapps_config:get(<<"whitelabel">>, <<"domains">>)}
+            {'ok', kapps_config:get_json(<<"whitelabel">>, <<"domains">>)}
     end.
 
 -spec is_valid(doc()) ->

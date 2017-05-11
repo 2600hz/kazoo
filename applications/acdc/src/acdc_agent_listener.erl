@@ -71,18 +71,18 @@
 -define(SERVER, ?MODULE).
 
 -record(state, {call :: kapps_call:call()
-               ,acdc_queue_id :: ne_binary() % the ACDc Queue ID
-               ,msg_queue_id :: ne_binary() % the AMQP Queue ID of the ACDc Queue process
-               ,agent_id :: ne_binary()
-               ,acct_db :: ne_binary()
-               ,acct_id :: ne_binary()
-               ,fsm_pid :: pid()
+               ,acdc_queue_id :: api_ne_binary() % the ACDc Queue ID
+               ,msg_queue_id :: api_ne_binary() % the AMQP Queue ID of the ACDc Queue process
+               ,agent_id :: api_ne_binary()
+               ,acct_db :: api_ne_binary()
+               ,acct_id :: api_ne_binary()
+               ,fsm_pid :: api_pid()
                ,agent_queues = [] :: ne_binaries()
-               ,last_connect :: kz_now() % last connection
-               ,last_attempt :: kz_now() % last attempt to connect
+               ,last_connect :: kz_now() | undefined % last connection
+               ,last_attempt :: kz_now() | undefined % last attempt to connect
                ,my_id :: ne_binary()
                ,my_q :: api_binary() % AMQP queue name
-               ,timer_ref :: reference()
+               ,timer_ref :: api_reference()
                ,sync_resp :: kz_json:object() % furthest along resp
                ,supervisor :: pid()
                ,record_calls = 'false' :: boolean()
@@ -1244,7 +1244,7 @@ maybe_start_recording(Call, 'true', Url) ->
     end.
 
 recording_format() ->
-    kapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
+    kapps_config:get_ne_binary(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>).
 
 -spec agent_id(agent()) -> api_binary().
 agent_id(Agent) ->

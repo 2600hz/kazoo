@@ -59,7 +59,7 @@ keycert_fold(_Entry, KeyCert) ->
 -spec user_agent_push_properties(ne_binary()) -> api_object().
 -spec user_agent_push_properties(ne_binary(), kz_json:objects()) -> api_object().
 user_agent_push_properties(UserAgent) ->
-    UAs = kapps_config:get(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
+    UAs = kapps_config:get_json(?CONFIG_CAT, <<"User-Agents">>, kz_json:new()),
     user_agent_push_properties(UserAgent, kz_json:values(UAs)).
 
 user_agent_push_properties(_UserAgent, []) -> 'undefined';

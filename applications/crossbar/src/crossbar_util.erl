@@ -83,8 +83,7 @@
 -include("crossbar.hrl").
 
 -define(DEFAULT_LANGUAGE
-       ,kapps_config:get(?CONFIG_CAT, <<"default_language">>, <<"en-US">>)
-       ).
+       ,kapps_config:get_ne_binary(?CONFIG_CAT, <<"default_language">>, <<"en-US">>)).
 
 -define(KEY_EMERGENCY, <<"emergency">>).
 

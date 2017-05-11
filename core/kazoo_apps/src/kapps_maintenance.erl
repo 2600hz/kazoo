@@ -716,8 +716,8 @@ migrate_limits(Account) when not is_binary(Account) ->
 migrate_limits(Account) ->
     TStamp = kz_time:current_tstamp(),
 
-    TwowayTrunks = kapps_config:get(<<"jonny5">>, <<"default_twoway_trunks">>),
-    InboundTrunks = kapps_config:get(<<"jonny5">>, <<"default_inbound_trunks">>),
+    TwowayTrunks = kapps_config:get_integer(<<"jonny5">>, <<"default_twoway_trunks">>),
+    InboundTrunks = kapps_config:get_integer(<<"jonny5">>, <<"default_inbound_trunks">>),
 
     AccountDb = case kz_datamgr:db_exists(Account) of
                     'true' -> Account;

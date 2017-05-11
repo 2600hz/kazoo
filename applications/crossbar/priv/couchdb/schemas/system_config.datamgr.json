@@ -34,7 +34,8 @@
             "type": "array"
         },
         "performance": {
-            "description": "datamgr performance"
+            "description": "datamgr performance",
+            "type": "object"
         }
     },
     "type": "object"

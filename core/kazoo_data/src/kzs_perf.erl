@@ -39,7 +39,7 @@ load_profile_config_from_disk() ->
 
 -spec load_profile_config() -> kz_json:object().
 load_profile_config() ->
-    case kapps_config:get(?CONFIG_CAT, <<"performance">>) of
+    case kapps_config:get_json(?CONFIG_CAT, <<"performance">>) of
         'undefined' -> load_profile_config_from_disk();
         JObj -> JObj
     end.

@@ -91,7 +91,7 @@ generate(Account, Props, Template) ->
 
     'ok' = file:write_file(HTMLFile, Rendered),
 
-    RawCmd = kapps_config:get(?PDF_CONFIG_CAT, <<"html2pdf">>, ?HTML_TO_PDF),
+    RawCmd = kapps_config:get_ne_binary(?PDF_CONFIG_CAT, <<"html2pdf">>, ?HTML_TO_PDF),
     Cmd = lists:foldl(fun cmd_fold/2
                      ,RawCmd
                      ,[{<<"\$pdf\$">>, PDFFile}

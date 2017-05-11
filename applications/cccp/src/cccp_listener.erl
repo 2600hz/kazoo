@@ -7,7 +7,6 @@
 %%%   OnNet (Kirill Sysoev github.com/onnet)
 %%%-------------------------------------------------------------------
 -module(cccp_listener).
-
 -behaviour(gen_listener).
 
 -export([start_link/0]).
@@ -173,7 +172,7 @@ validate_sysconfig() ->
 
 -spec validate_sysconfig(ne_binary()) -> 'ok'.
 validate_sysconfig(Key) ->
-    case kapps_config:get(?CCCP_CONFIG_CAT, Key) of
+    case kapps_config:get_ne_binary(?CCCP_CONFIG_CAT, Key) of
         'undefined' -> lager:warning("cccp hasn't been configured with ~s in system_config/~s; this is necessary", [Key, ?CCCP_CONFIG_CAT]);
         Value -> lager:debug("cccp using ~s for ~s", [knm_converters:normalize(Value), Key])
     end.

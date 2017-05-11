@@ -106,10 +106,10 @@ get_conference_controls(Name, Conference) ->
 
 -spec default_profile() -> kz_json:object().
 default_profile() ->
-    kapps_config:get(?CONFIG_CAT
-                    ,[<<"profiles">>, ?DEFAULT_PROFILE_NAME]
-                    ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
-                    ).
+    kapps_config:get_json(?CONFIG_CAT
+                         ,[<<"profiles">>, ?DEFAULT_PROFILE_NAME]
+                         ,kz_json:from_list(?DEFAULT_PROFILE_CONFIG)
+                         ).
 
 -spec page_profile() -> kz_json:object().
 page_profile() ->
@@ -150,11 +150,11 @@ get_conference(AccountId, ConferenceId) ->
     {'ok', JObj} = kz_datamgr:open_cache_doc(kz_util:format_account_db(AccountId), ConferenceId),
     kapps_conference:from_conference_doc(JObj).
 
--spec caller_controls(ne_binary()) -> kz_json:object().
+-spec caller_controls(ne_binary()) -> kz_json:objects().
 caller_controls(ConfigName) ->
     kapps_config:get(?CONFIG_CAT, [<<"caller-controls">>, ConfigName], ?DEFAULT_CONTROLS).
 
--spec caller_controls(ne_binary(), ne_binary()) -> kz_json:object().
+-spec caller_controls(ne_binary(), ne_binary()) -> kz_json:objects().
 caller_controls(AccountId, ConfigName) ->
     kapps_account_config:get_global(AccountId, ?CONFIG_CAT, [<<"caller-controls">>, ConfigName], ?DEFAULT_CONTROLS).
 

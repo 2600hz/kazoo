@@ -56,39 +56,34 @@
                                 )).
 
 -define(MAX_LOGIN_ATTEMPTS
-       ,kapps_config:get(?CF_CONFIG_CAT
-                        ,[?KEY_VOICEMAIL, ?KEY_MAX_LOGIN_ATTEMPTS]
-                        ,3
-                        )
-       ).
+       ,kapps_config:get_integer(?CF_CONFIG_CAT
+                                ,[?KEY_VOICEMAIL, ?KEY_MAX_LOGIN_ATTEMPTS]
+                                ,3
+                                )).
 
 -define(DEFAULT_MAX_PIN_LENGTH
        ,kapps_config:get_integer(?CF_CONFIG_CAT
                                 ,[?KEY_VOICEMAIL, ?KEY_MAX_PIN_LENGTH]
                                 ,6
-                                )
-       ).
+                                )).
 
 -define(DEFAULT_SAVE_AFTER_NOTIFY
-       ,kapps_config:get(?CF_CONFIG_CAT
-                        ,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
-                        ,'false'
-                        )
-       ).
+       ,kapps_config:get_is_true(?CF_CONFIG_CAT
+                                ,[?KEY_VOICEMAIL, ?KEY_SAVE_AFTER_NOTIFY]
+                                ,'false'
+                                )).
 
 -define(DEFAULT_DELETE_AFTER_NOTIFY
-       ,kapps_config:get(?CF_CONFIG_CAT
-                        ,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
-                        ,'false'
-                        )
-       ).
+       ,kapps_config:get_is_true(?CF_CONFIG_CAT
+                                ,[?KEY_VOICEMAIL, ?KEY_DELETE_AFTER_NOTIFY]
+                                ,'false'
+                                )).
 
 -define(DEFAULT_FORWARD_TYPE
-       ,kapps_config:get(?CF_CONFIG_CAT
-                        ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
-                        ,<<"only_forward">>
-                        )
-       ).
+       ,kapps_config:get_ne_binary(?CF_CONFIG_CAT
+                                  ,[?KEY_VOICEMAIL, <<"vm_message_foraward_type">>]
+                                  ,<<"only_forward">>
+                                  )).
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 

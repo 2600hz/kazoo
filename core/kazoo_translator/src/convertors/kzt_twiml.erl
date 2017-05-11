@@ -418,7 +418,7 @@ play_beep(Call) ->
     kapps_call_command:tones([Tone], Call).
 
 media_name(Call) ->
-    Format = kapps_config:get(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>),
+    Format = kapps_config:get_ne_binary(<<"callflow">>, [<<"call_recording">>, <<"extension">>], <<"mp3">>),
     <<"call_recording_", (kapps_call:call_id(Call))/binary, ".", Format/binary>>.
 
 %%------------------------------------------------------------------------------

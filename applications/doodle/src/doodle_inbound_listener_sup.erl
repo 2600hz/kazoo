@@ -29,7 +29,7 @@
 -define(DOODLE_INBOUND_BROKER, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_broker">>, ?DEFAULT_BROKER)).
 -define(DOODLE_INBOUND_EXCHANGE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange">>, ?DEFAULT_EXCHANGE)).
 -define(DOODLE_INBOUND_EXCHANGE_TYPE, kapps_config:get_ne_binary(?CONFIG_CAT, <<"inbound_exchange_type">>, ?DEFAULT_EXCHANGE_TYPE)).
--define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  kapps_config:get(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
+-define(DOODLE_INBOUND_EXCHANGE_OPTIONS,  kapps_config:get_json(?CONFIG_CAT, <<"inbound_exchange_options">>, ?DEFAULT_EXCHANGE_OPTIONS_JOBJ)).
 
 -define(CHILDREN, [?WORKER_TYPE('doodle_inbound_listener', 'temporary')]).
 
@@ -90,7 +90,7 @@ default_connection() ->
 
 -spec connections() -> amqp_listener_connections().
 connections() ->
-    case kapps_config:get(?CONFIG_CAT, <<"connections">>) of
+    case kapps_config:get_json(?CONFIG_CAT, <<"connections">>) of
         'undefined' -> [default_connection()];
         JObj -> kz_json:foldl(fun connections_fold/3, [], JObj)
     end.

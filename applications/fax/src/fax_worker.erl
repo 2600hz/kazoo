@@ -730,7 +730,7 @@ release_job(Result, JObj, Resp) ->
 
 -spec apply_reschedule_logic(kz_json:object()) -> kz_json:object().
 apply_reschedule_logic(JObj) ->
-    Map = kapps_config:get(?CONFIG_CAT, <<"reschedule">>, kz_json:new()),
+    Map = kapps_config:get_json(?CONFIG_CAT, <<"reschedule">>, kz_json:new()),
     case apply_reschedule_rules(kz_json:get_values(Map), set_default_update_fields(JObj)) of
         {'no_rules', JObj2} ->
             lager:debug("no rules applied in fax reschedule logic"),

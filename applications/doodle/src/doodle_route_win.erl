@@ -271,7 +271,7 @@ send_service_unavailable(_JObj, Call) ->
 set_service_unavailable_message(Call) ->
     {'ok', Endpoint} = kz_endpoint:get(Call),
     Language = kz_json:get_value(<<"language">>, Endpoint, ?DEFAULT_LANGUAGE),
-    TextNode = kapps_config:get(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
+    TextNode = kapps_config:get_json(?CONFIG_CAT, <<"unavailable_message">>, ?DEFAULT_UNAVAILABLE_MESSAGE_NODE),
     Text = kz_json:get_value(Language, TextNode, ?DEFAULT_UNAVAILABLE_MESSAGE),
     kapps_call:kvs_store(<<"Body">>, Text, Call).
 

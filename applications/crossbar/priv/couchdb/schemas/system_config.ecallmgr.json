@@ -142,7 +142,8 @@
             "type": "string"
         },
         "default_ringback": {
-            "description": "ecallmgr default ringback"
+            "description": "ecallmgr default ringback",
+            "type": "object"
         },
         "event_stream_idle_alert": {
             "default": 0,

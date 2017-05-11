@@ -51,10 +51,9 @@ is_valid_magic_path(Path, Templates) ->
 
 path_matches_template(Path, Template) ->
     lager:debug("testing ~s against ~s", [Path, Template]),
-    path_matches_template_tokens(
-      binary:split(Path, <<"/">>, ['global'])
+    path_matches_template_tokens(binary:split(Path, <<"/">>, ['global'])
                                 ,binary:split(Template, <<"/">>, ['global'])
-     ).
+                                ).
 
 path_matches_template_tokens([], []) -> 'true';
 path_matches_template_tokens([_|PathTokens], [<<":", _/binary>>|TemplateTokens]) ->

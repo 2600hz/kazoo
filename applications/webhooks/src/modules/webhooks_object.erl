@@ -21,34 +21,27 @@
 -define(DESC, <<"Receive notifications when objects in Kazoo are changed">>).
 
 -define(OBJECT_TYPES
-       ,kapps_config:get(?APP_NAME
-                        ,<<"object_types">>
-                        ,?DOC_TYPES
-                        )
-       ).
+       ,kapps_config:get(?APP_NAME, <<"object_types">>, ?DOC_TYPES)).
 
 -define(TYPE_MODIFIER
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object types to handle">>}
           ,{<<"items">>, ?OBJECT_TYPES}
-          ])
-       ).
+          ])).
 
 -define(ACTIONS_MODIFIER
        ,kz_json:from_list(
           [{<<"type">>, <<"array">>}
           ,{<<"description">>, <<"A list of object actions to handle">>}
           ,{<<"items">>, ?DOC_ACTIONS}
-          ])
-       ).
+          ])).
 
 -define(MODIFIERS
        ,kz_json:from_list(
           [{<<"type">>, ?TYPE_MODIFIER}
           ,{<<"action">>, ?ACTIONS_MODIFIER}
-          ])
-       ).
+          ])).
 
 -define(METADATA
        ,kz_json:from_list(
@@ -56,8 +49,7 @@
           ,{<<"name">>, ?NAME}
           ,{<<"description">>, ?DESC}
           ,{<<"modifiers">>, ?MODIFIERS}
-          ])
-       ).
+          ])).
 
 %%--------------------------------------------------------------------
 %% @public

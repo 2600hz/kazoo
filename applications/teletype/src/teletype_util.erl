@@ -243,14 +243,14 @@ log_email_send_error(Reason) ->
 
 -spec smtp_options() -> kz_proplist().
 smtp_options() ->
-    Relay = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
-    Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
-    Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
-    Auth = kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>),
+    Relay = kapps_config:get_string(<<"smtp_client">>, <<"relay">>, "localhost"),
+    Username = kapps_config:get_string(<<"smtp_client">>, <<"username">>, ""),
+    Password = kapps_config:get_string(<<"smtp_client">>, <<"password">>, ""),
+    Auth = kapps_config:get_binary(<<"smtp_client">>, <<"auth">>, <<"never">>),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
     Retries = kapps_config:get_integer(<<"smtp_client">>, <<"retries">>, 1),
     NoMxLookups = kapps_config:get_is_true(<<"smtp_client">>, <<"no_mx_lookups">>, 'true'),
-    TLS = kapps_config:get(<<"smtp_client">>, <<"tls">>),
+    TLS = kapps_config:get_ne_binary(<<"smtp_client">>, <<"tls">>),
     SSL = kapps_config:get_is_true(<<"smtp_client">>, <<"use_ssl">>, 'false'),
 
     lager:debug("relaying via ~s", [Relay]),
@@ -395,31 +395,21 @@ maybe_add_parent_params(AccountId, AccountJObj) ->
 default_from_address(ConfigCat) ->
     default_from_address(kz_json:new(), ConfigCat).
 default_from_address(JObj, ConfigCat) ->
-    default_system_value(JObj, ConfigCat
-                        ,<<"send_from">>, <<"default_from">>
-                        ,list_to_binary([<<"no_reply@">>, net_adm:localhost()])
-                        ).
+    ConfigDefault = list_to_binary([<<"no_reply@">>, net_adm:localhost()]),
+    kz_json:get_ne_binary_value(<<"send_from">>
+                               ,JObj
+                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_from">>, ConfigDefault)
+                               ).
 
--spec default_reply_to(ne_binary()) -> api_binary().
--spec default_reply_to(kz_json:object(), ne_binary()) -> api_binary().
+-spec default_reply_to(ne_binary()) -> api_ne_binary().
+-spec default_reply_to(kz_json:object(), ne_binary()) -> api_ne_binary().
 default_reply_to(ConfigCat) ->
     default_reply_to(kz_json:new(), ConfigCat).
 default_reply_to(JObj, ConfigCat) ->
-    default_system_value(JObj
-                        ,ConfigCat
-                        ,<<"reply_to">>
-                        ,<<"default_reply_to">>
-                        ,'undefined'
-                        ).
-
--spec default_system_value(kz_json:object(), ne_binary(), kz_json:path(), kz_json:path(), kz_json:api_json_term()) ->
-                                  kz_json:json_term().
-default_system_value(JObj, ConfigCat, JSONKey, ConfigKey, ConfigDefault) ->
-    case kz_json:get_ne_value(JSONKey, JObj) of
-        'undefined' ->
-            kapps_config:get(ConfigCat, ConfigKey, ConfigDefault);
-        Value -> Value
-    end.
+    kz_json:get_ne_binary_value(<<"reply_to">>
+                               ,JObj
+                               ,kapps_config:get_ne_binary(ConfigCat, <<"default_reply_to">>)
+                               ).
 
 -spec render_subject(ne_binary(), kz_proplist()) -> binary().
 render_subject(Template, Macros) ->
@@ -607,9 +597,7 @@ should_handle_notification(JObj, 'false') ->
 
     Config = kz_account:get_inherited_value(Account
                                            ,fun kz_account:notification_preference/1
-                                           ,kapps_config:get(?NOTIFY_CONFIG_CAT
-                                                            ,<<"notification_app">>
-                                                            ,?APP_NAME)
+                                           ,kapps_config:get_ne_binary(?NOTIFY_CONFIG_CAT, <<"notification_app">>, ?APP_NAME)
                                            ),
 
     lager:debug("notification configuration is: ~p", [Config]),

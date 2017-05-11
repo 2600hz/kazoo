@@ -15,13 +15,17 @@
 
 -include("cccp.hrl").
 
+-define(CB_NUMBER
+       ,knm_converters:normalize(kapps_config:get_ne_binary(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>))).
+-define(CC_NUMBER
+       ,knm_converters:normalize(kapps_config:get_ne_binary(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>))).
+
 -spec handle_route_req(kz_json:object(), kz_proplist()) -> any().
 handle_route_req(JObj, Props) ->
     'true' = kapi_route:req_v(JObj),
-
     Call = kapps_call:from_route_req(JObj),
-    CB_Number = knm_converters:normalize(kapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
-    CC_Number = knm_converters:normalize(kapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
+    CB_Number = ?CB_NUMBER,
+    CC_Number = ?CC_NUMBER,
     case knm_converters:normalize(kapps_call:request_user(Call)) of
         CB_Number -> park_call(JObj, Props, Call);
         CC_Number -> park_call(JObj, Props, Call);
@@ -62,13 +66,11 @@ handle_config_change(_JObj, _Props) ->
 
 -spec handle_cccp_call(kapps_call:call()) -> 'ok'.
 handle_cccp_call(Call) ->
-    CB_Number = knm_converters:normalize(kapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cb_number">>)),
-    CC_Number = knm_converters:normalize(kapps_config:get(?CCCP_CONFIG_CAT, <<"cccp_cc_number">>)),
+    CB_Number = ?CB_NUMBER,
+    CC_Number = ?CC_NUMBER,
     case knm_converters:normalize(kapps_call:request_user(Call)) of
-        CB_Number ->
-            handle_callback(Call);
-        CC_Number ->
-            cccp_platform_sup:new(Call)
+        CB_Number -> handle_callback(Call);
+        CC_Number -> cccp_platform_sup:new(Call)
     end.
 
 -spec handle_callback(kapps_call:call()) -> any().

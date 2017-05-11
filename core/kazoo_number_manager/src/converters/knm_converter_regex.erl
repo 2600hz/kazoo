@@ -14,17 +14,16 @@
         ,to_npan/1
         ,to_1npan/1
         ]).
+-export([get_e164_converters/0
+        ,get_e164_converters/1
+        ]).
 
--define(DEFAULT_E164_CONVERTERS, [{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>
-                                  ,kz_json:from_list([{<<"prefix">>, <<"+1">>}])
-                                  }
-                                 ,{<<"^011(\\d*)$|^00(\\d*)\$">>
-                                  ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
-                                  }
-                                 ,{<<"^[2-9]\\d{7,}\$">>
-                                  ,kz_json:from_list([{<<"prefix">>, <<"+">>}])
-                                  }
-                                 ]).
+-define(DEFAULT_E164_CONVERTERS
+       ,kz_json:from_list_recursive(
+          [{<<"^[2-9]\\d{7,}\$">>, [{<<"prefix">>, <<"+">>}]}
+          ,{<<"^011(\\d*)$|^00(\\d*)\$">>, [{<<"prefix">>, <<"+">>}]}
+          ,{<<"^\\+?1?([2-9][0-9]{2}[2-9][0-9]{6})\$">>, [{<<"prefix">>, <<"+1">>}]}
+          ])).
 
 -define(KEY_E164_CONVERTERS, <<"e164_converters">>).
 
@@ -139,33 +138,22 @@ apply_dialplan(Number, DialPlan, [Regex|Rs]) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
-
 -spec get_e164_converters() -> kz_json:object().
--ifdef(TEST).
 get_e164_converters() ->
-    kz_json:from_list(?DEFAULT_E164_CONVERTERS).
--else.
-get_e164_converters() ->
-    Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
-    try kapps_config:get(?KNM_CONFIG_CAT
-                        ,?KEY_E164_CONVERTERS
-                        ,Default
-                        )
+    try kapps_config:get_json(?KNM_CONFIG_CAT, ?KEY_E164_CONVERTERS, ?DEFAULT_E164_CONVERTERS)
     catch
-        _:_ -> Default
+        _:_ -> ?DEFAULT_E164_CONVERTERS
     end.
--endif.
 
 -spec get_e164_converters(ne_binary()) -> kz_json:object().
 get_e164_converters(AccountId) ->
-    Default = kz_json:from_list(?DEFAULT_E164_CONVERTERS),
     try kapps_account_config:get_global(AccountId
                                        ,?KNM_CONFIG_CAT
                                        ,?KEY_E164_CONVERTERS
-                                       ,Default
+                                       ,?DEFAULT_E164_CONVERTERS
                                        )
     catch
-        _:_ -> Default
+        _:_ -> ?DEFAULT_E164_CONVERTERS
     end.
 
 %%--------------------------------------------------------------------

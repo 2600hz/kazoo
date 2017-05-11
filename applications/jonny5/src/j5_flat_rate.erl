@@ -15,13 +15,8 @@
 -define(DEFAULT_WHITELIST, <<"^\\+1\\d{10}$">>).
 -define(DEFAULT_BLACKLIST, <<"^\\+1(684|264|268|242|246|441|284|345|767|809|829|849|473|671|876|664|670|787|939|869|758|784|721|868|649|340|900|800|888|877|866|855|844)\\d{7}$">>).
 
--ifdef(TEST).
--define(WHITELIST, ?DEFAULT_WHITELIST).
--define(BLACKLIST, ?DEFAULT_BLACKLIST).
--else.
--define(WHITELIST, kapps_config:get(?APP_NAME, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
--define(BLACKLIST, kapps_config:get(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
--endif.
+-define(WHITELIST, kapps_config:get_ne_binary(?APP_NAME, <<"flat_rate_whitelist">>, ?DEFAULT_WHITELIST)).
+-define(BLACKLIST, kapps_config:get_ne_binary(?APP_NAME, <<"flat_rate_blacklist">>, ?DEFAULT_BLACKLIST)).
 
 %%--------------------------------------------------------------------
 %% @public

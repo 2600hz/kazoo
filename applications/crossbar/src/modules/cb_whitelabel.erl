@@ -431,8 +431,7 @@ load_domains(Context, Domain, SystemDomains) ->
                        ,{fun cb_context:set_resp_status/2, 'success'}
                        ]).
 
--spec missing_domain_error(cb_context:context()) ->
-                                  cb_context:context().
+-spec missing_domain_error(cb_context:context()) -> cb_context:context().
 missing_domain_error(Context) ->
     cb_context:add_validation_error(<<"domain">>
                                    ,<<"required">>
@@ -459,7 +458,7 @@ find_existing_domain(Context) ->
 
 -spec system_domains() -> kz_json:object().
 system_domains() ->
-    case kapps_config:get(<<"whitelabel">>, <<"domains">>) of
+    case kapps_config:get_json(<<"whitelabel">>, <<"domains">>) of
         'undefined' ->
             lager:info("initializing system domains to default"),
             Default = kzd_domains:default(),
@@ -653,11 +652,10 @@ find_whitelabel(Context, Domain) ->
                                        ,{fun cb_context:set_account_id/2, Id}
                                        ]);
                 _Doc ->
-                    cb_context:add_system_error(
-                      'bad_identifier'
+                    cb_context:add_system_error('bad_identifier'
                                                ,kz_json:from_list([{<<"cause">>, Domain}])
                                                ,Context1
-                     )
+                                               )
             end;
         _Status -> Context1
     end.

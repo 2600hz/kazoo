@@ -63,9 +63,8 @@
                                        ,<<"application/vnd.ms-powerpoint">>
                                        ]).
 
--define(DEFAULT_DENIED_CONTENT_TYPES
-       ,[kz_json:from_list([{<<"prefix">>, <<"image/">>}])]
-       ).
+-define(DEFAULT_DENIED_CONTENT_TYPES, [kz_json:from_list([{<<"prefix">>, <<"image/">>}])
+                                      ]).
 
 -define(SMTP_MSG_MAX_SIZE, kapps_config:get_integer(?CONFIG_CAT, <<"smtp_max_msg_size">>, 10485670)).
 -define(SMTP_EXTENSIONS, [{"SIZE", kz_term:to_list(?SMTP_MSG_MAX_SIZE)}]).

@@ -34,7 +34,8 @@
             "type": "integer"
         },
         "tls": {
-            "description": "smtp_client tls"
+            "description": "smtp_client tls",
+            "type": "string"
         },
         "use_ssl": {
             "default": false,

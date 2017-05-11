@@ -42,14 +42,13 @@
 -define(SERVER, ?MODULE).
 
 -ifdef(TEST).
--define(FILL_TIME, <<"second">>).
 -define(FILL_TIME(App), is_binary(App)
         andalso ?FILL_TIME
        ).
 -else.
--define(FILL_TIME, kapps_config:get_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
--define(FILL_TIME(App), kapps_config:get(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
+-define(FILL_TIME(App), kapps_config:get_ne_binary(?APP_NAME, [App, <<"tokens_fill_time">>], ?FILL_TIME)).
 -endif.
+-define(FILL_TIME, kapps_config:get_ne_binary(?APP_NAME, <<"tokens_fill_time">>, <<"second">>)).
 
 -define(TOKEN_FILL_TIME, 'fill_er_up').
 

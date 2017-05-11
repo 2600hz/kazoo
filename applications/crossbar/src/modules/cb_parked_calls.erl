@@ -14,7 +14,7 @@
         ]).
 
 -define(MOD_CONFIG_CAT, <<"callflow.park">>).
--define(DB_DOC_NAME, kapps_config:get(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
+-define(DB_DOC_NAME, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"db_doc_name">>, <<"parked_calls">>)).
 
 -spec init() -> 'ok'.
 init() ->

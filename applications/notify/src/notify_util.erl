@@ -39,10 +39,10 @@ send_email(_, 'undefined', _) -> lager:debug("no email to send to");
 send_email(_, <<>>, _) -> lager:debug("empty email to send to");
 send_email(From, To, Email) ->
     Encoded = mimemail:encode(Email),
-    Relay = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
+    Relay = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"relay">>, <<"localhost">>)),
     Username = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"username">>, <<>>)),
     Password = kz_term:to_list(kapps_config:get_binary(<<"smtp_client">>, <<"password">>, <<>>)),
-    Auth = kz_term:to_list(kapps_config:get(<<"smtp_client">>, <<"auth">>, <<"never">>)),
+    Auth = kz_term:to_list(kapps_config:get_ne_binary(<<"smtp_client">>, <<"auth">>, <<"never">>)),
     Port = kapps_config:get_integer(<<"smtp_client">>, <<"port">>, 25),
 
     lager:debug("sending email to ~s from ~s via ~s", [To, From, Relay]),
@@ -140,7 +140,7 @@ compile_default_subject_template(TemplateModule, Category) ->
     compile_default_template(TemplateModule, Category, 'default_subject_template').
 
 compile_default_template(TemplateModule, Category, Key) ->
-    Template = case kapps_config:get(Category, Key) of
+    Template = case kapps_config:get_ne_binary(Category, Key) of
                    'undefined' -> get_default_template(Category, Key);
                    Else -> Else
                end,
@@ -221,24 +221,21 @@ get_service_props(Account, ConfigCat) ->
 
 get_service_props(Request, Account, ConfigCat) ->
     DefaultUrl = kz_json:get_ne_value(<<"service_url">>, Request
-                                     ,kapps_config:get(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
+                                     ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_url">>, <<"http://apps.2600hz.com">>)),
     DefaultName = kz_json:get_ne_value(<<"service_name">>, Request
-                                      ,kapps_config:get(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
+                                      ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_name">>, <<"VOIP Services">>)),
     DefaultProvider = kz_json:get_ne_value(<<"service_provider">>, Request
-                                          ,kapps_config:get(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
+                                          ,kapps_config:get_ne_binary(ConfigCat, <<"default_service_provider">>, <<"2600hz">>)),
     DefaultNumber = kz_json:get_ne_value(<<"support_number">>, Request
-                                        ,kapps_config:get(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
+                                        ,kapps_config:get_ne_binary(ConfigCat, <<"default_support_number">>, <<"(415) 886-7900">>)),
     DefaultEmail = kz_json:get_ne_value(<<"support_email">>, Request
-                                       ,kapps_config:get(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
+                                       ,kapps_config:get_ne_binary(ConfigCat, <<"default_support_email">>, <<"support@2600hz.com">>)),
     UnconfiguredFrom = list_to_binary([<<"no_reply@">>, kz_term:to_binary(net_adm:localhost())]),
     DefaultFrom = kz_json:get_ne_value(<<"send_from">>, Request
-                                      ,kapps_config:get(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
+                                      ,kapps_config:get_ne_binary(ConfigCat, <<"default_from">>, UnconfiguredFrom)),
     DefaultCharset = kz_json:get_ne_value(<<"template_charset">>, Request
-                                         ,kapps_config:get(ConfigCat, <<"default_template_charset">>, <<>>)),
-    JObj = find_notification_settings(
-             binary:split(ConfigCat, <<".">>)
-                                     ,kz_account:tree(Account)
-            ),
+                                         ,kapps_config:get_binary(ConfigCat, <<"default_template_charset">>, <<>>)),
+    JObj = find_notification_settings(binary:split(ConfigCat, <<".">>), kz_account:tree(Account)),
     [{<<"url">>, kz_json:get_value(<<"service_url">>, JObj, DefaultUrl)}
     ,{<<"name">>, kz_json:get_value(<<"service_name">>, JObj, DefaultName)}
     ,{<<"provider">>, kz_json:get_value(<<"service_provider">>, JObj, DefaultProvider)}

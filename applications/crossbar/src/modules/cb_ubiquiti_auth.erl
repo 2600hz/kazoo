@@ -42,8 +42,8 @@
 
 -spec init() -> ok.
 init() ->
-    _ProdURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
-    _StagURI = kapps_config:get(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
+    _ProdURI = kapps_config:get_ne_binary(?U_CONFIG_CAT, [?SSO_PROD_ENV, ?SSO_URL_KEY], ?SSO_PROD_URI),
+    _StagURI = kapps_config:get_ne_binary(?U_CONFIG_CAT, [?SSO_STAGING_ENV, ?SSO_URL_KEY], ?SSO_STAGING_URI),
 
     lager:debug("SSO Environment: ~s", [?SSO_ENV]),
     lager:debug("SSO URI: ~s", [?SSO_URL]),

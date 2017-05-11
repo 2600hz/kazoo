@@ -49,7 +49,7 @@
 -define(ALL_MIME_TYPES, ?UPLOAD_MIME_TYPES ++ ?BULK_DOWNLOAD_MIME_TYPE).
 
 -define(MOD_CONFIG_CAT, <<(?CONFIG_CAT)/binary, ".voicemail">>).
--define(NORMALIZATION_FORMAT, kapps_config:get(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
+-define(NORMALIZATION_FORMAT, kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"normalization_format">>, <<"mp3">>)).
 
 %%%===================================================================
 %%% API
