@@ -394,7 +394,7 @@ authorize_release(PN, ?KNM_DEFAULT_AUTH_BY) ->
     lager:info("bypassing auth"),
     authorized_release(PN);
 authorize_release(PN, AuthBy) ->
-    case is_admin_or_is_in_account_hierarchy(AuthBy, assigned_to(PN)) of
+    case is_admin_or_in_account_hierarchy(AuthBy, assigned_to(PN)) of
         false -> knm_errors:unauthorized();
         true -> authorized_release(PN)
     end.
@@ -1466,11 +1466,11 @@ is_authorized(#knm_phone_number{assigned_to = undefined
                                ,assign_to = AssignTo
                                ,auth_by = AuthBy
                                }) ->
-    is_admin_or_is_in_account_hierarchy(AuthBy, AssignTo);
+    is_admin_or_in_account_hierarchy(AuthBy, AssignTo);
 is_authorized(#knm_phone_number{assigned_to = AssignedTo
                                ,auth_by = AuthBy
                                }) ->
-    is_admin_or_is_in_account_hierarchy(AuthBy, AssignedTo).
+    is_admin_or_in_account_hierarchy(AuthBy, AssignedTo).
 
 %%%===================================================================
 %%% Internal functions
