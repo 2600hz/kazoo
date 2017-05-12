@@ -916,9 +916,9 @@ fax_specific(Props) ->
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the kazoo masquerade of this event"),
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _) ->
-    'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _) ->
+    'false';
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"export">>, _) ->
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
     lager:debug("suppressing intercept execute complete in favour the kazoo masquerade of this event"),
