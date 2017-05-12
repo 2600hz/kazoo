@@ -20,20 +20,16 @@ addons:
 
 cache:
   apt: true
-  directories:
-    - $HOME/proper
 
 before_install:
   - set -e
-  - if [[ ! -d $HOME/proper/.git ]]; then git clone --depth=50 --branch=master https://github.com/manopapad/proper.git $HOME/proper && cd $HOME/proper && make fast; fi
-  - cd $TRAVIS_BUILD_DIR
 
 script:
   - # make compile-test
   - # make eunit
   - make deps
-  - ERL_LIBS="$HOME/proper" ERLC_OPTS='-DPROPER' make compile-test
-  - ERL_LIBS="$HOME/proper" make eunit
+  - ERLC_OPTS='-DPROPER' make compile-test
+  - make eunit
 
 after_success:
   - if [[ "$TRAVIS_REPO_SLUG" == '2600hz/kazoo' ]]; then make coverage-report; fi

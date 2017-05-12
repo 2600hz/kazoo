@@ -42,6 +42,7 @@ IGNORE_DEPS = hamcrest
 ifeq ($(USER),travis)
     DEPS += coveralls
     dep_coveralls = git https://github.com/markusn/coveralls-erl 1.4.0
+    DEPS += proper
 endif
 
 dep_amqp_client_commit = rabbitmq_v3_6_0
