@@ -629,6 +629,10 @@ sum_test_() ->
     ,?_assertEqual(A42Bhi, kz_json:sum(A40, A2Bhi))
     ,?_assertEqual(A42Bhi, kz_json:sum(A2Bhi, A40))
     ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum(?CHARGES_SIMPLE, ?CHARGES_SIMPLE))
+    ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum_jobjs([?CHARGES_SIMPLE, ?CHARGES_SIMPLE]))
+    ,?_assertEqual(E, kz_json:sum_jobjs([E, E]))
+    ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A40, A2Bhi]))
+    ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A2Bhi, A40]))
     ].
 
 order_by_test_() ->
