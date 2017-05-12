@@ -115,7 +115,7 @@ prop_set_value() ->
 prop_set_values() ->
     ?FORALL({KVs, Before, After}
            ,{list(kz_proplist_property()), kz_proplist(), kz_proplist()}
-           ,?WHENFAIL(?debugFmt("failed to set values ~p ++ ~p ++ ~p~n", [Before, KVs, After])
+           ,?WHENFAIL(?debugFmt("Props = ~p ++ props:set_values(~p, ~p)~n", [Before, KVs, After])
                      ,begin
                           Props = Before ++ props:set_values(KVs, After),
                           lists:all(fun(KV) -> props:is_defined(KV, Props) end
