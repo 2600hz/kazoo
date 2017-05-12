@@ -144,8 +144,11 @@ test_proplist() ->
 
 test_property() ->
     oneof([test_key()
-          ,{test_key(), any()}
+          ,{test_key(), test_value()}
           ]).
+
+%% TODO: generate recursive proplists and key paths to test get/set on nested proplists
+test_value() -> any().
 
 test_key() ->
     oneof([atom(), binary()]).
