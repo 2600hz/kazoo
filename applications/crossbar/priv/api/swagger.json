@@ -2549,6 +2549,9 @@
                         "#"
                     ],
                     "description": "What DTMF can terminate playback of the audio",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "text": {
