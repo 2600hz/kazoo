@@ -1580,7 +1580,8 @@ delete_remove_db(Context) ->
                   {'ok', _} ->
                       _ = provisioner_util:maybe_delete_account(Context),
                       _ = cb_mobile_manager:delete_account(Context),
-                      kz_datamgr:db_delete(cb_context:account_db(Context)),
+                      _Deleted = kz_datamgr:db_delete(cb_context:account_db(Context)),
+                      lager:info("deleting ~s: ~p", [cb_context:account_db(Context), _Deleted]),
                       delete_mod_dbs(Context);
                   {'error', 'not_found'} -> 'true';
                   {'error', _R} ->

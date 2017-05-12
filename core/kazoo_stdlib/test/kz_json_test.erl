@@ -19,21 +19,28 @@
 %% PropEr Testing
 -ifdef(PROPER).
 
-is_json_object_proper_test_() ->
+%% Lifted from Erlang ML
+proper_test_() ->
     {"Runs kz_json PropEr tests"
     ,{'timeout'
      ,10000
-     ,[?_assertEqual([], proper:module(?MODULE, [{'to_file', 'user'}
-                                                ,{'numtests', 500}
-                                                ]
-                                      ))
+     ,[{atom_to_list(F)
+       ,fun () ->
+                ?assert(proper:quickcheck(?MODULE:F(), [{'to_file', 'user'}
+                                                       ,{'numtests', 500}
+                                                       ]))
+        end
+       }
+       || {F, 0} <- ?MODULE:module_info('exports'),
+          F > 'prop_',
+          F < 'prop`'
       ]
      }
     }.
 
 prop_is_object() ->
     ?FORALL(JObj
-           ,object()
+           ,test_object()
            ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
                      ,kz_json:is_json_object(JObj)
                      )
@@ -48,12 +55,12 @@ prop_from_list() ->
            ).
 
 prop_get_value() ->
-    ?FORALL(Prop
-           ,json_proplist()
-           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [Prop])
+    ?FORALL(JObj
+           ,test_object()
+           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [JObj])
                      ,begin
-                          JObj = kz_json:from_list(Prop),
-                          case length(Prop) > 0
+                          Prop = kz_json:to_proplist(JObj),
+                          case Prop =/= []
                               andalso hd(Prop)
                           of
                               {K,V} ->
@@ -90,18 +97,6 @@ prop_flatten_expand() ->
                      )
            ).
 
-prop_expand_flatten() ->
-    ?FORALL(Prop
-           ,flat_proplist()
-           ,begin
-                L = props:unique(Prop),
-                JObj = kz_json:from_list(L),
-                ?WHENFAIL(io:format("Failed to expand/flatten: ~p~n", [JObj])
-                         ,JObj =:= kz_json:flatten(kz_json:expand(JObj))
-                         )
-            end
-           ).
-
 prop_merge_right() ->
     ?FORALL({LeftJObj, RightJObj}
            ,{test_object(), test_object()}
@@ -128,6 +123,13 @@ prop_merge_left() ->
                          ,are_all_properties_found(MergedJObj, LeftJObj)
                          )
             end
+           ).
+
+prop_to_map() ->
+    ?FORALL(JObj, test_object()
+           ,?WHENFAIL(?debugFmt("failed json->map->json on ~p~n", [JObj])
+                     ,kz_json:are_equal(JObj, kz_json:from_map(kz_json:to_map(JObj)))
+                     )
            ).
 
 test_object() ->
@@ -168,11 +170,11 @@ log_failure(Key, Value, Missing) ->
 -endif.
 
 -define(D1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}
-                          ,{<<"d1k2">>, 'd1v2'}
+                          ,{<<"d1k2">>, <<"d1v2">>}
                           ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
                           ])).
--define(D1_MERGE, ?JSON_WRAPPER([{<<"d1k1">>, 'd2k2'}
-                                ,{<<"d1k2">>, 'd1v2'}
+-define(D1_MERGE, ?JSON_WRAPPER([{<<"d1k1">>, <<"d2k2">>}
+                                ,{<<"d1k2">>, <<"d1v2">>}
                                 ,{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}
                                 ])).
 -define(D2, ?JSON_WRAPPER([{<<"d2k1">>, 1}
@@ -253,24 +255,25 @@ merge_test_() ->
     JObj1 = kz_json:merge([Base, New]),
     lists:flatmap(fun do_merge_recursive/1, [JObj, JObj1]).
 
+-spec do_merge_recursive(kz_json:object()) -> list().
 do_merge_recursive(J) ->
-    [?_assertEqual('true', kz_json:is_json_object(J))
+    [?_assert(kz_json:is_json_object(J))
     ,?_assertEqual('undefined', kz_json:get_value(<<"d1k1">>, J))
     ,?_assertEqual(1, kz_json:get_value(<<"d2k1">>, J))
 
-    ,?_assertEqual('true', 'undefined' =/= kz_json:get_value(<<"sub_d1">>, J))
+    ,?_assert('undefined' =/= kz_json:get_value(<<"sub_d1">>, J))
 
      %% second JObj takes precedence
-    ,?_assertEqual('d2k2',  kz_json:get_value([<<"sub_d1">>, <<"d1k1">>], J))
+    ,?_assertEqual(<<"d2k2">>,  kz_json:get_value([<<"sub_d1">>, <<"d1k1">>], J))
     ,?_assertEqual('undefined', kz_json:get_value(<<"missing_k">>, J))
 
-    ,?_assertEqual('true', kz_json:is_empty(kz_json:get_value(<<"blip">>, J)))
+    ,?_assert(kz_json:is_empty(kz_json:get_value(<<"blip">>, J)))
     ].
 
 get_binary_value_test_() ->
-    [?_assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1)))
+    [?_assert(is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1)))
     ,?_assertEqual('undefined', kz_json:get_binary_value(<<"d2k1">>, ?D1))
-    ,?_assertEqual('true', is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1, <<"something">>)))
+    ,?_assert(is_binary(kz_json:get_binary_value(<<"d1k1">>, ?D1, <<"something">>)))
     ,?_assertEqual(<<"something">>, kz_json:get_binary_value(<<"d2k1">>, ?D1, <<"something">>))
     ].
 
@@ -282,7 +285,7 @@ get_integer_value_test_() ->
     ].
 
 get_float_value_test_() ->
-    [?_assertEqual('true', is_float(kz_json:get_float_value(<<"d2k2">>, ?D2)))
+    [?_assert(is_float(kz_json:get_float_value(<<"d2k2">>, ?D2)))
     ,?_assertEqual('undefined', kz_json:get_float_value(<<"d1k1">>, ?D2))
     ,?_assertEqual(3.14, kz_json:get_float_value(<<"d2k2">>, ?D2, 0.0))
     ,?_assertEqual(0.0, kz_json:get_float_value(<<"d1k1">>, ?D2, 0.0))
@@ -304,7 +307,7 @@ is_true_test_() ->
     ,?_assertEqual('true', kz_json:is_true(<<"a_key">>, ?JSON_WRAPPER([{<<"a_key">>, 'true'}])))
     ].
 
--define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, 'd1v2'}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D1_FILTERED, ?JSON_WRAPPER([{<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
 -define(D2_FILTERED, ?JSON_WRAPPER([{<<"sub_d1">>, ?D1}])).
 -define(D3_FILTERED, ?JSON_WRAPPER([{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?D1, ?D2_FILTERED]}])).
 filter_test_() ->
@@ -331,8 +334,8 @@ is_json_object_test_() ->
     ].
 
 %% delete results
--define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, 'd1v2'}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, 'd1v2'}])).
+-define(D1_AFTER_K1, ?JSON_WRAPPER([{<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(D1_AFTER_K3_V2, ?JSON_WRAPPER([{<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.3">>]}, {<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}])).
 
 -define(D6_AFTER_SUB, ?JSON_WRAPPER([{<<"sub_d1">>, ?EMPTY_JSON_OBJECT}
                                     ,{<<"d2k1">>, 1}
@@ -344,14 +347,14 @@ is_json_object_test_() ->
                                           ]
                                          )).
 
--define(P1, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
+-define(P1, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
 -define(P2, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?JSON_WRAPPER(?P1)}]).
 -define(P3, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?JSON_WRAPPER(?P1), ?JSON_WRAPPER(?P2)]}]).
 -define(P4, [?P1, ?P2, ?P3]).
 -define(P6, [{<<"d2k1">>, 1},{<<"d2k2">>, 3.14},{<<"sub_d1">>, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}])}]).
 -define(P7, [{<<"d1k1">>, <<"d1v1">>}]).
 
--define(P8, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, 'd1v2'}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
+-define(P8, [{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}]).
 -define(P9, [{<<"d2k1">>, 1}, {<<"d2k2">>, 3.14}, {<<"sub_d1">>, ?P1}]).
 -define(P10, [{<<"d3k1">>, <<"d3v1">>}, {<<"d3k2">>, []}, {<<"sub_docs">>, [?P8, ?P9]}]).
 -define(P11, [?P8, ?P9, ?P10]).
@@ -416,7 +419,7 @@ get_value_test_() ->
      %% Basic nested key
     ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?EMPTY_JSON_OBJECT))
     ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D1))
-    ,?_assertEqual('d1v2',      kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D2))
+    ,?_assertEqual(<<"d1v2">>,      kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D2))
     ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D3))
     ,?_assertEqual('undefined', kz_json:get_value([<<"sub_d1">>, <<"d1k2">>], ?D4))
      %% Get the value in an object in an array in another object that is part of
@@ -437,31 +440,31 @@ get_value_test_() ->
     ].
 
 -define(T2R1, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"update">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, 'new_value'}])).
--define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, 'added_value'}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
--define(T2R4, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, d1v2}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, ?JSON_WRAPPER([{<<"new_key">>, 'added_value'}])}])).
+-define(T2R2, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, <<"new_value">>}])).
+-define(T2R3, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, ?JSON_WRAPPER([{<<"new_key">>, <<"added_value">>}])}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}])).
+-define(T2R4, ?JSON_WRAPPER([{<<"d1k1">>, <<"d1v1">>}, {<<"d1k2">>, <<"d1v2">>}, {<<"d1k3">>, [<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]}, {<<"d1k4">>, ?JSON_WRAPPER([{<<"new_key">>, <<"added_value">>}])}])).
 
 set_value_object_test_() ->
     %% Test setting an existing key
     [?_assertEqual(?T2R1, kz_json:set_value([<<"d1k2">>], <<"update">>, ?D1))
      %% Test setting a non-existing key
-    ,?_assertEqual(?T2R2, kz_json:set_value([<<"d1k4">>], 'new_value', ?D1))
+    ,?_assertEqual(?T2R2, kz_json:set_value([<<"d1k4">>], <<"new_value">>, ?D1))
      %% Test setting an existing key followed by a non-existant key
-    ,?_assertEqual(?T2R3, kz_json:set_value([<<"d1k2">>, <<"new_key">>], 'added_value', ?D1))
+    ,?_assertEqual(?T2R3, kz_json:set_value([<<"d1k2">>, <<"new_key">>], <<"added_value">>, ?D1))
      %% Test setting a non-existing key followed by another non-existant key
-    ,?_assertEqual(?T2R4, kz_json:set_value([<<"d1k4">>, <<"new_key">>], 'added_value', ?D1))
+    ,?_assertEqual(?T2R4, kz_json:set_value([<<"d1k4">>, <<"new_key">>], <<"added_value">>, ?D1))
     ].
 
--define(D5,   [?JSON_WRAPPER([{<<"k1">>, 'v1'}]), ?JSON_WRAPPER([{<<"k2">>, 'v2'}])]).
--define(T3R1, [?JSON_WRAPPER([{<<"k1">>,'test'}]),?JSON_WRAPPER([{<<"k2">>,'v2'}])]).
--define(T3R2, [?JSON_WRAPPER([{<<"k1">>,'v1'},{<<"pi">>, 3.14}]),?JSON_WRAPPER([{<<"k2">>,'v2'}])]).
--define(T3R3, [?JSON_WRAPPER([{<<"k1">>,'v1'},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,'v2'}])]).
--define(T3R4, [?JSON_WRAPPER([{<<"k1">>,'v1'}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
--define(T3R5, [?JSON_WRAPPER([{<<"k1">>,'v1'}]),?JSON_WRAPPER([{<<"k2">>,'v2'}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
+-define(D5,   [?JSON_WRAPPER([{<<"k1">>, <<"v1">>}]), ?JSON_WRAPPER([{<<"k2">>, <<"v2">>}])]).
+-define(T3R1, [?JSON_WRAPPER([{<<"k1">>, <<"test">>}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
+-define(T3R2, [?JSON_WRAPPER([{<<"k1">>, <<"v1">>},{<<"pi">>, 3.14}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
+-define(T3R3, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>},{<<"callerid">>,?JSON_WRAPPER([{<<"name">>,<<"2600hz">>}])}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}])]).
+-define(T3R4, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>}]),?JSON_WRAPPER([{<<"k2">>,<<"updated">>}])]).
+-define(T3R5, [?JSON_WRAPPER([{<<"k1">>,<<"v1">>}]),?JSON_WRAPPER([{<<"k2">>,<<"v2">>}]),?JSON_WRAPPER([{<<"new_key">>,<<"added">>}])]).
 
 set_value_multiple_object_test_() ->
     %% Set an existing key in the first kz_json:object()
-    [?_assertEqual(?T3R1, kz_json:set_value([1, <<"k1">>], 'test', ?D5))
+    [?_assertEqual(?T3R1, kz_json:set_value([1, <<"k1">>], <<"test">>, ?D5))
      %% Set a non-existing key in the first kz_json:object()
     ,?_assertEqual(?T3R2, kz_json:set_value([1, <<"pi">>], 3.14, ?D5))
      %% Set a non-existing key followed by another non-existant key in the first kz_json:object()
@@ -501,7 +504,7 @@ set_value_normalizer_test_() ->
     ].
 
 -define(D1_values, [<<"d1v1">>
-                   ,'d1v2'
+                   ,<<"d1v2">>
                    ,[<<"d1v3.1">>, <<"d1v3.2">>, <<"d1v3.3">>]
                    ]).
 
@@ -567,7 +570,7 @@ get_ne_json_object_test_() ->
     ].
 
 -define(MAP_JSON,
-        kz_json:from_list([{a, <<"zero">>}
+        kz_json:from_list([{<<"a">>, <<"zero">>}
                           ,{<<"B">>, true}
                           ,{<<"c">>, [1
                                      ,2
@@ -577,7 +580,7 @@ get_ne_json_object_test_() ->
                                      ]}
                           ])).
 
--define(JSON_MAP, #{a => <<"zero">>
+-define(JSON_MAP, #{<<"a">> => <<"zero">>
                    ,<<"B">> => true
                    ,<<"c">> => [1
                                ,2
@@ -589,9 +592,10 @@ get_ne_json_object_test_() ->
 
 to_map_test_() ->
     [?_assertEqual(?JSON_MAP, kz_json:to_map(?MAP_JSON))
-    ,?_assertEqual(?MAP_JSON, kz_json:from_map(?JSON_MAP))
+    ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(?JSON_MAP)))
+
     ,?_assertEqual(?JSON_MAP, kz_json:to_map(kz_json:from_map(?JSON_MAP)))
-    ,?_assertEqual(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON)))
+    ,?_assert(kz_json:are_equal(?MAP_JSON, kz_json:from_map(kz_json:to_map(?MAP_JSON))))
     ].
 
 are_equal_test_() ->
@@ -672,9 +676,9 @@ from_list_recursive_test() ->
     ].
 
 flatten_expand_diff_test() ->
-    X = kz_json:set_value([k10, k11, k12], v10, kz_json:new()),
-    X2 = kz_json:set_value(k20, v20, X),
-    Delta = kz_json:set_value(k20, v20, X),
+    X = kz_json:set_value([<<"k10">>, <<"k11">>, <<"k12">>], <<"v10">>, kz_json:new()),
+    X2 = kz_json:set_value(<<"k20">>, <<"v20">>, X),
+    Delta = kz_json:set_value(<<"k20">>, <<"v20">>, X),
     [
      ?_assertEqual(kz_json:expand(kz_json:flatten(X2)), X2)
     ,?_assertEqual(kz_json:diff(X, X2), Delta)
