@@ -28,6 +28,7 @@
 %% Appliers
 -export([list/2
         ,list_all/2
+        ,find/3
         ,dump/2
         ,dump_aging/2, dump_available/2, dump_deleted/2, dump_discovery/2
         ,dump_in_service/2, dump_port_in/2, dump_port_out/2, dump_released/2, dump_reserved/2
@@ -59,6 +60,7 @@
 -define(CATEGORY, "number_management").
 -define(ACTIONS, [<<"list">>
                  ,<<"list_all">>
+                 ,<<"find">>
                  ,<<"dump">>
                  ,<<"dump_aging">>
                  ,<<"dump_available">>
@@ -217,6 +219,13 @@ action(<<"list">>) ->
 action(<<"list_all">>) ->
     #{<<"description">> => <<"List all numbers assigned to the account starting the task & its subaccounts">>
      ,<<"doc">> => list_doc()
+     };
+action(<<"find">>) ->
+    #{<<"description">> => <<"List the given numbers if the authenticated account owns them">>
+     ,<<"doc">> => list_doc()
+     ,<<"expected_content">> => <<"text/csv">>
+     ,<<"mandatory">> => [<<"e164">>]
+     ,<<"optional">> => []
      };
 action(<<"dump">>) ->
     #{<<"description">> => <<"List all numbers that exist in the system">>
@@ -447,6 +456,10 @@ list_all(#{account_id := Account}, init) ->
 list_all(_, []) -> stop;
 list_all(_, Todo) ->
     list_assigned_to(?KNM_DEFAULT_AUTH_BY, Todo).
+
+-spec find(kz_tasks:extra_args(), kz_tasks:iterator(), kz_tasks:args()) -> kz_tasks:return().
+find(#{auth_account_id := AuthBy}, _IterValue, Args=#{<<"e164">> := Num}) ->
+    handle_result(Args, knm_number:get(Num, [{auth_by,AuthBy}])).
 
 -spec dump(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 dump(ExtraArgs, init) ->
