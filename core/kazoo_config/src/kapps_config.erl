@@ -33,7 +33,12 @@
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
 -export([get_ne_binaries/2, get_ne_binaries/3, get_ne_binaries/4]).
 
--export([set_string/3, set_integer/3, set_float/3, set_boolean/3, set_json/3]).
+-export([set_string/3
+        ,set_integer/3
+        ,set_float/3
+        ,set_boolean/3
+        ,set_json/3
+        ]).
 -export([set/3, set/4, set_default/3, set_node/4
         ,update_default/3, update_default/4
         ]).
