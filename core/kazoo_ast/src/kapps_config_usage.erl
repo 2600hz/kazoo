@@ -239,6 +239,8 @@ guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key, Default |_]))
   when M =:= kapps_config;
        M =:= kapps_account_config ->
     guess_type(F, Default);
+guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', 'get_ne_binaries', [_Key, _Default])) ->
+    [<<"string">>];
 guess_type_by_default(?MOD_FUN_ARGS('ecallmgr_config', F, [_Key, Default])) ->
     guess_type(F, Default);
 guess_type_by_default(?MOD_FUN_ARGS('kz_json', 'new', [])) -> <<"object">>;
@@ -325,6 +327,8 @@ default_value(?MOD_FUN_ARGS('kz_term', 'to_integer', [Arg])) ->
 default_value(?MOD_FUN_ARGS(M, 'type', [])) ->
     default_value(M:type());
 default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get', [_Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('ecallmgr_config', 'get_ne_binaries', [_Key, Default])) ->
     default_value(Default);
 %%TODO: support all kapps_config exports
 default_value(?MOD_FUN_ARGS('kapps_config', 'get', [_Category, _Key, Default])) ->
