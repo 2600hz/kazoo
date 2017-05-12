@@ -12717,7 +12717,7 @@
     },
     "externalDocs": {
         "description": "Kazoo documentation's Git repository",
-        "url": "https://github.com/2600hz/kazoo/tree/master/applications/crossbar/doc"
+        "url": "https://docs.2600hz.com/dev"
     },
     "host": "localhost:8000",
     "info": {

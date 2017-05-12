@@ -21,7 +21,7 @@
         ,get_http_verb/2
         ,get_auth_token/2
         ,get_pretty_print/2
-        ,is_authentic/2
+        ,is_authentic/2, is_early_authentic/2
         ,is_permitted/2
         ,is_known_content_type/2
         ,does_resource_exist/1
@@ -68,7 +68,9 @@
 -type pull_file_response_return() :: {pull_file_resp(), cowboy_req:req(), cb_context:context()} |
                                      halt_return().
 
--export_type([pull_file_response_return/0]).
+-export_type([pull_file_response_return/0
+             ,halt_return/0
+             ]).
 %%--------------------------------------------------------------------
 %% @private
 %% @doc
@@ -271,7 +273,11 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
             {set_valid_data_in_context(Context, JObj, QS), Req};
         Errors ->
             lager:info("failed to validate json request, invalid request"),
-            ?MODULE:halt(Req, cb_context:failed(Context, Errors))
+            ?MODULE:halt(Req
+                        ,cb_context:failed(cb_context:set_resp_error_msg(Context, <<"invalid request envelope">>)
+                                          ,Errors
+                                          )
+                        )
     end.
 
 -spec set_valid_data_in_context(cb_context:context(), kz_json:object(), kz_json:object()) ->
@@ -332,17 +338,15 @@ extract_multipart(Context, {'done', Req}, _QS) ->
     {Context, Req};
 extract_multipart(Context, {'ok', Headers, Req}, QS) ->
     {Ctx, R} = get_req_data(Context, {props:get_value(<<"content-type">>, Headers), Req}, QS),
-    extract_multipart(
-      Ctx
+    extract_multipart(Ctx
                      ,cowboy_req:part(R)
                      ,QS
-     );
+                     );
 extract_multipart(Context, Req, QS) ->
-    extract_multipart(
-      Context
+    extract_multipart(Context
                      ,cowboy_req:part(Req)
                      ,QS
-     ).
+                     ).
 
 -spec extract_file(cb_context:context(), ne_binary(), cowboy_req:req()) ->
                           {cb_context:context(), cowboy_req:req()} |
@@ -582,24 +586,37 @@ path_tokens(Context) ->
 
 -type cb_mod_with_tokens() :: {ne_binary(), path_tokens()}.
 -type cb_mods_with_tokens() :: [cb_mod_with_tokens()].
--spec parse_path_tokens(cb_context:context(), path_tokens()) -> cb_mods_with_tokens().
+
+-spec parse_path_tokens(cb_context:context(), path_tokens()) ->
+                               cb_mods_with_tokens() |
+                               {'halt', cb_context:context()}.
 parse_path_tokens(Context, Tokens) ->
     parse_path_tokens(Context, Tokens, []).
 
 -spec parse_path_tokens(cb_context:context(), kz_json:path(), cb_mods_with_tokens()) ->
-                               cb_mods_with_tokens().
-parse_path_tokens(_, [], Events) -> Events;
-parse_path_tokens(_, [<<>>], Events) -> Events;
-parse_path_tokens(_, [<<"schemas">>=Mod|T], Events) ->
+                               cb_mods_with_tokens() |
+                               {'halt', cb_context:context()}.
+parse_path_tokens(_Context, [], Events) -> Events;
+parse_path_tokens(_Context, [<<>>], Events) -> Events;
+parse_path_tokens(_Context, [<<"schemas">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens(_, [<<"braintree">>=Mod|T], Events) ->
+parse_path_tokens(_Context, [<<"braintree">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens(_, [<<"system_configs">>=Mod|T], Events) ->
+parse_path_tokens(_Context, [<<"system_configs">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens(_, [<<"configs">>=Mod|T], Events) ->
+parse_path_tokens(_Context, [<<"configs">>=Mod|T], Events) ->
     [{Mod, T} | Events];
-parse_path_tokens(_, [<<"sup">>=Mod|T], Events) ->
+parse_path_tokens(_Context, [<<"sup">>=Mod|T], Events) ->
     [{Mod, cb_sup:format_path_tokens(T)} | Events];
+parse_path_tokens(Context, [<<"account">>|T], Events) ->
+    case cb_context:auth_account_id(Context) of
+        'undefined' ->
+            lager:info("/account alias not available, request fails"),
+            {'halt', crossbar_util:response_401(Context)};
+        AuthAccountId ->
+            lager:info("aliasing /account to /accounts/~s", [AuthAccountId]),
+            parse_path_tokens(Context, [<<"accounts">>, AuthAccountId | T], Events)
+    end;
 parse_path_tokens(Context, [Mod|T], Events) ->
     case is_cb_module(Context, Mod) of
         'false' -> [];
@@ -689,6 +706,24 @@ maybe_add_post_method(_, _, Allowed) ->
 %% provided a valid authentication token
 %% @end
 %%--------------------------------------------------------------------
+-spec is_early_authentic(cowboy_req:req(), cb_context:context()) ->
+                                {'true', cowboy_req:req(), cb_context:context()} |
+                                halt_return().
+is_early_authentic(Req, Context) ->
+    Event = create_event_name(Context, <<"early_authenticate">>),
+    case crossbar_bindings:succeeded(crossbar_bindings:pmap(Event, Context)) of
+        [] ->
+            {'true', Req, Context};
+        ['true'|T] ->
+            prefer_new_context(T, Req, Context, 'true');
+        [{'true', Context1}|_T] ->
+            lager:debug("one true context: ~p", [_T]),
+            {'true', Req, Context1};
+        [{'halt', Context1}|_] ->
+            lager:debug("pre-authn halted"),
+            ?MODULE:halt(Req, Context1)
+    end.
+
 -spec is_authentic(cowboy_req:req(), cb_context:context()) ->
                           {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
                           halt_return().
@@ -696,7 +731,7 @@ is_authentic(Req, Context) ->
     is_authentic(Req, Context, cb_context:req_verb(Context)).
 
 -spec is_authentic(cowboy_req:req(), cb_context:context(), http_method()) ->
-                          {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                          {boolean(), cowboy_req:req(), cb_context:context()} |
                           halt_return().
 is_authentic(Req, Context, ?HTTP_OPTIONS) ->
     %% all OPTIONS, they are harmless (I hope) and required for CORS preflight
@@ -739,18 +774,29 @@ is_authentic(Req, Context, _ReqVerb, [{Mod, Params} | _ReqNouns]) ->
     end.
 
 -spec prefer_new_context(kz_proplist(), cowboy_req:req(), cb_context:context()) ->
-                                {{'false', <<>>} | 'true', cowboy_req:req(), cb_context:context()} |
+                                {'true', cowboy_req:req(), cb_context:context()} |
                                 halt_return().
-prefer_new_context([], Req, Context) ->
+prefer_new_context(Results, Req, Context) ->
+    prefer_new_context(Results, Req, Context, 'undefined').
+
+prefer_new_context([], Req, Context, 'false') ->
+    {'false', Req, Context};
+prefer_new_context([], Req, Context, _Return) ->
     {'true', Req, Context};
-prefer_new_context([{'true', Context1}|_], Req, _) ->
+
+prefer_new_context([{'true', Context1}|_], Req, _Context, _Return) ->
     {'true', Req, Context1};
-prefer_new_context(['true'|T], Req, Context) ->
-    prefer_new_context(T, Req, Context);
-prefer_new_context([{'halt', Context1}|_], Req, _) ->
+prefer_new_context(['true'|T], Req, Context, _Return) ->
+    prefer_new_context(T, Req, Context, 'true');
+
+prefer_new_context(['false'|T], Req, Context, 'undefined') ->
+    prefer_new_context(T, Req, Context, 'false');
+prefer_new_context(['false'|T], Req, Context, 'false') ->
+    prefer_new_context(T, Req, Context, 'false');
+
+prefer_new_context([{'halt', Context1}|_], Req, _Context, _Return) ->
     lager:debug("authn halted"),
     ?MODULE:halt(Req, Context1).
-
 
 -spec get_auth_token(cowboy_req:req(), cb_context:context()) ->
                             {cowboy_req:req(), cb_context:context()}.
@@ -761,17 +807,11 @@ get_auth_token(Req0, Context) ->
                 'undefined' -> get_authorization_token(Req1, Context);
                 Token ->
                     lager:debug("using auth token found"),
-                    {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
-                                                       ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
-                                                       ]
-                                             )}
+                    {Req1, set_auth_context(Context, Token, 'x-auth-token')}
             end;
         {Token, Req1} ->
             lager:debug("using auth token from header"),
-            {Req1, cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
-                                               ,{fun cb_context:set_auth_token_type/2, 'x-auth-token'}
-                                               ]
-                                     )}
+            {Req1, set_auth_context(Context, Token, 'x-auth-token')}
     end.
 
 -spec get_authorization_token(cowboy_req:req(), cb_context:context()) ->
@@ -792,14 +832,20 @@ get_authorization_token(Req0, Context) ->
             {Req1, set_auth_context(Context, Authorization)}
     end.
 
--spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) -> cb_context:context().
+-spec set_auth_context(cb_context:context(), ne_binary() | {ne_binary(), atom()}) ->
+                              cb_context:context().
+-spec set_auth_context(cb_context:context(), ne_binary(), atom()) ->
+                              cb_context:context().
 set_auth_context(Context, {Token, TokenType}) ->
+    set_auth_context(Context, Token, TokenType);
+set_auth_context(Context, Authorization) ->
+    set_auth_context(Context, get_authorization_token_type(Authorization)).
+
+set_auth_context(Context, Token, TokenType) ->
     cb_context:setters(Context, [{fun cb_context:set_auth_token/2, Token}
                                 ,{fun cb_context:set_auth_token_type/2, TokenType}
                                 ]
-                      );
-set_auth_context(Context, Authorization) ->
-    set_auth_context(Context, get_authorization_token_type(Authorization)).
+                      ).
 
 -spec get_authorization_token_type(ne_binary()) -> {ne_binary(), atom()}.
 get_authorization_token_type(<<"Basic ", Token/binary>>) -> {Token, 'basic'};
@@ -1330,7 +1376,7 @@ fix_header(H, V, _) ->
                   halt_return().
 halt(Req0, Context) ->
     StatusCode = cb_context:resp_error_code(Context),
-    lager:debug("halting execution here with ~p", [StatusCode]),
+    lager:info("halting execution here with status code ~p", [StatusCode]),
 
     {Content, Req1} = create_resp_content(Req0, Context),
     lager:debug("setting resp body: ~s", [Content]),
@@ -1341,7 +1387,6 @@ halt(Req0, Context) ->
 
     Req4 = cowboy_req:set_resp_header(<<"x-request-id">>, cb_context:req_id(Context), Req3),
 
-    lager:debug("setting status code: ~p", [StatusCode]),
     {'ok', Req5} = cowboy_req:reply(StatusCode, Req4),
     {'halt', Req5, cb_context:set_resp_status(Context, 'halt')}.
 

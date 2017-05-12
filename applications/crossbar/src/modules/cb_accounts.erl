@@ -28,6 +28,9 @@
 -export([notify_new_account/1]).
 -export([is_unique_realm/2]).
 
+%% needed for API docs in cb_api_endpoints
+-export([allowed_methods_on_account/2]).
+
 -compile({no_auto_import,[put/2]}).
 
 -include("crossbar.hrl").
@@ -88,17 +91,19 @@ allowed_methods() ->
     [?HTTP_PUT].
 
 allowed_methods(AccountId) ->
-    case kapps_util:get_master_account_id() of
-        {'ok', AccountId} ->
-            lager:debug("accessing master account, disallowing DELETE"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
-        {'ok', _MasterId} ->
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE];
-        {'error', _E} ->
-            lager:debug("failed to get master account id: ~p", [_E]),
-            lager:info("disallowing DELETE while we can't determine the master account id"),
-            [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH]
-    end.
+    allowed_methods_on_account(AccountId, kapps_util:get_master_account_id()).
+
+-spec allowed_methods_on_account(ne_binary(), {'ok', ne_binary()} | {'error', any()}) ->
+                                        http_methods().
+allowed_methods_on_account(AccountId, {'ok', AccountId}) ->
+    lager:debug("accessing master account, disallowing DELETE"),
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH];
+allowed_methods_on_account(_AccountId, {'ok', _MasterId}) ->
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH, ?HTTP_DELETE];
+allowed_methods_on_account(_AccountId, {'error', _E}) ->
+    lager:debug("failed to get master account id: ~p", [_E]),
+    lager:info("disallowing DELETE while we can't determine the master account id"),
+    [?HTTP_GET, ?HTTP_PUT, ?HTTP_POST, ?HTTP_PATCH].
 
 allowed_methods(_AccountId, ?MOVE) ->
     [?HTTP_POST];
@@ -148,9 +153,12 @@ resource_exists(_, Path) ->
 -spec validate_resource(cb_context:context()) -> cb_context:context().
 -spec validate_resource(cb_context:context(), path_token()) -> cb_context:context().
 -spec validate_resource(cb_context:context(), path_token(), ne_binary()) -> cb_context:context().
-validate_resource(Context) -> Context.
-validate_resource(Context, AccountId) -> load_account_db(AccountId, Context).
-validate_resource(Context, AccountId, _Path) -> load_account_db(AccountId, Context).
+validate_resource(Context) ->
+    Context.
+validate_resource(Context, AccountId) ->
+    load_account_db(Context, AccountId).
+validate_resource(Context, AccountId, _Path) ->
+    load_account_db(Context, AccountId).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1238,11 +1246,11 @@ create_new_tree(Context, _Verb, _Nouns) ->
 %% for this account
 %% @end
 %%--------------------------------------------------------------------
--spec load_account_db(ne_binary() | ne_binaries(), cb_context:context()) ->
+-spec load_account_db(cb_context:context(), ne_binary() | ne_binaries()) ->
                              cb_context:context().
-load_account_db([AccountId|_], Context) ->
-    load_account_db(AccountId, Context);
-load_account_db(AccountId, Context) when is_binary(AccountId) ->
+load_account_db(Context, [AccountId|_]) ->
+    load_account_db(Context, AccountId);
+load_account_db(Context, AccountId) when is_binary(AccountId) ->
     case kz_account:fetch(AccountId) of
         {'ok', JObj} ->
             AccountDb = kz_util:format_account_id(AccountId, 'encoded'),

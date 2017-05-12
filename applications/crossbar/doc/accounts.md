@@ -113,6 +113,80 @@ Key | Description | Type | Default | Required
 
 
 
+##### call_waiting
+
+Parameters for server-side call waiting
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`enabled` | Determines if server side call waiting is enabled/disabled | `boolean` |   | `false`
+
+##### caller_id
+
+Defines caller ID settings based on the type of call being made
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`emergency` | The caller ID used when a resource is flagged as 'emergency' | `object` |   | `false`
+`emergency.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`emergency.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+`external` | The default caller ID used when dialing external numbers | `object` |   | `false`
+`external.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`external.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+`internal` | The default caller ID used when dialing internal extensions | `object` |   | `false`
+`internal.name` | The caller id name for the object type | `string(0..35)` |   | `false`
+`internal.number` | The caller id name for the object type | `string(0..35)` |   | `false`
+
+##### dialplans
+
+Permit local dialing by converting the dialed number to a routable form
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`system` | List of system dial plans | `array()` |   | `false`
+
+##### metaflow
+
+A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`children` | Children metaflows | `object` |   | `false`
+`children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+`data` | The data/arguments of the metaflow module | `object` |   | `false`
+`module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
+
+##### metaflows
+
+Actions applied to a call outside of the normal callflow, initiated by the caller(s)
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
+`digit_timeout` | How long to wait between DTMF presses before processing the collected sequence (milliseconds) | `integer` |   | `false`
+`listen_on` | Which leg(s) of the call to listen for DTMF | `string('both', 'self', 'peer')` |   | `false`
+`numbers` | A list of static numbers with their flows | `object` |   | `false`
+`numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+`patterns` | A list of patterns with their flows | `object` |   | `false`
+`patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
+
+##### notify.callback
+
+Schema for a callback options
+
+Key | Description | Type | Default | Required
+--- | ----------- | ---- | ------- | --------
+`attempts` | How many attempts without answer will system do | `integer` |   | `false`
+`disabled` | Determines if the system will call to callback number | `boolean` |   | `false`
+`interval_s` | How long will system wait between call back notification attempts | `integer` |   | `false`
+`number` | Number for callback notifications about new messages | `string` |   | `false`
+`schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
+`timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
+
+#### Aliases for Account API Requests
+
+Account IDs are 32-character identifiers (as are most identifiers in Kazoo) which can increase the size of the URL. Once you've authenticated, your user's account identifier is encoded in the auth token you received. If you plan to make requests against that account, you can use `/v2/account/...` instead of `/v2/accounts/{ACCOUNT_ID}/...` for your requests. So fetching a list of devices from your account could be `GET /v2/account/devices`, for instance.
+
 #### Create a new child account
 
 Puts the created account under the account of the owner of the `{AUTH_TOKEN}`. This is a shortcut for `PUT /v2/accounts/{AUTH_ACCOUNT_ID}`

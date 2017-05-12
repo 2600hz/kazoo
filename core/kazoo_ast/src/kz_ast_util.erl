@@ -22,6 +22,10 @@
 -type ast() :: [erl_parse:abstract_form()].
 -type abstract_code() :: {'raw_abstract_v1', ast()}.
 
+-export_type([abstract_code/0
+             ,ast/0
+             ]).
+
 -spec module_ast(atom()) -> {atom(), abstract_code()} | 'undefined'.
 module_ast(M) ->
     case code:which(M) of

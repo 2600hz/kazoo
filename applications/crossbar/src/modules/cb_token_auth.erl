@@ -18,7 +18,7 @@
         ,resource_exists/0
         ,validate/1
         ,delete/1
-        ,authenticate/1
+        ,authenticate/1, early_authenticate/1
         ,authorize/1
         ]).
 
@@ -37,6 +37,7 @@
 -spec init() -> ok.
 init() ->
     _ = crossbar_bindings:bind(<<"*.authenticate">>, ?MODULE, 'authenticate'),
+    _ = crossbar_bindings:bind(<<"*.early_authenticate">>, ?MODULE, 'early_authenticate'),
     _ = crossbar_bindings:bind(<<"*.authorize">>, ?MODULE, 'authorize'),
     _ = crossbar_bindings:bind(<<"*.allowed_methods.token_auth">>, ?MODULE, 'allowed_methods'),
     _ = crossbar_bindings:bind(<<"*.resource_exists.token_auth">>, ?MODULE, 'resource_exists'),
@@ -52,6 +53,7 @@ resource_exists() -> 'true'.
 
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
+    cb_context:put_reqid(Context),
     validate(Context, cb_context:req_verb(Context)).
 
 -spec validate(cb_context:context(), ne_binary()) -> cb_context:context().
@@ -75,6 +77,8 @@ validate(Context, ?HTTP_DELETE) ->
 
 -spec delete(cb_context:context()) -> cb_context:context().
 delete(Context) ->
+    cb_context:put_reqid(Context),
+
     AuthToken = cb_context:auth_token(Context),
     case kz_datamgr:del_doc(?KZ_TOKEN_DB, AuthToken) of
         {'ok', _} ->
@@ -108,15 +112,17 @@ authorize(Context) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec authenticate(cb_context:context()) ->
-                          'false' |
+                          boolean() |
                           {'true' | 'halt', cb_context:context()}.
--spec authenticate(cb_context:context(), atom()) ->
-                          'false' |
+-spec authenticate(cb_context:context(), api_ne_binary(), atom()) ->
+                          boolean() |
                           {'true' | 'halt', cb_context:context()}.
 authenticate(Context) ->
-    authenticate(Context, cb_context:auth_token_type(Context)).
+    cb_context:put_reqid(Context),
+    authenticate(Context, cb_context:auth_account_id(Context), cb_context:auth_token_type(Context)).
 
-authenticate(Context, 'x-auth-token') ->
+authenticate(_Context, ?NE_BINARY = _AccountId, 'x-auth-token') -> 'true';
+authenticate(Context, 'undefined', 'x-auth-token') ->
     _ = cb_context:put_reqid(Context),
     case kz_buckets:consume_tokens(?APP_NAME
                                   ,cb_modules_util:bucket_name(Context)
@@ -124,6 +130,7 @@ authenticate(Context, 'x-auth-token') ->
                                   )
     of
         'true' ->
+            lager:info("checking for x-auth-token"),
             check_auth_token(Context
                             ,cb_context:auth_token(Context)
                             ,cb_context:magic_pathed(Context)
@@ -132,28 +139,67 @@ authenticate(Context, 'x-auth-token') ->
             lager:warning("rate limiting threshold hit for ~s!", [cb_context:client_ip(Context)]),
             {'halt', cb_context:add_system_error('too_many_requests', Context)}
     end;
-authenticate(_Context, _TokenType) -> 'false'.
+authenticate(_Context, _AccountId, _TokenType) -> 'false'.
+
+-spec early_authenticate(cb_context:context()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
+-spec early_authenticate(cb_context:context(), atom() | api_binary()) ->
+                                boolean() |
+                                {'true', cb_context:context()}.
+early_authenticate(Context) ->
+    cb_context:put_reqid(Context),
+    early_authenticate(Context, cb_context:auth_token_type(Context)).
+
+early_authenticate(Context, 'x-auth-token') ->
+    early_authenticate_token(Context, cb_context:auth_token(Context));
+early_authenticate(_Context, _TokenType) -> 'false'.
+
+-spec early_authenticate_token(cb_context:context(), api_binary()) ->
+                                      boolean() |
+                                      {'true', cb_context:context()}.
+early_authenticate_token(Context, AuthToken) when is_binary(AuthToken) ->
+    validate_auth_token(Context, AuthToken);
+early_authenticate_token(_Context, 'undefined') -> 'true'.
 
 -spec check_auth_token(cb_context:context(), api_binary(), boolean()) ->
                               boolean() |
                               {'true', cb_context:context()}.
-check_auth_token(_Context, <<>>, MagicPathed) -> MagicPathed;
-check_auth_token(_Context, 'undefined', MagicPathed) -> MagicPathed;
+check_auth_token(_Context, <<>>, MagicPathed) ->
+    lager:info("empty auth token - magic path'd: ~p", [MagicPathed]),
+    MagicPathed;
+check_auth_token(_Context, 'undefined', MagicPathed) ->
+    lager:info("auth token not found - magic path'd: ~p", [MagicPathed]),
+    MagicPathed;
 check_auth_token(Context, AuthToken, _MagicPathed) ->
+    validate_auth_token(Context, AuthToken).
+
+-spec validate_auth_token(cb_context:context(), ne_binary()) ->
+                                 boolean() |
+                                 {'true', cb_context:context()}.
+validate_auth_token(Context, ?NE_BINARY = AuthToken) ->
     Options = [{<<"account_id">>, cb_context:req_header(Context, <<"x-auth-account-id">>)}],
     lager:debug("checking auth token"),
     case crossbar_auth:validate_auth_token(AuthToken, props:filter_undefined(Options)) of
-        {'ok', JObj} -> is_expired(Context, JObj);
+        {'ok', JObj} ->
+            is_account_expired(Context, JObj);
+        {'error', <<"token expired">>} ->
+            lager:info("provided auth token has expired"),
+
+            {'halt', crossbar_util:response_401(Context)};
+        {'error', 'not_found'} ->
+            lager:info("provided auth token was not found"),
+            {'halt', crossbar_util:response_401(Context)};
         {'error', R} ->
             lager:debug("failed to authenticate token auth, ~p", [R]),
             'false'
     end.
 
--spec is_expired(cb_context:context(), kz_json:object()) ->
-                        boolean() |
-                        {'halt', cb_context:context()}.
-is_expired(Context, JObj) ->
-    AccountId = kz_json:get_value(<<"account_id">>, JObj),
+-spec is_account_expired(cb_context:context(), kz_json:object()) ->
+                                boolean() |
+                                {'halt', cb_context:context()}.
+is_account_expired(Context, JObj) ->
+    AccountId = kz_json:get_ne_binary_value(<<"account_id">>, JObj),
     case kz_util:is_account_expired(AccountId) of
         'false' -> check_as(Context, JObj);
         {'true', Expired} ->
@@ -172,7 +218,7 @@ is_expired(Context, JObj) ->
                       boolean() |
                       {'true', cb_context:context()}.
 check_as(Context, JObj) ->
-    case kz_json:get_value(<<"account_id">>, JObj, 'undefined') of
+    case kz_json:get_ne_binary_value(<<"account_id">>, JObj, 'undefined') of
         'undefined' -> {'true', set_auth_doc(Context, JObj)};
         AccountId -> check_as_payload(Context, JObj, AccountId)
     end.
@@ -211,8 +257,9 @@ check_descendants(Context, JObj, AccountId, AsAccountId, AsOwnerId) ->
 
 -spec set_auth_doc(cb_context:context(), kz_json:object()) -> cb_context:context().
 set_auth_doc(Context, JObj) ->
-    cb_context:setters(Context, [{fun cb_context:set_auth_doc/2, JObj}
-                                ,{fun cb_context:set_auth_account_id/2
-                                 ,kz_json:get_ne_value(<<"account_id">>, JObj)
-                                 }
-                                ]).
+    cb_context:setters(Context
+                      ,[{fun cb_context:set_auth_doc/2, JObj}
+                       ,{fun cb_context:set_auth_account_id/2
+                        ,kz_json:get_ne_binary_value(<<"account_id">>, JObj)
+                        }
+                       ]).
