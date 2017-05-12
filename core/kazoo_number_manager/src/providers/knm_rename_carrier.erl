@@ -28,7 +28,7 @@ save(N) ->
     PN = knm_number:phone_number(N),
     Doc = knm_phone_number:doc(PN),
     Value = kz_json:get_ne_value(?KEY, Doc),
-    Carrier = <<"knm_", Value/binary>>,
+    Carrier = maybe_prefix_carrier(Value),
     case is_valid(Carrier, PN) of
         false ->
             Msg = <<"'", Value/binary, "' is not known by the system">>,
@@ -51,6 +51,10 @@ save(N) ->
 %%--------------------------------------------------------------------
 -spec delete(knm_number:knm_number()) -> knm_number:knm_number().
 delete(N) -> N.
+
+maybe_prefix_carrier(<<"knm_", Carrier/binary>>) -> maybe_prefix_carrier(Carrier);
+maybe_prefix_carrier(<<"wnm_", Carrier/binary>>) -> maybe_prefix_carrier(Carrier);
+maybe_prefix_carrier(Carrier=?NE_BINARY) -> <<"knm_", Carrier/binary>>.
 
 is_valid(Carrier, PN) ->
     case knm_phone_number:is_admin(PN) of
