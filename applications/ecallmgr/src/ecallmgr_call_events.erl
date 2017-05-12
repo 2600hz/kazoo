@@ -66,8 +66,8 @@
                ,other_leg_events = [] :: ne_binaries()
                ,is_node_up = 'true' :: boolean()
                ,failed_node_checks = 0 :: non_neg_integer()
-               ,node_down_tref :: reference()
-               ,sanity_check_tref :: reference()
+               ,node_down_tref :: api_reference()
+               ,sanity_check_tref :: api_reference()
                ,ref = kz_binary:rand_hex(12) :: ne_binary()
                ,passive = 'false' :: boolean()
                }).
