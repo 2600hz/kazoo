@@ -16,6 +16,9 @@
         "default_audio_codecs": {
             "default": [],
             "description": "stepswitch default audio codecs",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "default_bypass_media": {
@@ -31,6 +34,9 @@
         "default_codecs": {
             "default": [],
             "description": "stepswitch default codecs",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "default_emergency_cid_number": {
@@ -61,6 +67,9 @@
         "default_video_codecs": {
             "default": [],
             "description": "stepswitch default video codecs",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "default_weight": {

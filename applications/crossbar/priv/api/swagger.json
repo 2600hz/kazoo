@@ -7780,6 +7780,9 @@
                 "reverse_proxies": {
                     "default": [],
                     "description": "crossbar reverse proxies",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "schema_strict_validation": {
@@ -9741,6 +9744,9 @@
                 "routines": {
                     "default": [],
                     "description": "modb routines",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },
@@ -10681,6 +10687,9 @@
                 "modules": {
                     "default": [],
                     "description": "pusher modules",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 }
             },
@@ -11030,6 +11039,9 @@
                 "default_audio_codecs": {
                     "default": [],
                     "description": "stepswitch default audio codecs",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "default_bypass_media": {
@@ -11045,6 +11057,9 @@
                 "default_codecs": {
                     "default": [],
                     "description": "stepswitch default codecs",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "default_emergency_cid_number": {
@@ -11075,6 +11090,9 @@
                 "default_video_codecs": {
                     "default": [],
                     "description": "stepswitch default video codecs",
+                    "items": {
+                        "type": "string"
+                    },
                     "type": "array"
                 },
                 "default_weight": {

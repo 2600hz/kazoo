@@ -19,6 +19,9 @@
         "modules": {
             "default": [],
             "description": "pusher modules",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         }
     },

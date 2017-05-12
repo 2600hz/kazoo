@@ -90,6 +90,9 @@
         "reverse_proxies": {
             "default": [],
             "description": "crossbar reverse proxies",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "schema_strict_validation": {

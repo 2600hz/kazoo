@@ -31,6 +31,7 @@
 -export([get_is_true/2, get_is_true/3, get_is_true/4]).
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
+-export([get_ne_binaries/2, get_ne_binaries/3, get_ne_binaries/4]).
 
 -export([set_string/3, set_integer/3, set_float/3, set_boolean/3, set_json/3]).
 -export([set/3, set/4, set_default/3, set_node/4
@@ -246,6 +247,25 @@ get_ne_binary(Category, Key, Default, Node) ->
     case kz_term:is_empty(Value) of
         'true' -> Default;
         'false' -> kz_term:to_binary(Value)
+    end.
+
+-spec get_ne_binaries(config_category(), config_key()) -> ne_binaries().
+-spec get_ne_binaries(config_category(), config_key(), Default) -> ne_binaries() | Default.
+-spec get_ne_binaries(config_category(), config_key(), Default, ne_binaries()) -> ne_binaries() | Default.
+
+get_ne_binaries(Category, Key) ->
+    get_ne_binaries(Category, Key, []).
+get_ne_binaries(Category, Key, Default) ->
+    get_ne_binaries(Category, Key, Default, kz_term:to_binary(node())).
+get_ne_binaries(Category, Key, Default, Node) ->
+    Values = get(Category, Key, Default, Node),
+    case kz_term:is_empty(Values) of
+        'true' -> Default;
+        'false' ->
+            [kz_term:to_binary(Value)
+             || Value <- Values,
+                kz_term:is_not_empty(Value)
+            ]
     end.
 
 

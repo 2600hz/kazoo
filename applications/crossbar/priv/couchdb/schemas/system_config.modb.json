@@ -11,6 +11,9 @@
         "routines": {
             "default": [],
             "description": "modb routines",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         }
     },

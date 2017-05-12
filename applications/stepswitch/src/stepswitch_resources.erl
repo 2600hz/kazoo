@@ -968,12 +968,12 @@ resource_formatters(JObj) ->
 
 -spec resource_codecs(kz_json:object()) -> ne_binaries().
 resource_codecs(JObj) ->
-    DefaultAudio = kapps_config:get(?SS_CONFIG_CAT, <<"default_audio_codecs">>, []),
-    DefaultVideo = kapps_config:get(?SS_CONFIG_CAT, <<"default_video_codecs">>, []),
+    DefaultAudio = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_audio_codecs">>, []),
+    DefaultVideo = kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_video_codecs">>, []),
     case kz_json:get_value([<<"media">>, <<"audio">>, <<"codecs">>], JObj, DefaultAudio)
         ++ kz_json:get_value([<<"media">>, <<"video">>, <<"codecs">>], JObj, DefaultVideo)
     of
-        [] -> kapps_config:get(?SS_CONFIG_CAT, <<"default_codecs">>, []);
+        [] -> kapps_config:get_ne_binaries(?SS_CONFIG_CAT, <<"default_codecs">>, []);
         Codecs -> Codecs
     end.
 
