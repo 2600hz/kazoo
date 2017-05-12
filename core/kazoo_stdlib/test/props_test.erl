@@ -104,25 +104,4 @@ run_proper_test_() ->
      }
     }.
 
-prop_set_value() ->
-    ?FORALL({KV, Before, After}
-           ,{kz_proplist_property(), kz_proplist(), kz_proplist()}
-           ,?WHENFAIL(?debugFmt("failed: props:is_defined(~p, ~p ++ props:set_value(~p, ~p)).~n", [KV, Before, KV, After])
-                     ,props:is_defined(KV, Before ++ props:set_value(KV, After))
-                     )
-           ).
-
-prop_set_values() ->
-    ?FORALL({KVs, Before, After}
-           ,{list(kz_proplist_property()), kz_proplist(), kz_proplist()}
-           ,?WHENFAIL(?debugFmt("Props = ~p ++ props:set_values(~p, ~p)~n", [Before, KVs, After])
-                     ,begin
-                          Props = Before ++ props:set_values(KVs, After),
-                          lists:all(fun(KV) -> props:is_defined(KV, Props) end
-                                   ,KVs
-                                   )
-                      end
-                     )
-           ).
-
 -endif.
