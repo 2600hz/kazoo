@@ -62,7 +62,9 @@
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a list
+%% @doc
+%% Get a configuration key for a given category and cast it as a list
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_string(config_category(), config_key()) -> api_string().
 -spec get_string(config_category(), config_key(), Default) ->
@@ -82,7 +84,9 @@ get_string(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a binary
+%% @doc
+%% Get a configuration key for a given category and cast it as a binary
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_binary(config_category(), config_key()) -> api_binary().
 -spec get_binary(config_category(), config_key(), Default) -> binary() | Default.
@@ -100,7 +104,9 @@ get_binary(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a json
+%% @doc
+%% Get a configuration key for a given category and cast it as a json
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_json(config_category(), config_key()) ->
                       api_object().
@@ -132,7 +138,9 @@ get_json(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a atom
+%% @doc
+%% Get a configuration key for a given category and cast it as a atom
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_atom(config_category(), config_key()) -> api_atom().
 -spec get_atom(config_category(), config_key(), Default) -> atom() | Default.
@@ -150,7 +158,9 @@ get_atom(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a integer
+%% @doc
+%% Get a configuration key for a given category and cast it as a integer
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_integer(config_category(), config_key()) -> api_integer().
 -spec get_integer(config_category(), config_key(), Default) -> integer() | Default.
@@ -168,7 +178,9 @@ get_integer(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a float
+%% @doc
+%% Get a configuration key for a given category and cast it as a float
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_float(config_category(), config_key()) -> api_float().
 -spec get_float(config_category(), config_key(), Default) -> float() | Default.
@@ -186,7 +198,9 @@ get_float(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_false
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_false
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_is_false(config_category(), config_key()) -> api_boolean().
 -spec get_is_false(config_category(), config_key(), Default) -> boolean() | Default.
@@ -204,7 +218,9 @@ get_is_false(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_true
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_true
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_is_true(config_category(), config_key()) -> api_boolean().
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
@@ -222,7 +238,9 @@ get_is_true(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_true
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_true
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
 -spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
@@ -279,7 +297,6 @@ get_ne_binaries(Category, Key, Default, Node) ->
 %% @doc
 %% Get a configuration key for a given category but only if its configured
 %%  explicitly for the node
-%%
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_node_value(config_category(), config_key()) -> any() | 'undefined'.
@@ -419,7 +436,9 @@ get_default_value(Category, Keys, Default, JObj) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get all Key-Value pairs for a given category
+%% @doc
+%% Get all Key-Value pairs for a given category
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_all_kvs(ne_binary()) -> kz_proplist().
 get_all_kvs(Category) ->
@@ -475,7 +494,8 @@ set_json(Category, Key, Value) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Set the key to the value in the given category but specific to this node
+%% @doc
+%% Set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set(config_category(), config_key(), any()) ->
@@ -628,7 +648,9 @@ update_pvt_fields(Category, JObj, PvtFields) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Lock configuration document
+%% @doc
+%% Lock configuration document
+%% @end
 %%-----------------------------------------------------------------------------
 -spec lock_db() -> 'ok'.
 -spec lock_db(text() | boolean()) -> 'ok'.
@@ -646,7 +668,9 @@ lock_db(Value) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Check if configuration document locked or not
+%% @doc
+%% Check if configuration document locked or not
+%% @end
 %%-----------------------------------------------------------------------------
 -spec is_locked() -> boolean().
 is_locked() ->
@@ -657,7 +681,9 @@ is_locked() ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Flush the configuration cache
+%% @doc
+%% Flush the configuration cache
+%% @end
 %%-----------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
