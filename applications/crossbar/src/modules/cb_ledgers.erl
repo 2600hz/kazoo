@@ -274,7 +274,11 @@ maybe_impact_reseller(Context, Ledger, 'true', ResellerId) ->
 %%--------------------------------------------------------------------
 -spec read_ledgers(cb_context:context()) -> cb_context:context().
 read_ledgers(Context) ->
-    case kz_ledgers:get(cb_context:account_id(Context)) of
+    {From, To} = case cb_modules_util:range_view_options(Context) of
+                     {_CreatedFrom, _CreatedTo}=FromTo -> FromTo;
+                     _ContextWithError -> {undefined, undefined}
+                 end,
+    case kz_ledgers:get(cb_context:account_id(Context), From, To) of
         {'error', Reason} ->
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'ok', Ledgers} ->
