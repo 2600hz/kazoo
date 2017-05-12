@@ -127,6 +127,7 @@ result_output_header() ->
 -spec list_output_header() -> kz_tasks:output_header().
 list_output_header() ->
     [<<"e164">>
+    ,<<"account_name">>
     ,<<"account_id">>
     ,<<"previously_assigned_to">>
     ,<<"state">>
@@ -186,6 +187,7 @@ list_doc() ->
 optional_public_fields() ->
     [?FEATURE_RENAME_CARRIER]
         ++ (list_output_header() -- [<<"e164">>
+                                    ,<<"account_name">>
                                     ,<<"account_id">>
                                     ,<<"previously_assigned_to">>
                                     ,<<"state">>
@@ -399,6 +401,7 @@ list_number(N) ->
     Failover = knm_phone_number:feature(PN, ?FEATURE_FAILOVER),
 
     #{<<"e164">> => knm_phone_number:number(PN)
+     ,<<"account_name">> => account_name(knm_phone_number:assigned_to(PN))
      ,<<"account_id">> => knm_phone_number:assigned_to(PN)
      ,<<"previously_assigned_to">> => knm_phone_number:prev_assigned_to(PN)
      ,<<"state">> => knm_phone_number:state(PN)
@@ -425,9 +428,13 @@ list_number(N) ->
      ,<<"failover.sip">> => quote(kz_json:get_ne_binary_value(?FAILOVER_SIP, Failover))
      }.
 
+-spec account_name(api_ne_binary()) -> api_ne_binary().
+account_name(undefined) -> undefined;
+account_name(AccountId) -> quote(kapps_util:get_account_name(AccountId)).
+
 -spec quote(api_ne_binary()) -> api_ne_binary().
 quote(undefined) -> undefined;
-quote(Bin) -> <<"'", Bin/binary, "'">>.
+quote(Bin) -> <<$\", Bin/binary, $\">>.
 
 -spec list_all(kz_tasks:extra_args(), kz_tasks:iterator()) -> kz_tasks:iterator().
 list_all(#{account_id := Account}, init) ->
