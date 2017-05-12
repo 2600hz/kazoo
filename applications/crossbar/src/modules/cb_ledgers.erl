@@ -281,8 +281,7 @@ read_ledgers(Context) ->
             crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
     end.
 
--spec ledger_resume_to_dollars(K, kz_transaction:units()) ->
-                                      {K, kz_transaction:dollars()}.
+-spec ledger_resume_to_dollars(K, kz_transaction:units()) -> {K, kz_transaction:dollars()}.
 ledger_resume_to_dollars(K, V) ->
     {K, wht_util:units_to_dollars(V)}.
 
@@ -294,33 +293,20 @@ ledger_resume_to_dollars(K, V) ->
 %%--------------------------------------------------------------------
 -spec read_ledger(cb_context:context(), ne_binary()) -> cb_context:context().
 read_ledger(Context, Ledger) ->
-    case view_options(Context, Ledger) of
-        {'ok', ViewOptions} ->
-            crossbar_doc:load_view(?LEDGER_VIEW
-                                  ,ViewOptions
-                                  ,Context
-                                  ,fun normalize_view_results/3
-                                  );
-        Ctx -> Ctx
-    end.
-
--spec view_options(cb_context:context(), ne_binary()) ->
-                          {'ok', crossbar_doc:view_options()} |
-                          cb_context:context().
-view_options(Context, Ledger) ->
     case cb_modules_util:range_view_options(Context) of
         {CreatedFrom, CreatedTo} ->
             AccountId = cb_context:account_id(Context),
             Databases = kazoo_modb:get_range(AccountId, CreatedFrom, CreatedTo),
-            {'ok', [{'startkey', [Ledger, CreatedTo]}
-                   ,{'endkey', [Ledger, CreatedFrom]}
-                   ,{'limit', pagination_page_size(Context)}
-                   ,'descending'
-                   ,'include_docs'
-                   ,{'databases', Databases}
-                   ]
-            };
-        Ctx -> Ctx
+            ViewOptions = [{'startkey', [Ledger, CreatedTo]}
+                          ,{'endkey', [Ledger, CreatedFrom]}
+                          ,{'limit', pagination_page_size(Context)}
+                          ,'descending'
+                          ,'include_docs'
+                          ,{'databases', Databases}
+                          ],
+            crossbar_doc:load_view(?LEDGER_VIEW, ViewOptions, Context, fun normalize_view_results/3);
+        Context1 ->
+            Context1
     end.
 
 -spec pagination_page_size(cb_context:context()) -> pos_integer().
