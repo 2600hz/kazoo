@@ -205,6 +205,7 @@ guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binaries', _Default) -> [<<"string">>];
 guess_type('get_json', _Default) -> <<"object">>;
+guess_type('get_jsons', _Default) -> [<<"object">>];
 guess_type('get_string', _Default) -> <<"string">>;
 guess_type('get_integer', _Default) -> <<"integer">>;
 guess_type('get_float', _Default) -> <<"number">>;
@@ -335,6 +336,8 @@ default_value(?MOD_FUN_ARGS('kapps_config', 'get_binary', [_Category, _Key, Defa
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_ne_binary', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_config', 'get_ne_binaries', [_Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_config', 'get_jsons', [_Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_global', [_Account, _Category, _Key, Default])) ->
     default_value(Default);

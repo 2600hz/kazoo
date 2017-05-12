@@ -119,7 +119,7 @@ handle_cast({'gen_listener', {'created_queue', _QueueNAme}}, State) ->
 handle_cast({'gen_listener', {'is_consuming', _IsConsuming}}, State) ->
     {'noreply', State};
 handle_cast('load_schedules', State) ->
-    Schedules = kapps_config:get(?CONFIG_CAT, <<"schedules">>, []),
+    Schedules = kapps_config:get_jsons(?CONFIG_CAT, <<"schedules">>, []),
     NormalizedSchedules = [normalize_schedule(S) || S <- Schedules],
     lists:foreach(fun schedule/1, NormalizedSchedules),
     {'noreply', State};

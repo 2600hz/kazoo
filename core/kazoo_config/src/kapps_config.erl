@@ -24,6 +24,7 @@
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
 -export([get_json/2, get_json/3, get_json/4]).
+-export([get_jsons/2, get_jsons/3, get_jsons/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
 -export([get_integer/2, get_integer/3, get_integer/4]).
 -export([get_float/2, get_float/3, get_float/4]).
@@ -117,24 +118,46 @@ get_binary(Category, Key, Default, Node) ->
 
 get_json(Category, Key) ->
     V = get(Category, Key),
-    as_json_value(V).
+    as_json_value(V, undefined).
 
--spec as_json_value(any()) -> api_object().
-as_json_value('undefined') -> 'undefined';
-as_json_value(V) ->
+-spec as_json_value(any(), api_object()) -> api_object().
+as_json_value('undefined', _) -> 'undefined';
+as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
-        'false' -> 'undefined'
+        'false' -> Default
     end.
 
 get_json(Category, Key, Default) ->
     get_json(Category, Key, Default, kz_term:to_binary(node())).
 get_json(Category, Key, Default, Node) ->
     V = get(Category, Key, Default, Node),
-    case kz_json:is_json_object(V) of
-        'true' -> V;
-        'false' -> Default
+    as_json_value(V, Default).
+
+-spec get_jsons(config_category(), config_key()) ->
+                       kz_json:objects().
+-spec get_jsons(config_category(), config_key(), Default) ->
+                       kz_json:objects() | Default.
+-spec get_jsons(config_category(), config_key(), Default, ne_binary()) ->
+                       kz_json:objects() | Default.
+
+get_jsons(Category, Key) ->
+    V = get(Category, Key),
+    as_jsons_value(V, []).
+
+-spec as_jsons_value(any(), kz_json:objects()) -> kz_json:objects().
+as_jsons_value(undefined, _) -> [];
+as_jsons_value(V, Default) ->
+    case lists:all(fun kz_json:is_json_object/1, V) of
+        true -> V;
+        false -> Default
     end.
+
+get_jsons(Category, Key, Default) ->
+    get_jsons(Category, Key, Default, kz_term:to_binary(node())).
+get_jsons(Category, Key, Default, Node) ->
+    V = get(Category, Key, Default, Node),
+    as_jsons_value(V, Default).
 
 %%-----------------------------------------------------------------------------
 %% @public
