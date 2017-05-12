@@ -41,7 +41,7 @@ proper_test_() ->
 prop_is_object() ->
     ?FORALL(JObj
            ,test_object()
-           ,?WHENFAIL(io:format("Failed is_json_object with ~p~n", [JObj])
+           ,?WHENFAIL(?debugFmt("Failed is_json_object with ~p~n", [JObj])
                      ,kz_json:is_json_object(JObj)
                      )
            ).
@@ -49,7 +49,7 @@ prop_is_object() ->
 prop_from_list() ->
     ?FORALL(Prop
            ,json_proplist()
-           ,?WHENFAIL(io:format("Failed prop_from_list with ~p~n", [Prop])
+           ,?WHENFAIL(?debugFmt("Failed prop_from_list with ~p~n", [Prop])
                      ,kz_json:is_json_object(kz_json:from_list(Prop))
                      )
            ).
@@ -57,7 +57,7 @@ prop_from_list() ->
 prop_get_value() ->
     ?FORALL(JObj
            ,test_object()
-           ,?WHENFAIL(io:format("Failed prop_get_value with ~p~n", [JObj])
+           ,?WHENFAIL(?debugFmt("Failed prop_get_value with ~p~n", [JObj])
                      ,begin
                           Prop = kz_json:to_proplist(JObj),
                           case Prop =/= []
@@ -72,8 +72,8 @@ prop_get_value() ->
 
 prop_set_value() ->
     ?FORALL({JObj, Key, Value}
-           ,{object(), keys(), json_term()}
-           ,?WHENFAIL(io:format("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
+           ,{test_object(), keys(), json_term()}
+           ,?WHENFAIL(?debugFmt("Failed prop_set_value with ~p:~p -> ~p~n", [Key, Value, JObj]),
                       begin
                           JObj1 = kz_json:set_value(Key, Value, JObj),
                           Value =:= kz_json:get_value(Key, JObj1, Value)
@@ -82,7 +82,7 @@ prop_set_value() ->
 
 prop_to_proplist() ->
     ?FORALL(Prop, json_proplist(),
-            ?WHENFAIL(io:format("Failed prop_to_proplist ~p~n", [Prop]),
+            ?WHENFAIL(?debugFmt("Failed prop_to_proplist ~p~n", [Prop]),
                       begin
                           JObj = kz_json:from_list(Prop),
                           lists:all(fun(K) -> props:get_value(K, Prop) =/= 'undefined' end, kz_json:get_keys(JObj))
@@ -92,7 +92,7 @@ prop_to_proplist() ->
 prop_flatten_expand() ->
     ?FORALL(JObj
            ,test_object()
-           ,?WHENFAIL(io:format("Failed to flatten/expand: ~p~n", [JObj])
+           ,?WHENFAIL(?debugFmt("Failed to flatten/expand: ~p~n", [JObj])
                      ,kz_json:are_equal(JObj, kz_json:expand(kz_json:flatten(JObj)))
                      )
            ).
@@ -103,7 +103,7 @@ prop_merge_right() ->
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_right/2, LeftJObj, RightJObj),
 
-                ?WHENFAIL(io:format("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
+                ?WHENFAIL(?debugFmt("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
                                    ,[LeftJObj, RightJObj, MergedJObj]
                                    )
                          ,are_all_properties_found(MergedJObj, RightJObj)
@@ -117,7 +117,7 @@ prop_merge_left() ->
            ,begin
                 MergedJObj = kz_json:merge(fun kz_json:merge_left/2, LeftJObj, RightJObj),
 
-                ?WHENFAIL(io:format("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
+                ?WHENFAIL(?debugFmt("Failed to merge (~p, ~p)~nmerge/2: ~p~n"
                                    ,[LeftJObj, RightJObj, MergedJObj]
                                    )
                          ,are_all_properties_found(MergedJObj, LeftJObj)
