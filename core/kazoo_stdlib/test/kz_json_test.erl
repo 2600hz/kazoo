@@ -612,6 +612,12 @@ are_equal_test_() ->
 -define(CHARGES_DOUBLE,
         kz_json:decode(<<"{\"phone_numbers\":{\"did_us\":{\"category\":\"phone_numbers\",\"item\":\"did_us\",\"name\":\"US DID\",\"quantity\":2,\"rate\":2.0,\"single_discount\":true,\"single_discount_rate\":0.0,\"cumulative_discount\":2,\"cumulative_discount_rate\":1.0,\"activation_charge\":4.0,\"minimum\":0,\"exceptions\":[],\"activation_charges\":4.0}},\"activation_charges\":4.0}">>)).
 
+-define(AMOUNTS,
+        kz_json:decode(<<"[{\"mobile_data\":{\"amount\":-10.5,\"usage\":{\"type\":\"debit\",\"unit\":\"MB\",\"quantity\":9482}}},{\"per_minute_voip\":{\"amount\":-155,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":2120}}},{\"per_minute_voip\":{\"amount\":37,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":480}}}]">>)).
+
+-define(AMOUNT,
+       kz_json:decode(<<"{\"mobile_data\":{\"amount\":-10.5,\"usage\":{\"type\":\"debit\",\"unit\":\"MB\",\"quantity\":9482}},\"per_minute_voip\":{\"amount\":-118,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":2600}}}">>)).
+
 sum_test_() ->
     E = kz_json:new(),
     A42 = kz_json:from_list([{<<"a">>, 42}]),
@@ -633,6 +639,7 @@ sum_test_() ->
     ,?_assertEqual(E, kz_json:sum_jobjs([E, E]))
     ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A40, A2Bhi]))
     ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A2Bhi, A40]))
+    ,?_assert(kz_json:are_equal(?AMOUNT, kz_json:sum_jobjs(?AMOUNTS)))
     ].
 
 order_by_test_() ->
