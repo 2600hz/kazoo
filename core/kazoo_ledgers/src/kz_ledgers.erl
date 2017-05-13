@@ -28,7 +28,12 @@ get(Account) ->
 get(Account, undefined, undefined) ->
     case kazoo_modb:get_results(Account, ?TOTAL_BY_SERVICE_LEGACY, [group]) of
         {'error', _R}=Error -> Error;
-        {'ok', JObjs}-> {'ok', build_result(JObjs)}
+        {'ok', JObjs}->
+            LedgersJObj = kz_json:from_list(
+                            [{kz_json:get_value(<<"key">>, JObj), kz_json:get_value(<<"value">>, JObj)}
+                             || JObj <- JObjs
+                            ]),
+            {ok, LedgersJObj}
     end;
 
 get(Account, CreatedFrom, CreatedTo) ->
@@ -36,9 +41,10 @@ get(Account, CreatedFrom, CreatedTo) ->
     lager:debug("from:~p to:~p -> ~p", [CreatedFrom, CreatedTo, MoDBs]),
     try
         Sum = kz_json:sum_jobjs(
-                [case kazoo_modb:get_results(MoDB, ?TOTAL_BY_SERVICE_LEGACY, [group]) of
+                [case kazoo_modb:get_results(MoDB, ?LIST_BY_SERVICE_LEGACY, []) of
                      {error, Reason} -> throw(Reason);
-                     {ok, JObjs} -> build_result(JObjs)
+                     {ok, JObjs} ->
+                         kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs])
                  end
                  || MoDB <- MoDBs
                 ]),
@@ -46,10 +52,3 @@ get(Account, CreatedFrom, CreatedTo) ->
     catch
         throw:_R -> {error, _R}
     end.
-
--spec build_result(kz_json:objects()) -> kz_json:object().
-build_result(JObjs) ->
-    kz_json:from_list(
-      [{kz_json:get_value(<<"key">>, JObj), kz_json:get_value(<<"value">>, JObj)}
-       || JObj <- JObjs
-      ]).

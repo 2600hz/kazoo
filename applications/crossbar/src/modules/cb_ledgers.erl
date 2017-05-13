@@ -282,12 +282,20 @@ read_ledgers(Context) ->
         {'error', Reason} ->
             crossbar_util:response('error', kz_term:to_binary(Reason), Context);
         {'ok', Ledgers} ->
-            crossbar_util:response(kz_json:map(fun ledger_resume_to_dollars/2, Ledgers), Context)
+            crossbar_util:response(summary_to_dollars(Ledgers), Context)
     end.
 
--spec ledger_resume_to_dollars(K, kz_transaction:units()) -> {K, kz_transaction:dollars()}.
-ledger_resume_to_dollars(K, V) ->
-    {K, wht_util:units_to_dollars(V)}.
+-spec summary_to_dollars(kz_json:object()) -> kz_json:object().
+summary_to_dollars(LedgersJObj) ->
+    kz_json:expand(
+      kz_json:from_list(
+        [{Path, maybe_convert_units(lists:last(Path), Value)}
+         || {Path, Value} <- kz_json:to_proplist(kz_json:flatten(LedgersJObj))
+        ])).
+
+-spec maybe_convert_units(ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
+maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Value);
+maybe_convert_units(_, Value) -> Value.
 
 %%--------------------------------------------------------------------
 %% @private
