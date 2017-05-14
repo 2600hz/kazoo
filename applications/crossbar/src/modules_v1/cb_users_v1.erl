@@ -311,8 +311,8 @@ delete(Context, _Id) ->
     crossbar_doc:delete(Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(Context).
+patch(Context, Id) ->
+    post(Context, Id).
 
 %%--------------------------------------------------------------------
 %% @private

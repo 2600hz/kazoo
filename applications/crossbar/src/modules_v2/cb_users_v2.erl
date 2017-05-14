@@ -334,8 +334,8 @@ delete(Context, UserId, ?PHOTO) ->
     crossbar_doc:delete_attachment(UserId, ?PHOTO, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(Context).
+patch(Context, Id) ->
+    post(Context, Id).
 
 %%--------------------------------------------------------------------
 %% @private
