@@ -6,12 +6,12 @@
 
 IP addresses assigned to the account
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `ips` | List of IP addresses | `array(string)` |   | `false`
 `ips.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch

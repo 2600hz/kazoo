@@ -6,6 +6,8 @@
 
 Calling cards callback platform user's info
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `active` | Show's whether CID/PIN active | `boolean` | `false` | `false`
@@ -14,8 +16,6 @@ Key | Description | Type | Default | Required
 `pin` | PIN to authorize | `string` |   | `false`
 `retain_cid` | Pass initial caller number to the callee | `boolean` |   | `false`
 `user_id` | The ID of the user object that 'owns' cid/pin | `string(32)` |   | `false`
-
-
 
 
 #### Fetch

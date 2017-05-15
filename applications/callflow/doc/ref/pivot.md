@@ -2,9 +2,11 @@
 
 ### About Pivot
 
-### Schema
+#### Schema
 
 Validator for the Pivot callflow element
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -13,3 +15,5 @@ Key | Description | Type | Default | Required
 `method` | What HTTP verb to send the request(s) with | `string('get', 'post', 'GET', 'POST')` | `get` | `false`
 `req_format` | What format of Pivot will the your server respond with | `string('kazoo', 'twiml')` | `kazoo` | `false`
 `voice_url` | What URL to request the initial Pivot callflow | `string` |   | `true`
+
+

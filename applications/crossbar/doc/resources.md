@@ -22,6 +22,8 @@ You can configure how what is considered a 'stalled' job by defining how old the
 
 Schema for resources
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `emergency` | Determines if the resource represents emergency services | `boolean` | `false` | `false`
@@ -73,8 +75,6 @@ Key | Description | Type | Default | Required
 `rules` | A list of regular expressions of which one must match for the rule to be eligible, they can optionally contain capture groups | `array(string)` | `[]` | `false`
 `rules.[]` |   | `string` |   | `false`
 `weight_cost` | A value between 0 and 100 that determines the order of resources when multiple can be used | `integer` | `50` | `false`
-
-
 
 
 #### Fetch an account's resources

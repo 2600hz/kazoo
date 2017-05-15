@@ -42,11 +42,11 @@ curl http://127.0.0.1:15984/accounts/{ACCOUNT_ID} 2> /dev/null | egrep -o '"pvt_
 
 Provides an auth-token via an Account API key
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `api_key` | The Accounts API key | `string(64)` |   | `true`
-
-
 
 
 #### The Authentication Process

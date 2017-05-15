@@ -6,6 +6,8 @@
 
 Actions applied to a call outside of the normal callflow, initiated by the caller(s)
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `binding_digit` | What DTMF will trigger the collection and analysis of the subsequent DTMF sequence | `string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '*', '#')` | `*` | `false`
@@ -15,11 +17,10 @@ Key | Description | Type | Default | Required
 `numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `patterns` | A list of patterns with their flows | `object` |   | `false`
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
-
-
 ##### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -27,7 +28,6 @@ Key | Description | Type | Default | Required
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `data` | The data/arguments of the metaflow module | `object` |   | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
-
 
 
 #### Fetch

@@ -215,6 +215,9 @@
         "fs_nodes": {
             "default": [],
             "description": "ecallmgr fs nodes",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "fs_profiles": {

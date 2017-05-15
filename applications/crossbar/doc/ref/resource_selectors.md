@@ -6,6 +6,8 @@
 
 Schema for resource selector document
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | Selector name | `string` |   | `true`
@@ -14,8 +16,6 @@ Key | Description | Type | Default | Required
 `start_time` | Start time (gregorian seconds) | `integer` |   | `false`
 `stop_time` | Stop time (gregorian seconds) | `integer` |   | `false`
 `value` | Extra selector data | `string` |   | `false`
-
-
 
 
 #### Fetch

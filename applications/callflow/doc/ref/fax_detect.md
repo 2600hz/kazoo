@@ -2,10 +2,14 @@
 
 ### About Fax Detect
 
-### Schema
+#### Schema
 
 Validator for the fax_detect callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `duration` | How long, in seconds, to try detecting fax tones | `integer` |   | `false`
+
+

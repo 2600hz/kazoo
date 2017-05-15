@@ -6,13 +6,13 @@
 
 Schema for a temporal rules sets
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
 `temporal_rules` | Temporal Rules | `array(string)` |   | `false`
 `temporal_rules.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch

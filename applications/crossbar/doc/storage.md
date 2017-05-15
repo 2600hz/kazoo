@@ -40,17 +40,18 @@ sup crossbar_maintenance start_module cb_storage
 
 #### Schema
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attachments` | Defines where and how to store attachments | [#/definitions/storage.attachments](#storageattachments) |   | `false`
 `connections` | Describes alternative connections to use (such as alternative CouchDB instances | [#/definitions/storage.connections](#storageconnections) |   | `false`
 `id` | ID of the storage document | `string` |   | `false`
 `plan` | Describes how to store documents depending on the database or document type | [#/definitions/storage.plan](#storageplan) |   | `false`
-
-
 ##### storage.attachment.aws
 
 schema for AWS attachment entry
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -62,10 +63,10 @@ Key | Description | Type | Default | Required
 `settings.key` | AWS Key to use | `string` |   | `true`
 `settings.path` | Custom path to use as a prefix when saving files | `string` |   | `false`
 `settings.secret` | AWS Secret to use | `string` |   | `true`
-
 ##### storage.attachment.google_drive
 
 schema for google drive attachment entry
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -74,17 +75,17 @@ Key | Description | Type | Default | Required
 `settings` | Settings for the Google Drive account | `object` |   | `true`
 `settings.folder_id` | Folder ID in which to store the file, if any | `string` |   | `false`
 `settings.oauth_doc_id` | Doc ID in the system 'oauth' database | `string` |   | `true`
-
 ##### storage.attachments
 
 Keys are 32-character identifiers to be used in storage plans
 
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-
 ##### storage.connection.couchdb
 
 schema for couchdb connection entry
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -104,25 +105,25 @@ Key | Description | Type | Default | Required
 `settings.pool.name` |   | `string` |   | `true`
 `settings.pool.size` |   | `integer` |   | `true`
 `settings.port` |   | `integer` |   | `true`
-
 ##### storage.connections
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-
 ##### storage.plan
 
 schema for storage plan
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false`
 `modb` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false`
 `system` |   | [#/definitions/storage.plan.database](#storageplan.database) |   | `false`
-
 ##### storage.plan.database
 
 schema for database storage plan
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -135,26 +136,25 @@ Key | Description | Type | Default | Required
 `types.fax` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false`
 `types.mailbox_message` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false`
 `types.media` |   | [#/definitions/storage.plan.database.document](#storageplan.database.document) |   | `false`
-
 ##### storage.plan.database.attachment
 
 schema for attachment ref type storage plan
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `handler` |   | `string` |   | `false`
 `params` |   | `object` |   | `false`
 `stub` |   | `boolean` |   | `false`
-
 ##### storage.plan.database.document
 
 schema for document type storage plan
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attachments` |   | [#/definitions/storage.plan.database.attachment](#storageplan.database.attachment) |   | `false`
 `connection` |   | `string` |   | `false`
-
 
 
 #### List storage settings

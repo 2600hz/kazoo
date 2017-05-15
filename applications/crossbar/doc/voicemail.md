@@ -17,6 +17,8 @@ For more information about voicemail changes see documentation for kazoo_voicema
 
 Schema for a voicemail box
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `check_if_owner` | Determines if when the user calls their own voicemail they should be prompted to sign in | `boolean` | `true` | `false`
@@ -39,11 +41,10 @@ Key | Description | Type | Default | Required
 `skip_greeting` | Determines if the greeting should be skipped | `boolean` | `false` | `false`
 `skip_instructions` | Determines if the instructions after the greeting and prior to composing a message should be played | `boolean` | `false` | `false`
 `timezone` | The default timezone | `string(5..32)` |   | `false`
-
-
 ##### notify.callback
 
 Schema for a callback options
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -53,7 +54,6 @@ Key | Description | Type | Default | Required
 `number` | Number for callback notifications about new messages | `string` |   | `false`
 `schedule` | Schedules interval between callbacks | `array(integer)` |   | `false`
 `timeout_s` | How long will system wait for answer to callback | `integer` |   | `false`
-
 
 
 ##### Voicemail Message Metadata

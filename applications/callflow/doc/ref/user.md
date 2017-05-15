@@ -2,9 +2,11 @@
 
 ### About User
 
-### Schema
+#### Schema
 
 Validator for the user callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -17,3 +19,5 @@ Key | Description | Type | Default | Required
 `strategy` | Ringing strategy for the endpoint(s) | `string('simultaneous', 'single')` | `simultaneous` | `false`
 `suppress_clid` | Toggle whether to suppress caller ID | `boolean` |   | `false`
 `timeout` | Timeout, in seconds, to wait for answer | `integer` | `20` | `false`
+
+

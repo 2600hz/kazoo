@@ -6,6 +6,8 @@
 
 ledgers document
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account` | Account info | `object` |   | `false`
@@ -24,8 +26,6 @@ Key | Description | Type | Default | Required
 `usage.quantity` | Usage quantity | `integer` |   | `true`
 `usage.type` | Usage type | `string` |   | `true`
 `usage.unit` | Usage unit | `string` |   | `true`
-
-
 
 
 #### Fetch

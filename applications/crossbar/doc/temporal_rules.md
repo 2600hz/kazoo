@@ -6,6 +6,8 @@
 
 Schema for a temporal rules
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `cycle` | The recurrence cycle for this rule | `string('date', 'daily', 'weekly', 'monthly', 'yearly')` |   | `true`
@@ -18,8 +20,6 @@ Key | Description | Type | Default | Required
 `time_window_start` | Seconds from the start of a day to stop considering this rule valid | `integer` |   | `false`
 `wdays` | The recurrence weekdays for this rule | `array(string('monday', 'tuesday', 'wednesday', 'wensday', 'thursday', 'friday', 'saturday', 'sunday'))` |   | `false`
 `wdays.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch
