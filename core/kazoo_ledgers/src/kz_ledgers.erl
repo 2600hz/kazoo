@@ -36,7 +36,9 @@ get(Account, undefined, undefined) ->
             {ok, LedgersJObj}
     end;
 
-get(Account, CreatedFrom, CreatedTo) ->
+get(Account, CreatedFrom, CreatedTo)
+  when is_integer(CreatedFrom), CreatedFrom > 0,
+       is_integer(CreatedTo), CreatedTo > 0 ->
     MoDBs = kazoo_modb:get_range(Account, CreatedFrom, CreatedTo),
     lager:debug("from:~p to:~p -> ~p", [CreatedFrom, CreatedTo, MoDBs]),
     try
