@@ -446,7 +446,7 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
--spec sum_jobjs(object(), sumer()) -> object().
+-spec sum_jobjs(objects(), sumer()) -> object().
 sum_jobjs([], Sumer)
   when is_function(Sumer, 2) -> new();
 sum_jobjs([?JSON_WRAPPER(_)=JObj], Sumer)
