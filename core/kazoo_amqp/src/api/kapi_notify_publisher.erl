@@ -14,6 +14,8 @@
 -include_lib("amqp_util.hrl").
 
 -define(FAILED_NOTIFY_DB, <<"pending_notifications">>).
+-define(DEFAULT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+-define(TIMEOUT, kapps_config:get_integer(<<"notify">>, <<"notify_publisher_timeout">>, ?DEFAULT_TIMEOUT)).
 
 -type publish_fun() :: fun((api_terms()) -> any()).
 -type request_return() :: {'ok', kz_json:object() | kz_json:objects()} |
@@ -29,24 +31,20 @@ call(Req, PublishFun, VFun, Type) ->
 
 -spec call_collect(api_terms(), publish_fun(), ne_binary()) -> any().
 call_collect(Req, PublishFun, Type) ->
-    CallResp = kz_amqp_worker:call_collect(Req, PublishFun, fun collecting/1, 4100),
+    CallResp = amqp_call_collect(Req, PublishFun),
     handle_resp(Type, Req, CallResp),
     CallResp.
 
 -spec cast(api_terms(), publish_fun(), ne_binary()) -> 'ok'.
 cast(Req, PublishFun, Type) ->
-    _ = kz_util:spawn(fun call_and_handle/3, [Req, PublishFun, Type]),
+    _ = kz_util:spawn(fun() -> handle_resp(Type, Req , amqp_call_collect(Req, PublishFun)) end),
     'ok'.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec call_and_handle(api_terms(), publish_fun(), ne_binary()) -> 'ok'.
-call_and_handle(Req, PublishFun, Type) ->
-    handle_resp(Type
-               ,Req
-               ,kz_amqp_worker:call_collect(Req, PublishFun, fun collecting/1, 5100)
-               ).
+amqp_call_collect(Req, PublishFun) ->
+    kz_amqp_worker:call_collect(Req, PublishFun, fun collecting/1, ?TIMEOUT).
 
 -spec handle_resp(ne_binary(), api_terms(), request_return()) -> 'ok'.
 handle_resp(_Type, _Req, 'ok') -> 'ok';
