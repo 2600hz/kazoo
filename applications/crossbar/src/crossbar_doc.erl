@@ -82,6 +82,7 @@
                           ,view_options = [] :: view_options()
                           ,context :: cb_context:context()
                           ,start_key :: startkey()
+                          ,should_paginate :: boolean()
                           ,page_size :: non_neg_integer() | api_binary()
                           ,filter_fun :: filter_fun()
                           ,dbs = [] :: ne_binaries()
@@ -376,17 +377,19 @@ load_view(View, Options, Context, StartKey, PageSize) ->
     load_view(View, Options, Context, StartKey, PageSize, 'undefined').
 
 load_view(View, Options, Context, StartKey, PageSize, FilterFun) ->
-    load_view(#load_view_params{view=View
-                               ,view_options=Options
-                               ,context=cb_context:set_doc(Context, [])
-                               ,start_key=StartKey
-                               ,page_size=PageSize
-                               ,filter_fun=FilterFun
-                               ,dbs=[Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
-                                           kz_datamgr:db_exists(Db, View)
-                                    ]
-                               ,direction=view_sort_direction(Options)
-                               }).
+    load_view(
+      #load_view_params{view = View
+                       ,view_options = Options
+                       ,context = cb_context:set_doc(Context, [])
+                       ,start_key = StartKey
+                       ,should_paginate = cb_context:should_paginate(Context)
+                       ,page_size = PageSize
+                       ,filter_fun = FilterFun
+                       ,dbs = [Db || Db <- props:get_value('databases', Options, [cb_context:account_db(Context)]),
+                                     kz_datamgr:db_exists(Db, View)
+                              ]
+                       ,direction = view_sort_direction(Options)
+                       }).
 
 -spec view_sort_direction(kz_proplist()) -> direction().
 view_sort_direction(Options) ->
