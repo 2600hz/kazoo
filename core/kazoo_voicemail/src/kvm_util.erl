@@ -263,8 +263,8 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
 
     lager:debug("notifying of voicemail saved"),
     kapi_notify_publisher:call_collect(NotifyProp
-                                      ,fun kapi_notifications:publish_voicemail/1
-                                      ,<<"voicemail">>
+                                      ,fun kapi_notifications:publish_voicemail_new/1
+                                      ,<<"voicemail_new">>
                                       ).
 
 %%--------------------------------------------------------------------

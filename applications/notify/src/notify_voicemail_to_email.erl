@@ -37,7 +37,7 @@ init() ->
 
 -spec handle_req(kz_json:object(), kz_proplist()) -> any().
 handle_req(JObj, _Props) ->
-    'true' = kapi_notifications:voicemail_v(JObj),
+    'true' = kapi_notifications:voicemail_new_v(JObj),
     _ = kz_util:put_callid(JObj),
 
     lager:debug("new voicemail left, sending to email if enabled"),

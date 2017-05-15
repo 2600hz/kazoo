@@ -25,7 +25,7 @@
 
 -define(SERVER, ?MODULE).
 
--define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"voicemail_new">>}]}
+-define(RESPONDERS, [{'notify_voicemail_to_email', [{<<"notification">>, <<"new_voicemail">>}]}
                     ,{'notify_voicemail_full', [{<<"notification">>, <<"voicemail_full">>}]}
                     ,{'notify_fax_inbound_to_email', [{<<"notification">>, <<"inbound_fax">>}]}
                     ,{'notify_fax_outbound_to_email', [{<<"notification">>, <<"outbound_fax">>}]}
@@ -45,7 +45,7 @@
                     ,{'notify_low_balance', [{<<"notification">>, <<"low_balance">>}]}
                     ]).
 
--define(RESTRICT_TO, ['new_voicemail'
+-define(RESTRICT_TO, ['voicemail_new'
                      ,'voicemail_full'
                      ,'inbound_fax'
                      ,'inbound_fax_error'

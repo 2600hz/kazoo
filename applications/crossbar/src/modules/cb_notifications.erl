@@ -477,7 +477,7 @@ handle_preview_response(Context, Resp) ->
 
 -spec headers(ne_binary()) -> ne_binaries().
 headers(<<"voicemail_to_email">>) ->
-    kapi_notifications:headers(<<"voicemail">>);
+    kapi_notifications:headers(<<"voicemail_new">>);
 headers(<<"port_request_admin">>) ->
     kapi_notifications:headers(<<"port_request">>);
 headers(<<"fax_inbound_error_to_email_filtered">>) ->
@@ -562,7 +562,7 @@ publish_fun(<<"transaction_failed">>) ->
 publish_fun(<<"voicemail_full">>) ->
     fun kapi_notifications:publish_voicemail_full/1;
 publish_fun(<<"voicemail_to_email">>) ->
-    fun kapi_notifications:publish_voicemail/1;
+    fun kapi_notifications:publish_voicemail_new/1;
 publish_fun(<<"webhook_disabled">>) ->
     fun kapi_notifications:publish_webhook_disabled/1;
 publish_fun(_Id) ->
