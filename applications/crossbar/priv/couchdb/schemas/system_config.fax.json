@@ -142,7 +142,7 @@
             "type": "string"
         },
         "inbound_t38_default": {
-            "default": true,
+            "default": "true",
             "description": "fax inbound t38 default",
             "type": "string"
         },

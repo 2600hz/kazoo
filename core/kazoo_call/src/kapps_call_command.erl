@@ -826,7 +826,7 @@ b_receive_fax(Call) ->
 
 -spec get_default_t38_setting() -> boolean() | ne_binary().
 get_default_t38_setting() ->
-    case kapps_config:get_binary(<<"fax">>, <<"inbound_t38_default">>, 'true') of
+    case kapps_config:get_ne_binary(<<"fax">>, <<"inbound_t38_default">>, <<"true">>) of
         <<"auto">> -> <<"auto">>;
         Otherwise -> kz_term:is_true(Otherwise)
     end.
