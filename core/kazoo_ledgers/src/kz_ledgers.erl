@@ -44,7 +44,12 @@ get(Account, CreatedFrom, CreatedTo) ->
                 [case kazoo_modb:get_results(MoDB, ?LIST_BY_SERVICE_LEGACY, []) of
                      {error, Reason} -> throw(Reason);
                      {ok, JObjs} ->
-                         kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj) || JObj <- JObjs])
+                         kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj)
+                                            || JObj <- JObjs,
+                                               [_Type, TimeStamp] <- [kz_json:get_value(<<"key">>, JObj)],
+                                               CreatedFrom =< TimeStamp,
+                                               TimeStamp =< CreatedTo
+                                           ])
                  end
                  || MoDB <- MoDBs
                 ]),
