@@ -262,10 +262,7 @@ publish_saved_notify(MediaId, BoxId, Call, Length, Props) ->
                  ],
 
     lager:debug("notifying of voicemail saved"),
-    kapi_notify_publisher:call_collect(NotifyProp
-                                      ,fun kapi_notifications:publish_voicemail_new/1
-                                      ,<<"voicemail_new">>
-                                      ).
+    kapi_notify_publisher:call_collect(NotifyProp, fun kapi_notifications:publish_voicemail_new/1).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -289,7 +286,7 @@ publish_voicemail_saved(Length, BoxId, Call, MediaId, Timestamp) ->
            ,{<<"Call-ID">>, kapps_call:call_id_direct(Call)}
             | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
            ],
-    kapi_notify_publisher:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1, <<"voicemail_saved">>),
+    kapi_notify_publisher:cast(Prop, fun kapi_notifications:publish_voicemail_saved/1),
     lager:debug("published voicemail_saved for ~s", [BoxId]).
 
 %%--------------------------------------------------------------------
