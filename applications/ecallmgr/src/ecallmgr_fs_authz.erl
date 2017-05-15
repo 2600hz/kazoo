@@ -71,20 +71,30 @@ kill_channel(<<"outbound">>, _, CallId, Node) ->
 maybe_authorize_channel(Props, Node) ->
     CallId = kzd_freeswitch:call_id(Props),
     case kzd_freeswitch:channel_authorized(Props) of
-        <<"true">> -> 'true';
-        <<"false">> -> 'false';
+        <<"true">> ->
+            lager:debug("channel is authorized by FreeSWITCH"),
+            'true';
+        <<"false">> ->
+            lager:debug("channel is not authorized by FreeSWITCH"),
+            'false';
         _Else ->
-            case kzd_freeswitch:hunt_destination_number(Props) of
-                <<"conference">> -> 'true';
-                _Hunt -> maybe_channel_recovering(Props, CallId, Node)
-            end
+            maybe_authorize_conference_number(Props)
+                orelse maybe_channel_recovering(Props, CallId, Node)
     end.
+
+maybe_authorize_conference_number(Props) ->
+    lager:debug("is destination number 'conference': ~s"
+               ,[kzd_freeswitch:hunt_destination_number(Props)]
+               ),
+    <<"conference">> =:= kzd_freeswitch:hunt_destination_number(Props).
 
 -spec maybe_channel_recovering(kz_proplist(), ne_binary(), atom()) -> authz_reply().
 maybe_channel_recovering(Props, CallId, Node) ->
     case kzd_freeswitch:is_channel_recovering(Props, 'false') of
-        'true' -> allow_call(Props, CallId, Node);
-        'false' -> is_authz_enabled(Props, CallId, Node)
+        'false' -> is_authz_enabled(Props, CallId, Node);
+        'true' ->
+            lager:info("channel is authorized because it is recovering"),
+            allow_call(Props, CallId, Node)
     end.
 
 -spec is_authz_enabled(kz_proplist(), ne_binary(), atom()) -> authz_reply().
@@ -92,7 +102,7 @@ is_authz_enabled(Props, CallId, Node) ->
     case ecallmgr_config:is_true(<<"authz_enabled">>, 'false') of
         'true' -> is_global_resource(Props, CallId, Node);
         'false' ->
-            lager:debug("config ecallmgr.authz is disabled"),
+            lager:info("channel is authorized because config ecallmgr.authz is disabled"),
             allow_call(Props, CallId, Node)
     end.
 
@@ -103,7 +113,7 @@ is_global_resource(Props, CallId, Node) ->
     of
         'true' -> is_consuming_resource(Props, CallId, Node);
         'false' ->
-            lager:debug("channel is a local resource"),
+            lager:debug("channel is authorized because it is a local resource"),
             allow_call(Props, CallId, Node)
     end.
 
@@ -120,7 +130,7 @@ is_consuming_resource(Props, CallId, Node) ->
 is_consuming_outbound_resource(Props, CallId, Node) ->
     case kzd_freeswitch:resource_id(Props) of
         'undefined' ->
-            lager:debug("outbound channel is not consuming a resource"),
+            lager:debug("outbound channel is authorized because it is not consuming a resource"),
             allow_call(Props, CallId, Node);
         _ResourceId -> request_channel_authorization(Props, CallId, Node)
     end.
@@ -132,7 +142,7 @@ is_consuming_inbound_resource(Props, CallId, Node) ->
     of
         'true' -> request_channel_authorization(Props, CallId, Node);
         'false' ->
-            lager:debug("inbound channel is not consuming a resource"),
+            lager:debug("inbound channel is authorized because it is not consuming a resource"),
             allow_call(Props, CallId, Node)
     end.
 
@@ -146,10 +156,10 @@ request_channel_authorization(Props, CallId, Node) ->
                                  ,ecallmgr_fs_node:fetch_timeout(Node)
                                  ),
     case ReqResp of
+        {'ok', JObj} -> authz_response(JObj, Props, CallId, Node);
         {'error', _R} ->
             lager:notice("authz request lookup failed: ~p", [_R]),
-            authz_default(Props, CallId, Node);
-        {'ok', JObj} -> authz_response(JObj, Props, CallId, Node)
+            authz_default(Props, CallId, Node)
     end.
 
 -spec authz_response(kz_json:object(), kz_proplist(), ne_binary(), atom()) -> authz_reply().
@@ -178,14 +188,13 @@ authorize_account(JObj, Props, CallId, Node) ->
     Type      = kz_json:get_value(<<"Account-Billing">>, JObj),
     ChanVars  = kz_json:get_value(<<"Custom-Channel-Vars">>, JObj),
 
-    lager:debug("call authorized by account ~s as ~s", [AccountId, Type]),
-    P = props:set_values(
-          [{?GET_CCV(<<"Account-ID">>), AccountId}
-          ,{?GET_CCV(<<"Account-Billing">>), Type}
-          ,{<<"Outbound-Flags">>, kz_json:get_value(<<"Outbound-Flags">>, ChanVars)}
-          ]
+    lager:debug("channel is authorized by account ~s as ~s", [AccountId, Type]),
+    P = props:set_values([{?GET_CCV(<<"Account-ID">>), AccountId}
+                         ,{?GET_CCV(<<"Account-Billing">>), Type}
+                         ,{<<"Outbound-Flags">>, kz_json:get_value(<<"Outbound-Flags">>, ChanVars)}
+                         ]
                         ,Props
-         ),
+                        ),
 
     authorize_reseller(JObj, P, CallId, Node).
 
@@ -197,7 +206,7 @@ authorize_reseller(JObj, Props, CallId, Node) ->
         AccountId -> set_ccv_trunk_usage(JObj, Props, CallId, Node);
         ResellerId ->
             Type = kz_json:get_value(<<"Reseller-Billing">>, JObj),
-            lager:debug("call authorized by reseller ~s as ~s", [ResellerId, Type]),
+            lager:debug("channel is authorized by reseller ~s as ~s", [ResellerId, Type]),
             P = props:set_values([{?GET_CCV(<<"Reseller-ID">>), ResellerId}
                                  ,{?GET_CCV(<<"Reseller-Billing">>), Type}
                                  ]
@@ -213,7 +222,7 @@ set_ccv_trunk_usage(JObj, Props, CallId, Node) ->
              || Key <- [<<"Account-Trunk-Usage">>
                        ,<<"Reseller-Trunk-Usage">>
                        ],
-                (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key)) =/= 'undefined'
+                'undefined' =/= (TrunkUsage = kz_call_event:custom_channel_var(JObj, Key))
             ],
     P = props:set_values(props:filter_undefined(Usage), Props),
     rate_call(P, CallId, Node).
@@ -238,8 +247,12 @@ allow_call(Props, _CallId, _Node) ->
              ,{<<"Channel-Authorized">>, <<"true">>}
              ]),
     case props:is_true(<<"Call-Setup">>, Props, 'false') of
-        'false' -> {'true', kz_json:from_list(Vars)};
-        'true' -> 'true'
+        'false' ->
+            lager:info("channel is authorized (with channel vars)"),
+            {'true', kz_json:from_list(Vars)};
+        'true' ->
+            lager:info("channel is authorized"),
+            'true'
     end.
 
 -spec rate_channel(kz_proplist(), atom()) -> 'ok'.

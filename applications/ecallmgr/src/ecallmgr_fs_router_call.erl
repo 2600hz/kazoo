@@ -115,20 +115,21 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
-handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined', _FSData}, #state{node=Node}=State) ->
+handle_info({'route', Section, _EventName, _SubClass, _Context, Id, 'undefined', _FSData}
+           ,#state{node=Node}=State
+           ) ->
     lager:warning("fetch unknown callid from ~s: Ev: ~p Sc: ~p, Ctx: ~p Id: ~s"
-                 ,[Node, _EventName, _SubClass, _Context, Id]),
+                 ,[Node, _EventName, _SubClass, _Context, Id]
+                 ),
     {'ok', Resp} = ecallmgr_fs_xml:empty_response(),
     _ = freeswitch:fetch_reply(Node, Id, Section, Resp),
     {'noreply', State};
-handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, CallId, FSData}, #state{node=Node}=State) ->
-    Props = case props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), FSData) of
-                'undefined' ->
-                    InterActionId = props:get_value(?GET_CUSTOM_HEADER(<<"Call-Interaction-ID">>), FSData, ?CALL_INTERACTION_DEFAULT),
-                    ecallmgr_fs_command:set(Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]),
-                    [{?GET_CCV(<<?CALL_INTERACTION_ID>>), InterActionId}];
-                _InterActionId -> []
-            end,
+handle_info({'route', Section, <<"REQUEST_PARAMS">>, _SubClass, _Context, FSId, CallId, FSData}
+           ,#state{node=Node}=State
+           ) ->
+    lager:info("process route request for fetch id ~s (uuid ~s)", [FSId, CallId]),
+
+    Props = interaction_props(Node, CallId, FSData),
     _ = kz_util:spawn(fun process_route_req/5, [Section, Node, FSId, CallId, FSData ++ Props]),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
@@ -138,6 +139,16 @@ handle_info({'EXIT', _, Reason}, State) ->
 handle_info(_Other, State) ->
     lager:debug("unhandled msg: ~p", [_Other]),
     {'noreply', State}.
+
+-spec interaction_props(atom(), ne_binary(), kz_proplist()) -> kz_proplist().
+interaction_props(Node, CallId, FSData) ->
+    case props:get_value(?GET_CCV(<<?CALL_INTERACTION_ID>>), FSData) of
+        'undefined' ->
+            InterActionId = props:get_value(?GET_CUSTOM_HEADER(<<"Call-Interaction-ID">>), FSData, ?CALL_INTERACTION_DEFAULT),
+            ecallmgr_fs_command:set(Node, CallId, [{<<?CALL_INTERACTION_ID>>, InterActionId}]),
+            [{?GET_CCV(<<?CALL_INTERACTION_ID>>), InterActionId}];
+        _InterActionId -> []
+    end.
 
 %%--------------------------------------------------------------------
 %% @private
@@ -190,6 +201,7 @@ do_process_route_req(Section, Node, FetchId, CallId, Props) ->
         'ok' ->
             lager:debug("xml fetch dialplan ~s finished without success", [FetchId]);
         {'ok', JObj} ->
+            lager:debug("route response recv, attempting to start call handling"),
             ecallmgr_fs_channels:update(CallId, #channel.handling_locally, 'true'),
             maybe_start_call_handling(Node, FetchId, CallId, JObj)
     end.
@@ -205,12 +217,11 @@ maybe_start_call_handling(Node, FetchId, CallId, JObj) ->
 start_call_handling(Node, FetchId, CallId, JObj) ->
     ServerQ = kz_json:get_value(<<"Server-ID">>, JObj),
     CCVs =
-        kz_json:set_values(
-          [{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
-          ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
-          ]
+        kz_json:set_values([{<<"Application-Name">>, kz_json:get_value(<<"App-Name">>, JObj)}
+                           ,{<<"Application-Node">>, kz_json:get_value(<<"Node">>, JObj)}
+                           ]
                           ,kz_json:get_value(<<"Custom-Channel-Vars">>, JObj, kz_json:new())
-         ),
+                          ),
     _Evt = ecallmgr_call_sup:start_event_process(Node, CallId),
     _Ctl = ecallmgr_call_sup:start_control_process(Node, CallId, FetchId, ServerQ, CCVs),
 

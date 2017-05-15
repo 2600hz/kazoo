@@ -127,7 +127,8 @@ handle_cast(_Msg, State) ->
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 
 handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
-           ,#state{node=Node, switch_info='false'}=State) ->
+           ,#state{node=Node, switch_info='false'}=State
+           ) ->
     try ecallmgr_fs_node:sip_url(Node) of
         'undefined' ->
             lager:debug("no sip url available yet for ~s, rejecting route request", [Node]),
@@ -135,25 +136,30 @@ handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
         SwitchURL ->
             [_, SwitchURIHost] = binary:split(SwitchURL, <<"@">>),
             SwitchURI = <<"sip:", SwitchURIHost/binary>>,
-            handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData},
-                        State#state{switch_uri=SwitchURI
+            handle_info({'fetch', Section, Tag, Key, Value, FSId, FSData}
+                       ,State#state{switch_uri=SwitchURI
                                    ,switch_url=SwitchURL
                                    ,switch_info='true'
-                                   })
+                                   }
+                       )
     catch
         _E:_R ->
             lager:warning("failed to include switch_url/uri for node ~s : ~p : ~p", [Node, _E, _R]),
             {'noreply', State, 'hibernate'}
     end;
-handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}, #state{node=Node
-                                                                                   ,switch_info='true'
-                                                                                   ,switch_uri=SwitchURI
-                                                                                   ,switch_url=SwitchURL
-                                                                                   }=State) ->
+handle_info({'fetch', Section, _Tag, _Key, _Value, FSId, [CallId | FSData]}
+           ,#state{node=Node
+                  ,switch_info='true'
+                  ,switch_uri=SwitchURI
+                  ,switch_url=SwitchURL
+                  }=State
+           ) ->
+    lager:info("fetch request ~s started", [FSId]),
     Props = props:filter_undefined([{<<"Switch-URL">>, SwitchURL}
                                    ,{<<"Switch-URI">>, SwitchURI}
-                                   ,{<<"Switch-Nodename">>, kz_term:to_binary(Node)}
-                                   ]) ++ FSData,
+                                   ,{<<"Switch-Nodename">>, kz_util:to_binary(Node)}
+                                   ])
+        ++ FSData,
     handle_fetch(Section, FSId, CallId, Props, Node),
     {'noreply', State, 'hibernate'};
 handle_info({'EXIT', _, 'noconnection'}, State) ->
@@ -165,7 +171,7 @@ handle_info(_Other, State) ->
     {'noreply', State}.
 
 -spec handle_fetch(ne_binary(), ne_binary(), ne_binary(), kzd_freeswitch:data(), atom()) -> 'ok'.
-handle_fetch(Section ,FSId, CallId, FSData, Node) ->
+handle_fetch(Section, FSId, CallId, FSData, Node) ->
     EventName = props:get_value(<<"Event-Name">>, FSData),
     SubClass = props:get_value(<<"Event-Subclass">>, FSData),
     DefContext = props:get_value(<<"context">>, FSData, ?DEFAULT_FREESWITCH_CONTEXT),
@@ -173,7 +179,7 @@ handle_fetch(Section ,FSId, CallId, FSData, Node) ->
     Msg = {'route', Section, EventName, SubClass, Context, FSId, CallId, FSData},
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, Context)}, Msg),
     _ = gproc:send({'p', 'l', ?FS_ROUTE_MSG(Node, Section, <<"*">>)}, Msg),
-    'ok'.
+    lager:debug("routed fetch ~s along to interested parties", [FSId]).
 
 %%--------------------------------------------------------------------
 %% @private
