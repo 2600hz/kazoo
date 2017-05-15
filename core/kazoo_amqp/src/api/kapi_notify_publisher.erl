@@ -6,8 +6,7 @@
 %%%-------------------------------------------------------------------
 -module(kapi_notify_publisher).
 
--export([call/4
-        ,call_collect/3
+-export([call_collect/3
         ,cast/3
         ]).
 
@@ -22,12 +21,6 @@
                           {'returned', kz_json:object(), kz_json:object()} |
                           {'timeout', kz_json:objects()} |
                           {'error', any()}.
-
--spec call(api_terms(), publish_fun(), any(), ne_binary()) -> any().
-call(Req, PublishFun, VFun, Type) ->
-    CallResp = kz_amqp_worker:call(Req, PublishFun, VFun, 4100),
-    handle_resp(Type, Req, CallResp),
-    CallResp.
 
 -spec call_collect(api_terms(), publish_fun(), ne_binary()) -> any().
 call_collect(Req, PublishFun, Type) ->
