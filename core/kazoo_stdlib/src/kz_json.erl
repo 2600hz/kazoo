@@ -438,18 +438,19 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
 %%--------------------------------------------------------------------
 %% @public
 %% @doc
-%% Sum two (deep) JSON objects.
+%% Sum (deep) JSON objects.
 %% Default sumer function only sums numbers. For other kinds of values,
-%% the value from JObj1 is kept untouched. If it is undefined it's the one from JObj2.
+%% the value from JObj1 is kept untouched. If it is undefined it takes the value from the other JObjs.
 %% @end
 %%--------------------------------------------------------------------
 -spec sum_jobjs(objects()) -> object().
 sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
 
 -spec sum_jobjs(object(), sumer()) -> object().
+sum_jobjs([], Sumer)
+  when is_function(Sumer, 2) -> new();
 sum_jobjs([?JSON_WRAPPER(_)=JObj], Sumer)
-  when is_function(Sumer, 2) ->
-    JObj;
+  when is_function(Sumer, 2) -> JObj;
 sum_jobjs([FirstJObj|JObjs], Sumer)
   when is_function(Sumer, 2) ->
     F = fun (JObj, Carry) -> sum(Carry, JObj, fun default_sumer/2) end,

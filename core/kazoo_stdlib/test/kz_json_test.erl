@@ -637,6 +637,7 @@ sum_test_() ->
     ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum(?CHARGES_SIMPLE, ?CHARGES_SIMPLE))
     ,?_assertEqual(?CHARGES_DOUBLE, kz_json:sum_jobjs([?CHARGES_SIMPLE, ?CHARGES_SIMPLE]))
     ,?_assertEqual(E, kz_json:sum_jobjs([E, E]))
+    ,?_assertEqual(kz_json:new(), kz_json:sum_jobjs([]))
     ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A40, A2Bhi]))
     ,?_assertEqual(A42Bhi, kz_json:sum_jobjs([A2Bhi, A40]))
     ,?_assert(kz_json:are_equal(?AMOUNT, kz_json:sum_jobjs(?AMOUNTS)))
