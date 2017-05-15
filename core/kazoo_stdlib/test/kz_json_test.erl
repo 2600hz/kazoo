@@ -616,7 +616,7 @@ are_equal_test_() ->
         kz_json:decode(<<"[{\"mobile_data\":{\"amount\":-10.5,\"usage\":{\"type\":\"debit\",\"unit\":\"MB\",\"quantity\":9482}}},{\"per_minute_voip\":{\"amount\":-155,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":2120}}},{\"per_minute_voip\":{\"amount\":37,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":480}}}]">>)).
 
 -define(AMOUNT,
-       kz_json:decode(<<"{\"mobile_data\":{\"amount\":-10.5,\"usage\":{\"type\":\"debit\",\"unit\":\"MB\",\"quantity\":9482}},\"per_minute_voip\":{\"amount\":-118,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":2600}}}">>)).
+        kz_json:decode(<<"{\"mobile_data\":{\"amount\":-10.5,\"usage\":{\"type\":\"debit\",\"unit\":\"MB\",\"quantity\":9482}},\"per_minute_voip\":{\"amount\":-118,\"usage\":{\"type\":\"voice\",\"unit\":\"sec\",\"quantity\":2600}}}">>)).
 
 sum_test_() ->
     E = kz_json:new(),
