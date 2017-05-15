@@ -6,6 +6,8 @@
 
 Schema for a number
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `carrier_name` |   | `string(1..30)` |   | `false`
@@ -46,8 +48,6 @@ Key | Description | Type | Default | Required
 `porting.port_id` | The id of the port request | `string` |   | `false`
 `porting.requested_port_date` | The requested port date | `string` |   | `false`
 `porting.service_provider` | The name of the losing carrier | `string` |   | `false`
-
-
 
 
 #### Fetch

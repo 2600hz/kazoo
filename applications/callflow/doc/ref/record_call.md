@@ -2,9 +2,11 @@
 
 ### About Record Call
 
-### Schema
+#### Schema
 
 Validator for the Record Call callflow action
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -17,3 +19,5 @@ Key | Description | Type | Default | Required
 `record_sample_rate` | What sampling rate to use on the recording | `integer` |   | `false`
 `time_limit` | Time limit, in seconds, for the recording | `integer` |   | `false`
 `url` | The URL to use when sending the recording for storage | `string` |   | `false`
+
+

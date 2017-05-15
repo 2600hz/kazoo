@@ -6,6 +6,8 @@
 
 Faxes API allows you to update and access fax jobs for both sending and receiving
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `attempts` | The number of attempts made, this will be set by the system and reset automaticly on put/post | `integer` | `0` | `false`
@@ -35,8 +37,6 @@ Key | Description | Type | Default | Required
 `tx_result.pages_sent` | The number of pages transmitted | `integer` | `0` | `false`
 `tx_result.success` | True if the fax transmission was successful | `boolean` | `false` | `false`
 `tx_result.time_elapsed` | The amount of time from submition to completion | `integer` | `0` | `false`
-
-
 
 
 #### Create

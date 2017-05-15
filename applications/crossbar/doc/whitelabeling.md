@@ -6,6 +6,8 @@
 
 Whitelabel settings
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `company_name` | The company name to display to users | `string` |   | `false`
@@ -26,8 +28,6 @@ Key | Description | Type | Default | Required
 `port.support_email` | The support email address to display to the user | `string` |   | `false`
 `port.terms` | The URL to use when the terms and conditions link is clicked | `string` |   | `false`
 `twoway_trunks_price` | The price to show for twoway trunks, this is currently only for display purposes | `string` |   | `false`
-
-
 
 
 #### Domains

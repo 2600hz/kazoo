@@ -6,10 +6,10 @@
 
 Create buckets of minutes per time-period
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-
-
 
 
 #### Fetch

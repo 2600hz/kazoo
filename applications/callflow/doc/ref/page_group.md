@@ -2,9 +2,11 @@
 
 ### About Page Group
 
-### Schema
+#### Schema
 
 Validator for the page_group callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -17,3 +19,5 @@ Key | Description | Type | Default | Required
 `endpoints.[].timeout` | How long to ring the endpoint, in seconds | `integer` | `20` | `false`
 `endpoints.[].weight` | Weight of endpoint, different usage in various strategies | `integer` |   | `false`
 `timeout` | How long to ring the ring group before continuing, in seconds | `integer` | `5` | `false`
+
+

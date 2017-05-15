@@ -8,6 +8,8 @@ Handle the service plans you can subscribe to.
 
 Describes services offered to sub-accounts
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bookkeepers` |   | `object` |   | `false`
@@ -16,37 +18,36 @@ Key | Description | Type | Default | Required
 `name` | A friendly name for the service plan | `string(1..128)` |   | `true`
 `plan` | Outlines the service plan for various services | `object` |   | `true`
 `plan./^[0-9a-zA-Z_]+$/` |   | `object` |   | `false`
-
-
 ##### bookkeepers
 
 The bookkeeper modules provided by Kazoo
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `braintree` |   | `object` |   | `false`
 `local` |   | `object` |   | `false`
-
 ##### service_plan
 
 Describes a service plan
 
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
-
 ##### service_plan.category
 
 Describes a service plan category
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `_all` | Applies item rules to any item in this category | `object` |   | `false`
 `_all.exceptions` | Items that are not included in this item plan | `array(string)` |   | `false`
 `_all.exceptions.[]` |   | `string` |   | `false`
-
 ##### service_plan.item
 
 Describes a service plan item
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -67,7 +68,6 @@ Key | Description | Type | Default | Required
 `rates./^[0-9]+$/` | The rate to charge when under the quantity indicated in the key | `number` |   | `false`
 `single_discount` | Whether to give a discount to the account | `boolean` |   | `false`
 `single_discount_rate` | How much of a discount to apply, per-item | `number` |   | `false`
-
 
 
 #### Retrieving your service plans.

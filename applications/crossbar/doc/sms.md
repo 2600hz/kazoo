@@ -6,14 +6,14 @@
 
 sms document
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `body` | text message | `string(1..700)` |   | `true`
 `from` | caller-id-number, taken from user if absent | `string` |   | `false`
 `scheduled` | The timestamp to start delivering the message | `integer` |   | `false`
 `to` | callee-id-number | `string` |   | `true`
-
-
 
 
 #### List items

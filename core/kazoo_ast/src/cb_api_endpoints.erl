@@ -5,7 +5,7 @@
 -export([get/0
         ,to_swagger_json/0
         ,to_ref_doc/0, to_ref_doc/1
-        ,schema_to_doc/2
+        ,schema_to_doc/2, ref_tables_to_doc/1
         ]).
 
 -ifdef(TEST).
@@ -127,9 +127,7 @@ ref_doc_header(BaseName) ->
 maybe_add_schema(BaseName) ->
     case kz_ast_util:load_ref_schema(BaseName) of
         'undefined' -> [?SCHEMA_SECTION, "\n\n"];
-        SchemaJObj ->
-            [Table | RefTables] = kz_ast_util:schema_to_table(SchemaJObj),
-            [?SCHEMA_SECTION, Table, "\n\n", ref_tables_to_doc(RefTables), "\n\n"]
+        SchemaJObj -> kz_ast_util:schema_to_table(SchemaJObj)
     end.
 
 %% This looks for "#### Schema" in the doc file and adds the JSON schema formatted as the markdown table
@@ -138,14 +136,12 @@ maybe_add_schema(BaseName) ->
 -spec schema_to_doc(ne_binary(), ne_binary()) -> 'ok'.
 schema_to_doc(Schema, Doc) ->
     {'ok', SchemaJObj} = kz_json_schema:load(Schema),
-    [Table|RefTables] = kz_ast_util:schema_to_table(SchemaJObj),
-
     DocFile = filename:join([code:lib_dir('crossbar'), "doc", Doc]),
     {'ok', DocContents} = file:read_file(DocFile),
-
     case binary:split(DocContents, <<?SCHEMA_SECTION/binary, "\n">>) of
         [Before, After] ->
-            file:write_file(DocFile, [Before, ?SCHEMA_SECTION, Table, $\n, ref_tables_to_doc(RefTables), After]);
+            Data = [Before, kz_ast_util:schema_to_table(SchemaJObj), After],
+            ok = file:write_file(DocFile, Data);
         _Else ->
             io:format("file ~s appears to have a schema section already~n", [DocFile])
     end.
@@ -154,14 +150,8 @@ schema_to_doc(Schema, Doc) ->
 -type ref_tables() :: [ref_table()] | [].
 
 -spec ref_tables_to_doc(ref_tables()) -> iolist().
--spec ref_tables_to_doc(ref_tables(), iolist()) -> iolist().
-ref_tables_to_doc([]) -> [];
 ref_tables_to_doc(Tables) ->
-    ref_tables_to_doc(Tables, []).
-
-ref_tables_to_doc([], Acc) -> lists:reverse(Acc);
-ref_tables_to_doc([Table | Tables], Acc) ->
-    ref_tables_to_doc(Tables, [[ref_table_to_doc(Table)] | Acc]).
+    [ref_table_to_doc(Table) || Table <- Tables].
 
 -spec ref_table_to_doc(ref_table()) -> iodata().
 ref_table_to_doc({Schema, [SchemaTable | RefTables]}) ->

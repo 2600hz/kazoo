@@ -20,6 +20,8 @@ Flow is:
 
 Defines a rate for a given prefix
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account_id` | Reseller's account ID | `string` |   | `false`
@@ -43,8 +45,6 @@ Key | Description | Type | Default | Required
 `routes` | List of regexs that match valid DIDs for this rate | `array(string)` |   | `false`
 `routes.[]` |   | `string` |   | `false`
 `weight` | Ordering against other rates, 1 being most preferred, 100 being least preferred | `integer` |   | `false`
-
-
 
 
 #### Fetch available rates

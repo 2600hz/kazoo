@@ -6,6 +6,8 @@
 
 Schema for token restrictions
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `restrictions` |   | `object` |   | `false`
@@ -17,8 +19,6 @@ Key | Description | Type | Default | Required
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules` | Rules applied to endpoint parameters | `object` |   | `false`
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/` | verbs | `array(string('GET', 'PUT', 'POST', 'PATCH', 'DELETE', '_'))` |   | `false`
 `restrictions./^\w+$/./^\w+$/./^\w+$/.[].rules./^[\w/#*]+$/.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch

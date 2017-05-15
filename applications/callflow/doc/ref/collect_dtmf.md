@@ -2,9 +2,11 @@
 
 ### About Collect Dtmf
 
-### Schema
+#### Schema
 
 Validator for the Collect DTMF callflow element
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -15,3 +17,5 @@ Key | Description | Type | Default | Required
 `terminators` | What DTMFs will terminate collection before the timeout occurs | `array(string('1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '#', '*'))` |   | `false`
 `terminators.[]` |   | `string` |   | `false`
 `timeout` | How long, in milliseconds, to wait for the first DTMF | `integer` | `5000` | `false`
+
+

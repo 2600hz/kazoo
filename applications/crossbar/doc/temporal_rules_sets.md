@@ -8,13 +8,13 @@ A temporal rule set is a collection of temporal rules that can be used in a call
 
 Schema for a temporal rules sets
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `name` | A friendly name for the temporal rule set | `string(1..128)` |   | `true`
 `temporal_rules` | Temporal Rules | `array(string)` |   | `false`
 `temporal_rules.[]` |   | `string` |   | `false`
-
-
 
 
 #### Structure

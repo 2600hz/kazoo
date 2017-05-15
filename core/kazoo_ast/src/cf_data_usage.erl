@@ -42,14 +42,12 @@ to_schema_doc(M, Usage) ->
 update_doc(Base, Schema) ->
     RefPath = filename:join([code:lib_dir('callflow'), "doc", "ref", <<Base/binary,".md">>]),
     Contents = build_ref_doc(Base, Schema),
-
     'ok' = file:write_file(RefPath, Contents).
 
 build_ref_doc(Base, Schema) ->
     DocName = kz_ast_util:smash_snake(Base),
     ["## ", DocName, "\n\n"
     ,"### About ", DocName, "\n\n"
-    ,"### Schema\n\n"
     ,kz_ast_util:schema_to_table(Schema)
     ].
 
@@ -100,8 +98,7 @@ maybe_insert_schema(F, [], Default, Schema) ->
                 [{<<"type">>, guess_type(F, Default)}
                 ,{<<"default">>, check_default(Default)}
                 ,{<<"description">>, <<>>}
-                ]
-               ),
+                ]),
     kz_json:insert_values(Updates, Schema).
 
 check_default({_M, _F, _A}) -> 'undefined';

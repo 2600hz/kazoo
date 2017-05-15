@@ -8,6 +8,8 @@ When you have more callers than agents to handle those calls, you can create a c
 
 Call Queues - FIFO call queues for serializing callers connecting to agents
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `agent_ring_timeout` | In seconds, how long to ring an agent before progressing to the next agent available | `integer` | `15` | `false`
@@ -25,8 +27,6 @@ Key | Description | Type | Default | Required
 `recording_url` | An optional HTTP URL to PUT the call recording after the call ends (and should respond to GET for retrieving the audio data) | `string` |   | `false`
 `ring_simultaneously` | The number of agents to try in parallel when connecting a caller | `integer` | `1` | `false`
 `strategy` | The queue strategy for connecting agents to callers | `string('round_robin', 'most_idle')` | `round_robin` | `false`
-
-
 
 
 #### List queues
