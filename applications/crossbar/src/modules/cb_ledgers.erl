@@ -294,7 +294,7 @@ summary_to_dollars(LedgersJObj) ->
         ])).
 
 -spec maybe_convert_units(ne_binary(), kz_transaction:units() | T) -> kz_transaction:dollars() | T when T::any().
-maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Value);
+maybe_convert_units(<<"amount">>, Units) -> wht_util:units_to_dollars(Units);
 maybe_convert_units(_, Value) -> Value.
 
 %%--------------------------------------------------------------------
