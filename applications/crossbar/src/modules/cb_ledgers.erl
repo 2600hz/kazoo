@@ -321,7 +321,7 @@ read_ledger(Context, Ledger) ->
             Context1
     end.
 
--spec pagination_page_size(cb_context:context()) -> pos_integer().
+-spec pagination_page_size(cb_context:context()) -> api_pos_integer().
 pagination_page_size(Context) ->
     case crossbar_doc:pagination_page_size(Context) of
         'undefined' -> 'undefined';
