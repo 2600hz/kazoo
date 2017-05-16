@@ -642,7 +642,8 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
     kapps_call_command:hold(HoldMedia, Call),
     case kapps_call_command:wait_for_unparked_call(Call, Timeout) of
         {'error', 'timeout'} ->
-            case ringback_parker(RingbackId, SlotNumber, Data, Call) of
+            TmpCID = <<"Parking slot ", SlotNumber/binary>>,
+            case ringback_parker(RingbackId, SlotNumber, TmpCID, Data, Call) of
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
@@ -753,16 +754,18 @@ ringback_parker(EndpointId, SlotNumber, TmpCID, Data, Call) ->
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s : ~p", [EndpointId, Endpoints]),
             UUID = kz_util:rand_hex_binary(16),
-            bridge_to_parker(Endpoints, ?DEFAULT_TIMEOUT_S, UUID, Call),
+            bridge_to_parker(Endpoints, ?DEFAULT_TIMEOUT_S, TmpCID, UUID, Call),
             wait_for_ringback(Timeout, UUID, Call);
         _ -> 'failed'
     end.
 
--spec bridge_to_parker(kz_json:objects(), integer(), ne_binary(), kapps_call:call()) -> 'ok'.
-bridge_to_parker(Endpoints, Timeout, BLeg, Call) ->
+-spec bridge_to_parker(kz_json:objects(), integer(), ne_binary(), ne_binary(), kapps_call:call()) -> 'ok'.
+bridge_to_parker(Endpoints, Timeout, TmpCID, BLeg, Call) ->
     Cmd = [{<<"Application-Name">>, <<"bridge">>}
           ,{<<"Endpoints">>, Endpoints}
-          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Origination-UUID">>, BLeg}])}
+          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Origination-UUID">>, BLeg}
+                                                         ,{<<"Caller-ID-Name">>, TmpCID}
+                                                         ])}
           ,{<<"Timeout">>, Timeout}
           ,{<<"Ignore-Early-Media">>, true}
           ,{<<"Dial-Endpoint-Method">>, kapi_dialplan:dial_method_single()}
