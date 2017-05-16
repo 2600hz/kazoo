@@ -210,8 +210,8 @@ parse(JWTToken) when is_binary(JWTToken) ->
                    },
             {'ok', set_provider(Map)};
         _ ->
-           lager:info("unable to parse jwt: ~s", [JWTToken]),
-           {'error', 'invalid_jwt'}
+            lager:info("unable to parse jwt: ~s", [JWTToken]),
+            {'error', 'invalid_jwt'}
     end.
 
 -spec token(ne_binary() | map()) -> map().

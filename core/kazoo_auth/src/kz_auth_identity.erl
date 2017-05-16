@@ -253,8 +253,8 @@ verify_identity_signature(#{identity_secret := IdentitySecret, auth_id := Identi
 verify_identity_signature(Token, ExpectedSignature, ExpectedSignature) ->
     Token#{identify_verified => 'true'};
 verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
-     lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
-     Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
+    lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
+    Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
 -spec verify(map()) -> boolean().
 verify(Token) ->
