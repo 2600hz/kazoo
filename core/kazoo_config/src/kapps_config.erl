@@ -27,6 +27,8 @@
 -export([get_jsons/2, get_jsons/3, get_jsons/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
 -export([get_integer/2, get_integer/3, get_integer/4]).
+-export([get_pos_integer/2, get_pos_integer/3, get_pos_integer/4]).
+-export([get_non_neg_integer/2, get_non_neg_integer/3, get_non_neg_integer/4]).
 -export([get_float/2, get_float/3, get_float/4]).
 -export([get_is_false/2, get_is_false/3, get_is_false/4]).
 -export([get_is_true/2, get_is_true/3, get_is_true/4]).
@@ -198,6 +200,60 @@ get_integer(Category, Key, Default) ->
     get_integer(Category, Key, Default, kz_term:to_binary(node())).
 get_integer(Category, Key, Default, Node) ->
     kz_term:to_integer(get(Category, Key, Default, Node)).
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category and cast it as a pos_integer
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_pos_integer(config_category(), config_key()) -> api_pos_integer().
+-spec get_pos_integer(config_category(), config_key(), Default) -> pos_integer() | Default.
+-spec get_pos_integer(config_category(), config_key(), Default, ne_binary()) -> pos_integer() | Default.
+
+get_pos_integer(Category, Key) ->
+    case get(Category, Key) of
+        'undefined' -> 'undefined';
+        Else -> to_pos_integer(Else, undefined)
+    end.
+get_pos_integer(Category, Key, Default) ->
+    get_pos_integer(Category, Key, Default, kz_term:to_binary(node())).
+get_pos_integer(Category, Key, Default, Node) ->
+    to_pos_integer(get(Category, Key, Default, Node), Default).
+
+to_pos_integer(Value, Default) ->
+    case kz_term:to_integer(Value) of
+        PosInteger when is_integer(Value), Value > 0 ->
+            PosInteger;
+        _ -> Default
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category and cast it as a pos_integer
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_non_neg_integer(config_category(), config_key()) -> api_non_neg_integer().
+-spec get_non_neg_integer(config_category(), config_key(), Default) -> non_neg_integer() | Default.
+-spec get_non_neg_integer(config_category(), config_key(), Default, ne_binary()) -> non_neg_integer() | Default.
+
+get_non_neg_integer(Category, Key) ->
+    case get(Category, Key) of
+        'undefined' -> 'undefined';
+        Else -> to_non_neg_integer(Else, undefined)
+    end.
+get_non_neg_integer(Category, Key, Default) ->
+    get_non_neg_integer(Category, Key, Default, kz_term:to_binary(node())).
+get_non_neg_integer(Category, Key, Default, Node) ->
+    to_non_neg_integer(get(Category, Key, Default, Node), Default).
+
+to_non_neg_integer(Value, Default) ->
+    case kz_term:to_integer(Value) of
+        NonNegInteger when is_integer(Value), Value >= 0 ->
+            NonNegInteger;
+        _ -> Default
+    end.
 
 %%-----------------------------------------------------------------------------
 %% @public
