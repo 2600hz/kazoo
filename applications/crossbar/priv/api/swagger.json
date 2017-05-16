@@ -10254,16 +10254,19 @@
                 "maximum_search_quantity": {
                     "default": 500,
                     "description": "maximum number of returned DIDs in search query",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "number_search_timeout_ms": {
                     "default": 5000,
                     "description": "number manager number search timeout in milliseconds",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "parallel_jobs_count": {
                     "default": 1,
                     "description": "number of concurrent workers that can process a migration at the same time (1=non parallel behavior, MUST be >0)",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "port_in_module_name": {
@@ -10297,11 +10300,13 @@
                 "time_between_accounts_ms": {
                     "default": 1000,
                     "description": "number_manager time between accounts in milliseconds",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "time_between_numbers_ms": {
                     "default": 1000,
                     "description": "number_manager time between numbers in milliseconds",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "unauthorized_numbers_lookup": {
@@ -10382,6 +10387,7 @@
                 "max_search_quantity": {
                     "default": 500,
                     "description": "number_manager.bandwidth2 max search quantity",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "order_name_prefix": {
@@ -11237,16 +11243,19 @@
                 "aging_expiry_d": {
                     "default": 90,
                     "description": "tasks aging expiry in days",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "attempt_upload_output_times": {
                     "default": 5,
                     "description": "how many times will the upload of the resulting CSV be attempted, cannot be zero",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "browse_dbs_interval_s": {
                     "default": 86400,
                     "description": "tasks browse dbs interval in seconds",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "crawler_delay_time_ms": {
@@ -11257,6 +11266,7 @@
                 "crawler_timer_ms": {
                     "default": 86400000,
                     "description": "tasks crawler timer in milliseconds",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "cycle_delay_time_ms": {
@@ -11267,6 +11277,7 @@
                 "discovery_expiry_d": {
                     "default": 1,
                     "description": "tasks discovery expiry in days",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "interaccount_delay_ms": {
@@ -11282,11 +11293,13 @@
                 "pause_between_upload_output_attempts_s": {
                     "default": 10,
                     "description": "the amount of time to pause between attempts to upload resulting CSV in seconds",
+                    "minimum": 0,
                     "type": "integer"
                 },
                 "send_progress_after_processed": {
                     "default": 1000,
                     "description": "tasks send progress after processed",
+                    "minimum": 1,
                     "type": "integer"
                 },
                 "should_archive_modbs": {
@@ -11317,6 +11330,7 @@
                 "wait_after_row_ms": {
                     "default": 500,
                     "description": "tasks wait after row in milliseconds",
+                    "minimum": 0,
                     "type": "integer"
                 }
             },

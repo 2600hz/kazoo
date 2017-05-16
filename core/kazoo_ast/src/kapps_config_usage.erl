@@ -204,13 +204,13 @@ guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binaries', _Default) -> [<<"string">>];
-guess_type('get_pos_integer', _Default) -> <<"integer">>;
-guess_type('get_non_neg_integer', _Default) -> <<"integer">>;
+guess_type('get_pos_integer', _Default) -> <<"pos_integer">>;
+guess_type('get_non_neg_integer', _Default) -> <<"non_neg_integer">>;
 guess_type('get_json', _Default) -> <<"object">>;
 guess_type('get_jsons', _Default) -> [<<"object">>];
 guess_type('get_string', _Default) -> <<"string">>;
 guess_type('get_integer', _Default) -> <<"integer">>;
-guess_type('get_float', _Default) -> <<"number">>;
+guess_type('get_float', _Default) -> <<"float">>;
 guess_type('get_atom', _Default) -> <<"string">>;
 guess_type('get_global', Default) -> guess_type_by_default(Default);
 guess_type('set_default', _Default) -> 'undefined';
@@ -230,7 +230,7 @@ guess_type_by_default(?LIST(?BINARY_MATCH(_), _Tail)) -> [<<"string">>];
 guess_type_by_default(?LIST(Head, _Tail)) -> [guess_type_by_default(Head)];
 guess_type_by_default(?BINARY_MATCH(_V)) -> <<"string">>;
 guess_type_by_default(?INTEGER(_I)) -> <<"integer">>;
-guess_type_by_default(?FLOAT(_F)) -> <<"number">>;
+guess_type_by_default(?FLOAT(_F)) -> <<"float">>;
 guess_type_by_default(?BINARY_OP(_Op, Arg1, _Arg2)) ->
     guess_type_by_default(Arg1);
 guess_type_by_default(?MOD_FUN_ARGS(M, F, [_Cat, _Key]))
@@ -287,8 +287,16 @@ type([Type]) ->
     [{?FIELD_TYPE, <<"array">>}
     ,{<<"items">>, kz_json:from_list([{?FIELD_TYPE, Type}])}
     ];
-type(Type) ->
-    [{?FIELD_TYPE, Type}].
+type(<<"pos_integer">>) ->
+    [{?FIELD_TYPE, <<"integer">>}
+    ,{<<"minimum">>, 1}
+    ];
+type(<<"non_neg_integer">>) ->
+    [{?FIELD_TYPE, <<"integer">>}
+    ,{<<"minimum">>, 0}
+    ];
+type(<<"float">>) -> [{?FIELD_TYPE, <<"number">>}];
+type(Type) -> [{?FIELD_TYPE, Type}].
 
 description_key(Document, Key) -> <<Document/binary, $., Key/binary>>.
 fetch_description(DescriptionKey) ->

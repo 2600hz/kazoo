@@ -116,16 +116,19 @@
         "maximum_search_quantity": {
             "default": 500,
             "description": "maximum number of returned DIDs in search query",
+            "minimum": 1,
             "type": "integer"
         },
         "number_search_timeout_ms": {
             "default": 5000,
             "description": "number manager number search timeout in milliseconds",
+            "minimum": 1,
             "type": "integer"
         },
         "parallel_jobs_count": {
             "default": 1,
             "description": "number of concurrent workers that can process a migration at the same time (1=non parallel behavior, MUST be >0)",
+            "minimum": 1,
             "type": "integer"
         },
         "port_in_module_name": {
@@ -159,11 +162,13 @@
         "time_between_accounts_ms": {
             "default": 1000,
             "description": "number_manager time between accounts in milliseconds",
+            "minimum": 1,
             "type": "integer"
         },
         "time_between_numbers_ms": {
             "default": 1000,
             "description": "number_manager time between numbers in milliseconds",
+            "minimum": 1,
             "type": "integer"
         },
         "unauthorized_numbers_lookup": {
