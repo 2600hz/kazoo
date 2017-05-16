@@ -653,10 +653,6 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                 'channel_hungup' ->
                     lager:info("parked call does not exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
-                    cf_exe:stop(Call);
-                _Else ->
-                    lager:info("unhandled ~p from ring_back_parker", [_Else]),
-                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     cf_exe:stop(Call)
             end;
         {'error', 'channel_disconnected'} ->
@@ -829,7 +825,7 @@ wait_for_parker(Timeout, UUID, Call, Start, {'ok', JObj}) ->
           when CallId =:= UUID ->
             lager:debug("parker channel destroyed : ~p", [JObj]),
             {'fail', JObj};
-       _E ->
+        _E ->
             NewTimeout = kz_time:decr_timeout(Timeout, Start),
             NewStart = os:timestamp(),
             wait_for_parker(NewTimeout, UUID, Call, NewStart, kapps_call_command:receive_event(NewTimeout))
