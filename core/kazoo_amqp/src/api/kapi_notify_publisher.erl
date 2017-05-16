@@ -13,7 +13,7 @@
 -include_lib("amqp_util.hrl").
 
 -define(FAILED_NOTIFY_DB, <<"pending_notifications">>).
--define(DEFAULT_TIMEOUT, 5 * ?MILLISECONDS_IN_SECOND).
+-define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_integer(<<"notify">>, <<"notify_publisher_timeout">>, ?DEFAULT_TIMEOUT)).
 
 %%--------------------------------------------------------------------
@@ -78,9 +78,22 @@ handle_error(NotifyType, Req, Error) ->
                                                               ,{'account_db', ?FAILED_NOTIFY_DB}
                                                               ]
             ),
+    save_pending_notification(NotifyType, JObj, 2).
+
+-spec handle_error(ne_binary(), kz_json:object(), integer()) -> 'ok'.
+save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
+    lager:error("max try to save payload for notification ~s publish attempt", [NotifyType]);
+save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?FAILED_NOTIFY_DB, JObj) of
         {'ok', _} ->
             lager:error("payload for failed notification ~s publish attempt was saved", [NotifyType]);
+        {'error', 'not_found'} ->
+            _ = kz_datamgr:db_create(?FAILED_NOTIFY_DB),
+            save_pending_notification(NotifyType, JObj, Loop - 1);
+        {'error', 'timeout'} ->
+            save_pending_notification(NotifyType, JObj, Loop - 1);
+        {'error', 'conflict'} ->
+            save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', _E} ->
             lager:error("failed to save payload for notification ~s publish attempt: ~p", [NotifyType, _E])
     end.
