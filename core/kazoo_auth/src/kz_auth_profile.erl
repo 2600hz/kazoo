@@ -142,7 +142,7 @@ maybe_add_user_identity(#{auth_provider := #{profile_identity_field := Field}
     case kz_json:get_first_defined([Field], Profile) of
         'undefined' ->
             lager:debug("user identity from field '~s' not found in profile: ~s"
-                        ,[Field, kz_json:encode(Profile)]
+                       ,[Field, kz_json:encode(Profile)]
                        ),
             Token;
         Identity ->
