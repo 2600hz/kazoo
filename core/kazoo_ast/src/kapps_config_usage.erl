@@ -204,6 +204,8 @@ guess_type('get_non_empty', Default) -> guess_type_by_default(Default);
 guess_type('get_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binary', _Default) -> <<"string">>;
 guess_type('get_ne_binaries', _Default) -> [<<"string">>];
+guess_type('get_pos_integer', _Default) -> <<"integer">>;
+guess_type('get_non_neg_integer', _Default) -> <<"integer">>;
 guess_type('get_json', _Default) -> <<"object">>;
 guess_type('get_jsons', _Default) -> [<<"object">>];
 guess_type('get_string', _Default) -> <<"string">>;

@@ -28,16 +28,16 @@
 -define(SERVER, ?MODULE).
 
 -define(NUMBERS_TO_CRAWL,
-        kapps_config:get_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
+        kapps_config:get_pos_integer(?SYSCONFIG_COUCH, <<"default_chunk_size">>, 1000)).
 
 -define(DISCOVERY_EXPIRY,
-        kapps_config:get_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)).
+        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"discovery_expiry_d">>, 1)).
 
 -define(AGING_EXPIRY,
-        kapps_config:get_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)).
+        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"aging_expiry_d">>, 90)).
 
 -define(TIME_BETWEEN_CRAWLS,
-        kapps_config:get_integer(?CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)).
+        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"crawler_timer_ms">>, ?MILLISECONDS_IN_DAY)).
 
 -record(state, {cleanup_ref :: reference()
                }).
