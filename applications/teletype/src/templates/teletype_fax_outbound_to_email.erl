@@ -62,7 +62,7 @@ handle_fax_outbound(JObj) ->
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
 
     case teletype_util:is_notice_enabled(AccountId, JObj, ?TEMPLATE_ID) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> teletype_util:notification_disabled(DataJObj, ?TEMPLATE_ID);
         'true' -> process_req(teletype_fax_util:add_data(DataJObj))
     end.
 

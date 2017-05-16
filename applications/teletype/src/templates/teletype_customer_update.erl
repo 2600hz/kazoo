@@ -61,7 +61,7 @@ handle_req(JObj) ->
     DataJObj = kz_json:normalize(JObj),
     AccountId = kz_json:get_value(<<"account_id">>, DataJObj),
     case teletype_util:is_notice_enabled(AccountId, JObj, maybe_expand_template_id(DataJObj)) of
-        'false' -> lager:debug("notification handling not configured for this account");
+        'false' -> teletype_util:notification_disabled(DataJObj, maybe_expand_template_id(DataJObj));
         'true' -> process_req(DataJObj, teletype_util:is_preview(DataJObj))
     end.
 
@@ -83,8 +83,10 @@ process_accounts(DataJObj) ->
     case kz_datamgr:get_results(?KZ_ACCOUNTS_DB, ?ACC_CHILDREN_LIST, ViewOpts) of
         {'ok', Accounts} ->
             [process_account(kz_doc:id(Account), DataJObj) || Account <- Accounts];
-        {'error', _Reason} = E ->
-            lager:info("failed to load children. error: ~p", [E])
+        {'error', Reason} ->
+            Msg = io_lib:format("failed to load children. error: ~p", [Reason]),
+            lager:info(Msg),
+            teletype_util:send_update(DataJObj, <<"failed">>, kz_term:to_binary(Msg))
     end.
 
 -spec process_account(ne_binary(), kz_json:object()) -> kz_proplist()|'ok'.
