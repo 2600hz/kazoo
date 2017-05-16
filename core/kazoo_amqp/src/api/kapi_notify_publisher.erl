@@ -34,7 +34,11 @@ call_collect(Req, PublishFun) ->
 %%--------------------------------------------------------------------
 -spec cast(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
-    _ = kz_util:spawn(fun() -> call_collect(Req, PublishFun) end),
+    Fun = fun() ->
+              kz_util:put_callid(Req),
+              call_collect(Req, PublishFun)
+          end,
+    _ = kz_util:spawn(Fun),
     'ok'.
 
 %%%===================================================================
@@ -80,9 +84,9 @@ handle_error(NotifyType, Req, Error) ->
             ),
     save_pending_notification(NotifyType, JObj, 2).
 
--spec handle_error(ne_binary(), kz_json:object(), integer()) -> 'ok'.
+-spec save_pending_notification(ne_binary(), kz_json:object(), integer()) -> 'ok'.
 save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
-    lager:error("max try to save payload for notification ~s publish attempt", [NotifyType]);
+    lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
     case kz_datamgr:save_doc(?FAILED_NOTIFY_DB, JObj) of
         {'ok', _} ->
@@ -163,7 +167,7 @@ error_to_failure_reason(Error) ->
 json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
     case kz_json:find(<<"Status">>, JObjs) of
         <<"failed">> -> <<"teletype failed with reason "
-                        ,(kz_json:get_ne_binary_value(<<"Failure-Message">>, hd(JObjs), <<"unknown_reason">>))/binary
+                         ,(kz_json:get_ne_binary_value(<<"Failure-Message">>, hd(JObjs), <<"unknown_reason">>))/binary
                         >>;
         <<"pending">> -> <<"timeout during publishing, last message from teletype is 'pending'">>;
         <<"completed">> -> <<"it shouldn't be here">>;
