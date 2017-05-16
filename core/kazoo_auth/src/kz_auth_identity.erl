@@ -192,7 +192,7 @@ check_kazoo_secret(#{user_doc := JObj}=Token) ->
 -spec update_kazoo_secret(map()) -> map() | {'error', any()}.
 update_kazoo_secret(Token) ->
     lager:debug("generating new kazoo signing secret"),
-    update_kazoo_secret(Token, kz_binary:rand_hex_binary(16)).
+    update_kazoo_secret(Token, kz_binary:rand_hex(16)).
 
 -spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
 update_kazoo_secret(#{auth_db := Db
@@ -213,7 +213,9 @@ token(#{auth_provider := #{name := <<"kazoo">>
                           }
        ,payload := #{<<"identity_sig">> := IdentitySig}
        }=Token) ->
-    case kz_term:is_not_empty(IdentitySig) andalso identity_secret(Token) of
+    case kz_term:is_not_empty(IdentitySig)
+         andalso identity_secret(Token)
+    of
         'false' ->
             lager:info("unable to verify identity without a valid identity secret"),
             Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};
@@ -229,7 +231,9 @@ token(#{payload := Payload
                           }
        }=Token) ->
     IdentitySig = maps:get(IdentitySigField, Payload, 'undefined'),
-    case kz_term:is_not_empty(IdentitySig) andalso identity_secret(Token) of
+    case kz_term:is_not_empty(IdentitySig)
+         andalso identity_secret(Token)
+    of
         'false' ->
             lager:debug("unable to get identity signature from field '~s'", [IdentitySigField]),
             Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};

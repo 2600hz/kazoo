@@ -270,11 +270,11 @@ ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
             case Missing -- kz_json:get_keys(Doc) of
                 [] -> do_update_user(DocId, Props, Token);
                 _StillMissing ->
-                    lager:info("missing properties when updating user : ~p", [kz_binary:join_binary(_StillMissing)]),
+                    lager:info("missing properties when updating user : ~p", [kz_binary:join(_StillMissing)]),
                     Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
             end;
         _ ->
-            lager:info("missing properties when updating user : ~p", [kz_binary:join_binary(Missing)]),
+            lager:info("missing properties when updating user : ~p", [kz_binary:join(Missing)]),
             Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
     end.
 
@@ -328,7 +328,7 @@ maybe_required_properties_missing(#{auth_provider := #{profile_required_props :=
                                      ,user_map => kz_json:to_map(JObj)
                                      }, kz_doc:id(JObj));
         Missing ->
-            lager:info("missing properties when checking user : ~p", [kz_binary:join_binary(Missing)]),
+            lager:info("missing properties when checking user : ~p", [kz_binary:join(Missing)]),
             Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
     end;
 maybe_required_properties_missing(Token, _Props, JObj) ->
