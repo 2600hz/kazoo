@@ -72,10 +72,10 @@ maybe_authorize_channel(Props, Node) ->
     CallId = kzd_freeswitch:call_id(Props),
     case kzd_freeswitch:channel_authorized(Props) of
         <<"true">> ->
-            lager:debug("channel is authorized by FreeSWITCH"),
+            lager:debug("channel is already authorized"),
             'true';
         <<"false">> ->
-            lager:debug("channel is not authorized by FreeSWITCH"),
+            lager:debug("channel is already denied authorization"),
             'false';
         _Else ->
             maybe_authorize_conference_number(Props)
