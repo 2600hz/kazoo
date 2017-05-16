@@ -755,12 +755,12 @@ send_provisioning_request(Template, MACAddress) ->
 %% @doc
 %% @end
 %%--------------------------------------------------------------------
--spec get_provisioning_type() -> api_binary().
+-spec get_provisioning_type() -> api_ne_binary().
 get_provisioning_type() ->
-    case kapps_config:get_non_empty(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
+    case kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"provisioning_type">>) of
         'undefined' ->
             lager:debug("using ~p for provisioner_type", [?PROVISIONER_CONFIG]),
-            kapps_config:get_non_empty(?PROVISIONER_CONFIG, <<"provisioning_type">>);
+            kapps_config:get_ne_binary(?PROVISIONER_CONFIG, <<"provisioning_type">>);
         Result ->
             lager:debug("using ~p for provisioner_type", [?MOD_CONFIG_CAT]),
             Result

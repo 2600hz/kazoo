@@ -79,7 +79,7 @@
 -define(DEFAULT_TARGET_TIMEOUT,
         kapps_config:get_integer(?CONFIG_CAT, [<<"transfer">>, <<"default_target_timeout_ms">>], 20 * ?MILLISECONDS_IN_SECOND)).
 
--define(DEFAULT_RINGBACK, kapps_config:get_json(<<"ecallmgr">>, <<"default_ringback">>)).
+-define(DEFAULT_RINGBACK, kapps_config:get_ne_binary(<<"ecallmgr">>, <<"default_ringback">>, <<"%(2000,4000,440,480)">>)).
 
 -define(TRANSFEROR_CALL_EVENTS, [<<"CHANNEL_BRIDGE">>, <<"CHANNEL_UNBRIDGE">>
                                 ,<<"DTMF">>
@@ -121,13 +121,13 @@ handle(Data, Call) ->
     unbridge(Call),
 
     try gen_fsm:enter_loop(?MODULE, [], 'pre_originate'
-                          ,#state{transferor=Transferor
-                                 ,transferee=Transferee
-                                 ,call=kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
-                                 ,takeback_dtmf=kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
-                                 ,ringback=to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
-                                 ,moh=find_moh(Data, Call)
-                                 ,extension=get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
+                          ,#state{transferor = Transferor
+                                 ,transferee = Transferee
+                                 ,call = kapps_call:set_controller_queue(konami_event_listener:queue_name(), Call)
+                                 ,takeback_dtmf = kz_json:get_value(<<"takeback_dtmf">>, Data, ?DEFAULT_TAKEBACK_DTMF)
+                                 ,ringback = to_tonestream(kz_json:get_value(<<"ringback">>, Data, ?DEFAULT_RINGBACK))
+                                 ,moh = find_moh(Data, Call)
+                                 ,extension = get_extension(kz_json:get_first_defined([<<"captures">>, <<"target">>], Data))
                                  }
                           )
     of

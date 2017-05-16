@@ -49,7 +49,7 @@ handle_req(JObj, _Props) ->
     Props = create_template_props(JObj, Account),
     {ok, TxtBody} = notify_util:render_template(undefined, ?DEFAULT_TEXT_TMPL, Props),
     {ok, HTMLBody} = notify_util:render_template(undefined, ?DEFAULT_HTML_TMPL, Props),
-    To = kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
+    To = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
     CustomSubjectTemplate = kz_json:get_value([<<"notifications">>, <<"transaction">>, <<"email_subject_template">>], Account),
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).

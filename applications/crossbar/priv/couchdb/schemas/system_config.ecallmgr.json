@@ -148,8 +148,9 @@
             "type": "string"
         },
         "default_ringback": {
+            "default": "%(2000,4000,440,480)",
             "description": "ecallmgr default ringback",
-            "type": "object"
+            "type": "string"
         },
         "event_stream_idle_alert": {
             "default": 0,
@@ -226,7 +227,11 @@
             "type": "object"
         },
         "fs_reconnect_cmds": {
-            "description": "ecallmgr fs reconnect cmds"
+            "description": "ecallmgr fs reconnect cmds",
+            "items": {
+                "type": "object"
+            },
+            "type": "array"
         },
         "gateways": {
             "default": {},
@@ -352,7 +357,8 @@
             "type": "boolean"
         },
         "sofia_conf": {
-            "description": "ecallmgr sofia conf"
+            "description": "ecallmgr sofia conf",
+            "type": "boolean"
         },
         "tcp_packet_type": {
             "default": 2,

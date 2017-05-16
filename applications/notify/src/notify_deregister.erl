@@ -66,7 +66,7 @@ handle_req(JObj, _Props) ->
     {ok, Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     To = kz_json:get_value([<<"notifications">>, <<"deregister">>, <<"send_to">>], Account
-                          ,kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>)),
+                          ,kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>)),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------

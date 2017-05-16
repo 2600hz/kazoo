@@ -4,6 +4,7 @@
     "description": "Schema for reorder system_config",
     "properties": {
         "assume_inbound_e164": {
+            "default": false,
             "description": "reorder assume inbound e164",
             "type": "boolean"
         },

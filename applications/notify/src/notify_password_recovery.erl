@@ -49,7 +49,7 @@ handle_req(JObj, _Props) ->
 
     {'ok', Account} = notify_util:get_account_doc(JObj),
 
-    To = kz_json:get_value(<<"Email">>, JObj, kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>)),
+    To = kz_json:get_value(<<"Email">>, JObj, kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>)),
 
     lager:debug("creating notice for request of password reset"),
 

@@ -20,17 +20,17 @@
                                 "attempts": {
                                     "default": 5,
                                     "description": "ananke attempts",
-                                    "type": "string"
+                                    "type": "integer"
                                 },
                                 "interval_s": {
                                     "default": 300,
                                     "description": "ananke interval in seconds",
-                                    "type": "string"
+                                    "type": "integer"
                                 },
                                 "timeout_s": {
                                     "default": 20,
                                     "description": "ananke timeout in seconds",
-                                    "type": "string"
+                                    "type": "integer"
                                 }
                             }
                         }

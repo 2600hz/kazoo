@@ -410,6 +410,8 @@ varstr_to_proplist(VarStr) ->
 
 -spec get_setting(kz_json:path()) -> {'ok', any()}.
 -spec get_setting(kz_json:path(), Default) -> {'ok', Default | any()}.
+get_setting(<<"default_ringback">>) ->
+    {'ok', ecallmgr_config:get(<<"default_ringback">>, <<"%(2000,4000,440,480)">>)};
 get_setting(Setting) -> {'ok', ecallmgr_config:get(Setting)}.
 get_setting(Setting, Default) -> {'ok', ecallmgr_config:get(Setting, Default)}.
 

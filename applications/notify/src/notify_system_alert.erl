@@ -71,7 +71,7 @@ alert_using_email('true', JObj) ->
     {'ok', TxtBody} = notify_util:render_template('undefined', ?DEFAULT_TEXT_TMPL, Props),
     {'ok', HTMLBody} = notify_util:render_template('undefined', ?DEFAULT_HTML_TMPL, Props),
     Subject = kz_json:get_ne_value(<<"Subject">>, JObj),
-    To = kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>, <<>>),
+    To = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
     build_and_send_email(TxtBody, HTMLBody, Subject, To, Props).
 
 %%--------------------------------------------------------------------

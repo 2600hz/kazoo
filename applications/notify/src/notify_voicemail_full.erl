@@ -98,7 +98,7 @@ get_rep_email(Account) ->
 
 -spec get_sys_admin_email() -> api_binary().
 get_sys_admin_email() ->
-    kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>).
+    kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>).
 
 -spec get_owner(ne_binary(), kzd_voicemail_box:doc(), api_binary()) ->
                        {'ok', kzd_user:doc()}.

@@ -20,13 +20,12 @@
 
 -define(RESOURCE_TYPES_HANDLED, [<<"audio">>, <<"video">>]).
 
--define(TONE, kapps_config:get_non_empty(?CONFIG_CAT
-                                        ,<<"tone">>
-                                        ,kz_json:from_list(
-                                           [{<<"caller_id">>,[]}
-                                           ,{<<"number">>,[<<"5555555551">>]}
-                                           ]))
+-define(DEFAULT_TONE, kz_json:from_list(
+                        [{<<"caller_id">>,[]}
+                        ,{<<"number">>,[<<"5555555551">>]}
+                        ])
        ).
+-define(TONE, kapps_config:get_json(?CONFIG_CAT, <<"tone">>, ?DEFAULT_TONE)).
 
 -define(MILLIWATT_HRL, 'true').
 -endif.

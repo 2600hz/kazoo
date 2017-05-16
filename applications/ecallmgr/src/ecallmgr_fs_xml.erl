@@ -394,7 +394,7 @@ route_resp_set_winning_node() ->
 route_resp_ringback(JObj) ->
     case kz_json:get_value(<<"Ringback-Media">>, JObj) of
         'undefined' ->
-            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>),
             action_el(<<"set">>, <<"ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
@@ -420,7 +420,7 @@ route_ccvs_list(CCVs) ->
 route_resp_transfer_ringback(JObj) ->
     case kz_json:get_value(<<"Transfer-Media">>, JObj) of
         'undefined' ->
-            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>, <<"%(2000,4000,440,480)">>),
+            {'ok', RBSetting} = ecallmgr_util:get_setting(<<"default_ringback">>),
             action_el(<<"set">>, <<"transfer_ringback=", (kz_term:to_binary(RBSetting))/binary>>);
         Media ->
             MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),

@@ -86,7 +86,7 @@
         "deny_emergency_bridge_code": {
             "default": 486,
             "description": "stepswitch deny emergency bridge code",
-            "type": "string"
+            "type": "integer"
         },
         "deny_emergency_bridge_media": {
             "default": "prompt://system_media/stepswitch-emergency_not_configured/",

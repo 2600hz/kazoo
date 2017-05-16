@@ -16,7 +16,8 @@
             "type": "object"
         },
         "provisioning_type": {
-            "description": "provisioner provisioning type"
+            "description": "provisioner provisioning type",
+            "type": "string"
         },
         "provisioning_url": {
             "description": "provisioner provisioning url",

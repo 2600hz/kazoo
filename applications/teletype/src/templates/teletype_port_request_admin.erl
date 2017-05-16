@@ -160,7 +160,7 @@ find_port_authority(MasterAccountId, MasterAccountId) ->
     case kz_whitelabel:fetch(MasterAccountId) of
         {'error', _R} ->
             lager:debug("failed to find master account ~s, using system value", [MasterAccountId]),
-            kapps_config:get(?MOD_CONFIG_CAT, <<"default_to">>);
+            kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>);
         {'ok', JObj} ->
             lager:debug("getting master account's port authority"),
             kz_whitelabel:port_authority(JObj)
