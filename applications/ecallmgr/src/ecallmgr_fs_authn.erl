@@ -181,17 +181,8 @@ handle_directory_lookup(Id, Props, Node) ->
     lager:debug("received fetch request (~s) user creds from ~s", [Id, Node]),
     case props:get_value(<<"action">>, Props, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, Id, <<"reverse-lookup">>, Props);
-        <<"sip_auth">> -> maybe_lookup_user(Node, Id, Props);
+        <<"sip_auth">> -> lookup_user(Node, Id, <<"password">>, Props);
         _Other -> directory_not_found(Node, Id)
-    end.
-
--spec maybe_lookup_user(atom(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
-maybe_lookup_user(Node, Id, Props) ->
-    case kzd_freeswitch:authorizing_id(Props) /= 'undefined'
-        andalso kzd_freeswitch:authorizing_type(Props) /= 'undefined'
-    of
-        'true' -> lookup_user(Node, Id, <<"password">>, Props);
-        'false' -> directory_not_found(Node, Id)
     end.
 
 -spec directory_not_found(atom(), ne_binary()) -> fs_handlecall_ret().
