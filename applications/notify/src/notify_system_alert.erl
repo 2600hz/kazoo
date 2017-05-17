@@ -58,22 +58,22 @@ handle_req(JObj, _Props) ->
     SUBUrl = kapps_config:get_ne_binary(?MOD_CONFIG_CAT, <<"subscriber_url">>),
 
     SendResult =
-      case kz_json:get_value([<<"Details">>,<<"Format">>], JObj) of
-          'undefined' ->
-              alert_using_email('true', JObj);
-          _Format ->
-              EmailResult = alert_using_email(UseEmail, JObj),
-              case alert_using_POST(SUBUrl, JObj) of
-                  'ok' -> EmailResult;
-                  {'error', _}=Error ->
-                      Error ++ [OK
-                                || OK <- alert_using_email(not UseEmail, JObj),
-                                'ok' =:= OK
-                                    orelse (is_list(OK)
-                                    andalso lists:member('ok', OK))
-                               ] ++ EmailResult
-              end
-      end,
+        case kz_json:get_value([<<"Details">>,<<"Format">>], JObj) of
+            'undefined' ->
+                alert_using_email('true', JObj);
+            _Format ->
+                EmailResult = alert_using_email(UseEmail, JObj),
+                case alert_using_POST(SUBUrl, JObj) of
+                    'ok' -> EmailResult;
+                    {'error', _}=Error ->
+                        Error ++ [OK
+                                  || OK <- alert_using_email(not UseEmail, JObj),
+                                     'ok' =:= OK
+                                         orelse (is_list(OK)
+                                                 andalso lists:member('ok', OK))
+                                 ] ++ EmailResult
+                end
+        end,
     send_update(SendResult, RespQ, MsgId).
 
 -spec send_update(send_email_return() | 'disabled', ne_binary(), ne_binary()) -> 'ok'.
@@ -81,7 +81,7 @@ send_update('disabled', _, _) -> 'ok';
 send_update(Result, RespQ, MsgId) ->
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
--spec alert_using_POST(ne_binary(), kz_json:object()) -> send_email_return().
+-spec alert_using_POST(ne_binary(), kz_json:object()) -> 'ok' | {'error', any()}.
 alert_using_POST(Url, JObj) ->
     Headers = [{"Content-Type", "application/json"}],
     Encoded = kz_json:encode(JObj),

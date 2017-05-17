@@ -59,13 +59,13 @@ handle_req(JObj, _Props) ->
     %% If the box has emails, continue processing
     %% otherwise stop processing
     SendResult =
-      case Emails =/= [] of
-          'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
-          'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
-      end,
+        case Emails =/= [] of
+            'false' -> lager:debug("box ~s has no emails or owner doesn't want emails", [VMBoxId]);
+            'true' -> continue_processing(JObj, AccountDb, VMBox, Emails)
+        end,
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
--spec continue_processing(kz_json:object(), ne_binary(), kz_json:object(), ne_binaries()) -> 'ok'.
+-spec continue_processing(kz_json:object(), ne_binary(), kz_json:object(), ne_binaries()) -> send_email_return().
 continue_processing(JObj, AccountDb, VMBox, Emails) ->
     AccountDb = kz_util:format_account_db(kz_json:get_value(<<"Account-ID">>, JObj)),
 

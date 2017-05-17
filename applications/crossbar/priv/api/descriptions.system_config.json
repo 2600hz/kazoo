@@ -468,6 +468,7 @@
     "notify.new_account.html_content_transfer_encoding": "notify.new_account html content transfer encoding",
     "notify.new_account.text_content_transfer_encoding": "notify.new_account text content transfer encoding",
     "notify.notification_app": "notify notification app",
+    "notify.notify_publisher_timeout": "Timeout in milliseconds when publishing notification using notify publisher",
     "notify.password_recovery.default_to": "notify.password_recovery default to",
     "notify.password_recovery.html_content_transfer_encoding": "notify.password_recovery html content transfer encoding",
     "notify.password_recovery.text_content_transfer_encoding": "notify.password_recovery text content transfer encoding",

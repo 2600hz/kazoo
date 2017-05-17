@@ -44,14 +44,14 @@ handle_req(JObj, _Props) ->
     lager:debug("account-db: ~s, fax-id: ~s", [AccountDb, JobId]),
 
     SendResult =
-      case kz_datamgr:open_cache_doc(AccountDb, JobId) of
-          {'ok', FaxDoc} ->
-              process_req(FaxDoc, JObj, _Props);
-          {'error', Err} ->
-              Msg = io_lib:format("could not load fax document: ~p", [Err]),
-              lager:error(Msg),
-              {'error', Msg}
-      end,
+        case kz_datamgr:open_cache_doc(AccountDb, JobId) of
+            {'ok', FaxDoc} ->
+                process_req(FaxDoc, JObj, _Props);
+            {'error', Err} ->
+                Msg = io_lib:format("could not load fax document: ~p", [Err]),
+                lager:error(Msg),
+                {'error', Msg}
+        end,
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
 -spec process_req(kzd_fax:doc(), kz_json:object(), kz_proplist()) -> send_email_return().

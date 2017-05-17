@@ -77,13 +77,13 @@ handle_req(JObj, _Props) ->
     EmailAttachments = get_attachments(JObj),
 
     Result =
-      case notify_util:get_rep_email(AccountDoc) of
-          'undefined' ->
-              SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
-              build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, EmailAttachments);
-          RepEmail ->
-              build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, EmailAttachments)
-      end,
+        case notify_util:get_rep_email(AccountDoc) of
+            'undefined' ->
+                SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
+                build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props, EmailAttachments);
+            RepEmail ->
+                build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props, EmailAttachments)
+        end,
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
 %%--------------------------------------------------------------------

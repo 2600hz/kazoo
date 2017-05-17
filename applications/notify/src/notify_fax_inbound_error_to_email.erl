@@ -42,10 +42,10 @@ handle_req(JObj, _Props) ->
     {'ok', Account} = notify_util:get_account_doc(JObj),
 
     SendResult =
-      case is_notice_enabled(Account) of
-          'true' -> send(JObj, Account);
-          'false' -> lager:debug("fax inbound error notice is disabled")
-      end,
+        case is_notice_enabled(Account) of
+            'true' -> send(JObj, Account);
+            'false' -> lager:debug("fax inbound error notice is disabled")
+        end,
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
 -spec send(kz_json:object(), kz_json:object()) -> any().

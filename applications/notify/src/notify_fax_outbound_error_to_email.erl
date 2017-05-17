@@ -42,10 +42,10 @@ handle_req(JObj, _Props) ->
     {'ok', AcctObj} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
 
     SendResult =
-      case is_notice_enabled(AcctObj) of
-          'true' -> send(JObj, AcctObj);
-          'false' -> lager:debug("fax outbound error notice is disabled")
-      end,
+        case is_notice_enabled(AcctObj) of
+            'true' -> send(JObj, AcctObj);
+            'false' -> lager:debug("fax outbound error notice is disabled")
+        end,
     notify_util:maybe_send_update(SendResult, RespQ, MsgId).
 
 -spec send(kz_json:object(), kz_json:object()) -> send_email_return().

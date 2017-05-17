@@ -65,13 +65,13 @@ handle_req(JObj, _Props) ->
     {'ok', Subject} = notify_util:render_template(CustomSubjectTemplate, ?DEFAULT_SUBJ_TMPL, Props),
 
     Result =
-      case notify_util:get_rep_email(Account) of
-          'undefined' ->
-              SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
-              build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
-          RepEmail ->
-              build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
-      end,
+        case notify_util:get_rep_email(Account) of
+            'undefined' ->
+                SysAdminEmail = kapps_config:get_ne_binary_or_ne_binaries(?MOD_CONFIG_CAT, <<"default_to">>),
+                build_and_send_email(TxtBody, HTMLBody, Subject, SysAdminEmail, Props);
+            RepEmail ->
+                build_and_send_email(TxtBody, HTMLBody, Subject, RepEmail, Props)
+        end,
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 
 %%--------------------------------------------------------------------

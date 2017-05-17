@@ -13,7 +13,7 @@
 -define(APP, 'notify').
 
 -type respond_to() :: {api_binary(), ne_binary()}.
--type send_email_return() :: ['ok' | {'error', any()}].
+-type send_email_return() :: 'ok' | {'error', any()} | ['ok' | {'error', any()}].
 
 -define(NOTIFY_HRL, true).
 -endif.

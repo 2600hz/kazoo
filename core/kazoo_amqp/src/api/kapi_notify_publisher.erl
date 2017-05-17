@@ -35,8 +35,8 @@ call_collect(Req, PublishFun) ->
 -spec cast(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
     Fun = fun() ->
-              kz_util:put_callid(Req),
-              call_collect(Req, PublishFun)
+                  kz_util:put_callid(Req),
+                  call_collect(Req, PublishFun)
           end,
     _ = kz_util:spawn(Fun),
     'ok'.
@@ -167,7 +167,7 @@ error_to_failure_reason(Error) ->
 json_to_failure_reason({ErrorType, JObjs}) when is_list(JObjs) ->
     case kz_json:find(<<"Status">>, JObjs) of
         <<"failed">> -> <<"teletype failed with reason "
-                         ,(kz_json:get_ne_binary_value(<<"Failure-Message">>, hd(JObjs), <<"unknown_reason">>))/binary
+                          ,(kz_json:get_ne_binary_value(<<"Failure-Message">>, hd(JObjs), <<"unknown_reason">>))/binary
                         >>;
         <<"pending">> -> <<"timeout during publishing, last message from teletype is 'pending'">>;
         <<"completed">> -> <<"it shouldn't be here">>;

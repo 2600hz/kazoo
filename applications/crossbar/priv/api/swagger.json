@@ -9711,6 +9711,11 @@
                     "description": "notify notification app",
                     "type": "string"
                 },
+                "notify_publisher_timeout": {
+                    "default": 10000,
+                    "description": "Timeout in milliseconds when publishing notification using notify publisher",
+                    "type": "integer"
+                },
                 "search_rep_email": {
                     "default": true,
                     "description": "notify search rep email",
