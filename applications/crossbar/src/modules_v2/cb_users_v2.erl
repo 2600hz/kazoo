@@ -452,18 +452,7 @@ send_email(Context) ->
           ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    case
-        kapps_util:amqp_pool_request(
-          Req
-                                    ,fun kapi_notifications:publish_new_user/1
-                                    ,fun kapi_notifications:new_user_v/1
-         )
-    of
-        {'ok', _Resp} ->
-            lager:debug("published new user notification");
-        {'error', _E} ->
-            lager:debug("failed to publish new user notification: ~p", [_E])
-    end.
+    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_new_user/1).
 
 %%--------------------------------------------------------------------
 %% @private

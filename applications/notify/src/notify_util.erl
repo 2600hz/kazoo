@@ -84,7 +84,7 @@ send_update(RespQ, MsgId, Status, Msg) ->
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ]),
     lager:debug("notification update (~s) sending to ~s", [Status, RespQ]),
-    kapi_notifications:publish_notify_update(RespQ, Prop).
+    kz_amqp_worker:cast(Prop, fun(P) -> kapi_notifications:publish_notify_update(RespQ, P) end).
 
 -spec maybe_send_update(send_email_return(), ne_binary(), ne_binary()) -> 'ok'.
 maybe_send_update('ok', RespQ, MsgId) -> send_update(RespQ, MsgId, <<"completed">>);

@@ -66,15 +66,15 @@ handle_req(JObj, _Props) ->
                 case alert_using_POST(SUBUrl, JObj) of
                     'ok' -> EmailResult;
                     {'error', _}=Error ->
-                        Error ++ [OK
+                        [Error] ++ [OK
                                   || OK <- alert_using_email(not UseEmail, JObj),
                                      'ok' =:= OK
                                          orelse (is_list(OK)
                                                  andalso lists:member('ok', OK))
-                                 ] ++ EmailResult
+                                 ] ++ [EmailResult]
                 end
         end,
-    send_update(SendResult, RespQ, MsgId).
+    send_update(lists:flatten(SendResult), RespQ, MsgId).
 
 -spec send_update(send_email_return() | 'disabled', ne_binary(), ne_binary()) -> 'ok'.
 send_update('disabled', _, _) -> 'ok';

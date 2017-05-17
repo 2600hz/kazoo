@@ -633,7 +633,7 @@ is_account_notice_enabled(AccountId, TemplateKey, ResellerAccountId) ->
             is_account_notice_enabled(get_parent_account_id(AccountId)
                                      ,TemplateId
                                      ,ResellerAccountId
-             );
+                                     );
         _Otherwise ->
             is_notice_enabled_default(TemplateKey)
     end.
