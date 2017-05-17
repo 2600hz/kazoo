@@ -163,22 +163,22 @@ get_ne_binaries(Key) ->
 
 get_ne_binaries(Key, Default) ->
     case get(Key, Default) of
-        Default -> Default;
-        N ->
-            [kz_term:to_binary(V)
-             || V <- N,
-                kz_term:is_not_empty(V)
-            ]
+        NeBinaries when is_list(NeBinaries) ->
+            [kz_term:to_binary(NeBinary)
+             || NeBinary <- NeBinaries,
+                kz_term:is_not_empty(NeBinaries)
+            ];
+        _ -> Default
     end.
 
 get_ne_binaries(Key, Default, Node) ->
     case get(Key, Default, Node) of
-        Default -> Default;
-        N ->
-            [kz_term:to_binary(V)
-             || V <- N,
-                kz_term:is_not_empty(V)
-            ]
+        NeBinaries when is_list(NeBinaries) ->
+            [kz_term:to_binary(NeBinary)
+             || NeBinary <- NeBinaries,
+                kz_term:is_not_empty(NeBinaries)
+            ];
+        _ -> Default
     end.
 
 -spec fetch(kz_json:path()) -> kz_json:api_json_term().
