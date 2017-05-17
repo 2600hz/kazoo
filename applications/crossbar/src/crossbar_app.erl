@@ -52,7 +52,6 @@ declare_exchanges() ->
     _ = kapi_presence:declare_exchanges(),
     _ = kapi_registration:declare_exchanges(),
     _ = kapi_resource:declare_exchanges(),
-    _ = kapi_switch:declare_exchanges(),
     _ = kapi_sysconf:declare_exchanges(),
     _ = kapi_call:declare_exchanges(),
     _ = kapi_dialplan:declare_exchanges(),
