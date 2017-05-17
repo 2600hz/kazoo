@@ -21,7 +21,7 @@
 -define(SERVER, ?MODULE).
 
 -define(CHILDREN, [ ?WORKER(kz_term:to_atom(Mod, 'true'))
-                    || Mod <- kapps_config:get(?CONFIG_CAT, <<"modules">>, [])
+                    || Mod <- kapps_config:get_ne_binaries(?CONFIG_CAT, <<"modules">>, [])
                   ]).
 
 %%%===================================================================

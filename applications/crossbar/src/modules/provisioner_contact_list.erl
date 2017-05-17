@@ -70,7 +70,7 @@ get_extension_contacts(AccountDb) ->
     end.
 
 get_contact_list_includes(AccountDb) ->
-    Default = kapps_config:get(<<"crossbar.contact_list">>, <<"default_includes">>, []),
+    Default = kapps_config:get_jsons(<<"crossbar.contact_list">>, <<"default_includes">>, []),
     case kz_account:fetch(AccountDb) of
         {'ok', JObj} ->
             kz_json:get_value([<<"contact_list">>, <<"includes">>], JObj, Default);

@@ -461,7 +461,7 @@ fetch_modb_views() ->
 %%--------------------------------------------------------------------
 -spec run_routines(ne_binary()) -> 'ok'.
 run_routines(AccountMODb) ->
-    Routines = kapps_config:get(?CONFIG_CAT, <<"routines">>, []),
+    Routines = kapps_config:get_ne_binaries(?CONFIG_CAT, <<"routines">>, []),
     _ = [run_routine(AccountMODb, Routine) || Routine <- Routines],
     'ok'.
 

@@ -24,15 +24,24 @@
 -export([get_string/2, get_string/3, get_string/4]).
 -export([get_binary/2, get_binary/3, get_binary/4]).
 -export([get_json/2, get_json/3, get_json/4]).
+-export([get_jsons/2, get_jsons/3, get_jsons/4]).
 -export([get_atom/2, get_atom/3, get_atom/4]).
 -export([get_integer/2, get_integer/3, get_integer/4]).
+-export([get_pos_integer/2, get_pos_integer/3, get_pos_integer/4]).
+-export([get_non_neg_integer/2, get_non_neg_integer/3, get_non_neg_integer/4]).
 -export([get_float/2, get_float/3, get_float/4]).
 -export([get_is_false/2, get_is_false/3, get_is_false/4]).
 -export([get_is_true/2, get_is_true/3, get_is_true/4]).
 -export([get_non_empty/2, get_non_empty/3, get_non_empty/4]).
 -export([get_ne_binary/2, get_ne_binary/3, get_ne_binary/4]).
+-export([get_ne_binaries/2, get_ne_binaries/3, get_ne_binaries/4]).
 
--export([set_string/3, set_integer/3, set_float/3, set_boolean/3, set_json/3]).
+-export([set_string/3
+        ,set_integer/3
+        ,set_float/3
+        ,set_boolean/3
+        ,set_json/3
+        ]).
 -export([set/3, set/4, set_default/3, set_node/4
         ,update_default/3, update_default/4
         ]).
@@ -56,7 +65,9 @@
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a list
+%% @doc
+%% Get a configuration key for a given category and cast it as a list
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_string(config_category(), config_key()) -> api_string().
 -spec get_string(config_category(), config_key(), Default) ->
@@ -76,7 +87,9 @@ get_string(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a binary
+%% @doc
+%% Get a configuration key for a given category and cast it as a binary
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_binary(config_category(), config_key()) -> api_binary().
 -spec get_binary(config_category(), config_key(), Default) -> binary() | Default.
@@ -94,7 +107,9 @@ get_binary(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a json
+%% @doc
+%% Get a configuration key for a given category and cast it as a json
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_json(config_category(), config_key()) ->
                       api_object().
@@ -105,28 +120,52 @@ get_binary(Category, Key, Default, Node) ->
 
 get_json(Category, Key) ->
     V = get(Category, Key),
-    as_json_value(V).
+    as_json_value(V, undefined).
 
--spec as_json_value(any()) -> api_object().
-as_json_value('undefined') -> 'undefined';
-as_json_value(V) ->
+-spec as_json_value(any(), api_object()) -> api_object().
+as_json_value('undefined', _) -> 'undefined';
+as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
-        'false' -> 'undefined'
+        'false' -> Default
     end.
 
 get_json(Category, Key, Default) ->
     get_json(Category, Key, Default, kz_term:to_binary(node())).
 get_json(Category, Key, Default, Node) ->
     V = get(Category, Key, Default, Node),
-    case kz_json:is_json_object(V) of
-        'true' -> V;
-        'false' -> Default
+    as_json_value(V, Default).
+
+-spec get_jsons(config_category(), config_key()) ->
+                       kz_json:objects().
+-spec get_jsons(config_category(), config_key(), Default) ->
+                       kz_json:objects() | Default.
+-spec get_jsons(config_category(), config_key(), Default, ne_binary()) ->
+                       kz_json:objects() | Default.
+
+get_jsons(Category, Key) ->
+    V = get(Category, Key),
+    as_jsons_value(V, []).
+
+-spec as_jsons_value(any(), kz_json:objects()) -> kz_json:objects().
+as_jsons_value(undefined, _) -> [];
+as_jsons_value(V, Default) ->
+    case lists:all(fun kz_json:is_json_object/1, V) of
+        true -> V;
+        false -> Default
     end.
+
+get_jsons(Category, Key, Default) ->
+    get_jsons(Category, Key, Default, kz_term:to_binary(node())).
+get_jsons(Category, Key, Default, Node) ->
+    V = get(Category, Key, Default, Node),
+    as_jsons_value(V, Default).
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a atom
+%% @doc
+%% Get a configuration key for a given category and cast it as a atom
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_atom(config_category(), config_key()) -> api_atom().
 -spec get_atom(config_category(), config_key(), Default) -> atom() | Default.
@@ -144,7 +183,9 @@ get_atom(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a integer
+%% @doc
+%% Get a configuration key for a given category and cast it as a integer
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_integer(config_category(), config_key()) -> api_integer().
 -spec get_integer(config_category(), config_key(), Default) -> integer() | Default.
@@ -162,7 +203,63 @@ get_integer(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a float
+%% @doc
+%% Get a configuration key for a given category and cast it as a pos_integer
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_pos_integer(config_category(), config_key()) -> api_pos_integer().
+-spec get_pos_integer(config_category(), config_key(), Default) -> pos_integer() | Default.
+-spec get_pos_integer(config_category(), config_key(), Default, ne_binary()) -> pos_integer() | Default.
+
+get_pos_integer(Category, Key) ->
+    case get(Category, Key) of
+        'undefined' -> 'undefined';
+        Else -> to_pos_integer(Else, undefined)
+    end.
+get_pos_integer(Category, Key, Default) ->
+    get_pos_integer(Category, Key, Default, kz_term:to_binary(node())).
+get_pos_integer(Category, Key, Default, Node) ->
+    to_pos_integer(get(Category, Key, Default, Node), Default).
+
+to_pos_integer(Value, Default) ->
+    case kz_term:to_integer(Value) of
+        PosInteger when is_integer(Value), Value > 0 ->
+            PosInteger;
+        _ -> Default
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category and cast it as a pos_integer
+%% @end
+%%-----------------------------------------------------------------------------
+-spec get_non_neg_integer(config_category(), config_key()) -> api_non_neg_integer().
+-spec get_non_neg_integer(config_category(), config_key(), Default) -> non_neg_integer() | Default.
+-spec get_non_neg_integer(config_category(), config_key(), Default, ne_binary()) -> non_neg_integer() | Default.
+
+get_non_neg_integer(Category, Key) ->
+    case get(Category, Key) of
+        'undefined' -> 'undefined';
+        Else -> to_non_neg_integer(Else, undefined)
+    end.
+get_non_neg_integer(Category, Key, Default) ->
+    get_non_neg_integer(Category, Key, Default, kz_term:to_binary(node())).
+get_non_neg_integer(Category, Key, Default, Node) ->
+    to_non_neg_integer(get(Category, Key, Default, Node), Default).
+
+to_non_neg_integer(Value, Default) ->
+    case kz_term:to_integer(Value) of
+        NonNegInteger when is_integer(Value), Value >= 0 ->
+            NonNegInteger;
+        _ -> Default
+    end.
+
+%%-----------------------------------------------------------------------------
+%% @public
+%% @doc
+%% Get a configuration key for a given category and cast it as a float
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_float(config_category(), config_key()) -> api_float().
 -spec get_float(config_category(), config_key(), Default) -> float() | Default.
@@ -180,7 +277,9 @@ get_float(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_false
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_false
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_is_false(config_category(), config_key()) -> api_boolean().
 -spec get_is_false(config_category(), config_key(), Default) -> boolean() | Default.
@@ -198,7 +297,9 @@ get_is_false(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_true
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_true
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_is_true(config_category(), config_key()) -> api_boolean().
 -spec get_is_true(config_category(), config_key(), Default) -> boolean() | Default.
@@ -216,7 +317,9 @@ get_is_true(Category, Key, Default, Node) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get a configuration key for a given category and cast it as a is_true
+%% @doc
+%% Get a configuration key for a given category and cast it as a is_true
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_non_empty(config_category(), config_key()) -> _ | 'undefined'.
 -spec get_non_empty(config_category(), config_key(), Default) -> _ | Default.
@@ -248,13 +351,31 @@ get_ne_binary(Category, Key, Default, Node) ->
         'false' -> kz_term:to_binary(Value)
     end.
 
+-spec get_ne_binaries(config_category(), config_key()) -> ne_binaries().
+-spec get_ne_binaries(config_category(), config_key(), Default) -> ne_binaries() | Default.
+-spec get_ne_binaries(config_category(), config_key(), Default, ne_binary()) -> ne_binaries() | Default.
+
+get_ne_binaries(Category, Key) ->
+    get_ne_binaries(Category, Key, []).
+get_ne_binaries(Category, Key, Default) ->
+    get_ne_binaries(Category, Key, Default, kz_term:to_binary(node())).
+get_ne_binaries(Category, Key, Default, Node) ->
+    Values = get(Category, Key, Default, Node),
+    case kz_term:is_empty(Values) of
+        'true' -> Default;
+        'false' ->
+            [kz_term:to_binary(Value)
+             || Value <- Values,
+                kz_term:is_not_empty(Value)
+            ]
+    end.
+
 
 %%-----------------------------------------------------------------------------
 %% @public
 %% @doc
 %% Get a configuration key for a given category but only if its configured
 %%  explicitly for the node
-%%
 %% @end
 %%-----------------------------------------------------------------------------
 -spec get_node_value(config_category(), config_key()) -> any() | 'undefined'.
@@ -394,7 +515,9 @@ get_default_value(Category, Keys, Default, JObj) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Get all Key-Value pairs for a given category
+%% @doc
+%% Get all Key-Value pairs for a given category
+%% @end
 %%-----------------------------------------------------------------------------
 -spec get_all_kvs(ne_binary()) -> kz_proplist().
 get_all_kvs(Category) ->
@@ -450,7 +573,8 @@ set_json(Category, Key, Value) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Set the key to the value in the given category but specific to this node
+%% @doc
+%% Set the key to the value in the given category but specific to this node
 %% @end
 %%-----------------------------------------------------------------------------
 -spec set(config_category(), config_key(), any()) ->
@@ -603,7 +727,9 @@ update_pvt_fields(Category, JObj, PvtFields) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Lock configuration document
+%% @doc
+%% Lock configuration document
+%% @end
 %%-----------------------------------------------------------------------------
 -spec lock_db() -> 'ok'.
 -spec lock_db(text() | boolean()) -> 'ok'.
@@ -621,7 +747,9 @@ lock_db(Value) ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Check if configuration document locked or not
+%% @doc
+%% Check if configuration document locked or not
+%% @end
 %%-----------------------------------------------------------------------------
 -spec is_locked() -> boolean().
 is_locked() ->
@@ -632,7 +760,9 @@ is_locked() ->
 
 %%-----------------------------------------------------------------------------
 %% @public
-%% @doc Flush the configuration cache
+%% @doc
+%% Flush the configuration cache
+%% @end
 %%-----------------------------------------------------------------------------
 -spec flush() -> 'ok'.
 flush() ->
