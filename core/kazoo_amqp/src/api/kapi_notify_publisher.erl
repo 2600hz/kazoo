@@ -53,8 +53,12 @@ call_collect(Req, PublishFun) ->
 %%--------------------------------------------------------------------
 -spec cast(api_terms(), kz_amqp_worker:publish_fun()) -> 'ok'.
 cast(Req, PublishFun) ->
+    CallId = kz_util:get_callid(),
     Fun = fun() ->
-                  kz_util:put_callid(Req),
+                  _ = case kz_term:is_ne_binary(CallId) of
+                          'true' -> kz_util:put_callid(CallId);
+                          'false' -> kz_util:put_callid(Req)
+                      end,
                   call_collect(Req, PublishFun)
           end,
     _ = kz_util:spawn(Fun),
