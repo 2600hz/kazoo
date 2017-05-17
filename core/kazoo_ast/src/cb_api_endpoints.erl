@@ -16,11 +16,12 @@
 -include_lib("crossbar/src/crossbar.hrl").
 
 -define(REF_PATH
-       ,filename:join([code:lib_dir('crossbar'), "doc", "ref"])
-       ).
+       ,filename:join([code:lib_dir('crossbar'), "doc", "ref"])).
 -define(REF_PATH(Module)
-       ,filename:join([?REF_PATH, <<Module/binary,".md">>])
-       ).
+       ,filename:join([?REF_PATH, <<Module/binary,".md">>])).
+
+-define(SWAGGER_JSON
+       ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 -define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
@@ -218,17 +219,21 @@ process_schema(Filename, Definitions) ->
     JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
     JObj = kz_json:expand(
              kz_json:from_list(
-               [KV
-                || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+               [case lists:last(Path) =:= <<"$ref">> of
+                    false -> KV;
+                    true -> {Path, maybe_fix_ref(V)}
+                end
+                || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
                    not lists:member(<<"kazoo-validation">>, Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
--define(SWAGGER_JSON
-       ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
-       ).
+-spec maybe_fix_ref(ne_binary()) -> ne_binary().
+maybe_fix_ref(<<"#",_/binary>>=Ref) -> Ref;
+maybe_fix_ref(RelativePath=?NE_BINARY) ->
+    <<"#/definitions/", RelativePath/binary>>.
 
 -spec read_swagger_json() -> kz_json:object().
 read_swagger_json() ->
