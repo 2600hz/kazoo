@@ -638,7 +638,13 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
     kapps_call_command:hold(HoldMedia, Call),
     case kapps_call_command:wait_for_unparked_call(Call, Timeout) of
         {'error', 'timeout'} ->
-            case ringback_parker(RingbackId, SlotNumber, Data, Call) of
+            ChannelUp = case kapps_call_command:b_channel_status(Call) of
+                            {'ok', _} -> 'true';
+                            {'error', _} -> 'false'
+                        end,
+            case ChannelUp
+                andalso ringback_parker(RingbackId, SlotNumber, Data, Call)
+            of
                 'intercepted' ->
                     lager:info("parked caller ringback was intercepted"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
