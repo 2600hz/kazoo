@@ -31,6 +31,7 @@ search_for_route(Section, Node, FetchId, CallId, Props, 'false') ->
     do_search_for_route(Section, Node, FetchId, CallId, Props, 'undefined');
 search_for_route(Section, Node, FetchId, CallId, Props, 'true') ->
     AuthzWorker = spawn_authorize_call_fun(Node, CallId, Props),
+    lager:debug("authz worker in ~p", [AuthzWorker]),
     do_search_for_route(Section, Node, FetchId, CallId, Props, AuthzWorker).
 
 -spec do_search_for_route(atom(), atom(), ne_binary(), ne_binary(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
@@ -56,8 +57,9 @@ spawn_authorize_call_fun(Node, CallId, Props) ->
     {Pid, Ref}.
 
 -spec authorize_call_fun(pid(), reference(), atom(), ne_binary(), kz_proplist()) -> any().
-authorize_call_fun(Self, Ref, Node, CallId, Props) ->
-    Self ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
+authorize_call_fun(Parent, Ref, Node, CallId, Props) ->
+    kz_util:put_callid(CallId),
+    Parent ! {'authorize_reply', Ref, ecallmgr_fs_authz:authorize(Props, CallId, Node)}.
 
 -spec maybe_wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), 'undefined' | pid_ref()) -> search_ret().
 maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, 'undefined') ->
@@ -75,6 +77,7 @@ maybe_wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, AuthzWorker) -
 
 -spec wait_for_authz(atom(), atom(), ne_binary(), ne_binary(), kz_json:object(), kz_proplist(), pid_ref()) -> search_ret().
 wait_for_authz(Section, Node, FetchId, CallId, JObj, Props, {Pid, Ref}) ->
+    lager:info("waiting for authz reply from worker ~p", [Pid]),
     receive
         {'authorize_reply', Ref, 'false'} -> reply_forbidden(Section, Node, FetchId);
         {'authorize_reply', Ref, 'true'} -> reply_affirmative(Section, Node, FetchId, CallId, JObj, Props);

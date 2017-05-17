@@ -380,31 +380,27 @@ custom_channel_vars_fold(_, Acc) -> Acc.
 
 -spec maybe_update_referred_ccv(kz_proplist(), kz_proplist()) -> kz_proplist().
 maybe_update_referred_ccv(Props, CCVs) ->
-    update_referred_by_ccv(
-      props:get_value(<<"variable_sip_h_Referred-By">>, Props)
-                          ,update_referred_to_ccv(
-                             props:get_value(<<"variable_sip_refer_to">>, Props)
-                                                 ,CCVs
-                            )
-     ).
+    ReferredBy = props:get_value(<<"variable_sip_h_Referred-By">>, Props),
+    ReferTo = props:get_value(<<"variable_sip_refer_to">>, Props),
+    update_referred_by_ccv(ReferredBy
+                          ,update_referred_to_ccv(ReferTo, CCVs)
+                          ).
 
 -spec update_referred_by_ccv(api_binary(), kz_proplist()) -> kz_proplist().
 update_referred_by_ccv('undefined', CCVs) -> props:delete(<<"Referred-By">>, CCVs);
 update_referred_by_ccv(ReferredBy, CCVs) ->
-    props:set_value(
-      <<"Referred-By">>
+    props:set_value(<<"Referred-By">>
                    ,kz_http_util:urldecode(ReferredBy)
                    ,CCVs
-     ).
+                   ).
 
 -spec update_referred_to_ccv(api_binary(), kz_proplist()) -> kz_proplist().
 update_referred_to_ccv('undefined', CCVs) -> props:delete(<<"Referred-To">>, CCVs);
 update_referred_to_ccv(ReferredTo, CCVs) ->
-    props:set_value(
-      <<"Referred-To">>
+    props:set_value(<<"Referred-To">>
                    ,kz_http_util:urldecode(ReferredTo)
                    ,CCVs
-     ).
+                   ).
 
 -spec from_tag(data()) -> api_binary().
 from_tag(Props) ->
