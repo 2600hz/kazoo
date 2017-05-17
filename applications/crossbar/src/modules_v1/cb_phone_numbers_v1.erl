@@ -251,8 +251,7 @@ post(Context, Number) ->
 -spec put(cb_context:context(), path_token()) -> cb_context:context().
 -spec put(cb_context:context(), path_token(), path_token()) -> cb_context:context().
 put(Context, ?COLLECTION) ->
-    Results = collection_process(Context),
-    set_response(Results, <<>>, Context);
+    set_response(collection_process(Context), <<>>, Context);
 put(Context, Number) ->
     Options = [{'assign_to', cb_context:account_id(Context)}
               ,{'auth_by', cb_context:auth_account_id(Context)}
@@ -262,8 +261,7 @@ put(Context, Number) ->
     set_response(Result, Number, Context).
 
 put(Context, ?COLLECTION, ?ACTIVATE) ->
-    Results = collection_process(Context, ?ACTIVATE),
-    set_response(Results, <<>>, Context);
+    set_response(collection_process(Context,?ACTIVATE), <<>>, Context);
 put(Context, Number, ?ACTIVATE) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ,{'public_fields', cb_context:doc(Context)}
@@ -292,8 +290,7 @@ put(Context, Number, ?PORT) ->
 
 -spec delete(cb_context:context(), path_token()) -> cb_context:context().
 delete(Context, ?COLLECTION) ->
-    Results = collection_process(Context),
-    set_response(Results, <<>>, Context);
+    set_response(collection_process(Context), <<>>, Context);
 delete(Context, Number) ->
     Options = [{'auth_by', cb_context:auth_account_id(Context)}
               ],
@@ -480,9 +477,13 @@ set_response({'error', Data}, _, Context) ->
     end;
 set_response({Error, Reason}, _, Context) ->
     crossbar_util:response('error', kz_term:to_binary(Error), 500, Reason, Context);
-set_response(_Else, _, Context) ->
-    lager:debug("unexpected response: ~p", [_Else]),
-    cb_context:add_system_error('unspecified_fault', Context).
+set_response(CollectionJObjOrUnkown, _, Context) ->
+    case kz_json:is_json_object(CollectionJObjOrUnkown) of
+        true -> crossbar_util:response(CollectionJObjOrUnkown, Context);
+        false ->
+            lager:debug("unexpected response: ~p", [CollectionJObjOrUnkown]),
+            cb_context:add_system_error('unspecified_fault', Context)
+    end.
 
 -spec collection_process(cb_context:context()) -> kz_json:object().
 -spec collection_process(cb_context:context(), ne_binary() | ne_binaries()) -> kz_json:object().
