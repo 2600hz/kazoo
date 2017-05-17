@@ -12,9 +12,28 @@
 
 -include_lib("amqp_util.hrl").
 
+-define(NOTIFY_CAT, <<"notify">>).
+
 -define(FAILED_NOTIFY_DB, <<"pending_notifications">>).
+
 -define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
--define(TIMEOUT, kapps_config:get_integer(<<"notify">>, <<"notify_publisher_timeout">>, ?DEFAULT_TIMEOUT)).
+-define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
+
+-define(DEFAULT_PUBLISHER_ENABLED,
+        kapps_config:get_is_true(?NOTIFY_CAT, <<"notify_presist_enabled">>, true)
+       ).
+-define(ACCOUNT_SHOULD_PRESIST(AccountId),
+        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"should_presist_for_retry">>, true)
+       ).
+
+-define(DEFAULT_TYPE_EXCEPTION, [<<"system_alert">>
+                                ]).
+-define(GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION,
+        kapps_config:get_ne_binaries(?NOTIFY_CAT, <<"notify_presist_temprorary_force_exceptions">>, [])
+       ).
+-define(NOTIFY_TYPE_EXCEPTION(AccountId),
+        kapps_account_config:get_global(AccountId, ?NOTIFY_CAT, <<"notify_presist_exceptions">>, ?DEFAULT_TYPE_EXCEPTION)
+       ).
 
 %%--------------------------------------------------------------------
 %% @doc Publish notification and collect notify update messages from
@@ -50,7 +69,7 @@ cast(Req, PublishFun) ->
 -spec handle_resp(api_ne_binary(), api_terms(), kz_amqp_worker:request_return()) -> 'ok'.
 handle_resp(_NotifyType, _Req, 'ok') -> 'ok';
 handle_resp(NotifyType, Req, {'ok', _}=Resp) -> check_for_failure(NotifyType, Req, Resp);
-handle_resp(NotifyType, Req, {'error', Error}) -> handle_error(NotifyType, Req, error_to_failure_reason(Error));
+handle_resp(NotifyType, Req, {'error', Error}) -> maybe_handle_error(NotifyType, Req, error_to_failure_reason(Error));
 handle_resp(NotifyType, Req, {'returned', _, Resp}) -> check_for_failure(NotifyType, Req, {'returned', Resp});
 handle_resp(NotifyType, Req, {'timeout', _}=Resp) -> check_for_failure(NotifyType, Req, Resp).
 
@@ -60,13 +79,21 @@ handle_resp(NotifyType, Req, {'timeout', _}=Resp) -> check_for_failure(NotifyTyp
 check_for_failure(NotifyType, Req, {_ErrorType, Responses}=Resp) ->
     case is_completed(Responses) of
         'true' -> 'ok';
-        'false' -> handle_error(NotifyType, Req, json_to_failure_reason(Resp))
+        'false' -> maybe_handle_error(NotifyType, Req, json_to_failure_reason(Resp))
     end.
+
+-spec maybe_handle_error(api_binary(), api_terms(), any()) -> 'ok'.
+maybe_handle_error('undefined', _Req, _Error) ->
+    lager:error("not saving undefined notification");
+maybe_handle_error(NotifyType, Req, Error) ->
+    AccountId = find_account_id(Req),
+    should_presist_notify(AccountId)
+        andalso should_handle_notify_type(NotifyType, AccountId)
+        andalso handle_error(NotifyType, Req, Error).
+
 %% @private
 %% @doc save pay load to db to retry later
--spec handle_error(api_ne_binary(), api_terms(), any()) -> 'ok'.
-handle_error('undefined', _Req, _Error) ->
-    lager:error("not saving undefined notification");
+-spec handle_error(ne_binary(), api_terms(), any()) -> 'ok'.
 handle_error(NotifyType, Req, Error) ->
     lager:error("attempt for publishing notifcation ~s was unsuccessful: ~p", [NotifyType, Error]),
     Props = props:filter_undefined(
@@ -204,3 +231,13 @@ notify_type(PublishFun) ->
             lager:error("unknown notification publish function: ~p", [_Other]),
             'undefined'
     end.
+
+-spec should_presist_notify(api_binary()) -> boolean().
+should_presist_notify(AccountId) ->
+    ?DEFAULT_PUBLISHER_ENABLED
+        andalso ?ACCOUNT_SHOULD_PRESIST(AccountId).
+
+-spec should_handle_notify_type(ne_binary(), api_binary()) -> boolean().
+should_handle_notify_type(NotifyType, AccountId) ->
+    not lists:member(NotifyType, ?GLOBAL_FORCE_NOTIFY_TYPE_EXCEPTION)
+        andalso not lists:member(NotifyType, ?NOTIFY_TYPE_EXCEPTION(AccountId)).
