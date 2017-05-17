@@ -47,7 +47,7 @@
 -include("kz_caches.hrl").
 
 -define(SERVER, ?MODULE).
--define(EXPIRES, ?SECONDS_IN_HOUR). %% an hour
+-define(EXPIRES, ?SECONDS_IN_HOUR).
 -define(EXPIRE_PERIOD, 10 * ?MILLISECONDS_IN_SECOND).
 -define(EXPIRE_PERIOD_MSG, 'expire_cache_objects').
 -define(DEFAULT_WAIT_TIMEOUT, 5).
@@ -65,7 +65,7 @@
 -type store_options() :: [{'origin', origin_tuple() | origin_tuples()} |
                           {'expires', kz_timeout()} |
                           {'callback', 'undefined' | callback_fun()}
-                         ] | [].
+                         ].
 -export_type([store_options/0]).
 
 -record(state, {name :: atom()
@@ -108,7 +108,8 @@ start_link(Name, ExpirePeriod, Props) ->
         BindingProps ->
             lager:debug("started new cache process (gen_listener): ~s", [Name]),
             Bindings = [{'conf', ['federate' | P]} || P <- maybe_add_db_binding(BindingProps)],
-            gen_listener:start_link({'local', Name}, ?MODULE
+            gen_listener:start_link({'local', Name}
+                                   ,?MODULE
                                    ,[{'bindings', Bindings}
                                     ,{'responders', ?RESPONDERS}
                                     ,{'queue_name', ?QUEUE_NAME}
@@ -597,7 +598,7 @@ handle_event(JObj, #state{tab=Tab}=State) ->
     of
         'true' -> handle_document_change(JObj, State);
         'false' when V -> 'ok';
-        'false' -> lager:error("payload invalid for kapi_conf : ~p", [JObj])
+        'false' -> lager:error("payload invalid for kapi_conf: ~p", [JObj])
     end,
     'ignore'.
 
