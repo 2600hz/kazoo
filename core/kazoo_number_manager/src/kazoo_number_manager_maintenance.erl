@@ -53,13 +53,13 @@
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
-       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"time_between_accounts_ms">>, ?MILLISECONDS_IN_SECOND)).
 
 -define(TIME_BETWEEN_NUMBERS_MS
-       ,kapps_config:get_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"time_between_numbers_ms">>, ?MILLISECONDS_IN_SECOND)).
 
 -define(PARALLEL_JOBS_COUNT,
-        kapps_config:get_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
+        kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"parallel_jobs_count">>, 1)).
 
 -define(LOG(Format, Args)
        ,begin
@@ -212,7 +212,7 @@ update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
                                 ,View
                                 ),
     case kz_json:are_equal(View, NewView) of
-        true -> ?LOG("View is up to date.", []);
+        true -> 'ok';
         false ->
             true = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
             ?LOG("View updated!", [])

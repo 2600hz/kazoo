@@ -22,6 +22,14 @@
 -type ast() :: [erl_parse:abstract_form()].
 -type abstract_code() :: {'raw_abstract_v1', ast()}.
 
+-export_type([abstract_code/0
+             ,ast/0
+             ]).
+
+-define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
+-define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
+
+
 -spec module_ast(atom()) -> {atom(), abstract_code()} | 'undefined'.
 module_ast(M) ->
     case code:which(M) of
@@ -34,12 +42,8 @@ module_ast(M) ->
 
 -spec add_module_ast(module_ast(), module(), abstract_code()) -> module_ast().
 add_module_ast(ModAST, Module, {'raw_abstract_v1', Attributes}) ->
-    lists:foldl(fun(A, Acc) ->
-                        add_module_ast_fold(A, Module, Acc)
-                end
-               ,ModAST
-               ,Attributes
-               ).
+    F = fun(A, Acc) -> add_module_ast_fold(A, Module, Acc) end,
+    lists:foldl(F, ModAST, Attributes).
 
 -spec add_module_ast_fold(ast(), module(), module_ast()) -> module_ast().
 add_module_ast_fold(?AST_FUNCTION(F, Arity, Clauses), Module, #module_ast{functions=Fs}=Acc) ->
@@ -151,10 +155,8 @@ app_modules(App) ->
         ,?TABLE_ROW(<<"---">>, <<"-----------">>, <<"----">>, <<"-------">>, <<"--------">>)
         ]).
 
--spec schema_to_table(ne_binary() | kz_json:object()) ->
-                             [iodata() | {ne_binary(), iodata()}].
-schema_to_table(<<"#/definitions/", _/binary>>=_S) ->
-    [];
+-spec schema_to_table(ne_binary() | kz_json:object()) -> iolist().
+schema_to_table(<<"#/definitions/", _/binary>>=_S) -> [];
 schema_to_table(Schema=?NE_BINARY) ->
     case kz_json_schema:fload(Schema) of
         {'ok', JObj} -> schema_to_table(JObj);
@@ -163,7 +165,10 @@ schema_to_table(Schema=?NE_BINARY) ->
             throw({'error', 'no_schema'})
     end;
 schema_to_table(SchemaJObj) ->
-    schema_to_table(SchemaJObj, []).
+    [Table|RefTables] = schema_to_table(SchemaJObj, []),
+    [?SCHEMA_SECTION, Table, "\n\n"
+    ,cb_api_endpoints:ref_tables_to_doc(RefTables), "\n\n"
+    ].
 
 schema_to_table(SchemaJObj, BaseRefs) ->
     Description = kz_json:get_binary_value(<<"description">>, SchemaJObj, <<>>),
@@ -171,21 +176,17 @@ schema_to_table(SchemaJObj, BaseRefs) ->
     F = fun (K, V, Acc) -> property_to_row(SchemaJObj, K, V, Acc) end,
     {Reversed, RefSchemas} = kz_json:foldl(F, {[?TABLE_HEADER], BaseRefs}, Properties),
 
-    OneOfRefs = lists:foldl(fun one_of_to_row/2
-                           ,RefSchemas
-                           ,kz_json:get_value(<<"oneOf">>, SchemaJObj, [])
-                           ),
-
+    OneOfs = kz_json:get_value(<<"oneOf">>, SchemaJObj, []),
+    OneOfRefs = lists:foldl(fun one_of_to_row/2, RefSchemas, OneOfs),
     WithSubRefs = include_sub_refs(OneOfRefs),
 
-    [[schema_description(Description), lists:reverse(Reversed)]
-     |[{RefSchemaName, RefTable}
-       || RefSchemaName <- WithSubRefs,
-          BaseRefs =:= [],
-          (RefSchema = load_ref_schema(RefSchemaName)) =/= 'undefined',
-          (RefTable = schema_to_table(RefSchema, WithSubRefs)) =/= []
-      ]
-    ].
+    [schema_description(Description), lists:reverse(Reversed)]
+        ++ [{RefSchemaName, RefTable}
+            || RefSchemaName <- WithSubRefs,
+               BaseRefs =:= [],
+               (RefSchema = load_ref_schema(RefSchemaName)) =/= 'undefined',
+               (RefTable = schema_to_table(RefSchema, WithSubRefs)) =/= []
+           ].
 
 -spec schema_description(binary()) -> iodata().
 schema_description(<<>>) -> <<>>;

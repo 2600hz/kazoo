@@ -22,8 +22,10 @@
         ,response_redirect/4
         ]).
 -export([response_202/2, response_202/3]).
--export([response_400/3]).
--export([response_402/2]).
+-export([response_400/3
+        ,response_401/1
+        ,response_402/2
+        ]).
 -export([response_faulty_request/1]).
 -export([response_bad_identifier/2]).
 -export([response_conflicting_docs/1]).
@@ -114,6 +116,10 @@ response_202(Msg, JTerm, Context) ->
                           cb_context:context().
 response_400(Message, Data, Context) ->
     create_response('error', Message, 400, Data, Context).
+
+-spec response_401(cb_context:context()) -> cb_context:context().
+response_401(Context) ->
+    response('error', <<"invalid credentials">>, 401, Context).
 
 -spec response_402(kz_json:object(), cb_context:context()) ->
                           cb_context:context().
@@ -921,7 +927,7 @@ create_auth_token(Context, AuthModule) ->
     case kz_json:is_empty(JObj) of
         'true' ->
             lager:debug("empty doc, no auth token created"),
-            response('error', <<"invalid credentials">>, 401, Context);
+            response_401(Context);
         'false' ->
             create_auth_token(Context, AuthModule, JObj)
     end.
@@ -1300,7 +1306,6 @@ update_descendants_count(AccountId, JObj, NewCount) ->
         {'error', _E} -> 'error';
         {'ok', NewDoc} ->
             _ = replicate_account_definition(NewDoc),
-            io:format("updated descendant count for ~s~n", [AccountId]),
             'ok'
     end.
 

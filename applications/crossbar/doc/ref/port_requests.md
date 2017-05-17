@@ -6,6 +6,8 @@
 
 Schema for a port request
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bill` | Billing information of the losing carrier | `object` |   | `false`
@@ -25,8 +27,6 @@ Key | Description | Type | Default | Required
 `port_state` | What state the port request is currently in | `string('unconfirmed', 'pending', 'submitted', 'scheduled', 'completed', 'rejected', 'canceled')` | `unconfirmed` | `false`
 `scheduled_date` | Requested scheduled date in gregorain timestamp | `integer` |   | `false`
 `transfer_date` | Requested transfer date in gregorain timestamp | `integer` |   | `false`
-
-
 
 
 #### Fetch

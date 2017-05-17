@@ -2,9 +2,11 @@
 
 ### About Faxbox
 
-### Schema
+#### Schema
 
 Validator for the faxbox callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -12,3 +14,5 @@ Key | Description | Type | Default | Required
 `id` | ID of the faxbox | `string` |   | `false`
 `media` |   | `object` |   | `false`
 `media.fax_option` | Caller flag for T38 settings | `string('auto', 'true', 'false'), boolean` |   | `false`
+
+

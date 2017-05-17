@@ -93,6 +93,7 @@
         ]).
 
 -export([sum/2, sum/3]).
+-export([sum_jobjs/1, sum_jobjs/2]).
 -export_type([sumer/0]).
 
 -export([order_by/3]).
@@ -433,6 +434,27 @@ sum(?JSON_WRAPPER(_)=JObj1, Value, Sumer, Keys)
     Syek = lists:reverse(Keys),
     V = get_value(Syek, JObj1),
     set_value(Syek, Sumer(V, Value), JObj1).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Sum (deep) JSON objects.
+%% Default sumer function only sums numbers. For other kinds of values,
+%% the value from JObj1 is kept untouched. If it is undefined it takes the value from the other JObjs.
+%% @end
+%%--------------------------------------------------------------------
+-spec sum_jobjs(objects()) -> object().
+sum_jobjs(JObjs) -> sum_jobjs(JObjs, fun default_sumer/2).
+
+-spec sum_jobjs(objects(), sumer()) -> object().
+sum_jobjs([], Sumer)
+  when is_function(Sumer, 2) -> new();
+sum_jobjs([?JSON_WRAPPER(_)=JObj], Sumer)
+  when is_function(Sumer, 2) -> JObj;
+sum_jobjs([FirstJObj|JObjs], Sumer)
+  when is_function(Sumer, 2) ->
+    F = fun (JObj, Carry) -> sum(Carry, JObj, fun default_sumer/2) end,
+    lists:foldl(F, FirstJObj, JObjs).
 
 %%--------------------------------------------------------------------
 %% @public

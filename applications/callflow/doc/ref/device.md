@@ -2,7 +2,9 @@
 
 ### About Device
 
-### Schema
+#### Schema
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -13,3 +15,5 @@ Key | Description | Type | Default | Required
 `static_invite` | Override the SIP Username | `string` |   | `false`
 `suppress_clid` | Suppress sending caller ID | `boolean` |   | `false`
 `timeout` | Time, in seconds, to wait for device to bridge | `integer` | `0` | `false`
+
+

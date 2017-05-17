@@ -2,9 +2,11 @@
 
 ### About Group
 
-### Schema
+#### Schema
 
 Validator for the group callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -20,3 +22,5 @@ Key | Description | Type | Default | Required
 `ringtones.internal` | Ring tone for calls from external sources | `string` |   | `false`
 `strategy` | How to ring the endpoints | `string('single', 'simultaneous')` | `simultaneous` | `false`
 `timeout` | How long to attempt the group | `integer` | `20` | `false`
+
+

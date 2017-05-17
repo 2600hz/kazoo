@@ -66,8 +66,8 @@
                ,other_leg_events = [] :: ne_binaries()
                ,is_node_up = 'true' :: boolean()
                ,failed_node_checks = 0 :: non_neg_integer()
-               ,node_down_tref :: reference()
-               ,sanity_check_tref :: reference()
+               ,node_down_tref :: api_reference()
+               ,sanity_check_tref :: api_reference()
                ,ref = kz_binary:rand_hex(12) :: ne_binary()
                ,passive = 'false' :: boolean()
                }).
@@ -916,9 +916,9 @@ fax_specific(Props) ->
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>, 'false') ->
     lager:debug("suppressing bridge execute complete in favour the kazoo masquerade of this event"),
     'false';
-should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set", _/binary>>, _) ->
-    'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"set">>, _) ->
+    'false';
+should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"export">>, _) ->
     'false';
 should_publish(<<"CHANNEL_EXECUTE_COMPLETE">>, <<"intercept">>, 'false') ->
     lager:debug("suppressing intercept execute complete in favour the kazoo masquerade of this event"),

@@ -44,10 +44,13 @@ db_create(#server{}=Conn, DbName) ->
 -spec db_create(server(), ne_binary(), db_create_options()) -> boolean().
 db_create(#server{}=Conn, DbName, Options) ->
     case do_db_create_db(Conn, DbName, Options, []) of
-        {'error', Error} ->
-            lager:error("failed to create database ~s : ~p", [DbName, Error]),
-            'false';
-        {'ok', _} -> 'true'
+        {'ok', _} -> 'true';
+        {error, db_exists} ->
+            lager:warning("db ~s already exists", [DbName]),
+            true;
+        {'error', _Error} ->
+            lager:error("failed to create database ~s: ~p", [DbName, _Error]),
+            'false'
     end.
 
 do_db_create_db(#server{url=ServerUrl, options=Opts}=Server, DbName, Options, Params) ->

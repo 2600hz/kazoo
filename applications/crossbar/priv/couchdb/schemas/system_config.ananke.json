@@ -6,6 +6,9 @@
         "schedules": {
             "default": [],
             "description": "ananke schedules",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         },
         "voicemail": {

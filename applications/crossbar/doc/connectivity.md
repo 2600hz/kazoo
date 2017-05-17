@@ -6,6 +6,8 @@
 
 Trunkstore configuration document - this is old stuff; do not recommend building off this if possible
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account` | Information that applies to the account as a whole | `object` |   | `false`
@@ -55,8 +57,6 @@ Key | Description | Type | Default | Required
 `servers.[].options.progress_timeout` | The time, in seconds, to wait for the server to progress in the call, before trying an optionally defined failover route or terminating the call | `integer` |   | `false`
 `servers.[].options.sip_headers` | List of arbitrary SIP headers to add to the INVITE | `array(object)` |   | `false`
 `servers.[].options.timeout` | The time, in seconds, to wait for an answer from the server | `integer` |   | `false`
-
-
 
 
 #### List items

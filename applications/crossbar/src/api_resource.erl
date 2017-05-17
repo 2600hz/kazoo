@@ -94,7 +94,7 @@ maybe_trace(Req, 'true') ->
 -spec maybe_start_trace(boolean()) -> 'ok'.
 maybe_start_trace('false') -> 'ok';
 maybe_start_trace('true') ->
-    'ok' = kz_tracers:add_trace(self(), 5*1000),
+    'ok' = kz_tracers:add_trace(self(), 5*?MILLISECONDS_IN_SECOND),
     lager:info("added trace").
 
 -spec rest_init(cowboy_req:req(), kz_proplist()) ->
@@ -189,7 +189,7 @@ maybe_allow_proxy_req(Peer, ForwardIP) ->
 -spec is_proxied(ne_binary()) -> boolean().
 -spec is_proxied(ne_binary(), ne_binaries()) -> boolean().
 is_proxied(Peer) ->
-    Proxies = kapps_config:get_non_empty(?APP_NAME, <<"reverse_proxies">>, []),
+    Proxies = kapps_config:get_ne_binaries(?APP_NAME, <<"reverse_proxies">>, []),
     is_proxied(Peer, Proxies).
 
 is_proxied(_Peer, []) -> 'false';
@@ -275,6 +275,20 @@ known_methods(Req, Context) ->
                              {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
 allowed_methods(Req, Context) ->
     lager:debug("run: allowed_methods"),
+
+    case api_util:is_early_authentic(Req, Context) of
+        {'true', Req1, Context1} ->
+            authed_allowed_methods(Req1, Context1);
+        {'halt', _Req1, _Context1}=HALT ->
+            lager:error("request is not authorized, halting"),
+            HALT
+    end.
+
+-spec authed_allowed_methods(cowboy_req:req(), cb_context:context()) ->
+                                    {http_methods() | 'halt', cowboy_req:req(), cb_context:context()}.
+authed_allowed_methods(Req, Context) ->
+    lager:debug("run: authed_allowed_methods"),
+
     Methods = cb_context:allowed_methods(Context),
     Tokens = api_util:path_tokens(Context),
 
@@ -285,7 +299,9 @@ allowed_methods(Req, Context) ->
             %% HTTP method with the tunneled version
             determine_http_verb(Req, cb_context:set_req_nouns(Context, Nouns));
         [] ->
-            {Methods, Req, cb_context:set_allow_methods(Context, Methods)}
+            {Methods, Req, cb_context:set_allow_methods(Context, Methods)};
+        {'halt', Context1} ->
+            api_util:halt(Req, Context1)
     end.
 
 -spec determine_http_verb(cowboy_req:req(), cb_context:context()) ->
@@ -345,22 +361,12 @@ maybe_allow_method(Req, Context, Methods, Verb) ->
             api_util:halt(Req, cb_context:add_system_error('invalid_method', Context))
     end.
 
--spec is_json_malformed(req_json()) -> boolean().
-is_json_malformed({'malformed', _}) -> 'true';
-is_json_malformed(_) -> 'false'.
-
 -spec malformed_request(cowboy_req:req(), cb_context:context()) ->
                                {boolean(), cowboy_req:req(), cb_context:context()}.
 -spec malformed_request(cowboy_req:req(), cb_context:context(), http_method()) ->
                                {boolean(), cowboy_req:req(), cb_context:context()}.
 malformed_request(Req, Context) ->
-    case is_json_malformed(cb_context:req_json(Context)) of
-        'true' ->
-            lager:debug("request is malformed"),
-            {'true', Req, Context};
-        'false' ->
-            malformed_request(Req, Context, cb_context:req_verb(Context))
-    end.
+    malformed_request(Req, Context, cb_context:req_verb(Context)).
 
 malformed_request(Req, Context, ?HTTP_OPTIONS) ->
     {'false', Req, Context};
@@ -377,7 +383,8 @@ malformed_request(Req, Context, _ReqVerb) ->
     end.
 
 -spec is_authorized(cowboy_req:req(), cb_context:context()) ->
-                           {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()}.
+                           {'true' | {'false', <<>>}, cowboy_req:req(), cb_context:context()} |
+                           api_util:halt_return().
 is_authorized(Req, Context) ->
     api_util:is_authentic(Req, Context).
 

@@ -6,6 +6,8 @@
 
 A device be it a SIP phone or landline number
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `call_forward` | The device call forward parameters | `object` |   | `false`
@@ -55,9 +57,7 @@ Key | Description | Type | Default | Required
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
 `provision.feature_keys` | Feature Keys | `object` |   | `false`
-`provision.feature_keys./^[0-9]+$/` |   | `object` |   | `false`
-`provision.feature_keys./^[0-9]+$/.type` | Feature key type | `string('presence', 'parking', 'personal_parking', 'speed_dial')` |   | `true`
-`provision.feature_keys./^[0-9]+$/.value` | Feature key value | `string, integer` |   | `true`
+`provision.feature_keys./^[0-9]+$/` |   | `object, null` |   | `false`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
 `ringtones` | Ringtone Parameters | `object` | `{}` | `false`
 `ringtones.external` | The alert info SIP header added when the call is from internal sources | `string(0..256)` |   | `false`
@@ -77,19 +77,18 @@ Key | Description | Type | Default | Required
 `sip.username` | SIP authentication username | `string(2..32)` |   | `false`
 `suppress_unregister_notifications` | When true disables deregister notifications | `boolean` | `false` | `false`
 `timezone` | Device's timezone | `string` |   | `false`
-
-
 ##### call_waiting
 
 Parameters for server-side call waiting
 
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `enabled` | Determines if server side call waiting is enabled/disabled | `boolean` |   | `false`
-
 ##### caller_id
 
 Defines caller ID settings based on the type of call being made
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -102,18 +101,18 @@ Key | Description | Type | Default | Required
 `internal` | The default caller ID used when dialing internal extensions | `object` |   | `false`
 `internal.name` | The caller id name for the object type | `string(0..35)` |   | `false`
 `internal.number` | The caller id name for the object type | `string(0..35)` |   | `false`
-
 ##### dialplans
 
 Permit local dialing by converting the dialed number to a routable form
 
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `system` | List of system dial plans | `array()` |   | `false`
-
 ##### metaflow
 
 A metaflow node defines a module to execute, data to provide to that module, and one or more children to branch to
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -121,10 +120,10 @@ Key | Description | Type | Default | Required
 `children./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `data` | The data/arguments of the metaflow module | `object` |   | `false`
 `module` | The name of the metaflow module to execute at this node | `string(1..64)` |   | `true`
-
 ##### metaflows
 
 Actions applied to a call outside of the normal callflow, initiated by the caller(s)
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -135,7 +134,6 @@ Key | Description | Type | Default | Required
 `numbers./^[0-9]+$/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
 `patterns` | A list of patterns with their flows | `object` |   | `false`
 `patterns./.+/` |   | [#/definitions/metaflow](#metaflow) |   | `false`
-
 
 
 #### Fetch

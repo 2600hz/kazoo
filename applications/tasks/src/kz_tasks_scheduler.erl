@@ -43,13 +43,13 @@
 -define(SERVER, {'via', 'kz_globals', ?MODULE}).
 
 -define(WAIT_AFTER_ROW,
-        kapps_config:get_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)).
+        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"wait_after_row_ms">>, 500)).
 -define(PROGRESS_AFTER_PROCESSED,
-        kapps_config:get_integer(?CONFIG_CAT, <<"send_progress_after_processed">>, 1000)).
+        kapps_config:get_pos_integer(?CONFIG_CAT, <<"send_progress_after_processed">>, 1000)).
 -define(PAUSE_BETWEEN_UPLOAD_ATTEMPTS,
-        kapps_config:get_integer(?CONFIG_CAT, <<"pause_between_upload_output_attempts_s">>, 10)).
+        kapps_config:get_non_neg_integer(?CONFIG_CAT, <<"pause_between_upload_output_attempts_s">>, 10)).
 -define(UPLOAD_ATTEMPTS,
-        kapps_config:get_integer(?CONFIG_CAT, <<"attempt_upload_output_times">>, 5)).
+        kapps_config:get_pos_integer(?CONFIG_CAT, <<"attempt_upload_output_times">>, 5)).
 
 -record(state, {tasks = [] :: [kz_tasks:task()]
                }).

@@ -10,7 +10,7 @@
 
 -include("kzl.hrl").
 
--export([get/1]).
+-export([get/1, get/3]).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -18,27 +18,44 @@
 %%
 %% @end
 %%--------------------------------------------------------------------
--spec get(ne_binary()) ->
-                 {'ok', kz_json:object()} |
-                 {'error', any()}.
+-spec get(ne_binary()) -> {'ok', kz_json:object()} |
+                          {'error', atom()}.
+-spec get(ne_binary(), api_seconds(), api_seconds()) -> {'ok', kz_json:object()} |
+                                                        {'error', atom()}.
 get(Account) ->
-    Options = ['reduce'
-              ,'group'
-              ,{'group_level', 1}
-              ],
-    case kazoo_modb:get_results(Account, ?TOTAL_BY_SERVICE_LEGACY, Options) of
+    get(Account, undefined, undefined).
+
+get(Account, undefined, undefined) ->
+    case kazoo_modb:get_results(Account, ?TOTAL_BY_SERVICE_LEGACY, [group]) of
         {'error', _R}=Error -> Error;
         {'ok', JObjs}->
-            build_result(JObjs)
+            LedgersJObj = kz_json:from_list(
+                            [{kz_json:get_value(<<"key">>, JObj), kz_json:get_value(<<"value">>, JObj)}
+                             || JObj <- JObjs
+                            ]),
+            {ok, LedgersJObj}
+    end;
+
+get(Account, CreatedFrom, CreatedTo)
+  when is_integer(CreatedFrom), CreatedFrom > 0,
+       is_integer(CreatedTo), CreatedTo > 0 ->
+    MoDBs = kazoo_modb:get_range(Account, CreatedFrom, CreatedTo),
+    lager:debug("from:~p to:~p -> ~p", [CreatedFrom, CreatedTo, MoDBs]),
+    try
+        Sum = kz_json:sum_jobjs(
+                [case kazoo_modb:get_results(MoDB, ?LIST_BY_SERVICE_LEGACY, []) of
+                     {error, Reason} -> throw(Reason);
+                     {ok, JObjs} ->
+                         kz_json:sum_jobjs([kz_json:get_value(<<"value">>, JObj)
+                                            || JObj <- JObjs,
+                                               [_Type, TimeStamp] <- [kz_json:get_value(<<"key">>, JObj)],
+                                               CreatedFrom =< TimeStamp,
+                                               TimeStamp =< CreatedTo
+                                           ])
+                 end
+                 || MoDB <- MoDBs
+                ]),
+        {ok, Sum}
+    catch
+        throw:_R -> {error, _R}
     end.
-
--spec build_result(kz_json:objects()) -> {'ok', kz_json:object()}.
-build_result(JObjs) ->
-    Data = lists:foldl(fun add_jobj/2, kz_json:new(), JObjs),
-    {'ok', Data}.
-
--spec add_jobj(kz_json:object(), kz_json:object()) -> kz_json:object().
-add_jobj(JObj, Acc) ->
-    Key = kz_json:get_value(<<"key">>, JObj),
-    Value = kz_json:get_value(<<"value">>, JObj),
-    kz_json:set_value(Key, Value, Acc).

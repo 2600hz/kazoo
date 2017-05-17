@@ -158,23 +158,23 @@ set_accepting_charges(#cb_context{req_json = ReqJObj} = Context) ->
 
 %% Accessors
 -spec account_id(context()) -> api_ne_binary().
--spec account_name(context()) -> api_binary().
--spec account_db(context()) -> api_binary().
--spec user_id(context()) -> api_binary().
--spec device_id(context()) -> api_binary().
--spec reseller_id(context()) -> api_binary().
--spec account_modb(context()) -> api_binary().
--spec account_modb(context(), kz_now() | kz_timeout()) -> api_binary().
--spec account_modb(context(), kz_year(), kz_month()) -> api_binary().
--spec account_realm(context()) -> api_binary().
+-spec account_name(context()) -> api_ne_binary().
+-spec account_db(context()) -> api_ne_binary().
+-spec user_id(context()) -> api_ne_binary().
+-spec device_id(context()) -> api_ne_binary().
+-spec reseller_id(context()) -> api_ne_binary().
+-spec account_modb(context()) -> api_ne_binary().
+-spec account_modb(context(), kz_now() | kz_timeout()) -> api_ne_binary().
+-spec account_modb(context(), kz_year(), kz_month()) -> api_ne_binary().
+-spec account_realm(context()) -> api_ne_binary().
 -spec account_doc(context()) -> api_object().
--spec profile_id(context()) -> api_binary().
+-spec profile_id(context()) -> api_ne_binary().
 -spec is_authenticated(context()) -> boolean().
 -spec auth_token_type(context()) -> 'x-auth-token' | 'basic' | 'oauth' | 'unknown'.
 -spec auth_token(context()) -> api_ne_binary().
 -spec auth_doc(context()) -> api_object().
--spec auth_account_id(context()) -> api_binary().
--spec auth_user_id(context()) -> api_binary().
+-spec auth_account_id(context()) -> api_ne_binary().
+-spec auth_user_id(context()) -> api_ne_binary().
 -spec req_verb(context()) -> http_method().
 -spec req_data(context()) -> kz_json:json_term().
 -spec req_files(context()) -> req_files().
@@ -384,7 +384,7 @@ setters_fold(F, C) when is_function(F, 1) -> F(C).
 -spec set_query_string(context(), kz_json:object()) -> context().
 -spec set_req_id(context(), ne_binary()) -> context().
 -spec set_doc(context(), kz_json:api_json_term() | kz_json:objects()) -> context().
--spec set_load_merge_bypass(context(), api_binary()) -> context().
+-spec set_load_merge_bypass(context(), api_ne_binary()) -> context().
 -spec set_start(context(), kz_now()) -> context().
 -spec set_resp_file(context(), api_binary()) -> context().
 -spec set_resp_data(context(), resp_data()) -> context().
@@ -637,7 +637,7 @@ fetch(#cb_context{storage=Storage}, Key, Default) ->
 %% the process dictionary, where the logger expects it.
 %% @end
 %%--------------------------------------------------------------------
--spec put_reqid(context()) -> api_binary().
+-spec put_reqid(context()) -> api_ne_binary().
 put_reqid(#cb_context{req_id=ReqId}) ->
     kz_util:put_callid(ReqId).
 

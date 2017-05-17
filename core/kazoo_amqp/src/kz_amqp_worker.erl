@@ -923,7 +923,7 @@ handle_info(_Info, State) ->
 handle_event(JObj, #state{client_from='relay'
                          ,client_pid=Pid
                          }) ->
-    kapps_call_command:relay_event(Pid, JObj),
+    relay_event(Pid, JObj),
     lager:debug("relayed event to ~p", [Pid]),
     'ignore';
 handle_event(_JObj, _State) ->
@@ -1036,3 +1036,11 @@ publish_api(PublishFun, ReqProps) ->
             lager:error("error when publishing: ~s:~p", [_E, R]),
             {'error', R}
     end.
+
+-type relay_fun() :: fun((pid() | atom(), any()) -> any()).
+-spec relay_event(pid(), kz_json:object()) -> any().
+-spec relay_event(pid(), kz_json:object(), relay_fun()) -> any().
+relay_event(Pid, JObj) ->
+    relay_event(Pid, JObj, fun erlang:send/2).
+relay_event(Pid, JObj, RelayFun) ->
+    RelayFun(Pid, {'amqp_msg', JObj}).

@@ -52,11 +52,12 @@
 -type options() :: [option()].
 -export_type([option/0, options/0]).
 
--define(MAX_SEARCH, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 500)).
+-define(MAX_SEARCH, kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"maximum_search_quantity">>, 500)).
 
 -define(POLLING_INTERVAL, 5000).
 
--define(NUMBER_SEARCH_TIMEOUT, kapps_config:get_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5000)).
+-define(NUMBER_SEARCH_TIMEOUT
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)).
 
 -define(EOT, '$end_of_table').
 

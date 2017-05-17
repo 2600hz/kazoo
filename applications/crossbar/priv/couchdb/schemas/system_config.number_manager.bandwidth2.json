@@ -31,6 +31,7 @@
         "max_search_quantity": {
             "default": 500,
             "description": "number_manager.bandwidth2 max search quantity",
+            "minimum": 1,
             "type": "integer"
         },
         "order_name_prefix": {

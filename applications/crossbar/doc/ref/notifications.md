@@ -6,6 +6,8 @@
 
 Notifications templates
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bcc` | Bcc email field | `object` |   | `false`
@@ -28,8 +30,6 @@ Key | Description | Type | Default | Required
 `to.email_addresses` |   | `array(string)` |   | `false`
 `to.email_addresses.[]` |   | `string` |   | `false`
 `to.type` |   | `string('original', 'specified', 'admins')` |   | `false`
-
-
 
 
 #### Fetch

@@ -6,6 +6,8 @@
 
 Click-to-call allows you to create URLs that can be POSTed to with a phone number or SIP URI and create a phone call from the provided contact information to a destination you have pre-determined.
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `auth_required` | Determines if this click to call requires valid auth-tokens when invoked | `boolean` | `true` | `false`
@@ -18,8 +20,6 @@ Key | Description | Type | Default | Required
 `throttle` | The rate that this click to call can be invoked | `integer` |   | `false`
 `whitelist` | A list of regular expressions that the click to call can dial to | `array(string(1..))` |   | `false`
 `whitelist.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch

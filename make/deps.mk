@@ -42,6 +42,7 @@ IGNORE_DEPS = hamcrest
 ifeq ($(USER),travis)
     DEPS += coveralls
     dep_coveralls = git https://github.com/markusn/coveralls-erl 1.4.0
+    DEPS += proper
 endif
 
 dep_amqp_client_commit = rabbitmq_v3_6_0
@@ -65,7 +66,7 @@ dep_couchbeam = git https://github.com/2600hz/couchbeam 1.4.1a
 ##dep_jesse = git https://github.com/for-GET/jesse 1.4.0
 ## pull request pending
 ## https://github.com/for-GET/jesse/pull/42
-dep_jesse = git https://github.com/2600hz/jesse 1.5-rc4
+dep_jesse = git https://github.com/2600hz/jesse 1.5-rc5
 
 dep_lager = git https://github.com/erlang-lager/lager 3.2.1
 dep_trie = git https://github.com/okeuday/trie v1.5.4

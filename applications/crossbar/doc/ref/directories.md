@@ -6,6 +6,8 @@
 
 Allow a caller to search for a user/device by name instead of extension/DID
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `confirm_match` | When one match is found, require caller to confirm the match before connecting | `boolean` | `true` | `false`
@@ -15,8 +17,6 @@ Key | Description | Type | Default | Required
 `sort_by` | What field to sort on in matching documents when a caller enters characters | `string('first_name', 'last_name')` | `last_name` | `false`
 `users` | The list of users associated with this directory | `array(string)` | `[]` | `false`
 `users.[]` |   | `string` |   | `false`
-
-
 
 
 #### Fetch

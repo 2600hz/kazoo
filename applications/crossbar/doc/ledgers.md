@@ -6,6 +6,8 @@
 
 ledgers document
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `account` | Account info | `object` |   | `false`
@@ -26,8 +28,6 @@ Key | Description | Type | Default | Required
 `usage.unit` | Usage unit | `string` |   | `true`
 
 
-
-
 #### List current Ledgers
 
 List current ledgers and value for an account.
@@ -42,13 +42,30 @@ curl -v -X GET \
 
 ```json
 {
+    "auth_token": "{AUTH_TOKEN}",
     "data": {
-        "per-minute-voip": -825,
-        "support": -148
+        "mobile_data": {
+            "amount": -10.5,
+            "usage": {
+                "quantity": 1000,
+                "type": "debit",
+                "unit": "MB"
+            }
+        },
+        "per-minute-voip": {
+            "amount": -54.7404,
+            "usage": {
+                "quantity": 14520,
+                "type": "voice",
+                "unit": "sec"
+            }
+        }
     },
+    "node": "{NODE}",
     "request_id": "{REQUEST_ID}",
     "status": "success",
-    "auth_token": "{AUTH_TOKEN}"
+    "timestamp": "{TIMESTAMP}",
+    "version": "{VERSION}"
 }
 ```
 

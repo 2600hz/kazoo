@@ -76,7 +76,7 @@
         kapps_config:get_string(?KNM_BW2_CONFIG_CAT, <<"site_id">>, "")).
 
 -define(MAX_SEARCH_QUANTITY,
-        kapps_config:get_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
+        kapps_config:get_pos_integer(?KNM_BW2_CONFIG_CAT, <<"max_search_quantity">>, 500)).
 
 -define(BW2_ORDER_POLL_INTERVAL, 2000).
 

@@ -2,9 +2,11 @@
 
 ### About Group Pickup
 
-### Schema
+#### Schema
 
 Validator for the group_pickup callflow's data object
+
+
 
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
@@ -14,3 +16,5 @@ Key | Description | Type | Default | Required
 `device_id` | Device to pickup | `string` |   | `false`
 `group_id` | Group in which to find a call to pickup | `string` |   | `false`
 `user_id` | User in which to find a call to pickup | `string` |   | `false`
+
+

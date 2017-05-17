@@ -233,6 +233,7 @@ park_call(SlotNumber, Slot, ParkedCalls, ReferredTo, Data, Call) ->
             lager:info("blind transfer to a occupied slot, call the parker back.."),
             case ringback_parker(kz_json:get_ne_binary_value(<<"Ringback-ID">>, Slot), SlotNumber, Data, Call) of
                 'answered' -> cf_exe:transfer(Call);
+                'intercepted' -> cf_exe:transfer(Call);
                 'channel_hungup' -> cf_exe:stop(Call);
                 'failed' ->
                     kapps_call_command:hangup(Call),
@@ -644,14 +645,20 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
             case ChannelUp
                 andalso ringback_parker(RingbackId, SlotNumber, Data, Call)
             of
+                'intercepted' ->
+                    lager:info("parked caller ringback was intercepted"),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+                    _ = publish_retrieved(Call, SlotNumber),
+                    cf_exe:transfer(Call);
                 'answered' ->
                     lager:info("parked caller ringback was answered"),
+                    _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     _ = publish_retrieved(Call, SlotNumber),
                     cf_exe:transfer(Call);
                 'failed' ->
                     unanswered_action(SlotNumber, Slot, Data, Call);
-                _Else ->
-                    lager:info("parked call doesnt exist anymore, hangup"),
+                'channel_hungup' ->
+                    lager:info("parked call does not exist anymore, hangup"),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
                     cf_exe:stop(Call)
             end;
@@ -664,13 +671,23 @@ wait_for_pickup(SlotNumber, Slot, Data, Call) ->
                 _Else ->
                     lager:info("call '~s' is no longer active, ", [cf_exe:callid(Call)]),
                     _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
-                    cf_exe:transfer(Call)
+                    cf_exe:stop(Call)
             end;
-        _Else ->
-            lager:info("parked caller has been picked up"),
+        {'error', 'channel_hungup'} ->
+            lager:info("parked caller hangup"),
             _ = publish_abandoned(Call, SlotNumber),
             _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
-            cf_exe:transfer(Call)
+            cf_exe:stop(Call);
+        {'ok', _JObj} ->
+            lager:info("parked caller has been picked up"),
+            _ = publish_retrieved(Call, SlotNumber),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+            cf_exe:transfer(Call);
+        _Else ->
+            lager:info("unhandled case waiting for call pickup"),
+            _ = publish_abandoned(Call, SlotNumber),
+            _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call)),
+            cf_exe:stop(Call)
     end.
 
 -spec ringback_timeout(kz_json:object(), ne_binary()) -> integer().
@@ -734,8 +751,9 @@ get_endpoint_id(Username, Call) ->
 %% Ringback the device that parked the call
 %% @end
 %%--------------------------------------------------------------------
--spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kapps_call:call()) ->
-                             'answered' | 'failed' | 'channel_hungup'.
+-type ringback_parker_result() :: 'answered' | 'intercepted' | 'failed' | 'channel_hungup'.
+
+-spec ringback_parker(api_binary(), ne_binary(), kz_json:object(), kapps_call:call()) -> ringback_parker_result().
 ringback_parker('undefined', _, _, _) -> 'failed';
 ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
     TmpCID = <<"Parking slot ", SlotNumber/binary>>,
@@ -744,22 +762,36 @@ ringback_parker(EndpointId, SlotNumber, Data, Call0) ->
     case kz_endpoint:build(EndpointId, kz_json:from_list([{<<"can_call_self">>, 'true'}]), Call) of
         {'ok', Endpoints} ->
             lager:info("attempting to ringback endpoint ~s : ~p", [EndpointId, Endpoints]),
-            CleanUpFun = fun(_) ->
-                                 lager:info("parking ringback was answered", []),
-                                 _ = cleanup_slot(SlotNumber, cf_exe:callid(Call), kapps_call:account_db(Call))
-                         end,
-            kapps_call_command:bridge(Endpoints, ?DEFAULT_TIMEOUT_S, Call),
-            wait_for_ringback(CleanUpFun, Timeout, Call);
+            bridge_to_parker(Endpoints, ?DEFAULT_TIMEOUT_S, TmpCID, Call),
+            wait_for_ringback(Timeout, Call);
         _ -> 'failed'
     end.
 
--spec wait_for_ringback(function(), kz_timeout(), kapps_call:call()) ->
-                               'answered' | 'failed' | 'channel_hungup'.
-wait_for_ringback(Fun, Timeout, Call) ->
-    case kapps_call_command:wait_for_bridge(Timeout, Fun, Call) of
-        {'ok', _} ->
-            lager:info("completed successful bridge to the ringback device"),
-            'answered';
+-spec bridge_to_parker(kz_json:objects(), integer(), ne_binary(), kapps_call:call()) -> 'ok'.
+bridge_to_parker(Endpoints, Timeout, TmpCID, Call) ->
+    Cmd = [{<<"Application-Name">>, <<"bridge">>}
+          ,{<<"Endpoints">>, Endpoints}
+          ,{<<"Custom-Channel-Vars">>, kz_json:from_list([{<<"Caller-ID-Name">>, TmpCID}
+                                                         ])}
+          ,{<<"Timeout">>, Timeout}
+          ,{<<"Ignore-Early-Media">>, true}
+          ,{<<"Dial-Endpoint-Method">>, kapi_dialplan:dial_method_single()}
+          ],
+    kapps_call_command:send_command(Cmd, Call).
+
+
+-spec wait_for_ringback(kz_timeout(), kapps_call:call()) -> ringback_parker_result().
+wait_for_ringback(Timeout, Call) ->
+    case wait_for_parker(Timeout, Call) of
+        {'ok', JObj} ->
+            case kz_api:event_name(JObj) of
+                <<"CHANNEL_INTERCEPTED">> ->
+                    lager:info("channel intercepted during ringback"),
+                    'intercepted';
+                _Else ->
+                    lager:info("completed successful bridge to the ringback device"),
+                    'answered'
+            end;
         {'fail', JObj} ->
             case kz_api:event_name(JObj) of
                 <<"CHANNEL_DESTROY">> ->
@@ -772,6 +804,47 @@ wait_for_ringback(Fun, Timeout, Call) ->
         _Else ->
             lager:info("ringback failed, returning caller to parking slot: ~p" , [_Else]),
             'failed'
+    end.
+
+-type wait_for_parker_result() :: {'ok' | 'fail' | 'error', kz_json:object()}.
+-type receive_event_result() :: {'ok', kz_json:object()} | {'error', 'timeout'}.
+
+-spec wait_for_parker(kz_timeout(), kapps_call:call()) -> wait_for_parker_result().
+wait_for_parker(Timeout, Call) ->
+    Start = os:timestamp(),
+    lager:debug("waiting for parker for ~p ms", [Timeout]),
+    wait_for_parker(Timeout, Call, Start, kapps_call_command:receive_event(Timeout)).
+
+-spec wait_for_parker(kz_timeout(), kapps_call:call(), kz_now(), receive_event_result()) -> wait_for_parker_result().
+wait_for_parker(_Timeout, _Call, _Start, {'error', 'timeout'}=E) -> E;
+wait_for_parker(Timeout, Call, Start, {'ok', JObj}) ->
+    Disposition = kz_json:get_value(<<"Disposition">>, JObj),
+    Cause = kz_json:get_first_defined([<<"Application-Response">>
+                                      ,<<"Hangup-Cause">>
+                                      ], JObj, <<"UNSPECIFIED">>),
+    Result = case Disposition =:= <<"SUCCESS">>
+                 orelse Cause =:= <<"SUCCESS">>
+             of
+                 'true' -> 'ok';
+                 'false' -> 'fail'
+             end,
+    case kapps_call_command:get_event_type(JObj) of
+        {<<"error">>, _, <<"bridge">>} ->
+            lager:debug("channel execution error while waiting for bridge: ~s", [kz_json:encode(JObj)]),
+            {'error', JObj};
+        {<<"call_event">>, <<"CHANNEL_DESTROY">>, _} ->
+            lager:info("bridge channel destroy completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        {<<"call_event">>, <<"CHANNEL_INTERCEPTED">>, _} ->
+            lager:debug("channel intercepted : ~p", [JObj]),
+            {'ok', JObj};
+        {<<"call_event">>, <<"CHANNEL_EXECUTE_COMPLETE">>, <<"bridge">>} ->
+            lager:info("bridge execute completed with result ~s(~s)", [Disposition, Result]),
+            {Result, JObj};
+        _E ->
+            NewTimeout = kz_time:decr_timeout(Timeout, Start),
+            NewStart = os:timestamp(),
+            wait_for_parker(NewTimeout, Call, NewStart, kapps_call_command:receive_event(NewTimeout))
     end.
 
 expires(<<"early">>) -> 3600;

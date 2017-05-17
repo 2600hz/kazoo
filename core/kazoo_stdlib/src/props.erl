@@ -26,6 +26,7 @@
         ,set_values/2
         ,set_value/2, set_value/3
         ,insert_value/2, insert_value/3, insert_values/2
+        ,replace_value/3
         ,unique/1
         ,filter/2
         ,filter_empty/1
@@ -55,10 +56,15 @@ set_value({K, V}, Props) ->
 set_value(K, Props) ->
     set_value(K, 'true', Props).
 
+set_value([K], V, Props) ->
+    [{K, V} | [KV || KV <- Props, not do_keys_match(KV, K)]];
+set_value([K|Ks], V, Props) ->
+    SubProps = get_value(Ks, Props, []),
+    [{K, set_value(Ks, V, SubProps)} | [KV || KV <- Props, not do_keys_match(KV, K)]];
 set_value(K, V, Props) ->
     [{K, V} | [KV || KV <- Props, not do_keys_match(KV, K)]].
 
--spec do_keys_match(kz_proplist_key() | {kz_proplist_key(), kz_proplist_value()}, kz_proplist_key()) ->
+-spec do_keys_match(kz_proplist_property(), kz_proplist_key()) ->
                            boolean().
 do_keys_match({Key, _}, Key) -> 'true';
 do_keys_match(Key, Key) -> 'true';
@@ -83,13 +89,16 @@ insert_value(K, V, Props) ->
 insert_values(KVs, Props) ->
     lists:foldl(fun insert_value/2, Props, KVs).
 
+%% replaces value of Key with Value if Key exists; otherwise Props is unchanged
+-spec replace_value(any(), any(), kz_proplist()) -> kz_proplist().
+replace_value(Key, Value, Props) ->
+    lists:keyreplace(Key, 1, Props, {Key, Value}).
+
 -type filter_fun() :: fun((kz_proplist_property()) -> boolean()).
--spec filter(filter_fun(), kz_proplist()) -> kz_proplist();
-            (kz_proplist(), any()) -> kz_proplist().
-filter(Fun, Props) when is_function(Fun, 1), is_list(Props) ->
-    [P || P <- Props, Fun(P)];
-filter(Props, Term) when is_list(Props) ->
-    [P || P <- Props, P =/= Term].
+-spec filter(filter_fun(), kz_proplist()) -> kz_proplist().
+filter(Fun, Props) when is_function(Fun, 1),
+                        is_list(Props) ->
+    [P || P <- Props, Fun(P)].
 
 -spec filter_empty(kz_proplist()) -> kz_proplist().
 filter_empty(Props) ->
@@ -116,9 +125,6 @@ get_value(Key, Props) ->
     get_value(Key, Props, 'undefined').
 
 get_value(_Key, [], Default) -> Default;
-get_value([Key], Props, Default) when is_binary(Key)
-                                      orelse is_atom(Key) ->
-    get_value(Key, Props, Default);
 get_value([Key|Keys], Props, Default) when is_binary(Key)
                                            orelse is_atom(Key) ->
     case get_value(Key, Props) of

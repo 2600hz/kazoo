@@ -6,6 +6,8 @@
 
 Schema for conferences
 
+
+
 Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `bridge_password` | the password used for a conference bridge | `string` |   | `false`
@@ -40,8 +42,6 @@ Key | Description | Type | Default | Required
 `profile` | The XML profile name used to configure the conference | `string` |   | `false`
 `require_moderator` | does the conference require a moderator | `boolean` |   | `false`
 `wait_for_moderator` | should members wait for a moderator before joining the conference | `boolean` |   | `false`
-
-
 
 
 #### Fetch

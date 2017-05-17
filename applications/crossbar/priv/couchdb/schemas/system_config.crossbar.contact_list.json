@@ -6,6 +6,9 @@
         "default_includes": {
             "default": [],
             "description": "crossbar.contact_list default includes",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         }
     },

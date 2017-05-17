@@ -259,7 +259,7 @@ move_to_vmbox(AccountId, JObj, OldBoxId, NewBoxId) ->
 
 -spec do_move(ne_binary(), ne_binary(), ne_binary(), ne_binary(), kz_json:object()) -> db_ret().
 do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
-    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId, FromId),
+    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NewBoxId, NBoxJ, OldBoxId),
 
     FromDb = kvm_util:get_db(AccountId, FromId),
     ToDb = kvm_util:get_db(AccountId, ToId),

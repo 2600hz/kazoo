@@ -34,8 +34,9 @@ get(Account, Name) ->
     case kazoo_modb:get_results(Account, ?LIST_BY_SERVICE_LEGACY, Options) of
         {'ok', []} -> {'ok', 0};
         {'error', _R}=Error -> Error;
-        {'ok', [JObj|_]} ->
-            {'ok', kz_json:get_integer_value(<<"value">>, JObj, 0)}
+        {'ok', [JObj0|_]} ->
+            [JObj] = kz_json:values(kz_json:get_value(<<"value">>, JObj0)),
+            {'ok', kz_json:get_integer_value(<<"amount">>, JObj, 0)}
     end.
 
 %%--------------------------------------------------------------------

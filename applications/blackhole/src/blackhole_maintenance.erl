@@ -86,7 +86,7 @@ stop_module(ModuleBin, Persist) ->
 -spec running_modules() -> atoms().
 running_modules() -> blackhole_bindings:modules_loaded().
 
--spec print_module_resp(kz_json:objdct()) -> 'ok'.
+-spec print_module_resp(kz_json:object()) -> 'ok'.
 print_module_resp(JObj) ->
     Fields = kz_api:remove_defaults(JObj),
     io:format("node ~s returned:~n", [kz_api:node(JObj)]),

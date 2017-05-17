@@ -23,7 +23,8 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle(Data, Call) ->
-    Code = kz_json:get_binary_value(<<"code">>, Data, <<"486">>),
+    Code0 = kz_json:get_integer_value(<<"code">>, Data, 486),
+    Code = kz_term:to_binary(Code0),
     Cause = kz_json:get_ne_binary_value(<<"message">>, Data),
     Media = kz_media_util:media_path(kz_json:get_binary_value(<<"media">>, Data), Call),
     lager:info("responding to call with ~s ~s", [Code, Cause]),
