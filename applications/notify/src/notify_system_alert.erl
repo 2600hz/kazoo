@@ -67,17 +67,16 @@ handle_req(JObj, _Props) ->
                     'ok' -> EmailResult;
                     {'error', _}=Error ->
                         [Error] ++ [OK
-                                  || OK <- alert_using_email(not UseEmail, JObj),
-                                     'ok' =:= OK
-                                         orelse (is_list(OK)
-                                                 andalso lists:member('ok', OK))
-                                 ] ++ [EmailResult]
+                                    || OK <- alert_using_email(not UseEmail, JObj),
+                                       'ok' =:= OK
+                                           orelse (is_list(OK)
+                                                   andalso lists:member('ok', OK))
+                                   ] ++ [EmailResult]
                 end
         end,
     send_update(lists:flatten(SendResult), RespQ, MsgId).
 
--spec send_update(send_email_return() | 'disabled', ne_binary(), ne_binary()) -> 'ok'.
-send_update('disabled', _, _) -> 'ok';
+-spec send_update(send_email_return(), ne_binary(), ne_binary()) -> 'ok'.
 send_update(Result, RespQ, MsgId) ->
     notify_util:maybe_send_update(Result, RespQ, MsgId).
 

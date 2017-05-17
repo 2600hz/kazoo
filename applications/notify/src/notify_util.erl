@@ -91,7 +91,8 @@ maybe_send_update('ok', RespQ, MsgId) -> send_update(RespQ, MsgId, <<"completed"
 maybe_send_update({'error', Reason}, RespQ, MsgId) -> send_update(RespQ, MsgId, <<"failed">>, Reason);
 maybe_send_update([LastResp|_]=Responses, RespQ, MsgId) ->
     case lists:any(fun('ok') -> 'true';
-                      ({'error', _}) -> 'false'
+                      ({'error', _}) -> 'false';
+                      ('disabled') -> 'true'
                    end
                   ,Responses
                   )
