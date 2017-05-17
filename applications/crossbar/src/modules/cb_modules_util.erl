@@ -62,30 +62,24 @@ range_view_options(Context, MaxRange, Key) ->
     RangeFrom = range_from(Context, RangeTo, MaxRange, Key),
     range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo).
 range_view_options(Context, MaxRange, Key, RangeFrom, RangeTo) ->
+    Path = <<Key/binary, "_from">>,
     case RangeTo - RangeFrom of
         N when N < 0 ->
-            cb_context:add_validation_error(<<Key/binary, "_from">>
-                                           ,<<"date_range">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, <<Key/binary, "_from is prior to ", Key/binary, "_to">>}
-                                              ,{<<"cause">>, RangeFrom}
-                                              ])
-                                           ,Context
-                                           );
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<Path/binary, " is prior to ", Key/binary, "_to">>}
+                    ,{<<"cause">>, RangeFrom}
+                    ]),
+            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
         N when N > MaxRange ->
-            Message = <<Key/binary, "_to is more than "
-                        ,(kz_term:to_binary(MaxRange))/binary
-                        ," seconds from ", Key/binary, "_from"
-                      >>,
-            cb_context:add_validation_error(<<Key/binary, "_from">>
-                                           ,<<"date_range">>
-                                           ,kz_json:from_list(
-                                              [{<<"message">>, Message}
-                                              ,{<<"cause">>, RangeTo}
-                                              ])
-                                           ,Context
-                                           );
-        _N -> {RangeFrom, RangeTo}
+            Msg = kz_json:from_list(
+                    [{<<"message">>, <<Key/binary, "_to is more than "
+                                       ,(integer_to_binary(MaxRange))/binary
+                                       ," seconds from ", Path/binary>>}
+                    ,{<<"cause">>, RangeTo}
+                    ]),
+            cb_context:add_validation_error(Path, <<"date_range">>, Msg, Context);
+        _ ->
+            {RangeFrom, RangeTo}
     end.
 
 -spec range_modb_view_options(cb_context:context()) ->

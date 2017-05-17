@@ -10,7 +10,17 @@
             "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit') || doc.pvt_deleted) return; emit(doc.pvt_created, doc._id); }"
         },
         "credit_remaining": {
-            "map": "function(doc) { if ( (doc.pvt_type != 'credit' && doc.pvt_type != 'debit' && doc.pvt_type != 'ledger') || doc.pvt_deleted) return; var modifier = (doc.pvt_type == 'credit' ? 1 : doc.pvt_type == 'debit' ? -1 : doc.pvt_ledger_type == 'debit' ? -1 : doc.pvt_ledger_type == 'credit' ? 1 : 0), amount = doc.pvt_amount || doc.amount || 0; emit(null, amount * modifier); }",
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_deleted || (doc.pvt_type !== 'credit' && doc.pvt_type !== 'debit' && doc.pvt_type !== 'ledger'))",
+                "    return;",
+                "  var is_credit = doc.pvt_type === 'credit' || doc.pvt_ledger_type === 'credit';",
+                "  var is_debit  = doc.pvt_type ===  'debit' || doc.pvt_ledger_type ===  'debit';",
+                "  var modifier = is_credit ? 1 : is_debit ? -1 : 0;",
+                "  var amount = doc.pvt_amount || doc.amount || 0;",
+                "  emit(null, amount * modifier);",
+                "}"
+            ],
             "reduce": "_sum"
         },
         "per_minute_cost": {
