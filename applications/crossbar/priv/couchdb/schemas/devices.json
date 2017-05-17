@@ -313,7 +313,10 @@
                                 "type",
                                 "value"
                             ],
-                            "type": "object"
+                            "type": [
+                                "object",
+                                "null"
+                            ]
                         }
                     },
                     "type": "object"
