@@ -356,7 +356,10 @@
                                 }
                             },
                             "required": false,
-                            "type": "object"
+                            "type": [
+                                "object",
+                                "null"
+                            ]
                         }
                     },
                     "required": false,
