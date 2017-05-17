@@ -84,17 +84,17 @@ maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
         {'ok', 200, _RespHeaders, RespXML} ->
             Token#{profile => kz_json:decode(RespXML)};
         {'ok', 401, _RespHeaders, _RespXML} ->
-            lager:debug("received code ~b while getting auth profile from ~s", [401, URL]),
-            Token#{profile_error_code => {401, <<"unauthorized token">>}, profile => kz_json:new()};
+            lager:info("received code ~b while getting auth profile from ~s", [401, URL]),
+            Token#{profile_error_code => {401, 'invalid_profile'}, profile => kz_json:new()};
         {'ok', 404, _RespHeaders, _RespXML} ->
-            lager:debug("received faked code ~b while getting auth profile from ~s", [404, URL]),
-            Token#{profile_error_code => {404, <<"profile not found">>}, profile => kz_json:new()};
+            lager:info("received faked code ~b while getting auth profile from ~s", [404, URL]),
+            Token#{profile_error_code => {403, 'profile_not_found'}, profile => kz_json:new()};
         {'ok', Code, _RespHeaders, _RespXML} ->
             lager:debug("received code ~b while getting auth profile from ~s", [Code, URL]),
-            Token#{profile_error_code => {Code, <<"unspecified error getting profile">>}, profile => kz_json:new()};
-        {'error', Error} ->
-            lager:debug("failed to get auth profile: ~p", [Error]),
-            Token#{profile_error => {500, Error}, profile => kz_json:new()}
+            Token#{profile_error_code => {Code, 'invalid_profile'}, profile => kz_json:new()};
+        {'error', _Error} ->
+            lager:debug("failed to get auth profile: ~p", [_Error]),
+            Token#{profile_error => {500, 'profile_unavailable'}, profile => kz_json:new()}
     end;
 maybe_load_profile(#{auth_provider := #{profile_url := _ProfileURL}
                     ,original := Original
@@ -106,10 +106,12 @@ maybe_load_profile(#{} = Token) -> Token#{profile => kz_json:new()}.
 profile_authorization(#{auth_provider := Provider} = Token, AccessToken) ->
     case maps:get(profile_access_auth_type, Provider, <<"token">>) of
         <<"token">> ->
+            lager:debug("using profile access token authorization header"),
             DefaultTokenType = maps:get(profile_access_token_type, Provider, <<"Bearer">>),
             TokenType = maps:get(token_type, Token, DefaultTokenType),
             <<TokenType/binary, " ",AccessToken/binary>>;
         <<"api_key">> ->
+            lager:debug("using profile api key authorization header"),
             list_to_binary(["API_KEY ", maps:get(profile_access_api_key, Provider, <<>>)]);
         <<"url">> -> <<>>
     end.
@@ -139,7 +141,9 @@ maybe_add_user_identity(#{auth_provider := #{profile_identity_field := Field}
                          } = Token) ->
     case kz_json:get_first_defined([Field], Profile) of
         'undefined' ->
-            lager:debug("user identity from field '~p' not found into ~p", [Field, Profile]),
+            lager:debug("user identity from field '~s' not found in profile: ~s"
+                       ,[Field, kz_json:encode(Profile)]
+                       ),
             Token;
         Identity ->
             lager:debug("found user identity ~p", [Identity]),
@@ -266,12 +270,12 @@ ensure_profile_properties(DocId, Missing, Props, #{} = Token) ->
             case Missing -- kz_json:get_keys(Doc) of
                 [] -> do_update_user(DocId, Props, Token);
                 _StillMissing ->
-                    lager:debug("missing properties when updating user : ~p", [kz_binary:join(_StillMissing)]),
-                    Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
+                    lager:info("missing properties when updating user : ~p", [kz_binary:join(_StillMissing)]),
+                    Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
             end;
         _ ->
-            lager:debug("missing properties when updating user : ~p", [kz_binary:join(Missing)]),
-            Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
+            lager:info("missing properties when updating user : ~p", [kz_binary:join(Missing)]),
+            Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
     end.
 
 -spec update_user(ne_binary(), kz_proplist(), map()) -> map().
@@ -291,9 +295,9 @@ do_update_user(DocId, Props, Token) ->
                                                  }
                                           ,DocId
                                           );
-        {'error', Error} ->
-            lager:debug("unable to update auth document ~s: ~p", [DocId, Error]),
-            Token#{profile_error_code => Error}
+        {'error', _Error} ->
+            lager:debug("unable to update auth document ~s: ~p", [DocId, _Error]),
+            Token#{profile_error_code => {500, 'datastore_fault'}, profile => kz_json:new()}
     end.
 
 -spec maybe_cache_user(map(), ne_binary()) -> map().
@@ -324,15 +328,13 @@ maybe_required_properties_missing(#{auth_provider := #{profile_required_props :=
                                      ,user_map => kz_json:to_map(JObj)
                                      }, kz_doc:id(JObj));
         Missing ->
-            lager:debug("missing properties when checking user : ~p", [kz_binary:join(Missing)]),
-            Token#{profile_error_code => {'error', {404, <<"missing profile properties">>}}}
+            lager:info("missing properties when checking user : ~p", [kz_binary:join(Missing)]),
+            Token#{profile_error_code => {403, 'invalid_profile'}, profile => kz_json:new()}
     end;
 maybe_required_properties_missing(Token, _Props, JObj) ->
     Token#{user_doc => JObj
           ,user_map => kz_json:to_map(JObj)
           }.
-
-
 
 -spec updates_needed(kz_json:object(), kz_proplist()) -> kz_proplist().
 updates_needed(JObj, Props) ->

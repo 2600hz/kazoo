@@ -77,15 +77,20 @@ do_verify_fold(Token, [Fun | Funs]) ->
 verify_header(#{header := #{<<"typ">> := <<"JWT">>, <<"alg">> := Alg}}=Token) ->
     case lists:member(Alg, ?ALGORITHMS) of
         'true' -> Token;
-        'false' -> Token#{verify_result => 'false', verify_error => <<"jwt algorithm not supported">>}
+        'false' ->
+            lager:info("request contained invalid jwt algorithm: ~p", [Alg]),
+            Token#{verify_result => 'false', verify_error => 'algorithm_not_supported'}
     end;
 verify_header(#{header := #{<<"alg">> := Alg}}=Token) ->
     case lists:member(Alg, ?ALGORITHMS) of
         'true' -> Token;
-        'false' -> Token#{verify_result => 'false', verify_error => <<"jwt algorithm not supported">>}
+        'false' ->
+            lager:info("request contained invalid jwt algorithm: ~p", [Alg]),
+            Token#{verify_result => 'false', verify_error => 'algorithm_not_supported'}
     end;
-verify_header(Token) ->
-    Token#{verify_result => 'false', verify_error => <<"jwt header type not supported">>}.
+verify_header(#{header := #{<<"typ">> := _Typ}}=Token) ->
+    lager:info("invalid jwt typ header", [_Typ]),
+    Token#{verify_result => 'false', verify_error => 'invalid_jwt'}.
 
 -spec verify_signature(map()) -> map().
 verify_signature(#{header := #{<<"alg">> := Alg}
@@ -98,36 +103,43 @@ verify_signature(#{header := #{<<"alg">> := Alg}
     DigestType = alg_2_digest_type(Alg),
     case public_key:verify(Verify, DigestType, Signature, Key) of
         'true' -> Token;
-        'false' -> Token#{verify_result => 'false', verify_error => <<"signature verification failed">>}
+        'false' ->
+            lager:info("incorrect jwt signature"),
+            Token#{verify_result => 'false', verify_error => 'invalid_jwt_signature'}
     end;
 verify_signature(#{}=Token) ->
     case kz_auth_keys:from_token(Token) of
         {'ok', Key} -> verify_signature(Token#{jwt_public_key => Key});
-        {'error', Error} -> Token#{verify_result => 'false', verify_error => Error}
+        {'error', _Error} ->
+            lager:info("unable to find jwt signature for verification: ~p", [_Error]),
+            Token#{verify_result => 'false', verify_error => 'invalid_jwt_signature'}
     end;
 verify_signature(Token) ->
-    Token#{verify_result => 'false', verify_error => <<"invalid jwt">>}.
+    lager:info("unexpected/invalid jwt signature"),
+    Token#{verify_result => 'false', verify_error => 'invalid_jwt'}.
 
 
 -spec verify_expiration(map()) -> map().
 verify_expiration(#{payload := #{<<"exp">> := Expiration}}=Token) ->
     case Expiration - epoch() > 0 of
         'true' -> Token;
-        'false' -> Token#{verify_result => 'false', verify_error => <<"token expired">>}
+        'false' ->
+            lager:info("jwt exp ~p has elapsed", [Expiration]),
+            Token#{verify_result => 'false', verify_error => 'token_expired'}
     end;
 verify_expiration(Token) -> Token.
 
 -spec verify_identity(map()) -> map().
 verify_identity(Token) ->
-    lager:debug("verifying identity"),
+    lager:debug("verifying claimed identity"),
     #{identify_verified := Verified} = Token1 = kz_auth_identity:token(Token),
     case Verified of
         'true' -> Token1;
-        'false' -> Token1#{verify_result => 'false'
-                          ,verify_error => maps:get(identity_error, Token1, <<"identity verify failed">>)
-                          }
+        'false' ->
+            IdentityError = maps:get(identity_error, Token1, 'invalid_identity'),
+            lager:info("claimed identity could not be verified: ~p", [IdentityError]),
+            Token1#{verify_result => 'false', verify_error => IdentityError}
     end.
-
 
 -spec alg_2_digest_type(binary()) -> atom().
 alg_2_digest_type(<<"RS256">>) -> 'sha256';
@@ -258,7 +270,7 @@ set_provider(#{payload := #{<<"iss">> := Issuer}}=Token) ->
     Token#{auth_provider => kz_auth_providers:provider_by_issuer(Issuer)}.
 
 
--spec parse(ne_binary()) -> {'ok', jwt()} | {'error', 'invalid_token'}.
+-spec parse(ne_binary()) -> {'ok', jwt()} | {'error', 'invalid_jwt'}.
 parse(JWTToken) when is_binary(JWTToken) ->
     case binary:split(JWTToken, <<".">>, ['global']) of
         [Header, Payload, Signature] ->
@@ -271,7 +283,9 @@ parse(JWTToken) when is_binary(JWTToken) ->
                    ,original => JWTToken
                    },
             {'ok', set_provider(Map)};
-        _ -> {'error', 'no_jwt_signed_token'}
+        _ ->
+            lager:info("unable to parse jwt: ~s", [JWTToken]),
+            {'error', 'invalid_jwt'}
     end.
 
 -spec token(ne_binary() | map()) -> map().

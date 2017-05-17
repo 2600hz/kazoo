@@ -244,9 +244,6 @@ validate_token_info(Context, Token) ->
         {'error', {Code, Error}} when is_integer(Code) ->
             lager:debug("validate token info error ~p : ~p", [Code, Error]),
             crossbar_util:response('error', Error, Code, Context);
-        {'error', 'no associated account_id'} ->
-            lager:debug("validate token info error : no_associated_account"),
-            crossbar_util:response('error', 'no associated account_id', 404, Context);
         {'error', Error} ->
             lager:debug("validate token info error ~p", [Error]),
             crossbar_util:response('error', Error, 401, Context);

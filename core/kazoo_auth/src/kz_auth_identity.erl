@@ -37,8 +37,12 @@ sign(Claims)
             HashMethod = kz_term:to_atom(Hash, 'true'),
             CryptoKey = <<IdentitySecret/binary, ServerSecret/binary>>,
             {'ok', crypto:hmac(HashMethod, CryptoKey, Identity)};
-        #{} -> {'error', 'no_identity_secret'};
-        Error -> Error
+        #{} ->
+            lager:info("unable to sign identity claims without a valid identity secret"),
+            {'error', {500, 'invalid_identity_secret'}};
+        Error ->
+            lager:info("unable to sign identity claims: ~p", [Error]),
+            Error
     end;
 sign(Claims)
   when is_list(Claims) ->
@@ -73,7 +77,9 @@ identity_secret(#{auth_app := #{pvt_user_prefix := Prefix}
                  ,payload := Claims
                  }=Token) ->
     case maps:get(IdentityField, Claims, 'undefined') of
-        'undefined' -> {'error', 'no_value_from_claims'};
+        'undefined' ->
+            lager:debug("unable to find ~s in claims", [IdentityField]),
+            {'error', 'invalid_claims'};
         Identity ->
             Key = <<Prefix/binary, "-", Identity/binary>>,
             get_identity_secret(Token#{auth_db => ?KZ_AUTH_DB
@@ -88,7 +94,9 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
                  ,payload := Claims
                  }=Token) ->
     case maps:get(IdentityField, Claims, 'undefined') of
-        'undefined' -> {'error', 'no_value_from_claims'};
+        'undefined' ->
+            lager:debug("unable to find ~s in claims", [IdentityField]),
+            {'error', 'invalid_claims'};
         Identity ->
             Key = <<Name/binary, "-", Identity/binary>>,
             get_identity_secret(Token#{auth_db => ?KZ_AUTH_DB
@@ -97,7 +105,7 @@ identity_secret(#{auth_provider := #{jwt_user_id_claim := IdentityField
                                       })
     end;
 
-identity_secret(#{}) -> {'error', 'no_configuration'}.
+identity_secret(#{}) -> {'error', {500, 'invalid_identity_provider'}}.
 
 
 -spec get_identity_secret(map()) -> map() | {'error', any()}.
@@ -107,7 +115,9 @@ get_identity_secret(#{auth_provider := #{name := <<"kazoo">>}
                      }=Token) ->
     case kz_datamgr:open_cache_doc(Db, Key) of
         {'ok', JObj} -> check_kazoo_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)});
-        {'error', 'not_found'}=Error -> Error
+        {'error', 'not_found'} ->
+            lager:debug("kazoo identity secret not found for ~s/~s", [Db, Key]),
+            {'error', {500, 'invalid_identity_provider'}}
     end;
 
 get_identity_secret(#{options := #{force_profile_update := 'true'}}=Token) ->
@@ -140,8 +150,12 @@ check_cache_expiration(#{auth_provider := #{cached_profile_field := ProfileField
     ClaimValue = maps:get(Claim, Claims, 'undefined'),
     ProfileValue = kz_json:get_value([<<"profile">>, ProfileField], JObj),
     case ClaimValue > ProfileValue of
-        'true' -> from_profile(Token);
-        'false' -> check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)})
+        'true' ->
+            lager:debug("cached profile (~s) is stale, refreshing", [ProfileValue]),
+            from_profile(Token);
+        'false' ->
+            lager:debug("using cached profile ~s", [ProfileValue]),
+            check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)})
     end;
 check_cache_expiration(#{}=Token, JObj) ->
     check_secret(Token#{user_doc => JObj, user_map => kz_json:to_map(JObj)}).
@@ -152,14 +166,13 @@ check_secret(#{auth_provider := #{profile_signature_secret_field := Field}
               } = Token) ->
     case kz_json:get_value([<<"profile">>, Field], JObj) of
         'undefined' ->
-            lager:debug("secret field '~s' not found in ~p", [Field, JObj]),
-            {'error', {404, <<"no profile secret">>}};
+            lager:debug("identity profile secret field '~s' not found", [Field]),
+            {'error', 'invalid_profile'};
         Secret -> Token#{identity_secret => Secret}
     end;
 check_secret(#{auth_provider := #{name := Name}}) ->
     lager:debug("provider ~s does not support profile signature secret field", [Name]),
-    {'error', 'provider_not_supported'}.
-
+    {'error', {500, 'invalid_identity_provider'}}.
 
 -spec from_profile(map()) -> map() | {'error', any()}.
 from_profile(Token) ->
@@ -168,7 +181,6 @@ from_profile(Token) ->
         #{profile_error_code := Error} -> {'error', Error};
         Error -> Error
     end.
-
 
 -spec check_kazoo_secret(map()) -> map() | {'error', any()}.
 check_kazoo_secret(#{user_doc := JObj}=Token) ->
@@ -179,6 +191,7 @@ check_kazoo_secret(#{user_doc := JObj}=Token) ->
 
 -spec update_kazoo_secret(map()) -> map() | {'error', any()}.
 update_kazoo_secret(Token) ->
+    lager:debug("generating new kazoo signing secret"),
     update_kazoo_secret(Token, kz_binary:rand_hex(16)).
 
 -spec update_kazoo_secret(map(), ne_binary()) -> map() | {'error', any()}.
@@ -187,9 +200,10 @@ update_kazoo_secret(#{auth_db := Db
                      }=Token, Secret) ->
     case kz_datamgr:update_doc(Db, Key, [{?PVT_SIGNING_SECRET, Secret}]) of
         {'ok', _} -> Token#{identity_secret => Secret};
-        Error -> Error
+        _Error ->
+            lager:info("unable to store the kazoo signing secret on ~s/~s: ~p", [Db, Key, _Error]),
+            {'error', {500, 'datastore_fault'}}
     end.
-
 
 -spec token(map()) -> map().
 token(#{identify_verified := _}=Token) -> Token;
@@ -199,18 +213,17 @@ token(#{auth_provider := #{name := <<"kazoo">>
                           }
        ,payload := #{<<"identity_sig">> := IdentitySig}
        }=Token) ->
-    case identity_secret(Token) of
-        #{identity_secret := IdentitySecret
-         ,auth_id := Identity
-         } = Token1 ->
-            IdentitySignature = kz_base64url:decode(IdentitySig),
-            HashMethod = kz_term:to_atom(Hash, 'true'),
-            CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
-            Token1#{identify_verified => IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity)};
-        #{} = Token1 -> Token1#{identify_verified => 'false'};
-        {'error', Error} -> Token#{identify_verified => 'false', identity_error => Error}
+    case kz_term:is_not_empty(IdentitySig)
+        andalso identity_secret(Token)
+    of
+        'false' ->
+            lager:info("unable to verify identity without a valid identity secret"),
+            Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};
+        {'error', Error} ->
+            lager:info("unable to verify identity claims: ~p", [Error]),
+            Token#{identify_verified => 'false', identity_error => Error};
+        Token1 -> verify_identity_signature(Token1, Secret, Hash, IdentitySig)
     end;
-
 token(#{payload := Payload
        ,auth_provider := #{jwt_user_id_signature_hash := Hash
                           ,jwt_user_id_signature_secret := Secret
@@ -218,29 +231,39 @@ token(#{payload := Payload
                           }
        }=Token) ->
     IdentitySig = maps:get(IdentitySigField, Payload, 'undefined'),
-    case identity_secret(Token) of
-        #{identity_secret := IdentitySecret
-         ,auth_id := Identity
-         } = Token1 when IdentitySig =/= 'undefined' ->
-            lager:debug("verifying key for identity '~s'", [Identity]),
-            IdentitySignature = kz_base64url:decode(IdentitySig),
-            HashMethod = kz_term:to_atom(Hash, 'true'),
-            CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
-            case IdentitySignature =:= crypto:hmac(HashMethod, CryptoKey, Identity) of
-                'true' ->  Token1#{identify_verified => 'true'};
-                'false' -> Token1#{identify_verified => 'false', identity_error => <<"signature mismatch">>}
-            end;
-        #{} = Token1 -> Token1#{identify_verified => 'false', identity_error => <<"no_secret">>};
-        {'error', Error} -> Token#{identify_verified => 'false', identity_error => Error}
+    case kz_term:is_not_empty(IdentitySig)
+        andalso identity_secret(Token)
+    of
+        'false' ->
+            lager:debug("unable to get identity signature from field '~s'", [IdentitySigField]),
+            Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'};
+        {'error', Error} ->
+            lager:info("unable to verify identity claims: ~p", [Error]),
+            Token#{identify_verified => 'false', identity_error => Error};
+        Token1 -> verify_identity_signature(Token1, Secret, Hash, IdentitySig)
     end;
-
 token(#{}=Token) -> Token#{identify_verified => 'true'}.
+
+-spec verify_identity_signature(map(), ne_binary(), ne_binary(), ne_binary()) -> map().
+verify_identity_signature(#{identity_secret := IdentitySecret, auth_id := Identity}=Token,  Secret, Hash, IdentitySig) ->
+    lager:debug("verifying key for identity '~s'", [Identity]),
+    IdentitySignature = kz_base64url:decode(IdentitySig),
+    HashMethod = kz_term:to_atom(Hash, 'true'),
+    CryptoKey = <<IdentitySecret/binary, Secret/binary>>,
+    ExpectedSignature = crypto:hmac(HashMethod, CryptoKey, Identity),
+    verify_identity_signature(Token, IdentitySignature, ExpectedSignature).
+
+-spec verify_identity_signature(map(), ne_binary(), ne_binary()) -> map().
+verify_identity_signature(Token, ExpectedSignature, ExpectedSignature) ->
+    Token#{identify_verified => 'true'};
+verify_identity_signature(Token, _IdentitySignature, _ExpectedSignature) ->
+    lager:info("provided identity signature (~s) did not match the expected signature", [_IdentitySignature]),
+    Token#{identify_verified => 'false', identity_error => 'invalid_identity_signature'}.
 
 -spec verify(map()) -> boolean().
 verify(Token) ->
     #{identify_verified := Verified} = token(Token),
     Verified.
-
 
 %% ====================================================================
 %% Internal functions
