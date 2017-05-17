@@ -223,10 +223,10 @@
             "description": "describe limits for SIP requests",
             "properties": {
                 "account": {
-                    "$ref": "device_rate_limits"
+                    "$ref": "#/definitions/device_rate_limits"
                 },
                 "device": {
-                    "$ref": "device_rate_limits"
+                    "$ref": "#/definitions/device_rate_limits"
                 }
             },
             "required": [
@@ -257,16 +257,16 @@
                     "type": "object"
                 },
                 "call_waiting": {
-                    "$ref": "call_waiting"
+                    "$ref": "#/definitions/call_waiting"
                 },
                 "caller_id": {
-                    "$ref": "caller_id",
+                    "$ref": "#/definitions/caller_id",
                     "default": {},
                     "description": "The account default caller ID parameters",
                     "type": "object"
                 },
                 "dial_plan": {
-                    "$ref": "dialplans",
+                    "$ref": "#/definitions/dialplans",
                     "default": {},
                     "description": "A list of default rules used to modify dialed numbers",
                     "type": "object"
@@ -291,7 +291,7 @@
                     "type": "string"
                 },
                 "metaflows": {
-                    "$ref": "metaflows"
+                    "$ref": "#/definitions/metaflows"
                 },
                 "music_on_hold": {
                     "default": {},
@@ -363,7 +363,7 @@
                         "notify": {
                             "properties": {
                                 "callback": {
-                                    "$ref": "notify.callback"
+                                    "$ref": "#/definitions/notify.callback"
                                 }
                             },
                             "type": "object"
@@ -777,11 +777,11 @@
                     "type": "object"
                 },
                 "flow": {
-                    "$ref": "callflows.action",
+                    "$ref": "#/definitions/callflows.action",
                     "description": "A callflow node defines a module to execute, data to provide to that module, and zero or more children to branch to"
                 },
                 "metaflow": {
-                    "$ref": "metaflows",
+                    "$ref": "#/definitions/metaflows",
                     "description": "Actions applied to a call outside of the normal callflow, initiated by the caller(s)"
                 },
                 "numbers": {
@@ -1130,7 +1130,7 @@
             "description": "Validator for the Conference callflow element",
             "properties": {
                 "config": {
-                    "$ref": "conferences",
+                    "$ref": "#/definitions/conferences",
                     "description": "Build an ad-hoc conference using the conferences JSON schema",
                     "type": "object"
                 },
@@ -3448,10 +3448,10 @@
                     "type": "object"
                 },
                 "call_waiting": {
-                    "$ref": "call_waiting"
+                    "$ref": "#/definitions/call_waiting"
                 },
                 "caller_id": {
-                    "$ref": "caller_id",
+                    "$ref": "#/definitions/caller_id",
                     "default": {},
                     "description": "The device caller ID parameters",
                     "type": "object"
@@ -3472,7 +3472,7 @@
                     "type": "string"
                 },
                 "dial_plan": {
-                    "$ref": "dialplans",
+                    "$ref": "#/definitions/dialplans",
                     "default": {},
                     "description": "A list of rules used to modify dialed numbers",
                     "type": "object"
@@ -3618,7 +3618,7 @@
                     "type": "object"
                 },
                 "metaflows": {
-                    "$ref": "metaflows",
+                    "$ref": "#/definitions/metaflows",
                     "description": "The device metaflow parameters"
                 },
                 "music_on_hold": {
@@ -3855,7 +3855,7 @@
                     "type": "object"
                 },
                 "CNAME": {
-                    "$ref": "domain_hosts",
+                    "$ref": "#/definitions/domain_hosts",
                     "description": "CNAME records",
                     "type": "object"
                 },
@@ -4494,7 +4494,7 @@
                     "type": "string"
                 },
                 "profile": {
-                    "$ref": "profile",
+                    "$ref": "#/definitions/profile",
                     "default": {},
                     "description": "Profile data",
                     "type": "object"
@@ -6476,7 +6476,7 @@
             "description": "Describes a service plan category",
             "properties": {
                 "_all": {
-                    "$ref": "service_plan.item",
+                    "$ref": "#/definitions/service_plan.item",
                     "description": "Applies item rules to any item in this category",
                     "properties": {
                         "exceptions": {
@@ -6567,7 +6567,7 @@
             "description": "Describes services offered to sub-accounts",
             "properties": {
                 "bookkeepers": {
-                    "$ref": "bookkeepers",
+                    "$ref": "#/definitions/bookkeepers",
                     "type": "object"
                 },
                 "category": {
@@ -6646,11 +6646,11 @@
         "storage": {
             "properties": {
                 "attachments": {
-                    "$ref": "storage.attachments",
+                    "$ref": "#/definitions/storage.attachments",
                     "description": "Defines where and how to store attachments"
                 },
                 "connections": {
-                    "$ref": "storage.connections",
+                    "$ref": "#/definitions/storage.connections",
                     "description": "Describes alternative connections to use (such as alternative CouchDB instances"
                 },
                 "id": {
@@ -6658,7 +6658,7 @@
                     "type": "string"
                 },
                 "plan": {
-                    "$ref": "storage.plan",
+                    "$ref": "#/definitions/storage.plan",
                     "description": "Describes how to store documents depending on the database or document type"
                 }
             },
@@ -6845,13 +6845,13 @@
             "description": "schema for storage plan",
             "properties": {
                 "account": {
-                    "$ref": "storage.plan.database"
+                    "$ref": "#/definitions/storage.plan.database"
                 },
                 "modb": {
-                    "$ref": "storage.plan.database"
+                    "$ref": "#/definitions/storage.plan.database"
                 },
                 "system": {
-                    "$ref": "storage.plan.database"
+                    "$ref": "#/definitions/storage.plan.database"
                 }
             },
             "type": "object"
@@ -6860,7 +6860,7 @@
             "description": "schema for database storage plan",
             "properties": {
                 "attachments": {
-                    "$ref": "storage.plan.database.attachment"
+                    "$ref": "#/definitions/storage.plan.database.attachment"
                 },
                 "connection": {
                     "type": "string"
@@ -6877,16 +6877,16 @@
                     "additionalProperties": false,
                     "properties": {
                         "call_recording": {
-                            "$ref": "storage.plan.database.document"
+                            "$ref": "#/definitions/storage.plan.database.document"
                         },
                         "fax": {
-                            "$ref": "storage.plan.database.document"
+                            "$ref": "#/definitions/storage.plan.database.document"
                         },
                         "mailbox_message": {
-                            "$ref": "storage.plan.database.document"
+                            "$ref": "#/definitions/storage.plan.database.document"
                         },
                         "media": {
-                            "$ref": "storage.plan.database.document"
+                            "$ref": "#/definitions/storage.plan.database.document"
                         }
                     },
                     "type": "object"
@@ -6912,7 +6912,7 @@
             "description": "schema for document type storage plan",
             "properties": {
                 "attachments": {
-                    "$ref": "storage.plan.database.attachment"
+                    "$ref": "#/definitions/storage.plan.database.attachment"
                 },
                 "connection": {
                     "type": "string"
@@ -12069,10 +12069,10 @@
                     "type": "object"
                 },
                 "call_waiting": {
-                    "$ref": "call_waiting"
+                    "$ref": "#/definitions/call_waiting"
                 },
                 "caller_id": {
-                    "$ref": "caller_id",
+                    "$ref": "#/definitions/caller_id",
                     "default": {},
                     "description": "The device caller ID parameters",
                     "type": "object"
@@ -12089,7 +12089,7 @@
                     "type": "object"
                 },
                 "dial_plan": {
-                    "$ref": "dialplans",
+                    "$ref": "#/definitions/dialplans",
                     "default": {},
                     "description": "A list of rules used to modify dialed numbers",
                     "type": "object"
@@ -12290,7 +12290,7 @@
                     "type": "object"
                 },
                 "metaflows": {
-                    "$ref": "metaflows",
+                    "$ref": "#/definitions/metaflows",
                     "description": "The device metaflow parameters"
                 },
                 "music_on_hold": {
@@ -12323,7 +12323,7 @@
                     "type": "string"
                 },
                 "profile": {
-                    "$ref": "profile",
+                    "$ref": "#/definitions/profile",
                     "default": {},
                     "description": "User's profile data",
                     "type": "object"
@@ -12387,7 +12387,7 @@
                         "notify": {
                             "properties": {
                                 "callback": {
-                                    "$ref": "notify.callback"
+                                    "$ref": "#/definitions/notify.callback"
                                 }
                             },
                             "type": "object"
@@ -12507,7 +12507,7 @@
                 "notify": {
                     "properties": {
                         "callback": {
-                            "$ref": "notify.callback"
+                            "$ref": "#/definitions/notify.callback"
                         }
                     },
                     "type": "object"
