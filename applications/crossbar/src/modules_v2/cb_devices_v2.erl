@@ -271,16 +271,27 @@ post(Context, DeviceId) ->
 
 -spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().
 prune_null_provisioner_fields(Context) ->
-    Filter = fun({_, Val}) ->
-                     case Val of 'null' -> 'false'; _ -> 'true' end
-             end,
-
-    Data    = cb_context:doc(Context),
-    Old     = kz_json:get_value([<<"provision">>, <<"combo_keys">>], Data),
-    Combos  = kz_json:filter(Filter, Old),
-    NewData = kz_json:set_value([<<"provision">>, <<"combo_keys">>], Combos, Data),
-
+    Data = cb_context:doc(Context),
+    Keys = [[<<"provision">>, <<"combo_keys">>]
+           ,[<<"provision">>, <<"feature_keys">>]
+           ],
+    NewData = prune_null_provisioner_fields(Keys, Data),
     cb_context:set_doc(Context, NewData).
+
+-spec prune_null_provisioner_fields(kz_json:paths(), kz_json:object()) -> kz_json:object().
+prune_null_provisioner_fields([], JObj) -> JObj;
+prune_null_provisioner_fields([Key|Keys], JObj) ->
+    case kz_json:get_value(Key, JObj) of
+        'undefined' -> prune_null_provisioner_fields(Keys, JObj);
+        Value ->
+            NewValue = kz_json:filter(fun filter_null_fields/1, Value),
+            NewJObj = kz_json:set_value(Key, NewValue, JObj),
+            prune_null_provisioner_fields(Keys, NewJObj)
+    end.
+
+-spec filter_null_fields(kz_json:json_terms()) -> boolean().
+filter_null_fields({_, 'null'}) -> false;
+filter_null_fields(_) -> 'true'.
 
 -spec post(cb_context:context(), path_token(), path_token()) ->
                   cb_context:context().
