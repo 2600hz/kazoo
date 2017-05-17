@@ -56,7 +56,8 @@
 
 -define(POLLING_INTERVAL, 5000).
 
--define(NUMBER_SEARCH_TIMEOUT, kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5000)).
+-define(NUMBER_SEARCH_TIMEOUT
+       ,kapps_config:get_pos_integer(?KNM_CONFIG_CAT, <<"number_search_timeout_ms">>, 5 * ?MILLISECONDS_IN_SECOND)).
 
 -define(EOT, '$end_of_table').
 
