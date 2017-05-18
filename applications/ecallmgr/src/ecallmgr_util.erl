@@ -263,7 +263,7 @@ get_orig_port(Prop) ->
 
 -spec get_sip_interface_from_db(ne_binaries()) -> ne_binary().
 get_sip_interface_from_db([FsPath]) ->
-    NetworkMap = ecallmgr_config:get(<<"network_map">>, kz_json:new()),
+    NetworkMap = ecallmgr_config:get_json(<<"network_map">>, kz_json:new()),
     case map_fs_path_to_sip_profile(FsPath, NetworkMap) of
         'undefined' ->
             lager:debug("unable to find network map for ~s, using default interface '~s'"
@@ -1070,8 +1070,8 @@ media_path(MediaName, Type, UUID, JObj) ->
 
 -spec fax_filename(ne_binary()) -> file:filename_all().
 fax_filename(UUID) ->
-    Ext = ecallmgr_config:get(<<"default_fax_extension">>, <<".tiff">>),
-    filename:join([ecallmgr_config:get(<<"fax_file_path">>, <<"/tmp/">>)
+    Ext = ecallmgr_config:get_ne_binary(<<"default_fax_extension">>, <<".tiff">>),
+    filename:join([ecallmgr_config:get_ne_binary(<<"fax_file_path">>, <<"/tmp/">>)
                   ,<<(amqp_util:encode(UUID))/binary, Ext/binary>>
                   ]).
 
@@ -1092,18 +1092,19 @@ recording_filename(MediaName) ->
 
 -spec recording_directory(ne_binary()) -> ne_binary().
 recording_directory(<<"/", _/binary>> = FullPath) -> filename:dirname(FullPath);
-recording_directory(_RelativePath) -> ecallmgr_config:get(<<"recording_file_path">>, <<"/tmp/">>).
+recording_directory(_RelativePath) -> ecallmgr_config:get_ne_binary(<<"recording_file_path">>, <<"/tmp/">>).
 
 -spec recording_extension(ne_binary()) -> ne_binary().
 recording_extension(MediaName) ->
     case filename:extension(MediaName) of
-        Empty when Empty =:= <<>>
-                   orelse Empty =:= [] ->
-            ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>);
+        Empty when Empty =:= <<>>;
+                   Empty =:= [] ->
+            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>);
         <<".mp3">> = MP3 -> MP3;
         <<".mp4">> = MP4 -> MP4;
         <<".wav">> = WAV -> WAV;
-        _ -> ecallmgr_config:get(<<"default_recording_extension">>, <<".mp3">>)
+        _ ->
+            ecallmgr_config:get_ne_binary(<<"default_recording_extension">>, <<".mp3">>)
     end.
 
 %%--------------------------------------------------------------------
@@ -1117,7 +1118,7 @@ get_fs_playback(URI) -> maybe_playback_via_vlc(URI).
 
 -spec maybe_playback_via_vlc(ne_binary()) -> ne_binary().
 maybe_playback_via_vlc(URI) ->
-    case kz_term:is_true(ecallmgr_config:get(<<"use_vlc">>, 'false')) of
+    case ecallmgr_config:is_true(<<"use_vlc">>, 'false') of
         'false' -> maybe_playback_via_shout(URI);
         'true' ->
             lager:debug("media is streamed via VLC, prepending ~s", [URI]),
@@ -1127,7 +1128,7 @@ maybe_playback_via_vlc(URI) ->
 -spec maybe_playback_via_shout(ne_binary()) -> ne_binary().
 maybe_playback_via_shout(URI) ->
     case filename:extension(URI) =:= <<".mp3">>
-        andalso kz_term:is_true(ecallmgr_config:get(<<"use_shout">>, 'false'))
+        andalso ecallmgr_config:is_true(<<"use_shout">>, 'false')
     of
         'false' -> maybe_playback_via_http_cache(URI);
         'true' ->
@@ -1140,7 +1141,7 @@ maybe_playback_via_http_cache(<<?HTTP_GET_PREFIX, _/binary>> = URI) ->
     lager:debug("media is streamed via http_cache, using ~s", [URI]),
     URI;
 maybe_playback_via_http_cache(URI) ->
-    case kz_term:is_true(ecallmgr_config:get(<<"use_http_cache">>, 'true')) of
+    case ecallmgr_config:is_true(<<"use_http_cache">>, 'true') of
         'false' ->
             lager:debug("using straight URI ~s", [URI]),
             URI;

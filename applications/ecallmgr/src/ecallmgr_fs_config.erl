@@ -234,7 +234,7 @@ generate_acl_xml(SysconfResp) ->
 
 -spec default_sip_profiles(atom()) -> kz_json:object().
 default_sip_profiles(Node) ->
-    Gateways = case kz_term:is_true(ecallmgr_config:get(<<"process_gateways">>, 'false')) of
+    Gateways = case ecallmgr_config:is_true(<<"process_gateways">>) of
                    'false' -> kz_json:new();
                    'true' ->
                        SysconfResp = ecallmgr_config:fetch(<<"gateways">>, kz_json:new()),

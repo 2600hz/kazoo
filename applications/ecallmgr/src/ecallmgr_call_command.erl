@@ -21,7 +21,7 @@
 
 -include("ecallmgr.hrl").
 
--define(RECORD_SOFTWARE, ecallmgr_config:get(<<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
+-define(RECORD_SOFTWARE, ecallmgr_config:get_ne_binary(<<"recording_software_name">>, <<"2600Hz, Inc.'s Kazoo">>)).
 
 -spec exec_cmd(atom(), ne_binary(), kz_json:object(), api_pid()) ->
                       'ok' |

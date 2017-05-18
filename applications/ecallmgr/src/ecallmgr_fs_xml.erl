@@ -566,29 +566,14 @@ sip_headers_fold(<<"Diversions">>, Vs, Vars0) ->
 sip_headers_fold(K, V, Vars0) ->
     [list_to_binary(["sip_h_", K, "=", maybe_expand_macro(kz_term:to_binary(V))]) | Vars0].
 
--ifdef(TEST).
--define(EXPANDABLE_MACROS
+-define(DEFAULT_EXPANDABLE_MACROS
        ,kz_json:from_list([{<<"{caller_id_name}">>, <<"${caller_id_name}">>}
                           ,{<<"{caller_id_number}">>, <<"${caller_id_number}">>}
                           ,{<<"{account_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Account-ID}">>}
                           ,{<<"{reseller_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Reseller-ID}">>}
                           ,{<<"{billing_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Billing-ID}">>}
-                          ]
-                         )
-       ).
--else.
--define(EXPANDABLE_MACROS
-       ,ecallmgr_config:get(<<"expandable_macros">>
-                           ,kz_json:from_list([{<<"{caller_id_name}">>, <<"${caller_id_name}">>}
-                                              ,{<<"{caller_id_number}">>, <<"${caller_id_number}">>}
-                                              ,{<<"{account_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Account-ID}">>}
-                                              ,{<<"{reseller_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Reseller-ID}">>}
-                                              ,{<<"{billing_id}">>, <<"${" ?CHANNEL_VAR_PREFIX "Billing-ID}">>}
-                                              ]
-                                             )
-                           )
-       ).
--endif.
+                          ])).
+-define(EXPANDABLE_MACROS, ecallmgr_config:get_json(<<"expandable_macros">>, ?DEFAULT_EXPANDABLE_MACROS)).
 
 -spec maybe_expand_macro(ne_binary()) -> ne_binary().
 maybe_expand_macro(HeaderValue) ->
