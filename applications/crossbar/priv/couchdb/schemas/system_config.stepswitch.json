@@ -40,7 +40,8 @@
             "type": "array"
         },
         "default_emergency_cid_number": {
-            "description": "stepswitch default emergency cid number"
+            "description": "stepswitch default emergency cid number",
+            "type": "string"
         },
         "default_formatters": {
             "description": "stepswitch default formatters"
