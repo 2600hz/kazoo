@@ -75,6 +75,11 @@ flush_default(Key) ->
 -spec get(kz_json:path(), Default, kz_json:path() | atom()) ->
                  kz_json:json_term() | Default.
 
+-ifdef(TEST).
+get(_) -> undefined.
+get(_, Default) -> Default.
+get(_, Default, _) -> Default.
+-else.
 get(Key) ->
     get(Key, 'undefined').
 
@@ -94,6 +99,7 @@ get(Key, Default, Node) ->
                           E =:= 'undefined' ->
             fetch(Key, Default, Node)
     end.
+-endif.
 
 -spec get_default(kz_json:path()) -> kz_json:api_json_term().
 -spec get_default(kz_json:path(), Default) -> kz_json:json_term() | Default.
