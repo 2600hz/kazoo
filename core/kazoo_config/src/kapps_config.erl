@@ -123,7 +123,7 @@ get_json(Category, Key) ->
     as_json_value(V, undefined).
 
 -spec as_json_value(any(), api_object()) -> api_object().
-as_json_value('undefined', _) -> 'undefined';
+as_json_value(undefined, Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
@@ -148,7 +148,7 @@ get_jsons(Category, Key) ->
     as_jsons_value(V, []).
 
 -spec as_jsons_value(any(), kz_json:objects()) -> kz_json:objects().
-as_jsons_value(undefined, _) -> [];
+as_jsons_value(undefined, Default) -> Default;
 as_jsons_value(V, Default) ->
     case lists:all(fun kz_json:is_json_object/1, V) of
         true -> V;
