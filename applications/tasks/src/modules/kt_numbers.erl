@@ -548,7 +548,7 @@ import(#{account_id := Account
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
-              ,{module_name, import_module_name(Account, Carrier)}
+              ,{module_name, import_module_name(AuthAccountId, Carrier)}
               ,{ported_in, PortedIn =:= <<"true">>}
               ,{public_fields, public_fields(Args)}
               ],
@@ -618,8 +618,8 @@ maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
 %% @private
-import_module_name(AccountId, Carrier) ->
-    case kz_util:is_system_admin(AccountId)
+import_module_name(AuthBy, Carrier) ->
+    case kz_util:is_system_admin(AuthBy)
         andalso Carrier
     of
         false -> ?IMPORT_DEFAULTS_TO_CARRIER;
