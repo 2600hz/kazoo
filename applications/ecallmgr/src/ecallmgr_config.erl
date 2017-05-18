@@ -13,6 +13,7 @@
         ,flush_default/0, flush_default/1
         ]).
 -export([get/1, get/2, get/3
+        ,get_json/1, get_json/2, get_json/3
         ,get_integer/1, get_integer/2, get_integer/3
         ,get_boolean/1, get_boolean/2, get_boolean/3
         ,is_true/1, is_true/2, is_true/3
@@ -107,6 +108,24 @@ get_default(Key) ->
     get(Key, 'undefined', <<"default">>).
 get_default(Key, Default) ->
     get(Key, Default, <<"default">>).
+
+-spec get_json(kz_json:path()) -> api_object().
+-spec get_json(kz_json:path(), Default) -> kz_json:object() | Default.
+-spec get_json(kz_json:path(), Default, kz_json:path()) -> kz_json:object() | Default.
+get_json(Key) ->
+    get_json(Key, undefined).
+get_json(Key, Default) ->
+    as_json_value(get(Key, Default), Default).
+get_json(Key, Default, Node) ->
+    as_json_value(get(Key, Default, Node), Default).
+
+-spec as_json_value(any(), api_object()) -> api_object().
+as_json_value(undefined, Default) -> Default;
+as_json_value(V, Default) ->
+    case kz_json:is_json_object(V) of
+        'true' -> V;
+        'false' -> Default
+    end.
 
 -spec get_integer(kz_json:path()) -> api_integer().
 -spec get_integer(kz_json:path(), Default) -> integer() | Default.
