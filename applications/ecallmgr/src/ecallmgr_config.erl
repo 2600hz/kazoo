@@ -16,6 +16,7 @@
         ,get_integer/1, get_integer/2, get_integer/3
         ,get_boolean/1, get_boolean/2, get_boolean/3
         ,is_true/1, is_true/2, is_true/3
+        ,get_ne_binary/1, get_ne_binary/2, get_ne_binary/3
         ,get_ne_binaries/1, get_ne_binaries/2, get_ne_binaries/3
         ,get_default/1, get_default/2
         ]).
@@ -153,6 +154,24 @@ is_true(Key, Default, Node) ->
     case get(Key, Default, Node) of
         Default -> Default;
         N -> kz_term:is_true(N)
+    end.
+
+-spec get_ne_binary(kz_json:path()) -> api_ne_binary().
+-spec get_ne_binary(kz_json:path(), Default) -> ne_binary() | Default.
+-spec get_ne_binary(kz_json:path(), Default, kz_json:path()) -> ne_binary() | Default.
+get_ne_binary(Key) ->
+    get_ne_binary(Key, undefined).
+
+get_ne_binary(Key, Default) ->
+    case get(Key, Default) of
+        V=?NE_BINARY -> V;
+        _ -> Default
+    end.
+
+get_ne_binary(Key, Default, Node) ->
+    case get(Key, Default, Node) of
+        V=?NE_BINARY -> V;
+        _ -> Default
     end.
 
 -spec get_ne_binaries(kz_json:path()) -> ne_binaries().
