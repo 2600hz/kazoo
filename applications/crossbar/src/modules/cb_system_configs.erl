@@ -145,9 +145,7 @@ validate_document(Context, Id, ?HTTP_PUT) ->
 
 validate_document(Context, Id, ?HTTP_POST) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
-    DefaultConfig = kapps_config_doc:default_config(Id, kapps_config_doc:get_keys(RequestData)),
-    FullConfig = kz_json:merge(DefaultConfig, RequestData),
-    validate_document_request(Context, Id, FullConfig);
+    validate_document_request(Context, Id, RequestData);
 
 validate_document(Context, Id, ?HTTP_PATCH) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
@@ -185,9 +183,7 @@ validate_document_node(Context, Id, ?HTTP_PUT, Node) -> validate_document_node(C
 
 validate_document_node(Context, Id, ?HTTP_POST, Node) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
-    DefaultConfig = kapps_config_doc:default_node(Id, Node),
-    FullConfig = kz_json:merge(DefaultConfig, RequestData),
-    validate_node_request(Context, Id, Node, FullConfig);
+    validate_node_request(Context, Id, Node, RequestData);
 
 validate_document_node(Context, Id, ?HTTP_PATCH, Node) ->
     RequestData = strip_id(kz_doc:public_fields(cb_context:req_data(Context))),
