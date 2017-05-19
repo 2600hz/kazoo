@@ -1276,18 +1276,26 @@ start_recording(Call) ->
 -spec start_recording(api_object(), call()) -> call().
 start_recording('undefined', Call) -> Call;
 start_recording(Data, Call) ->
-    RecID = kz_binary:rand_hex(16),
-    Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-    DefaultMediaName = kz_media_recording:get_media_name(RecID, Format),
-    MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
-    Args = kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data),
-    case kz_media:start_recording(clear_helpers(Call), Args) of
+    case kzc_recordings_sup:start_recording(clear_helpers(Call), update_recording_id(Data)) of
         {'ok', RecorderPid} ->
-            Routines = [{fun store_recording/3, MediaName, RecorderPid}],
+            Routines = [{fun store_recording/3
+                        ,kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data)
+                        ,RecorderPid
+                        }
+                       ],
             exec(Routines, Call);
-        _Err -> lager:debug("error starting recording ~p", [_Err]),
-                Call
+        _Err ->
+            lager:debug("error starting recording ~p", [_Err]),
+            Call
     end.
+
+-spec update_recording_id(kz_json:object()) -> kz_json:object().
+update_recording_id(Data) ->
+    RecID = kz_binary:rand_hex(16),
+    Format = kzc_recording:get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
+    DefaultMediaName = kzc_recording:get_media_name(RecID, Format),
+    MediaName = kz_json:get_ne_binary_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
+    kz_json:set_value(?RECORDING_ID_KEY, MediaName, Data).
 
 -spec stop_recording(call()) -> call().
 stop_recording(OriginalCall) ->

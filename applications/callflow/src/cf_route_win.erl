@@ -24,7 +24,7 @@
        ).
 
 -spec execute_callflow(kz_json:object(), kapps_call:call()) ->
-                              'ok' | {'ok', pid()}.
+                              kapps_call:call().
 execute_callflow(JObj, Call) ->
     case should_restrict_call(Call) of
         'true' ->
@@ -32,7 +32,7 @@ execute_callflow(JObj, Call) ->
             _ = kapps_call_command:answer(Call),
             _ = kapps_call_command:prompt(<<"cf-unauthorized_call">>, Call),
             _ = kapps_call_command:queued_hangup(Call),
-            'ok';
+            Call;
         'false' ->
             lager:info("setting initial information about the call"),
             bootstrap_callflow_executer(JObj, Call)
@@ -44,7 +44,7 @@ should_restrict_call(Call) ->
     EndpointId = kapps_call:kvs_fetch(?RESTRICTED_ENDPOINT_KEY, DefaultEndpointId, Call),
     should_restrict_call(EndpointId, Call).
 
--spec should_restrict_call(api_binary(), kapps_call:call()) -> boolean().
+-spec should_restrict_call(api_ne_binary(), kapps_call:call()) -> boolean().
 should_restrict_call('undefined', _Call) -> 'false';
 should_restrict_call(EndpointId, Call) ->
     case kz_endpoint:get(EndpointId, Call) of
@@ -55,9 +55,7 @@ should_restrict_call(EndpointId, Call) ->
 -spec maybe_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_service_unavailable(JObj, Call) ->
     Id = kz_doc:id(JObj),
-    Services = kz_json:merge(
-                 kz_json:get_value(<<"services">>, JObj, ?DEFAULT_SERVICES),
-                 kz_json:get_value(<<"pvt_services">>, JObj, kz_json:new())),
+    Services = get_services(JObj),
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_account_service_unavailable(JObj, Call);
@@ -66,13 +64,18 @@ maybe_service_unavailable(JObj, Call) ->
             'true'
     end.
 
+-spec get_services(kz_json:object()) -> kz_json:object().
+get_services(JObj) ->
+    kz_json:merge(kz_json:get_json_value(<<"services">>, JObj, ?DEFAULT_SERVICES)
+                 ,kz_json:get_json_value(<<"pvt_services">>, JObj, kz_json:new())
+                 ).
+
 -spec maybe_account_service_unavailable(kz_json:object(), kapps_call:call()) -> boolean().
 maybe_account_service_unavailable(JObj, Call) ->
     AccountId = kapps_call:account_id(Call),
     {'ok', Doc} = kz_account:fetch(AccountId),
-    Services = kz_json:merge(
-                 kz_json:get_value(<<"services">>, Doc, ?DEFAULT_SERVICES),
-                 kz_json:get_value(<<"pvt_services">>, Doc, kz_json:new())),
+    Services = get_services(Doc),
+
     case kz_json:is_true([<<"audio">>,<<"enabled">>], Services, 'true') of
         'true' ->
             maybe_closed_group_restriction(JObj, Call);
@@ -94,7 +97,7 @@ maybe_closed_group_restriction(JObj, Call) ->
 maybe_classification_restriction(JObj, Call) ->
     Request = find_request(Call),
     AccountId = kapps_call:account_id(Call),
-    DialPlan = kz_json:get_value(<<"dial_plan">>, JObj, kz_json:new()),
+    DialPlan = kz_json:get_json_value(<<"dial_plan">>, JObj, kz_json:new()),
     Number = knm_converters:normalize(Request, AccountId, DialPlan),
     Classification = knm_converters:classify(Number),
     lager:debug("classified number ~s as ~s, testing for call restrictions"
@@ -136,12 +139,11 @@ enforce_closed_groups(JObj, Call) ->
 -spec get_caller_groups(kz_json:objects(), kz_json:object(), kapps_call:call()) -> sets:set().
 get_caller_groups(Groups, JObj, Call) ->
     Ids = [kapps_call:authorizing_id(Call)
-          ,kz_json:get_value(<<"owner_id">>, JObj)
+          ,kz_json:get_ne_binary_value(<<"owner_id">>, JObj)
            | kz_json:get_keys([<<"hotdesk">>, <<"users">>], JObj)
           ],
     lists:foldl(fun('undefined', Set) -> Set;
-                   (Id, Set) ->
-                        get_group_associations(Id, Groups, Set)
+                   (Id, Set) -> get_group_associations(Id, Groups, Set)
                 end
                ,sets:new()
                ,Ids
@@ -181,9 +183,9 @@ get_group_associations(Id, Groups, Set) ->
 -spec get_callee_extension_info(kapps_call:call()) -> {ne_binary(), ne_binary()} | 'undefined'.
 get_callee_extension_info(Call) ->
     Flow = kapps_call:kvs_fetch('cf_flow', Call),
-    FirstModule = kz_json:get_value(<<"module">>, Flow),
-    FirstId = kz_json:get_value([<<"data">>, <<"id">>], Flow),
-    SecondModule = kz_json:get_value([<<"_">>, <<"module">>], Flow),
+    FirstModule = kz_json:get_ne_binary_value(<<"module">>, Flow),
+    FirstId = kz_json:get_ne_binary_value([<<"data">>, <<"id">>], Flow),
+    SecondModule = kz_json:get_ne_binary_value([<<"_">>, <<"module">>], Flow),
     case (FirstModule =:= <<"device">>
               orelse FirstModule =:= <<"user">>
          )

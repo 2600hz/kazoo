@@ -21,23 +21,25 @@
 -include("konami.hrl").
 
 -spec handle(kz_json:object(), kapps_call:call()) ->
-                    {'continue', kapps_call:call()} |
-                    no_return().
+                    {'continue', kapps_call:call()}.
+-spec handle(kz_json:object(), kapps_call:call(), ne_binary()) ->
+                    kapps_call:call().
 handle(Data, Call) ->
-    handle(Data, Call, get_action(kz_json:get_value(<<"action">>, Data))),
-    {'continue', Call}.
+    Call1 = handle(Data, Call, get_action(kz_json:get_ne_binary_value(<<"action">>, Data))),
+    {'continue', Call1}.
 
 handle(Data, Call, <<"start">>) ->
     lager:debug("starting recording, see you on the other side"),
-    kz_media:start_recording(Call, Data);
+    kapps_call:start_recording(Data, Call);
 handle(Data, Call, <<"stop">> = Action) ->
-    Format = kz_media_recording:get_format(kz_json:get_value(<<"format">>, Data)),
-    MediaName = kz_media_recording:get_media_name(kapps_call:call_id(Call), Format),
+    Format = kzc_recording:get_format(kz_json:get_value(<<"format">>, Data)),
+    MediaName = kzc_recording:get_media_name(kapps_call:call_id(Call), Format),
 
     _ = kapps_call_command:record_call([{<<"Media-Name">>, MediaName}], Action, Call),
-    lager:debug("sent command to stop recording").
+    lager:debug("sent command to stop recording"),
+    Call.
 
--spec get_action(api_binary()) -> ne_binary().
+-spec get_action(api_ne_binary()) -> ne_binary().
 get_action('undefined') -> <<"start">>;
 get_action(<<"stop">>) -> <<"stop">>;
 get_action(_) -> <<"start">>.

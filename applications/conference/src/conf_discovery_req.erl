@@ -262,13 +262,13 @@ add_participant_to_conference(JObj, Conference, Call, Srv) ->
 -spec discovery_failed(kapps_call:call(), pid() | 'undefined') -> 'ok'.
 discovery_failed(Call, _) -> kapps_call_command:hangup(Call).
 
--spec validate_conference_id(api_binary(), kapps_call:call()) ->
+-spec validate_conference_id(api_ne_binary(), kapps_call:call()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id(ConferenceId, Call) ->
     validate_conference_id(ConferenceId, Call, 1).
 
--spec validate_conference_id(api_binary(), kapps_call:call(), pos_integer()) ->
+-spec validate_conference_id(api_ne_binary(), kapps_call:call(), pos_integer()) ->
                                     {'ok', kapps_conference:conference()} |
                                     {'error', any()}.
 validate_conference_id('undefined', Call, Loop) when Loop > 3 ->
@@ -294,7 +294,7 @@ validate_conference_id(ConferenceId, Call, Loop) ->
             validate_conference_id('undefined', Call, Loop)
     end.
 
--spec validate_collected_conference_id(kapps_call:call(), non_neg_integer(), binary()) ->
+-spec validate_collected_conference_id(kapps_call:call(), pos_integer(), binary()) ->
                                               {'ok', kapps_conference:conference()} |
                                               {'error', any()}.
 validate_collected_conference_id(Call, Loop, <<>>) ->
@@ -308,7 +308,7 @@ validate_collected_conference_id(Call, Loop, Digits) ->
     case kz_datamgr:get_results(AccountDb, <<"conference/listing_by_number">>, ViewOptions) of
         {'ok', [JObj]} ->
             lager:debug("caller has entered a valid conference id, building object"),
-            {'ok', create_conference(kz_json:get_value(<<"doc">>, JObj), Digits, Call)};
+            {'ok', create_conference(kz_json:get_json_value(<<"doc">>, JObj), Digits, Call)};
         _Else ->
             lager:debug("could not find conference number ~s: ~p", [Digits, _Else]),
             _ = kapps_call_command:prompt(<<"conf-bad_conf">>, Call),
