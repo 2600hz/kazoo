@@ -23417,16 +23417,6 @@
                 }
             }
         },
-        "/google_auth": {
-            "put": {
-                "parameters": [],
-                "responses": {
-                    "200": {
-                        "description": "request succeeded"
-                    }
-                }
-            }
-        },
         "/ip_auth": {
             "put": {
                 "parameters": [],

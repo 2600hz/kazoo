@@ -308,7 +308,6 @@ swagger_params(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
         %% These do not have schemas
-        <<"google_auth">> -> undefined;
         <<"ip_auth">> -> undefined;
         %% These have schemas
         Schema ->
@@ -449,7 +448,6 @@ path_name(Module) ->
         {'match', [<<"api_auth">>=Name]} -> Name;
         {'match', [<<"auth">>=Name]} -> Name;
         {'match', [<<"basic_auth">>=Name]} -> Name;
-        {'match', [<<"google_auth">>=Name]} -> Name;
         {'match', [<<"ip_auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
         {'match', [<<"schemas">>=Name]} -> Name;

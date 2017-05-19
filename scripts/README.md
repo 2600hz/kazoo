@@ -531,7 +531,6 @@ Searches for undocumented APIs and reports percentage of doc coverage.
     > POST /v2/auth/links
     > PUT /v2/auth/authorize
     > PUT /v2/auth/callback
-    > PUT /v2/google_auth
     > PUT /v2/ip_auth
     > PUT /v2/shared_auth
 
