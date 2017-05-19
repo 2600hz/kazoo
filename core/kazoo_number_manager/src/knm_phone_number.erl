@@ -50,11 +50,11 @@
         ,created/1, set_created/2
         ]).
 
+-export([is_state/1]).
 -export([list_attachments/2]).
 
 -ifdef(TEST).
 -export([set_is_dirty/2]).
--export([is_state/1]).
 -else.
 -export([push_stored/0]).
 -endif.
@@ -983,6 +983,7 @@ set_state(PN, State) ->
     lager:debug("updating state from ~s to ~s", [PN#knm_phone_number.state, State]),
     ?DIRTY(PN#knm_phone_number{state = State}).
 
+-spec is_state(any()) -> boolean().
 is_state(State)
   when State =:= ?NUMBER_STATE_PORT_IN;
        State =:= ?NUMBER_STATE_PORT_OUT;
