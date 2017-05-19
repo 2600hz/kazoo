@@ -43,7 +43,7 @@
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                           ])).
 
--define(CLASSIFIER_TOLLFREE,
+-define(CLASSIFIER_TOLL_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"US Toll">>}
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
@@ -79,7 +79,7 @@
 
 -define(DEFAULT_CLASSIFIERS,
         kz_json:from_list([{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
-                          ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
+                          ,{<<"toll_us">>, ?CLASSIFIER_TOLL_US}
                           ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
                           ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
                           ,{<<"did_us">>, ?CLASSIFIER_DID_US}
