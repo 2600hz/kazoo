@@ -47,6 +47,7 @@ test:
         echo 'Maybe try `make apis` and see if that fixes anything ;)'
         exit 1
       fi
+    - npm install swagger-tools && time ./node_modules/swagger-tools/bin/swagger-tools validate applications/crossbar/priv/api/swagger.json
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
