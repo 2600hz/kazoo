@@ -61,7 +61,7 @@
 -define(CONSUME_OPTIONS, []).
 
 -record(participant, {participant_id = 0 :: non_neg_integer()
-                     ,call :: kapps_call:call()
+                     ,call :: kapps_call:call() | 'undefined'
                      ,moderator = 'false' :: boolean()
                      ,muted = 'false' :: boolean()
                      ,deaf = 'false' :: boolean()
@@ -69,7 +69,7 @@
                      ,call_event_consumers = [] :: pids()
                      ,in_conference = 'false' :: boolean()
                      ,join_attempts = 0 :: non_neg_integer()
-                     ,conference :: kapps_conference:conference()
+                     ,conference :: kapps_conference:conference() | 'undefined'
                      ,discovery_event = kz_json:new() :: kz_json:object()
                      ,last_dtmf = <<>> :: binary()
                      ,server = self() :: pid()

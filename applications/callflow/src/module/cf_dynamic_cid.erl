@@ -107,7 +107,7 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
--type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} | {'error', kz_data:data_error()}.
+-type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} | {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->

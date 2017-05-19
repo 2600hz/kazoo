@@ -62,7 +62,9 @@
 -define(DEFAULT_MOBILE_AMQP_CONNECTIONS,
         kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])).
 
--define(CONFIRM_FILE(Call), kz_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
+-define(CONFIRM_FILE(Call)
+       ,kz_media_util:get_prompt(<<"ivr-group_confirm">>, kapps_call:account_id(Call))
+       ).
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
                         ,{<<"zrtp">>, [{<<"ZRTP-Secure-Media">>, <<"true">>}
@@ -77,7 +79,7 @@
 
 -type api_std_return() :: {'ok', kz_json:object()} |
                           {'error', 'invalid_endpoint_id'} |
-                          kz_data:data_error().
+                          kz_datamgr:data_error().
 
 %%--------------------------------------------------------------------
 %% @public
@@ -105,7 +107,7 @@ get(EndpointId, Call) ->
 
 -spec maybe_fetch_endpoint(ne_binary(), ne_binary()) ->
                                   {'ok', kz_json:object()} |
-                                  kz_data:data_error().
+                                  kz_datamgr:data_error().
 maybe_fetch_endpoint(EndpointId, AccountDb) ->
     case kz_datamgr:open_cache_doc(AccountDb, EndpointId) of
         {'ok', JObj} ->

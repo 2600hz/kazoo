@@ -24,14 +24,14 @@
                     {'continue', kapps_call:call()}.
 handle(Data, Call) ->
     AMOH = kz_json:get_value(<<"moh_aleg">>, Data),
-    AMOHToPlay = kz_media_util:media_path(AMOH, Call),
+    AMOHToPlay = kz_media_util:media_path(AMOH, kapps_call:account_id(Call)),
 
     BMOH = kz_json:get_value(<<"moh_bleg">>, Data, AMOH),
-    BMOHToPlay = kz_media_util:media_path(BMOH, Call),
+    BMOHToPlay = kz_media_util:media_path(BMOH, kapps_call:account_id(Call)),
 
     Unholdkey = kz_json:get_value(<<"unhold_key">>, Data, <<"1">>),
 
-    RequestingLeg = kz_json:get_value(<<"dtmf_leg">>, Data),
+    RequestingLeg = kz_json:get_ne_binary_value(<<"dtmf_leg">>, Data),
 
     HoldCommand = kapps_call_command:soft_hold_command(RequestingLeg, Unholdkey, AMOHToPlay, BMOHToPlay),
 
@@ -43,7 +43,7 @@ handle(Data, Call) ->
     {'continue', Call}.
 
 -spec hold_leg(kapps_call:call(), ne_binary()) -> ne_binary().
-hold_leg(Call, RequestingLeg) ->
+hold_leg(Call, RequestingLeg) when is_binary(RequestingLeg) ->
     case kapps_call:call_id(Call) of
         RequestingLeg -> kapps_call:other_leg_call_id(Call);
         HoldLeg -> HoldLeg
