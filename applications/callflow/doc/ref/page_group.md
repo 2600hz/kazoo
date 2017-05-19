@@ -12,7 +12,7 @@ Key | Description | Type | Default | Required
 --- | ----------- | ---- | ------- | --------
 `audio` | What kind of audio for the group members | `string('one-way', 'two-way')` | `one-way` | `true`
 `barge_calls` | Should the Endpoint be interrupted by this call | `boolean` |   | `false`
-`endpoints` | Endpoint IDs (devices, users, etc) included in the ring group | `array(object)` | `[]` | `true`
+`endpoints` | Endpoint IDs (devices, users, etc) included in the ring group | `array(object)` |   | `true`
 `endpoints.[].delay` | How long to delay ringing the endpoint, in seconds | `integer` | `0` | `false`
 `endpoints.[].endpoint_type` | The type (device, user, etc) of endpoint | `string('device', 'user', 'group')` |   | `true`
 `endpoints.[].id` | The ID of the endpoint | `string(1..128)` |   | `true`

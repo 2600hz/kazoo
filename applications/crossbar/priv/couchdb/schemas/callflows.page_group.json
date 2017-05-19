@@ -17,7 +17,6 @@
             "type": "boolean"
         },
         "endpoints": {
-            "default": [],
             "description": "Endpoint IDs (devices, users, etc) included in the ring group",
             "items": {
                 "description": "ID of the endpoint (device, user, etc)",
