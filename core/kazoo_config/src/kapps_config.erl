@@ -901,9 +901,6 @@ get_category(Category, 'false') ->
         ,{{<<"number_manager">>, <<"aging_expiry_d">>}
          ,{<<"tasks">>, <<"aging_expiry_d">>}
          }
-        ,{{<<"number_manager">>, <<"deleted_expiry_d">>}
-         ,{<<"tasks">>, <<"deleted_expiry_d">>}
-         }
         ,{{<<"number_manager">>, <<"discovery_expiry_d">>}
          ,{<<"tasks">>, <<"discovery_expiry_d">>}
          }
