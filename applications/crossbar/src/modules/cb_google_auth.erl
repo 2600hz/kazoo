@@ -92,31 +92,6 @@ authenticate_nouns(_) -> 'false'.
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    cb_context:validate_request_data(<<"google_auth">>, Context, fun maybe_authenticate_user/1).
-
-
--spec put(cb_context:context()) -> cb_context:context().
-put(Context) ->
-    _ = cb_context:put_reqid(Context),
-    create_token(Context).
-
-%%%===================================================================
-%%% Internal functions
-%%%===================================================================
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
-%% provided hash method
-%%
-%% Attempt to lookup and compare the user creds in the provided accounts.
-%%
-%% Failure here returns 401
-%% @end
-%%--------------------------------------------------------------------
--spec maybe_authenticate_user(cb_context:context()) -> cb_context:context().
-
-maybe_authenticate_user(Context) ->
     case kazoo_oauth_client:authenticate(cb_context:doc(Context)) of
         {'ok', OAuth} ->
             lager:debug("verified oauth: ~p",[OAuth]),
@@ -128,6 +103,15 @@ maybe_authenticate_user(Context) ->
             cb_context:add_system_error('invalid_credentials', Context)
     end.
 
+-spec put(cb_context:context()) -> cb_context:context().
+put(Context) ->
+    _ = cb_context:put_reqid(Context),
+    create_token(Context).
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
 -spec maybe_account_is_disabled(cb_context:context()) -> cb_context:context().
 maybe_account_is_disabled(Context) ->
     JObj = cb_context:doc(Context),
@@ -138,11 +122,10 @@ maybe_account_is_disabled(Context) ->
                 'true' -> maybe_load_username(Account, Context);
                 'false' ->
                     lager:debug("account ~s is disabled", [Account]),
-                    cb_context:add_system_error(
-                      'forbidden'
+                    cb_context:add_system_error('forbidden'
                                                ,kz_json:from_list([{<<"cause">>, <<"account_disabled">>}])
                                                ,Context
-                     )
+                                               )
             end
     end.
 

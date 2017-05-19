@@ -307,6 +307,10 @@ maybe_add_schema(_Path, _Method, _Parameters) ->
 swagger_params(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
+        %% These do not have schemas
+        <<"google_auth">> -> undefined;
+        <<"ip_auth">> -> undefined;
+        %% These have schemas
         Schema ->
             kz_json:from_list([{<<"name">>, Schema}
                               ,{<<"in">>, <<"body">>}
