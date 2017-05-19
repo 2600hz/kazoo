@@ -135,7 +135,18 @@ authorize_nouns(_Nouns) ->
 %%--------------------------------------------------------------------
 -spec validate(cb_context:context()) -> cb_context:context().
 validate(Context) ->
-    cb_context:validate_request_data(<<"ip_auth">>, Context, fun on_successful_validation/1).
+    IpKey = cb_context:client_ip(Context),
+    case kz_json:is_empty(IpKey)
+        orelse crossbar_doc:load_view(?AGG_VIEW_IP
+                                     ,[{'key', IpKey}]
+                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
+                                     )
+    of
+        'true' ->
+            cb_context:add_system_error('invalid_credentials', Context);
+        Context1 ->
+            on_successful_load(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1))
+    end.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -149,31 +160,6 @@ put(Context) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%% This function determines if the credentials are valid based on the
-%% provided hash method
-%%
-%% Failure here returns 401
-%% @end
-%%--------------------------------------------------------------------
--spec on_successful_validation(cb_context:context()) -> cb_context:context().
-on_successful_validation(Context) ->
-    IpKey = cb_context:client_ip(Context),
-    ViewOptions = [{'key', IpKey}],
-    case kz_json:is_empty(IpKey)
-        orelse crossbar_doc:load_view(?AGG_VIEW_IP
-                                     ,ViewOptions
-                                     ,cb_context:set_account_db(Context, ?KZ_ACCOUNTS_DB)
-                                     )
-    of
-        'true' ->
-            cb_context:add_system_error('invalid_credentials', Context);
-        Context1 ->
-            on_successful_load(Context1, cb_context:resp_status(Context1), cb_context:doc(Context1))
-    end.
 
 -spec on_successful_load(cb_context:context(), crossbar_status(), kz_json:objects()) -> cb_context:context().
 on_successful_load(Context, 'success', [Doc]) ->
@@ -193,11 +179,10 @@ on_successful_load(Context, _Status, _Doc) ->
 create_fake_token(Context) ->
     JObj = cb_context:doc(Context),
     case kz_json:is_empty(JObj) of
+        'false' -> create_fake_token(Context, JObj);
         'true' ->
             lager:debug("refusing to create auth token for an empty doc"),
-            cb_context:add_system_error('invalid_credentials', Context);
-        'false' ->
-            create_fake_token(Context, JObj)
+            cb_context:add_system_error('invalid_credentials', Context)
     end.
 
 create_fake_token(Context, JObj) ->
