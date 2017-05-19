@@ -296,7 +296,7 @@ maybe_kill_unrated_channel(Props, Node) ->
 -spec authz_default(kzd_freeswitch:data(), ne_binary(), atom()) -> {'ok', ne_binary()} | boolean().
 %% TODO: fix use of authz_default
 authz_default(Props, CallId, Node) ->
-    case ecallmgr_config:get(<<"authz_default_action">>, <<"deny">>) =:= <<"deny">>
+    case ecallmgr_config:get_ne_binary(<<"authz_default_action">>, <<"deny">>) =:= <<"deny">>
         andalso ecallmgr_config:get_boolean(<<"authz_dry_run">>, 'false') =/= 'false'
     of
         'false' -> rate_call(Props, CallId, Node);

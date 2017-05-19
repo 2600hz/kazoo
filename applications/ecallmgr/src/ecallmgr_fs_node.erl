@@ -283,7 +283,7 @@ find_srv(Node) when is_atom(Node) ->
 -spec fetch_timeout() -> pos_integer().
 -spec fetch_timeout(fs_node()) -> pos_integer().
 fetch_timeout() ->
-    ecallmgr_config:get(<<"fetch_timeout">>, ?DEFAULT_FETCH_TIMEOUT).
+    ecallmgr_config:get_integer(<<"fetch_timeout">>, ?DEFAULT_FETCH_TIMEOUT).
 fetch_timeout(_Node) ->
     %% TODO: eventually expose this timeout via mod_kazoo and decrement a bit.
     fetch_timeout().
