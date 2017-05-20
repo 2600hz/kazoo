@@ -1833,7 +1833,6 @@
                     "type": "boolean"
                 },
                 "endpoints": {
-                    "default": [],
                     "description": "Endpoint IDs (devices, users, etc) included in the ring group",
                     "items": {
                         "description": "ID of the endpoint (device, user, etc)",
@@ -2265,7 +2264,6 @@
             "description": "Validator for the Ring Group callflow element",
             "properties": {
                 "endpoints": {
-                    "default": [],
                     "description": "Endpoint IDs (devices, users, etc) included in the ring group",
                     "items": {
                         "description": "ID of the endpoint (device, user, etc)",
@@ -3790,6 +3788,9 @@
             "properties": {
                 "system": {
                     "description": "List of system dial plans",
+                    "items": {
+                        "type": "object"
+                    },
                     "type": "array"
                 }
             },
@@ -13189,6 +13190,15 @@
             "required": true,
             "type": "string"
         },
+        "REPORT_ID": {
+            "in": "path",
+            "maxLength": 39,
+            "minLength": 39,
+            "name": "REPORT_ID",
+            "pattern": "^report\\-[0-9a-f]+$",
+            "required": true,
+            "type": "string"
+        },
         "RESOURCE_ID": {
             "in": "path",
             "maxLength": 32,
@@ -19559,6 +19569,9 @@
                 "parameters": [
                     {
                         "$ref": "#/parameters/auth_token_header"
+                    },
+                    {
+                        "$ref": "#/parameters/REPORT_ID"
                     },
                     {
                         "$ref": "#/parameters/ACCOUNT_ID"

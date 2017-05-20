@@ -162,7 +162,10 @@ is_member_active(Member) ->
 
 -spec resolve_endpoint_ids(kz_json:object(), kapps_call:call()) -> endpoints().
 resolve_endpoint_ids(Data, Call) ->
-    Members = kz_json:get_list_value(<<"endpoints">>, Data, []),
+    Members = case kz_json:get_list_value(<<"endpoints">>, Data) of
+                  undefined -> [];
+                  JObjs -> JObjs
+              end,
     FilteredMembers = lists:filter(fun is_member_active/1, Members),
     lager:debug("filtered members of ring group ~p", [FilteredMembers]),
     ResolvedEndpoints = resolve_endpoint_ids(FilteredMembers, [], Data, Call),

@@ -4,7 +4,6 @@
     "description": "Validator for the Ring Group callflow element",
     "properties": {
         "endpoints": {
-            "default": [],
             "description": "Endpoint IDs (devices, users, etc) included in the ring group",
             "items": {
                 "description": "ID of the endpoint (device, user, etc)",

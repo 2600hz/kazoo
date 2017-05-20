@@ -22,6 +22,9 @@
     "properties": {
         "system": {
             "description": "List of system dial plans",
+            "items": {
+                "type": "object"
+            },
             "type": "array"
         }
     },
