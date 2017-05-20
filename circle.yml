@@ -57,5 +57,6 @@ test:
         TO_DIALYZE="$(echo $($CHANGED))" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
+    - make sdks
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh
