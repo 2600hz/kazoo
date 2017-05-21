@@ -317,6 +317,7 @@ load_sha1_results(Context, [JObj|_]) ->
     lager:debug("found more that one user with SHA1 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
 load_sha1_results(Context, []) ->
+    lager:warning("failed to find a user with SHA1 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
     cb_context:add_system_error('invalid_credentials', Context);
 load_sha1_results(Context, JObj) ->
     lager:debug("found SHA1 credentials belong to user ~s", [kz_doc:id(JObj)]),
@@ -328,7 +329,7 @@ load_md5_results(Context, [JObj|_]) ->
     lager:debug("found more that one user with MD5 creds, using ~s", [kz_doc:id(JObj)]),
     cb_context:set_doc(Context, kz_json:get_value(<<"value">>, JObj));
 load_md5_results(Context, []) ->
-    lager:debug("failed to find a user with MD5 creds"),
+    lager:warning("failed to find a user with MD5 creds, request from IP address: ~s", [cb_context:client_ip(Context)]),
     cb_context:add_system_error('invalid_credentials', Context);
 load_md5_results(Context, JObj) ->
     lager:debug("found MD5 credentials belong to user ~s", [kz_doc:id(JObj)]),
