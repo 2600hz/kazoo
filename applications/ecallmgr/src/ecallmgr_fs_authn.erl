@@ -174,21 +174,58 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
--spec handle_directory_lookup(ne_binary(), kz_proplist(), atom()) -> 'ok' |
-                                                                     fs_handlecall_ret().
+-spec handle_directory_lookup(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
 handle_directory_lookup(Id, Props, Node) ->
     kz_util:put_callid(Id),
-    lager:debug("received fetch request (~s) user creds from ~s", [Id, Node]),
+    lager:debug("received fetch request (~s) user directory from ~s", [Id, Node]),
     case props:get_value(<<"action">>, Props, <<"sip_auth">>) of
         <<"reverse-auth-lookup">> -> lookup_user(Node, Id, <<"reverse-lookup">>, Props);
-        <<"sip_auth">> -> lookup_user(Node, Id, <<"password">>, Props);
+        <<"sip_auth">> -> maybe_sip_auth_response(Id, Props, Node);
         _Other -> directory_not_found(Node, Id)
     end.
 
+-spec maybe_sip_auth_response(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+maybe_sip_auth_response(Id, Props, Node) ->
+    case kz_term:is_not_empty(props:get_value(<<"sip_auth_response">>, Props)) of
+        'false' -> maybe_kamailio_association(Id, Props, Node);
+        'true' ->
+            lager:debug("attempting to get device password to verify SIP auth response"),
+            lookup_user(Node, Id, <<"password">>, Props)
+    end.
+
+-spec maybe_kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+maybe_kamailio_association(Id, Props, Node) ->
+    case kz_term:is_not_empty(kzd_freeswitch:authorizing_id(Props))
+        andalso kz_term:is_not_empty(kzd_freeswitch:authorizing_type(Props))
+    of
+        'true' -> kamailio_association(Id, Props, Node);
+        'false' -> directory_not_found(Node, Id)
+    end.
+
+-spec kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
+kamailio_association(Id, Props, Node) ->
+    Password = kz_binary:rand_hex(12),
+    Realm = props:get_value(<<"domain">>, Props),
+    Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
+    CCVs = [{Key, Value} || {<<"X-ecallmgr_", Key/binary>>, Value} <- Props],
+    JObj = kz_json:from_list_recursive([
+         {<<"Auth-Method">>, <<"password">>}
+         ,{<<"Auth-Password">>, Password}
+         ,{<<"Domain-Name">>, Realm}
+         ,{<<"User-ID">>, Username}
+         ,{<<"Custom-Channel-Vars">>, CCVs}
+         ,{<<"Expires">>, 0}
+         ]),
+    lager:debug("building authn resp for ~s@~s from kamailio headers", [Username, Realm]),
+    {'ok', Xml} = ecallmgr_fs_xml:authn_resp_xml(JObj),
+    lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
+    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
+
 -spec directory_not_found(atom(), ne_binary()) -> fs_handlecall_ret().
 directory_not_found(Node, Id) ->
-    {'ok', Resp} = ecallmgr_fs_xml:not_found(),
-    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Resp)).
+    {'ok', Xml} = ecallmgr_fs_xml:not_found(),
+    lager:debug("sending authn not found XML to ~w", [Node]),
+    freeswitch:fetch_reply(Node, Id, 'directory', iolist_to_binary(Xml)).
 
 -spec lookup_user(atom(), ne_binary(), ne_binary(), kz_proplist()) -> fs_handlecall_ret().
 lookup_user(Node, Id, Method,  Props) ->
