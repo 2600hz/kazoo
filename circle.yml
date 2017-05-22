@@ -5,6 +5,7 @@ machine:
     CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
   services:
     - rabbitmq-server
+    - docker
 #    - couchdb-server
 
 general:
