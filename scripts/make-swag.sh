@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-# Generate Kazoo SDKs using the Sagger file
+# Generate Kazoo SDKs using the Swagger file
 
 ## Languages commented out either fail to generate or generate server code
 ## (we only want to generate client SDKs)
