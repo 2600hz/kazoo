@@ -21,16 +21,13 @@
 -export([features_denied/1]).
 -export([system_allowed_features/0]).
 
--define(DEFAULT_CNAM_PROVIDER, <<"knm_cnam_notifier">>).
--define(DEFAULT_E911_PROVIDER, <<"knm_dash_e911">>).
-
 -define(CNAM_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, ?DEFAULT_CNAM_PROVIDER)).
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"cnam_provider">>, <<"knm_cnam_notifier">>)).
 
 -define(E911_PROVIDER(AccountId),
-        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, ?DEFAULT_E911_PROVIDER)).
+        kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, <<"e911_provider">>, <<"knm_dash_e911">>)).
 
--define(SYSTEM_PROVIDERS, kapps_config:get(?KNM_CONFIG_CAT, <<"providers">>)).
+-define(SYSTEM_PROVIDERS, kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"providers">>)).
 
 -define(PP(NeBinaries), kz_util:iolist_join($,, NeBinaries)).
 
@@ -189,7 +186,7 @@ reseller_allowed_features(#feature_parameters{assigned_to = AccountId}=_Params) 
 -spec system_allowed_features() -> ne_binaries().
 system_allowed_features() ->
     Features = case ?SYSTEM_PROVIDERS of
-                   'undefined' -> ?FEATURES_ALLOWED_SYSTEM;
+                   'undefined' -> ?FEATURES_ALLOWED_SYSTEM(?DEFAULT_FEATURES_ALLOWED_SYSTEM);
                    Providers -> ?FEATURES_ALLOWED_SYSTEM(Providers)
                end,
     ?LOG_DEBUG("allowed features from system config: ~s", [?PP(Features)]),

@@ -10223,7 +10223,11 @@
                 "features": {
                     "properties": {
                         "allow": {
-                            "description": "Number features a number is allowed to enable or disable"
+                            "description": "Number features a number is allowed to edit",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
                         }
                     }
                 },
@@ -10276,7 +10280,11 @@
                     "type": "string"
                 },
                 "providers": {
-                    "description": "Number features sub accounts are allowed to enable or disable"
+                    "description": "Number features sub accounts are allowed to enable or disable",
+                    "items": {
+                        "type": "string"
+                    },
+                    "type": "array"
                 },
                 "reconcile_regex": {
                     "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
