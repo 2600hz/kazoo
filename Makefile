@@ -205,8 +205,6 @@ docs-validate:
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash
 
-docs-validate:
-
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
