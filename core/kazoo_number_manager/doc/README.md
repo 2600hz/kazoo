@@ -21,6 +21,54 @@ The Kazoo number manager aims for the following:
 The main entry point for number management is the `knm_number` module and its underlying `#knm_number{}` record.
 From here, numbers can be fetched, created, moved, assigned, and more.
 
+A number document should look something like this:
+
+```json
+{
+   "_id": "+15556668743",
+   "_rev": "6-8bed97b8a5bf5e89528a6d1b04bc0427",
+   "pvt_db_name": "numbers%2F%2B1555",
+   "pvt_state": "in_service",
+   "pvt_ported_in": false,
+   "pvt_module_name": "knm_bandwidth2",
+   "pvt_modified": 63661152901,
+   "pvt_created": 63658650265,
+   "pvt_type": "number",
+   "prepend": {
+       "name": "My prepended name",
+       "enabled": true
+   },
+   "cnam": {
+       "inbound_lookup": true,
+       "display_name": "My display name"
+   },
+   "pvt_assigned_to": "009afc511c97b2ae693c6cc4920988e8",
+   "pvt_features": {
+       "prepend": {
+           "name": "My prepended name",
+           "enabled": true
+       },
+       "inbound_cnam": {
+           "inbound_lookup": true
+       },
+       "outbound_cnam": {
+           "display_name": "My display name"
+       }
+   }
+}
+```
+
+Numbers are stored in prefixed databases: `+15556668743` is stored in `numbers/+1555` with this id.
+When a number is assigned to an account, this document is copied from the numbers database into the account's database.
+When ownership changes to another account or when the number goes `available`, this account document is deleted.
+
+Note: the number document in the numbers DB is the source of truth, above the one in account DBs.
+
+Note: while a number document should exist in at most one account database, it is possible that a bug left some number documents in the wrong account databases.
+Use the Sync button from the owning account, to delete these number documents from the wrong account database.
+
+Run `sup kazoo_number_manager_maintenance migrate TheAccount` or a full migration to make sure these documents are all in sync on `TheAccount` or throughout your system.
+Do note though that this operation can take a long time, depending on the amount of accounts and numbers in your system.
 
 #### Options
 
