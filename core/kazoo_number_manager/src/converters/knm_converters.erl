@@ -225,7 +225,7 @@ available_classifiers() ->
 %%--------------------------------------------------------------------
 -spec available_converters() -> ne_binaries().
 available_converters() ->
-    kapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
+    kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
 
 %%--------------------------------------------------------------------
 %% @public
