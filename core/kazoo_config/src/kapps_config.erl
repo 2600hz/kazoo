@@ -417,21 +417,15 @@ get_node_value(Category, Keys, Default, Node) ->
 -spec get(config_category(), config_key(), Default) -> any() | Default.
 -spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
 
--ifdef(TEST).
-get(_, _) -> 'undefined'.
-get(_, _, Default) -> Default.
-get(_, _, Default, _) -> Default.
-get_current(_, _) -> 'undefined'.
-get_current(_, _, Default) -> Default.
-get_current(_, _, Default, _) -> Default.
--else.
-
 get(Category, Key) ->
     get(Category, Key, 'undefined').
 
 get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
+-ifdef(TEST).
+get(_, _, Default, _) -> Default.
+-else.
 get(Category, Key, Default, 'undefined') ->
     get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
@@ -451,6 +445,7 @@ get(Category, Keys, Default, Node) ->
             lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
             Default
     end.
+-endif.
 
 -spec get_current(config_category(), config_key()) -> any() | 'undefined'.
 -spec get_current(config_category(), config_key(), Default) -> any() | Default.
@@ -461,6 +456,9 @@ get_current(Category, Key) ->
 get_current(Category, Key, Default) ->
     get_current(Category, Key, Default, node()).
 
+-ifdef(TEST).
+get_current(_, _, Default, _) -> Default.
+-else.
 get_current(Category, Key, Default, 'undefined') ->
     get_current(Category, Key, Default, ?KEY_DEFAULT);
 get_current(Category, Key, Default, Node) when not is_list(Key) ->
