@@ -72,7 +72,7 @@
 -define(MAX_TOKENS, kapps_config:get_integer(?PHONE_NUMBERS_CONFIG_CAT, <<"activations_per_day">>, 100)).
 
 -define(UNAUTHORIZED_NUMBERS_LOOKUP(ResellerId)
-       ,kapps_account_config:get_global(ReqResellerId
+       ,kapps_account_config:get_global(ResellerId
                                        ,?KNM_CONFIG_CAT
                                        ,<<"unauthorized_numbers_lookup">>
                                        ,'false'
