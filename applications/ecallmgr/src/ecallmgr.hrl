@@ -224,6 +224,7 @@
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                               ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
+                              ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
 
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}
