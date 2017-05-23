@@ -186,7 +186,7 @@ handle_directory_lookup(Id, Props, Node) ->
 
 -spec maybe_sip_auth_response(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
 maybe_sip_auth_response(Id, Props, Node) ->
-    case kz_term:is_not_empty(props:get_value(<<"sip_auth_response">>, Props)) of
+    case kz_util:is_not_empty(props:get_value(<<"sip_auth_response">>, Props)) of
         'false' -> maybe_kamailio_association(Id, Props, Node);
         'true' ->
             lager:debug("attempting to get device password to verify SIP auth response"),
@@ -195,8 +195,8 @@ maybe_sip_auth_response(Id, Props, Node) ->
 
 -spec maybe_kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
 maybe_kamailio_association(Id, Props, Node) ->
-    case kz_term:is_not_empty(kzd_freeswitch:authorizing_id(Props))
-        andalso kz_term:is_not_empty(kzd_freeswitch:authorizing_type(Props))
+    case kz_util:is_not_empty(kzd_freeswitch:authorizing_id(Props))
+        andalso kz_util:is_not_empty(kzd_freeswitch:authorizing_type(Props))
     of
         'true' -> kamailio_association(Id, Props, Node);
         'false' -> directory_not_found(Node, Id)
@@ -204,17 +204,17 @@ maybe_kamailio_association(Id, Props, Node) ->
 
 -spec kamailio_association(ne_binary(), kz_proplist(), atom()) -> fs_handlecall_ret().
 kamailio_association(Id, Props, Node) ->
-    Password = kz_binary:rand_hex(12),
+    Password = kz_util:rand_hex_binary(12),
     Realm = props:get_value(<<"domain">>, Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     CCVs = [{Key, Value} || {<<"X-ecallmgr_", Key/binary>>, Value} <- Props],
-    JObj = kz_json:from_list_recursive([{<<"Auth-Method">>, <<"password">>}
-                                       ,{<<"Auth-Password">>, Password}
-                                       ,{<<"Domain-Name">>, Realm}
-                                       ,{<<"User-ID">>, Username}
-                                       ,{<<"Custom-Channel-Vars">>, CCVs}
-                                       ,{<<"Expires">>, 0}
-                                       ]),
+    JObj = kz_json:from_list([{<<"Auth-Method">>, <<"password">>}
+                             ,{<<"Auth-Password">>, Password}
+                             ,{<<"Domain-Name">>, Realm}
+                             ,{<<"User-ID">>, Username}
+                             ,{<<"Custom-Channel-Vars">>, kz_json:from_list(CCVs)}
+                             ,{<<"Expires">>, 0}
+                             ]),
     lager:debug("building authn resp for ~s@~s from kamailio headers", [Username, Realm]),
     {'ok', Xml} = ecallmgr_fs_xml:authn_resp_xml(JObj),
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
