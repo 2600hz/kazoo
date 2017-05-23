@@ -343,5 +343,5 @@ maybe_notify_reseller(Context, Services, AuditLog) ->
                     ,{<<"Audit-Log">>, AuditLog}
                      | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
                     ],
-            kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1)
+            kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_service_added/1)
   end.

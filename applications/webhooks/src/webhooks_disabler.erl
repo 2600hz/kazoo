@@ -187,4 +187,4 @@ send_notification(AccountId, HookId) ->
           ,{<<"Hook-ID">>, HookId}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(API, fun kapi_notifications:publish_webhook_disabled/1).
+    kapps_notify_publisher:cast(API, fun kapi_notifications:publish_webhook_disabled/1).

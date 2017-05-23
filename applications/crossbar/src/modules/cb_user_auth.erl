@@ -408,7 +408,7 @@ save_reset_id_then_send_email(Context) ->
              ,{<<"Account-DB">>, kz_doc:account_db(UserDoc)}
               | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
              ],
-    kapi_notify_publisher:cast(Notify, fun kapi_notifications:publish_password_recovery/1),
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_password_recovery/1),
     Msg = <<"Request for password reset handled, email sent to: ", Email/binary>>,
     crossbar_util:response(Msg, Context).
 

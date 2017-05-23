@@ -549,7 +549,7 @@ send_transaction_notify(AccountId, Transaction) ->
              | braintree_transaction:record_to_notification_props(Transaction)
              ++ kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_transaction/1).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_transaction/1).
 
 -spec add_credit_to_account(kz_json:object(), integer(), ne_binary(), ne_binary(), api_binary()) ->
                                    {'ok', kz_transaction:transaction()} |

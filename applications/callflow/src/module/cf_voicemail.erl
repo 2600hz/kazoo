@@ -399,7 +399,7 @@ compose_voicemail(#mailbox{max_message_count=MaxCount
             ,{<<"Message-Count">>, Count}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_voicemail_full/1),
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_voicemail_full/1),
 
     lager:debug("playing mailbox greeting to caller"),
     _ = play_greeting_intro(Box, Call),

@@ -26,7 +26,7 @@ low_balance(AccountId, Credit) ->
           ,{<<"Current-Balance">>, Credit}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_low_balance/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_low_balance/1).
 
 -spec first_call(ne_binary()) -> 'ok'.
 first_call(AccountId) ->
@@ -34,7 +34,7 @@ first_call(AccountId) ->
           ,{<<"Occurrence">>, <<"call">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 -spec first_registration(ne_binary()) -> 'ok'.
 first_registration(AccountId) ->
@@ -42,7 +42,7 @@ first_registration(AccountId) ->
           ,{<<"Occurrence">>, <<"registration">>}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_first_occurrence/1).
 
 -spec system_alert(atom() | string() | binary(), [any()]) -> 'ok'.
 system_alert(Format, Args) ->

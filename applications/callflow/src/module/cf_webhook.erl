@@ -35,7 +35,7 @@ handle_webhook(Data, Call) ->
             ,{<<"Data">>, CallJObj}
              | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
             ],
-    kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_webhook/1).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_webhook/1).
 
 -spec format_call_data(kapps_call:call()) -> kz_proplist().
 format_call_data(Call) ->

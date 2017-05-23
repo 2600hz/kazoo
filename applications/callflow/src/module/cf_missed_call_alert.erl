@@ -96,7 +96,7 @@ send_missed_alert(Call, Notify, Emails) ->
                | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
               ]
              ),
-    kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_missed_call/1).
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_missed_call/1).
 
 %%--------------------------------------------------------------------
 %% @private

@@ -609,7 +609,7 @@ notfy_new_account(JObj) ->
              ,{<<"Account-DB">>, kz_doc:account_db(JObj)}
               | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
              ],
-    kapi_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
+    kapps_notify_publisher:cast(Notify, fun kapi_notifications:publish_new_account/1).
 
 -spec generate_username(api_binary(), api_binary(), api_binary()) ->
                                ne_binary().

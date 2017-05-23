@@ -4,13 +4,13 @@
 %%% @end
 %%% @contributors
 %%%-------------------------------------------------------------------
--module(kapi_notify_publisher).
+-module(kapps_notify_publisher).
 
 -export([call_collect/2
         ,cast/2
         ]).
 
--include_lib("amqp_util.hrl").
+-include_lib("kazoo_apps.hrl").
 
 -define(NOTIFY_CAT, <<"notify">>).
 

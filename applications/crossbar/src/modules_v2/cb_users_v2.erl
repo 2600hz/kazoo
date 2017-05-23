@@ -452,7 +452,7 @@ send_email(Context) ->
           ,{<<"Password">>, kz_json:get_value(<<"password">>, ReqData)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_new_user/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_new_user/1).
 
 %%--------------------------------------------------------------------
 %% @private

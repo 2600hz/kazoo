@@ -35,7 +35,7 @@ maybe_notify(Account, {<<"zones">>, Zones}) ->
             ,{<<"Zones">>, Zones}
              | kz_api:default_headers(?APP_VERSION, ?APP_NAME)
             ],
-    kapi_notify_publisher:cast(Props, fun kapi_notifications:publish_account_zone_change/1);
+    kapps_notify_publisher:cast(Props, fun kapi_notifications:publish_account_zone_change/1);
 
 maybe_notify(_Account, {_Key, _Value}) ->
     'ok'.

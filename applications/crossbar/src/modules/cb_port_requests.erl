@@ -1194,7 +1194,7 @@ send_port_comment_notification(Context, Id) ->
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_comment/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1209,7 +1209,7 @@ send_port_unconfirmed_notification(Context, Id) ->
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_unconfirmed/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1224,7 +1224,7 @@ send_port_request_notification(Context, Id) ->
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_request/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_request/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1239,7 +1239,7 @@ send_port_pending_notification(Context, Id) ->
           ,{<<"Version">>, cb_context:api_version(Context)}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_pending/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_pending/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1253,7 +1253,7 @@ send_port_rejected_notification(Context, Id) ->
           ,{<<"Port-Request-ID">>, Id}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_rejected/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_rejected/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1267,7 +1267,7 @@ send_port_cancel_notification(Context, Id) ->
           ,{<<"Port-Request-ID">>, Id}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_cancel/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_cancel/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1281,7 +1281,7 @@ send_ported_notification(Context, Id) ->
           ,{<<"Port-Request-ID">>, Id}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_ported/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_ported/1).
 
 %%--------------------------------------------------------------------
 %% @private
@@ -1295,7 +1295,7 @@ send_port_scheduled_notification(Context, Id) ->
           ,{<<"Port-Request-ID">>, Id}
            | kz_api:default_headers(?APP_NAME, ?APP_VERSION)
           ],
-    kapi_notify_publisher:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
+    kapps_notify_publisher:cast(Req, fun kapi_notifications:publish_port_scheduled/1).
 
 %%--------------------------------------------------------------------
 %% @private
