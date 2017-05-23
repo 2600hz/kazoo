@@ -208,14 +208,13 @@ kamailio_association(Id, Props, Node) ->
     Realm = props:get_value(<<"domain">>, Props),
     Username = props:get_value(<<"user">>, Props, props:get_value(<<"Auth-User">>, Props)),
     CCVs = [{Key, Value} || {<<"X-ecallmgr_", Key/binary>>, Value} <- Props],
-    JObj = kz_json:from_list_recursive([
-         {<<"Auth-Method">>, <<"password">>}
-         ,{<<"Auth-Password">>, Password}
-         ,{<<"Domain-Name">>, Realm}
-         ,{<<"User-ID">>, Username}
-         ,{<<"Custom-Channel-Vars">>, CCVs}
-         ,{<<"Expires">>, 0}
-         ]),
+    JObj = kz_json:from_list_recursive([{<<"Auth-Method">>, <<"password">>}
+                                       ,{<<"Auth-Password">>, Password}
+                                       ,{<<"Domain-Name">>, Realm}
+                                       ,{<<"User-ID">>, Username}
+                                       ,{<<"Custom-Channel-Vars">>, CCVs}
+                                       ,{<<"Expires">>, 0}
+                                       ]),
     lager:debug("building authn resp for ~s@~s from kamailio headers", [Username, Realm]),
     {'ok', Xml} = ecallmgr_fs_xml:authn_resp_xml(JObj),
     lager:debug("sending authn XML to ~w: ~s", [Node, Xml]),
