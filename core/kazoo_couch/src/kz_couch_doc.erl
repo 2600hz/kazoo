@@ -150,7 +150,7 @@ do_save_docs(#db{}=Db, Docs, Options) ->
                           {'ok', kz_json:objects()} |
                           couchbeam_error().
 do_save_docs(#db{}=Db, Docs, Options, Acc) ->
-    try lists:split(?MAX_BULK_INSERT, Docs) of
+    try lists:split(?COUCH_MAX_BULK_INSERT, Docs) of
         {Save, Cont} ->
             case perform_save_docs(Db, Save, Options) of
                 {'error', _}=E -> E;
