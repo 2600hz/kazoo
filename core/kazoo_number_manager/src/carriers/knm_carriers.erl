@@ -33,10 +33,11 @@
         ,is_local/1
         ]).
 
--define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
-
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
+
+-define(DEFAULT_CARRIER_MODULES, [?DEFAULT_CARRIER_MODULE]).
+
 -define(CARRIER_MODULES
        ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
 

@@ -139,7 +139,8 @@ rep({'ok', 200=Code, _Headers, <<"{",_/binary>>=Response}) ->
     ?DEBUG_APPEND("Response:~n~p~n~p~n~s~n", [Code, _Headers, Response]),
 
     Routines = [fun(JObj) -> maybe_remove_best_effort(?SHOULD_KEEP_BEST_EFFORT, JObj) end
-               ,fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end],
+               ,fun(JObj) -> maybe_filter_rates(?SHOULD_FILTER_RATES, JObj) end
+               ],
 
     maybe_apply_limit(
       lists:foldl(fun(F, J) -> F(J) end, kz_json:decode(Response), Routines)
@@ -181,9 +182,9 @@ maybe_filter_rates('true', JObj) ->
     UpfrontCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"upfront_cost">>, 1.0),
     MonthlyRecurringCost = kapps_config:get_float(?MOD_CONFIG_CAT, <<"monthly_recurring_cost">>, 1.0),
     Results = [Result
-               || Result <- kz_json:get_value(<<"result">>, JObj, [])
-                      ,(kz_json:get_float_value(<<"upfront_cost">>, Result) == UpfrontCost)
-                      and (kz_json:get_float_value(<<"monthly_recurring_cost">>, Result) == MonthlyRecurringCost)
+               || Result <- kz_json:get_value(<<"result">>, JObj, []),
+                  kz_json:get_float_value(<<"upfront_cost">>, Result) == UpfrontCost
+                      andalso kz_json:get_float_value(<<"monthly_recurring_cost">>, Result) == MonthlyRecurringCost
               ],
     kz_json:set_value(<<"result">>, Results, JObj).
 
