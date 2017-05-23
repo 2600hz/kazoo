@@ -1,5 +1,6 @@
 -ifndef(KZ_DATA_HRL).
--include_lib("kazoo/include/kz_types.hrl"). % get the kazoo types
+
+-include_lib("kazoo/include/kz_types.hrl").
 -include_lib("kazoo/include/kz_log.hrl").
 -include_lib("kazoo/include/kz_databases.hrl").
 -include_lib("kazoo/include/kz_system_config.hrl").
@@ -128,9 +129,6 @@
                         ]).
 
 -define(DELETE_KEYS, [<<"_rev">>, <<"id">>, <<"_attachments">>, <<"pvt_attachments">>]).
-
--define(MAX_BULK_INSERT, 2000).
--define(MAX_BULK_READ, kapps_config:get_integer(?CONFIG_CAT, <<"max_chunked_read_size">>, 2000)).
 
 -define(KZ_DATA_HRL, 'true').
 -endif.

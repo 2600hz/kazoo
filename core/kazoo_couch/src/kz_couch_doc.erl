@@ -22,9 +22,6 @@
 
 -include("kz_couch.hrl").
 
-%% Throttle how many docs we bulk insert to BigCouch
--define(MAX_BULK_INSERT, 2000).
-
 -type copy_function() :: fun((server(), ne_binary(), kz_json:object(), kz_proplist()) ->
                                     {'ok', kz_json:object()} | couchbeam_error()).
 -export_type([copy_function/0]).

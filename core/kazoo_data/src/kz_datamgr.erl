@@ -95,9 +95,7 @@
 
 -include("kz_data.hrl").
 
--define(VALID_DBNAME(DbName),
-        is_binary(DbName)
-        andalso byte_size(DbName) > 0).
+-define(VALID_DBNAME(DbName), is_binary(DbName), byte_size(DbName) > 0).
 
 -define(UUID_SIZE, 16).
 
@@ -1395,19 +1393,24 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 
 %%------------------------------------------------------------------------------
 %% @public
-%% @doc How many documents are chunked when doing a bulk save
+%% @doc
+%% How many documents are chunked when doing a bulk save
 %% @end
 %%------------------------------------------------------------------------------
--spec max_bulk_insert() -> ?MAX_BULK_INSERT.
-max_bulk_insert() -> ?MAX_BULK_INSERT.
+-spec max_bulk_insert() -> pos_integer().
+max_bulk_insert() ->
+    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_insert">>, 2000).
 
 %%------------------------------------------------------------------------------
 %% @public
-%% @doc How many documents are chunked when doing a bulk read
+%% @doc
+%% How many documents are chunked when doing a bulk read
 %% @end
 %%------------------------------------------------------------------------------
 -spec max_bulk_read() -> pos_integer().
-max_bulk_read() -> ?MAX_BULK_READ.
+max_bulk_read() ->
+    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_read">>, 2000).
+
 
 -spec db_classification(text()) -> db_classifications().
 db_classification(DBName) -> kzs_util:db_classification(DBName).
