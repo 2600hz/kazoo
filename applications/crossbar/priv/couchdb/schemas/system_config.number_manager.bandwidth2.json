@@ -5,7 +5,7 @@
     "properties": {
         "account_id": {
             "default": "",
-            "description": "number_manager.bandwidth2 account id",
+            "description": "account ID for the asynchronous Bandwidth API",
             "type": "string"
         },
         "api_password": {
@@ -20,7 +20,7 @@
         },
         "debug": {
             "default": false,
-            "description": "number_manager.bandwidth2 debug",
+            "description": "should the debug mode be activated for the asynchronous Bandwidth API?",
             "type": "boolean"
         },
         "enable_provisioning": {

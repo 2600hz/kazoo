@@ -14,7 +14,7 @@
             "type": "boolean"
         },
         "monthly_recurring_cost": {
-            "default": 1,
+            "default": 1.0,
             "description": "number_manager.telnyx monthly recurring cost",
             "type": "number"
         },
@@ -25,12 +25,12 @@
         },
         "should_filter_rates": {
             "default": false,
-            "description": "number_manager.telnyx should filter rates",
+            "description": "should search results be filtered based on configured allowed cost?",
             "type": "boolean"
         },
         "should_keep_best_effort": {
             "default": false,
-            "description": "number_manager.telnyx should keep best effort",
+            "description": "should search results also contain 'best effort' results?",
             "type": "boolean"
         },
         "token": {
@@ -38,8 +38,8 @@
             "type": "string"
         },
         "upfront_cost": {
-            "default": 1,
-            "description": "number_manager.telnyx upfront cost",
+            "default": 1.0,
+            "description": "allowed upfront cost when acquiring number",
             "type": "number"
         },
         "user": {

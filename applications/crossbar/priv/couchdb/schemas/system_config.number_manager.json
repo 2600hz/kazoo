@@ -5,19 +5,19 @@
     "properties": {
         "allow_port_transition_from_submitted_to_scheduled": {
             "default": false,
-            "description": "Should number ports be allowed to transition from submitted to scheduled?",
+            "description": "should number ports be allowed to transition from submitted to scheduled?",
             "type": "boolean"
         },
         "available_module_name": {
             "default": "knm_local",
-            "description": "number_manager available module name",
+            "description": "default carrier module name to use when creating a number",
             "type": "string"
         },
         "carrier_modules": {
             "default": [
                 "knm_local"
             ],
-            "description": "number_manager carrier modules",
+            "description": "carrier modules to perform number search & ordering from",
             "items": {
                 "type": "string"
             },
@@ -59,14 +59,14 @@
                     "regex": "^(.*)$"
                 }
             },
-            "description": "number_manager classifiers",
+            "description": "regular expressions & billing names for numbers",
             "type": "object"
         },
         "converters": {
             "default": [
                 "regex"
             ],
-            "description": "number_manager converters",
+            "description": "suffix for the KNM module to use for E164, NPAN and 1NPAN normalization of numbers",
             "items": {
                 "type": "string"
             },
@@ -74,17 +74,17 @@
         },
         "default_force_outbound": {
             "default": false,
-            "description": "number_manager default force outbound",
+            "description": "should we 'force_outbound' when this feature is not set on the number?",
             "type": "boolean"
         },
         "e164_converters": {
-            "description": "number_manager e164 converters",
+            "description": "regular expressions to convert numbers to E164 format",
             "type": "object"
         },
         "features": {
             "properties": {
                 "allow": {
-                    "description": "Number features a number is allowed to edit",
+                    "description": "number features a number is allowed to edit",
                     "items": {
                         "type": "string"
                     },
@@ -94,22 +94,22 @@
         },
         "fetch_account_from_ports": {
             "default": true,
-            "description": "number_manager fetch account from ports",
+            "description": "should we also search ports when trying to `/identify` a number?",
             "type": "boolean"
         },
         "force_local_outbound": {
             "default": true,
-            "description": "number_manager force local outbound",
+            "description": "default value for 'force_outbound' for local numbers only",
             "type": "boolean"
         },
         "force_port_in_outbound": {
             "default": true,
-            "description": "number_manager force port in outbound",
+            "description": "default value for 'force_outbound' for port_in numbers only",
             "type": "boolean"
         },
         "force_port_out_outbound": {
             "default": true,
-            "description": "number_manager force port out outbound",
+            "description": "default value for 'force_outbound' for port_out numbers only",
             "type": "boolean"
         },
         "local_feature_override": {
@@ -119,7 +119,7 @@
         },
         "maximum_search_quantity": {
             "default": 500,
-            "description": "maximum number of returned DIDs in search query",
+            "description": "maximum number of returned DIDs in a search query",
             "minimum": 1,
             "type": "integer"
         },
@@ -137,11 +137,11 @@
         },
         "port_in_module_name": {
             "default": "knm_local",
-            "description": "the kazoo number manager module name that completed port request numbers should be created with",
+            "description": "completed port requests will create numbers with this carrier module name",
             "type": "string"
         },
         "providers": {
-            "description": "Number features sub accounts are allowed to enable or disable",
+            "description": "legacy value for number_manager.features.allow",
             "items": {
                 "type": "string"
             },
@@ -149,39 +149,39 @@
         },
         "reconcile_regex": {
             "default": "^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*$",
-            "description": "number_manager reconcile regex",
+            "description": "if a number matches this regular expression then it is reconcilable",
             "type": "string"
         },
         "released_state": {
             "default": "available",
-            "description": "number_manager released state",
+            "description": "state to put numbers in when they are being released and their reserve history is empty",
             "type": "string"
         },
         "should_age": {
             "default": false,
-            "description": "number_manager should age",
+            "description": "Should numbers go through an aging period before being available?",
             "type": "boolean"
         },
         "should_permanently_delete": {
             "default": false,
-            "description": "number_manager should permanently delete",
+            "description": "when disconnecting numbers, if this flag is true they will be deleted otherwise they will go back to a pool. Local numbers are not affected by this flag",
             "type": "boolean"
         },
         "time_between_accounts_ms": {
             "default": 1000,
-            "description": "number_manager time between accounts in milliseconds",
+            "description": "time to pause in between the processing of accounts in milliseconds",
             "minimum": 1,
             "type": "integer"
         },
         "time_between_numbers_ms": {
             "default": 1000,
-            "description": "number_manager time between numbers in milliseconds",
+            "description": "time to pause in between the processing of numbers in milliseconds",
             "minimum": 1,
             "type": "integer"
         },
         "unauthorized_numbers_lookup": {
             "default": false,
-            "description": "number_manager unauthorized numbers lookup",
+            "description": "should number search be allowed for unauthenticated API requests?",
             "type": "boolean"
         }
     },
