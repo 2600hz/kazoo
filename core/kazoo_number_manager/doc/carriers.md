@@ -7,7 +7,8 @@ Version: 4.0
 
 # Overview
 
-The `knm_carriers` module provides the interface to the enabled carrier modules, allowing upper-level applications a single interface to interact with carriers. The primary API concerns searching for, acquiring, and disconnecting numbers from the underlying carrier modules, as well as standardizing the results (including errors) across all carrier modules.
+The `knm_carriers` module provides the interface to the enabled carrier modules, allowing upper-level applications a single interface to interact with carriers.
+The primary API concerns searching for, acquiring, and disconnecting numbers from the underlying carrier modules, as well as standardizing the results (including errors) across all carrier modules.
 
 ## Behaviour
 
@@ -30,19 +31,22 @@ The arguments are:
 2. The quantity: how many numbers matching that prefix to search for
 3. Options list: various flags the carrier module can use to refine searching
 
-The result will be a list of `#knm_number{}` records wrapped in an 'ok' tuple or an error tuple.
+Returns either:
+* `{ok, Numbers}` where `Numbers` is a list of `knm_search` results
+* `{bulk, Numbers}` where `Numbers` is a list of `knm_search` results
+* `{error, Reason}` an error tuple
 
 ### `acquire_number/1`
 
 The argument is the `#knm_number{}` record representing the number desired.
-
-The result is the modified `#knm_number{}` record or an exception is thrown on error.
+The result is the modified `#knm_number{}` record.
+An exception is thrown on error.
 
 ### `disconnect_number/1`
 
 The argument is the `#knm_number{}` record representing the number to be disconnected.
-
-The result is the modified `#knm_number{}` record or an exception is thrown on error.
+The result is the modified `#knm_number{}` record.
+An exception is thrown on error.
 
 ### `should_lookup_cnam/0`
 

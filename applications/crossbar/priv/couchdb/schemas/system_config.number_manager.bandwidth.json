@@ -5,12 +5,12 @@
     "properties": {
         "debug": {
             "default": false,
-            "description": "number_manager.bandwidth debug",
+            "description": "should debug mode be activated for the legacy knm_bandwidth?",
             "type": "boolean"
         },
         "developer_key": {
             "default": "",
-            "description": "number_manager.bandwidth developer key",
+            "description": "developer key for the legacy Bandwidth API",
             "type": "string"
         },
         "enable_provisioning": {

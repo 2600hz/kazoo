@@ -44,7 +44,6 @@ Example:
        "enable_provisioning": true
    }
 }
-
 ```
 
 #### Tollfree Support

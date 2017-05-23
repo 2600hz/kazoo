@@ -50,6 +50,7 @@
 -export([feature_permissions_on_system_config/0]).
 -export([add_allowed_feature_on_system_config/1
         ,remove_allowed_feature_on_system_config/1
+        ,reset_allowed_features_to_defaults_on_system_config/0
         ]).
 
 -define(TIME_BETWEEN_ACCOUNTS_MS
@@ -809,6 +810,17 @@ feature_permissions_on_system_config() ->
     io:format("Features allowed on system config document:\n\t~s\n", [list_features(Allowed)]),
     no_return.
 
+%% @public
+-spec reset_allowed_features_to_defaults_on_system_config() -> no_return.
+reset_allowed_features_to_defaults_on_system_config() ->
+    set_features_on_system_config(?DEFAULT_FEATURES_ALLOWED_SYSTEM).
+
+%% @private
+-spec set_features_on_system_config(ne_binaries()) -> no_return.
+set_features_on_system_config(Features) ->
+    _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, lists:usort(Features)),
+    feature_permissions_on_system_config().
+
 %% @private
 -spec edit_allowed_feature_permissions_on_system_config(fun(), ne_binary()) -> no_return.
 edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
@@ -816,9 +828,7 @@ edit_allowed_feature_permissions_on_system_config(Fun, Feature) ->
         false -> invalid_feature(Feature);
         true ->
             Allowed = knm_providers:system_allowed_features(),
-            NewFeatures = lists:usort(Fun(Feature, Allowed)),
-            _ = kapps_config:set(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, NewFeatures),
-            feature_permissions_on_system_config()
+            set_features_on_system_config(Fun(Feature, Allowed))
     end.
 
 %% @public

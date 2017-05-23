@@ -217,3 +217,13 @@ attempt to convert numbers with carrier module knm_bandwidth to knm_bandwidth2 i
 updated carrier module to knm_bandwidth2 for 0:
 updating carrier module failed for 0:
 ```
+
+
+## reset_allowed_features_to_defaults_on_system_config
+
+> sup kazoo_number_manager_maintenance reset_allowed_features_to_defaults_on_system_config
+
+```
+Features allowed on system config document:
+	carrier_name cnam e911 failover force_outbound inbound_cnam outbound_cnam port prepend ringback
+```

@@ -56,10 +56,9 @@
 -define(FEATURES_DENIED_RESELLER(AccountId),
         kapps_account_config:get_from_reseller(AccountId, ?KNM_CONFIG_CAT, ?KEY_FEATURES_DENY)).
 
+-define(DEFAULT_FEATURES_ALLOWED_SYSTEM, ?ALL_KNM_FEATURES).
 -define(FEATURES_ALLOWED_SYSTEM(Default),
-        kapps_config:get(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
-
--define(FEATURES_ALLOWED_SYSTEM, ?FEATURES_ALLOWED_SYSTEM(?ALL_KNM_FEATURES)).
+        kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, ?KEY_FEATURES_ALLOW, Default)).
 
 
 -ifdef(TEST).
