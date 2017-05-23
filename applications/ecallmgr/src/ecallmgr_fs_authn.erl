@@ -284,6 +284,7 @@ handle_lookup_resp(<<"reverse-lookup">>, Realm, Username, {'ok', JObj}) ->
 handle_lookup_resp(_, Realm, Username, {'ok', JObj}) ->
     Props = [{<<"Domain-Name">>, Realm}
             ,{<<"User-ID">>, Username}
+            ,{<<"Expires">>, 0}
             ],
     lager:debug("building authn resp for ~s@~s", [Username, Realm]),
     ecallmgr_fs_xml:authn_resp_xml(kz_json:set_values(Props, JObj));
