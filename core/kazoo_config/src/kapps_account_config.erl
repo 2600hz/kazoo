@@ -154,7 +154,7 @@ get_ne_binary(Account, Config, Path, Default) ->
 -spec get_ne_binaries(account(), ne_binary(), kz_json:path()) -> ne_binaries().
 -spec get_ne_binaries(account(), ne_binary(), kz_json:path(), Default) -> ne_binaries() | Default.
 get_ne_binaries(Account, Config, Path) ->
-    get_ne_binaries(Account, Config, Path, []).
+    get_ne_binaries(Account, Config, Path, undefined).
 get_ne_binaries(Account, Config, Path, Default) ->
     Values = get(Account, Config, Path, Default),
     case kz_term:is_ne_binaries(Values) of
