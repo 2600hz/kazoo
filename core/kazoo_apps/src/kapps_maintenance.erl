@@ -343,6 +343,10 @@ refresh(?KZ_TASKS_DB) ->
     _ = kz_datamgr:db_create(?KZ_TASKS_DB),
     _ = kz_datamgr:revise_views_from_folder(?KZ_TASKS_DB, 'tasks'),
     'ok';
+refresh(?KZ_PENDING_NOTIFY_DB) ->
+    _ = kz_datamgr:db_create(?KZ_PENDING_NOTIFY_DB),
+    kz_datamgr:revise_doc_from_file(?KZ_PENDING_NOTIFY_DB, 'crossbar', "views/pending_notify.json"),
+    'ok';
 refresh(Database) when is_binary(Database) ->
     case kz_datamgr:db_classification(Database) of
         'account' -> refresh_account_db(Database);

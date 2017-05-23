@@ -11344,6 +11344,37 @@
             },
             "type": "object"
         },
+        "system_config.tasks.notify_resend": {
+            "description": "Schema for tasks.notify_resend system_config",
+            "properties": {
+                "cycle_delay_time_ms": {
+                    "default": 300000,
+                    "description": "TImeout in milliseconds between each cycle",
+                    "type": "integer"
+                },
+                "max_doc_read": {
+                    "default": 20,
+                    "description": "Mac number of notification read from database for each cycle",
+                    "type": "integer"
+                },
+                "max_retries": {
+                    "default": 3,
+                    "description": "Default max retries to re-publish",
+                    "type": "integer"
+                },
+                "reschedule_rules": {
+                    "default": {},
+                    "description": "Re-schedule rules for each notification type to apply",
+                    "type": "object"
+                },
+                "retry_after_fudge_ms": {
+                    "default": 600000,
+                    "description": "Constant time in milliseconds which would be multipy with attemtps to set retry time",
+                    "type": "integer"
+                }
+            },
+            "type": "object"
+        },
         "system_config.tasks.numbers": {
             "description": "Schema for tasks.numbers system_config",
             "properties": {

@@ -52,7 +52,7 @@ db_classification(?KZ_OAUTH_DB) -> 'system';
 db_classification(?KZ_AUTH_DB) -> 'system';
 db_classification(?KZ_DATA_DB) -> 'system';
 db_classification(?KZ_TASKS_DB) -> 'system';
-db_classification(<<"pending_notifications">>) -> 'system';
+db_classification(?KZ_PENDING_NOTIFY_DB) -> 'system';
 db_classification(?KZ_PROVISIONER_DB) -> 'system'; %% Soon to be deprecated
 db_classification(?KZ_ACCOUNTS_DB) -> 'aggregate';
 db_classification(?KZ_TOKEN_DB) -> 'aggregate';
@@ -110,6 +110,7 @@ db_priority(?KZ_SCHEMA_DB) -> 10;
 db_priority(?KZ_SERVICES_DB) -> 11;
 db_priority(?KZ_PORT_REQUESTS_DB) -> 12;
 db_priority(?KZ_TASKS_DB) -> 13;
+db_priority(?KZ_PENDING_NOTIFY_DB) -> 13;
 db_priority(?KZ_DEDICATED_IP_DB) -> 14;
 db_priority(?KZ_ALERTS_DB) -> 15;
 db_priority(?KZ_MEDIA_DB) -> 16;

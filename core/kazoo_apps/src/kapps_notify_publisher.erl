@@ -14,8 +14,6 @@
 
 -define(NOTIFY_CAT, <<"notify">>).
 
--define(FAILED_NOTIFY_DB, <<"pending_notifications">>).
-
 -define(DEFAULT_TIMEOUT, 10 * ?MILLISECONDS_IN_SECOND).
 -define(TIMEOUT, kapps_config:get_pos_integer(?NOTIFY_CAT, <<"notify_publisher_timeout_ms">>, ?DEFAULT_TIMEOUT)).
 
@@ -61,7 +59,7 @@ cast(Req, PublishFun) ->
                       end,
                   call_collect(Req, PublishFun)
           end,
-    _ = kz_util:spawn(Fun),
+    _ = erlang:spawn(Fun),
     'ok'.
 
 %%%===================================================================
@@ -105,12 +103,12 @@ handle_error(NotifyType, Req, Error) ->
               ,{<<"failure_reason">>, error_to_failure_reason(Error)}
               ,{<<"notification_type">>, NotifyType}
               ,{<<"payload">>, Req}
-              ,{<<"attempted">>, 1}
+              ,{<<"attempts">>, 1}
               ]),
     JObj = kz_doc:update_pvt_parameters(
              kz_json:from_list_recursive(Props), 'undefined', [{'type', <<"failed_notify">>}
                                                               ,{'account_id', find_account_id(Req)}
-                                                              ,{'account_db', ?FAILED_NOTIFY_DB}
+                                                              ,{'account_db', ?KZ_PENDING_NOTIFY_DB}
                                                               ]
             ),
     save_pending_notification(NotifyType, JObj, 2).
@@ -119,11 +117,11 @@ handle_error(NotifyType, Req, Error) ->
 save_pending_notification(_NotifyType, _JObj, Loop) when Loop < 0 ->
     lager:error("max try to save payload for notification ~s publish attempt", [_NotifyType]);
 save_pending_notification(NotifyType, JObj, Loop) ->
-    case kz_datamgr:save_doc(?FAILED_NOTIFY_DB, JObj) of
+    case kz_datamgr:save_doc(?KZ_PENDING_NOTIFY_DB, JObj) of
         {'ok', _} ->
             lager:error("payload for failed notification ~s publish attempt was saved", [NotifyType]);
         {'error', 'not_found'} ->
-            _ = kz_datamgr:db_create(?FAILED_NOTIFY_DB),
+            kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
             save_pending_notification(NotifyType, JObj, Loop - 1);
         {'error', 'timeout'} ->
             save_pending_notification(NotifyType, JObj, Loop - 1);

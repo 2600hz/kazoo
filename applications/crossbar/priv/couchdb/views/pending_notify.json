@@ -1,0 +1,15 @@
+{
+    "_id": "_design/pending_notify",
+    "language": "javascript",
+    "views": {
+        "list_by_modified": {
+            "map": [
+                "function(doc) {",
+                "  if (doc.pvt_type != 'failed_notify' || doc.pvt_deleted || doc.max_retried) return;",
+                "  var key = doc.pvt_modified + (doc.retry_after !== null ? 0 : doc.retry_after);",
+                "  emit(key, null);",
+                "}"
+            ]
+        }
+    }
+}

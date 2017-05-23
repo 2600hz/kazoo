@@ -32,6 +32,8 @@
 
 -define(KZ_TASKS_DB, <<"tasks">>).
 
+-define(KZ_PENDING_NOTIFY_DB, <<"pending_notifications">>).
+
 -define(KZ_SYSTEM_DBS, [?KZ_DATA_DB
                        ,?KZ_CONFIG_DB
                        ,?KZ_SCHEMA_DB
@@ -53,6 +55,7 @@
                        ,?KZ_TOKEN_DB
                        ,?KZ_ALERTS_DB
                        ,?KZ_TASKS_DB
+                       ,?KZ_PENDING_NOTIFY_DB
                        ]).
 
 -define(KZ_DATABASES_HRL, 'true').
