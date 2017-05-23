@@ -5,7 +5,7 @@ FMT = $(ROOT)/make/erlang-formatter-master/fmt.sh
 
 KAZOODIRS = core/Makefile applications/Makefile
 
-.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger coverage-report fs-headers docs validate-schemas
+.PHONY: $(KAZOODIRS) deps core apps xref xref_release dialyze dialyze-it dialyze-apps dialyze-core dialyze-kazoo clean clean-test clean-release build-release build-ci-release tar-release release read-release-cookie elvis install ci diff fmt bump-copyright apis validate-swagger sdks coverage-report fs-headers docs validate-schemas
 
 all: compile rel/dev-vm.args
 
@@ -205,8 +205,6 @@ docs-validate:
 docs-report:
 	@$(ROOT)/scripts/reconcile_docs_to_index.bash
 
-docs-validate:
-
 docs-setup:
 	@$(ROOT)/scripts/validate_mkdocs.py
 	@$(ROOT)/scripts/setup_docs.bash
@@ -229,6 +227,9 @@ fs-headers:
 
 validate-swagger:
 	@$(ROOT)/scripts/validate-swagger.sh
+
+sdks:
+	@$(ROOT)/scripts/make-swag.sh
 
 validate-schemas:
 	@$(ROOT)/scripts/validate-schemas.sh $(ROOT)/applications/crossbar/priv/couchdb/schemas
