@@ -365,7 +365,7 @@ apply_reschedule_logic(NotifyType, JObj) ->
 apply_reschedule_rules(_NotifyType, {[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),
-    RuleAttempt = kz_json:get_inetegr_value(<<"attempt">>, Rule, Attempts),
+    RuleAttempt = kz_json:get_integer_value(<<"attempt">>, Rule, Attempts),
     RetryAfter = kz_json:get_integer_value(<<"retry_after_ms">>, Rule, ?DEFAULT_RETRY_PERIOD),
     Retries = kz_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
     case RuleAttempt =:= Attempts of

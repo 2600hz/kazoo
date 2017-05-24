@@ -233,7 +233,8 @@ delete(Id) ->
     case kz_datamgr:del_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', _} -> io:format("notification ~s has been deleted~n", [Id]);
         {'error', _Reason} -> io:format("failed to delete notification ~s: ~p~n", [Id, _Reason])
-    end.
+    end,
+    'no_return'.
 
 -spec delete_older_than(gregorian_seconds()) -> 'no_return'.
 delete_older_than(Timestamp) ->

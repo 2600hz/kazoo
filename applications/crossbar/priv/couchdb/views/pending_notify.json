@@ -11,7 +11,7 @@
                 "    'id': doc._id,",
                 "    'type': doc.notification_type,",
                 "    'modified': doc.pvt_modified,",
-                "    'attempts': doc.attempts",
+                "    'attempts': doc.attempts,",
                 "    'reason': doc.failure_reason",
                 "  });",
                 "}"
@@ -27,7 +27,7 @@
                 "    'id': doc._id,",
                 "    'type': doc.notification_type,",
                 "    'modified': doc.pvt_modified,",
-                "    'attempts': doc.attempts",
+                "    'attempts': doc.attempts,",
                 "    'reason': doc.failure_reason",
                 "  });",
                 "}"
@@ -52,7 +52,7 @@
                 "    'id': doc._id,",
                 "    'type': doc.notification_type,",
                 "    'modified': doc.pvt_modified,",
-                "    'attempts': doc.attempts",
+                "    'attempts': doc.attempts,",
                 "    'reason': doc.failure_reason",
                 "  });",
                 "}"
@@ -68,7 +68,7 @@
                 "    'id': doc._id,",
                 "    'type': doc.notification_type,",
                 "    'modified': doc.pvt_modified,",
-                "    'attempts': doc.attempts",
+                "    'attempts': doc.attempts,",
                 "    'reason': doc.failure_reason",
                 "  });",
                 "}"
