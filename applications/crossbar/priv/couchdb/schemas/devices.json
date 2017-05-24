@@ -418,7 +418,9 @@
                 },
                 "realm": {
                     "description": "The realm this device should use, overriding the account realm. Should rarely be necessary.",
-                    "format": "uri",
+                    "maxLength": 253,
+                    "minLength": 4,
+                    "pattern": "^[.\\w_-]+$",
                     "type": "string"
                 },
                 "route": {

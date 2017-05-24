@@ -59,6 +59,9 @@ Key | Description | Type | Default | Required
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
+`provision.endpoint_brand` | Brand of the phone | `string` |   | `false`
+`provision.endpoint_family` | Family name of the phone | `string` |   | `false`
+`provision.endpoint_model` | Model name of the phone | `string, integer` |   | `false`
 `provision.feature_keys` | Feature Keys | `object` |   | `false`
 `provision.feature_keys./^[0-9]+$/` |   | `object, null` |   | `false`
 `register_overwrite_notify` | When true enables overwrite notifications | `boolean` | `false` | `false`
@@ -74,7 +77,7 @@ Key | Description | Type | Default | Required
 `sip.method` | Method of authentication | `string('password', 'ip')` | `password` | `false`
 `sip.number` | The number used if the invite format is 1npan, npan, or e164 (if not set the dialed number is used) | `string` |   | `false`
 `sip.password` | SIP authentication password | `string(5..32)` |   | `false`
-`sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string` |   | `false`
+`sip.realm` | The realm this device should use, overriding the account realm. Should rarely be necessary. | `string(4..253)` |   | `false`
 `sip.route` | The SIP URL used if the invite format is 'route' | `string` |   | `false`
 `sip.static_route` | Sends all inbound calls to this string (instead of dialed number or username) | `string` |   | `false`
 `sip.username` | SIP authentication username | `string(2..32)` |   | `false`
