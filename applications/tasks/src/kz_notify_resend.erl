@@ -17,7 +17,9 @@
         ,code_change/3
         ]).
 
--export([running/0]).
+-export([running/0
+        ,send_single/1
+        ]).
 
 -include("tasks.hrl").
 
@@ -111,14 +113,24 @@ start_link() ->
 %%--------------------------------------------------------------------
 -spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
+    kz_util:put_callid(?NAME),
     {'ok', #state{}, ?TIME_BETWEEN_CYCLE}.
 
 -spec running() -> kz_json:objects().
 running() ->
-  case kz_globals:where_is(?NAME) of
-      'undefined' -> [];
-      _ -> gen_server:call(?SERVER, 'running')
-  end.
+    case kz_globals:where_is(?NAME) of
+        'undefined' -> [];
+        _ -> gen_server:call(?SERVER, 'running')
+    end.
+
+-spec send_single(ne_binary()) -> {'ok' | 'failed', kz_json:object()} | {'error', any()}.
+send_single(Id) ->
+    case kz_datamgr:open_doc(?KZ_PENDING_NOTIFY_DB, Id) of
+        {'ok', JObj} ->
+            kz_util:put_callid(kz_json:get_value(<<"payload">>, JObj)),
+            process_single(JObj);
+        {'error', _}=Error -> Error
+    end.
 
 %% @private
 -spec next() -> 'ok'.
@@ -226,19 +238,45 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%%===================================================================
 
--spec process_then_next_cycle(kz_json:objects()) -> 'ok'.
-process_then_next_cycle(Pendings) ->
-    save_result(lists:foldl(fun send_notification/2, new_results_map(), Pendings)),
-    next().
-
--spec send_notification(kz_json:object(), map()) -> map().
-send_notification(JObj, Map) ->
+-spec process_single(kz_json:object()) -> {'ok' | 'failed', kz_json:object()}.
+process_single(JObj) ->
     API = kz_json:get_value(<<"payload">>, JObj, kz_json:new()),
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
 
     CallResp = kz_amqp_worker:call_collect(API, PublishFun, fun collecting/1, ?PUBLISH_TIMEOUT),
-    handle_result(NotifyType, JObj, Map, CallResp).
+    case handle_result(CallResp) of
+        'true' -> {'ok', JObj};
+        'false' -> {'failed', JObj}
+    end.
+
+-spec process_then_next_cycle(kz_json:objects()) -> 'ok'.
+process_then_next_cycle(Pendings) ->
+    save_result(
+      lists:foldl(fun(JObj, #{ko := KO}=Map) ->
+                          try send_notification(JObj, Map)
+                          catch
+                              _T:_E ->
+                                  Map#{ko := [JObj|KO]}
+                          end
+                  end
+                 ,new_results_map()
+                 ,Pendings
+                 )
+     ),
+    next().
+
+-spec send_notification(kz_json:object(), map()) -> map().
+send_notification(JObj, #{ok := OK}=Map) ->
+    API = kz_json:get_value(<<"payload">>, JObj, kz_json:new()),
+    NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
+    PublishFun = map_to_publish_fun(NotifyType),
+
+    CallResp = kz_amqp_worker:call_collect(API, PublishFun, fun collecting/1, ?PUBLISH_TIMEOUT),
+    case handle_result(CallResp) of
+        'true' -> Map#{ok := [JObj|OK]};
+        'false' -> maybe_reschedule(NotifyType, JObj, Map)
+    end.
 
 -spec save_result(map()) -> 'ok'.
 save_result(Map) ->
@@ -274,26 +312,20 @@ db_bulk_result(JObj) ->
             'false'
     end.
 
--spec handle_result(ne_binary(), api_terms(), map(), kz_amqp_worker:request_return()) -> map().
-handle_result(_NotifyType, JObj, #{ok := OK}=Map, 'ok') -> Map#{ok := [JObj|OK]};
-handle_result(NotifyType, JObj, #{ok := OK}=Map, {'ok', Resp}) ->
-    case is_completed(Resp) of
-        'true' -> Map#{ok := [JObj|OK]};
-        'false' -> maybe_reschedule(NotifyType, JObj, Map)
+-spec handle_result(kz_amqp_worker:request_return()) -> boolean().
+handle_result('ok') -> 'true';
+handle_result({'ok', Resp}) -> is_completed(Resp);
+handle_result({'error', Error}) ->
+    case kz_json:is_json_object(Error)
+        andalso kz_json:find(<<"Status">>, Error)
+    of
+        <<"completed">> -> 'true';
+        _ -> 'false'
     end;
-handle_result(NotifyType, JObj, Map, {'error', _Error}) ->
-    maybe_reschedule(NotifyType, JObj, Map);
-handle_result(NotifyType, JObj, #{ok := OK}=Map, {'returned', _, Resp}) ->
-    case is_completed(Resp) of
-        'true' -> Map#{ok := [JObj|OK]};
-        'false' -> maybe_reschedule(NotifyType, JObj, Map)
-    end;
-handle_result(NotifyType, JObj, #{ok := OK}=Map, {'timeout', Resp}) ->
-    case is_completed(Resp) of
-        'true' -> Map#{ok := [JObj|OK]};
-        'false' -> maybe_reschedule(NotifyType, JObj, Map)
-    end.
+handle_result({'returned', _, Resp}) -> is_completed(Resp);
+handle_result({'timeout', Resp}) -> is_completed(Resp).
 
+-spec maybe_reschedule(ne_binary(), kz_json:object(), map()) -> map().
 maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
     J = apply_reschedule_logic(NotifyType, JObj),
     Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),

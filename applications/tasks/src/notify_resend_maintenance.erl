@@ -8,10 +8,12 @@
 -module(notify_resend_maintenance).
 
 -export([pending/0, pending/1, pending/2
-        ,statistics/0
         ,pending_by_type/1
+        ,failed/0, failed/1, failed/2
+        ,failed_by_type/1
         ,notify_info/1
-
+        ,statistics/0
+        ,send_notify/1
         ,delete/1, delete_older_than/1, delete_between/2
         ]).
 
@@ -31,6 +33,11 @@
             ?JOB_TABLE_HEADER_EDGE
         end
        ).
+
+-define(PENDING_VIEW, <<"pending_notify/pending_range">>).
+-define(PENDING_TYPE_VIEW, <<"pending_notify/pending_by_type">>).
+-define(FAILED_VIEW, <<"pending_notify/failed_range">>).
+-define(FAILED_TYPE_VIEW, <<"pending_notify/failed_by_type">>).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -73,7 +80,7 @@ pending(ShowCount, <<"true">>) ->
                   ,{'reduce', 'false'}
                   ,'include_docs'
                   ],
-    _ = case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/pending_range">>, ViewOptions) of
+    _ = case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, ?PENDING_VIEW, ViewOptions) of
             {ok, JObjs} -> [print_json(kz_json:get_value(<<"doc">>, J)) || J <- JObjs];
             {error, _Reason} -> io:format("Failed getting pending notifications: ~p~n", [_Reason])
         end,
@@ -109,8 +116,100 @@ pending_by_type(Type) ->
                   ,{reduce, false}
                   ,{limit, 100}
                   ],
-    print_job_table(ViewOptions, [], <<"pending_notify/pending_by_type">>),
+    print_job_table(ViewOptions, [], ?PENDING_TYPE_VIEW),
     io:format(" Total: ~b~n", [Total]),
+    'no_return'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as failed/2 without showing details and limited to 100
+%% @end
+%%--------------------------------------------------------------------
+-spec failed() -> 'no_return'.
+failed() ->
+    failed(<<"100">>, <<"false">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Same as failed/2 without showing details
+%% @end
+%%--------------------------------------------------------------------
+-spec failed(ne_binary()) -> 'no_return'.
+failed(ShowCount) ->
+    failed(ShowCount, <<"false">>).
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Prints a limited amount of notifications publish which maxed their tries.
+%% Options:
+%%   ShowCount: amount of notificatiosn to show
+%%   Details: Whether or not to show notifications details
+%% @end
+%%--------------------------------------------------------------------
+-spec failed(ne_binary(), ne_binary()) -> 'no_return'.
+failed(ShowCount, <<"true">>) ->
+    Total = get_total([{group_level, 0}], ?FAILED_TYPE_VIEW),
+    ViewOptions = [{'limit', ShowCount}
+                  ,{'reduce', 'false'}
+                  ,'include_docs'
+                  ],
+    _ = case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, ?FAILED_VIEW, ViewOptions) of
+            {ok, JObjs} -> [print_json(kz_json:get_value(<<"doc">>, J)) || J <- JObjs];
+            {error, _Reason} -> io:format("Failed getting failed notifications: ~p~n", [_Reason])
+        end,
+    io:format(" Total: ~b~n", [Total]),
+    'no_return';
+failed(ShowCount, _Details) ->
+    Total = get_total([{group_level, 0}], ?FAILED_TYPE_VIEW),
+    print_job_table([{'limit', ShowCount}
+                    ,{'reduce', 'false'}
+                    ], [], ?FAILED_VIEW),
+    io:format(" Total: ~b~n", [Total]),
+    'no_return'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Show failed notification by type, limited to first 100
+%% @end
+%%--------------------------------------------------------------------
+-spec failed_by_type(ne_binary()) -> 'no_return'.
+failed_by_type(Type) ->
+    Total = get_total([{startkey, [Type, 0]}
+                      ,{endkey, [Type, kz_time:current_tstamp()]}
+                      ,{'group_level', 1}
+                      ,'reduce'
+                      ], ?FAILED_TYPE_VIEW),
+    ViewOptions = [{startkey, [Type, 0]}
+                  ,{endkey, [Type, kz_time:current_tstamp()]}
+                  ,{reduce, false}
+                  ,{limit, 100}
+                  ],
+    print_job_table(ViewOptions, [], ?FAILED_TYPE_VIEW),
+    io:format(" Total: ~b~n", [Total]),
+    'no_return'.
+
+%%--------------------------------------------------------------------
+%% @public
+%% @doc
+%% Send the notification by Id
+%% @end
+%%--------------------------------------------------------------------
+-spec send_notify(ne_binary()) -> 'no_return'.
+send_notify(Id) ->
+    case kz_notify_resend:send_single(Id) of
+        {'ok', JObj} ->
+            io:format("notification ~s successfully sent, don't forget to delete it.~n", [Id]),
+            print_json(JObj);
+        {'failed', JObj} ->
+            io:format("failed to send notification ~s.~n", [Id]),
+            print_json(JObj);
+        {'error', _Error} ->
+            io:format("failed to open notification ~s: ~p.~n", [Id, _Error])
+    end,
     'no_return'.
 
 %%--------------------------------------------------------------------
@@ -129,13 +228,14 @@ notify_info(Id) ->
         end,
     'no_return'.
 
--spec delete(Id) -> 'no_return'.
+-spec delete(ne_binary()) -> 'no_return'.
 delete(Id) ->
     case kz_datamgr:del_doc(?KZ_PENDING_NOTIFY_DB, Id) of
         {'ok', _} -> io:format("notification ~s has been deleted~n", [Id]);
         {'error', _Reason} -> io:format("failed to delete notification ~s: ~p~n", [Id, _Reason])
     end.
 
+-spec delete_older_than(gregorian_seconds()) -> 'no_return'.
 delete_older_than(Timestamp) ->
     TsTamp = kz_term:to_integer(Timestamp),
     ViewOptions = [{startkey, [0]}
@@ -153,6 +253,7 @@ delete_older_than(Timestamp) ->
     bulk_delete(ToBeDeleted),
     'no_return'.
 
+-spec delete_between(gregorian_seconds(), gregorian_seconds()) -> 'no_return'.
 delete_between(StartTimestamp, EndTimestamp) ->
     Start = kz_term:to_integer(StartTimestamp),
     End = kz_term:to_integer(EndTimestamp),
@@ -161,7 +262,7 @@ delete_between(StartTimestamp, EndTimestamp) ->
                   ],
     ToBeDeleted = case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/pending_range">>, ViewOptions) of
                       {ok, []} ->
-                          io:format("no notification older than ~b has been found~n", [TsTamp]),
+                          io:format("no notification between start timestamp ~b and end timestamp ~b has been found~n", [Start, End]),
                           [];
                       {ok, JObjs} -> [kz_doc:id(JObj) || JObj <- JObjs];
                       {error, _Reason} ->
@@ -192,10 +293,10 @@ statistics() ->
     case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/pending_by_type">>, ViewOptions) of
         {'ok', Rs} ->
             Fun = fun(TypeJObj, Acc) ->
-                      TypeCount =  kz_json:get_integer_value(<<"value">>, TypeJObj),
-                      [Type] = kz_json:get_value(<<"key">>, TypeJObj),
-                      io:format("~-26s: ~b~n", [Type, TypeCount]),
-                      TypeCount + Acc
+                          TypeCount =  kz_json:get_integer_value(<<"value">>, TypeJObj),
+                          [Type] = kz_json:get_value(<<"key">>, TypeJObj),
+                          io:format("~-26s: ~b~n", [Type, TypeCount]),
+                          TypeCount + Acc
                   end,
             Total = lists:foldl(Fun, 0, Rs),
             io:format("Total: ~p~n", [Total]);
@@ -207,7 +308,11 @@ statistics() ->
 
 -spec get_total(kz_proplist()) -> non_neg_integer().
 get_total(ViewOptions) ->
-    case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/pending_by_type">>, ViewOptions) of
+    get_total(ViewOptions, <<"pending_notify/pending_by_type">>).
+
+-spec get_total(kz_proplist(), ne_binary()) -> non_neg_integer().
+get_total(ViewOptions, View) ->
+    case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, View, ViewOptions) of
         {'ok', Rs} ->
             lists:sum([kz_json:get_integer_value(<<"value">>, R, 0) || R <- Rs]);
         {'error', _} -> 0
