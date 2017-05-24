@@ -30,18 +30,13 @@
 update_device(JObj, AuthToken) ->
     AccountId = kz_doc:account_id(JObj),
     Request = device_settings(set_owner(JObj)),
-    case check_request(Request) of
-        {'ok', Data} ->
-            _ = update_account(AccountId, AuthToken),
-            send_req('devices_post'
-                    ,Data
-                    ,AuthToken
-                    ,AccountId
-                    ,kz_device:mac_address(JObj)
-                    );
-        {'error', Errors} ->
-            handle_validation_error(Errors, AccountId)
-    end.
+    _ = update_account(AccountId, AuthToken),
+    send_req('devices_post'
+            ,maybe_add_device_defaults(Request)
+            ,AuthToken
+            ,AccountId
+            ,kz_device:mac_address(JObj)
+            ).
 
 -spec delete_device(kz_json:object(), ne_binary()) -> 'ok'.
 delete_device(JObj, AuthToken) ->
@@ -51,6 +46,26 @@ delete_device(JObj, AuthToken) ->
             ,kz_doc:account_id(JObj)
             ,kz_device:mac_address(JObj)
             ).
+
+-spec maybe_add_device_defaults(kz_json:object()) -> kz_json:object().
+maybe_add_device_defaults(JObj) ->
+    LinesPath = [<<"settings">>, <<"lines">>],
+    F = fun (K, V) -> {K, maybe_set_line_defaults(V)} end,
+    NewLines = kz_json:map(F, kz_json:get_value(LinesPath, JObj)),
+    kz_json:set_value(LinesPath, NewLines, JObj).
+
+-spec maybe_set_line_defaults(kz_json:object()) -> kz_json:object().
+maybe_set_line_defaults(LineJObj) ->
+    kz_json:expand(
+      kz_json:from_list(
+        [case KV of
+             {[<<"advanced">>, <<"expire">>], undefined} -> {Path, 360};
+             {[<<"advanced">>, <<"srtp">>], undefined} -> {Path, false};
+             {[<<"basic">>, <<"enabled">>], undefined} -> {Path, true};
+             _ -> KV
+         end
+         || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(LineJObj))
+        ])).
 
 -spec device_settings(kz_json:object()) -> kz_json:object().
 device_settings(JObj) ->
@@ -593,42 +608,3 @@ get_cluster_id() ->
             kz_term:to_list(ClusterId);
         ClusterId -> ClusterId
     end.
-
-%% @private
--spec check_request(kz_json:object()) -> {'ok', kz_json:object()} |
-                                         jesse_error:error().
-check_request(Data) ->
-    case get_schema() of
-        'undefined' ->
-            lager:warning("skiping validation, missing schema"),
-            {'ok', Data};
-        Schema ->
-            case
-                jesse:validate_with_schema(Schema
-                                          ,Data
-                                          ,[{'allowed_errors', 'infinity'}
-                                           ,{'schema_loader_fun', fun kz_json_schema:load/1}
-                                           ]
-                                          )
-            of
-                {'error', _}=Error -> Error;
-                {'ok', JObj} ->
-                    {'ok', kz_json_schema:add_defaults(JObj, Schema)}
-            end
-    end.
-
--spec get_schema() -> api_object().
-get_schema() ->
-    case kz_json_schema:load(?SCHEMA) of
-        {'ok', SchemaJObj} -> SchemaJObj;
-        {'error', _E} ->
-            lager:error("failed to find schema ~s: ~p", [?SCHEMA, _E]),
-            'undefined'
-    end.
-
--spec handle_validation_error([jesse_error:error_reason()], api_binary()) -> 'ok'.
-handle_validation_error([], AccountId) ->
-    lager:error("not sending data to provisioner, data failed to validate in ~s", [AccountId]);
-handle_validation_error([{'data_invalid', _, _Reason, _Key, _Value}|Errors], AccountId) ->
-    lager:error("failed to validate device: ~p ~p ~p", [_Reason, _Key, _Value]),
-    handle_validation_error(Errors, AccountId).

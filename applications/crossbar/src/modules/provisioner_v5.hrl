@@ -1,7 +1,6 @@
 -ifndef(PROVISIONER_V5_HRL).
 
 -define(MOD_CONFIG_CAT, <<"provisioner">>).
--define(SCHEMA, <<"provisioner_v5">>).
 -define(FEATURE_KEYS, kapps_config:get_json(?MOD_CONFIG_CAT, <<"feature_keys">>, ?LOCAL_FEATURE_KEYS)).
 -define(COMBO_KEYS, kapps_config:get_json(?MOD_CONFIG_CAT, <<"combo_keys">>, ?LOCAL_COMBO_KEYS)).
 

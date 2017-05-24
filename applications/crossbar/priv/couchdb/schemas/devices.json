@@ -284,6 +284,21 @@
         "provision": {
             "description": "Provision data",
             "properties": {
+                "endpoint_brand": {
+                    "description": "Brand of the phone",
+                    "type": "string"
+                },
+                "endpoint_family": {
+                    "description": "Family name of the phone",
+                    "type": "string"
+                },
+                "endpoint_model": {
+                    "description": "Model name of the phone",
+                    "type": [
+                        "string",
+                        "integer"
+                    ]
+                },
                 "feature_keys": {
                     "description": "Feature Keys",
                     "patternProperties": {
