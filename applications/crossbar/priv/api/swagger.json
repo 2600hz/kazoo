@@ -9752,11 +9752,6 @@
                     },
                     "type": "array"
                 },
-                "notify_publisher_timeout": {
-                    "default": 10000,
-                    "description": "Timeout in milliseconds when publishing notification using notify publisher",
-                    "type": "integer"
-                },
                 "notify_publisher_timeout_ms": {
                     "default": 10000,
                     "description": "Timeout in milliseconds when publishing notification using notify publisher",
@@ -11349,12 +11344,12 @@
             "properties": {
                 "cycle_delay_time_ms": {
                     "default": 300000,
-                    "description": "TImeout in milliseconds between each cycle",
+                    "description": "Timeout in milliseconds between each cycle",
                     "type": "integer"
                 },
                 "max_doc_read": {
                     "default": 20,
-                    "description": "Mac number of notification read from database for each cycle",
+                    "description": "Max number of notifications to read from database for each cycle",
                     "type": "integer"
                 },
                 "max_retries": {

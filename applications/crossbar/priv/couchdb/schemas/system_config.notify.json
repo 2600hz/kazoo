@@ -78,11 +78,6 @@
             },
             "type": "array"
         },
-        "notify_publisher_timeout": {
-            "default": 10000,
-            "description": "Timeout in milliseconds when publishing notification using notify publisher",
-            "type": "integer"
-        },
         "notify_publisher_timeout_ms": {
             "default": 10000,
             "description": "Timeout in milliseconds when publishing notification using notify publisher",
