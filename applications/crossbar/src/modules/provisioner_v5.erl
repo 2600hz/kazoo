@@ -534,13 +534,12 @@ device_payload(JObj) ->
       ]).
 
 -spec handle_resp(kz_http:ret(), ne_binary(), ne_binary()) -> 'ok'.
-handle_resp({'ok', 200, _, Resp}, _AccountId, _AuthToken) ->
-    lager:debug("provisioning success ~s", [decode(Resp)]);
+handle_resp({'ok', 200, _, Resp}, _, _) ->
+    lager:debug("provisioning success ~s", [Resp]);
 handle_resp({'ok', Code, _, Resp}, AccountId, AuthToken) ->
-    JObj = decode(Resp),
-    _ = create_alert(JObj, AccountId, AuthToken),
-    lager:warning("provisioning error ~p. ~s", [Code, JObj]);
-handle_resp(_Error, _AccountId, _AuthToken) ->
+    lager:warning("provisioning error ~p. ~s", [Code, Resp]),
+    create_alert(kz_json:decode(Resp), AccountId, AuthToken);
+handle_resp(_Error, _, _) ->
     lager:error("provisioning fatal error ~p", [_Error]).
 
 create_alert(JObj, AccountId, AuthToken) ->
@@ -551,8 +550,7 @@ create_alert(JObj, AccountId, AuthToken) ->
     OwnerId =
         case kz_datamgr:open_cache_doc(?KZ_TOKEN_DB, AuthToken) of
             {'error', _R} -> 'undefined';
-            {'ok', AuthJObj} ->
-                kz_json:get_value(<<"owner_id">>, AuthJObj)
+            {'ok', AuthJObj} -> kz_json:get_value(<<"owner_id">>, AuthJObj)
         end,
 
     From = [kz_json:from_list([{<<"type">>, <<"account">>}
@@ -571,24 +569,11 @@ create_alert(JObj, AccountId, AuthToken) ->
                             ])
          ],
 
-    {'ok', AlertJObj} =
-        kapps_alert:create(<<"Provisioning Error">>
-                          ,<<"Error trying to provision device">>
-                          ,From
-                          ,To
-                          ,Props
-                          ),
-    kapps_alert:save(AlertJObj).
-
--spec decode(string()) -> kz_json:object().
-decode(JSON) ->
-    try kz_json:encode(JSON) of
-        JObj -> kz_json:decode(JObj)
-    catch
-        'error':_R ->
-            io:format("~p~n", [_R]),
-            JSON
-    end.
+    Title = <<"Provisioning Error">>,
+    Msg = <<"Error trying to provision device">>,
+    {'ok', AlertJObj} = kapps_alert:create(Title, Msg, From, To, Props),
+    {ok, _} = kapps_alert:save(AlertJObj),
+    ok.
 
 -spec req_headers(ne_binary()) -> kz_proplist().
 req_headers(Token) ->
