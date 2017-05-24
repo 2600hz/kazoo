@@ -210,7 +210,7 @@ check_MAC(MacAddress, AuthToken) ->
             JObj = kz_json:decode(JSONStr),
             kz_json:get_value([<<"data">>, <<"account_id">>], JObj);
         _AnythingElse ->
-            lager:debug("no account found for ~s: ~p", [MacAddress, _AnythingElse]),
+            lager:debug("device ~s not found: ~p", [MacAddress, _AnythingElse]),
             'false'
     end.
 
@@ -501,7 +501,7 @@ send_req('accounts_update', JObj, AuthToken, AccountId, _) ->
 req_uri('accounts', AccountId) ->
     provisioning_uri([<<"accounts">>, AccountId]);
 req_uri('devices', MacAddress) ->
-    provisioning_uri([<<"devices">>, MacAddress]).
+    provisioning_uri([<<"devices">>, <<"search">>, MacAddress]).
 
 -spec req_uri('devices', ne_binary(), ne_binary()) -> iolist().
 req_uri('devices', AccountId, MACAddress) ->
@@ -584,7 +584,7 @@ req_headers(Token) ->
       ,{"User-Agent", kz_term:to_list(erlang:node())}
       ]).
 
--spec get_cluster_id() -> string().
+-spec get_cluster_id() -> nonempty_string().
 get_cluster_id() ->
     case kapps_config:get_string(?MOD_CONFIG_CAT, <<"cluster_id">>) of
         'undefined' ->
