@@ -3,24 +3,31 @@
     "_id": "provisioner_v5",
     "description": "Provisioner schema",
     "properties": {
-        "brand": {
-            "default": "",
-            "description": "Brand of the phone",
-            "type": "string"
-        },
-        "family": {
-            "default": "",
-            "description": "Family name of the phone",
-            "type": "string"
-        },
-        "model": {
-            "default": "",
-            "description": "Model name of the phone",
-            "type": "string"
-        },
         "name": {
             "description": "Name of the phone",
             "type": "string"
+        },
+        "provision": {
+            "properties": {
+                "endpoint_brand": {
+                    "description": "Brand of the phone",
+                    "type": "string"
+                },
+                "endpoint_family": {
+                    "description": "Family name of the phone",
+                    "type": "string"
+                },
+                "endpoint_model": {
+                    "description": "Model name of the phone",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "endpoint_brand",
+                "endpoint_family",
+                "endpoint_model"
+            ],
+            "type": "object"
         },
         "settings": {
             "description": "Phone's settings",
@@ -137,10 +144,7 @@
         }
     },
     "required": [
-        "brand",
-        "family",
-        "model",
-        "settings"
+        "provision"
     ],
     "type": "object"
 }
