@@ -86,6 +86,11 @@ prompt_path(AccountId, PromptId, L) ->
     Language = kz_term:to_lower_binary(L),
     #media_map{languages=Langs} = get_map(AccountId, PromptId),
     case kz_json:get_first_defined(language_keys(Language), Langs) of
+        'undefined' when ?KZ_MEDIA_DB =:= AccountId ->
+            lager:debug("failed to find prompt ~s in ~p, using default"
+                       ,[PromptId, language_keys(Language)]
+                       ),
+            default_prompt_path(PromptId, Language);
         'undefined' ->
             lager:debug("failed to find prompt ~s in ~p", [PromptId, language_keys(Language)]),
             case kz_services:find_reseller_id(AccountId) of
