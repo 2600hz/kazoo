@@ -191,9 +191,12 @@ check_MAC(MacAddress, AuthToken) ->
     lager:debug("pre-provisioning via ~s", [UrlString]),
     case kz_http:get(UrlString, Headers) of
         {'ok', 200, _RespHeaders, JSONStr} ->
+            lager:debug("provisioner says ~s", [JSONStr]),
             JObj = kz_json:decode(JSONStr),
             kz_json:get_value([<<"data">>, <<"account_id">>], JObj);
-        _AnythingElse -> 'false'
+        _AnythingElse ->
+            lager:debug("no account found for ~s: ~p", [MacAddress, _AnythingElse]),
+            'false'
     end.
 
 %%--------------------------------------------------------------------
