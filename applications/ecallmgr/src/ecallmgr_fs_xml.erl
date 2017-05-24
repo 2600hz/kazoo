@@ -83,12 +83,7 @@ authn_resp_xml(JObj) ->
                         kz_json:get_value(<<"Expires">>,JObj)
                        ),
             Username = kz_json:get_value(<<"Auth-Username">>, JObj, UserId),
-            UserEl = user_el([{'number-alias', Number}
-                             ,{'cacheable', Expires}
-                              | user_el_default_props(Username)
-                             ]
-                            ,Elements
-                            ),
+            UserEl = user_el(user_el_props(Number, Username, Expires), Elements),
             DomainEl = domain_el(kz_json:get_value(<<"Auth-Realm">>, JObj, DomainName), UserEl),
             SectionEl = section_el(<<"directory">>, DomainEl),
             {'ok', xmerl:export([SectionEl], 'fs_xml')}
@@ -792,14 +787,28 @@ user_el(Props, Children) ->
                ,content=Children
                }.
 
--spec user_el_default_props(xml_attrib_value()) -> kz_proplist().
-user_el_default_props(Id) ->
-    [{'id', Id}
+-spec user_el_props(ne_binary(), ne_binary(), api_integer()) -> kz_proplist().
+user_el_props(Number, Username, 'undefined') ->
+    [{'number-alias', Number}
     ,{'cacheable', ecallmgr_config:get_integer(<<"user_cache_time_in_ms">>
                                               ,?DEFAULT_USER_CACHE_TIME_IN_MS
                                               )
      }
+     | user_el_default_props(Username)
+    ];
+user_el_props(Number, Username, Expires) when Expires < 1 ->
+    [{'number-alias', Number}
+     | user_el_default_props(Username)
+    ];
+user_el_props(Number, Username, Expires) ->
+    [{'number-alias', Number}
+    ,{'cacheable', Expires}
+     | user_el_default_props(Username)
     ].
+
+-spec user_el_default_props(xml_attrib_value()) -> kz_proplist().
+user_el_default_props(Id) ->
+    [{'id', Id}].
 
 -spec chat_user_el(xml_attrib_value(), xml_attrib_value()) -> xml_el().
 chat_user_el(Name, Commands) ->
