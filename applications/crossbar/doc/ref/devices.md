@@ -56,6 +56,8 @@ Key | Description | Type | Default | Required
 `owner_id` | The ID of the user object that 'owns' the device | `string(32)` |   | `false`
 `presence_id` | Static presence ID (used instead of SIP username) | `string` |   | `false`
 `provision` | Provision data | `object` |   | `false`
+`provision.combo_keys` | Feature Keys | `object` |   | `false`
+`provision.combo_keys./^[0-9]+$/` |   | `object, null` |   | `false`
 `provision.endpoint_brand` | Brand of the phone | `string` |   | `false`
 `provision.endpoint_family` | Family name of the phone | `string` |   | `false`
 `provision.endpoint_model` | Model name of the phone | `string, integer` |   | `false`

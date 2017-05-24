@@ -3661,6 +3661,10 @@
                 "provision": {
                     "description": "Provision data",
                     "properties": {
+                        "combo_keys": {
+                            "description": "Feature Keys",
+                            "type": "object"
+                        },
                         "endpoint_brand": {
                             "description": "Brand of the phone",
                             "type": "string"
