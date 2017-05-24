@@ -441,7 +441,7 @@ send_report(Context, Things)
     Msg = io_lib:format(Format, [cb_context:user_id(Context), Ids]),
     format_and_send_report(Context, Msg);
 send_report(Context, Thing) ->
-    Format = "presence reset received for ~s : ~s",
+    Format = "presence reset received for ~s: ~s",
     Msg = io_lib:format(Format, [kz_doc:type(Thing), kz_doc:id(Thing)]),
     format_and_send_report(Context, Msg).
 

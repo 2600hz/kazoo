@@ -51,17 +51,19 @@ add_options_fold({_K, 'undefined'}, Options) -> Options;
 add_options_fold({K, V}, Options) ->
     props:insert_value(K, V, Options).
 
--ifdef(TEST).
-get_query_value(Key, Options) ->
-    props:get_value(Key, Options).
--else.
+-define(QUERY_VALUE(Key, Options),
+        case props:get_value(Key, Options) of
+            undefined -> kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
+            Value -> Value
+        end).
+
 -spec get_query_value(ne_binary(), knm_carriers:options()) -> any().
-get_query_value(Key, Options) ->
-    case props:get_value(Key, Options) of
-        'undefined' -> kapps_config:get(?KNM_VITELITY_CONFIG_CAT, Key);
-        Value -> Value
-    end.
--endif.
+get_query_value(<<"cnam">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
+get_query_value(<<"login">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
+get_query_value(<<"pass">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
+get_query_value(<<"provider">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
+get_query_value(<<"type">>=Key, Options) -> ?QUERY_VALUE(Key, Options);
+get_query_value(<<"withrates">>=Key, Options) -> ?QUERY_VALUE(Key, Options).
 
 -spec default_options() -> qs_options().
 -spec default_options(kz_proplist()) -> qs_options().
@@ -241,6 +243,13 @@ get_short_state(FullState) ->
     State = kz_term:to_lower_binary(FullState),
     props:get_value(State, States).
 
--spec get_routesip() -> ne_binary() | api_binaries().
+-spec get_routesip() -> ne_binary().
+-ifdef(TEST).
+get_routesip() -> <<"1.2.3.4">>.
+-else.
 get_routesip() ->
-    kapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"routesip">>).
+    case kapps_config:get(?KNM_VITELITY_CONFIG_CAT, <<"routesip">>) of
+        [Route=?NE_BINARY|_] -> Route;
+        Route=?NE_BINARY -> Route
+    end.
+-endif.

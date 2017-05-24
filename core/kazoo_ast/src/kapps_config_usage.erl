@@ -357,7 +357,9 @@ default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_global', [_Account, _Ca
     default_value(Default);
 default_value(?MOD_FUN_ARGS('kapps_account_config', 'get', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
-default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_ne_binary', [_Category, _Key, Default])) ->
+default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_ne_binary', [_Account, _Category, _Key, Default])) ->
+    default_value(Default);
+default_value(?MOD_FUN_ARGS('kapps_account_config', 'get_ne_binaries', [_Account, _Category, _Key, Default])) ->
     default_value(Default);
 default_value(?MOD_FUN_ARGS(_M, _F, _Args)) ->
     ?UNKNOWN_DEFAULT;

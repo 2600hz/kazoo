@@ -15,13 +15,6 @@
 handle_req(JObj, _Props) ->
     'true' = kapi_authn:req_v(JObj),
     _ = kz_util:put_callid(JObj),
-    case kz_json:get_value(<<"Method">>, JObj) of
-        <<"INVITE">> -> maybe_send_authn_resp(JObj);
-        _Else -> 'ok'
-    end.
-
--spec maybe_send_authn_resp(kz_json:object()) -> 'ok'.
-maybe_send_authn_resp(JObj) ->
     Conference = kapps_conference:new(),
     Username = kapi_authn:get_auth_user(JObj),
     case kapps_conference:bridge_username(Conference) of

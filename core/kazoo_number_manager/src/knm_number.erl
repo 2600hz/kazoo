@@ -153,7 +153,9 @@ state_for_create(Options) ->
         {_, true, _} -> ?NUMBER_STATE_IN_SERVICE;
         {_, _, ?CARRIER_MDN} -> ?NUMBER_STATE_IN_SERVICE;
         {State, _, _} ->
-            true = lists:member(State, allowed_creation_states(knm_number_options:auth_by(Options))),
+            AuthBy = knm_number_options:auth_by(Options),
+            true = lists:member(State, allowed_creation_states(AuthBy)),
+            ?LOG_DEBUG("allowing picking state ~s for ~s", [State, AuthBy]),
             State
     end.
 

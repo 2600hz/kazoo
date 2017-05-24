@@ -1,6 +1,6 @@
 ### Kazoo Number Manager Bandwidth (NEW API)
 
-The kazoo number manager Bandwidth2 module can be used to integrate Kazoo with http://www.bandwidth.com/ using the new api
+The kazoo number manager Bandwidth2 module can be used to integrate Kazoo with http://www.bandwidth.com/ using the new api.
 
 #### Configuring number manager
 

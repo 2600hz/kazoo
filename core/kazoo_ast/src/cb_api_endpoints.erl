@@ -16,11 +16,12 @@
 -include_lib("crossbar/src/crossbar.hrl").
 
 -define(REF_PATH
-       ,filename:join([code:lib_dir('crossbar'), "doc", "ref"])
-       ).
+       ,filename:join([code:lib_dir('crossbar'), "doc", "ref"])).
 -define(REF_PATH(Module)
-       ,filename:join([?REF_PATH, <<Module/binary,".md">>])
-       ).
+       ,filename:join([?REF_PATH, <<Module/binary,".md">>])).
+
+-define(SWAGGER_JSON
+       ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])).
 
 -define(SCHEMA_SECTION, <<"#### Schema\n\n">>).
 -define(SUB_SCHEMA_SECTION_HEADER, <<"#####">>).
@@ -218,17 +219,21 @@ process_schema(Filename, Definitions) ->
     JObj0 = kz_json:delete_keys(KeysToDelete, kz_json:decode(Bin)),
     JObj = kz_json:expand(
              kz_json:from_list(
-               [KV
-                || {Path,_}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
+               [case lists:last(Path) =:= <<"$ref">> of
+                    false -> KV;
+                    true -> {Path, maybe_fix_ref(V)}
+                end
+                || {Path,V}=KV <- kz_json:to_proplist(kz_json:flatten(JObj0)),
                    not lists:member(<<"patternProperties">>, Path),
                    not lists:member(<<"kazoo-validation">>, Path)
                ])),
     Name = kz_term:to_binary(filename:basename(Filename, ".json")),
     kz_json:set_value(Name, JObj, Definitions).
 
--define(SWAGGER_JSON
-       ,filename:join([code:priv_dir('crossbar'), "api", "swagger.json"])
-       ).
+-spec maybe_fix_ref(ne_binary()) -> ne_binary().
+maybe_fix_ref(<<"#",_/binary>>=Ref) -> Ref;
+maybe_fix_ref(RelativePath=?NE_BINARY) ->
+    <<"#/definitions/", RelativePath/binary>>.
 
 -spec read_swagger_json() -> kz_json:object().
 read_swagger_json() ->
@@ -302,6 +307,9 @@ maybe_add_schema(_Path, _Method, _Parameters) ->
 swagger_params(PathMeta) ->
     case kz_json:get_ne_binary_value(<<"schema">>, PathMeta) of
         'undefined' -> 'undefined';
+        %% These do not have schemas
+        <<"ip_auth">> -> undefined;
+        %% These have schemas
         Schema ->
             kz_json:from_list([{<<"name">>, Schema}
                               ,{<<"in">>, <<"body">>}
@@ -330,7 +338,9 @@ is_api_c2c_connect(_) -> 'false'.
 
 -spec path_params(ne_binary(), any()) -> kz_json:objects().
 path_params(Path, _Method) ->
-    [path_param(Param) || <<"{",_/binary>> = Param <- split_url(Path)].
+    [path_param(Param) || Param <- split_url(Path),
+                          is_path_variable(Param)
+    ].
 
 -spec path_param(ne_binary()) -> kz_json:object().
 path_param(PathToken) ->
@@ -340,6 +350,10 @@ path_param(PathToken) ->
 -spec split_url(ne_binary()) -> ne_binaries().
 split_url(Path) ->
     binary:split(Path, <<$/>>, ['global']).
+
+-spec is_path_variable(ne_binary()) -> boolean().
+is_path_variable(Param) ->
+    -1 =/= kz_binary:pos(${, Param).
 
 -spec format_as_path_centric(callback_configs()) -> kz_json:object().
 format_as_path_centric(Configs) ->
@@ -413,10 +427,14 @@ is_all_upper(Bin) ->
 brace_token(Token=?NE_BINARY) ->
     <<"{", (kz_term:to_upper_binary(Token))/binary, "}">>.
 
-unbrace_param(Param) ->
-    Size = byte_size(Param) - 2,
-    <<"{", Unbraced:Size/binary, "}">> = Param,
-    Unbraced.
+unbrace_param(<<"{", Param/binary>>) ->
+    Size = byte_size(Param) - 1,
+    <<Unbraced:Size/binary, "}">> = Param,
+    Unbraced;
+unbrace_param(Param=?NE_BINARY) ->
+    PosLHS = kz_binary:pos(${, Param),
+    PosRHS = kz_binary:pos($}, Param),
+    binary:part(Param, PosLHS + 1, PosRHS - (PosLHS + 1)).
 
 base_module_name(Module) ->
     {'match', [Name|_]} = grep_cb_module(Module),
@@ -440,7 +458,6 @@ path_name(Module) ->
         {'match', [<<"api_auth">>=Name]} -> Name;
         {'match', [<<"auth">>=Name]} -> Name;
         {'match', [<<"basic_auth">>=Name]} -> Name;
-        {'match', [<<"google_auth">>=Name]} -> Name;
         {'match', [<<"ip_auth">>=Name]} -> Name;
         {'match', [<<"rates">>=Name]} -> Name;
         {'match', [<<"schemas">>=Name]} -> Name;
@@ -667,40 +684,28 @@ find_methods_in_clause(?LIST(?BINARY(Method), Cons)
     [list_to_binary(Method) | find_methods_in_clause(Cons, Acc)];
 
 %% Matches the content_types_provided to_json list
-find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_json')
-                                    ,JSONList
-                                    ]
-                                   )
+find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_json'), JSONList])
                             ,Rest
                             )
                       ,Acc) ->
     CTPs = find_content_types_in_clause(JSONList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_csv list
-find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_csv')
-                                    ,CSVList
-                                    ]
-                                   )
+find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_csv'), CSVList])
                             ,Rest
                             )
                       ,Acc) ->
     CTPs = find_content_types_in_clause(CSVList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_binary list
-find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_binary')
-                                    ,BinaryList
-                                    ]
-                                   )
+find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_binary'), BinaryList])
                             ,Rest
                             )
                       ,Acc) ->
     CTPs = find_content_types_in_clause(BinaryList, Acc),
     find_methods_in_clause(Rest, CTPs);
 %% Matches the content_types_provided to_pdf list
-find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_pdf')
-                                    ,PDFList
-                                    ]
-                                   )
+find_methods_in_clause(?LIST(?TUPLE([?ATOM('to_pdf'), PDFList])
                             ,Rest
                             )
                       ,Acc) ->
@@ -747,14 +752,16 @@ grep_cb_module(?NE_BINARY=Module) ->
 -spec to_swagger_parameters(ne_binaries()) -> kz_json:object().
 to_swagger_parameters(Paths) ->
     Params = [Param || Path <- Paths,
-                       Param = <<"{",_/binary>> <- split_url(Path)
+                       Param <- split_url(Path),
+                       is_path_variable(Param)
              ],
     kz_json:from_list(
       [{<<?X_AUTH_TOKEN>>, parameter_auth_token(true)}
       ,{<<?X_AUTH_TOKEN_NOT_REQUIRED>>, parameter_auth_token(false)}
       ]
-      ++ [{unbrace_param(Param), kz_json:from_list(def_path_param(Param))}
-          || Param <- lists:usort(lists:flatten(Params))
+      ++ [{kz_json:get_ne_binary_value(<<"name">>, ParamProps), ParamProps}
+          || Param <- lists:usort(lists:flatten(Params)),
+             ParamProps <- [kz_json:from_list(def_path_param(Param))]
          ]).
 
 -spec parameter_auth_token(boolean()) -> kz_json:object().
@@ -865,6 +872,15 @@ def_path_param(<<"{VM_MSG_ID}">>=P) -> base_path_param(P);
 def_path_param(<<"{WHITELABEL_DOMAIN}">>=P) -> base_path_param(P);
 
 %% For all the edge cases out there:
+def_path_param(<<"report-{REPORT_ID}">>) ->
+    Prefix = <<"report-">>,
+    PrefixSize = byte_size(Prefix),
+    [{<<"minLength">>, 32 + PrefixSize}
+    ,{<<"maxLength">>, 32 + PrefixSize}
+    ,{<<"pattern">>, <<"^report\\-[0-9a-f]+\$">>}
+     | base_path_param(<<"{REPORT_ID}">>)
+    ];
+
 def_path_param(<<"{APP_SCREENSHOT_INDEX}">>=P) ->
     [{<<"pattern">>, <<"^[0-9]+\$">>}
      | base_path_param(P)

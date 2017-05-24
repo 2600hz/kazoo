@@ -409,7 +409,7 @@ purchase_local_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"getlocaldid">>}
             ,{'xml', <<"yes">>}
-            ,{'routesip', get_routesip()}
+            ,{'routesip', knm_vitelity_util:get_routesip()}
              | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
@@ -426,28 +426,11 @@ purchase_tollfree_options(DID) ->
     [{'qs', [{'did', knm_converters:to_npan(DID)}
             ,{'cmd', <<"gettollfree">>}
             ,{'xml', <<"yes">>}
-            ,{'routesip', get_routesip()}
+            ,{'routesip', knm_vitelity_util:get_routesip()}
              | knm_vitelity_util:default_options()
             ]}
     ,{'uri', knm_vitelity_util:api_uri()}
     ].
-
-%%--------------------------------------------------------------------
-%% @private
-%% @doc
-%%
-%% @end
-%%--------------------------------------------------------------------
--spec get_routesip() -> api_binary().
--ifdef(TEST).
-get_routesip() -> <<"1.2.3.4">>.
--else.
-get_routesip() ->
-    case knm_vitelity_util:get_routesip() of
-        [Route|_] -> Route;
-        Route -> Route
-    end.
--endif.
 
 %%--------------------------------------------------------------------
 %% @private

@@ -19,6 +19,7 @@
 -export([e164/1
         ,account_id/1
         ,carrier_module/1
+        ,state/1
         ,ported_in/1
         ,'cnam.inbound'/1
         ,'prepend.enabled'/1
@@ -240,7 +241,9 @@ action(<<"import">>) ->
                      "Note: number must be E164-formatted.\n"
                      "Note: number must not be in the system already.\n"
                      "If `account_id` is empty, number will be assigned to account creating task.\n"
-                     "`module_name` will be set only if account creating task is system admin.\n"
+                     "`module_name` will be used only if account creating task is system admin.\n"
+                     "`state` will be used only if account creating task is system admin.\n"
+                     "Note: create new 'available' numbers by setting their `state` to 'available' and running the task with admin credentials.\n"
                      "Note: `carrier_module` defaults to '", (?IMPORT_DEFAULTS_TO_CARRIER)/binary, "'.\n"
                      ?ON_SETTING_PUBLIC_FIELDS
                    >>
@@ -340,6 +343,10 @@ account_id(_) -> 'false'.
 -spec carrier_module(ne_binary()) -> boolean().
 carrier_module(Data) ->
     lists:member(Data, knm_carriers:all_modules()).
+
+-spec state(ne_binary()) -> boolean().
+state(Data) ->
+    knm_phone_number:is_state(Data).
 
 -spec ported_in(ne_binary()) -> boolean().
 ported_in(Cell) -> is_cell_boolean(Cell).
@@ -531,6 +538,7 @@ import(#{account_id := Account
       ,AccountIds
       ,Args=#{<<"e164">> := E164
              ,<<"account_id">> := AccountId0
+             ,<<"state">> := State
              ,<<"carrier_module">> := Carrier
              ,<<"ported_in">> := PortedIn
              ,<<"previously_assigned_to">> := _
@@ -543,9 +551,10 @@ import(#{account_id := Account
     Options = [{auth_by, AuthAccountId}
               ,{batch_run, true}
               ,{assign_to, AccountId}
-              ,{module_name, import_module_name(Account, Carrier)}
+              ,{module_name, import_module_name(AuthAccountId, Carrier)}
               ,{ported_in, PortedIn =:= <<"true">>}
               ,{public_fields, public_fields(Args)}
+               | import_state(AuthAccountId, State)
               ],
     Row = handle_result(Args, knm_number:create(E164, Options)),
     {Row, sets:add_element(AccountId, AccountIds)}.
@@ -613,13 +622,22 @@ maybe_nest(_, []) -> [];
 maybe_nest(Feature, Props) -> [{Feature, kz_json:from_list(Props)}].
 
 %% @private
-import_module_name(AccountId, Carrier) ->
-    case kz_util:is_system_admin(AccountId)
+import_module_name(AuthBy, Carrier) ->
+    case kz_util:is_system_admin(AuthBy)
         andalso Carrier
     of
         false -> ?IMPORT_DEFAULTS_TO_CARRIER;
         undefined -> ?IMPORT_DEFAULTS_TO_CARRIER;
         _ -> Carrier
+    end.
+
+%% @private
+import_state(AuthBy, State) ->
+    case kz_util:is_system_admin(AuthBy)
+        andalso undefined =/= State
+    of
+        false -> [];
+        true -> [{state, State}]
     end.
 
 %% @private

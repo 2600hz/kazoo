@@ -123,7 +123,7 @@ get_json(Category, Key) ->
     as_json_value(V, undefined).
 
 -spec as_json_value(any(), api_object()) -> api_object().
-as_json_value('undefined', _) -> 'undefined';
+as_json_value(undefined, Default) -> Default;
 as_json_value(V, Default) ->
     case kz_json:is_json_object(V) of
         'true' -> V;
@@ -148,7 +148,7 @@ get_jsons(Category, Key) ->
     as_jsons_value(V, []).
 
 -spec as_jsons_value(any(), kz_json:objects()) -> kz_json:objects().
-as_jsons_value(undefined, _) -> [];
+as_jsons_value(undefined, Default) -> Default;
 as_jsons_value(V, Default) ->
     case lists:all(fun kz_json:is_json_object/1, V) of
         true -> V;
@@ -356,7 +356,7 @@ get_ne_binary(Category, Key, Default, Node) ->
 -spec get_ne_binaries(config_category(), config_key(), Default, ne_binary()) -> ne_binaries() | Default.
 
 get_ne_binaries(Category, Key) ->
-    get_ne_binaries(Category, Key, []).
+    get_ne_binaries(Category, Key, undefined).
 get_ne_binaries(Category, Key, Default) ->
     get_ne_binaries(Category, Key, Default, kz_term:to_binary(node())).
 get_ne_binaries(Category, Key, Default, Node) ->
@@ -417,21 +417,15 @@ get_node_value(Category, Keys, Default, Node) ->
 -spec get(config_category(), config_key(), Default) -> any() | Default.
 -spec get(config_category(), config_key(), Default, ne_binary() | atom()) -> any() | Default.
 
--ifdef(TEST).
-get(_, _) -> 'undefined'.
-get(_, _, Default) -> Default.
-get(_, _, Default, _) -> Default.
-get_current(_, _) -> 'undefined'.
-get_current(_, _, Default) -> Default.
-get_current(_, _, Default, _) -> Default.
--else.
-
 get(Category, Key) ->
     get(Category, Key, 'undefined').
 
 get(Category, Key, Default) ->
     get(Category, Key, Default, node()).
 
+-ifdef(TEST).
+get(_, _, Default, _) -> Default.
+-else.
 get(Category, Key, Default, 'undefined') ->
     get(Category, Key, Default, ?KEY_DEFAULT);
 get(Category, Key, Default, Node) when not is_list(Key) ->
@@ -451,6 +445,7 @@ get(Category, Keys, Default, Node) ->
             lager:debug("error ~p getting  category ~s(default) ~p: ~p", [Error, Category, Keys, Default]),
             Default
     end.
+-endif.
 
 -spec get_current(config_category(), config_key()) -> any() | 'undefined'.
 -spec get_current(config_category(), config_key(), Default) -> any() | Default.
@@ -461,6 +456,9 @@ get_current(Category, Key) ->
 get_current(Category, Key, Default) ->
     get_current(Category, Key, Default, node()).
 
+-ifdef(TEST).
+get_current(_, _, Default, _) -> Default.
+-else.
 get_current(Category, Key, Default, 'undefined') ->
     get_current(Category, Key, Default, ?KEY_DEFAULT);
 get_current(Category, Key, Default, Node) when not is_list(Key) ->
@@ -900,9 +898,6 @@ get_category(Category, 'false') ->
 
         ,{{<<"number_manager">>, <<"aging_expiry_d">>}
          ,{<<"tasks">>, <<"aging_expiry_d">>}
-         }
-        ,{{<<"number_manager">>, <<"deleted_expiry_d">>}
-         ,{<<"tasks">>, <<"deleted_expiry_d">>}
          }
         ,{{<<"number_manager">>, <<"discovery_expiry_d">>}
          ,{<<"tasks">>, <<"discovery_expiry_d">>}

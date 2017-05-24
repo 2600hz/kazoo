@@ -302,8 +302,8 @@ post(Context, DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     crossbar_util:response_202(<<"sync request sent">>, Context).
 
 -spec patch(cb_context:context(), path_token()) -> cb_context:context().
-patch(Context, _Id) ->
-    crossbar_doc:save(Context).
+patch(Context, Id) ->
+    post(Context, Id).
 
 -spec put(cb_context:context()) -> cb_context:context().
 put(Context) ->

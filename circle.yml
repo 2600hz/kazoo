@@ -1,10 +1,11 @@
 machine:
   environment:
-    OTP_VERSION: 19.2
+    OTP_VERSION: 19.3
     PATH: ${HOME}/.kerl/$OTP_VERSION/bin:${PATH}
     CHANGED: 'git --no-pager diff --name-only HEAD origin/master -- applications core'
   services:
     - rabbitmq-server
+    - docker
 #    - couchdb-server
 
 general:
@@ -47,6 +48,7 @@ test:
         echo 'Maybe try `make apis` and see if that fixes anything ;)'
         exit 1
       fi
+    - npm install swagger-tools && time ./node_modules/swagger-tools/bin/swagger-tools validate applications/crossbar/priv/api/swagger.json
     - . ~/.kerl/$OTP_VERSION/activate && make xref
     - . ~/.kerl/$OTP_VERSION/activate && make sup_completion
     - |
@@ -56,5 +58,6 @@ test:
         TO_DIALYZE="$(echo $($CHANGED))" make dialyze
       fi
     - . ~/.kerl/$OTP_VERSION/activate && make elvis
+    - make sdks
     - . ~/.kerl/$OTP_VERSION/activate && make build-ci-release
     - . ~/.kerl/$OTP_VERSION/activate && ./scripts/check-release-startup.sh

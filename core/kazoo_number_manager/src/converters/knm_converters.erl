@@ -26,16 +26,16 @@
 
 -define(DEFAULT_CONVERTER,
         kapps_config:get_ne_binary(?KNM_CONFIG_CAT, <<"converter">>, ?DEFAULT_CONVERTER_B)).
--define(RECONCILE_REGEX,
-        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
-
--define(ACCOUNT_RECONCILE_REGEX,
-        kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
-
--define(CONVERTER_MOD, kz_term:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(DEFAULT_RECONCILE_REGEX, <<"^\\+?1?\\d{10}$|^\\+[2-9]\\d{7,}$|^011\\d*$|^00\\d*\$">>).
 -define(KEY_RECONCILE_REGEX, <<"reconcile_regex">>).
+
+-define(RECONCILE_REGEX,
+        kapps_config:get_ne_binary(?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
+-define(RECONCILE_REGEX(AccountId),
+        kapps_account_config:get_global(AccountId, ?KNM_CONFIG_CAT, ?KEY_RECONCILE_REGEX, ?DEFAULT_RECONCILE_REGEX)).
+
+-define(CONVERTER_MOD, kz_term:to_atom(<<"knm_converter_", (?DEFAULT_CONVERTER)/binary>>, 'true')).
 
 -define(CLASSIFIER_TOLLFREE_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1((?:800|88\\d|877|866|855|844|833|822)\\d{7})\$">>}
@@ -43,7 +43,7 @@
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
                           ])).
 
--define(CLASSIFIER_TOLLFREE,
+-define(CLASSIFIER_TOLL_US,
         kz_json:from_list([{<<"regex">>, <<"^\\+1(900\\d{7})\$">>}
                           ,{<<"friendly_name">>, <<"US Toll">>}
                           ,{<<"pretty_print">>, <<"SS(###) ### - ####">>}
@@ -79,7 +79,7 @@
 
 -define(DEFAULT_CLASSIFIERS,
         kz_json:from_list([{<<"tollfree_us">>, ?CLASSIFIER_TOLLFREE_US}
-                          ,{<<"toll_us">>, ?CLASSIFIER_TOLLFREE}
+                          ,{<<"toll_us">>, ?CLASSIFIER_TOLL_US}
                           ,{<<"emergency">>, ?CLASSIFIER_EMERGENCY}
                           ,{<<"caribbean">>, ?CLASSIFIER_CARIBBEAN}
                           ,{<<"did_us">>, ?CLASSIFIER_DID_US}
@@ -186,7 +186,7 @@ is_reconcilable(Number) ->
 -spec is_reconcilable(ne_binary(), ne_binary()) -> boolean().
 is_reconcilable(Number, AccountId) ->
     Num = normalize(Number, AccountId),
-    is_reconcilable_by_regex(Num, ?ACCOUNT_RECONCILE_REGEX).
+    is_reconcilable_by_regex(Num, ?RECONCILE_REGEX(AccountId)).
 
 is_reconcilable_by_regex(Num, Regex) ->
     case re:run(Num, Regex) of
@@ -225,7 +225,7 @@ available_classifiers() ->
 %%--------------------------------------------------------------------
 -spec available_converters() -> ne_binaries().
 available_converters() ->
-    kapps_config:get(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
+    kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"converters">>, ?DEFAULT_CONVERTERS).
 
 %%--------------------------------------------------------------------
 %% @public

@@ -24,7 +24,7 @@
 %%--------------------------------------------------------------------
 -spec handle(kz_json:object(), kapps_call:call()) -> any().
 handle(Data, Call) ->
-    case get_endpoints(kz_json:get_value(<<"endpoints">>, Data, []), Call) of
+    case get_endpoints(kz_json:get_list_value(<<"endpoints">>, Data), Call) of
         [] ->
             lager:notice("page group has no endpoints, moving to next callflow element"),
             cf_exe:continue(Call);
@@ -75,7 +75,8 @@ send_page(Endpoints, Timeout, CCVs, Options, Call) ->
                              ,Call
                              ).
 
--spec get_endpoints(kz_json:objects(), kapps_call:call()) -> kz_json:objects().
+-spec get_endpoints(api_objects(), kapps_call:call()) -> kz_json:objects().
+get_endpoints(undefined, Call) -> get_endpoints([], Call);
 get_endpoints(Members, Call) ->
     S = self(),
     Builders = [kz_util:spawn(

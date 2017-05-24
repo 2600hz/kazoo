@@ -13,6 +13,7 @@
 
 -export([get/2, get/3, get/4
         ,get_ne_binary/3, get_ne_binary/4
+        ,get_ne_binaries/3, get_ne_binaries/4
         ,get_global/3, get_global/4
         ,get_from_reseller/3, get_from_reseller/4
         ,set/4
@@ -121,12 +122,11 @@ flush(Account, Config) ->
 -spec get(account(), ne_binary(), kz_json:path()) -> kz_json:api_json_term().
 -spec get(account(), ne_binary(), kz_json:path(), Default) -> kz_json:json_term() | Default.
 
--ifdef(TEST).
-get(_, _, _) -> 'undefined'.
-get(_, _, _, Default) -> Default.
--else.
 get(Account, Config, Key) ->
     get(Account, Config, Key, 'undefined').
+-ifdef(TEST).
+get(_, _, _, Default) -> Default.
+-else.
 get(Account, Config, Key, Default) ->
     kz_json:get_value(Key, get(Account, Config), Default).
 -endif.
@@ -149,6 +149,17 @@ get_ne_binary(Account, Config, Path, Default) ->
     case kz_term:is_empty(Value) of
         true -> Default;
         false -> kz_term:to_binary(Value)
+    end.
+
+-spec get_ne_binaries(account(), ne_binary(), kz_json:path()) -> ne_binaries().
+-spec get_ne_binaries(account(), ne_binary(), kz_json:path(), Default) -> ne_binaries() | Default.
+get_ne_binaries(Account, Config, Path) ->
+    get_ne_binaries(Account, Config, Path, undefined).
+get_ne_binaries(Account, Config, Path, Default) ->
+    Values = get(Account, Config, Path, Default),
+    case kz_term:is_ne_binaries(Values) of
+        false -> Default;
+        true -> Values
     end.
 
 -spec set(account(), ne_binary(), kz_json:path(), kz_json:json_term()) -> kz_json:object().

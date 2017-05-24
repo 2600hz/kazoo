@@ -21,7 +21,7 @@
 
 -define(ECALLMGR_PLAYBACK_MEDIA_KEY(M), {'playback_media', M}).
 
--define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get(<<"freeswitch_context">>, <<"context_2">>)).
+-define(DEFAULT_FREESWITCH_CONTEXT, ecallmgr_config:get_ne_binary(<<"freeswitch_context">>, <<"context_2">>)).
 
 -define(SIP_INTERFACE, "sipinterface_1").
 -define(DEFAULT_FS_PROFILE, "sipinterface_1").
@@ -144,8 +144,8 @@
 -type participant() :: #participant{}.
 -type participants() :: [participant()].
 
--define(DEFAULT_REALM, ecallmgr_config:get(<<"default_realm">>, <<"nodomain.com">>)).
--define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)). % 10 seconds
+-define(DEFAULT_REALM, ecallmgr_config:get_ne_binary(<<"default_realm">>, <<"nodomain.com">>)).
+-define(MAX_TIMEOUT_FOR_NODE_RESTART, ecallmgr_config:get_integer(<<"max_timeout_for_node_restart">>, 10 * ?MILLISECONDS_IN_SECOND)).
 -define(MAX_NODE_RESTART_FAILURES, 3).
 
 -define(EXPIRES_DEVIATION_TIME,
@@ -165,10 +165,11 @@
 -define(STARTUP_FILE, [code:priv_dir(?APP), "/startup.config"]).
 -define(SETTINGS_FILE, [code:priv_dir(?APP), "/settings.config"]).
 
--define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.
-{'fs_cmds', [{'load', \"mod_sofia\"}
-             ,{'reloadacl', \"\"}
-]}.">>).
+-define(STARTUP_FILE_CONTENTS, <<"{'fs_nodes', []}.\n"
+                                 "{'fs_cmds', [{'load', \"mod_sofia\"}\n"
+                                 "            ,{'reloadacl', \"\"}\n"
+                                 "            ]}.\n"
+                               >>).
 
 %% We pass Application custom channel variables with our own prefix
 %% When an event occurs, we include all prefixed vars in the API message
@@ -228,6 +229,7 @@
                               ,{<<"Origination-UUID">>, <<"origination_uuid">>}
                               ,{<<"Ignore-Display-Updates">>, <<"ignore_display_updates">>}
                               ,{<<"Eavesdrop-Group-ID">>, <<"eavesdrop_group">>}
+                              ,{<<"Media-Webrtc">>, <<"media_webrtc">>}
 
                               ,{<<"Loopback-Bowout">>, <<"loopback_bowout">>}
                               ,{<<"Simplify-Loopback">>, <<"loopback_bowout_on_execute">>}

@@ -33,12 +33,13 @@
         ,is_local/1
         ]).
 
--define(DEFAULT_CARRIER_MODULES, [?CARRIER_LOCAL]).
-
 -define(DEFAULT_CARRIER_MODULE
        ,kapps_config:get_binary(?KNM_CONFIG_CAT, <<"available_module_name">>, ?CARRIER_LOCAL)).
+
+-define(DEFAULT_CARRIER_MODULES, [?DEFAULT_CARRIER_MODULE]).
+
 -define(CARRIER_MODULES
-       ,kapps_config:get(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
+       ,kapps_config:get_ne_binaries(?KNM_CONFIG_CAT, <<"carrier_modules">>, ?DEFAULT_CARRIER_MODULES)).
 
 -ifdef(TEST).
 -define(CARRIER_MODULES(AccountId)
@@ -46,11 +47,11 @@
                  %% CHILD_ACCOUNT_ID is not a reseller but that's okay
                  [?CARRIER_LOCAL, <<"knm_bandwidth2">>];
              (_) ->
-                 kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
+                 kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)
          end)(AccountId)).
 -else.
 -define(CARRIER_MODULES(AccountId)
-       ,kapps_account_config:get(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
+       ,kapps_account_config:get_ne_binaries(AccountId, ?KNM_CONFIG_CAT, <<"carrier_modules">>, ?CARRIER_MODULES)).
 -endif.
 
 -ifdef(TEST).
