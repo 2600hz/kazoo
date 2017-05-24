@@ -54,6 +54,8 @@
 
 -export([bind/3, unbind/3]).
 
+-export([flush_account_views/0]).
+
 binding('migrate') -> <<"maintenance.migrate">>;
 binding('refresh') -> <<"maintenance.refresh">>;
 binding('refresh_account') -> <<"maintenance.refresh.account">>;

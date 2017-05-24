@@ -17,6 +17,8 @@
         ,code_change/3
         ]).
 
+-export([running/0]).
+
 -include("tasks.hrl").
 
 -record(state, {running = [] :: kz_json:objects()
@@ -111,6 +113,14 @@ start_link() ->
 init([]) ->
     {'ok', #state{}, ?TIME_BETWEEN_CYCLE}.
 
+-spec running() -> kz_json:objects().
+running() ->
+  case kz_globals:where_is(?NAME) of
+      'undefined' -> [];
+      _ -> gen_server:call(?SERVER, 'running')
+  end.
+
+%% @private
 -spec next() -> 'ok'.
 next() ->
     gen_server:cast(?SERVER, 'next_cycle').
@@ -130,6 +140,8 @@ next() ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_call(any(), pid_ref(), state()) -> handle_call_ret_state(state()).
+handle_call('running', _From, #state{running=Running}=State) ->
+    {'reply', Running, State};
 handle_call(_Request, _From, State) ->
     {'reply', {'error', 'not_implemented'}, State}.
 
