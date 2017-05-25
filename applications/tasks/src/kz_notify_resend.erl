@@ -8,7 +8,7 @@
 -module(kz_notify_resend).
 -behaviour(gen_server).
 
--export([start_link/0]).
+-export([start_link/0, stop/0]).
 -export([init/1
         ,handle_call/3
         ,handle_cast/2
@@ -45,29 +45,29 @@
 -define(DEFAULT_RETRY_COUNT,
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"max_retries">>, 3)).
 -define(DEFAULT_RETRY_PERIOD,
-        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"retry_after_fudge_ms">>, 10 * ?MILLISECONDS_IN_MINUTE)).
+        kapps_config:get_integer(?MOD_CONFIG_CAT, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
 
 -define(VOICEMAIL_RESCHEDULE_RULES,
         kz_json:from_list_recursive(
           [{<<"rules">>
            ,[{<<"after_15_mins">>, [{<<"attempt">>, 1}
                                    ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_ms">>, 15 * ?MILLISECONDS_IN_MINUTE}
+                                   ,{<<"retry_after_s">>, 15 * ?SECONDS_IN_MINUTE}
                                    ]
              }
             ,{<<"after_45_mins">>, [{<<"attempt">>, 2}
                                    ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_ms">>, 45 * ?MILLISECONDS_IN_MINUTE}
+                                   ,{<<"retry_after_s">>, 45 * ?SECONDS_IN_MINUTE}
                                    ]
              }
             ,{<<"after_two_hours">>, [{<<"attempt">>, 3}
                                      ,{<<"retries">>, 4}
-                                     ,{<<"retry_after_ms">>, 2 * ?MILLISECONDS_IN_HOUR}
+                                     ,{<<"retry_after_s">>, 2 * ?SECONDS_IN_HOUR}
                                      ]
              }
             ,{<<"after_one_day">>, [{<<"attempt">>, 4}
                                    ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_ms">>, 1 * ?MILLISECONDS_IN_DAY}
+                                   ,{<<"retry_after_s">>, 1 * ?SECONDS_IN_DAY}
                                    ]
              }
             ]
@@ -114,7 +114,12 @@ start_link() ->
 -spec init([]) -> {'ok', state(), kz_timeout()}.
 init([]) ->
     kz_util:put_callid(?NAME),
+    lager:debug("~s has been started", [?NAME]),
     {'ok', #state{}, ?TIME_BETWEEN_CYCLE}.
+
+-spec stop() -> ok.
+stop() ->
+    gen_server:cast(?SERVER, stop).
 
 -spec running() -> kz_json:objects().
 running() ->
@@ -170,6 +175,9 @@ handle_call(_Request, _From, State) ->
 -spec handle_cast(any(), state()) -> handle_cast_ret_state(state()).
 handle_cast('next_cycle', State) ->
     {'noreply', State#state{running=[]}, ?TIME_BETWEEN_CYCLE};
+handle_cast(stop, State) ->
+    lager:debug("notify resender has been stopped"),
+    {stop, normal, State};
 handle_cast(_Msg, State) ->
     lager:debug("unhandled cast: ~p", [_Msg]),
     {'noreply', State}.
@@ -186,12 +194,14 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
+    Now = kz_time:current_tstamp(),
+    io:format("~n Now ~p~n", [Now]),
     ViewOptions = [{'startkey', 0}
-                  ,{'endkey', kz_time:current_tstamp()}
+                  ,{'endkey', Now}
                   ,{'limit', ?READ_LIMIT}
                   ,'include_docs'
                   ],
-    case kz_datamgr:get_result_keys(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/list_by_modified">>, ViewOptions) of
+    case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/list_by_modified">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?TIME_BETWEEN_CYCLE};
         {'ok', Pendings} ->
             process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]),
@@ -244,8 +254,7 @@ process_single(JObj) ->
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
 
-    CallResp = kz_amqp_worker:call_collect(API, PublishFun, fun collecting/1, ?PUBLISH_TIMEOUT),
-    case handle_result(CallResp) of
+    case handle_result(call_collect(API, PublishFun)) of
         'true' -> {'ok', JObj};
         'false' -> {'failed', JObj}
     end.
@@ -272,11 +281,20 @@ send_notification(JObj, #{ok := OK}=Map) ->
     NotifyType = kz_json:get_ne_binary_value(<<"notification_type">>, JObj),
     PublishFun = map_to_publish_fun(NotifyType),
 
-    CallResp = kz_amqp_worker:call_collect(API, PublishFun, fun collecting/1, ?PUBLISH_TIMEOUT),
-    case handle_result(CallResp) of
+    case handle_result(call_collect(API, PublishFun)) of
         'true' -> Map#{ok := [JObj|OK]};
         'false' -> maybe_reschedule(NotifyType, JObj, Map)
     end.
+
+-spec call_collect(api_terms(), api_atom()) -> kz_amqp_worker:request_return().
+call_collect(_API, undefined) -> 'ok';
+call_collect(undefined, _) -> 'ok';
+call_collect(API, PublishFun) ->
+    kz_amqp_worker:call_collect(kz_json:recursive_to_proplist(API)
+                               ,fun kapi_notifications:PublishFun/1
+                               ,fun collecting/1
+                               ,?PUBLISH_TIMEOUT
+                               ).
 
 -spec save_result(map()) -> 'ok'.
 save_result(Map) ->
@@ -315,13 +333,12 @@ db_bulk_result(JObj) ->
 -spec handle_result(kz_amqp_worker:request_return()) -> boolean().
 handle_result('ok') -> 'true';
 handle_result({'ok', Resp}) -> is_completed(Resp);
-handle_result({'error', Error}) ->
-    case kz_json:is_json_object(Error)
-        andalso kz_json:find(<<"Status">>, Error)
-    of
-        <<"completed">> -> 'true';
+handle_result({'error', [Error|_]=List}) ->
+    case kz_json:is_json_object(Error) of
+        'true' -> is_completed(List);
         _ -> 'false'
     end;
+handle_result({'error', _Reason}) -> 'false';
 handle_result({'returned', _, Resp}) -> is_completed(Resp);
 handle_result({'timeout', Resp}) -> is_completed(Resp).
 
@@ -330,6 +347,7 @@ maybe_reschedule(NotifyType, JObj, #{ko := KO}=Map) ->
     J = apply_reschedule_logic(NotifyType, JObj),
     Attempts = kz_json:get_integer_value(<<"attempts">>, J, 0),
     Retries = kz_json:get_integer_value(<<"retries">>, J, ?DEFAULT_RETRY_COUNT),
+
     case Retries - Attempts >= 1 of
         'true' ->
             lager:debug("notification is rescheduled"),
@@ -366,8 +384,10 @@ apply_reschedule_rules(_NotifyType, {[], _}, JObj) -> {'no_rules', JObj};
 apply_reschedule_rules(NotifyType, {[Rule | Rules], [Key | Keys]}, JObj) ->
     Attempts = kz_json:get_integer_value(<<"attempts">>, JObj, 0),
     RuleAttempt = kz_json:get_integer_value(<<"attempt">>, Rule, Attempts),
-    RetryAfter = kz_json:get_integer_value(<<"retry_after_ms">>, Rule, ?DEFAULT_RETRY_PERIOD),
     Retries = kz_json:get_integer_value(<<"retries">>, Rule, ?DEFAULT_RETRY_COUNT),
+
+    RetryAfter = kz_json:get_integer_value(<<"retry_after_s">>, Rule, ?DEFAULT_RETRY_PERIOD),
+
     case RuleAttempt =:= Attempts of
         'true' ->
             RuleName = <<NotifyType/binary, ".", Key/binary>>,

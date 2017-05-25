@@ -14,7 +14,7 @@ Key | Description | Type | Default
 `max_doc_read` | Max number of notifications to read from database for each cycle | `integer` | `20`
 `max_retries` | Default max retries to re-publish | `integer` | `3`
 `reschedule_rules` | Re-schedule rules for each notification type to apply | `object` | `{}`
-`retry_after_fudge_ms` | Constant time in milliseconds which would be multipy with attemtps to set retry time | `integer` | `600000`
+`retry_after_fudge_s` | Constant time in seconds which would be multipy with attemtps to set retry time | `integer` | `600`
 
 ### Rescheduler
 
@@ -29,14 +29,14 @@ This `rules` is JSON object as follow:
 ```json
 {
 	"name_of_the_rule_1": {
-		"retry_after_ms": 1000,
+		"retry_after_s": 900,
 		"retries": 4,
 		"attempt": 1
 	}
 }
 ```
 
-So if the publish attempt is the first attempt, this match this rule, and it would be retries in at least in `1000` milliseconds (as specifis by `retry_after_ms`).
+So if the publish attempt is the first attempt, this match this rule, and it would be retries in at least in `1000` milliseconds (as specifis by `retry_after_s`).
 
 The whole default `reschedule_rules` rules is as follow:
 
@@ -45,22 +45,22 @@ The whole default `reschedule_rules` rules is as follow:
   "voicemail_new": {
     "rules": {
       "after_one_day": {
-        "retry_after_ms": 86400000,
+        "retry_after_s": 86400,
         "retries": 4,
         "attempt": 4
       },
       "after_two_hours": {
-        "retry_after_ms": 7200000,
+        "retry_after_s": 7200,
         "retries": 4,
         "attempt": 3
       },
       "after_45_mins": {
-        "retry_after_ms": 2700000,
+        "retry_after_s": 2700,
         "retries": 4,
         "attempt": 2
       },
       "after_15_mins": {
-        "retry_after_ms": 900000,
+        "retry_after_s": 900,
         "retries": 4,
         "attempt": 1
       }

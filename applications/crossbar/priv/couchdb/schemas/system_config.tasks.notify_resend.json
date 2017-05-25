@@ -23,9 +23,9 @@
             "description": "Re-schedule rules for each notification type to apply",
             "type": "object"
         },
-        "retry_after_fudge_ms": {
+        "retry_after_fudge_s": {
             "default": 600000,
-            "description": "Constant time in milliseconds which would be multipy with attemtps to set retry time",
+            "description": "Constant time in seconds which would be multipy with attemtps to set retry time",
             "type": "integer"
         }
     },

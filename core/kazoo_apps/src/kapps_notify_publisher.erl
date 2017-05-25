@@ -152,10 +152,18 @@ is_completed([JObj|_]) ->
         andalso kz_json:get_value(<<"Status">>, JObj)
     of
         <<"completed">> -> 'true';
+        <<"failed">> -> maybe_ignore_failure(kz_json:get_ne_binary_value(<<"Failure-Message">>, JObj));
         %% FIXME: Is pending enough to consider publish was successful? at least teletype recieved the notification!
         %% <<"pending">> -> 'true';
         _ -> 'false'
     end.
+
+-spec maybe_ignore_failure(api_ne_binary()) -> boolean().
+maybe_ignore_failure(<<"missing_from">>) -> 'true';
+maybe_ignore_failure(<<"invalid_to_addresses">>) -> 'true';
+maybe_ignore_failure(<<"no_to_addresses">>) -> 'true';
+maybe_ignore_failure(<<"email_encoding_failed">>) -> 'true';
+maybe_ignore_failure(_) -> 'false'.
 
 %% @private
 %% @doc try to find account id in different part of payload(copied from teletype_util)

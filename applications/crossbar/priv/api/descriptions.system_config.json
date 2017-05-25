@@ -700,7 +700,7 @@
     "tasks.notify_resend.max_doc_read": "Max number of notifications to read from database for each cycle",
     "tasks.notify_resend.max_retries": "Default max retries to re-publish",
     "tasks.notify_resend.reschedule_rules": "Re-schedule rules for each notification type to apply",
-    "tasks.notify_resend.retry_after_fudge_ms": "Constant time in milliseconds which would be multipy with attemtps to set retry time",
+    "tasks.notify_resend.retry_after_fudge_s": "Constant time in seconds which would be multipy with attemtps to set retry time",
     "tasks.numbers.db_page_size": "maximum count of numbers read from db at once",
     "tasks.numbers.import_defaults_to_carrier": "carrier module to use if none provided during numbers import",
     "tasks.pause_between_upload_output_attempts_s": "the amount of time to pause between attempts to upload resulting CSV in seconds",
