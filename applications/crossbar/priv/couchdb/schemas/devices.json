@@ -292,6 +292,7 @@
                                 "type": {
                                     "description": "Feature key type",
                                     "enum": [
+                                        "line",
                                         "presence",
                                         "parking",
                                         "personal_parking",
@@ -310,8 +311,7 @@
                                 }
                             },
                             "required": [
-                                "type",
-                                "value"
+                                "type"
                             ],
                             "type": [
                                 "object",
