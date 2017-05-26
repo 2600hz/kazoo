@@ -19,7 +19,32 @@
             "type": "integer"
         },
         "reschedule_rules": {
-            "default": {},
+            "default": {
+                "voicemail_new": {
+                    "rules": {
+                        "after_15_mins": {
+                            "attempt": 1,
+                            "retries": 4,
+                            "retry_after_s": 900
+                        },
+                        "after_45_mins": {
+                            "attempt": 2,
+                            "retries": 4,
+                            "retry_after_s": 2700
+                        },
+                        "after_one_day": {
+                            "attempt": 4,
+                            "retries": 4,
+                            "retry_after_s": 86400
+                        },
+                        "after_two_hours": {
+                            "attempt": 3,
+                            "retries": 4,
+                            "retry_after_s": 7200
+                        }
+                    }
+                }
+            },
             "description": "Re-schedule rules for each notification type to apply",
             "type": "object"
         },

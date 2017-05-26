@@ -48,29 +48,34 @@
         kapps_config:get_integer(?MOD_CONFIG_CAT, <<"retry_after_fudge_s">>, 10 * ?SECONDS_IN_MINUTE)).
 
 -define(VOICEMAIL_RESCHEDULE_RULES,
-        kz_json:from_list_recursive(
+        kz_json:from_list(
           [{<<"rules">>
-           ,[{<<"after_15_mins">>, [{<<"attempt">>, 1}
-                                   ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_s">>, 15 * ?SECONDS_IN_MINUTE}
-                                   ]
-             }
-            ,{<<"after_45_mins">>, [{<<"attempt">>, 2}
-                                   ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_s">>, 45 * ?SECONDS_IN_MINUTE}
-                                   ]
-             }
-            ,{<<"after_two_hours">>, [{<<"attempt">>, 3}
-                                     ,{<<"retries">>, 4}
-                                     ,{<<"retry_after_s">>, 2 * ?SECONDS_IN_HOUR}
-                                     ]
-             }
-            ,{<<"after_one_day">>, [{<<"attempt">>, 4}
-                                   ,{<<"retries">>, 4}
-                                   ,{<<"retry_after_s">>, 1 * ?SECONDS_IN_DAY}
-                                   ]
-             }
-            ]
+           ,kz_json:from_list(
+              [{<<"after_15_mins">>
+               ,kz_json:from_list([{<<"attempt">>, 1}
+                                  ,{<<"retries">>, 4}
+                                  ,{<<"retry_after_s">>, 15 * ?SECONDS_IN_MINUTE}
+                                  ])
+               }
+              ,{<<"after_45_mins">>
+               ,kz_json:from_list([{<<"attempt">>, 2}
+                                  ,{<<"retries">>, 4}
+                                  ,{<<"retry_after_s">>, 45 * ?SECONDS_IN_MINUTE}
+                                  ])
+               }
+              ,{<<"after_two_hours">>
+               ,kz_json:from_list([{<<"attempt">>, 3}
+                                  ,{<<"retries">>, 4}
+                                  ,{<<"retry_after_s">>, 2 * ?SECONDS_IN_HOUR}
+                                  ])
+               }
+              ,{<<"after_one_day">>
+               ,kz_json:from_list([{<<"attempt">>, 4}
+                                  ,{<<"retries">>, 4}
+                                  ,{<<"retry_after_s">>, 1 * ?SECONDS_IN_DAY}
+                                  ])
+               }
+              ])
            }
           ])).
 
