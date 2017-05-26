@@ -1,0 +1,25 @@
+[Unit]
+Description=Kazoo whistle_app server daemon
+Wants=epmd.socket
+After=syslog.target network.target auditd.service epmd.socket
+
+[Service]
+Type=forking
+User=kazoo
+Group=daemon
+WorkingDirectory=/opt/kazoo
+Environment="ERL_LIBS=/opt/kazoo/deps:/opt/kazoo/core:/opt/kazoo/applications:$(echo /opt/kazoo/deps/rabbitmq_erlang_client-*/deps)"
+;String "$(date +%s)" must be escaped https://www.freedesktop.org/software/systemd/man/systemd-escape.html
+Environment="ERL_CRASH_DUMP=/opt/kazoo/\$(date \x2b\x25s)_whistle_erl_crash.dump"
+Environment="PROTO_DIST=inet_tcp"
+EnvironmentFile=-/etc/sysconfig/kazoo
+ExecStart=/usr/bin/erl -proto_dist $PROTO_DIST -name whistle_apps -args_file /opt/kazoo/rel/dev-vm.args -config /opt/kazoo/rel/sys.config -detached
+
+KillMode=control-group
+Restart=always
+RestartSec=5s
+
+LimitNOFILE=999999
+
+[Install]
+WantedBy=multi-user.target
