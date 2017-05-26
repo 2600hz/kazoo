@@ -21,7 +21,7 @@
         ,authorize/1
         ,validate/1, validate/2, validate/3, validate/4
         ,put/1
-        ,post/2, post/3
+        ,post/2, post/3, post/4
         ,patch/2
         ,delete/2
         ,lookup_regs/1
@@ -96,7 +96,7 @@ allowed_methods(_DeviceId, ?CHECK_SYNC_PATH_TOKEN) ->
     [?HTTP_POST].
 
 allowed_methods(_DeviceId, ?QUICKCALL_PATH_TOKEN, _PhoneNumber) ->
-    [?HTTP_GET].
+    [?HTTP_GET, ?HTTP_POST].
 
 %%--------------------------------------------------------------------
 %% @public
@@ -152,6 +152,9 @@ billing(Context, _ReqVerb, _Nouns) ->
 authenticate(Context) ->
     authenticate(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+authenticate(?HTTP_POST, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
+    lager:debug("authenticating request"),
+    'true';
 authenticate(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authenticating request"),
     'true';
@@ -162,6 +165,9 @@ authenticate(_Verb, _Nouns) ->
 authorize(Context) ->
     authorize(cb_context:req_verb(Context), cb_context:req_nouns(Context)).
 
+authorize(?HTTP_POST, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
+    lager:debug("authorizing request"),
+    'true';
 authorize(?HTTP_GET, ?DEVICES_QCALL_NOUNS(_DeviceId, _Number)) ->
     lager:debug("authorizing request"),
     'true';
@@ -267,6 +273,15 @@ post(Context, DeviceId) ->
                           _ = provisioner_util:maybe_sync_sip_data(Context1, 'device')
                   end),
             maybe_add_mobile_mdn(Context3)
+    end.
+
+-spec post(cb_context:context(), path_token(), path_token(), path_token()) -> cb_context:context().
+post(Context, DeviceId, ?QUICKCALL_PATH_TOKEN, _ToDial) ->
+    Context1 = crossbar_util:maybe_validate_quickcall(load_device(DeviceId, Context)),
+    case cb_context:has_errors(Context1) of
+        'true' -> Context1;
+        'false' ->
+            cb_modules_util:maybe_originate_quickcall(Context1)
     end.
 
 -spec prune_null_provisioner_fields(cb_context:context()) -> cb_context:context().

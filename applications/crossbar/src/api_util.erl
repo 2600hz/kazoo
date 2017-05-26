@@ -267,7 +267,9 @@ set_request_data_in_context(Context, Req, 'undefined', QS) ->
     lager:debug("request json is empty"),
     {set_valid_data_in_context(Context, kz_json:new(), QS), Req};
 set_request_data_in_context(Context, Req, JObj, QS) ->
-    case is_valid_request_envelope(JObj, Context) of
+    case is_Bret(Context, JObj)
+        orelse is_valid_request_envelope(JObj, Context)
+    of
         'true' ->
             lager:debug("request json is valid"),
             {set_valid_data_in_context(Context, JObj, QS), Req};
@@ -279,6 +281,11 @@ set_request_data_in_context(Context, Req, JObj, QS) ->
                                           )
                         )
     end.
+
+is_Bret(Context, JObj) ->
+    kz_json:new() =:= JObj
+        andalso lists:member(<<"quickcall">>, path_tokens(Context))
+        andalso ?HTTP_POST =:= cb_context:method(Context).
 
 -spec set_valid_data_in_context(cb_context:context(), kz_json:object(), kz_json:object()) ->
                                        cb_context:context().
