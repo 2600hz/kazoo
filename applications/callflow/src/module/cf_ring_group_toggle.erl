@@ -88,11 +88,11 @@ alter_endpoints(Module, Call, DisableUntil) ->
     Media = case {Found, DisableUntil} of
                 {'false', _} ->
                     %% User not found
-                    kz_media_util:get_prompt(<<"agent-invalid_choice">>, kapps_call:account_id(Call));
+                    kapps_call:get_prompt(Call, <<"agent-invalid_choice">>);
                 {'true', ?ON_VAL} ->
-                    kz_media_util:get_prompt(<<"agent-logged_in">>, kapps_call:account_id(Call));
+                    kapps_call:get_prompt(Call, <<"agent-logged_in">>);
                 {'true', _} ->
-                    kz_media_util:get_prompt(<<"agent-logged_out">>, kapps_call:account_id(Call))
+                    kapps_call:get_prompt(Call, <<"agent-logged_out">>)
             end,
     kapps_call_command:play(Media, Call),
     kz_json:set_value(EndpointsPath, EndPoints, Module).

@@ -30,8 +30,6 @@
 -define(RECORDED_NAME_KEY, [<<"media">>, <<"name">>]).
 -define(CF_RECORDING_ID_KEY, <<"Recording-ID">>).
 
--define(CONFIRM_FILE(Call), kz_media_util:get_prompt(<<"ivr-group_confirm">>, Call)).
-
 -define(DIALPLAN_MAP, [{<<"tone">>, <<"tones">>}]).
 
 -define(LIST_BY_NUMBER, <<"callflows/listing_by_number">>).

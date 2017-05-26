@@ -64,6 +64,7 @@
 -export([set_fetch_id/2, fetch_id/1]).
 -export([set_bridge_id/2, bridge_id/1]).
 -export([set_language/2, language/1]).
+-export([get_prompt/2, get_prompt/3]).
 -export([set_to_tag/2, to_tag/1]).
 -export([set_from_tag/2, from_tag/1]).
 -export([direction/1]).
@@ -210,11 +211,11 @@ put_callid(#kapps_call{call_id='undefined'}) -> 'undefined';
 put_callid(#kapps_call{call_id=CallId}) ->
     kz_util:put_callid(CallId).
 
--spec from_route_req(kz_json:object()) -> call().
+-spec from_route_req(kapi_route:req()) -> call().
 from_route_req(RouteReq) ->
     from_route_req(RouteReq, new()).
 
--spec from_route_req(kz_json:object(), call()) -> call().
+-spec from_route_req(kapi_route:req(), call()) -> call().
 from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,account_id=OldAccountId
                                     ,account_db=OldAccountDb
@@ -224,15 +225,15 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                                     ,from=OldFrom
                                     ,to=OldTo
                                     }=Call) ->
-    CallId = kz_json:get_value(<<"Call-ID">>, RouteReq, OldCallId),
+    CallId = kz_json:get_ne_binary_value(<<"Call-ID">>, RouteReq, OldCallId),
     kz_util:put_callid(CallId),
 
-    CCVs = merge(OldCCVs, kz_json:get_value(<<"Custom-Channel-Vars">>, RouteReq)),
-    SHs = merge(OldSHs, kz_json:get_value(<<"Custom-SIP-Headers">>, RouteReq)),
+    CCVs = merge(OldCCVs, kz_json:get_json_value(<<"Custom-Channel-Vars">>, RouteReq)),
+    SHs = merge(OldSHs, kz_json:get_json_value(<<"Custom-SIP-Headers">>, RouteReq)),
 
-    Request = kz_json:get_value(<<"Request">>, RouteReq, OldRequest),
-    From = kz_json:get_value(<<"From">>, RouteReq, OldFrom),
-    To = kz_json:get_value(<<"To">>, RouteReq, OldTo),
+    Request = kz_json:get_ne_binary_value(<<"Request">>, RouteReq, OldRequest),
+    From = kz_json:get_ne_binary_value(<<"From">>, RouteReq, OldFrom),
+    To = kz_json:get_ne_binary_value(<<"To">>, RouteReq, OldTo),
 
     {AccountId, AccountDb} =
         find_account_info(OldAccountId, OldAccountDb, kz_json:get_value(<<"Account-ID">>, CCVs)),
@@ -242,7 +243,7 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
     [RequestUser, RequestRealm] = binary:split(Request, <<"@">>),
 
     Call1 =
-        case kz_json:get_value(<<"Prepend-CID-Name">>, RouteReq) of
+        case kz_json:get_ne_binary_value(<<"Prepend-CID-Name">>, RouteReq) of
             'undefined' -> Call;
             Prepend -> kvs_store('prepend_cid_name', Prepend, Call)
         end,
@@ -259,26 +260,26 @@ from_route_req(RouteReq, #kapps_call{call_id=OldCallId
                     ,to_realm=ToRealm
                     ,account_id=AccountId
                     ,account_db=AccountDb
-                    ,inception = kz_json:get_value(<<"Inception">>, CCVs, inception(Call))
-                    ,switch_hostname = kz_json:get_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
-                    ,switch_nodename = kz_json:get_ne_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
-                    ,switch_url = kz_json:get_ne_value(<<"Switch-URL">>, RouteReq, switch_url(Call))
-                    ,switch_uri = kz_json:get_ne_value(<<"Switch-URI">>, RouteReq, switch_uri(Call))
-                    ,authorizing_id = kz_json:get_ne_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
-                    ,authorizing_type = kz_json:get_ne_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
-                    ,owner_id = kz_json:get_ne_value(<<"Owner-ID">>, CCVs, owner_id(Call))
-                    ,fetch_id = kz_json:get_ne_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
-                    ,bridge_id = kz_json:get_ne_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
-                    ,caller_id_name = kz_json:get_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
-                    ,callee_id_name = kz_json:get_value(<<"Callee-ID-Name">>, RouteReq, callee_id_name(Call))
-                    ,caller_id_number = kz_json:get_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
-                    ,callee_id_number = kz_json:get_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
+                    ,inception = kz_json:get_ne_binary_value(<<"Inception">>, CCVs, inception(Call))
+                    ,switch_hostname = kz_json:get_ne_binary_value(<<"Switch-Hostname">>, RouteReq, switch_hostname(Call))
+                    ,switch_nodename = kz_json:get_ne_binary_value(<<"Switch-Nodename">>, RouteReq, switch_nodename(Call))
+                    ,switch_url = kz_json:get_ne_binary_value(<<"Switch-URL">>, RouteReq, switch_url(Call))
+                    ,switch_uri = kz_json:get_ne_binary_value(<<"Switch-URI">>, RouteReq, switch_uri(Call))
+                    ,authorizing_id = kz_json:get_ne_binary_value(<<"Authorizing-ID">>, CCVs, authorizing_id(Call))
+                    ,authorizing_type = kz_json:get_ne_binary_value(<<"Authorizing-Type">>, CCVs, authorizing_type(Call))
+                    ,owner_id = kz_json:get_ne_binary_value(<<"Owner-ID">>, CCVs, owner_id(Call))
+                    ,fetch_id = kz_json:get_ne_binary_value(<<"Fetch-ID">>, CCVs, fetch_id(Call))
+                    ,bridge_id = kz_json:get_ne_binary_value(<<"Bridge-ID">>, CCVs, bridge_id(Call))
+                    ,caller_id_name = kz_json:get_binary_value(<<"Caller-ID-Name">>, RouteReq, caller_id_name(Call))
+                    ,callee_id_name = kz_json:get_binary_value(<<"Callee-ID-Name">>, RouteReq, callee_id_name(Call))
+                    ,caller_id_number = kz_json:get_binary_value(<<"Caller-ID-Number">>, RouteReq, caller_id_number(Call))
+                    ,callee_id_number = kz_json:get_binary_value(<<"Callee-ID-Number">>, RouteReq, ToUser)
                     ,ccvs = CCVs
                     ,sip_headers = SHs
-                    ,resource_type = kz_json:get_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
-                    ,to_tag = kz_json:get_value(<<"To-Tag">>, RouteReq, to_tag(Call))
-                    ,from_tag = kz_json:get_value(<<"From-Tag">>, RouteReq, from_tag(Call))
-                    ,direction = kz_json:get_ne_value(<<"Call-Direction">>, RouteReq, direction(Call))
+                    ,resource_type = kz_json:get_ne_binary_value(<<"Resource-Type">>, RouteReq, resource_type(Call))
+                    ,to_tag = kz_json:get_ne_binary_value(<<"To-Tag">>, RouteReq, to_tag(Call))
+                    ,from_tag = kz_json:get_ne_binary_value(<<"From-Tag">>, RouteReq, from_tag(Call))
+                    ,direction = kz_json:get_ne_binary_value(<<"Call-Direction">>, RouteReq, direction(Call))
                     }.
 
 -spec from_route_win(kz_json:object()) -> call().
@@ -425,10 +426,10 @@ from_json(JObj, #kapps_call{ccvs=OldCCVs
                    ,sip_headers = SHs
                    ,kvs = orddict:merge(fun(_, _, V2) -> V2 end, Kvs, KVS)
                    ,other_leg_call_id = kz_json:get_ne_value(<<"Other-Leg-Call-ID">>, JObj, other_leg_call_id(Call))
-                   ,resource_type = kz_json:get_ne_value(<<"Resource-Type">>, JObj, resource_type(Call))
-                   ,to_tag = kz_json:get_ne_value(<<"To-Tag">>, JObj, to_tag(Call))
-                   ,from_tag = kz_json:get_ne_value(<<"From-Tag">>, JObj, from_tag(Call))
-                   ,direction = kz_json:get_ne_value(<<"Call-Direction">>, JObj, direction(Call))
+                   ,resource_type = kz_json:get_ne_binary_value(<<"Resource-Type">>, JObj, resource_type(Call))
+                   ,to_tag = kz_json:get_ne_binary_value(<<"To-Tag">>, JObj, to_tag(Call))
+                   ,from_tag = kz_json:get_ne_binary_value(<<"From-Tag">>, JObj, from_tag(Call))
+                   ,direction = kz_json:get_ne_binary_value(<<"Call-Direction">>, JObj, direction(Call))
                    ,call_bridged = kz_json:is_true(<<"Call-Bridged">>, JObj, call_bridged(Call))
                    ,message_left = kz_json:is_true(<<"Message-Left">>, JObj, message_left(Call))
                    }.
@@ -888,7 +889,7 @@ set_resource_type('undefined', #kapps_call{}=Call) ->
 set_resource_type(ResourceType, #kapps_call{}=Call) ->
     set_custom_channel_var(<<"Resource-Type">>, ResourceType, Call#kapps_call{resource_type=ResourceType}).
 
--spec resource_type(call()) -> api_binary().
+-spec resource_type(call()) -> api_ne_binary().
 resource_type(#kapps_call{resource_type=ResourceType}) ->
     ResourceType.
 
@@ -980,6 +981,16 @@ language(#kapps_call{language='undefined', account_id=AccountId}) ->
     kz_media_util:prompt_language(AccountId);
 language(#kapps_call{language=Language}) -> Language.
 -endif.
+
+-spec get_prompt(call(), ne_binary()) -> api_ne_binary().
+-spec get_prompt(call(), ne_binary(), api_ne_binary()) -> api_ne_binary().
+get_prompt(#kapps_call{}=Call, Media) ->
+    get_prompt(Call, Media, language(Call)).
+
+get_prompt(Call, Media, 'undefined') ->
+    kz_media_util:get_prompt(Media, language(Call), account_id(Call));
+get_prompt(Call, Media, Language) ->
+    kz_media_util:get_prompt(Media, Language, account_id(Call)).
 
 -spec set_to_tag(ne_binary(), call()) -> call().
 set_to_tag(ToTag, #kapps_call{}=Call) when is_binary(ToTag) ->
