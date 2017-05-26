@@ -194,10 +194,8 @@ handle_cast(_Msg, State) ->
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
 handle_info('timeout', State) ->
-    Now = kz_time:current_tstamp(),
-    io:format("~n Now ~p~n", [Now]),
     ViewOptions = [{'startkey', 0}
-                  ,{'endkey', Now}
+                  ,{'endkey', kz_time:current_tstamp()}
                   ,{'limit', ?READ_LIMIT}
                   ,'include_docs'
                   ],
@@ -316,7 +314,7 @@ save_reschedules_publish(#{ko := KO}) ->
     case kz_datamgr:save_docs(?KZ_PENDING_NOTIFY_DB, KO) of
         {'ok', Js} ->
             {_Saved, _Failed} = lists:partition(fun db_bulk_result/1, Js),
-            lager:debug("~b notifications was successfully published", [length(_Saved)]);
+            lager:debug("~b notifications was rescheduled", [length(_Saved)]);
         {'error', _R} ->
             lager:error("failed to delete rescheduled notifications: ~p", [_R])
     end.
