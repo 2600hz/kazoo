@@ -527,12 +527,12 @@ set_enter_exit_sounds({_, AccountId, MediaId}, #participant{conference=Conferenc
                                                            }) ->
     EntrySounds = [play_entry_tone(IsModerator, Conference)
                   ,kz_media_util:media_path(MediaId, AccountId)
-                  ,kz_media_util:get_prompt(<<"conf-has_joined">>, kapps_conference:call(Conference))
+                  ,kapps_call:get_prompt(Call, <<"conf-has_joined">>)
                   ],
 
     ExitSounds = [play_exit_tone(IsModerator, Conference)
                  ,kz_media_util:media_path(MediaId, AccountId)
-                 ,kz_media_util:get_prompt(<<"conf-has_left">>, kapps_conference:call(Conference))
+                 ,kapps_call:get_prompt(Call, <<"conf-has_left">>)
                  ],
 
     Fun = fun('undefined') -> 'false';

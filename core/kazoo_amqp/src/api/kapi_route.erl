@@ -30,6 +30,11 @@
 -include_lib("amqp_util.hrl").
 -include("kapi_dialplan.hrl").
 
+-type req() :: kz_json:object().
+-type resp() :: kz_json:object().
+
+-export_type([req/0, resp/0]).
+
 -define(KEY_CALL_ID, <<"Call-ID">>).
 -define(KEY_CONTROL_QUEUE, <<"Control-Queue">>).
 -define(KEY_FETCH_ID, [<<"Custom-Channel-Vars">>, <<"Fetch-ID">>]).

@@ -63,7 +63,7 @@
         kz_json:from_list([{<<"default">>, ?DEFAULT_MOBILE_AMQP_CONNECTION}])).
 
 -define(CONFIRM_FILE(Call)
-       ,kz_media_util:get_prompt(<<"ivr-group_confirm">>, kapps_call:account_id(Call))
+       ,kapps_call:get_prompt(Call, <<"ivr-group_confirm">>)
        ).
 
 -define(ENCRYPTION_MAP, [{<<"srtp">>, [{<<"RTP-Secure-Media">>, <<"true">>}]}
