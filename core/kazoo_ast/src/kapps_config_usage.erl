@@ -49,16 +49,16 @@ existing_schema(Name) ->
 account_properties(AutoGenSchema) ->
     Flat = kz_json:to_proplist(kz_json:flatten(AutoGenSchema)),
     KeepPaths = sets:from_list(
-                  [lists:droplast(Path)
-                   || {Path, V} <- Flat,
+                  [[P1, P2]
+                   || {[P1, P2 | _]=Path, V} <- Flat,
                       ?SOURCE =:= lists:last(Path),
                       V =:= kapps_account_config
                   ]),
     kz_json:expand(
       kz_json:from_list(
         [KV
-         || {Path,_}=KV <- Flat,
-            sets:is_element(lists:droplast(Path), KeepPaths)
+         || {[P1, P2 | _],_}=KV <- Flat,
+            sets:is_element([P1, P2], KeepPaths)
         ])).
 
 -spec remove_source(kz_json:object()) -> kz_json:object().

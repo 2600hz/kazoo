@@ -8,6 +8,9 @@
                 "system_alert"
             ],
             "description": "List of notification types have to be ignored to presist if they failed to publish",
+            "items": {
+                "type": "string"
+            },
             "type": "array"
         },
         "should_presist_for_retry": {
