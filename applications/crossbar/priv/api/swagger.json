@@ -1740,6 +1740,16 @@
             ],
             "type": "object"
         },
+        "callflows.number_rewrite": {
+            "description": "Validator for the number rewrite data object",
+            "properties": {
+                "number": {
+                    "description": "The final destination number to call",
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "callflows.offnet": {
             "description": "Validator for the offnet callflow's data object",
             "properties": {
