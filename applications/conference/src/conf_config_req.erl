@@ -45,9 +45,9 @@ fetch_profile_config(JObj, AccountId, ConferenceId) ->
     fetch_profile_config(JObj, Conference, ConferenceId, Config).
 
 -spec fetch_profile_config(kz_json:object(), kapps_conference:conference(), api_ne_binary(), api_object()) -> 'ok'.
-fetch_profile_config(JObj, Conference, ConfigName, 'undefined') ->
+fetch_profile_config(JObj, _Conference, ConfigName, 'undefined') ->
     lager:debug("no profile defined for '~s', using default", [ConfigName]),
-    fetch_profile_config(JObj, Conference, ConfigName, default_profile());
+    fetch_profile_config(JObj, ConfigName, default_profile());
 fetch_profile_config(JObj, _Conference, ?PAGE_PROFILE_NAME = ConfigName, Profile) ->
     ServerId = kz_api:server_id(JObj),
     lager:debug("profile '~s' found", [ConfigName]),
