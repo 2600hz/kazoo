@@ -875,7 +875,7 @@ prepare_contents(JobId, RespHeaders, RespContent) ->
         {'ok', OutputFile} -> validate_tiff(OutputFile);
         {'error', _}=Error -> Error
     end.
-    
+
 -spec prepare_contents(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                               {'ok', ne_binary()} |
                               {'error', ne_binary()}.
@@ -1141,7 +1141,7 @@ validate_tiff_content(Filename) ->
         Exe ->
             Dir = filename:dirname(Filename),
             OutputFile = filename:join(Dir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
-            Cmd = io_lib:format("~s ~s -o ~s", [Exe, Filename, OutputFile]),            
+            Cmd = io_lib:format("~s ~s -o ~s", [Exe, Filename, OutputFile]),
             catch(os:cmd(Cmd)),
             case file:read_file_info(OutputFile) of
                 {'ok', _} ->
