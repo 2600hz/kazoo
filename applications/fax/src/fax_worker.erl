@@ -1128,7 +1128,7 @@ validate_tiff(Filename) ->
             lager:info("file ~s exists, validating", [Filename]),
             validate_tiff_content(Filename);
         {'error', Reason} ->
-            lager:info("could get file info for ~s : ~p", [Filename, Reason]),
+            lager:info("could not get file info for ~s : ~p", [Filename, Reason]),
             {'error', <<"could not convert input file">>}
     end.
 
