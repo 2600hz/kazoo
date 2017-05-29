@@ -113,6 +113,7 @@
         ,<<"Length">>
         ,<<"Local-SDP">>
         ,<<"Media-Server">>
+        ,<<"Origination-Call-ID">>
         ,<<"Other-Leg-Call-ID">> %% BRIDGE
         ,<<"Other-Leg-Caller-ID-Name">>
         ,<<"Other-Leg-Caller-ID-Number">>
@@ -545,7 +546,7 @@ declare_exchanges() ->
 -spec publish_event(api_terms(), ne_binary()) -> 'ok'.
 publish_event(Event) -> publish_event(Event, ?DEFAULT_CONTENT_TYPE).
 publish_event(Event, ContentType) when is_list(Event) ->
-    CallId = props:get_first_defined([<<"Call-ID">>, <<"Unique-ID">>], Event),
+    CallId = props:get_first_defined([<<"Origination-Call-ID">>, <<"Call-ID">>, <<"Unique-ID">>], Event),
     EventName = props:get_value(<<"Event-Name">>, Event),
     {'ok', Payload} = kz_api:prepare_api_payload(Event, ?CALL_EVENT_VALUES, fun event/1),
     amqp_util:callevt_publish(?CALL_EVENT_ROUTING_KEY(EventName, CallId), Payload, ContentType);

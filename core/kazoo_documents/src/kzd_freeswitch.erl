@@ -14,6 +14,7 @@
         ,callee_id_number/1, callee_id_number/2
         ,dialed_number/1
         ,call_id/1
+        ,origination_call_id/1
         ,other_leg_call_id/1
         ,call_direction/1, original_call_direction/1
         ,resource_type/1, resource_type/2
@@ -409,3 +410,7 @@ from_tag(Props) ->
 -spec to_tag(data()) -> api_binary().
 to_tag(Props) ->
     props:get_value(<<"variable_sip_to_tag">>, Props).
+
+-spec origination_call_id(data()) -> api_binary().
+origination_call_id(Props) ->
+    props:get_value(<<"variable_sip_origination_call_id">>, Props).

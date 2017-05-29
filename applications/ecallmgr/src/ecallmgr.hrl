@@ -307,6 +307,8 @@
                               ,{<<"Conference-Exit-Sound">>, <<"conference_exit_sound">>}
                               ,{<<"SIP-Refer-To">>, <<"sip_refer_to">>}
                               ,{<<"SIP-Referred-By">>, <<"sip_h_Referred-By">>}
+                              ,{<<"Origination-Call-ID">>, <<"sip_origination_call_id">>}
+                              ,{<<"RTCP-MUX">>, <<"rtcp_mux">>}
                               ]).
 
 %% [{FreeSWITCH-App-Name, Kazoo-App-Name}]
