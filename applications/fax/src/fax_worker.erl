@@ -16,8 +16,6 @@
 
 -export([handle_tx_resp/2
         ,handle_fax_event/2
-        ,handle_channel_destroy/2
-        ,handle_channel_replaced/2
         ,handle_job_status_query/2
         ]).
 -export([init/1
@@ -63,10 +61,7 @@
 -define(BINDINGS(CallId), [{'self', []}
                           ,{'fax', [{'restrict_to', ['query_status']}]}
                           ,{'call', [{'callid', CallId}
-                                    ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
-                                                     ,<<"CHANNEL_DESTROY">>
-                                                     ,<<"CHANNEL_REPLACED">>
-                                                     ]
+                                    ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]
                                      }
                                     ]
                            }
@@ -77,12 +72,6 @@
                      }
                     ,{{?MODULE, 'handle_fax_event'}
                      ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_destroy'}
-                     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_replaced'}
-                     ,[{<<"call_event">>, <<"CHANNEL_REPLACED">>}]
                      }
                     ,{{?MODULE, 'handle_job_status_query'}
                      ,[{<<"fax">>, <<"query_status">>}]
@@ -136,18 +125,6 @@ handle_fax_event(JObj, Props) ->
     JobId = kz_call_event:authorizing_id(JObj),
     Event = kz_call_event:application_event(JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
-
--spec handle_channel_destroy(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_channel_destroy(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    JobId = kz_call_event:authorizing_id(JObj),
-    gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
-
--spec handle_channel_replaced(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_channel_replaced(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    JobId = kz_call_event:authorizing_id(JObj),
-    gen_server:cast(Srv, {'channel_replaced', JobId, JObj}).
 
 -spec handle_job_status_query(kz_json:object(), kz_proplist()) -> any().
 handle_job_status_query(JObj, Props) ->
@@ -235,22 +212,6 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
     end;
 handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
     lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
-    {'noreply', State};
-handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
-                                                    ,job=Job
-                                                    ,fax_status='undefined'
-                                                    ,resp='undefined'
-                                                    }=State) ->
-    lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
-    send_error_status(State, kz_call_event:hangup_cause(JObj)),
-    {Resp, Doc} = release_failed_job('channel_destroy', JObj, Job),
-    gen_server:cast(self(), 'stop'),
-    {'noreply', State#state{job=Doc, resp = Resp}};
-handle_cast({'channel_destroy', JobId, _JObj}, #state{job_id=JobId}=State) ->
-    lager:debug("ignoring received channel destroy for ~s",[JobId]),
-    {'noreply', State};
-handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
-    lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
     Data = kz_call_event:application_data(JObj),
@@ -817,14 +778,13 @@ move_doc(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    kazoo_modb:maybe_create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
     Options = ['override_existing_document'
               ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
               ],
     lager:debug("moving fax outbound document ~s from faxes to ~s with id ~s", [FromId, AccountMODb, ToId]),
-    kz_datamgr:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
+    kazoo_modb:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
 
 -spec fax_error(kz_json:object()) -> api_binary().
 fax_error(JObj) ->
@@ -1049,6 +1009,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                 ,{<<"Application-Data">>, get_proxy_url(JobId)}
                 ,{<<"Outbound-Call-ID">>, CallId}
                 ,{<<"Bypass-E164">>, kz_json:is_true(<<"bypass_e164">>, JObj)}
+                ,{<<"Fax-T38-Enabled">>, false}
                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
@@ -1077,6 +1038,7 @@ maybe_hunt_account_id(JObj, AccountId) ->
 resource_ccvs(JobId) ->
     kz_json:from_list([{<<"Authorizing-ID">>, JobId}
                       ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                      ,{<<"RTCP-MUX">>, false}
                       ]).
 
 -spec get_did(kz_json:object()) -> api_binary().
