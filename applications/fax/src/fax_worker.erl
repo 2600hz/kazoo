@@ -608,11 +608,6 @@ release_failed_job('uncontrolled_termination', _, JObj) ->
              ,{<<"time_elapsed">>, elapsed_time(JObj)}
              ],
     release_job(Result, JObj);
-release_failed_job('channel_destroy', Resp, JObj) ->
-    Result = [{<<"success">>, 'false'}
-              | fax_util:collect_channel_props(Resp)
-             ],
-    release_job(Result, JObj, Resp);
 release_failed_job('fax_result', Resp, JObj) ->
     <<"sip:", Code/binary>> = kz_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:487">>),
     Result = props:filter_undefined(
@@ -872,51 +867,61 @@ fetch_document_from_url(JObj) ->
                               {'ok', ne_binary()} |
                               {'error', ne_binary()}.
 prepare_contents(JobId, RespHeaders, RespContent) ->
-    lager:debug("preparing fax contents", []),
+    lager:debug("preparing fax contents"),
+    CT = props:get_value("content-type", RespHeaders, <<"application/octet-stream">>),
+    ContentType = fax_util:normalize_content_type(CT),
     TmpDir = kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-    case fax_util:normalize_content_type(props:get_value("content-type", RespHeaders, <<"application/octet-stream">>)) of
-        <<"image/tiff">> ->
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(OutputFile, RespContent),
-            {'ok', OutputFile};
-        <<"application/pdf">> ->
-            InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(InputFile, RespContent),
-            Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
-            lager:debug("attempting to convert pdf: ~s", [Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-                    {'error', <<"can not convert file, try uploading a tiff">>}
-            end;
-        <<"image/", SubType/binary>> ->
-            InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(InputFile, RespContent),
-            Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
-            lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-                    {'error', <<"can not convert file, try uploading a tiff">>}
-            end;
-        <<?OPENXML_MIME_PREFIX, _/binary>> = CT ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        <<?OPENOFFICE_MIME_PREFIX, _/binary>> = CT ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        CT when ?OPENOFFICE_COMPATIBLE(CT) ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        Else ->
-            lager:debug("unsupported file type: ~p", [Else]),
-            {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
+    case prepare_contents(ContentType, JobId, RespContent, TmpDir) of
+        {'ok', OutputFile} -> validate_tiff(OutputFile);
+        {'error', _}=Error -> Error
     end.
+    
+-spec prepare_contents(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', ne_binary()} |
+                              {'error', ne_binary()}.
+prepare_contents(<<"image/tiff">>, JobId, RespContent, TmpDir) ->
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(OutputFile, RespContent),
+    {'ok', OutputFile};
+
+prepare_contents(<<"application/pdf">>, JobId, RespContent, TmpDir) ->
+    InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(InputFile, RespContent),
+    Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
+    lager:debug("attempting to convert pdf: ~s", [Cmd]),
+    try "success" = os:cmd(Cmd) of
+        "success" -> {'ok', OutputFile}
+    catch
+        Type:Exception ->
+            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            {'error', <<"can not convert file, try uploading a tiff">>}
+    end;
+
+prepare_contents(<<"image/", SubType/binary>>, JobId, RespContent, TmpDir) ->
+    InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(InputFile, RespContent),
+    Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
+    lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
+    try "success" = os:cmd(Cmd) of
+        "success" -> {'ok', OutputFile}
+    catch
+        Type:Exception ->
+            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            {'error', <<"can not convert file, try uploading a tiff">>}
+    end;
+
+prepare_contents(<<?OPENXML_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
+    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+
+prepare_contents(CT, JobId, RespContent, TmpDir)
+  when ?OPENOFFICE_COMPATIBLE(CT) ->
+    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+
+prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
+    lager:debug("unsupported file type: ~p", [CT]),
+    {'error', list_to_binary(["file type '", CT, "' is unsupported"])}.
 
 -spec convert_openoffice_document(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                          {'ok', ne_binary()} |
@@ -930,8 +935,7 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
     Cmd = io_lib:format(?CONVERT_OO_COMMAND, [OpenOfficeServer, InputFile, OutputFile]),
     lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
     try "success" = os:cmd(Cmd) of
-        "success" ->
-            {'ok', OutputFile}
+        "success" -> {'ok', OutputFile}
     catch
         Type:Exception ->
             lager:debug("could not covert file: ~p:~p", [Type, Exception]),
@@ -978,7 +982,7 @@ send_fax(_JobId, _JObj, _Q, 'undefined') ->
 send_fax(_JobId, _JObj, _Q, <<>>) ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(empty)">>});
 send_fax(JobId, JObj, Q, ToDID) ->
-    IgnoreEarlyMedia = kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    IgnoreEarlyMedia = 'true', %kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
@@ -1116,3 +1120,36 @@ send_control_status(CtrlQ, Q, JobId, FaxState) ->
 handle_start_job(JObj, _Props) ->
     'true' = kapi_fax:start_job_v(JObj),
     fax_worker_sup:start_fax_job(JObj).
+
+-spec validate_tiff(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+validate_tiff(Filename) ->
+    case file:read_file_info(Filename) of
+        {'ok', _} ->
+            lager:info("file ~s exists, validating", [Filename]),
+            validate_tiff_content(Filename);
+        {'error', Reason} ->
+            lager:info("could get file info for ~s : ~p", [Filename, Reason]),
+            {'error', <<"could not convert input file">>}
+    end.
+
+-spec validate_tiff_content(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+validate_tiff_content(Filename) ->
+    case os:find_executable("tiff2pdf") of
+        'false' ->
+            lager:info("tiff2pdf not found when trying to validate tiff file, assuming ok."),
+            {'ok', Filename};
+        Exe ->
+            Dir = filename:dirname(Filename),
+            OutputFile = filename:join(Dir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
+            Cmd = io_lib:format("~s ~s -o ~s", [Exe, Filename, OutputFile]),            
+            catch(os:cmd(Cmd)),
+            case file:read_file_info(OutputFile) of
+                {'ok', _} ->
+                    lager:info("tiff check succeeded converting to pdf"),
+                    catch(file:delete(OutputFile)),
+                    {'ok', Filename};
+                {'error', _} ->
+                    lager:info("tiff check failed to convert to pdf"),
+                    {'error', <<"tiff check failed to convert to pdf">>}
+            end
+    end.
