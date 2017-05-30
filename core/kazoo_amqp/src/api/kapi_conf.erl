@@ -109,7 +109,8 @@ get_value(JObj, Key) ->
     kz_json:get_value(Key, JObj).
 
 %%--------------------------------------------------------------------
-%% @doc Format a call event from the switch for the listener
+%% @doc
+%% Format a call event from the switch for the listener
 %% Takes proplist, creates JSON string or error
 %% @end
 %%--------------------------------------------------------------------

@@ -106,32 +106,28 @@ resp_to_probe(State, User, Realm) ->
 check_sync_api(JObj, _Props) ->
     'true' = kapi_switch:check_sync_v(JObj),
     kz_util:put_callid(JObj),
-    check_sync(kapi_switch:check_sync_username(JObj)
-              ,kapi_switch:check_sync_realm(JObj)
-              ).
+    check_sync(kapi_switch:check_sync_username(JObj), kapi_switch:check_sync_realm(JObj)).
 
 -spec check_sync(ne_binary(), ne_binary()) -> 'ok'.
 check_sync(Username, Realm) ->
     lager:info("looking up registration information for ~s@~s", [Username, Realm]),
     case ecallmgr_registrar:lookup_registration(Realm, Username) of
         {'error', 'not_found'} ->
-            lager:warning("failed to find contact for ~s@~s, not sending check-sync", [Username, Realm]);
+            lager:warning("failed to find contact ~s@~s, not sending check-sync", [Username, Realm]);
         {'ok', Registration} ->
             Contact = kz_json:get_first_defined([<<"Bridge-RURI">>, <<"Contact">>], Registration),
             [Node|_] = kz_term:shuffle_list(ecallmgr_fs_nodes:connected()),
             lager:info("calling check sync on ~s for ~s@~s and contact ~s", [Node, Username, Realm, Contact]),
             case ensure_contact_user(Contact, Username, Realm) of
                 'undefined' ->
-                    lager:error("invalid contact : ~p : ~p", [Contact, Registration]);
+                    lager:error("invalid contact ~p: ~p", [Contact, Registration]);
                 Valid -> send_check_sync(Node, Username, Realm, Valid)
             end
     end.
 
 -spec send_check_sync(atom(), ne_binary(), ne_binary(), ne_binary()) -> 'ok'.
 send_check_sync(Node, Username, Realm, Contact) ->
-    To = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
-    From = kzsip_uri:uri(#uri{user=Username, domain=Realm}),
-    AOR = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
+    AOR = To = From = kzsip_uri:ruri(#uri{user=Username, domain=Realm}),
     SIPHeaders = <<"X-KAZOO-AOR : ", AOR/binary, "\r\n">>,
     Headers = [{"profile", ?DEFAULT_FS_PROFILE}
               ,{"contact-uri", Contact}
