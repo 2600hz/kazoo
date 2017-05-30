@@ -1443,7 +1443,7 @@ generate_ccvs(Endpoint, Call, CallFwd) ->
 
 -spec maybe_set_webrtc(ccv_acc()) -> ccv_acc().
 maybe_set_webrtc({Endpoint, Call, CallFwd, CCVs} = Acc) ->
-    case kz_json:is_true(<<"media_webrtc">>, Endpoint) of
+    case kz_json:is_true([<<"media">>, <<"webrtc">>], Endpoint) of
         'true' ->
             {Endpoint, Call, CallFwd, kz_json:set_value(<<"Media-Webrtc">>, <<"true">>, CCVs)};
         'false' ->
