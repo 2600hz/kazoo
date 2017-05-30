@@ -424,6 +424,7 @@ build_fax_settings(Call, JObj) ->
       ,{<<"Callee-ID-Name">>, callee_name(JObj)}
       ,{<<"Fax-Doc-ID">>, kapps_call:kvs_fetch(<<"Fax-Doc-ID">>, Call) }
       ,{<<"Fax-Doc-DB">>, kapps_call:kvs_fetch(<<"Fax-Doc-DB">>, Call) }
+      ,{<<"RTCP-MUX">>, false}
       ]).
 
 -spec callee_name(kz_json:object()) -> ne_binary().

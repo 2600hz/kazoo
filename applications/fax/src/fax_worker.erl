@@ -16,8 +16,6 @@
 
 -export([handle_tx_resp/2
         ,handle_fax_event/2
-        ,handle_channel_destroy/2
-        ,handle_channel_replaced/2
         ,handle_job_status_query/2
         ]).
 -export([init/1
@@ -63,10 +61,7 @@
 -define(BINDINGS(CallId), [{'self', []}
                           ,{'fax', [{'restrict_to', ['query_status']}]}
                           ,{'call', [{'callid', CallId}
-                                    ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>
-                                                     ,<<"CHANNEL_DESTROY">>
-                                                     ,<<"CHANNEL_REPLACED">>
-                                                     ]
+                                    ,{'restrict_to', [<<"CHANNEL_FAX_STATUS">>]
                                      }
                                     ]
                            }
@@ -77,12 +72,6 @@
                      }
                     ,{{?MODULE, 'handle_fax_event'}
                      ,[{<<"call_event">>, <<"CHANNEL_FAX_STATUS">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_destroy'}
-                     ,[{<<"call_event">>, <<"CHANNEL_DESTROY">>}]
-                     }
-                    ,{{?MODULE, 'handle_channel_replaced'}
-                     ,[{<<"call_event">>, <<"CHANNEL_REPLACED">>}]
                      }
                     ,{{?MODULE, 'handle_job_status_query'}
                      ,[{<<"fax">>, <<"query_status">>}]
@@ -136,18 +125,6 @@ handle_fax_event(JObj, Props) ->
     JobId = kz_call_event:authorizing_id(JObj),
     Event = kz_call_event:application_event(JObj),
     gen_server:cast(Srv, {'fax_status', Event , JobId, JObj}).
-
--spec handle_channel_destroy(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_channel_destroy(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    JobId = kz_call_event:authorizing_id(JObj),
-    gen_server:cast(Srv, {'channel_destroy', JobId, JObj}).
-
--spec handle_channel_replaced(kz_json:object(), kz_proplist()) -> 'ok'.
-handle_channel_replaced(JObj, Props) ->
-    Srv = props:get_value('server', Props),
-    JobId = kz_call_event:authorizing_id(JObj),
-    gen_server:cast(Srv, {'channel_replaced', JobId, JObj}).
 
 -spec handle_job_status_query(kz_json:object(), kz_proplist()) -> any().
 handle_job_status_query(JObj, Props) ->
@@ -235,22 +212,6 @@ handle_cast({'tx_resp', JobId, JObj}, #state{job_id=JobId
     end;
 handle_cast({'tx_resp', JobId2, _}, #state{job_id=JobId}=State) ->
     lager:debug("received txresp for ~s but this JobId is ~s",[JobId2, JobId]),
-    {'noreply', State};
-handle_cast({'channel_destroy', JobId, JObj}, #state{job_id=JobId
-                                                    ,job=Job
-                                                    ,fax_status='undefined'
-                                                    ,resp='undefined'
-                                                    }=State) ->
-    lager:debug("received channel destroy for ~s : ~p",[JobId, JObj]),
-    send_error_status(State, kz_call_event:hangup_cause(JObj)),
-    {Resp, Doc} = release_failed_job('channel_destroy', JObj, Job),
-    gen_server:cast(self(), 'stop'),
-    {'noreply', State#state{job=Doc, resp = Resp}};
-handle_cast({'channel_destroy', JobId, _JObj}, #state{job_id=JobId}=State) ->
-    lager:debug("ignoring received channel destroy for ~s",[JobId]),
-    {'noreply', State};
-handle_cast({'channel_destroy', JobId2, _JObj}, #state{job_id=JobId}=State) ->
-    lager:debug("received channel destroy for ~s but this JobId is ~s",[JobId2, JobId]),
     {'noreply', State};
 handle_cast({'fax_status', <<"negociateresult">>, JobId, JObj}, State) ->
     Data = kz_call_event:application_data(JObj),
@@ -647,11 +608,6 @@ release_failed_job('uncontrolled_termination', _, JObj) ->
              ,{<<"time_elapsed">>, elapsed_time(JObj)}
              ],
     release_job(Result, JObj);
-release_failed_job('channel_destroy', Resp, JObj) ->
-    Result = [{<<"success">>, 'false'}
-              | fax_util:collect_channel_props(Resp)
-             ],
-    release_job(Result, JObj, Resp);
 release_failed_job('fax_result', Resp, JObj) ->
     <<"sip:", Code/binary>> = kz_json:get_value(<<"Hangup-Code">>, Resp, <<"sip:487">>),
     Result = props:filter_undefined(
@@ -817,14 +773,13 @@ move_doc(JObj) ->
     FromDB = kz_doc:account_db(JObj),
     AccountId = kz_doc:account_id(JObj),
     AccountMODb = kazoo_modb:get_modb(AccountId, Year, Month),
-    kazoo_modb:maybe_create(AccountMODb),
     ToDB = kz_util:format_account_modb(AccountMODb, 'encoded'),
     ToId = ?MATCH_MODB_PREFIX(kz_term:to_binary(Year), kz_time:pad_month(Month), FromId),
     Options = ['override_existing_document'
               ,{'transform', fun(_, B) -> kz_json:set_value(<<"folder">>, <<"outbox">>, B) end}
               ],
     lager:debug("moving fax outbound document ~s from faxes to ~s with id ~s", [FromId, AccountMODb, ToId]),
-    kz_datamgr:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
+    kazoo_modb:move_doc(FromDB, {<<"fax">>, FromId}, ToDB, ToId, Options).
 
 -spec fax_error(kz_json:object()) -> api_binary().
 fax_error(JObj) ->
@@ -912,51 +867,61 @@ fetch_document_from_url(JObj) ->
                               {'ok', ne_binary()} |
                               {'error', ne_binary()}.
 prepare_contents(JobId, RespHeaders, RespContent) ->
-    lager:debug("preparing fax contents", []),
+    lager:debug("preparing fax contents"),
+    CT = props:get_value("content-type", RespHeaders, <<"application/octet-stream">>),
+    ContentType = fax_util:normalize_content_type(CT),
     TmpDir = kapps_config:get_binary(?CONFIG_CAT, <<"file_cache_path">>, <<"/tmp/">>),
-    case fax_util:normalize_content_type(props:get_value("content-type", RespHeaders, <<"application/octet-stream">>)) of
-        <<"image/tiff">> ->
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(OutputFile, RespContent),
-            {'ok', OutputFile};
-        <<"application/pdf">> ->
-            InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(InputFile, RespContent),
-            Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
-            lager:debug("attempting to convert pdf: ~s", [Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-                    {'error', <<"can not convert file, try uploading a tiff">>}
-            end;
-        <<"image/", SubType/binary>> ->
-            InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
-            OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
-            kz_util:write_file(InputFile, RespContent),
-            Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
-            lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
-            try "success" = os:cmd(Cmd) of
-                "success" ->
-                    {'ok', OutputFile}
-            catch
-                Type:Exception ->
-                    lager:debug("could not covert file: ~p:~p", [Type, Exception]),
-                    {'error', <<"can not convert file, try uploading a tiff">>}
-            end;
-        <<?OPENXML_MIME_PREFIX, _/binary>> = CT ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        <<?OPENOFFICE_MIME_PREFIX, _/binary>> = CT ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        CT when ?OPENOFFICE_COMPATIBLE(CT) ->
-            convert_openoffice_document(CT, TmpDir, JobId, RespContent);
-        Else ->
-            lager:debug("unsupported file type: ~p", [Else]),
-            {'error', list_to_binary(["file type '", Else, "' is unsupported"])}
+    case prepare_contents(ContentType, JobId, RespContent, TmpDir) of
+        {'ok', OutputFile} -> validate_tiff(OutputFile);
+        {'error', _}=Error -> Error
     end.
+
+-spec prepare_contents(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
+                              {'ok', ne_binary()} |
+                              {'error', ne_binary()}.
+prepare_contents(<<"image/tiff">>, JobId, RespContent, TmpDir) ->
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(OutputFile, RespContent),
+    {'ok', OutputFile};
+
+prepare_contents(<<"application/pdf">>, JobId, RespContent, TmpDir) ->
+    InputFile = list_to_binary([TmpDir, JobId, ".pdf"]),
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(InputFile, RespContent),
+    Cmd = io_lib:format(?CONVERT_PDF_COMMAND, [OutputFile, InputFile]),
+    lager:debug("attempting to convert pdf: ~s", [Cmd]),
+    try "success" = os:cmd(Cmd) of
+        "success" -> {'ok', OutputFile}
+    catch
+        Type:Exception ->
+            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            {'error', <<"can not convert file, try uploading a tiff">>}
+    end;
+
+prepare_contents(<<"image/", SubType/binary>>, JobId, RespContent, TmpDir) ->
+    InputFile = list_to_binary([TmpDir, JobId, ".", SubType]),
+    OutputFile = list_to_binary([TmpDir, JobId, ".tiff"]),
+    kz_util:write_file(InputFile, RespContent),
+    Cmd = io_lib:format(?CONVERT_IMAGE_COMMAND, [InputFile, OutputFile]),
+    lager:debug("attempting to convert ~s: ~s", [SubType, Cmd]),
+    try "success" = os:cmd(Cmd) of
+        "success" -> {'ok', OutputFile}
+    catch
+        Type:Exception ->
+            lager:debug("could not covert file: ~p:~p", [Type, Exception]),
+            {'error', <<"can not convert file, try uploading a tiff">>}
+    end;
+
+prepare_contents(<<?OPENXML_MIME_PREFIX, _/binary>> = CT, JobId, RespContent, TmpDir) ->
+    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+
+prepare_contents(CT, JobId, RespContent, TmpDir)
+  when ?OPENOFFICE_COMPATIBLE(CT) ->
+    convert_openoffice_document(CT, TmpDir, JobId, RespContent);
+
+prepare_contents(CT, _JobId, _RespContent, _TmpDir) ->
+    lager:debug("unsupported file type: ~p", [CT]),
+    {'error', list_to_binary(["file type '", CT, "' is unsupported"])}.
 
 -spec convert_openoffice_document(ne_binary(), ne_binary(), ne_binary(), ne_binary()) ->
                                          {'ok', ne_binary()} |
@@ -970,8 +935,7 @@ convert_openoffice_document(CT, TmpDir, JobId, RespContent) ->
     Cmd = io_lib:format(?CONVERT_OO_COMMAND, [OpenOfficeServer, InputFile, OutputFile]),
     lager:debug("attemting to convert openoffice document: ~s", [Cmd]),
     try "success" = os:cmd(Cmd) of
-        "success" ->
-            {'ok', OutputFile}
+        "success" -> {'ok', OutputFile}
     catch
         Type:Exception ->
             lager:debug("could not covert file: ~p:~p", [Type, Exception]),
@@ -1018,7 +982,7 @@ send_fax(_JobId, _JObj, _Q, 'undefined') ->
 send_fax(_JobId, _JObj, _Q, <<>>) ->
     gen_server:cast(self(), {'error', 'invalid_number', <<"(empty)">>});
 send_fax(JobId, JObj, Q, ToDID) ->
-    IgnoreEarlyMedia = kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
+    IgnoreEarlyMedia = 'true', %kz_term:to_binary(kapps_config:get_is_true(?CONFIG_CAT, <<"ignore_early_media">>, 'false')),
     ToNumber = kz_term:to_binary(kz_json:get_value(<<"to_number">>, JObj)),
     ToName = kz_term:to_binary(kz_json:get_value(<<"to_name">>, JObj, ToNumber)),
     CallId = kz_json:get_value(<<"Call-ID">>, JObj),
@@ -1049,6 +1013,7 @@ send_fax(JobId, JObj, Q, ToDID) ->
                 ,{<<"Application-Data">>, get_proxy_url(JobId)}
                 ,{<<"Outbound-Call-ID">>, CallId}
                 ,{<<"Bypass-E164">>, kz_json:is_true(<<"bypass_e164">>, JObj)}
+                ,{<<"Fax-T38-Enabled">>, false}
                  | kz_api:default_headers(Q, ?APP_NAME, ?APP_VERSION)
                 ]),
     lager:debug("sending fax originate request ~s with call-id ~s", [JobId, CallId]),
@@ -1077,6 +1042,7 @@ maybe_hunt_account_id(JObj, AccountId) ->
 resource_ccvs(JobId) ->
     kz_json:from_list([{<<"Authorizing-ID">>, JobId}
                       ,{<<"Authorizing-Type">>, <<"outbound_fax">>}
+                      ,{<<"RTCP-MUX">>, false}
                       ]).
 
 -spec get_did(kz_json:object()) -> api_binary().
@@ -1154,3 +1120,36 @@ send_control_status(CtrlQ, Q, JobId, FaxState) ->
 handle_start_job(JObj, _Props) ->
     'true' = kapi_fax:start_job_v(JObj),
     fax_worker_sup:start_fax_job(JObj).
+
+-spec validate_tiff(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+validate_tiff(Filename) ->
+    case file:read_file_info(Filename) of
+        {'ok', _} ->
+            lager:info("file ~s exists, validating", [Filename]),
+            validate_tiff_content(Filename);
+        {'error', Reason} ->
+            lager:info("could not get file info for ~s : ~p", [Filename, Reason]),
+            {'error', <<"could not convert input file">>}
+    end.
+
+-spec validate_tiff_content(ne_binary()) -> {'ok', ne_binary()} | {'error', ne_binary()}.
+validate_tiff_content(Filename) ->
+    case os:find_executable("tiff2pdf") of
+        'false' ->
+            lager:info("tiff2pdf not found when trying to validate tiff file, assuming ok."),
+            {'ok', Filename};
+        Exe ->
+            Dir = filename:dirname(Filename),
+            OutputFile = filename:join(Dir, <<(kz_binary:rand_hex(16))/binary, ".pdf">>),
+            Cmd = io_lib:format("~s ~s -o ~s", [Exe, Filename, OutputFile]),
+            catch(os:cmd(Cmd)),
+            case file:read_file_info(OutputFile) of
+                {'ok', _} ->
+                    lager:info("tiff check succeeded converting to pdf"),
+                    catch(file:delete(OutputFile)),
+                    {'ok', Filename};
+                {'error', _} ->
+                    lager:info("tiff check failed to convert to pdf"),
+                    {'error', <<"tiff check failed to convert to pdf">>}
+            end
+    end.
