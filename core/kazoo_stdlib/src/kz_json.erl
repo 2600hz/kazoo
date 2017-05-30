@@ -245,8 +245,8 @@ are_equal(JObj1, JObj2) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec from_list(json_proplist()) -> object().
-from_list([]) -> new();
-from_list(L) when is_list(L) -> ?JSON_WRAPPER(L).
+from_list(L) when is_list(L) ->
+    ?JSON_WRAPPER(props:filter_undefined(L)).
 
 -spec from_list_recursive(json_proplist()) -> object().
 from_list_recursive([]) -> new();
