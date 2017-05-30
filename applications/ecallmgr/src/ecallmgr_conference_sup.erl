@@ -16,6 +16,7 @@
 -export([start_link/0]).
 -export([init/1]).
 -export([start_conference_control/3
+        ,stop_conference_control/3
         ]).
 
 -define(CHILDREN, [?WORKER_TYPE('ecallmgr_conference_control', 'transient')]).
@@ -36,6 +37,12 @@ start_link() ->
 start_conference_control(Node, ConferenceId, InstanceId) ->
     supervisor:start_child(?SERVER, [Node, ConferenceId, InstanceId]).
 
+-spec stop_conference_control(node(), ne_binary(), ne_binary()) -> any().
+stop_conference_control(Node, ConferenceId, InstanceId) ->
+    [Pid ! {'stop', {Node, ConferenceId, InstanceId}}
+     || {_, Pid, _, _}
+            <- supervisor:which_children(?SERVER), is_pid(Pid)
+    ].
 
 %% ===================================================================
 %% Supervisor callbacks
