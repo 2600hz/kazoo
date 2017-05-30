@@ -51,6 +51,8 @@
     },
     "required": [
         "cluster_id",
+        "combo_keys",
+        "feature_keys",
         "provisioning_type",
         "provisioning_url"
     ],
