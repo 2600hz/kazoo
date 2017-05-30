@@ -77,6 +77,7 @@
                        'inclusive_end' |
                        'reduce' |
                        'override_existing_document' |
+                       {max_bulk_read, pos_integer()} |
                        {'transform',transform_fun()} |
                        {'end_docid', binary()} |
                        {'endkey', key_range()} |
@@ -91,7 +92,7 @@
                        {'start_docid', binary()} |
                        {'startkey', key_range()}.
 
--type view_options() :: list(view_option()).
+-type view_options() :: [view_option()].
 
 -type view_listing() :: {ne_binary(), kz_json:object()}.
 -type views_listing() :: [view_listing()].

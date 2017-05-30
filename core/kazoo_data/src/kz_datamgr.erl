@@ -36,12 +36,10 @@
         ,save_docs/2, save_docs/3
         ,open_cache_doc/2, open_cache_doc/3
         ,open_cache_docs/2, open_cache_docs/3
-        ,open_cache_docs_chunked/2, open_cache_docs_chunked/3
         ,update_cache_doc/3
         ,flush_cache_doc/2, flush_cache_doc/3
         ,flush_cache_docs/0, flush_cache_docs/1
         ,add_to_doc_cache/3
-        ,open_docs_chunked/2, open_docs_chunked/3
         ,open_doc/2,open_doc/3
         ,open_docs/2, open_docs/3
         ,del_doc/2, del_docs/2
@@ -655,29 +653,17 @@ open_doc(DbName, DocId, Options) ->
 
 open_docs(DbName, DocIds) ->
     open_docs(DbName, DocIds, []).
-
 open_docs(DbName, DocIds, Options) ->
+    read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
+
+do_open_docs(DbName, DocIds, Options) ->
     NewOptions = [{keys, DocIds}, include_docs | Options],
     all_docs(DbName, NewOptions).
-
--spec open_docs_chunked(text(), docids()) ->
-                               {'ok', kz_json:objects()} |
-                               data_error() |
-                               {'error', 'not_found'}.
--spec open_docs_chunked(text(), docids(), kz_proplist()) ->
-                               {'ok', kz_json:objects()} |
-                               data_error() |
-                               {'error', 'not_found'}.
-
-open_docs_chunked(DbName, DocIds) ->
-    open_docs_chunked(DbName, DocIds, []).
-open_docs_chunked(DbName, DocIds, Options) ->
-    read_chunked(fun open_docs/3, DbName, DocIds, Options).
 
 read_chunked(Opener, DbName, DocIds, Options) ->
     read_chunked(Opener, DbName, DocIds, Options, []).
 read_chunked(Opener, DbName, DocIds, Options, Acc) ->
-    try lists:split(max_bulk_read(), DocIds) of
+    try lists:split(max_bulk_read(Options), DocIds) of
         {NewDocIds, DocIdsLeft} ->
             NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
             read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
@@ -726,26 +712,12 @@ open_cache_docs(DbName, DocIds) ->
     open_cache_docs(DbName, DocIds, []).
 
 open_cache_docs(DbName, DocIds, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_cache:open_cache_docs(DbName, DocIds, Options);
+    read_chunked(fun kzs_cache:open_cache_docs/3, DbName, DocIds, Options);
 open_cache_docs(DbName, DocIds, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_cache_docs(Db, DocIds, Options);
         {'error', _}=E -> E
     end.
-
--spec open_cache_docs_chunked(text(), docids()) ->
-                                     {'ok', kz_json:objects()} |
-                                     data_error() |
-                                     {'error', 'not_found'}.
--spec open_cache_docs_chunked(text(), docids(), kz_proplist()) ->
-                                     {'ok', kz_json:objects()} |
-                                     data_error() |
-                                     {'error', 'not_found'}.
-
-open_cache_docs_chunked(DbName, DocIds) ->
-    open_cache_docs_chunked(DbName, DocIds, []).
-open_cache_docs_chunked(DbName, DocIds, Options) ->
-    read_chunked(fun open_cache_docs/3, DbName, DocIds, Options).
 
 
 -spec all_docs(text()) ->
@@ -1411,6 +1383,11 @@ max_bulk_insert() ->
 max_bulk_read() ->
     kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_read">>, 2000).
 
+-spec max_bulk_read(view_options()) -> pos_integer().
+max_bulk_read(ViewOptions) ->
+    AskedFor = props:get_integer_value(max_bulk_read, ViewOptions, max_bulk_read()),
+    UpperBound = min(AskedFor, max_bulk_read()),
+    max(UpperBound, 1).
 
 -spec db_classification(text()) -> db_classifications().
 db_classification(DBName) -> kzs_util:db_classification(DBName).
