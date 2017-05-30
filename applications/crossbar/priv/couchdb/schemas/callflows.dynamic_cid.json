@@ -6,8 +6,10 @@
         "action": {
             "description": "What action to perform",
             "enum": [
+                "list",
+                "lists",
                 "manual",
-                "list"
+                "static"
             ],
             "type": "string"
         },
