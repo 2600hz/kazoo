@@ -10,7 +10,9 @@
 -export([db_classification/1]).
 
 %% Settings-related
--export([max_bulk_insert/0]).
+-export([max_bulk_insert/0
+        ,max_bulk_read/0
+        ]).
 
 %% format
 -export([format_error/1]).
@@ -91,9 +93,7 @@
 
 -include("kz_data.hrl").
 
--define(VALID_DBNAME(DbName),
-        is_binary(DbName)
-        andalso byte_size(DbName) > 0).
+-define(VALID_DBNAME(DbName), is_binary(DbName), byte_size(DbName) > 0).
 
 -define(UUID_SIZE, 16).
 
@@ -653,10 +653,41 @@ open_doc(DbName, DocId, Options) ->
 
 open_docs(DbName, DocIds) ->
     open_docs(DbName, DocIds, []).
-
 open_docs(DbName, DocIds, Options) ->
+    read_chunked(fun do_open_docs/3, DbName, DocIds, Options).
+
+do_open_docs(DbName, DocIds, Options) ->
     NewOptions = [{keys, DocIds}, include_docs | Options],
     all_docs(DbName, NewOptions).
+
+read_chunked(Opener, DbName, DocIds, Options) ->
+    read_chunked(Opener, DbName, DocIds, Options, []).
+read_chunked(Opener, DbName, DocIds, Options, Acc) ->
+    try lists:split(max_bulk_read(Options), DocIds) of
+        {NewDocIds, DocIdsLeft} ->
+            NewAcc = read_chunked_results(Opener, DbName, NewDocIds, Options, Acc),
+            read_chunked(Opener, DbName, DocIdsLeft, Options, NewAcc)
+    catch error:badarg ->
+            case read_chunked_results(Opener, DbName, DocIds, Options, Acc) of
+                {error, _R}=E -> E;
+                JObjs -> {ok, lists:flatten(lists:reverse(JObjs))}
+            end
+    end.
+
+read_chunked_results(_, _, _, _, {error,_}=Acc) -> Acc;
+read_chunked_results(Opener, DbName, DocIds, Options, Acc) ->
+    read_chunked_results(DocIds, Opener(DbName, DocIds, Options), Acc).
+read_chunked_results(_DocIds, {ok, JObjs}, Acc) ->
+    [JObjs | Acc];
+read_chunked_results(_DocIds, {error,_}=Reason, []) ->
+    Reason;
+read_chunked_results(DocIds, {error, Reason}, Acc) ->
+    [kz_json:from_list(
+       [{<<"id">>, DocId}
+       ,{<<"error">>, Reason}
+       ])
+     || DocId <- DocIds
+    ] ++ Acc.
 
 %%--------------------------------------------------------------------
 %% @public
@@ -681,7 +712,7 @@ open_cache_docs(DbName, DocIds) ->
     open_cache_docs(DbName, DocIds, []).
 
 open_cache_docs(DbName, DocIds, Options) when ?VALID_DBNAME(DbName) ->
-    kzs_cache:open_cache_docs(DbName, DocIds, Options);
+    read_chunked(fun kzs_cache:open_cache_docs/3, DbName, DocIds, Options);
 open_cache_docs(DbName, DocIds, Options) ->
     case maybe_convert_dbname(DbName) of
         {'ok', Db} -> open_cache_docs(Db, DocIds, Options);
@@ -1334,11 +1365,29 @@ move_doc(FromDB, FromId, ToDB, ToId, Options) ->
 
 %%------------------------------------------------------------------------------
 %% @public
-%% @doc How many documents are chunked when doing a bulk save
+%% @doc
+%% How many documents are chunked when doing a bulk save
 %% @end
 %%------------------------------------------------------------------------------
--spec max_bulk_insert() -> ?MAX_BULK_INSERT.
-max_bulk_insert() -> ?MAX_BULK_INSERT.
+-spec max_bulk_insert() -> pos_integer().
+max_bulk_insert() ->
+    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_insert">>, 2000).
+
+%%------------------------------------------------------------------------------
+%% @public
+%% @doc
+%% How many documents are chunked when doing a bulk read
+%% @end
+%%------------------------------------------------------------------------------
+-spec max_bulk_read() -> pos_integer().
+max_bulk_read() ->
+    kapps_config:get_pos_integer(?CONFIG_CAT, <<"max_bulk_read">>, 2000).
+
+-spec max_bulk_read(view_options()) -> pos_integer().
+max_bulk_read(ViewOptions) ->
+    AskedFor = props:get_integer_value(max_bulk_read, ViewOptions, max_bulk_read()),
+    UpperBound = min(AskedFor, max_bulk_read()),
+    max(UpperBound, 1).
 
 -spec db_classification(text()) -> db_classifications().
 db_classification(DBName) -> kzs_util:db_classification(DBName).
