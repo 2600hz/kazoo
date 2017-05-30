@@ -16,7 +16,7 @@
         ,associator/3
         ,verify_mapped_row/2
         ,row_to_iolist/1, mapped_row_to_iolist/2
-        ,json_to_iolist/1
+        ,json_to_iolist/1, json_to_iolist/2
         ]).
 -export([from_jobjs/1
         ,from_jobjs/2
@@ -227,10 +227,14 @@ mapped_row_to_iolist(HeaderRow, Map) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec json_to_iolist(nonempty_list(kz_json:object())) -> iodata().
-json_to_iolist(Records)
-  when is_list(Records) ->
+json_to_iolist(Records) ->
+    json_to_iolist(Records, kz_json:get_keys(hd(Records))).
+
+-spec json_to_iolist(nonempty_list(kz_json:object()), header()) -> iodata().
+json_to_iolist(Records, Fields)
+  when is_list(Records),
+       is_list(Fields) ->
     Tmp = <<"/tmp/json_", (kz_binary:rand_hex(11))/binary, ".csv">>,
-    Fields = kz_json:get_keys(hd(Records)),
     'ok' = file:write_file(Tmp, [kz_util:iolist_join($,, Fields), $\n]),
     lists:foreach(fun (Record) ->
                           Row = [kz_json:get_ne_binary_value(Field, Record, ?ZILCH) || Field <- Fields],
