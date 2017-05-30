@@ -155,7 +155,7 @@ send_default_response(Call, Response) ->
         ,kapps_call:control_queue(Call)
         ,kz_json:get_value(<<"Code">>, Response)
         ,kz_json:get_value(<<"Message">>, Response)
-        ,kz_media_util:get_prompt(Media, Call)
+        ,kapps_call:get_prompt(Call, Media)
         ).
 
 %%--------------------------------------------------------------------

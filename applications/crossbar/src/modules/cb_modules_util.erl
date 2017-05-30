@@ -235,13 +235,16 @@ maybe_originate_quickcall(Context) ->
 -spec create_call_from_context(cb_context:context()) -> kapps_call:call().
 create_call_from_context(Context) ->
     Routines =
-        props:filter_undefined(
-          [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
-          ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
-          ,{fun kapps_call:set_resource_type/2, <<"audio">>}
-          ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
-           | request_specific_extraction_funs(Context)
-          ]),
+        [{F, V} ||
+            {F, V} <-
+                [{fun kapps_call:set_account_db/2, cb_context:account_db(Context)}
+                ,{fun kapps_call:set_account_id/2, cb_context:account_id(Context)}
+                ,{fun kapps_call:set_resource_type/2, <<"audio">>}
+                ,{fun kapps_call:set_owner_id/2, kz_json:get_ne_value(<<"owner_id">>, cb_context:doc(Context))}
+                 | request_specific_extraction_funs(Context)
+                ],
+            'undefined' =/= V
+        ],
     kapps_call:exec(Routines, kapps_call:new()).
 
 -spec request_specific_extraction_funs(cb_context:context()) -> kapps_call:exec_funs().

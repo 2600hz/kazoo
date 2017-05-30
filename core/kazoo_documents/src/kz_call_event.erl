@@ -37,6 +37,7 @@
         ,response_code/1
         ,response_message/1
         ,ringing_seconds/1
+        ,switch_nodename/1
         ,timestamp/1
         ]).
 
@@ -192,6 +193,10 @@ is_call_forwarded(JObj, Default) ->
         IsForwarded -> kz_term:is_true(IsForwarded)
     end.
 
--spec error_message(doc()) -> api_binary().
+-spec error_message(doc()) -> api_ne_binary().
 error_message(JObj) ->
     kz_json:get_ne_binary_value(<<"Error-Message">>, JObj).
+
+-spec switch_nodename(doc()) -> api_ne_binary().
+switch_nodename(JObj) ->
+    kz_json:get_ne_binary_value(<<"Switch-Nodename">>, JObj).

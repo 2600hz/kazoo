@@ -440,9 +440,19 @@ audio_macro([{'play', MediaName}|T], Call, Queue) ->
 audio_macro([{'play', MediaName, Terminators}|T], Call, Queue) ->
     audio_macro(T, Call, [play_command(MediaName, Terminators, Call) | Queue]);
 audio_macro([{'prompt', PromptName}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kz_media_util:get_prompt(PromptName, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName)
+                                      ,?ANY_DIGIT
+                                      ,Call
+                                      )
+                          | Queue
+                         ]);
 audio_macro([{'prompt', PromptName, Lang}|T], Call, Queue) ->
-    audio_macro(T, Call, [play_command(kz_media_util:get_prompt(PromptName, Lang, Call), ?ANY_DIGIT, Call) | Queue]);
+    audio_macro(T, Call, [play_command(kapps_call:get_prompt(Call, PromptName, Lang)
+                                      ,?ANY_DIGIT
+                                      ,Call
+                                      )
+                          | Queue
+                         ]);
 audio_macro([{'say', Say}|T], Call, Queue) ->
     audio_macro(T, Call, [say_command(Say, <<"name_spelled">>, <<"pronounced">>, kapps_call:language(Call), Call) | Queue]);
 audio_macro([{'say', Say, Type}|T], Call, Queue) ->
@@ -1039,7 +1049,7 @@ bridge_command(Endpoints, Timeout, Strategy, IgnoreEarlyMedia, Ringback, SIPHead
     ,{<<"Endpoints">>, Endpoints}
     ,{<<"Timeout">>, Timeout}
     ,{<<"Ignore-Early-Media">>, IgnoreEarlyMedia}
-    ,{<<"Ringback">>, kz_media_util:media_path(Ringback, Call)}
+    ,{<<"Ringback">>, kz_media_util:media_path(Ringback, kapps_call:account_id(Call))}
     ,{<<"Dial-Endpoint-Method">>, Strategy}
     ,{<<"Custom-SIP-Headers">>, SIPHeaders}
     ,{<<"Ignore-Forward">>, IgnoreFoward}
@@ -1193,7 +1203,9 @@ hold_command(MOH, CallId=?NE_BINARY) ->
         ,{<<"Call-ID">>, CallId}
         ]));
 hold_command(MOH, Call) ->
-    hold_command(kz_media_util:media_path(MOH, Call), kapps_call:call_id_direct(Call)).
+    hold_command(kz_media_util:media_path(MOH, kapps_call:account_id(Call))
+                ,kapps_call:call_id_direct(Call)
+                ).
 
 b_hold(Call) -> b_hold('infinity', 'undefined', Call).
 
@@ -1261,14 +1273,14 @@ park_command(Call) ->
 -spec b_prompt(ne_binary(), ne_binary(), kapps_call:call()) -> kapps_api_std_return().
 
 prompt(Prompt, Call) ->
-    play(kz_media_util:get_prompt(Prompt, Call), Call).
+    play(kapps_call:get_prompt(Call, Prompt), Call).
 prompt(Prompt, Lang, Call) ->
-    play(kz_media_util:get_prompt(Prompt, Lang, Call), Call).
+    play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
 b_prompt(Prompt, Call) ->
-    b_play(kz_media_util:get_prompt(Prompt, Call), Call).
+    b_play(kapps_call:get_prompt(Call, Prompt), Call).
 b_prompt(Prompt, Lang, Call) ->
-    b_play(kz_media_util:get_prompt(Prompt, Lang, Call), Call).
+    b_play(kapps_call:get_prompt(Call, Prompt, Lang), Call).
 
 %%--------------------------------------------------------------------
 %% @public
@@ -1492,7 +1504,7 @@ b_record(MediaName, Terminators, TimeLimit, SilenceThreshold, SilenceHits, Call)
 
 -spec verify_media_name(kz_json:object(), ne_binary()) -> boolean().
 verify_media_name(JObj, MediaName) ->
-    case kz_media_recording:get_response_media(JObj) of
+    case kzc_recording:get_response_media(JObj) of
         {_, MediaName} -> 'true';
         _ -> 'false'
     end.
@@ -1743,7 +1755,7 @@ prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidP
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Call) ->
     prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, [<<"#">>], Call).
 prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
-    play_and_collect_digits(MinDigits, MaxDigits, kz_media_util:get_prompt(Prompt, Call), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
+    play_and_collect_digits(MinDigits, MaxDigits, kapps_call:get_prompt(Call, Prompt), Tries, Timeout, InvalidPrompt, Regex, Terminators, Call).
 
 b_prompt_and_collect_digit(Prompt, Call) ->
     b_prompt_and_collect_digits(1, 1, Prompt, Call).
@@ -1766,7 +1778,7 @@ b_prompt_and_collect_digits(_MinDigits, _MaxDigits, _Prompt, 0, _Timeout, Invali
 b_prompt_and_collect_digits(MinDigits, MaxDigits, Prompt, Tries, Timeout, InvalidPrompt, Regex, Terminators, Call) ->
     b_play_and_collect_digits(MinDigits
                              ,MaxDigits
-                             ,kz_media_util:get_prompt(Prompt, Call)
+                             ,kapps_call:get_prompt(Call, Prompt)
                              ,Tries
                              ,Timeout
                              ,InvalidPrompt

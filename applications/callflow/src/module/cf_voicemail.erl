@@ -87,23 +87,22 @@
 
 -define(DEFAULT_FIND_BOX_PROMPT, <<"vm-enter_id">>).
 
--record(keys, {
-          %% Compose Voicemail
-          operator = <<"0">>
+-record(keys, {operator = <<"0">>
+                   %% Compose Voicemail
               ,login = <<"*">>
 
-              %% Record Review
+                   %% Record Review
               ,save = <<"1">>
               ,listen = <<"2">>
               ,record = <<"3">>
 
-              %% Main Menu
+                   %% Main Menu
               ,hear_new = <<"1">>
               ,hear_saved = <<"2">>
               ,configure = <<"5">>
               ,exit = <<"#">>
 
-              %% Config Menu
+                   %% Config Menu
               ,rec_unavailable  = <<"1">>
               ,rec_name = <<"2">>
               ,set_pin = <<"3">>
@@ -111,7 +110,7 @@
               ,del_temporary_unavailable  = <<"5">>
               ,return_main = <<"0">>
 
-              %% Post playbak
+                   %% Post playbak
               ,keep = <<"1">>
               ,replay = <<"2">>
               ,forward = <<"3">>
@@ -119,9 +118,9 @@
               ,next = <<"6">>
               ,delete = <<"7">>
 
-              %% Greeting or instructions
+                   %% Greeting or instructions
               ,continue = 'undefined'
-         }).
+              }).
 -type vm_keys() :: #keys{}.
 
 -define(KEY_LENGTH, 1).
@@ -478,7 +477,7 @@ play_greeting(#mailbox{skip_greeting='true'}, _Call) -> 'ok';
 play_greeting(#mailbox{temporary_unavailable_media_id= <<_/binary>> = MediaId}
              ,Call
              ) ->
-    Corrected = kz_media_util:media_path(MediaId, Call),
+    Corrected = kz_media_util:media_path(MediaId, kapps_call:account_id(Call)),
     lager:info("mailbox has a temporary greeting which always overrides standard greeting: '~s', corrected to '~s'",
                [MediaId, Corrected]
               ),
@@ -497,7 +496,7 @@ play_greeting(#mailbox{unavailable_media_id='undefined'
                                    ,{'prompt', <<"vm-not_available">>}
                                    ], Call);
 play_greeting(#mailbox{unavailable_media_id=MediaId}, Call) ->
-    Corrected = kz_media_util:media_path(MediaId, Call),
+    Corrected = kz_media_util:media_path(MediaId, kapps_call:account_id(Call)),
     lager:info("mailbox has a greeting: '~s', corrected to '~s'", [MediaId, Corrected]),
     kapps_call_command:play(Corrected, Call).
 

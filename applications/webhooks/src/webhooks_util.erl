@@ -596,7 +596,7 @@ init_metadata(Id, JObj, MasterAccountDb) ->
 
 -spec metadata_exists(ne_binary(), ne_binary()) ->
                              {'ok', kz_json:object()} |
-                             kz_data:data_error().
+                             kz_datamgr:data_error().
 metadata_exists(MasterAccountDb, Id) ->
     kz_datamgr:open_doc(MasterAccountDb, Id).
 

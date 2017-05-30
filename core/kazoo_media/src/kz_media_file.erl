@@ -12,8 +12,8 @@
 
 -include("kazoo_media.hrl").
 
-
--type build_uri() :: ne_binaries() | ne_binary() |  media_store_path().
+-type build_uri_args() :: [ne_binary() | kz_proplist() | atom()].
+-type build_uri() :: build_uri_args() | ne_binary() | media_store_path().
 
 -spec get_uri(build_uri(), kz_json:object()) ->
                      ne_binary() |
@@ -101,7 +101,7 @@ proxy_uri(JObj, #media_store_path{db = Db
       ,"/", File/binary
     >>.
 
--spec find_attachment(ne_binaries() | ne_binary() | kz_proplist()) ->
+-spec find_attachment(build_uri_args() | ne_binary()) ->
                              {'ok', media_store_path()} |
                              {'error', 'not_found'}.
 find_attachment(Media) when is_binary(Media) ->
@@ -120,7 +120,8 @@ find_attachment([?KZ_MEDIA_DB=Db, Lang, Id]) ->
     find_attachment([Db, <<Lang/binary, "/", Id/binary>>, 'first']);
 find_attachment([Db, Id, Attachment]) ->
     find_attachment([Db, Id, Attachment, []]);
-find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options]) ->
+find_attachment([Db = ?MEDIA_DB, Id, Attachment, Options])
+  when is_list(Options) ->
     {'ok', #media_store_path{db = Db
                             ,id = Id
                             ,att = Attachment
