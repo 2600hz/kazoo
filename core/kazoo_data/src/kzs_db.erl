@@ -242,7 +242,17 @@ update_views_fold(CurrentViews, NewViews, Id, Acc) ->
     CurrentView = props:get_value(Id, CurrentViews),
     Rev = kz_doc:revision(CurrentView),
     RawView = kz_doc:delete_revision(CurrentView),
-    case NewView =:= RawView of
+
+    update_if_view_exists(Id, Rev, NewView, RawView, Acc).
+
+-spec update_if_view_exists(ne_binary(), ne_binary(), kz_proplist(), kz_proplist()  |'undefined', kz_json:objects()) ->
+                                   kz_json:objects().
+update_if_view_exists(Id, _Rev, _NewView, 'undefined', Acc) ->
+    lager:warning("view ~p does not exist to update", [Id]),
+    Acc;
+
+update_if_view_exists(Id, Rev, NewView, OldView, Acc) ->
+    case NewView =:= OldView of
         'true' ->
             lager:debug("view ~s does not require update", [Id]),
             Acc;
