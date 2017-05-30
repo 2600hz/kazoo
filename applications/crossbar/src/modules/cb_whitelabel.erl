@@ -577,13 +577,11 @@ format_lookup_result(_Type, Value) ->
 -spec test_network_options(cb_context:context()) -> kz_network_utils:options().
 test_network_options(Context) ->
     Domain = find_domain(Context),
+    DefaultOptions = kz_network_utils:default_options(),
     case kz_network_utils:find_nameservers(Domain) of
-        [] ->  kz_network_utils:default_options();
+        [] ->  DefaultOptions;
         Nameservers ->
-            kz_network_utils:set_option_nameservers(
-              kz_network_utils:default_options()
-                                                   ,Nameservers
-             )
+            kz_network_utils:set_option_nameservers(DefaultOptions, Nameservers)
     end.
 
 -spec validate_domain(cb_context:context(), path_token(), http_method()) ->
