@@ -28,15 +28,9 @@
 -define(RESPONDERS, [{fun handle_conference_command/2
                      ,[{<<"conference">>, <<"command">>}]
                      }
-                    ,{ fun handle_conference_event/2
-                     ,[{<<"conference">>, <<"event">>}]
-                     }
                     ]).
 
 -define(BINDINGS(Id), [{'conference', [{'restrict_to', [{'command', Id}
-                                                       ,{'event', [{'conference_id', Id}
-                                                                  ,{'event', <<"conference-destroy">>}
-                                                                  ]}
                                                        ]}
                                       ,'federate'
                                       ]}
@@ -64,34 +58,22 @@
 %%--------------------------------------------------------------------
 -spec start_link(atom(), ne_binary(), ne_binary()) -> startlink_ret().
 start_link(Node, ConferenceId, InstanceId) ->
-    gen_listener:start_link(?SERVER,
-                            [{'responders', ?RESPONDERS}
+    lager:debug("starting conference ~s control instance ~s for node ~s in ~s", [ConferenceId, InstanceId, Node, node()]),
+    gen_listener:start_link(?SERVER
+                           ,[{'responders', ?RESPONDERS}
                             ,{'bindings', ?BINDINGS(ConferenceId)}
                             ,{'queue_name', ?QUEUE_NAME(ConferenceId)}
                             ,{'queue_options', ?QUEUE_OPTIONS}
                             ,{'consume_options', ?CONSUME_OPTIONS}
-                            ], [Node, ConferenceId, InstanceId]).
+                            ]
+                           ,[Node, ConferenceId, InstanceId]
+                           ).
 
 -spec handle_conference_command(kz_json:object(), kz_proplist()) -> any().
 handle_conference_command(JObj, Props) ->
     Node = props:get_value('node', Props),
     ConferenceId = props:get_value('conference_id', Props),
     ecallmgr_conference_command:exec_cmd(Node, ConferenceId, JObj).
-
--spec handle_conference_event(kz_json:object(), kz_proplist()) -> any().
-handle_conference_event(JObj, Props) ->
-    'true' = kapi_conference:event_v(JObj),
-    Node = props:get_value('node', Props),
-    Server = props:get_value('server', Props),
-    ConferenceId = props:get_value('conference_id', Props),
-    Event = kz_json:get_value(<<"Event">>, JObj),
-    handle_conference_event(Node, Server, ConferenceId, Event, JObj).
-
-handle_conference_event(_Node, Server, ConferenceId, <<"conference-destroy">>, _JObj) ->
-    lager:debug("received conference-destroy for ~s, terminating", [ConferenceId]),
-    gen_server:stop(Server);
-handle_conference_event(_Node, _Server, ConferenceId, Event, _JObj) ->
-    lager:debug("received not handled event ~s for ~s", [Event, ConferenceId]).
 
 %%%===================================================================
 %%% gen_server callbacks
@@ -160,6 +142,11 @@ handle_cast(_Msg, State) ->
 %% @end
 %%--------------------------------------------------------------------
 -spec handle_info(any(), state()) -> handle_info_ret_state(state()).
+handle_info({'stop', {Node, ConferenceId, InstanceId}}, #state{node=Node
+                                                              ,conference_id=ConferenceId
+                                                              ,instance_id=InstanceId
+                                                              }=State) ->
+    {'stop', 'normal', State};
 handle_info(_Info, State) ->
     {'noreply', State}.
 
