@@ -44,6 +44,7 @@ save_cdr(AccountMOD, Doc) ->
 do_save_cdr(AccountMODb, Doc) ->
     case kazoo_modb:save_doc(AccountMODb, Doc, [{'max_retries', 3}]) of
         {'ok', _}-> 'ok';
+        {'error', 'conflict'} -> 'ok';
         {'error', _E} ->
             lager:debug("failed to save cdr ~s : ~p", [kz_doc:id(Doc), _E]),
             {'error', max_save_retries}
