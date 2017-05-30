@@ -165,8 +165,7 @@
     "required": [
         "e164_converters",
         "features",
-        "providers",
-        "should_permanently_delete"
+        "providers"
     ],
     "type": "object"
 }

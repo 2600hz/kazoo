@@ -42,6 +42,7 @@ Key | Description | Type | Default | Required
 `media.video` | The video media parameters | `object` | `{}` | `false`
 `media.video.codecs` | A list of video codecs the device supports | `array(string('VP8', 'H264', 'H263', 'H261'))` | `[]` | `false`
 `media.video.codecs.[]` |   | `string` |   | `false`
+`media.webrtc` | If true forces a webrtc compatible SDP on the INVITE. | `boolean` |   | `false`
 `metaflows` | The device metaflow parameters | [#/definitions/metaflows](#metaflows) |   | `false`
 `music_on_hold` | The music on hold parameters used if not a property of the device owner | `object` | `{}` | `false`
 `music_on_hold.media_id` | The ID of a media object that should be used as the music on hold | `string(0..128)` |   | `false`

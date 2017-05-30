@@ -146,7 +146,8 @@
     },
     "required": [
         "call_recording",
-        "default_language"
+        "default_language",
+        "proxy_ip"
     ],
     "type": "object"
 }
