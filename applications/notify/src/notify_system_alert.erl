@@ -50,8 +50,8 @@ handle_req(JObj, _Props) ->
 
     lager:debug("creating system alert notice"),
 
-    RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
     UseEmail = kapps_config:get_is_true(?MOD_CONFIG_CAT, <<"enable_email_alerts">>, 'true'),

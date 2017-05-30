@@ -48,8 +48,8 @@ handle_req(JObj, _Props) ->
 
     lager:debug("a port change has been requested, sending email notification"),
 
-    RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
     {'ok', AccountDoc} = notify_util:get_account_doc(JObj),

@@ -45,8 +45,8 @@ handle_req(JObj, _Props) ->
 
     lager:debug("account low balance alert, sending email notification"),
 
-    RespQ = kz_json:get_value(<<"Server-ID">>, JObj),
-    MsgId = kz_json:get_value(<<"Msg-ID">>, JObj),
+    RespQ = kz_api:server_id(JObj),
+    MsgId = kz_api:msg_id(JObj),
     notify_util:send_update(RespQ, MsgId, <<"pending">>),
 
     {'ok', Account} = kz_account:fetch(kz_json:get_value(<<"Account-ID">>, JObj)),
