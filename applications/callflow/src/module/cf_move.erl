@@ -40,7 +40,7 @@ handle(_Data, Call) ->
                     cf_exe:stop(Call);
                 {'ok', Channel} ->
                     OtherLegId = kz_json:get_value(<<"other_leg">>, Channel),
-                    kapps_call_command:pickup(OtherLegId, Call),
+                    kapps_call_command:b_pickup(OtherLegId, Call),
                     cf_exe:stop(Call)
             end
     end.
