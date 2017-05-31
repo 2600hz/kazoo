@@ -10,7 +10,7 @@
 
 -export([maybe_cid_privacy/2
         ,flags/1
-        ,has_flags/1
+        ,has_flags/1, is_anonymous/1
         ,anonymous_caller_id_name/0, anonymous_caller_id_name/1
         ,anonymous_caller_id_number/0, anonymous_caller_id_number/1
         ,should_block_anonymous/1
