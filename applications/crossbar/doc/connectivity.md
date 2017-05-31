@@ -24,8 +24,8 @@ Key | Description | Type | Default | Required
 `servers.[].DIDs` |   | `object` |   | `false`
 `servers.[].DIDs./^\+?\d*$/` |   | `object` |   | `false`
 `servers.[].DIDs./^\+?\d*$/.caller_id` |   | `object` |   | `false`
-`servers.[].DIDs./^\+?\d*$/.caller_id.cid_name` |   | `string(1..35)` |   | `true`
-`servers.[].DIDs./^\+?\d*$/.caller_id.cid_number` |   | `string(1..35)` |   | `true`
+`servers.[].DIDs./^\+?\d*$/.caller_id.cid_name` |   | `string(1..35)` |   | `false`
+`servers.[].DIDs./^\+?\d*$/.caller_id.cid_number` |   | `string(1..35)` |   | `false`
 `servers.[].DIDs./^\+?\d*$/.failover` | Route inbound call to another destination if this server fails to handle the call | `object` |   | `false`
 `servers.[].DIDs./^\+?\d*$/.failover.e164` | An E.164 formatted DID to dial for failover | `string` |   | `false`
 `servers.[].DIDs./^\+?\d*$/.failover.sip` | A SIP URI (sip:user@host) to call for failover | `string` |   | `false`
@@ -41,8 +41,8 @@ Key | Description | Type | Default | Required
 `servers.[].name` | Human-friendly name of the server | `string(1..)` |   | `false`
 `servers.[].options` |   | `object` |   | `false`
 `servers.[].options.caller_id` |   | `object` |   | `false`
-`servers.[].options.caller_id.cid_name` |   | `string(1..35)` |   | `true`
-`servers.[].options.caller_id.cid_number` |   | `string(1..35)` |   | `true`
+`servers.[].options.caller_id.cid_name` |   | `string(1..35)` |   | `false`
+`servers.[].options.caller_id.cid_number` |   | `string(1..35)` |   | `false`
 `servers.[].options.delay` | The time, in seconds, to wait before attempting to call the server | `integer` | `0` | `false`
 `servers.[].options.enabled` | Is the server ready for sending and receiving calls | `boolean` | `true` | `false`
 `servers.[].options.failover` | Route inbound call to another destination if this server fails to handle the call | `object` |   | `false`

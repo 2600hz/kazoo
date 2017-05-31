@@ -71,10 +71,6 @@
                                                 "type": "string"
                                             }
                                         },
-                                        "required": [
-                                            "cid_name",
-                                            "cid_number"
-                                        ],
                                         "type": "object"
                                     },
                                     "failover": {
@@ -164,10 +160,6 @@
                                         "type": "string"
                                     }
                                 },
-                                "required": [
-                                    "cid_name",
-                                    "cid_number"
-                                ],
                                 "type": "object"
                             },
                             "delay": {
