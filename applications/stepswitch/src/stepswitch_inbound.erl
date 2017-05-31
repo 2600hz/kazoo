@@ -323,7 +323,7 @@ get_blacklist(AccountId, Blacklists) ->
                       Acc;
                   {'ok', Doc} ->
                       Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
-                      BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc, 'undefined')),
+                      BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc)),
                       kz_json:merge_jobjs(Acc, BlackList)
               end
       end
@@ -331,7 +331,7 @@ get_blacklist(AccountId, Blacklists) ->
                ,Blacklists
      ).
 
--spec maybe_set_block_anonymous(kz_json:object(), api_boolean()) -> kz_json:object().
-maybe_set_block_anonymous(JObj, 'undefined') -> JObj;
-maybe_set_block_anonymous(JObj, ShouldBlock) ->
-  kz_json:set_value(<<"should_block_anonymous">>, ShouldBlock, JObj).
+-spec maybe_set_block_anonymous(kz_json:object(), boolean()) -> kz_json:object().
+maybe_set_block_anonymous(JObj, 'false') -> JObj;
+maybe_set_block_anonymous(JObj, 'true') ->
+  kz_json:set_value(<<"should_block_anonymous">>, 'true', JObj).
