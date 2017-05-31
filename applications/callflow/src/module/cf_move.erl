@@ -89,7 +89,7 @@ filter_channels(Channels, Call) ->
             {'ok', Channel};
         [_|_]=_Channels ->
             _ = [lager:debug("found channel ~s with other_leg: ~s"
-                            ,[_UUID, kz_json:get_ne_binary_value(<<"other_leg">>)]
+                            ,[_UUID, kz_json:get_ne_binary_value(<<"other_leg">>, _Channel)]
                             )
                  || {_UUID, _Channel} <- _Channels
                 ],
