@@ -219,7 +219,7 @@ do_fire(#webhook{uri = ?NE_BINARY = URI
 
 -spec handle_resp(webhook(), ne_binary(), kz_json:object(), kz_proplist(), kz_http:ret()) -> 'ok'.
 handle_resp(Hook, _EventId, _JObj, Debug, {'ok', 200, _, _} = Resp) ->
-    lager:debug("sent hook call event(~s) successfully", _EventId),
+    lager:debug("sent hook call event(~s) successfully", [_EventId]),
     successful_hook(Hook, Debug, Resp);
 handle_resp(Hook, _EventId, _JObj, Debug, {'ok', RespCode, _, _} = Resp) ->
     _ = failed_hook(Hook, Debug, Resp),
