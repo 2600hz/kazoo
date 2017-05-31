@@ -194,29 +194,39 @@ refresh_numbers_db(_Thing) ->
     ?LOG("skipping badly formed ~s", [_Thing]).
 
 %% @public
--spec update_number_services_view(ne_binary()) -> ok.
+-spec update_number_services_view(ne_binary()) -> no_return.
 update_number_services_view(?MATCH_ACCOUNT_RAW(AccountId)) ->
     update_number_services_view(kz_util:format_account_db(AccountId));
 update_number_services_view(?MATCH_ACCOUNT_ENCODED(_)=AccountDb) ->
-    JObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
-    Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], JObj)}
-             || Classification <- kz_json:get_keys(JObj)
+    ClassifiersJObj = knm_converters:available_classifiers(), %%TODO: per-account classifiers.
+    Pairs = [{Classification, kz_json:get_value([Classification, <<"regex">>], ClassifiersJObj)}
+             || Classification <- kz_json:get_keys(ClassifiersJObj)
             ],
     {Classifications, Regexs} = lists:unzip(Pairs),
     MapView = number_services_map(Classifications, Regexs),
     RedView = number_services_red(),
     ViewName = <<"_design/numbers">>,
-    {ok, View} = kz_datamgr:open_doc(AccountDb, ViewName),
-    NewView = kz_json:set_values([{[<<"views">>, <<"reconcile_services">>, <<"map">>], MapView}
-                                 ,{[<<"views">>, <<"reconcile_services">>, <<"reduce">>], RedView}
-                                 ]
-                                ,View
-                                ),
-    case kz_json:are_equal(View, NewView) of
-        true -> 'ok';
+    View = case kz_datamgr:open_doc(AccountDb, ViewName) of
+               {ok, JObj} -> JObj;
+               {error, _R} ->
+                   lager:debug("reading account view ~s from disk (~p)", [ViewName, _R]),
+                   {ViewName,JObj} = kapps_util:get_view_json('crossbar', <<"account/numbers.json">>),
+                   JObj
+           end,
+    PathMap = [<<"views">>, <<"reconcile_services">>, <<"map">>],
+    PathRed = [<<"views">>, <<"reconcile_services">>, <<"reduce">>],
+    case kz_json:are_equal(MapView, kz_json:get_ne_binary_value(PathMap, View))
+        andalso kz_json:are_equal(RedView, kz_json:get_ne_binary_value(PathRed, View))
+    of
+        true -> no_return;
         false ->
+            NewView = kz_json:set_values([{PathMap, MapView}
+                                         ,{PathRed, RedView}
+                                         ]
+                                        ,View
+                                        ),
             true = kz_datamgr:db_view_update(AccountDb, [{ViewName, NewView}]),
-            ?LOG("View updated!", [])
+            ?LOG("View updated for ~s!", [AccountDb])
     end.
 
 %% @public
