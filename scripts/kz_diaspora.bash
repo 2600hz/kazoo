@@ -210,6 +210,14 @@ function kapps_speech_to_kazoo_speech {
     search_and_replace_prefix asrs[@] "kapps_speech" "kazoo_asr" "asr_"
 }
 
+function kz_media_recording_to_kzc_recording {
+    FROM="kz_media_recording"
+    TO="kzc_recording"
+    for FILE in `grep -rl "$FROM:" $ROOT/{core,applications}`; do
+            replace_call $FROM $TO "" "" $FILE
+        done
+}
+
 echo "ensuring kz_term is used"
 kz_util_to_term
 echo "ensuring kz_binary is used"
@@ -224,5 +232,7 @@ echo "ensuring props:to_querystring is moved to kz_http_util"
 props_to_kz_http
 echo "ensuring kapps_speech to kazoo_speech"
 kapps_speech_to_kazoo_speech
+echo "ensuring kz_media_recording to kzc_recording"
+kz_media_recording_to_kzc_recording
 
 popd > /dev/null

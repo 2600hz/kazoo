@@ -7,4 +7,5 @@
  ,{registered, []}
  ,{applications, [stdlib]}
  ,{env, []}
+ ,{mod, {kazoo_call_app, []}}
  ]}.

@@ -16,7 +16,7 @@
 %%%
 %%% Fix KAZOO-3406: Sponsored by Velvetech LLC, implemented by SIPLABS LLC
 %%%-------------------------------------------------------------------
--module(kz_media_recording).
+-module(kzc_recording).
 
 -behaviour(gen_listener).
 
@@ -39,19 +39,21 @@
         ,code_change/3
         ]).
 
--include("kazoo_media.hrl").
+-include_lib("kazoo/include/kz_types.hrl").
 
 -define(SERVER, ?MODULE).
 
--type media() :: {api_binary(), ne_binary()}.
+-type media_directory() :: file:filename_all().
+-type media_name() :: file:filename_all().
+-type media() :: {media_directory() | 'undefined', media_name()}.
 
 -type store_url() :: 'false' |
                      {'true', 'local'} |
                      {'true', 'other', ne_binary()}.
 
--record(state, {url                       :: api_binary()
+-record(state, {url                       :: api_ne_binary()
                ,format                    :: ne_binary()
-               ,sample_rate               :: integer() | 'undefined'
+               ,sample_rate               :: api_integer()
                ,media                     :: media()
                ,doc_db                    :: ne_binary()
                ,doc_id                    :: ne_binary()
@@ -66,17 +68,15 @@
                ,store_attempted = 'false' :: boolean()
                ,is_recording = 'false'    :: boolean()
                ,stop_received = 'false'   :: boolean()
-               ,retries = 0               :: integer()
+               ,retries = 0               :: non_neg_integer()
                ,verb = 'put'              :: atom()
-               ,account_id                :: api_binary()
+               ,account_id                :: api_ne_binary()
                }).
 -type state() :: #state{}.
 
 -define(STORAGE_RETRY_TIMES(AccountId)
-       ,kapps_account_config:get_global(AccountId, ?CONFIG_CAT
-                                       ,[<<"call_recording">>, <<"storage_retry_times">>]
-                                       ,5
-                                       )).
+       ,kz_media_config:storage_retry_times(AccountId)
+       ).
 
 %% By convention, we put the options here in macros, but not required.
 -define(BINDINGS(CallId), [{'call', [{'callid', CallId}
@@ -89,7 +89,8 @@
                                                      ]}
                                     ]}
                           ,{'self', []}
-                          ]).
+                          ]
+       ).
 -define(CALL_BINDING(CallId), {'call', [{'callid', CallId}
                                        ,{'restrict_to', ['RECORD_STOP'
                                                         ,'CHANNEL_REPLACED'
@@ -102,7 +103,8 @@
 -define(RESPONDERS, [{{?MODULE, 'handle_call_event'}
                      ,[{<<"*">>, <<"*">>}]
                      }
-                    ]).
+                    ]
+       ).
 -define(QUEUE_NAME, <<>>).
 -define(QUEUE_OPTIONS, []).
 -define(CONSUME_OPTIONS, []).
@@ -112,16 +114,19 @@
 
 -spec start_link(kapps_call:call(), kz_json:object()) -> startlink_ret().
 start_link(Call, Data) ->
-    gen_listener:start_link(?SERVER, [{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
-                                     ,{'responders', ?RESPONDERS}
-                                     ,{'queue_name', ?QUEUE_NAME}       % optional to include
-                                     ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
-                                     ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
-                                     ], [Call, Data]).
+    gen_listener:start_link(?SERVER
+                           ,[{'bindings', ?BINDINGS(kapps_call:call_id(Call))}
+                            ,{'responders', ?RESPONDERS}
+                            ,{'queue_name', ?QUEUE_NAME}       % optional to include
+                            ,{'queue_options', ?QUEUE_OPTIONS} % optional to include
+                            ,{'consume_options', ?CONSUME_OPTIONS} % optional to include
+                            ]
+                           ,[Call, Data]
+                           ).
 
 -spec get_response_media(kz_json:object()) -> media().
 get_response_media(JObj) ->
-    Filename = kz_json:get_value(<<"Application-Response">>, JObj),
+    Filename = kz_call_event:application_response(JObj),
     {filename:dirname(Filename), filename:basename(Filename)}.
 
 -spec handle_call_event(kz_json:object(), kz_proplist()) -> 'ok'.
@@ -141,22 +146,22 @@ handle_call_event(JObj, Props) ->
             gen_listener:cast(Pid, {'record_start', get_response_media(JObj)});
         {<<"call_event">>, <<"RECORD_STOP">>} ->
             Media = get_response_media(JObj),
-            FreeSWITCHNode = kz_json:get_value(<<"Switch-Nodename">>, JObj),
+            FreeSWITCHNode = kz_call_event:switch_nodename(JObj),
             gen_listener:cast(Pid, {'record_stop', Media, FreeSWITCHNode});
         {_Cat, _Evt} -> 'ok'
     end.
 
--spec init(list()) -> {'ok', state()}.
+-spec init([kapps_call:call() | kz_json:object()]) -> {'ok', state()}.
 init([Call, Data]) ->
     kapps_call:put_callid(Call),
     lager:info("starting event listener for record_call"),
 
-    Format = get_format(kz_json:get_value(<<"format">>, Data)),
+    Format = get_format(kz_json:get_ne_binary_value(<<"format">>, Data)),
     TimeLimit = get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)),
     RecordOnAnswer = kz_json:is_true(<<"record_on_answer">>, Data, 'false'),
     RecordOnBridge = kz_json:is_true(<<"record_on_bridge">>, Data, 'false'),
     SampleRate = kz_json:get_integer_value(<<"record_sample_rate">>, Data),
-    DefaultRecordMinSec = kapps_config:get_integer(?CONFIG_CAT, <<"record_min_sec">>, 0),
+    DefaultRecordMinSec = kz_media_config:record_min_sec(),
     RecordMinSec = kz_json:get_integer_value(<<"record_min_sec">>, Data, DefaultRecordMinSec),
     AccountId = kapps_call:account_id(Call),
     {Year, Month, _} = erlang:date(),
@@ -168,7 +173,7 @@ init([Call, Data]) ->
     InteractionId = kapps_call:custom_channel_var(<<?CALL_INTERACTION_ID>>, Call),
     DefaultMediaName = get_media_name(kz_binary:rand_hex(16), Format),
     MediaName = kz_json:get_value(?RECORDING_ID_KEY, Data, DefaultMediaName),
-    Url = kz_json:get_value(<<"url">>, Data),
+    Url = kz_json:get_ne_binary_value(<<"url">>, Data),
     ShouldStore = should_store_recording(AccountId, Url),
     Verb = kz_json:get_atom_value(<<"method">>, Data, 'put'),
 
@@ -424,8 +429,8 @@ get_timelimit(TL) when is_integer(TL) ->
 get_timelimit(Data) ->
     get_timelimit(kz_json:get_integer_value(<<"time_limit">>, Data)).
 
--spec get_format(api_binary()) -> ne_binary().
-get_format('undefined') -> kapps_config:get_ne_binary(?CONFIG_CAT, [<<"call_recording">>, <<"extension">>], <<"mp3">>);
+-spec get_format(api_ne_binary()) -> ne_binary().
+get_format('undefined') -> kz_media_config:call_recording_extension();
 get_format(<<"mp3">> = MP3) -> MP3;
 get_format(<<"mp4">> = MP4) -> MP4;
 get_format(<<"wav">> = WAV) -> WAV;
@@ -442,43 +447,45 @@ store_recording_meta(#state{call=Call
                            ,url=Url
                            }) ->
     CallId = kapps_call:call_id(Call),
-    MediaDoc = kz_doc:update_pvt_parameters(
-                 kz_json:from_list(
-                   props:filter_empty(
-                     [{<<"name">>, MediaName}
-                     ,{<<"description">>, <<"recording ", MediaName/binary>>}
-                     ,{<<"content_type">>, kz_mime:from_extension(Ext)}
-                     ,{<<"media_type">>, Ext}
-                     ,{<<"media_source">>, <<"recorded">>}
-                     ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
-                     ,{<<"pvt_type">>, <<"call_recording">>}
-                     ,{<<"from">>, kapps_call:from(Call)}
-                     ,{<<"to">>, kapps_call:to(Call)}
-                     ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
-                     ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
-                     ,{<<"call_id">>, CallId}
-                     ,{<<"owner_id">>, kapps_call:owner_id(Call)}
-                     ,{<<"url">>, Url}
-                     ,{<<"cdr_id">>, CdrId}
-                     ,{<<"interaction_id">>, InteractionId}
-                     ,{<<"_id">>, DocId}
-                     ]))
-                                           ,Db
-                ),
+
+    BaseMediaDoc = kz_json:from_list(
+                     props:filter_empty(
+                       [{<<"name">>, MediaName}
+                       ,{<<"description">>, <<"recording ", MediaName/binary>>}
+                       ,{<<"content_type">>, kz_mime:from_extension(Ext)}
+                       ,{<<"media_type">>, Ext}
+                       ,{<<"media_source">>, <<"recorded">>}
+                       ,{<<"source_type">>, kz_term:to_binary(?MODULE)}
+                       ,{<<"from">>, kapps_call:from(Call)}
+                       ,{<<"to">>, kapps_call:to(Call)}
+                       ,{<<"caller_id_number">>, kapps_call:caller_id_number(Call)}
+                       ,{<<"caller_id_name">>, kapps_call:caller_id_name(Call)}
+                       ,{<<"call_id">>, CallId}
+                       ,{<<"owner_id">>, kapps_call:owner_id(Call)}
+                       ,{<<"url">>, Url}
+                       ,{<<"cdr_id">>, CdrId}
+                       ,{<<"interaction_id">>, InteractionId}
+                       ,{<<"_id">>, DocId}
+                       ]
+                      )
+                    ),
+
+    MediaDoc = kz_doc:update_pvt_parameters(BaseMediaDoc, Db, [{'type', <<"call_recording">>}]),
     case kazoo_modb:save_doc(Db, MediaDoc, [{ensure_saved, true}]) of
         {'ok', JObj} -> kz_doc:revision(JObj);
         {'error', _}= Err -> Err
     end.
 
 -spec maybe_store_recording_meta(state()) -> ne_binary() | {'error', any()}.
-maybe_store_recording_meta(#state{doc_db=Db, doc_id=DocId}=State) ->
+maybe_store_recording_meta(#state{doc_db=Db
+                                 ,doc_id=DocId
+                                 }=State) ->
     case kz_datamgr:lookup_doc_rev(Db, {<<"call_recording">>, DocId}) of
         {'ok', Rev} -> Rev;
         _ -> store_recording_meta(State)
     end.
 
-
--spec get_media_name(ne_binary(), api_binary()) -> ne_binary().
+-spec get_media_name(ne_binary(), api_ne_binary()) -> ne_binary().
 get_media_name(Name, Ext) ->
     case filename:extension(Name) of
         Ext -> Name;
@@ -598,7 +605,7 @@ maybe_storage_plan(AccountId) ->
 
 -spec should_store_recording() -> store_url().
 should_store_recording() ->
-    case kapps_config:get_is_true(?CONFIG_CAT, <<"store_recordings">>, 'false') of
+    case kz_media_config:should_store_recordings() of
         'true' -> {'true', 'local'};
         'false' -> 'false'
     end.
@@ -629,7 +636,8 @@ start_recording(Call, MediaName, TimeLimit, MediaDocId, SampleRate, RecordMinSec
     kapps_call_command:start_record_call(Props, TimeLimit, Call),
     gen_server:cast(self(), 'recording_started').
 
--spec store_recording({ne_binary(), ne_binary()}, ne_binary() | function(), kapps_call:call()) -> 'ok'.
+-spec store_recording({ne_binary(), ne_binary()}, ne_binary() | function(), kapps_call:call()) ->
+                             pid().
 store_recording({DirName, MediaName}, StoreUrl, Call) ->
     Filename = filename:join(DirName, MediaName),
     kz_util:spawn(fun store_recording/4, [self(), Filename, StoreUrl, Call]).

@@ -87,8 +87,10 @@ cf_menu(#callfwd{keys=#keys{menu_toggle_cf=Toggle
                 }=CF, CaptureGroup, Call) ->
     lager:info("playing call forwarding menu"),
     Prompt = case Enabled of
-                 'true' -> kz_media_util:get_prompt(<<"cf-enabled_menu">>, Call);
-                 'false' -> kz_media_util:get_prompt(<<"cf-disabled_menu">>, Call)
+                 'true' ->
+                     kapps_call:get_prompt(Call, <<"cf-enabled_menu">>);
+                 'false' ->
+                     kapps_call:get_prompt(Call, <<"cf-disabled_menu">>)
              end,
     _  = kapps_call_command:b_flush(Call),
 
@@ -187,7 +189,7 @@ cf_deactivate(CF, Call) ->
 -spec cf_update_number(callfwd(), api_binary(), kapps_call:call()) -> callfwd().
 cf_update_number(#callfwd{interdigit_timeout=Interdigit}=CF, CaptureGroup, Call)
   when is_atom(CaptureGroup); CaptureGroup =:= <<>> ->
-    EnterNumber = kz_media_util:get_prompt(<<"cf-enter_number">>, Call),
+    EnterNumber = kapps_call:get_prompt(Call, <<"cf-enter_number">>),
 
     NoopId = kapps_call_command:play(EnterNumber, Call),
     Min = ?MIN_CALLFWD_NUMBER_LENGTH,

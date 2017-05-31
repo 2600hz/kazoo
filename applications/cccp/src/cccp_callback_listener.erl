@@ -290,7 +290,7 @@ maybe_make_announcement_to_a_leg(Props) ->
     case props:get_value('media_id', Props) of
         <<MediaId:32/binary>> ->
             Call = call(Props),
-            MediaPath = kz_media_util:media_path(MediaId, Call),
+            MediaPath = kz_media_util:media_path(MediaId, kapps_call:account_id(Call)),
             _ = timer:sleep(?PROMPT_DELAY),
             _ = kapps_call_command:b_play(MediaPath, Call),
             'ok';

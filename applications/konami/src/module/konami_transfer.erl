@@ -61,13 +61,13 @@
                ,target_a_leg :: api_ne_binary() %% loopback-a
                ,target_b_leg :: api_ne_binary() %% loopback-b
                ,target_legs = [] :: ne_binaries()
-               ,call :: kapps_call:call()
+               ,call :: kapps_call:call() | 'undefined'
                ,target_call = kapps_call:new() :: kapps_call:call()
                ,takeback_dtmf :: api_ne_binary()
                ,transferor_dtmf = <<>> :: binary()
-               ,ringback :: api_binary()
-               ,moh :: api_binary()
-               ,extension :: api_binary()
+               ,ringback :: api_ne_binary()
+               ,moh :: api_ne_binary()
+               ,extension :: api_ne_binary()
                ,purgatory_ref :: api_reference()
                ,event_node :: api_ne_binary()
                }).
@@ -156,7 +156,7 @@ pre_originate(?EVENT(UUID, <<"CHANNEL_UNBRIDGE">>, _Evt)
              )
   when UUID =:= Transferee;
        UUID =:= Transferor ->
-    MOHToPlay = kz_media_util:media_path(MOH, Call),
+    MOHToPlay = kz_media_util:media_path(MOH, kapps_call:account_id(Call)),
     lager:info("putting transferee ~s on hold with MOH ~s", [Transferee, MOHToPlay]),
     HoldCommand = kapps_call_command:hold_command(MOHToPlay, Transferee),
     kapps_call_command:send_command(HoldCommand, Call),
@@ -1028,7 +1028,7 @@ terminate(_Reason, _StateName, #state{transferor=Transferor
 code_change(_OldVsn, StateName, State, _Extra) ->
     {'ok', StateName, State}.
 
--spec init(any()) -> {ok, atom(), state()}.
+-spec init(any()) -> {'ok', 'attended_wait', state()}.
 init(_) -> {'ok', 'attended_wait', #state{}}.
 
 -spec add_transferor_bindings(ne_binary()) -> 'ok'.

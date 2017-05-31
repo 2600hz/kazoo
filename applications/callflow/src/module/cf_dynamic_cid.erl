@@ -24,13 +24,15 @@
 
 -define(MOD_CONFIG_CAT, <<(?CF_CONFIG_CAT)/binary, ".dynamic_cid">>).
 
+-define(REJECT_PROMPT
+       ,kapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
+       ).
+
 -record(prompts
        ,{accept_tone =
              kapps_config:get_binary(?MOD_CONFIG_CAT, <<"accept_prompt">>, <<"tone_stream://%(250,50,440)">>)
         ,reject_tone =
-             kz_media_util:get_prompt(
-               kapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
-              )
+             kz_media_util:get_prompt(?REJECT_PROMPT)
         ,default_prompt =
              kz_media_util:get_prompt(
                kapps_config:get_binary(?MOD_CONFIG_CAT, <<"default_prompt">>, <<"dynamic-cid-enter_cid">>)
@@ -107,7 +109,7 @@ handle_static(Data, Call, CaptureGroup) ->
 %% @doc Read CID info from a list of CID defined in database
 %% @end
 %%--------------------------------------------------------------------
--type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} | {'error', kz_data:data_error()}.
+-type list_cid_entry() :: {ne_binary(), ne_binary(), ne_binary()} | {'error', kz_datamgr:data_error()}.
 
 -spec handle_list(kz_json:object(), kapps_call:call()) -> 'ok'.
 handle_list(Data, Call) ->
@@ -438,8 +440,5 @@ maybe_set_default_cid(Name, Number, _Call) ->
 %%--------------------------------------------------------------------
 -spec play_reject_prompt(kapps_call:call()) -> 'ok'.
 play_reject_prompt(Call) ->
-    _ = kapps_call_command:play(
-          kz_media_util:get_prompt(
-            kapps_config:get_binary(?MOD_CONFIG_CAT, <<"reject_prompt">>, <<"dynamic-cid-invalid_using_default">>)
-           ), Call),
+    _ = kapps_call_command:play(kapps_call:get_prompt(Call, ?REJECT_PROMPT), Call),
     'ok'.

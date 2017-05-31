@@ -182,7 +182,7 @@ build_metadata_object(Length, Call, MediaId, CIDNumber, CIDName, Timestamp) ->
         ])
      ).
 
--spec get_msg_id(kz_json:object()) -> ne_binary().
+-spec get_msg_id(kz_json:object()) -> api_ne_binary().
 get_msg_id(JObj) ->
     Paths = [<<"_id">>
             ,<<"media_id">>
@@ -304,11 +304,11 @@ set_to_sip(To, Metadata) ->
 utc_seconds(JObj) ->
     kz_json:get_integer_value(?KEY_UTC_SEC, JObj, 0).
 
--spec source_id(doc()) -> ne_binary().
+-spec source_id(doc()) -> api_ne_binary().
 source_id(JObj) ->
-    kz_json:get_value(?KEY_SOURCE_ID, JObj).
+    kz_json:get_ne_binary_value(?KEY_SOURCE_ID, JObj).
 
--spec set_source_id(api_binary(), doc()) -> doc().
+-spec set_source_id(api_ne_binary(), doc()) -> doc().
 set_source_id(SourceId, JObj) ->
     kz_json:set_value(?KEY_SOURCE_ID, SourceId, JObj).
 

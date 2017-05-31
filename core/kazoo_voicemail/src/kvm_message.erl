@@ -292,7 +292,7 @@ do_move(AccountId, FromId, OldBoxId, NewBoxId, NBoxJ) ->
 %% @doc copy a message to other vmbox(es)
 %% @end
 %%--------------------------------------------------------------------
--spec copy_to_vmboxes(ne_binary(), ne_binary(), ne_binary(), ne_binary() | ne_binaries()) ->
+-spec copy_to_vmboxes(ne_binary(), ne_binary() | kz_json:object(), ne_binary(), ne_binary() | ne_binaries()) ->
                              kz_json:object().
 copy_to_vmboxes(AccountId, Id, OldBoxId, ?NE_BINARY = NewBoxId) ->
     copy_to_vmboxes(AccountId, Id, OldBoxId, [NewBoxId]);
@@ -314,31 +314,39 @@ copy_to_vmboxes(AccountId, FromId, OldBoxId, [NBId | NBIds], CopiedDict) ->
     NewCopiedDict = copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict),
     copy_to_vmboxes(AccountId, FromId, OldBoxId, NBIds, NewCopiedDict).
 
--spec copy_to_vmbox(ne_binary(), kz_json:object(), ne_binary(), ne_binary(), dict:dict()) ->
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict()) ->
                            dict:dict().
-copy_to_vmbox(AccountId, FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
+copy_to_vmbox(AccountId, ?NE_BINARY = FromId, OldBoxId, ?NE_BINARY = NBId, CopiedDict) ->
     AccountDb = kvm_util:get_db(AccountId),
     %% FIXME: maybe bulk read vmbox in above function clause to avoid lots of cache query
-    {OkErr, JObjError} = kz_datamgr:open_cache_doc(AccountDb, NBId),
+    copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+                 ,kz_datamgr:open_cache_doc(AccountDb, NBId)
+                 ).
 
-    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, JObjError, OldBoxId),
-    case OkErr =:= 'ok'
-        andalso do_copy(AccountId, FromId, ToId, TransformFuns)
-    of
+-spec copy_to_vmbox(ne_binary(), ne_binary(), ne_binary(), ne_binary(), dict:dict(), kz_datamgr:data_error() | {'ok', kz_json:object()}) ->
+                           dict:dict().
+copy_to_vmbox(_AccountId, FromId, _OldBoxId, NBId, CopiedDict
+             ,{'error', Reason}
+             ) ->
+    lager:warning("could not open destination vmbox ~s", [NBId]),
+    Failed = kz_json:from_list([{FromId, kz_term:to_binary(Reason)}]),
+    dict:append(<<"failed">>, Failed, CopiedDict);
+copy_to_vmbox(AccountId, FromId, OldBoxId, NBId, CopiedDict
+             ,{'ok', NBox}
+             ) ->
+    {ToId, TransformFuns} = kvm_util:get_change_vmbox_funs(AccountId, NBId, NBox, OldBoxId),
+
+    case do_copy(AccountId, FromId, ToId, TransformFuns) of
         {'ok', CopiedJObj} ->
             CopiedId = kz_doc:id(CopiedJObj),
             dict:append(<<"succeeded">>, CopiedId, CopiedDict);
         {'error', R} ->
             Failed = kz_json:from_list([{FromId, kz_term:to_binary(R)}]),
-            dict:append(<<"failed">>, Failed, CopiedDict);
-        'false' ->
-            lager:warning("could not open destination vmbox ~s", [NBId]),
-            Failed = kz_json:from_list([{FromId, kz_term:to_binary(JObjError)}]),
             dict:append(<<"failed">>, Failed, CopiedDict)
     end.
 
 -spec do_copy(ne_binary(), ne_binary(), ne_binary(), update_funs()) -> db_ret().
-do_copy(AccountId, FromId, ToId, Funs) ->
+do_copy(AccountId, ?NE_BINARY = FromId, ToId, Funs) ->
     FromDb = kvm_util:get_db(AccountId, FromId),
     ToDb = kvm_util:get_db(AccountId, ToId),
 
@@ -462,7 +470,7 @@ create_forward_message_doc(Call, Metadata, SrcBoxId, Props) ->
         {'error', _}=Error -> Error
     end.
 
--spec try_save_document(kapps_call:call(), kz_json:object(), 1..3) -> db_ret().
+-spec try_save_document('undefined' | kapps_call:call(), kz_json:object(), 1..3) -> db_ret().
 try_save_document(_Call, MsgJObj, 0) ->
     case fetch(kz_doc:account_id(MsgJObj), kz_doc:id(MsgJObj)) of
         {'ok', _}=OK -> OK; %% message was saved somehow(network glitch?), moving on
@@ -580,7 +588,7 @@ prepend_and_notify(Call, ForwardId, Metadata, SrcBoxId, Props) ->
             forward_to_vmbox(Call, Metadata, SrcBoxId, Props)
     end.
 
--spec prepend_forward_message(kapps_call:cal(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
+-spec prepend_forward_message(kapps_call:call(), ne_binary(), kz_json:object(), ne_binary(), kz_proplist()) -> db_ret().
 prepend_forward_message(Call, ForwardId, Metadata, _SrcBoxId, Props) ->
     lager:debug("trying to prepend a message to forwarded voicemail message ~s", [ForwardId]),
     AccountId = kapps_call:account_id(Call),

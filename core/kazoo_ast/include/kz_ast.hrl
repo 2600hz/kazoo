@@ -123,6 +123,9 @@
 -define(FA(F, A), {'fun', _, {'function', F, A}}).
 
 -define(ANON(Clauses), {'fun', _, {'clauses', Clauses}}).
+-define(NAMED_ANON(Name, Clauses)
+       ,{'named_fun', _, Name, Clauses}
+       ).
 
 -define(MOD_FUN_ARGS(Module, Function, Args)
        ,{'call',_
