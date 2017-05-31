@@ -541,12 +541,14 @@ get_channel_vars(JObj, FetchId) ->
     J = kz_json:set_values(Vars, JObj),
     ecallmgr_fs_xml:get_channel_vars(J).
 
+-spec add_ccvs(kz_json:object(), kz_proplist()) -> kz_proplist().
 add_ccvs(JObj, Props) ->
     Routines = [fun maybe_add_loopback/2
                ,fun maybe_add_origination_uuid/2
                ],
     lists:foldl(fun(Fun, Acc) -> Fun(JObj, Acc) end, Props, Routines).
 
+-spec maybe_add_origination_uuid(kz_json:object(), kz_proplist()) -> kz_proplist().
 maybe_add_origination_uuid(JObj, Props) ->
     case kz_json:get_ne_binary_value(<<"Outbound-Call-ID">>, JObj) of
         'undefined' -> Props;
