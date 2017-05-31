@@ -256,9 +256,10 @@ from_list_recursive(L)
 
 -spec recursive_from_list(list()) -> object().
 recursive_from_list([First | _]=List)
-  when is_list(List)
-       andalso is_tuple(First)  ->
-    set_values([{kz_term:to_binary(K), recursive_from_list(V)} || {K,V} <- List], new());
+  when is_list(List), is_tuple(First) ->
+    from_list([{kz_term:to_binary(K), recursive_from_list(V)}
+               || {K,V} <- List
+              ]);
 recursive_from_list(X) when is_float(X) -> X;
 recursive_from_list(X) when is_integer(X) -> X;
 recursive_from_list(X) when is_atom(X) -> X;
