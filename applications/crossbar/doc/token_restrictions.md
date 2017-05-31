@@ -13,28 +13,61 @@ Account template located in `{ACCOUNT_DB}/token_restrictions`.
 
 #### How it works?
 
-When you make request to Crossbar (API), the system loads rules from auth token (used for authentitcation) and tries to apply the rules to URI (`/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/`).
+When you make request to Crossbar (API), the system loads rules from auth token (used for authentication) and tries to apply the rules to URI (`/v2/accounts/{ACCOUNT_ID}/devices/{DEVICE_ID}/`).
 More information about URI structure can be found [here](basics.md).
 If Crossbar doesn't find a match for all parameters (endpoint name, account id, endpoint arguments, HTTP method), then it halts the request and returns a 403 error.
 
+#### Full Example
+
+The following is a full example for reference. It is a rule for only allowing accounts to read/update their account configs (effectively barring them from deleting the account or creating sub-accounts.
+
+```json
+{
+    "cb_user_auth": {
+        "user":{
+            "accounts":[
+                {
+                    "rules": {
+                        "*": ["GET", "POST", "PATCH"]
+                    }
+                }
+            ]
+        }
+    }
+}
+```
+
+Place this on an account, as an admin, thusly:
+
+```shell
+curl -v -X POST \
+    -H "X-Auth-Token: {AUTH_TOKEN}" \
+    -d '{"data":{"restrictions":{"cb_user_auth": {"user":{"accounts":[{"rules": {"*": ["GET", "POST", "PATCH"]}}]}}}}}' \
+    http://{SERVER}:8000/v2/accounts/{ACCOUNT_ID}
+```
+
+Now, when someone logs into this account (via user\_auth) and who's user\_doc is of type `user` (and not `admin`), they will be unable to create sub-accounts.
+
+The following sections break down what's happening here.
+
 #### Template structure
 
-Each template can have different rules for different authentication methods and user privelege levels.
+Each template can have different rules for different authentication methods and user privilege levels.
 
 ```json
 {
   "AUTH_METHOD_1": {
     "PRIV_LEVEL_1": {
-      "RULES"
+      "ENDPOINT_RULES"
     },
     "PRIV_LEVEL_2": {
-      "RULES"
+      "ENDPOINT_RULES"
     },
     ...
   },
   "AUTH_METHOD_2": {
     "PRIV_LEVEL_1": {
-      "RULES"
+      "ENDPOINT_RULES"
     }
   },
   ...
@@ -43,7 +76,7 @@ Each template can have different rules for different authentication methods and 
 
 * `AUTH_METHOD_#` - name of authentication method (`cb_api_auth`, `cb_user_auth`, etc) which created this auth token.
 * `PRIV_LEVEL_#` - name of privilege level of authenticated user (`admin`, `user`, etc). This level is set in `priv_level` property of user document. If authentication method doesn't have a user associated (such as `cb_api_auth`) then select `admin` set of rules.
-* `RULES` - set of rules which will be saved in auth token document.
+* `ENDPOINT_RULES` - set of rules which will be saved in auth token document.
 
 Auth method and priv level can be matched with "catch all" term - `"_"`. If no exact match for auth method or priv level is found, the system will look for the 'catch all' rules, if any.
 The rules are loaded into the auth token document when it is created (after successful authentication) and will be applied to any request using the auth token created.
@@ -189,7 +222,7 @@ The first endpoint-rule object matched to the requested account will be used in 
 
 ##### Endpoint arguments match
 
-Endpoint argumnets matched with parameter `"rules"`.
+Endpoint arguments matched with parameter `"rules"`.
 
 ```json
 {

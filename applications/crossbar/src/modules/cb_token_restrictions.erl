@@ -167,12 +167,16 @@ maybe_deny_access(Context, Restrictions) ->
                 ,fun match_verb/2
                 ],
 
-    not lists:foldl(fun(F, RestrictionContext) ->
-                            F(Context, RestrictionContext)
-                    end
-                   ,Restrictions
-                   ,MatchFuns
-                   ).
+    case lists:foldl(fun(F, RestrictionContext) ->
+                             F(Context, RestrictionContext)
+                     end
+                    ,Restrictions
+                    ,MatchFuns
+                    )
+    of
+        Boolean when is_boolean(Boolean) -> not Boolean;
+        _Else -> 'false'
+    end.
 
 -spec match_endpoint(cb_context:context(), api_object()) ->
                             api_object().
@@ -182,11 +186,13 @@ match_endpoint(Context, Restrictions) ->
     match_request_endpoint(Restrictions, ReqEndpoint).
 
 -spec match_request_endpoint(api_object(), ne_binary()) ->
-                                    api_object().
+                                    api_objects().
 match_request_endpoint(Restrictions, ?CATCH_ALL = ReqEndpoint) ->
-    kz_json:get_value(ReqEndpoint, Restrictions);
+    ?LOG_DEBUG("trying to match ~s in ~p", [ReqEndpoint, Restrictions]),
+    kz_json:get_list_value(ReqEndpoint, Restrictions);
 match_request_endpoint(Restrictions, ReqEndpoint) ->
-    case kz_json:get_value(ReqEndpoint, Restrictions) of
+    ?LOG_DEBUG("trying to match ~s in ~p", [ReqEndpoint, Restrictions]),
+    case kz_json:get_list_value(ReqEndpoint, Restrictions) of
         'undefined' -> match_request_endpoint(Restrictions, ?CATCH_ALL);
         EndpointRestrictions -> EndpointRestrictions
     end.
@@ -206,10 +212,10 @@ find_endpoint_restrictions_by_account(AllowedAccounts
                                      ,[Restriction|Restrictions]
                                      ) ->
     case maybe_match_accounts(AllowedAccounts
-                             ,kz_json:get_value(<<"allowed_accounts">>, Restriction)
+                             ,kz_json:get_list_value(<<"allowed_accounts">>, Restriction)
                              )
     of
-        'true' -> kz_json:get_value(<<"rules">>, Restriction);
+        'true' -> kz_json:get_json_value(<<"rules">>, Restriction);
         'false' ->
             find_endpoint_restrictions_by_account(AllowedAccounts, Restrictions)
     end.
@@ -229,7 +235,7 @@ allowed_accounts(Context) ->
     AuthAccountId = cb_context:auth_account_id(Context),
 
     case cb_context:account_id(Context) of
-        AuthAccountId -> [?CATCH_ALL, AuthAccountId, <<"{AUTH_ACCOUNT_ID}">> ];
+        AuthAccountId -> [?CATCH_ALL, AuthAccountId, <<"{AUTH_ACCOUNT_ID}">>];
         AccountId ->
             allowed_accounts(AuthAccountId, AccountId)
     end.
@@ -263,7 +269,7 @@ match_argument_patterns(ReqParams, RulesJObj, RuleKeys) ->
     case match_rules(ReqParams, RuleKeys) of
         'undefined' -> [];
         MatchedRuleKey ->
-            kz_json:get_value(MatchedRuleKey, RulesJObj, [])
+            kz_json:get_list_value(MatchedRuleKey, RulesJObj, [])
     end.
 
 -spec match_rules(ne_binaries(), ne_binaries()) -> api_binary().
