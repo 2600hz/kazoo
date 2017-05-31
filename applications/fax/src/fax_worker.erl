@@ -247,14 +247,16 @@ handle_cast({'fax_status', <<"result">>, JobId, JObj}
     Data = kz_call_event:application_data(JObj),
     {Resp, Doc} = case kz_json:is_true([<<"Fax-Success">>], Data) of
                       'true' ->
+                          lager:debug("fax sucessfully sent"),
                           send_status(State, <<"Fax Successfuly sent">>, ?FAX_END, Data),
                           release_successful_job(JObj, Job);
                       'false' ->
+                          lager:debug("error sending fax"),
                           send_status(State, <<"Error sending fax">>, ?FAX_ERROR, Data),
                           release_failed_job('fax_result', JObj, Job)
                   end,
     gen_server:cast(self(), 'stop'),
-    {'noreply', State#state{job=Doc, resp = Resp}};
+    {'noreply', State#state{job=Doc, resp = Resp, fax_status = Data}};
 handle_cast({'fax_status', Event, JobId, _}, State) ->
     lager:debug("fax status ~s - ~s event not handled",[JobId, Event]),
     {'noreply', State};
