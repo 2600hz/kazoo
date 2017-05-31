@@ -287,9 +287,11 @@ is_blacklisted(JObj) ->
 -spec is_number_blacklisted(kz_json:object(), ne_binary()) -> boolean().
 is_number_blacklisted(Blacklist, Number) ->
     Normalized = knm_converters:normalize(Number),
-    case kz_json:get_value(Normalized, Blacklist) of
-        'undefined' -> false;
-        _Rule ->
+    case kz_term:is_not_empty(kz_json:get_value(Normalized, Blacklist))
+        orelse kz_json:is_true(<<"should_block_anonymous">>, Blacklist)
+    of
+        'false' -> false;
+        'true' ->
             lager:info("~s(~s) is blacklisted", [Number, Normalized]),
             'true'
     end.
@@ -321,9 +323,15 @@ get_blacklist(AccountId, Blacklists) ->
                       Acc;
                   {'ok', Doc} ->
                       Numbers = kz_json:get_value(<<"numbers">>, Doc, kz_json:new()),
-                      kz_json:merge_jobjs(Acc, Numbers)
+                      BlackList = maybe_set_block_anonymous(Numbers, kz_json:is_true(<<"should_block_anonymous">>, Doc, 'undefined')),
+                      kz_json:merge_jobjs(Acc, BlackList)
               end
       end
                ,kz_json:new()
                ,Blacklists
      ).
+
+-spec maybe_set_block_anonymous(kz_json:object(), api_boolean()) -> kz_json:object().
+maybe_set_block_anonymous(JObj, 'undefined') -> JObj;
+maybe_set_block_anonymous(JObj, ShouldBlock) ->
+  kz_json:set_value(<<"should_block_anonymous">>, ShouldBlock, JObj).
