@@ -207,7 +207,7 @@ handle_info('timeout', State) ->
     case kz_datamgr:get_results(?KZ_PENDING_NOTIFY_DB, <<"pending_notify/list_by_modified">>, ViewOptions) of
         {'ok', []} -> {'noreply', State, ?TIME_BETWEEN_CYCLE};
         {'ok', Pendings} ->
-            process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]),
+            _ = kz_utiL:spawn(fun () -> process_then_next_cycle([kz_json:get_value(<<"doc">>, J) || J <- Pendings]) end),
             {'noreply', State#state{running=Pendings}};
         {'error', 'not_found'} ->
             kapps_maintenance:refresh(?KZ_PENDING_NOTIFY_DB),
