@@ -37,7 +37,7 @@ handle(_Data, Call) ->
                     kapps_call_command:b_prompt(<<"cf-move-too_many_channels">>, Call);
                 {'ok', Channel} ->
                     OtherLegId = kz_json:get_ne_binary_value(<<"other_leg">>, Channel),
-                    kapps_call_command:pickup(OtherLegId, Call)
+                    kapps_call_command:b_pickup(OtherLegId, Call)
             end
     end,
     cf_exe:stop(Call).
