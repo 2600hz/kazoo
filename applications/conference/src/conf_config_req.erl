@@ -142,9 +142,10 @@ max_participants(Conference) ->
 max_members_sound(Conference) ->
     case kapps_conference:max_members_media(Conference) of
         'undefined' ->
-            kapps_call:get_prompt(kapps_conference:call(Conference)
-                                 ,?DEFAULT_MAX_MEMBERS_MEDIA
-                                 );
+            kz_media_util:get_account_prompt(?DEFAULT_MAX_MEMBERS_MEDIA
+                                            ,'undefined'
+                                            ,kapps_conference:account_id(Conference)
+                                            );
         Media -> Media
     end.
 
